@@ -10,7 +10,7 @@ internal static class Program
 {
     private const string ServerName = "StationGodMCP";
     // Reported in the initialize response. build.ps1 checks it matches StationGodMCP.Server.csproj and the mod.
-    private const string ServerVersion = "1.0.0";
+    private const string ServerVersion = "1.1.0";
     private const string ProtocolVersion = "2025-06-18";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -393,7 +393,9 @@ internal static class Program
 
     private static GameTransportSettings ReadTransportSettings(string[] args)
     {
-        string pipeName = ReadArgument(args, "--pipe") ?? "StationGodMCP";
+        string? pipeEnvironment = Environment.GetEnvironmentVariable("STATIONGODMCP_PIPE_NAME");
+        string pipeName = ReadArgument(args, "--pipe") ??
+                          (string.IsNullOrWhiteSpace(pipeEnvironment) ? "StationGodMCP" : pipeEnvironment.Trim());
         string? host = ReadArgument(args, "--host") ?? Environment.GetEnvironmentVariable("STATIONGODMCP_HOST");
         if (string.IsNullOrWhiteSpace(host))
         {
@@ -535,7 +537,8 @@ internal static class ToolDefinitions
         "plan_pipe_route",
         "plan_chute_route",
         "trader_buy",
-        "trader_sell"
+        "trader_sell",
+        "paste_blueprint"
     ];
 
     internal static readonly object[] All =
@@ -982,7 +985,7 @@ internal static class ToolDefinitions
             readOnly: false),
         Tool(
             "mod_info",
-            "The running mod's identity and health: mod_id, mod_version, assembly_version, informational_version, and methods: every method the mod answers, each {method, calls, errors, total_ms, mean_ms (null before the first call), max_ms} counted in memory since the mod loaded (main-thread time per request; errors are replies with ok false). Also count, reflection: [{member, resolved, optional}] (every game member the mod reaches by reflection and every Harmony target it patches; optional ones belong to other mods such as Terraforming Reloaded) and missing_count (required members not found: methods that need one answer game_changed). Every reply envelope also carries elapsed_ms, that request's main-thread time. Read only; no gateway is needed.",
+            "The running mod's identity and health: mod_id, mod_version, assembly_version, informational_version, pipe_name (the local named pipe this game listens on, the sidecar's --pipe: tells which game a sidecar reached when two run on one machine), and methods: every method the mod answers, each {method, calls, errors, total_ms, mean_ms (null before the first call), max_ms} counted in memory since the mod loaded (main-thread time per request; errors are replies with ok false). Also count, reflection: [{member, resolved, optional}] (every game member the mod reaches by reflection and every Harmony target it patches; optional ones belong to other mods such as Terraforming Reloaded and BlueprintMod) and missing_count (required members not found: methods that need one answer game_changed). Every reply envelope also carries elapsed_ms, that request's main-thread time. Read only; no gateway is needed.",
             new { type = "object", properties = new { }, additionalProperties = false },
             readOnly: true),
         Tool(
@@ -1221,6 +1224,23 @@ internal static class ToolDefinitions
                     dry_run = new { type = "boolean", description = "Check and price only; nothing is traded. Default false." }
                 },
                 required = new[] { "reference_id", "items" },
+                additionalProperties = false
+            },
+            readOnly: false),
+        Tool(
+            "paste_blueprint",
+            "Paste a BlueprintMod blueprint at an exact place and turn, with no player needed (console bppaste takes both from the local player, so it cannot run on a dedicated server). Needs BlueprintMod loaded; host only. Makes the D.B.P.U.'s own call: the blueprint's copy angle plus rotation 0, 90, 180 or 270, so every piece lands on the grid. Three forms. Paste: name (a file in BlueprintMod's Blueprints folder, with or without .blueprint, or an absolute path), anchor [x, y, z] (the world position in metres where the blueprint's own reference point lands: the large-grid point BlueprintMod snapped the copying player to, x and z odd whole metres, y even; a paste lines up with the grid when the anchor is such a point) and rotation (default 0); returns {started: true, file (full path), entries, anchor, rotation, copy_y_angle, expected_duration_s}. The pieces are then placed over 2 to 30 s (0.15 s per entry) by BlueprintMod's coroutine, so the reply comes before they exist. status: true alone: progress of the last paste this tool started, {known (false until this tool has started one; the other fields are then null), active (still placing), complete, cancelled, created, failed, skipped, pasted (things kept for undo), fingerprint, file, entries, other_active (a paste this tool did not start is running)}; the counts are kept after the paste ends, and are null when the paste finished inside the call that started it. undo: true alone: BlueprintMod's bpundo (cancels a running paste and removes what it placed, else removes the last completed paste) and returns {message}, its own answer. Rooms are not re-evaluated after a paste or an undo: run the console command regeneraterooms before rooms. In survival BlueprintMod charges DeanamicMatter from the local player, which a dedicated server does not have, so use a creative world there. Errors: invalid_argument (a missing file names the path it looked at; a blueprint with no entries; a rotation not 0, 90, 180 or 270), paste_refused (BlueprintMod's own message verbatim: the same blueprint already pasted at this position and rotation, no local player in survival, not enough DeanamicMatter), blueprint_failed (a BlueprintMod call threw: its exception type and message, e.g. a file that is not a blueprint), mod_missing (BlueprintMod is not loaded), game_changed (BlueprintMod no longer has a member this tool calls, named), not_host. No gateway is needed.",
+            new
+            {
+                type = "object",
+                properties = new
+                {
+                    name = new { type = "string", description = "Blueprint file: a name in BlueprintMod's Blueprints folder (.blueprint optional) or an absolute path." },
+                    anchor = new { type = "array", minItems = 3, maxItems = 3, items = new { type = "number" }, description = "World position [x, y, z] in metres of the blueprint's large-grid anchor." },
+                    rotation = new { type = "integer", @enum = new[] { 0, 90, 180, 270 }, description = "Degrees added to the blueprint's copy angle. Default 0." },
+                    status = new { type = "boolean", description = "true alone: progress of the last paste this tool started." },
+                    undo = new { type = "boolean", description = "true alone: undo the last paste (BlueprintMod's bpundo)." }
+                },
                 additionalProperties = false
             },
             readOnly: false)

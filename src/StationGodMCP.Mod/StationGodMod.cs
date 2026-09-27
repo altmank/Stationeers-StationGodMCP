@@ -9,30 +9,32 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using StationeersMods.Interface;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure;
 using UnityEngine;
 
 namespace StationGodMCP;
 
 /// <summary>
 /// The mod: at load it checks every reflected game member (GameMembers.CheckAll), applies each Harmony patch class,
-/// reads the remote settings and registers the gateway prefab. Every frame on a host (NetworkManager.IsServer) it
-/// keeps the named pipe (and, when configured, the TCP transport) listening and runs the queued requests on the main
-/// thread.
+/// reads the pipe and remote settings and registers the gateway prefab. Every frame on a host (NetworkManager.IsServer)
+/// it keeps the named pipe (and, when configured, the TCP transport) listening and runs the queued requests on the
+/// main thread.
 /// </summary>
 [StationeersMod(ModId, DisplayName, Version)]
 public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.0.0";
-
-    private const string PipeName = "StationGodMCP";
+    public const string Version = "1.1.0";
 
     private readonly StationGodRequestDispatcher _dispatcher = new StationGodRequestDispatcher();
     private Harmony? _harmony;
     private StationGodPipeServer? _pipeServer;
     private StationGodTcpServer? _tcpServer;
     private RemoteSettings? _remote;
+
+    /// <summary>The local pipe's name, read once at load ([Pipe] Name, STATIONGODMCP_PIPE_NAME).</summary>
+    internal static PipeName Pipe { get; private set; } = PipeName.Default;
 
     public override void OnLoaded(ContentHandler contentHandler)
     {
@@ -43,7 +45,9 @@ public sealed class StationGodMod : ModBehaviour
             _harmony = new Harmony(ModId);
             GameMembers.CheckAll();
             PatchEachClass(_harmony);
-            _remote = RemoteSettings.Load();
+            ConfigFile configuration = new ConfigFile(ConfigPath, true);
+            Pipe = PipeSettings.Load(configuration);
+            _remote = RemoteSettings.Load(configuration);
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
             {
@@ -94,7 +98,7 @@ public sealed class StationGodMod : ModBehaviour
 
             if (_pipeServer == null)
             {
-                _pipeServer = new StationGodPipeServer(PipeName, _dispatcher);
+                _pipeServer = new StationGodPipeServer(Pipe.Value, _dispatcher);
                 _pipeServer.Start();
             }
 
@@ -155,6 +159,8 @@ public sealed class StationGodMod : ModBehaviour
         }
     }
 
+    internal static string ConfigPath => Path.Combine(Paths.ConfigPath, $"{ModId}.cfg");
+
     internal static void Log(string message)
     {
         Debug.unityLogger.Log(LogType.Log, $"[StationGodMCP] {message}");
@@ -205,10 +211,8 @@ internal sealed class RemoteSettings
         Enabled = false;
     }
 
-    internal static RemoteSettings Load()
+    internal static RemoteSettings Load(ConfigFile configuration)
     {
-        string path = Path.Combine(Paths.ConfigPath, $"{StationGodMod.ModId}.cfg");
-        ConfigFile configuration = new ConfigFile(path, true);
         ConfigEntry<bool> enabled = configuration.Bind(Section, "Enabled", false,
             "Listen for authenticated StationGod MCP sidecars over plain TCP. Only enable this on the authoritative " +
             "server.");
@@ -227,7 +231,8 @@ internal sealed class RemoteSettings
         {
             settings.Disable();
             StationGodMod.LogWarning(
-                $"Remote MCP is enabled but no secret is configured. Set Remote MCP/Secret in {path} or " +
+                "Remote MCP is enabled but no secret is configured. Set Remote MCP/Secret in " +
+                $"{StationGodMod.ConfigPath} or " +
                 "STATIONGODMCP_REMOTE_SECRET; TCP listening is disabled.");
         }
 
@@ -273,5 +278,31 @@ internal sealed class RemoteSettings
     {
         string? value = Environment.GetEnvironmentVariable(name);
         return string.IsNullOrEmpty(value) ? fallback : value!;
+    }
+}
+
+/// <summary>
+/// The local named pipe's name: BepInEx config section Pipe, key Name, overridden by STATIONGODMCP_PIPE_NAME. Read
+/// once at load; an invalid name falls back to the default with a warning.
+/// </summary>
+internal static class PipeSettings
+{
+    private const string EnvironmentName = "STATIONGODMCP_PIPE_NAME";
+
+    internal static PipeName Load(ConfigFile configuration)
+    {
+        ConfigEntry<string> name = configuration.Bind("Pipe", "Name", PipeName.DefaultValue,
+            @"Name of the local named pipe the mod listens on (\\.\pipe\<Name>). A second game or dedicated " +
+            "server on the same machine needs its own name, or sidecars reach whichever started first. Must not be " +
+            @"empty or contain \, / or :. Restart the game to apply.");
+        PipeNameChoice choice = PipeName.Choose(Environment.GetEnvironmentVariable(EnvironmentName), EnvironmentName,
+            name.Value);
+        if (choice.Warning != null)
+        {
+            StationGodMod.LogWarning(choice.Warning);
+        }
+
+        StationGodMod.Log($"Pipe name: {choice.Name.Value}.");
+        return choice.Name;
     }
 }

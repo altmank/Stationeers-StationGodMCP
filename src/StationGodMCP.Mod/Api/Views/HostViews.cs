@@ -81,6 +81,7 @@ internal sealed class ModInfoView
         ModVersion = identity.ModVersion;
         AssemblyVersion = identity.AssemblyVersion;
         InformationalVersion = identity.InformationalVersion;
+        PipeName = identity.PipeName;
         Methods = methods;
         Count = methods.Count;
         Reflection = reflection;
@@ -95,6 +96,9 @@ internal sealed class ModInfoView
 
     public string? InformationalVersion { get; }
 
+    /// <summary>The name of the local named pipe this game listens on (after \\.\pipe\).</summary>
+    public string PipeName { get; }
+
     public List<MethodStatsView> Methods { get; }
 
     public int Count { get; }
@@ -107,12 +111,14 @@ internal sealed class ModInfoView
 
 internal sealed class ModIdentity
 {
-    internal ModIdentity(string modId, string modVersion, string? assemblyVersion, string? informationalVersion)
+    internal ModIdentity(string modId, string modVersion, string? assemblyVersion, string? informationalVersion,
+        string pipeName)
     {
         ModId = modId;
         ModVersion = modVersion;
         AssemblyVersion = assemblyVersion;
         InformationalVersion = informationalVersion;
+        PipeName = pipeName;
     }
 
     internal string ModId { get; }
@@ -122,6 +128,8 @@ internal sealed class ModIdentity
     internal string? AssemblyVersion { get; }
 
     internal string? InformationalVersion { get; }
+
+    internal string PipeName { get; }
 }
 
 /// <summary>One method's calls, errors and main-thread time since the mod loaded.</summary>

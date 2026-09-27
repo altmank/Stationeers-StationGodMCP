@@ -43,7 +43,7 @@ public sealed class HostWireTests
         var old = new
         {
             mod_id = "net.xceled.stationeers.stationgodmcp", mod_version = "1.0.0", assembly_version = "1.0.0.0",
-            informational_version = (string?)null,
+            informational_version = (string?)null, pipe_name = "StationGodMCP-Test",
             methods = new List<object>
             {
                 new { method = "game_clock", calls = 2L, errors = 0L, total_ms = 0.5, mean_ms = (double?)0.25,
@@ -55,7 +55,8 @@ public sealed class HostWireTests
             reflection = new List<object> { new { member = "Plant._stageTime", resolved = true, optional = false } },
             missing_count = 0
         };
-        ModInfoView view = new ModInfoView(new ModIdentity("net.xceled.stationeers.stationgodmcp", "1.0.0", "1.0.0.0", null),
+        ModInfoView view = new ModInfoView(
+            new ModIdentity("net.xceled.stationeers.stationgodmcp", "1.0.0", "1.0.0.0", null, "StationGodMCP-Test"),
             new List<MethodStatsView>
             {
                 new MethodStatsView("game_clock", 2, 0, 0.5, 0.3), new MethodStatsView("planet", 0, 0, 0.0, 0.0)

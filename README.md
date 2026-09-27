@@ -115,7 +115,28 @@ claude mcp add --scope user --env "STATIONGODMCP_SECRET=<secret>" --transport st
 
 Codex: the same `command` and `args`, plus `[mcp_servers.stationeers.env]` with `STATIONGODMCP_SECRET`.
 
+## Pipe name
+
+A game or dedicated server listens on the local named pipe `\\.\pipe\StationGodMCP`. Two of them on one machine
+(your game and a test server, say) need different names, or a sidecar reaches whichever started first. In the same
+cfg file:
+
+```ini
+[Pipe]
+Name = StationGodMCP-Test
+```
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `Name` | `StationGodMCP` | The pipe's name, the part after `\\.\pipe\`. Not empty, no `\`, `/` or `:`; an invalid name is logged and the default used. Restart the game to apply. |
+
+The environment variable `STATIONGODMCP_PIPE_NAME` overrides the file. The BepInEx log shows the name in use
+(`Authoritative MCP bridge listening on \\.\pipe\<name>`) and `mod_info` reports it as `pipe_name`, so a script can
+check which game it reached. Sidecar side: `--pipe <name>`, or `STATIONGODMCP_PIPE_NAME` when `--pipe` is absent.
+
 ## MCP tools
+
+72 tools:
 
 | Area | Tools |
 | --- | --- |
@@ -131,6 +152,7 @@ Codex: the same `command` and `args`, plus `[mcp_servers.stationeers.env]` with 
 | Walls and frames | `replace_walls`, `replace_frames` |
 | Cable, pipe and chute runs | `grid_survey`, `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`, `place_cables`, `remove_cables`, `place_pipes`, `remove_pipes`, `place_chutes`, `remove_chutes` |
 | Structures | `place_structure`, `remove_structure` |
+| Blueprints (with BlueprintMod) | `paste_blueprint` |
 
 Each tool's own description, which the agent reads, gives its arguments and reply fields in full.
 
@@ -319,12 +341,24 @@ Removing:
 - Multiplayer: host only. One job at a time across all the job tools (`busy`).
 - Not yet tested in game: both tools. The cursor check, snapping, turns and verification come from the game's own code; the rotation maths and guards are covered by unit tests only.
 
+### Pasting blueprints
+
+With [BlueprintMod](https://steamcommunity.com/sharedfiles/filedetails/?id=3672138641) loaded, `paste_blueprint` pastes one of its blueprints at a position and turn you give, with no player needed. The console's `bppaste` takes both from the local player, so it cannot run on a dedicated server; this tool makes the call the D.B.P.U. makes instead. BlueprintMod is optional: the mod finds it by name at run time, and without it the tool answers `mod_missing`.
+
+- Paste: `name` (a file in BlueprintMod's Blueprints folder, with or without `.blueprint`, or an absolute path), `anchor` `[x, y, z]` (the world position in metres where the blueprint's reference point lands: the large-grid point the copying player stood on, x and z odd whole metres, y even) and `rotation` 0, 90, 180 or 270 (default 0), added to the angle the blueprint was copied at so every piece stays on the grid. The reply comes at once: `started`, `file`, `entries`, `anchor`, `rotation`, `copy_y_angle` and `expected_duration_s`. BlueprintMod then places the pieces over 2 to 30 seconds (0.15 s per entry).
+- `status: true`: how the last paste this tool started went, `created`, `failed`, `skipped`, `pasted`, `complete`, `cancelled`, and whether another paste is running (`other_active`). The counts stay readable after the paste ends.
+- `undo: true`: BlueprintMod's `bpundo`, and its answer as `message`. It cancels a running paste and removes what it placed, or removes the last finished paste.
+- Refused: `paste_refused` with BlueprintMod's own message (the same blueprint already pasted at that position and turn, not enough DeanamicMatter), `blueprint_failed` (BlueprintMod threw, with its error, such as a file that is not a blueprint), `invalid_argument` (no such file, naming the path looked at), `game_changed` (BlueprintMod no longer has something the tool calls).
+- Rooms are not worked out again after a paste or an undo: run the console command `regeneraterooms` before reading `rooms`.
+- Outside creative, BlueprintMod charges DeanamicMatter from the local player. A dedicated server has none, so use a creative world there.
+- Multiplayer: host only (`not_host` on a client). BlueprintMod shows its paste effect to every player and the game sends them the new structures, so clients need nothing from this tool.
+
 ## Multiplayer
 
 The mod works on the host, where the game's state lives: requests run on the host's main thread, and every change
 reaches players through the game's own sync. The pipe and the TCP listener open only on the host. Every player who
 joins needs the same version too, because the StationGod Gateway and its kit are new prefabs a client without the
-mod cannot show.
+mod cannot show. The pipe name only matters on the machine the game runs on; players never see it.
 
 ## Removing it
 
@@ -348,6 +382,8 @@ delete the sidecar folder and remove the agent's MCP registration.
   including branches, `frames_first` and `remove_loops`; `place_structure` and `remove_structure`. Their guards,
   forecasts, route search and rotation maths are covered by unit tests; the parts that call the game follow the
   game's own code.
+- Not yet tested in game (1.1.0): `paste_blueprint` and the `[Pipe] Name` setting. Their replies, argument checks
+  and pipe name rules are covered by unit tests.
 
 ## Build
 

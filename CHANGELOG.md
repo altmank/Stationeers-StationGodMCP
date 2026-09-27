@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0
+
+- **Paste blueprints without a player.** With BlueprintMod loaded, the new `paste_blueprint` tool pastes a blueprint
+  at a position and quarter turn you give, as the D.B.P.U. does, so pieces land on the grid. It works on a dedicated
+  server, where the console's `bppaste` cannot (it needs a local player). It also reports how the paste went and
+  undoes it. 72 tools now.
+- **Choose the pipe name.** New setting `[Pipe] Name` (default `StationGodMCP`, or the environment variable
+  `STATIONGODMCP_PIPE_NAME`) lets a second game or a test server on the same machine listen on its own pipe instead
+  of racing the first for it. The sidecar takes the same variable when `--pipe` is not given, and `mod_info` now
+  reports `pipe_name`. Restart the game after changing it.
+
 ## 1.0.0
 
 - **First release.** An MCP server for Stationeers: an AI agent such as Claude Code or Codex reads and operates the

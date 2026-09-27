@@ -296,6 +296,49 @@ internal static class GameMembers
     internal static readonly GameField LuaSnapshotErrorMessage = LuaSnapshotField("LastErrorMessage");
     internal static readonly GameField LuaSnapshotErrorTraceback = LuaSnapshotField("LastErrorTraceback");
 
+    // ---- BlueprintMod (paste_blueprint): another mod, optional; its absence is not a game change ----
+    internal static readonly GameType BlueprintCommands = Optional("BlueprintMod.BlueprintCommands");
+    internal static readonly GameType BlueprintSerializer = Optional("BlueprintMod.BlueprintSerializer");
+    internal static readonly GameType BlueprintModPlugin = Optional("BlueprintMod.BlueprintMod");
+    internal static readonly GameType BlueprintData = Optional("BlueprintMod.BlueprintData");
+    internal static readonly GameType BlueprintPasteOperation = Register(new GameType(
+        "BlueprintMod.BlueprintCommands.StaggeredPasteOperation",
+        () => BlueprintCommands.OrNull?.GetNestedType("StaggeredPasteOperation", BindingFlags.Public),
+        optional: true));
+    internal static readonly GameMethod BlueprintStartPaste = Register(new GameMethod(
+        "BlueprintMod.BlueprintCommands.StartStaggeredPaste(BlueprintData, Vector3, float, float)",
+        () => BlueprintData.OrNull == null
+            ? null
+            : BlueprintCommands.OrNull?.GetMethod("StartStaggeredPaste", PublicStatic, null,
+                new[] { BlueprintData.OrNull, typeof(UnityEngine.Vector3), typeof(float), typeof(float) }, null),
+        optional: true));
+    internal static readonly GameMethod BlueprintUndo = Register(new GameMethod(
+        "BlueprintMod.BlueprintCommands.Undo(string[])",
+        () => BlueprintCommands.OrNull?.GetMethod("Undo", PublicStatic, null, new[] { typeof(string[]) }, null),
+        optional: true));
+    internal static readonly GameMethod BlueprintActivePaste = Register(new GameMethod(
+        "BlueprintMod.BlueprintCommands.ActivePaste (getter)",
+        () => BlueprintCommands.OrNull?.GetProperty("ActivePaste", PublicStatic)?.GetGetMethod(),
+        optional: true));
+    internal static readonly GameMethod BlueprintLoad = Register(new GameMethod(
+        "BlueprintMod.BlueprintSerializer.Load(string)",
+        () => BlueprintSerializer.OrNull?.GetMethod("Load", PublicStatic, null, new[] { typeof(string) }, null),
+        optional: true));
+    internal static readonly GameField BlueprintDirectory = Register(new GameField(
+        "BlueprintMod.BlueprintMod.BlueprintDirectory",
+        () => BlueprintModPlugin.OrNull?.GetField("BlueprintDirectory", PublicStatic),
+        optional: true));
+    internal static readonly GameField BlueprintCopyYAngle =
+        BlueprintField(BlueprintData, "BlueprintData", "CopyYAngle");
+    internal static readonly GameField BlueprintEntries = BlueprintField(BlueprintData, "BlueprintData", "Entries");
+    internal static readonly GameField PasteThings = PasteField("PastedThings");
+    internal static readonly GameField PasteCreated = PasteField("Created");
+    internal static readonly GameField PasteFailed = PasteField("Failed");
+    internal static readonly GameField PasteSkipped = PasteField("Skipped");
+    internal static readonly GameField PasteFingerprint = PasteField("Fingerprint");
+    internal static readonly GameField PasteCancelled = PasteField("Cancelled");
+    internal static readonly GameField PasteComplete = PasteField("Complete");
+
     // ---- Trading ----
     internal static readonly GameMethod TradeSellItemQuantity = Register(new GameMethod(
         "TradeDataHelper.GetSellItemQuantity",
@@ -387,6 +430,13 @@ internal static class GameMembers
             () => LuaSnapshotType.OrNull?.GetField(name,
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic),
             optional: true));
+
+    private static GameField BlueprintField(GameType owner, string ownerName, string name) =>
+        Register(new GameField($"BlueprintMod.{ownerName}.{name}",
+            () => owner.OrNull?.GetField(name, BindingFlags.Instance | BindingFlags.Public), optional: true));
+
+    private static GameField PasteField(string name) =>
+        BlueprintField(BlueprintPasteOperation, "BlueprintCommands.StaggeredPasteOperation", name);
 
     private static GameMethod Target(string name, Func<MethodInfo?> resolve) =>
         Register(new GameMethod("Harmony target " + name, resolve));

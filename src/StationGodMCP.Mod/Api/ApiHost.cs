@@ -92,6 +92,7 @@ internal static class ApiHost
             ["plan_chute_route"] = static args => PlanRouteApi.Handle(args, new ChuteRunKind()),
             ["trader_buy"] = static args => TraderBuyApi.Handle(args),
             ["trader_sell"] = static args => TraderSellApi.Handle(args),
+            ["paste_blueprint"] = static args => PasteBlueprintApi.Handle(args),
             ["mod_info"] = static args => ModInfoApi.Handle(args)
         };
 
