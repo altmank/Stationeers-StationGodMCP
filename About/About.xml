@@ -75,19 +75,6 @@ v1.2.0
 - grid_survey marks cells inside a frame ('i') apart from its surface, lists each network's floating cells, and can show what removing each piece gives back.
 - New feed_paths tool: which rooms each device's feed passes through from an APC, flagging daisy chains. New plan_removal tool: a removal's refund and split check without doing it. 74 tools now.
 - Fix: materials given back after a job (walls and frames swapped, cables removed...) were made at the player's position and could hurt the suit. They now go straight into the inventory: matching stacks first, then empty slots, and only what does not fit onto the ground in front of the player.
-
-v1.1.1
-- Route rule inside_frames now accepts the top of a frame beam and the outer faces of frames, judged the same way as frames_first and prefer frame_edges; it used to refuse them as the empty cell above.
-- Rerouting between an APC (or any device on several networks of the kind) and another end no longer fails with not_on_one_network: the network both ends share is used, and an end may name a device port as {reference_id, port}. When no network or several are shared, the error lists each end's ports and networks.
-
-v1.1.0
-- New paste_blueprint tool: with BlueprintMod loaded, paste a blueprint at a position and quarter turn you give, as the D.B.P.U. does, with no player needed, so it works on a dedicated server. It also reports progress and undoes. 72 tools now.
-- New setting [Pipe] Name (or STATIONGODMCP_PIPE_NAME): a second game or test server on the same machine can listen on its own pipe. mod_info reports pipe_name.
-
-v1.0.0
-- First release: an MCP server for Stationeers with 71 tools for devices and logic, IC10 and Lua chips, rooms, air, planet, plants, items, gas, traders, solar panels and dishes.
-- Build and rebuild cables, pipes and chutes, upgrade and clean up networks, swap walls and frames, and place or remove any kit-built structure, each with a dry run, a held game tick and a check afterwards.
-- Local games over a named pipe; dedicated servers over authenticated TCP.
 </ChangeLog>
   <WorkshopHandle>0</WorkshopHandle>
   <Tags />
