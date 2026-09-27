@@ -118,13 +118,16 @@ internal sealed class GridFacts
             PlacementCheck.BlockedAxes(small, _mask, _kind, _ignore),
             own ? _kind.Family.NetworkOf(piece!)?.ReferenceId : null, own, Large(SmallCellCode.LargeOf(cell)),
             SmallCellCode.IndexOnAxis(cell.X), SmallCellCode.IndexOnAxis(cell.Y), SmallCellCode.IndexOnAxis(cell.Z),
-            NeighbourNetworks(cell), Support(cell));
+            NeighbourNetworks(cell), Support(cell), Visibility(cell));
         _small[cell] = facts;
         return facts;
     }
 
     /// <summary>What holds a piece in the small cell up (CellSupports): read from the 2 m cells it touches only.</summary>
     internal CellSupport Support(GridCell small) => CellSupports.Of(small, Large);
+
+    /// <summary>How visible a piece in the small cell is (CellSupports.VisibilityOf).</summary>
+    internal CellVisibility Visibility(GridCell small) => CellSupports.VisibilityOf(small, Large);
 
     /// <summary>Whether a 2 m cell can support small cells at all: a frame in it or a face structure on it.</summary>
     internal bool Anchors(GridCell large) => CellSupports.Anchors(Large(large));

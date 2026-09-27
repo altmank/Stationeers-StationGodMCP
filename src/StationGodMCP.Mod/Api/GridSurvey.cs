@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Assets.Scripts;
@@ -40,9 +41,11 @@ internal static class GridSurveyApi
         "pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), 'r' a rocket's cell. " +
         "Frames and walls never block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable " +
         "(and a cable a pipe) only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, " +
-        "chute or 'o'. support: the same 64 cells by what holds a piece there up: 'e' a frame edge or corner, 'f' on " +
-        "or inside a frame (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, " +
-        "'a' air (plan_*_route frames_first avoids 'a' cells).";
+        "chute or 'o'. support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell " +
+        "the small cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a " +
+        "frame's face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
+        "(plan_*_route frames_first avoids 'a' cells). network_visibility counts each listed network's cells the " +
+        "same way (inside, frame_surface, wall, air) and lists the floating (air) ones.";
 
     internal static GridSurveyView Handle(Args args)
     {
@@ -56,7 +59,8 @@ internal static class GridSurveyApi
             views.Add(CellView(facts, cell));
         }
 
-        SurveyContents contents = Contents(facts, slice.Items, args.OptionalBool("include_networks") ?? true);
+        SurveyContents contents = Contents(facts, slice.Items, args.OptionalBool("include_networks") ?? true,
+            args.OptionalBool("include_refund") ?? false);
         return new GridSurveyView(Slice<SurveyCellView>.Page(views, page, cells.Count), contents, Legend);
     }
 
@@ -117,10 +121,11 @@ internal static class GridSurveyApi
             : null;
         return new SurveyCellView(GameLookup.ViewOf(PieceShapes.CentreOf(cell)),
             room != null ? room.RoomId.ToString(CultureInfo.InvariantCulture) : null, frameView, walls,
-            SmallCellCode.Encode(cell, facts.Occupancy), CellSupports.Encode(cell, facts.Support));
+            SmallCellCode.Encode(cell, facts.Occupancy), CellSupports.Encode(cell, facts.Large));
     }
 
-    private static SurveyContents Contents(GridFacts facts, List<GridCell> cells, bool includeNetworks)
+    private static SurveyContents Contents(GridFacts facts, List<GridCell> cells, bool includeNetworks,
+        bool includeRefund)
     {
         Dictionary<long, SmallGrid> pieces = new Dictionary<long, SmallGrid>();
         Dictionary<long, Device> devices = new Dictionary<long, Device>();
@@ -149,9 +154,12 @@ internal static class GridSurveyApi
         List<SurveyPieceView> pieceViews = new List<SurveyPieceView>(ids.Count);
         Dictionary<long, IReferencable> networks = new Dictionary<long, IReferencable>();
         ChuteFlowResult? flow = ChuteFlowOf(pieces.Values);
+        NetworkTallies tallies = new NetworkTallies(facts, includeRefund);
         foreach (long id in ids)
         {
-            pieceViews.Add(PieceView(pieces[id], networks, flow));
+            SurveyPieceView view = PieceView(pieces[id], networks, flow, includeRefund);
+            pieceViews.Add(view);
+            tallies.Add(pieces[id], view);
         }
 
         List<long> deviceIds = new List<long>(devices.Keys);
@@ -178,7 +186,7 @@ internal static class GridSurveyApi
             }
         }
 
-        return new SurveyContents(pieceViews, deviceViews, networkViews);
+        return new SurveyContents(pieceViews, deviceViews, networkViews, tallies.Views());
     }
 
     private static void AddPiece(Dictionary<long, SmallGrid> pieces, SmallGrid? piece)
@@ -214,7 +222,7 @@ internal static class GridSurveyApi
     }
 
     private static SurveyPieceView PieceView(SmallGrid piece, Dictionary<long, IReferencable> networks,
-        ChuteFlowResult? flow)
+        ChuteFlowResult? flow, bool includeRefund)
     {
         PieceModel model = PieceShapes.Live(piece);
         List<PositionView>? cells = null;
@@ -241,7 +249,81 @@ internal static class GridSurveyApi
         return new SurveyPieceView(GameLookup.ViewOf(piece), kind, GameLookup.ViewOf(piece.Position), cells,
             EndCleanup.DirectionsOf(model.Ends), network != null ? new ThingId(network.ReferenceId) : null,
             GradeOf(piece), piece is Chute && flow != null ? FlowView(model, flow) : null,
-            item != null ? GameLookup.ViewOf(item) : null);
+            item != null ? GameLookup.ViewOf(item) : null,
+            includeRefund ? RunReports.Amounts(BuildMaterials.RefundOf(piece)) : null);
+    }
+
+    /// <summary>The listed pieces per network: their cells by visibility, the air ones, and their refund.</summary>
+    private sealed class NetworkTallies
+    {
+        private const int AirListed = 32;
+
+        private readonly GridFacts _facts;
+        private readonly bool _refund;
+        private readonly List<string> _order = new List<string>();
+        private readonly Dictionary<string, Tally> _tallies = new Dictionary<string, Tally>();
+
+        internal NetworkTallies(GridFacts facts, bool refund)
+        {
+            _facts = facts;
+            _refund = refund;
+        }
+
+        internal void Add(SmallGrid piece, SurveyPieceView view)
+        {
+            string key = view.Kind + ":" + (view.NetworkId?.ToString() ?? "none");
+            if (!_tallies.TryGetValue(key, out Tally tally))
+            {
+                tally = new Tally(view.Kind, view.NetworkId);
+                _tallies[key] = tally;
+                _order.Add(key);
+            }
+
+            tally.Pieces++;
+            foreach (GridCell cell in PieceShapes.Live(piece).Cells)
+            {
+                tally.Cells.Add(cell, _facts.Visibility(cell));
+            }
+
+            if (_refund)
+            {
+                tally.Refund.AddRange(BuildMaterials.RefundOf(piece));
+            }
+        }
+
+        internal List<SurveyNetworkVisibilityView> Views() =>
+            _order.ConvertAll(key => _tallies[key].View(_refund));
+
+        private sealed class Tally
+        {
+            internal Tally(string kind, ThingId? network)
+            {
+                Kind = kind;
+                Network = network;
+            }
+
+            internal string Kind { get; }
+
+            internal ThingId? Network { get; }
+
+            internal int Pieces { get; set; }
+
+            internal VisibilityTally Cells { get; } = new VisibilityTally();
+
+            internal List<ItemAmount> Refund { get; } = new List<ItemAmount>();
+
+            internal SurveyNetworkVisibilityView View(bool refund)
+            {
+                List<GridCell> air = Cells.AirCells;
+                List<PositionView>? airAt = air.Count > 0
+                    ? air.GetRange(0, Math.Min(air.Count, AirListed))
+                        .ConvertAll(cell => GameLookup.ViewOf(PieceShapes.CentreOf(cell)))
+                    : null;
+                return new SurveyNetworkVisibilityView(Network, Kind, Pieces,
+                    new RouteVisibilityView(Cells.Inside, Cells.FrameSurface, Cells.Wall, Cells.Air), airAt,
+                    refund ? RunReports.Amounts(Refund) : null);
+            }
+        }
     }
 
     private static RunFlowView FlowView(PieceModel model, ChuteFlowResult flow)

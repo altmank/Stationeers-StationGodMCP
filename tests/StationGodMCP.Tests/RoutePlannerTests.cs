@@ -131,9 +131,9 @@ public sealed class RouteRuleSetTests
     {
         GridCell centre = new GridCell(10, 10, 10);
         GridCell small = new GridCell(x * GridStep.CellSize, y * GridStep.CellSize, z * GridStep.CellSize);
-        CellSupport support = CellSupports.Of(small, cell => cell.Equals(centre) ? large : Empty);
+        Func<GridCell, LargeCellFacts> read = cell => cell.Equals(centre) ? large : Empty;
         return new SmallCellFacts(blocked, 0, family ? 9 : (long?)null, family, large, x, y, z,
-            new List<long>(neighbours), support);
+            new List<long>(neighbours), CellSupports.Of(small, read), CellSupports.VisibilityOf(small, read));
     }
 
     private static RouteRuleSet Rules(RoutePreference prefer = RoutePreference.None, bool insideFrames = false,

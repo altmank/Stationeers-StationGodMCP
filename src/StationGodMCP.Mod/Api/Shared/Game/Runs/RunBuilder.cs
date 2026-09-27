@@ -44,6 +44,11 @@ internal static class RunBuilder
         HashSet<long> rebuilt = Rebuilt(plan.Forecast!);
         foreach (PlannedRemoval removal in plan.Removals)
         {
+            if (removal.Assumed)
+            {
+                continue;
+            }
+
             try
             {
                 IReferencable? network = family.NetworkOf(removal.Piece);
@@ -78,7 +83,10 @@ internal static class RunBuilder
         List<ItemAmount> refund = new List<ItemAmount>();
         foreach (PlannedRemoval removal in plan.Removals)
         {
-            refund.AddRange(removal.Refund);
+            if (!removal.Assumed)
+            {
+                refund.AddRange(removal.Refund);
+            }
         }
 
         List<PlannedCell> ordered = plan.Cells.FindAll(static cell => cell.IsChange);

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
 
@@ -18,6 +19,25 @@ internal enum CellSupport
 
     /// <summary>On two or three face planes of a frame cell: its edges and corners.</summary>
     FrameEdge
+}
+
+/// <summary>
+/// How much of a piece in a small cell a player sees, from the frames and walls around it (prefer: hidden grades
+/// routes by it). A small cell touches up to eight 2 m cells (CellSupports); Inside when every one of them holds a
+/// frame (the piece sits in the frame's body: inside one frame cell, or on a plane between frame cells), FrameSurface
+/// when some do and some do not (on a frame's face, edge or corner: the top of a floor, the underside of a ceiling),
+/// Wall on a wall's plane touching no frame, Air on nothing. It agrees with CellSupport: Air and Wall are the same
+/// cells, Inside and FrameSurface split Frame and FrameEdge.
+/// </summary>
+internal enum CellVisibility
+{
+    Inside,
+
+    FrameSurface,
+
+    Wall,
+
+    Air
 }
 
 /// <summary>
@@ -60,6 +80,50 @@ internal static class CellSupports
         return best;
     }
 
+    /// <summary>How visible a piece in the small cell is (CellVisibility), over the same touched cells as Of.</summary>
+    internal static CellVisibility VisibilityOf(GridCell small, Func<GridCell, LargeCellFacts> large)
+    {
+        int framed = 0;
+        int touched = 0;
+        foreach (GridCell cell in Touched(small))
+        {
+            touched++;
+            framed += large(cell).Frame ? 1 : 0;
+        }
+
+        if (framed == touched)
+        {
+            return CellVisibility.Inside;
+        }
+
+        if (framed > 0)
+        {
+            return CellVisibility.FrameSurface;
+        }
+
+        return Of(small, large) == CellSupport.Wall ? CellVisibility.Wall : CellVisibility.Air;
+    }
+
+    /// <summary>The 2 m cells whose closed box holds the small cell's point: its own, and the minus-side neighbours.</summary>
+    internal static IEnumerable<GridCell> Touched(GridCell small)
+    {
+        GridCell own = SmallCellCode.LargeOf(small);
+        int lastX = small.X == own.X - Half ? 1 : 0;
+        int lastY = small.Y == own.Y - Half ? 1 : 0;
+        int lastZ = small.Z == own.Z - Half ? 1 : 0;
+        for (int x = 0; x <= lastX; x++)
+        {
+            for (int y = 0; y <= lastY; y++)
+            {
+                for (int z = 0; z <= lastZ; z++)
+                {
+                    yield return new GridCell(own.X - x * SmallCellCode.Large, own.Y - y * SmallCellCode.Large,
+                        own.Z - z * SmallCellCode.Large);
+                }
+            }
+        }
+    }
+
     /// <summary>
     /// Whether a large cell can support any small cell (a frame in it, or a face structure on one of its faces):
     /// every supported small cell lies in the closed box of such a cell.
@@ -96,24 +160,30 @@ internal static class CellSupports
     private static CellSupport Stronger(CellSupport a, CellSupport b) => a >= b ? a : b;
 
     /// <summary>A large cell's 64 small cells' support as one string, index x + 4y + 16z (as SmallCellCode).</summary>
-    internal static string Encode(GridCell large, Func<GridCell, CellSupport> read)
+    internal static string Encode(GridCell large, Func<GridCell, LargeCellFacts> read)
     {
         char[] text = new char[SmallCellCode.PerCell];
         for (int index = 0; index < SmallCellCode.PerCell; index++)
         {
-            text[index] = Code(read(SmallCellCode.SmallAt(large, index)));
+            GridCell small = SmallCellCode.SmallAt(large, index);
+            text[index] = Code(Of(small, read), VisibilityOf(small, read));
         }
 
         return new string(text);
     }
 
-    /// <summary>grid_survey's character: 'e' frame edge or corner, 'f' on or inside a frame, 'w' wall plane, 'a' air.</summary>
-    internal static char Code(CellSupport support) =>
-        support switch
-        {
-            CellSupport.FrameEdge => 'e',
-            CellSupport.Frame => 'f',
-            CellSupport.Wall => 'w',
-            _ => 'a'
-        };
+    /// <summary>
+    /// grid_survey's character: 'i' inside a frame (every 2 m cell it touches holds one), else 'e' a frame edge or
+    /// corner, 'f' on a frame's face, 'w' wall plane, 'a' air.
+    /// </summary>
+    internal static char Code(CellSupport support, CellVisibility visibility) =>
+        visibility == CellVisibility.Inside
+            ? 'i'
+            : support switch
+            {
+                CellSupport.FrameEdge => 'e',
+                CellSupport.Frame => 'f',
+                CellSupport.Wall => 'w',
+                _ => 'a'
+            };
 }

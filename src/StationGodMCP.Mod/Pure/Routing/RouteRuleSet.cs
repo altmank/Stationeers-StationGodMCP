@@ -8,9 +8,11 @@ namespace StationGodMCP.Pure;
 internal readonly struct SmallCellFacts
 {
     internal SmallCellFacts(string? blocked, int blockedAxes, long? familyNetwork, bool familyPiece,
-        LargeCellFacts large, int indexX, int indexY, int indexZ, List<long> neighbourNetworks, CellSupport support)
+        LargeCellFacts large, int indexX, int indexY, int indexZ, List<long> neighbourNetworks, CellSupport support,
+        CellVisibility visibility)
     {
         Support = support;
+        Visibility = visibility;
         Blocked = blocked;
         BlockedAxes = blockedAxes;
         FamilyNetwork = familyNetwork;
@@ -46,6 +48,9 @@ internal readonly struct SmallCellFacts
 
     /// <summary>What holds a piece here up: a frame (its edge, face or inside), a wall's plane, or nothing (air).</summary>
     internal CellSupport Support { get; }
+
+    /// <summary>How much of a piece here a player sees: inside a frame, on its surface, on a wall's plane, in air.</summary>
+    internal CellVisibility Visibility { get; }
 
     /// <summary>How many of the large cell's minimum face planes the cell lies on (2 or 3: a frame edge or corner).</summary>
     internal int Planes => (IndexX == 0 ? 1 : 0) + (IndexY == 0 ? 1 : 0) + (IndexZ == 0 ? 1 : 0);
@@ -83,7 +88,13 @@ internal enum RoutePreference
     FrameEdges,
 
     /// <summary>Along walls: small cells on a wall's plane or the layer beside it.</summary>
-    Walls
+    Walls,
+
+    /// <summary>
+    /// Out of sight: each cell costs more the more of it shows (RouteRuleSet.HiddenCost), inside a frame least, then
+    /// a frame's surface, a wall's plane, air. A graded inside_frames: the least visible route, never none.
+    /// </summary>
+    Hidden
 }
 
 /// <summary>
@@ -91,7 +102,7 @@ internal enum RoutePreference
 /// or an axis another kind's piece lies along is never used; a cell holding the kind's own piece is never passed
 /// through (it would join that piece); inside_frames refuses cells on no frame (OnFrame); avoid_networks refuses cells
 /// next to pieces of networks not named as the route's own ends' (so the route never runs beside another network);
-/// prefer adds PreferencePenalty to cells not preferred; avoid_room_interior adds InteriorPenalty to cells in a
+/// prefer adds PreferencePenalty to cells not preferred (hidden: HiddenCost by how visible the cell is); avoid_room_interior adds InteriorPenalty to cells in a
 /// room's 2 m cell on none of its face planes; avoid_walkways adds it to cells in a room's 2 m cell above its floor
 /// plane that are on no vertical face plane (the space a player walks through); frames_first adds AirPenalty to
 /// cells in air (CellSupport.Air: on no frame and no wall plane).
@@ -109,6 +120,18 @@ internal sealed class RouteRuleSet
     /// with the fewest air cells.
     /// </summary>
     internal const double AirPenalty = 50.0;
+
+    /// <summary>
+    /// prefer hidden: the extra cost of a cell on a frame's surface, edge or corner (CellVisibility.FrameSurface). A
+    /// cell inside a frame costs 1, one on its surface 3, so a hidden route up to three times as long wins.
+    /// </summary>
+    internal const double SurfaceCost = 2.0;
+
+    /// <summary>prefer hidden: the extra cost of a cell on a wall's plane touching no frame.</summary>
+    internal const double WallCost = 4.0;
+
+    /// <summary>prefer hidden: the extra cost of a cell in air (frames_first adds AirPenalty on top).</summary>
+    internal const double AirCost = 8.0;
 
     internal RouteRuleSet(RoutePreference prefer, bool insideFrames, bool avoidRoomInterior, bool avoidWalkways,
         bool avoidNetworks, HashSet<long> ownNetworks, HashSet<long> avoidIds, bool avoidOwn = false,
@@ -193,6 +216,11 @@ internal sealed class RouteRuleSet
             cost += PreferencePenalty;
         }
 
+        if (Prefer == RoutePreference.Hidden)
+        {
+            cost += HiddenCost(cell.Visibility);
+        }
+
         if (AvoidRoomInterior && cell.Large.InRoom && cell.Planes == 0)
         {
             cost += InteriorPenalty;
@@ -205,6 +233,16 @@ internal sealed class RouteRuleSet
 
         return CellCost.Of(cost, cell.BlockedAxes);
     }
+
+    /// <summary>prefer hidden's extra cost of a cell by how visible it is: inside 0, surface 2, wall 4, air 8.</summary>
+    internal static double HiddenCost(CellVisibility visibility) =>
+        visibility switch
+        {
+            CellVisibility.Inside => 0.0,
+            CellVisibility.FrameSurface => SurfaceCost,
+            CellVisibility.Wall => WallCost,
+            _ => AirCost
+        };
 
     /// <summary>
     /// inside_frames' test: the cell is inside a frame cell or on its surface (CellSupport.Frame or FrameEdge), judged

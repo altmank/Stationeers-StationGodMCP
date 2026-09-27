@@ -301,13 +301,15 @@ internal sealed class RunJoinView
 /// <summary>A piece to remove and what deconstructing it gives back.</summary>
 internal sealed class RunRemovalView
 {
-    internal RunRemovalView(ThingView piece, PositionView at, ThingId? networkId, List<UpgradeAmountView> refund)
+    internal RunRemovalView(ThingView piece, PositionView at, ThingId? networkId, List<UpgradeAmountView> refund,
+        bool? assumed = null)
     {
         ReferenceId = piece.ReferenceId;
         PrefabName = piece.PrefabName;
         At = at;
         NetworkId = networkId;
         Refund = refund;
+        Assumed = assumed;
     }
 
     public ThingId ReferenceId { get; }
@@ -319,6 +321,13 @@ internal sealed class RunRemovalView
     public ThingId? NetworkId { get; }
 
     public List<UpgradeAmountView> Refund { get; }
+
+    /// <summary>
+    /// true for a piece in assume_removed: checked as gone, never removed by this run, its refund not counted in
+    /// materials; left out otherwise.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Assumed { get; }
 }
 
 /// <summary>What the edit takes from the source and gives back to it.</summary>
@@ -857,8 +866,12 @@ internal sealed class RouteView
 {
     internal RouteView(List<PositionView> waypoints, int length, int bends, double cost, int expanded,
         List<ThingId> removes, int airCells, List<PositionView>? air, List<RouteBranchView>? branches = null,
-        int? extraEnds = null)
+        int? extraEnds = null, RouteVisibilityView? visibility = null, RouteAssumedView? assumedRemoved = null,
+        List<UpgradeAmountView>? removalRefund = null)
     {
+        Visibility = visibility;
+        AssumedRemoved = assumedRemoved;
+        RemovalRefund = removalRefund;
         AirCells = airCells;
         Air = air;
         Branches = branches;
@@ -901,6 +914,69 @@ internal sealed class RouteView
     /// <summary>Starts the tree already passes through, joined there by an extra end.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? ExtraEnds { get; }
+
+    /// <summary>The new cells (branches included) by how visible a piece in them is.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RouteVisibilityView? Visibility { get; }
+
+    /// <summary>What assume_removed named, and which of it stands in the route's way; left out without it.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RouteAssumedView? AssumedRemoved { get; }
+
+    /// <summary>
+    /// What deconstructing the pieces the plan removes (the reroute's old run and the kind's assumed pieces) gives
+    /// back, as remove_* would refund it; left out when nothing is removed.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeAmountView>? RemovalRefund { get; }
+}
+
+/// <summary>
+/// Cells counted by how visible a piece in them is: inside a frame (every 2 m cell the small cell touches holds a
+/// frame), on a frame's surface (face, edge or corner), on a wall's plane only, in air.
+/// </summary>
+internal sealed class RouteVisibilityView
+{
+    internal RouteVisibilityView(int inside, int frameSurface, int wall, int air)
+    {
+        Inside = inside;
+        FrameSurface = frameSurface;
+        Wall = wall;
+        Air = air;
+    }
+
+    public int Inside { get; }
+
+    public int FrameSurface { get; }
+
+    public int Wall { get; }
+
+    public int Air { get; }
+}
+
+/// <summary>
+/// assume_removed as the plan used it: the kind's pieces (removed in the same job: place_arguments.remove_ids), other
+/// things (only freed for the plan; their own tool removes them first: place_arguments.assume_removed), ids naming
+/// nothing standing, and the pieces whose cells the new route takes (they cannot stay until a later job).
+/// </summary>
+internal sealed class RouteAssumedView
+{
+    internal RouteAssumedView(List<ThingId> pieces, List<ThingId> others, List<ThingId> missing,
+        List<ThingId> inTheWay)
+    {
+        Pieces = pieces;
+        Others = others;
+        Missing = missing;
+        InTheWay = inTheWay;
+    }
+
+    public List<ThingId> Pieces { get; }
+
+    public List<ThingId> Others { get; }
+
+    public List<ThingId> Missing { get; }
+
+    public List<ThingId> InTheWay { get; }
 }
 
 /// <summary>A branch of a route: its waypoints from its start, its length, and the tree cell it joins.</summary>

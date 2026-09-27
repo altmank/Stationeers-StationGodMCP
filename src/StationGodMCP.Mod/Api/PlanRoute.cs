@@ -18,12 +18,16 @@ namespace StationGodMCP.Api;
 /// plan_cable_route, plan_pipe_route and plan_chute_route: the cheapest route on the small grid between two ends under
 /// a rule set (RoutePlanner, costs from RouteRuleSet over GridFacts), or a replacement for an old run (reroute: its
 /// pieces are removed in the same job and the route runs between the two cells where it met the rest). Several starts
-/// (several ports of a device) grow one tree: the first start routes to the target, each other start to the nearest
-/// cell of the tree so far (a branch, joined by a junction), never to the target again, so no loop is made.
-/// frames_first (default on) makes cells in air (CellSupports: on no frame and no wall plane) cost
-/// RouteRuleSet.AirPenalty more, so a route over frames or along walls wins whenever the search box holds one; the
-/// route's new cells in air are counted (air_cells) and listed, with a through_air note. Returns the route, the
-/// arguments that build it with the place tool, and that tool's dry run. Read only.
+/// (several ports of a device) grow one tree (RouteTrees): the first start routes to the target, each other start to
+/// the nearest cell of the tree so far (a branch, joined by a junction), never to the target again, so no loop is made.
+/// trunk (bus mode) lays a given run instead of searching the main one, and every start branches from it: a trunk and
+/// its drops in one job. assume_removed plans as if things were already gone (their cells free, their links absent);
+/// the kind's own pieces among them are removed in the same job (place_arguments.remove_ids). frames_first (default
+/// on) makes cells in air (CellSupports: on no frame and no wall plane) cost RouteRuleSet.AirPenalty more, so a route
+/// over frames or along walls wins whenever the search box holds one; prefer hidden grades every cell by how visible
+/// it is. The route's new cells are counted by visibility (inside a frame, on its surface, on a wall, in air) and the
+/// air cells listed, with a through_air note. Returns the route, the arguments that build it with the place tool, and
+/// that tool's dry run. Read only.
 /// </summary>
 internal static class PlanRouteApi
 {
@@ -38,38 +42,46 @@ internal static class PlanRouteApi
         string tool = kind.PlanTool;
         Grade grade = RunArgs.Grade(args, kind);
         RerouteSegment? segment = Segment(args, kind);
-        HashSet<long> ignore = new HashSet<long>();
+        List<GridCell>? trunk = Trunk(args);
+        AssumedRemovals assumed = AssumedRemovals.Read(args, kind);
+        HashSet<long> ignore = new HashSet<long>(assumed.Ids);
         List<ThingId> removes = new List<ThingId>();
-        foreach (SmallGrid piece in segment?.Pieces ?? new List<SmallGrid>())
+        foreach (SmallGrid piece in RemovedPieces(segment, assumed))
         {
             ignore.Add(piece.ReferenceId);
-            removes.Add(new ThingId(piece.ReferenceId));
+            if (!removes.Exists(id => id.Value == piece.ReferenceId))
+            {
+                removes.Add(new ThingId(piece.ReferenceId));
+            }
         }
 
         int type = kind.EndType(grade);
         List<RouteEndpoint> starts = segment != null
             ? new List<RouteEndpoint> { new RouteEndpoint(RouteEnd.Open(segment.First), NetworksOf(kind, segment)) }
             : RouteEnds.Starts(args.Optional("from"), "from", kind, type, ignore);
-        RouteEndpoint to = segment != null
+        RouteEndpoint? to = segment != null
             ? new RouteEndpoint(RouteEnd.Open(segment.Last), NetworksOf(kind, segment))
-            : RouteEnds.Target(args.Optional("to"), "to", kind, type, ignore);
+            : trunk == null
+                ? RouteEnds.Target(args.Optional("to"), "to", kind, type, ignore)
+                : null;
+        RouteMain main = to != null ? new RouteMain.ToTarget(to) : new RouteMain.Trunk(trunk!);
         Kit kit = KitCatalogue.Of(kind.Family).For(grade) ??
                   throw ApiErrors.Refused("no_kit", $"No coil or kit places {kind.NameOf(grade)} pieces.");
         SmallGridBlock mask = kit.Pieces.Count > 0 && kit.Pieces[0] is SmallGrid first
             ? first.SmallCollisionType
             : SmallGridBlock.None;
         GridFacts facts = new GridFacts(kind, mask, ignore);
-        RouteRuleSet rules = Rules(args, starts, to, false);
-        List<string> notes = Notes(rules);
-        RouteTree tree = Grow(args, starts, to, facts, rules);
+        List<long> own = to?.Networks ?? new List<long>();
+        RouteRuleSet rules = Rules(args, starts, own, false);
+        List<string> notes = Notes(rules, assumed);
+        RouteTree tree = Grow(args, starts, main, facts, rules);
         bool supportedSearched = rules.FramesFirst;
         if (tree.GaveUp && rules.FramesFirst)
         {
             // frames_first never costs a route the plain search finds: past the air field's box size the search can
             // run out of cells looking for a supported way that does not exist.
-            RouteRuleSet plain = rules.WithoutFramesFirst();
-            RouteTree second = Grow(args, starts, to, facts, plain);
-            if (second.Failure == null)
+            RouteTree second = Grow(args, starts, main, facts, rules.WithoutFramesFirst());
+            if (second.Found)
             {
                 tree = second;
                 supportedSearched = false;
@@ -78,15 +90,15 @@ internal static class PlanRouteApi
             }
         }
 
-        if (tree.Failure != null)
+        if (!tree.Found)
         {
-            return new PlanRouteView(tool, null, tree.Failure, null, null, notes);
+            return new PlanRouteView(tool, null, Failure(tree), null, null, notes);
         }
 
-        RunReportView dryRun = DryRun(args, kind, grade, tree, removes);
+        RunReportView dryRun = DryRun(args, kind, grade, tree, removes, assumed);
         if (HasWarning(dryRun, RunPlanner.WouldLoop))
         {
-            if (Shared(starts, to))
+            if (to != null && Shared(starts, to))
             {
                 notes.Add("would_loop: the start and the target are already on one network, so any route between " +
                           "them closes a loop. To reach another port of a device already on the network, give both " +
@@ -94,8 +106,8 @@ internal static class PlanRouteApi
             }
             else if (RunArgs.Join(args) == JoinMode.All)
             {
-                RouteTree retry = Grow(args, starts, to, facts, Rules(args, starts, to, true));
-                RunReportView? second = retry.Failure == null ? DryRun(args, kind, grade, retry, removes) : null;
+                RouteTree retry = Grow(args, starts, main, facts, Rules(args, starts, own, true));
+                RunReportView? second = retry.Found ? DryRun(args, kind, grade, retry, removes, assumed) : null;
                 if (second != null && !HasWarning(second, RunPlanner.WouldLoop))
                 {
                     tree = retry;
@@ -106,63 +118,119 @@ internal static class PlanRouteApi
             }
         }
 
-        List<GridCell> air = AirCells(tree, facts);
-        if (air.Count > 0)
+        VisibilityTally visibility = VisibilityTally.Of(NewCells(tree, facts), facts.Visibility);
+        if (visibility.Air > 0)
         {
             notes.Add(supportedSearched
-                ? $"through_air: {air.Count} new cells float in air (on no frame and no wall plane); no route over " +
-                  "frames or along walls exists inside the search box. Raise margin_m to look wider, or build a " +
-                  "frame under the gap."
-                : $"through_air: {air.Count} new cells float in air; this route was found without frames_first.");
+                ? $"through_air: {visibility.Air} new cells float in air (on no frame and no wall plane); no route " +
+                  "over frames or along walls exists inside the search box. Raise margin_m to look wider, or build " +
+                  "a frame under the gap."
+                : $"through_air: {visibility.Air} new cells float in air; this route was found without frames_first.");
         }
 
-        JObject place = PlaceArguments(args, kind, grade, tree, removes);
-        return new PlanRouteView(tool, ViewOf(tree, removes, air), null, place, dryRun, notes);
+        RouteAssumedView? assumedView = AssumedView(assumed, tree, notes);
+        JObject place = PlaceArguments(args, kind, grade, tree, removes, assumed);
+        return new PlanRouteView(tool,
+            ViewOf(tree, removes, visibility, assumedView, RemovalRefund(segment, assumed)), null, place, dryRun,
+            notes);
     }
 
-    // The main route from the first start to the target, then each other start to the nearest cell of the tree.
-    private static RouteTree Grow(Args args, List<RouteEndpoint> starts, RouteEndpoint to, GridFacts facts,
-        RouteRuleSet rules)
+    // The main route from the first start to the target (or the trunk as given), then each other start to the
+    // nearest cell of the tree.
+    private static RouteTree Grow(Args args, List<RouteEndpoint> starts, RouteMain main, GridFacts facts,
+        RouteRuleSet rules) =>
+        RouteTrees.Grow(starts, main,
+            new RouteSearch(cell => rules.Cost(facts.Small(cell)), (from, to) => SearchRules(args, from, to),
+                (search, goals) => AirBoundOf(rules, facts, search, goals)),
+            RouteEnds.JunctionCost);
+
+    /// <summary>trunk: {waypoints} or {cells}, a run laid as given that every start branches from; null without one.</summary>
+    private static List<GridCell>? Trunk(Args args)
     {
-        RouteEndpoint origin = starts[0];
-        RouteRules search = SearchRules(args, origin.End.Cell, to.NearestTo(origin.End.Cell).Cell);
-        RouteResult main = RoutePlanner.FindAny(origin.End, to.Ends, cell => rules.Cost(facts.Small(cell)), search,
-            AirBoundOf(rules, facts, search, to.Ends));
-        if (main.Cells == null)
+        JObject? trunk = args.OptionalObject("trunk");
+        if (trunk == null)
         {
-            return RouteTree.Failed(Failure(main, starts.Count > 1 ? "from[0]" : null), main.Failure);
+            return null;
         }
 
-        RouteTree tree = new RouteTree(main.Cells, main.Cost, main.Expanded);
-        for (int index = 1; index < starts.Count; index++)
+        if (args.Has("to") || args.Has("reroute"))
         {
-            RouteEndpoint start = starts[index];
-            if (tree.Contains(start.End.Cell))
-            {
-                if (start.IntoDevice.HasValue)
-                {
-                    tree.AddExtra(new ExtraEnd(start.End.Cell, start.IntoDevice.Value));
-                }
-
-                continue;
-            }
-
-            List<RouteEnd> goals = tree.Cells.FindAll(cell => tree.EndsAt(cell) < 3)
-                .ConvertAll(cell => new RouteEnd(cell, EndSet.None, RouteEnds.JunctionCost));
-            RouteEndpoint treeEnds = new RouteEndpoint(goals, new List<long>());
-            RouteRules branchSearch = SearchRules(args, start.End.Cell, treeEnds.NearestTo(start.End.Cell).Cell);
-            RouteResult branch = RoutePlanner.FindAny(start.End, goals,
-                cell => tree.Contains(cell) ? CellCost.Blocked : rules.Cost(facts.Small(cell)), branchSearch,
-                AirBoundOf(rules, facts, branchSearch, goals));
-            if (branch.Cells == null)
-            {
-                return RouteTree.Failed(Failure(branch, $"from[{index}]"), branch.Failure);
-            }
-
-            tree.Add(branch);
+            throw ApiErrors.InvalidArgument("trunk replaces to and does not go with reroute: every start branches " +
+                                            "from the trunk, whose own ends join what they meet.");
         }
 
-        return tree;
+        if (!args.Has("from"))
+        {
+            throw ApiErrors.InvalidArgument("trunk needs from: the drops (ports or cells) that branch from it.");
+        }
+
+        Args fields = new Args(trunk);
+        if (fields.Has("waypoints") == fields.Has("cells"))
+        {
+            throw ApiErrors.InvalidArgument("trunk needs waypoints or cells (one of them).");
+        }
+
+        string? error;
+        List<GridCell>? cells = fields.Has("waypoints")
+            ? RunPath.FromWaypoints(RunArgs.Cells(fields, "waypoints"), out error)
+            : RunPath.FromCells(RunArgs.Cells(fields, "cells"), out error);
+        return cells ?? throw ApiErrors.InvalidArgument($"trunk: {error}");
+    }
+
+    // The tree's cells not already holding a piece of the kind: what the route adds.
+    private static List<GridCell> NewCells(RouteTree tree, GridFacts facts) =>
+        tree.Cells.FindAll(cell => !facts.Small(cell).FamilyPiece);
+
+    // What removing the reroute's old run and the kind's assumed pieces gives back.
+    private static List<UpgradeAmountView> RemovalRefund(RerouteSegment? segment, AssumedRemovals assumed)
+    {
+        List<ItemAmount> refund = new List<ItemAmount>();
+        HashSet<long> seen = new HashSet<long>();
+        foreach (SmallGrid piece in RemovedPieces(segment, assumed))
+        {
+            if (seen.Add(piece.ReferenceId))
+            {
+                refund.AddRange(BuildMaterials.RefundOf(piece));
+            }
+        }
+
+        return RunReports.Amounts(refund);
+    }
+
+    private static RouteAssumedView? AssumedView(AssumedRemovals assumed, RouteTree tree, List<string> notes)
+    {
+        if (assumed.IsEmpty)
+        {
+            return null;
+        }
+
+        Dictionary<long, IReadOnlyList<GridCell>> cells = new Dictionary<long, IReadOnlyList<GridCell>>();
+        List<SmallGrid> things = new List<SmallGrid>(assumed.Pieces);
+        things.AddRange(assumed.Others);
+        foreach (SmallGrid thing in things)
+        {
+            cells[thing.ReferenceId] = PieceShapes.Live(thing).Cells;
+        }
+
+        List<long> inTheWay = RemovedInTheWay.Of(tree.Cells, cells);
+        notes.Add(inTheWay.Count == 0
+            ? "assume_removed: the route takes none of the assumed pieces' cells, so it can also be built while " +
+              "they still stand (leave remove_ids out of place_arguments and remove them in a later job)."
+            : $"assume_removed: the route takes the cells of {inTheWay.Count} assumed piece(s) (in_the_way): they " +
+              "go in the same job (place_arguments.remove_ids) or before it.");
+        return new RouteAssumedView(Ids(assumed.Pieces), Ids(assumed.Others), assumed.Missing,
+            inTheWay.ConvertAll(id => new ThingId(id)));
+    }
+
+    private static List<ThingId> Ids(List<SmallGrid> things) =>
+        things.ConvertAll(thing => new ThingId(thing.ReferenceId));
+
+    // The reroute's old run, then the kind's assumed pieces.
+    private static List<SmallGrid> RemovedPieces(RerouteSegment? segment, AssumedRemovals assumed)
+    {
+        List<SmallGrid> pieces = new List<SmallGrid>(segment?.Pieces ?? new List<SmallGrid>());
+        pieces.AddRange(assumed.Pieces);
+        return pieces;
     }
 
     private static AirBound? AirBoundOf(RouteRuleSet rules, GridFacts facts, RouteRules search,
@@ -183,35 +251,22 @@ internal static class PlanRouteApi
         return cells;
     }
 
-    // The tree's new cells (not a piece of the kind already) that no frame or wall holds up.
-    private static List<GridCell> AirCells(RouteTree tree, GridFacts facts) =>
-        tree.Cells.FindAll(cell => !facts.Small(cell).FamilyPiece && facts.Support(cell) == CellSupport.Air);
-
-    private static RunReportView DryRun(Args args, RunKind kind, Grade grade, RouteTree tree, List<ThingId> removes)
+    private static RunReportView DryRun(Args args, RunKind kind, Grade grade, RouteTree tree, List<ThingId> removes,
+        AssumedRemovals assumed)
     {
         RunShape shape = RunShape.Of(tree.Main, tree.Branches, out string? error) ??
-                         throw new InvalidOperationException(error);
+                         throw ApiErrors.InvalidArgument(error ?? "The route's shape is not valid.");
         RunRequest request = new RunRequest(kind, kind.PlaceTool,
             new RunBuild(shape, grade, RunArgs.Join(args), tree.Extra),
-            new RunRemoval(removes, new List<GridCell>()), RunArgs.Options(args));
+            new RunRemoval(removes, new List<GridCell>(), Ids(assumed.Others)), RunArgs.Options(args));
         return RunReports.Of(RunPlanner.Plan(request), RunReports.DryRun, null);
     }
 
     private static bool HasWarning(RunReportView report, string code) =>
         report.Warnings.Exists(warning => warning.Code == code);
 
-    private static bool Shared(List<RouteEndpoint> starts, RouteEndpoint to)
-    {
-        foreach (RouteEndpoint start in starts)
-        {
-            if (start.Networks.Exists(to.Networks.Contains))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    private static bool Shared(List<RouteEndpoint> starts, RouteEndpoint to) =>
+        starts.Exists(start => start.Networks.Exists(to.Networks.Contains));
 
     private static RerouteSegment? Segment(Args args, RunKind kind)
     {
@@ -257,7 +312,7 @@ internal static class PlanRouteApi
         return networks;
     }
 
-    private static RouteRuleSet Rules(Args args, List<RouteEndpoint> starts, RouteEndpoint to, bool avoidOwn)
+    private static RouteRuleSet Rules(Args args, List<RouteEndpoint> starts, List<long> target, bool avoidOwn)
     {
         string prefer = (args.OptionalString("prefer") ?? "none").Trim().ToLowerInvariant();
         RoutePreference preference = prefer switch
@@ -265,9 +320,10 @@ internal static class PlanRouteApi
             "none" => RoutePreference.None,
             "frame_edges" or "frame_corners" => RoutePreference.FrameEdges,
             "walls" => RoutePreference.Walls,
-            _ => throw ApiErrors.InvalidArgument("prefer must be none, frame_edges or walls.")
+            "hidden" => RoutePreference.Hidden,
+            _ => throw ApiErrors.InvalidArgument("prefer must be none, frame_edges, walls or hidden.")
         };
-        HashSet<long> own = new HashSet<long>(to.Networks);
+        HashSet<long> own = new HashSet<long>(target);
         foreach (RouteEndpoint start in starts)
         {
             own.UnionWith(start.Networks);
@@ -319,7 +375,7 @@ internal static class PlanRouteApi
     }
 
     private static JObject PlaceArguments(Args args, RunKind kind, Grade grade, RouteTree tree,
-        List<ThingId> removes)
+        List<ThingId> removes, AssumedRemovals assumed)
     {
         JObject place = new JObject
         {
@@ -355,13 +411,12 @@ internal static class PlanRouteApi
 
         if (removes.Count > 0)
         {
-            JArray ids = new JArray();
-            foreach (ThingId id in removes)
-            {
-                ids.Add(id.ToString());
-            }
+            place["remove_ids"] = IdArray(removes);
+        }
 
-            place["remove_ids"] = ids;
+        if (assumed.Others.Count > 0)
+        {
+            place["assume_removed"] = IdArray(Ids(assumed.Others));
         }
 
         foreach (string name in new[] { "allow_bridge", "allow_split", "allow_split_long", "from_id" })
@@ -374,6 +429,17 @@ internal static class PlanRouteApi
         }
 
         return place;
+    }
+
+    private static JArray IdArray(List<ThingId> ids)
+    {
+        JArray array = new JArray();
+        foreach (ThingId id in ids)
+        {
+            array.Add(id.ToString());
+        }
+
+        return array;
     }
 
     private static JArray Points(IReadOnlyList<GridCell> cells)
@@ -393,7 +459,8 @@ internal static class PlanRouteApi
         return new JArray(Round(centre.x), Round(centre.y), Round(centre.z));
     }
 
-    private static RouteView ViewOf(RouteTree tree, List<ThingId> removes, List<GridCell> air)
+    private static RouteView ViewOf(RouteTree tree, List<ThingId> removes, VisibilityTally visibility,
+        RouteAssumedView? assumed, List<UpgradeAmountView> refund)
     {
         List<RouteBranchView>? branches = null;
         if (tree.Branches.Count > 0)
@@ -406,29 +473,33 @@ internal static class PlanRouteApi
             }
         }
 
+        List<GridCell> air = visibility.AirCells;
         return new RouteView(Positions(tree.Main), tree.Main.Count, RunPath.Bends(tree.Main), tree.Cost,
             tree.Expanded, removes, air.Count,
             air.Count > 0 ? air.ConvertAll(cell => GameLookup.ViewOf(PieceShapes.CentreOf(cell))) : null, branches,
-            tree.Extra.Count > 0 ? tree.Extra.Count : (int?)null);
+            tree.Extra.Count > 0 ? tree.Extra.Count : (int?)null,
+            new RouteVisibilityView(visibility.Inside, visibility.FrameSurface, visibility.Wall, visibility.Air),
+            assumed, refund.Count > 0 ? refund : null);
     }
 
     private static List<PositionView> Positions(IReadOnlyList<GridCell> cells) =>
         RunPath.Waypoints(cells).ConvertAll(cell => GameLookup.ViewOf(PieceShapes.CentreOf(cell)));
 
-    private static string Failure(RouteResult result, string? which)
+    private static string Failure(RouteTree tree)
     {
-        string prefix = which != null ? $"{which}: " : string.Empty;
-        return prefix + result.Failure switch
+        string prefix = tree.FailedAt != null ? $"{tree.FailedAt}: " : string.Empty;
+        return prefix + tree.Failure switch
         {
             "too_long" => "too_long: every way under the rules is longer than max_length.",
-            "search_limit" => $"search_limit: gave up after {result.Expanded} cells; bring the ends closer or " +
+            "search_limit" => $"search_limit: gave up after {tree.Expanded} cells; bring the ends closer or " +
                               "lower margin_m.",
             _ => "no_route: no way between the ends under the rules inside the search box (margin_m around the " +
-                 "ends); loosen a rule, raise margin_m, or check the ends with grid_survey."
+                 "ends); loosen a rule, raise margin_m, plan as if old pieces in the way were gone " +
+                 "(assume_removed), or check the ends with grid_survey."
         };
     }
 
-    private static List<string> Notes(RouteRuleSet rules)
+    private static List<string> Notes(RouteRuleSet rules, AssumedRemovals assumed)
     {
         List<string> notes = new List<string>
         {
@@ -443,88 +514,22 @@ internal static class PlanRouteApi
             notes.Add("avoid_networks: no cell beside a piece of another network than the ends' own.");
         }
 
+        if (rules.Prefer == RoutePreference.Hidden)
+        {
+            notes.Add($"prefer hidden: a cell inside a frame costs 1, on a frame's surface " +
+                      $"{1 + RouteRuleSet.SurfaceCost}, on a wall's plane {1 + RouteRuleSet.WallCost}, in air " +
+                      $"{1 + RouteRuleSet.AirCost} (plus frames_first's air penalty); route.visibility counts the " +
+                      "new cells by class.");
+        }
+
+        if (assumed.Missing.Count > 0)
+        {
+            notes.Add($"assume_removed: {assumed.Missing.Count} id(s) name nothing standing (already gone?): " +
+                      string.Join(", ", assumed.Missing) + ".");
+        }
+
         return notes;
     }
 
     private static double Round(float value) => Math.Round(value * 100.0) / 100.0;
-
-    /// <summary>The route found so far: the main run, its branches, extra ends for ports it passes, or a failure.</summary>
-    private sealed class RouteTree
-    {
-        private readonly HashSet<GridCell> _cells = new HashSet<GridCell>();
-        private readonly Dictionary<GridCell, int> _ends = new Dictionary<GridCell, int>();
-
-        internal RouteTree(List<GridCell> main, double cost, int expanded)
-        {
-            Main = main;
-            Cost = cost;
-            Expanded = expanded;
-            Cells.AddRange(main);
-            _cells.UnionWith(main);
-            CountEnds(main);
-        }
-
-        private RouteTree(string failure, string? reason)
-        {
-            Main = new List<GridCell>();
-            Failure = failure;
-            GaveUp = reason == "search_limit";
-        }
-
-        internal List<GridCell> Main { get; }
-
-        internal List<RunBranch> Branches { get; } = new List<RunBranch>();
-
-        internal List<ExtraEnd> Extra { get; } = new List<ExtraEnd>();
-
-        /// <summary>Every cell of the tree: the main run's, then each branch's.</summary>
-        internal List<GridCell> Cells { get; } = new List<GridCell>();
-
-        internal double Cost { get; private set; }
-
-        internal int Expanded { get; private set; }
-
-        internal string? Failure { get; }
-
-        internal static RouteTree Failed(string failure, string? reason) => new RouteTree(failure, reason);
-
-        /// <summary>The search gave up (search_limit) rather than finding no route.</summary>
-        internal bool GaveUp { get; }
-
-        internal bool Contains(GridCell cell) => _cells.Contains(cell);
-
-        /// <summary>How many ends the piece in the cell has so far (a branch never lands on a junction already).</summary>
-        internal int EndsAt(GridCell cell) => _ends.TryGetValue(cell, out int count) ? count : 0;
-
-        internal void AddExtra(ExtraEnd end)
-        {
-            Extra.Add(end);
-            Count(end.Cell);
-        }
-
-        // A branch search ends on a tree cell: the cells before it are the branch, attached to that cell.
-        internal void Add(RouteResult branch)
-        {
-            List<GridCell> path = branch.Cells!;
-            List<GridCell> cells = path.GetRange(0, path.Count - 1);
-            Branches.Add(new RunBranch(cells, path[path.Count - 1]));
-            Cells.AddRange(cells);
-            _cells.UnionWith(cells);
-            CountEnds(path);
-            Cost += branch.Cost;
-            Expanded += branch.Expanded;
-        }
-
-        // Each step of a path gives an end to both of its cells.
-        private void CountEnds(List<GridCell> path)
-        {
-            for (int index = 1; index < path.Count; index++)
-            {
-                Count(path[index - 1]);
-                Count(path[index]);
-            }
-        }
-
-        private void Count(GridCell cell) => _ends[cell] = EndsAt(cell) + 1;
-    }
 }

@@ -131,7 +131,10 @@ internal sealed class RunAwaitingRemovals : ActiveRun
         List<SmallGrid> removed = new List<SmallGrid>();
         foreach (PlannedRemoval removal in _plan.Removals)
         {
-            removed.Add(removal.Piece);
+            if (!removal.Assumed)
+            {
+                removed.Add(removal.Piece);
+            }
         }
 
         if (RunGone.AnyRemain(removed) && _frames < MaximumFrames)

@@ -136,7 +136,7 @@ check which game it reached. Sidecar side: `--pipe <name>`, or `STATIONGODMCP_PI
 
 ## MCP tools
 
-72 tools:
+74 tools:
 
 | Area | Tools |
 | --- | --- |
@@ -150,7 +150,7 @@ check which game it reached. Sidecar side: `--pipe <name>`, or `STATIONGODMCP_PI
 | Solar, dishes and traders | `solar_aim`, `dish_aim`, `landing_pads`, `trader_contacts`, `trader_inventory`, `trader_buy`, `trader_sell` |
 | Network upgrades and clean-up | `upgrade_cables`, `upgrade_pipes`, `clean_cables`, `clean_pipes` |
 | Walls and frames | `replace_walls`, `replace_frames` |
-| Cable, pipe and chute runs | `grid_survey`, `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`, `place_cables`, `remove_cables`, `place_pipes`, `remove_pipes`, `place_chutes`, `remove_chutes` |
+| Cable, pipe and chute runs | `grid_survey`, `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`, `place_cables`, `remove_cables`, `place_pipes`, `remove_pipes`, `place_chutes`, `remove_chutes`, `plan_removal`, `feed_paths` |
 | Structures | `place_structure`, `remove_structure` |
 | Blueprints (with BlueprintMod) | `paste_blueprint` |
 
@@ -185,7 +185,7 @@ With [StationeersLua](https://steamcommunity.com/sharedfiles/filedetails/?id=365
 - **Connections are checked before anything changes.** The tool records the game's own connections around every piece, predicts them with every replacement in place, and refuses if any connection would appear or disappear, so no two networks can merge and no device can be cut off. It first proves its prediction method against the game on those same pieces. Fuses, analysers and pipe meters mounted on a piece must stay attached.
 - **A real run** needs `dry_run: false` and `confirm: true`, and starts only when the dry-run checks find nothing. It returns a `job_id`. The mod holds the game tick as a save does, runs every check again once the tick has stopped, and swaps every piece in that one frame, so no power, atmospherics or logic tick ever sees a half-built network. Each replacement is built before its old piece is removed. The next frame it checks the result against what it recorded, then lets the tick go. Poll the job with `job_id`.
 - Pipe contents stay in the network's own atmosphere the whole time. A pipe network is never split, vented or divided; only its volume changes by the difference between the old and new pieces, and the report shows the resulting pressure. A run is refused if that pressure would exceed the weakest pipe's rating.
-- Coils or kits come from the local player's inventory at any depth, or from `from_id`. With `refund` (the default), whatever deconstructing the old pieces would give back is made at the source: worn belts and backpacks collect what fits, and the rest drops at the source.
+- Coils or kits come from the local player's inventory at any depth, or from `from_id`. With `refund` (the default), whatever deconstructing the old pieces would give back goes into the source's inventory (`from_id`, default the local player): first onto matching stacks anywhere in it (belts, backpack, jetpack, suit and uniform storage, a stack in a hand), then as new stacks into empty slots that take the item, and only what nothing takes on the ground a metre in front of the holder, at rest, never inside the player. `refunded` lists each part with `where`: `merged`, `slot` or `ground`. Every tool that gives something back does it this way.
 - If a piece fails part way, the run stops there. The job lists which pieces were swapped and whether the piece it stopped at is intact. Running the same call again resumes, because pieces already swapped then count as done.
 - Devices, APCs, batteries and transformers connect to any cable type. Cable networks keep their ids.
 - Multiplayer: host only. The swap uses the same calls as a player's own placement and deconstruction, so clients, saves and ownership follow as they do for normal building. Clients see a brief pause while the tick is held.
@@ -260,7 +260,7 @@ Materials follow the game's deconstruction rule. Each build state takes its `Too
 
 How to use:
 
-1. Survey: `grid_survey {room_id: "<id>"}` or `{min: [x, y, z], max: [x, y, z]}`. Each 2 m cell gives its frame, walls, room and a 64-character string of its 0.5 m cells (see `legend`), then the cables, pipes and devices there, each device port with the cell a piece joining it stands in, and the networks. `support` marks the same 64 cells by what would hold a piece up: `e` a frame edge or corner, `f` on or inside a frame, `w` on a wall's plane, `a` air.
+1. Survey: `grid_survey {room_id: "<id>"}` or `{min: [x, y, z], max: [x, y, z]}`. Each 2 m cell gives its frame, walls, room and a 64-character string of its 0.5 m cells (see `legend`), then the cables, pipes and devices there, each device port with the cell a piece joining it stands in, and the networks. `support` marks the same 64 cells by what would hold a piece up: `i` inside a frame (every 2 m cell the small cell touches holds a frame, so a piece there is hidden in it), `e` a frame edge or corner, `f` on a frame's face, `w` on a wall's plane, `a` air. `network_visibility` counts each listed network's cells the same way and lists the floating (air) ones; `include_refund: true` adds each piece's refund and each network's total.
 2. Plan: `plan_cable_route {from: {reference_id: "<device>", port: 1}, to: {reference_id: "<cable>"}, prefer: "frame_edges"}`, or a reroute: `{reroute: {between: ["<device a>", "<device b>"]}, avoid_walkways: true}`. A `between` end may be `{reference_id, port}`: an APC, transformer or pump sits on two networks, and the reroute runs through the one both ends share; if they share none or several, the error lists each end's ports and networks. It returns the route's waypoints, `place_arguments` and `place_cables`' own dry run.
 3. Dry run: `place_cables {waypoints: [[x, y, z], ...], grade: "heavy"}` (the default grade), or one piece: `{piece: {at: [x, y, z], ends: ["+x", "-y"]}}`. Read `ready`, `problems`, `cells` (each cell's piece, turn, shape, ends and what each end joins), `would_bridge`, `would_split`, `networks_before`, `networks_after` and `materials`.
 4. Real run: the same call with `dry_run: false, confirm: true`; poll `{job_id}` until `applied`.
@@ -276,7 +276,10 @@ What it does:
 - `would_loop` (a warning): the run joins something that is already joined another way, so the network gets a second path. Keep it only if that redundancy is meant.
 - `plan_*_route` follows frames first (`frames_first`, on by default): a cell in air, on no frame and no wall plane, costs as much as 50 more cells over frames, so a route over frames or along walls wins whenever the search box holds one, even a much longer one. Only where none exists does the route cross air, with as few air cells as possible and a `through_air` note. `route.air_cells` counts the new cells in air (0 for a clean route) and `route.air` lists them; `frames_first: false` turns the rule off. The top of a frame beam counts as frame: it lies on the bottom plane of the empty cell above. `inside_frames: true` is the strict form: only cells inside a frame or on its surface (beam tops and outer faces included, a wall plane alone not) are used at all.
 - The place tools' dry run counts the new pieces in air (`air_cells`) and names them in a `through_air` warning.
-- `plan_*_route` takes several starts (`from: {reference_id, ports: [2, 3]}` or an array) and grows one tree: the first start routes to the target, every other start to the nearest cell of the tree so far. A device with separate power and data ports gets one run with a junction, never two parallel runs closing a loop. `to` may be `{network_id}` (the nearest piece of that network) or a long straight (any of its cells).
+- `prefer: hidden` grades cells by how much of a cable shows there: inside a frame costs 1, on a frame's surface or edge 3, on a wall's plane only 5, in air 9 (plus the `frames_first` penalty). A hidden route up to three times as long beats one along a surface. Unlike `inside_frames` it never gives `no_route` for the rule: a port 2 m up in air still gets the least visible route. Every route reports `visibility {inside, frame_surface, wall, air}` for its new cells.
+- `assume_removed: [ids]` plans as if those things were already gone: their cells are free and their links absent, so a drop can go where old cable fills the cells around a port. The cable pieces among them go into `place_arguments.remove_ids`, so one job builds the new run and removes the old pieces, and the dry run's guards (`would_split` included) see the finished network. Other things (a pipe in the way of a cable) go into `place_arguments.assume_removed`: remove them first with their own tool. `route.assumed_removed` lists `pieces`, `others`, `missing` (already gone) and `in_the_way` (pieces whose cells the route takes). With nothing in the way, the route can also be built first and the old pieces removed later: drop `remove_ids`. `route.removal_refund` is what the removed pieces give back. The place tools take `assume_removed` for a dry run only: a real run is refused (`assumed_present`) while any of them still stands.
+- Bus mode: `trunk: {waypoints}` (or `cells`) instead of `to` lays that trunk as given, for instance one planned with `plan_cable_route` and not built yet, and every start branches to the nearest cell of the tree so far with a junction. The trunk and all its drops are one job and one guard forecast.
+- `plan_*_route` takes several starts, up to 16 (`from: {reference_id, ports: [2, 3]}` or an array), and grows one tree: the first start routes to the target, every other start to the nearest cell of the tree so far. A device with separate power and data ports gets one run with a junction, never two parallel runs closing a loop. `to` may be `{network_id}` (the nearest piece of that network) or a long straight (any of its cells).
 
 What is refused, and why:
 
@@ -291,6 +294,10 @@ What is refused, and why:
 - Not yet tested in game: all seven tools. Piece choice and prefab ends come from the loaded coil at run time; the forecast, guards and route search are covered by unit tests only.
 - Not yet tested in game: branches, several starts, `to: {network_id}`, splitting long straights, `would_loop`, `remove_loops`.
 - Not yet tested in game: `frames_first`, `air_cells` and `through_air`, `grid_survey`'s `support`.
+
+`plan_removal` prices a removal without doing it: the dry run of `remove_cables`, `remove_pipes` or `remove_chutes` (`kind`) under a read-only name, for `reference_ids`, `waypoints`, `cells` or a whole `network_id`. It returns the refund (`materials.refund`, and each removal's), `would_split` and the networks before and after.
+
+`feed_paths {root: "<APC>", network_id: "<its output network>"}` traces a network from a root device: for every device, the pieces between them, the rooms those pieces pass through in order (pieces in no room, such as inside a floor frame or outdoors, are skipped) and `through`, the rooms that are neither the root's nor the device's own. A device with a `through` room is fed through another room (`daisy_chains` counts them). Each room lists the pieces where its devices' feeds enter it; more than one is `multiple_feeds`. `unreached` lists devices on the network that no run from the root reaches. The path to each device is the shortest over the network's links, and a device is never passed through.
 
 ### Laying chutes
 
@@ -331,7 +338,7 @@ Placing:
 
 Removing:
 
-- Gives back what deconstructing by hand does, every build state's items down to the kit: to the source (`refund_to: "source"`, the default: `from_id` or the local player; worn items collect, the rest at its feet), on the ground where each piece stood (`ground`), or not at all (`none`).
+- Gives back what deconstructing by hand does, every build state's items down to the kit: to the source (`refund_to: "source"`, the default: into the source's inventory (`from_id`, default the local player): first onto matching stacks anywhere in it (belts, backpack, jetpack, suit and uniform storage, a stack in a hand), then as new stacks into empty slots that take the item, and only what nothing takes on the ground a metre in front of the holder, at rest, never inside the player. `refunded` lists each part with `where`: `merged`, `slot` or `ground`), on the ground where each piece stood (`ground`), or not at all (`none`).
 - Refused: `not_a_structure` (items: `move_item`), `being_destroyed`, `indestructible`, `rocket`, `broken` (a damaged state; repair it first), `game_refuses` (the game's own `CanDeconstruct`), `has_mounted` (a device mounted on it).
 - Refused unless allowed: `holds_items` and `holds_gas` (`allow_contents`: items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it), `would_breach` (the piece blocks air and removing it joins spaces whose pressures differ by 1 kPa or more, such as a pressurised room and the outside; `allow_breach`).
 - Warned: `port_left_open` (a device end that joins a cable, pipe, chute or device now).
@@ -391,6 +398,11 @@ delete the sidecar folder and remove the agent's MCP registration.
   Not yet tested: `paste_blueprint` in a hosted game with players, and at 90, 180 and 270.
 - Not yet tested in game (1.1.1): `inside_frames` over beam tops, and `reroute: {between}` with an APC end or a
   named port. Both are covered by unit tests (the network choice, the argument form and the beam geometry).
+- Not yet tested in game (1.2.0): `assume_removed` on the planners and place tools, `prefer: hidden` and
+  `route.visibility`, `trunk` (bus mode), 16 starts, `grid_survey`'s `i` class, `network_visibility` and
+  `include_refund`, `feed_paths`, `plan_removal`, and refunds delivered into the inventory (stacks, then empty
+  slots, then the ground in front of the player). The route search, visibility classes, trees, feed paths and the
+  refund order are covered by unit tests on the solar beams and a synthetic base.
 
 ## Build
 

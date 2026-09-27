@@ -78,7 +78,8 @@ internal static class RunReports
         foreach (PlannedRemoval removal in plan.Removals)
         {
             removals.Add(new RunRemovalView(GameLookup.ViewOf(removal.Piece), GameLookup.ViewOf(removal.Piece.Position),
-                removal.Network != null ? new ThingId(removal.Network.ReferenceId) : null, Amounts(removal.Refund)));
+                removal.Network != null ? new ThingId(removal.Network.ReferenceId) : null, Amounts(removal.Refund),
+                removal.Assumed ? true : (bool?)null));
         }
 
         return new RunCellsView(listed, total, placed, changed, plan.KeptCells.Count, removals,
@@ -168,7 +169,10 @@ internal static class RunReports
         List<ItemAmount> refund = new List<ItemAmount>();
         foreach (PlannedRemoval removal in plan.Removals)
         {
-            refund.AddRange(removal.Refund);
+            if (!removal.Assumed)
+            {
+                refund.AddRange(removal.Refund);
+            }
         }
 
         foreach (PlannedCell cell in plan.Cells)
@@ -180,7 +184,7 @@ internal static class RunReports
             plan.Request.Options.Refund, Amounts(refund));
     }
 
-    private static List<UpgradeAmountView> Amounts(List<ItemAmount> amounts)
+    internal static List<UpgradeAmountView> Amounts(List<ItemAmount> amounts)
     {
         List<string?> names = new List<string?>();
         List<int> totals = new List<int>();

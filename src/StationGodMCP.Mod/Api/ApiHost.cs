@@ -90,6 +90,8 @@ internal static class ApiHost
             ["plan_cable_route"] = static args => PlanRouteApi.Handle(args, new CableRunKind()),
             ["plan_pipe_route"] = static args => PlanRouteApi.Handle(args, new PipeRunKind()),
             ["plan_chute_route"] = static args => PlanRouteApi.Handle(args, new ChuteRunKind()),
+            ["plan_removal"] = static args => RunApi.PlanRemoval(args),
+            ["feed_paths"] = static args => FeedPathsApi.Handle(args),
             ["trader_buy"] = static args => TraderBuyApi.Handle(args),
             ["trader_sell"] = static args => TraderSellApi.Handle(args),
             ["paste_blueprint"] = static args => PasteBlueprintApi.Handle(args),

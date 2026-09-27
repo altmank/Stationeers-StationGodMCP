@@ -516,7 +516,7 @@ internal sealed class RemoveWork : BuildWork
                     break;
                 case RefundTo.Ground:
                     done.ForEach(takedown =>
-                        Refunds.DeliverAt(takedown.Position, null, takedown.Refund, log.Refunded));
+                        Refunds.DeliverAt(takedown.Position, takedown.Refund, log.Refunded));
                     break;
             }
         }

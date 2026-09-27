@@ -98,6 +98,7 @@ internal static class RunPlanner
             throw ApiErrors.Refused("too_many_pieces", $"{pieces.Count} pieces; at most {MaximumRemovals} per run.");
         }
 
+        ReadAssumed(plan, removal, seen);
         foreach (SmallGrid piece in pieces)
         {
             string? why = CannotRemove(kind, piece);
@@ -109,6 +110,50 @@ internal static class RunPlanner
             plan.Things[piece.ReferenceId] = piece;
             plan.Removals.Add(new PlannedRemoval(piece, PieceShapes.Live(piece), kind.Family.NetworkOf(piece),
                 BuildMaterials.RefundOf(piece)));
+        }
+    }
+
+    internal const string AssumedPresentCode = "assumed_present";
+
+    // assume_removed: a thing already gone is what was assumed; one still standing is checked as gone (the kind's
+    // pieces forecast as removed, anything else only freed for placement) and noted, since a real run needs it gone.
+    private static void ReadAssumed(RunPlan plan, RunRemoval removal, HashSet<long> seen)
+    {
+        RunKind kind = plan.Request.Kind;
+        foreach (ThingId id in removal.Assumed)
+        {
+            if (!GameLookup.TryFindThing(id, out Thing thing) || thing.IsBeingDestroyed || !seen.Add(id.Value))
+            {
+                continue;
+            }
+
+            if (!(thing is SmallGrid piece))
+            {
+                plan.Problem("not_a_small_grid_thing",
+                    $"assume_removed: {thing.DisplayName} ({thing.PrefabName}) does not stand on the small grid.",
+                    thing.ReferenceId);
+                continue;
+            }
+
+            plan.AssumedPresent.Add(piece.ReferenceId);
+            plan.Things[piece.ReferenceId] = piece;
+            if (kind.Family.IsPiece(piece))
+            {
+                plan.Removals.Add(new PlannedRemoval(piece, PieceShapes.Live(piece), kind.Family.NetworkOf(piece),
+                    BuildMaterials.RefundOf(piece), true));
+            }
+            else
+            {
+                plan.AssumedOther.Add(piece.ReferenceId);
+            }
+        }
+
+        if (plan.AssumedPresent.Count > 0)
+        {
+            plan.Warnings.Add(new LayoutIssue(AssumedPresentCode,
+                $"{plan.AssumedPresent.Count} thing(s) in assume_removed still stand; this check treats them as " +
+                "gone. A real run is refused until they are removed (remove the " + kind.Noun + " pieces in the " +
+                "same job by passing them as remove_ids instead).", null, plan.AssumedPresent[0]));
         }
     }
 
@@ -159,7 +204,7 @@ internal static class RunPlanner
             layout = Lay(plan, build, build.Shape.WithFills(FillEnds(split)), mask);
         }
 
-        HashSet<long> ignore = plan.RemovedIds();
+        HashSet<long> ignore = plan.IgnoredIds();
         plan.Layout = layout;
         plan.Problems.AddRange(layout.Problems);
         plan.Warnings.AddRange(layout.Warnings);
@@ -265,7 +310,7 @@ internal static class RunPlanner
     {
         RunKind kind = plan.Request.Kind;
         RunSurroundings around = RunSurvey.Around(kind, build.Grade, shape.Cells, build.Extra, mask,
-            plan.RemovedIds(), plan.Things);
+            plan.IgnoredIds(), plan.Things);
         return RunLayoutPlanner.Plan(shape, around, build.Join, build.Extra, kind.ContentOf(build.Grade));
     }
 

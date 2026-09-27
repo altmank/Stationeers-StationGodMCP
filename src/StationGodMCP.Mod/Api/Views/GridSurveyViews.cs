@@ -24,6 +24,7 @@ internal sealed class GridSurveyView
         Pieces = contents.Pieces;
         Devices = contents.Devices;
         Networks = contents.Networks;
+        NetworkVisibility = contents.NetworkVisibility;
     }
 
     public string Legend { get; }
@@ -49,16 +50,59 @@ internal sealed class GridSurveyView
 
     /// <summary>A RunCableNetworkView or RunPipeNetworkView per network of the pieces listed.</summary>
     public List<object> Networks { get; }
+
+    /// <summary>
+    /// Per network of the pieces listed: their cells by how visible a piece in them is, the floating ones (air) by
+    /// position, and with include_refund what removing those pieces would give back.
+    /// </summary>
+    public List<SurveyNetworkVisibilityView> NetworkVisibility { get; }
+}
+
+/// <summary>One network's listed pieces: their cells by visibility, where they float, and their removal refund.</summary>
+internal sealed class SurveyNetworkVisibilityView
+{
+    internal SurveyNetworkVisibilityView(ThingId? networkId, string kind, int pieces, RouteVisibilityView cells,
+        List<PositionView>? airAt, List<UpgradeAmountView>? refund)
+    {
+        NetworkId = networkId;
+        Kind = kind;
+        Pieces = pieces;
+        Cells = cells;
+        AirAt = airAt;
+        Refund = refund;
+    }
+
+    /// <summary>Null for pieces on no network.</summary>
+    public ThingId? NetworkId { get; }
+
+    /// <summary>cable, pipe or chute.</summary>
+    public string Kind { get; }
+
+    public int Pieces { get; }
+
+    public RouteVisibilityView Cells { get; }
+
+    /// <summary>The cells in air (floating), up to 32; left out when none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<PositionView>? AirAt { get; }
+
+    /// <summary>include_refund: what remove_* would give back for these pieces; left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeAmountView>? Refund { get; }
 }
 
 internal sealed class SurveyContents
 {
-    internal SurveyContents(List<SurveyPieceView> pieces, List<SurveyDeviceView> devices, List<object> networks)
+    internal SurveyContents(List<SurveyPieceView> pieces, List<SurveyDeviceView> devices, List<object> networks,
+        List<SurveyNetworkVisibilityView> networkVisibility)
     {
         Pieces = pieces;
         Devices = devices;
         Networks = networks;
+        NetworkVisibility = networkVisibility;
     }
+
+    internal List<SurveyNetworkVisibilityView> NetworkVisibility { get; }
 
     internal List<SurveyPieceView> Pieces { get; }
 
@@ -93,8 +137,9 @@ internal sealed class SurveyCellView
     public string Small { get; }
 
     /// <summary>
-    /// 64 characters in the same order: what holds a piece in each small cell up. 'e' a frame edge or corner, 'f' on
-    /// or inside a frame, 'w' on a wall's plane, 'a' air (the planners' frames_first avoids these).
+    /// 64 characters in the same order: what holds a piece in each small cell up. 'i' inside a frame (every 2 m cell
+    /// it touches holds one), 'e' a frame edge or corner, 'f' on a frame's face, 'w' on a wall's plane, 'a' air (the
+    /// planners' frames_first avoids these).
     /// </summary>
     public string Support { get; }
 }
@@ -151,8 +196,10 @@ internal sealed class SurveyWallView
 internal sealed class SurveyPieceView
 {
     internal SurveyPieceView(ThingView piece, string kind, PositionView at, List<PositionView>? cells,
-        List<string> ends, ThingId? networkId, string? grade, RunFlowView? flow = null, ThingView? carries = null)
+        List<string> ends, ThingId? networkId, string? grade, RunFlowView? flow = null, ThingView? carries = null,
+        List<UpgradeAmountView>? refund = null)
     {
+        Refund = refund;
         ReferenceId = piece.ReferenceId;
         Kind = kind;
         PrefabName = piece.PrefabName;
@@ -191,6 +238,10 @@ internal sealed class SurveyPieceView
     /// <summary>Chutes: the item riding in the piece now.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ThingView? Carries { get; }
+
+    /// <summary>include_refund: what removing the piece gives back (remove_* refunds the same).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeAmountView>? Refund { get; }
 }
 
 internal sealed class SurveyDeviceView

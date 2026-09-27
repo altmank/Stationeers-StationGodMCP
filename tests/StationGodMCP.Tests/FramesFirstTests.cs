@@ -71,7 +71,8 @@ public sealed class FramesFirstTests
         internal SmallCellFacts Small(GridCell small) =>
             new SmallCellFacts(null, 0, null, false, LargeAt(SmallCellCode.LargeOf(small)),
                 SmallCellCode.IndexOnAxis(small.X), SmallCellCode.IndexOnAxis(small.Y),
-                SmallCellCode.IndexOnAxis(small.Z), new List<long>(), Support(small));
+                SmallCellCode.IndexOnAxis(small.Z), new List<long>(), Support(small),
+                CellSupports.VisibilityOf(small, LargeAt));
     }
 
     private sealed class Plan

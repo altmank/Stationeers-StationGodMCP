@@ -12,66 +12,17 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
 /// <summary>
-/// A route end as resolved: the cells the search may start or end at (one for a start; a long straight's cells or a
-/// whole network's for a target), the kind's networks it is on, and for a device port the direction from its cell
-/// into the device.
-/// </summary>
-internal sealed class RouteEndpoint
-{
-    internal RouteEndpoint(List<RouteEnd> ends, List<long> networks, GridStep? intoDevice = null)
-    {
-        Ends = ends;
-        Networks = networks;
-        IntoDevice = intoDevice;
-    }
-
-    internal RouteEndpoint(RouteEnd end, List<long> networks, GridStep? intoDevice = null)
-        : this(new List<RouteEnd> { end }, networks, intoDevice)
-    {
-    }
-
-    internal List<RouteEnd> Ends { get; }
-
-    /// <summary>The first (for a start, the only) cell.</summary>
-    internal RouteEnd End => Ends[0];
-
-    internal List<long> Networks { get; }
-
-    /// <summary>A device port's end: the direction a piece in its cell needs to join it.</summary>
-    internal GridStep? IntoDevice { get; }
-
-    /// <summary>The end cell nearest the cell (Manhattan).</summary>
-    internal RouteEnd NearestTo(GridCell cell)
-    {
-        RouteEnd best = Ends[0];
-        int bestDistance = int.MaxValue;
-        foreach (RouteEnd end in Ends)
-        {
-            int distance = System.Math.Abs(end.Cell.X - cell.X) + System.Math.Abs(end.Cell.Y - cell.Y) +
-                           System.Math.Abs(end.Cell.Z - cell.Z);
-            if (distance < bestDistance)
-            {
-                best = end;
-                bestDistance = distance;
-            }
-        }
-
-        return best;
-    }
-}
-
-/// <summary>
 /// The ends of a route from the caller's form: {at: position} (that small cell), {reference_id} of one of the kind's
 /// pieces (its cell; leaving through one of its open ends is free, through another makes it a junction; a long
 /// straight as a target offers every cell of it, and the place tool splits it), {reference_id, port} of a device (the
 /// cell a piece joining that port stands in; port may be left out when the device has one port of the kind), and as a
-/// target {network_id}: every cell of every piece of that network. Starts may be several: an array of ends, or
-/// {reference_id, ports: [...]} for several ports of one device. Pieces being removed (a reroute) count as gone.
+/// target {network_id}: every cell of every piece of that network. Starts may be several (up to MaximumStarts): an array of ends, or
+/// {reference_id, ports: [...]} for several ports of one device. Pieces being removed (a reroute, assume_removed) count as gone.
 /// </summary>
 internal static class RouteEnds
 {
     internal const double JunctionCost = 3.0;
-    internal const int MaximumStarts = 8;
+    internal const int MaximumStarts = RouteTrees.MaximumStarts;
 
     /// <summary>One or more starts: an end, an array of ends, or a device with ports: [...].</summary>
     internal static List<RouteEndpoint> Starts(JToken? token, string name, RunKind kind, int type,
@@ -153,7 +104,7 @@ internal static class RouteEnds
         {
             if (ignore.Contains(own.ReferenceId))
             {
-                throw ApiErrors.InvalidArgument($"{name} names a piece the reroute removes.");
+                throw ApiErrors.InvalidArgument($"{name} names a piece being removed (the reroute's old run or assume_removed).");
             }
 
             PieceModel model = PieceShapes.Live(own);

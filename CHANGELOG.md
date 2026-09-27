@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.2.0
+
+- **Plan as if old pieces were gone.** `assume_removed: [ids]` on `plan_cable_route`, `plan_pipe_route` and
+  `plan_chute_route` plans through and beside pieces that are about to be removed: their cells are free and their
+  links gone. The kind's own pieces among them go into the plan's `remove_ids`, so one job builds the new run and
+  removes the old one, and the dry run's guards see the result. `route.assumed_removed.in_the_way` lists the pieces the
+  new route needs gone. The place tools take `assume_removed` too, for a dry run of a run whose old pieces go in
+  another job; a real run is refused (`assumed_present`) while any of them still stands.
+- **Least visible routes.** `prefer: hidden` grades every cell by how much of a cable shows there: inside a frame
+  costs 1, on a frame's surface 3, on a wall's plane 5, in air 9. Where `inside_frames` gives no route, this gives the
+  least visible one. Every route now reports its new cells by class (`route.visibility`).
+- **A trunk and its drops in one job.** `trunk: {waypoints}` instead of `to` lays that trunk as given and branches
+  every start from it with junctions, so a bus that is not built yet can be planned, checked and built with all its
+  drops at once.
+- **16 starts.** A plan takes up to 16 starts (was 8), enough for a generator network's ports.
+- **grid_survey:** a new support class `i` for cells inside a frame (`f` is now only a frame's face), and
+  `network_visibility`: each network's cells by class with the floating ones listed. `include_refund` adds what
+  removing each piece would give back.
+- **New `feed_paths` tool.** From a root device such as an APC, the path to every device on its network and the rooms
+  it crosses; devices fed through another room (daisy chains) and rooms fed at more than one place are flagged.
+- **New `plan_removal` tool.** The dry run of a removal, refund and `would_split` included, as a read-only tool; it
+  also takes a whole `network_id`. Plans report `removal_refund` for the pieces they remove. 74 tools now.
+- **Fix: refunds no longer hit the player.** Every tool that gives materials back (`replace_walls`, `replace_frames`,
+  `upgrade_*`, `clean_*`, `place_*`, `remove_*`, `remove_structure`) made the items at the player's position, so they
+  were pushed out of the player's body and damaged the suit. They now go straight into the inventory: onto matching
+  stacks anywhere in it first, then into empty slots that take them, and only what does not fit goes on the ground
+  a metre in front of the player, at rest. Each part is reported as `merged`, `slot` or `ground`.
+
 ## 1.1.1
 
 - **`inside_frames` accepts beam tops.** The route rule now judges a cell by every frame it sits in or on, the same

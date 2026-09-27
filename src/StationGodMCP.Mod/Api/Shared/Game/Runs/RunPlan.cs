@@ -57,13 +57,17 @@ internal sealed class RunBuild
     internal List<ExtraEnd> Extra { get; }
 }
 
-/// <summary>Pieces to remove: by id, and the family's pieces standing in listed cells.</summary>
+/// <summary>
+/// Pieces to remove: by id, and the family's pieces standing in listed cells; and things assumed gone (assume_removed):
+/// checked and forecast as if already removed, but never removed by this run (another job removes them).
+/// </summary>
 internal sealed class RunRemoval
 {
-    internal RunRemoval(List<ThingId> ids, List<GridCell> cells)
+    internal RunRemoval(List<ThingId> ids, List<GridCell> cells, List<ThingId>? assumed = null)
     {
         Ids = ids;
         Cells = cells;
+        Assumed = assumed ?? new List<ThingId>();
     }
 
     internal static RunRemoval None => new RunRemoval(new List<ThingId>(), new List<GridCell>());
@@ -71,6 +75,9 @@ internal sealed class RunRemoval
     internal List<ThingId> Ids { get; }
 
     internal List<GridCell> Cells { get; }
+
+    /// <summary>Things treated as gone without being removed (assume_removed).</summary>
+    internal List<ThingId> Assumed { get; }
 
     internal bool IsEmpty => Ids.Count == 0 && Cells.Count == 0;
 }
@@ -163,16 +170,23 @@ internal sealed class PieceLook
         new PieceLook(piece.OwnerClientId, piece.CustomColor != null ? piece.CustomColor.Index : 0);
 }
 
-/// <summary>A piece to remove, its model now, its network and what deconstructing it gives back.</summary>
+/// <summary>
+/// A piece to remove, its model now, its network and what deconstructing it gives back. Assumed: a piece the edit is
+/// checked as if already gone (assume_removed); the run never removes it and its refund is not counted.
+/// </summary>
 internal sealed class PlannedRemoval
 {
-    internal PlannedRemoval(SmallGrid piece, PieceModel live, IReferencable? network, List<ItemAmount> refund)
+    internal PlannedRemoval(SmallGrid piece, PieceModel live, IReferencable? network, List<ItemAmount> refund,
+        bool assumed = false)
     {
         Piece = piece;
         Live = live;
         Network = network;
         Refund = refund;
+        Assumed = assumed;
     }
+
+    internal bool Assumed { get; }
 
     internal SmallGrid Piece { get; }
 
@@ -227,6 +241,20 @@ internal sealed class RunPlan
 
     internal void Problem(string code, string message, long? id = null, GridCell? cell = null) =>
         Problems.Add(new LayoutIssue(code, message, cell, id));
+
+    /// <summary>Things of another kind assumed gone (assume_removed): free for placement, never removed.</summary>
+    internal HashSet<long> AssumedOther { get; } = new HashSet<long>();
+
+    /// <summary>Assumed things that still stand: a real run is refused until they are gone.</summary>
+    internal List<long> AssumedPresent { get; } = new List<long>();
+
+    /// <summary>Every thing placement and the survey treat as gone: the removals and AssumedOther.</summary>
+    internal HashSet<long> IgnoredIds()
+    {
+        HashSet<long> ids = RemovedIds();
+        ids.UnionWith(AssumedOther);
+        return ids;
+    }
 
     internal HashSet<long> RemovedIds()
     {
