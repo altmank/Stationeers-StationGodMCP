@@ -1,0 +1,1 @@
+T:System.Linq.Enumerable;LINQ allocates per call: use a sized loop, List.Sort(static ...) or a HashSet. On a cold path, allow it per call with #pragma warning disable RS0030 and say why.

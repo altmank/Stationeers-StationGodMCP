@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetadata xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Name>StationGod MCP</Name>
+  <ModID>net.xceled.stationeers.stationgodmcp</ModID>
+  <Author>XCeled</Author>
+  <Version>1.0.0</Version>
+  <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
+StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
+
+[hr][/hr]
+[h2]What the agent can do[/h2]
+[list]
+[*][b]Devices and logic:[/b] find devices anywhere in the world, read and write their logic values, slots and memory, many at once, and record how values change over time.
+[*][b]Chips:[/b] read, write, compile, pause, step and restart IC10 programs, including a suit's chip, and set IC Housing pins. With StationeersLua installed, also Lua chips on consoles, computers, tablets and visors, with their errors and print log.
+[*][b]Your base and planet:[/b] rooms and their air, the planet's atmosphere and weather, plants and their genes, damage, fire risk, water, food, your vitals, the game clock, what you are looking at.
+[*][b]Items and gas:[/b] find and count items, move them between slots, label and paint structures, move gas between canisters, tanks and pipe networks.
+[*][b]Solar, dishes and traders:[/b] aim solar panels and satellite dishes, check landing pads, buy and sell with a landed trader.
+[*][b]Cables, pipes and chutes:[/b] plan a route, lay it, remove it or reroute it. Every piece gets the right shape for its connections, runs follow frames rather than crossing open air, and a run that would join two networks, overload a cable, burst a pipe or push items the wrong way is refused or flagged.
+[*][b]Upgrades and clean-up:[/b] turn a cable network into heavy or super heavy cable, or a pipe network into insulated pipe, in place; replace junctions that have open ends, merge or split long straights, cut redundant loops and remove dead-end stubs.
+[*][b]Walls, frames and structures:[/b] swap walls, windows and frames for another kind without opening the room to the air, place any structure a kit builds, and remove structures as deconstruction does.
+[*][b]Console:[/b] run the game's console commands and read the console.
+[/list]
+Every tool that rebuilds something has a dry run first. The real run holds the game tick, changes everything in one step, takes from your inventory what the game would charge, gives back what deconstruction would, and checks the result afterwards: connections, pipe contents, rooms and air.
+
+[hr][/hr]
+[h2]Setup[/h2]
+[list]
+[*][b]1. Subscribe[/b] and enable StationGod MCP in StationeersLaunchPad.
+[*][b]2. Install the sidecar,[/b] the small program the agent starts. In the mod's Workshop folder (steamapps\workshop\content\544550\&lt;item id&gt;\Sidecar) extract [b]StationGodMCP.Server-win-x64.zip[/b] (no .NET needed) or [b]StationGodMCP.Server-portable.zip[/b] (needs .NET 8) to a folder outside every mod folder, for example %LOCALAPPDATA%\StationGodMCP\server.
+[*][b]3. Register it with your agent.[/b] Claude Code: claude mcp add --scope user stationeers -- "&lt;folder&gt;\StationGodMCP.Server.exe". Codex and other clients: a stdio MCP server running that file.
+[*][b]4. Host a save.[/b] The mod answers only in a game that hosts: turn on Start Local Host in the game's settings (StartLocalHost in setting.xml), then load a save. A client joined to someone else's server gets no answer.
+[/list]
+
+[hr][/hr]
+[h2]Settings[/h2]
+Only for reaching a dedicated server over the network; a local game needs none. StationeersLaunchPad config editor, or BepInEx/config/net.xceled.stationeers.stationgodmcp.cfg, section Remote MCP. Read when the game starts.
+[table]
+[tr][th]Setting[/th][th]Default[/th][th]What it does[/th][/tr]
+[tr][td][b]Enabled[/b][/td][td]Off[/td][td]Accept sidecars over TCP. Stays off without a secret.[/td][/tr]
+[tr][td][b]BindAddress[/b][/td][td]0.0.0.0[/td][td]Address the server listens on.[/td][/tr]
+[tr][td][b]Port[/b][/td][td]8765[/td][td]TCP port.[/td][/tr]
+[tr][td][b]Secret[/b][/td][td]empty[/td][td]Shared secret every sidecar must send. Sent unencrypted: use a long random value.[/td][/tr]
+[/table]
+Each also reads an environment variable (STATIONGODMCP_REMOTE_ENABLED, _BIND_ADDRESS, _PORT, _SECRET), handy for Docker.
+
+[hr][/hr]
+[h2]Removing it[/h2]
+Everything the agent built or changed is ordinary game content and stays. The one thing the mod adds is the StationGod Gateway (a Logic Memory lookalike printed at the Electronics Printer): gateways and their kits disappear from a save loaded without the mod. Nothing else needs doing.
+
+[hr][/hr]
+[h2]Good to know[/h2]
+[list]
+[*][b]Multiplayer:[/b] the mod does its work on the host, where the game's own state lives, and changes reach players the usual way. The host needs it; every player joining needs the same version too, because the Gateway is a new structure.
+[*][b]Trust:[/b] the agent gets real read and write access to the world, including console commands and device memory. Use an agent you trust, and save first.
+[*][b]Gateways are optional:[/b] the agent reaches every device in the world without one. A gateway only narrows a call to the devices on its data networks.
+[*][b]After a game update[/b] the mod checks every game member it relies on at load; a missing one turns off only the tools that need it, and the agent is told why.
+[*][b]No agent connects?[/b] Look in the BepInEx log for lines starting [b][StationGodMCP][/b].
+[/list]
+
+[hr][/hr]
+[b]Requires[/b] [url=https://github.com/StationeersLaunchPad/StationeersLaunchPad]StationeersLaunchPad[/url] and an AI agent that speaks MCP.
+
+[b]Source, issues and the full readme:[/b] [url=https://github.com/altmank/Stationeers-StationGodMCP]github.com/altmank/Stationeers-StationGodMCP[/url]
+
+Developed with the use of generative AI, and tokens aren't free. Buy me a coffee:
+[url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
+  </Description>
+  <ChangeLog>
+v1.0.0
+- First release: an MCP server for Stationeers with 71 tools for devices and logic, IC10 and Lua chips, rooms, air, planet, plants, items, gas, traders, solar panels and dishes.
+- Build and rebuild cables, pipes and chutes, upgrade and clean up networks, swap walls and frames, and place or remove any kit-built structure, each with a dry run, a held game tick and a check afterwards.
+- Local games over a named pipe; dedicated servers over authenticated TCP.
+</ChangeLog>
+  <WorkshopHandle>0</WorkshopHandle>
+  <Tags />
+</ModMetadata>

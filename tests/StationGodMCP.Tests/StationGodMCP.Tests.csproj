@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Tests that run without the game: the pure code, the shared wire types and every tool's views, compiled here from
+    the mod's own sources. Nothing in these folders may use a game or Unity type.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>annotations</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>StationGodMCP.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\StationGodMCP.Mod\Pure\**\*.cs" Link="Mod\Pure\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\StationGodMCP.Mod\Api\Shared\*.cs" Link="Mod\Api\Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\StationGodMCP.Mod\Api\Views\**\*.cs" Link="Mod\Api\Views\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
+    <!-- The game ships Newtonsoft.Json 13.0.2; the wire checks serialise with the same major version. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,10 @@
+bin/
+obj/
+package/
+reference/
+StationGodMCP.dll
+Sidecar/*.zip
+*.user
+*.suo
+.vs/
+.idea/

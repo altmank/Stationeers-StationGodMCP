@@ -1,0 +1,241 @@
+#nullable enable
+
+using System.Collections.Generic;
+using Assets.Scripts.Objects;
+using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.Pure;
+
+namespace StationGodMCP.Api.Shared.Game.Runs;
+
+/// <summary>One request of the run tools as parsed: what to build (a run, or nothing), what to remove, the rules.</summary>
+internal sealed class RunRequest
+{
+    internal RunRequest(RunKind kind, string tool, RunBuild? build, RunRemoval removal, RunOptions options)
+    {
+        Kind = kind;
+        Tool = tool;
+        Build = build;
+        Removal = removal;
+        Options = options;
+    }
+
+    internal RunKind Kind { get; }
+
+    internal string Tool { get; }
+
+    /// <summary>The run to build; null for the remove tools.</summary>
+    internal RunBuild? Build { get; }
+
+    internal RunRemoval Removal { get; }
+
+    internal RunOptions Options { get; }
+}
+
+/// <summary>
+/// A run to build: its cells (the main run in order, then any branches), the grade of new pieces, how it joins what
+/// is there.
+/// </summary>
+internal sealed class RunBuild
+{
+    internal RunBuild(RunShape shape, Grade grade, JoinMode join, List<ExtraEnd> extra)
+    {
+        Shape = shape;
+        Grade = grade;
+        Join = join;
+        Extra = extra;
+    }
+
+    internal RunShape Shape { get; }
+
+    /// <summary>Every cell: the main run's in order, then each branch's.</summary>
+    internal List<GridCell> Cells => Shape.Cells;
+
+    internal Grade Grade { get; }
+
+    internal JoinMode Join { get; }
+
+    internal List<ExtraEnd> Extra { get; }
+}
+
+/// <summary>Pieces to remove: by id, and the family's pieces standing in listed cells.</summary>
+internal sealed class RunRemoval
+{
+    internal RunRemoval(List<ThingId> ids, List<GridCell> cells)
+    {
+        Ids = ids;
+        Cells = cells;
+    }
+
+    internal static RunRemoval None => new RunRemoval(new List<ThingId>(), new List<GridCell>());
+
+    internal List<ThingId> Ids { get; }
+
+    internal List<GridCell> Cells { get; }
+
+    internal bool IsEmpty => Ids.Count == 0 && Cells.Count == 0;
+}
+
+internal sealed class RunOptions
+{
+    internal RunOptions(EditAllowance allow, ThingId? from, bool refund, int listLimit, bool splitLong = true)
+    {
+        Allow = allow;
+        From = from;
+        Refund = refund;
+        ListLimit = listLimit;
+        SplitLong = splitLong;
+    }
+
+    /// <summary>
+    /// allow_split_long: a long straight the run must join in its middle or cross is split into singles in the same
+    /// job (as split_long_straights does) instead of refusing with long_piece.
+    /// </summary>
+    internal bool SplitLong { get; }
+
+    internal EditAllowance Allow { get; }
+
+    /// <summary>The thing coils are taken from and given back to; null for the local player.</summary>
+    internal ThingId? From { get; }
+
+    internal bool Refund { get; }
+
+    internal int ListLimit { get; }
+}
+
+/// <summary>
+/// One cell to build: a new piece (Existing null) or the piece there replaced by one with more ends, the kit it comes
+/// from, the choice (prefab and turn), its model, what it costs and gives back, and the id it goes by in the
+/// forecast (a negative number for a new piece, the old piece's id for a change).
+/// </summary>
+internal sealed class PlannedCell
+{
+    internal PlannedCell(LayoutCell layout, Kit kit, RunChoice choice, PieceModel model, SwapPrice price,
+        SmallGrid? existing, PieceLook? look = null)
+    {
+        Look = look;
+        Layout = layout;
+        Kit = kit;
+        Choice = choice;
+        Model = model;
+        Cost = price.Cost;
+        Refund = price.Refund;
+        Existing = existing;
+    }
+
+    internal LayoutCell Layout { get; }
+
+    internal GridCell Cell => Layout.Cell;
+
+    internal Kit Kit { get; }
+
+    internal RunChoice Choice { get; }
+
+    internal PieceModel Model { get; }
+
+    internal long ForecastId => Model.Id;
+
+    internal int Cost { get; }
+
+    internal List<ItemAmount> Refund { get; }
+
+    internal SmallGrid? Existing { get; }
+
+    internal bool IsChange => Existing != null;
+
+    /// <summary>The owner and colour a new piece takes over (a split long straight's); null for the player's.</summary>
+    internal PieceLook? Look { get; }
+}
+
+/// <summary>A piece's owner and paint (CreateStructureInstance.OwnerClientId and CustomColor index).</summary>
+internal sealed class PieceLook
+{
+    internal PieceLook(ulong owner, int colour)
+    {
+        Owner = owner;
+        Colour = colour;
+    }
+
+    internal ulong Owner { get; }
+
+    internal int Colour { get; }
+
+    internal static PieceLook Of(Structure piece) =>
+        new PieceLook(piece.OwnerClientId, piece.CustomColor != null ? piece.CustomColor.Index : 0);
+}
+
+/// <summary>A piece to remove, its model now, its network and what deconstructing it gives back.</summary>
+internal sealed class PlannedRemoval
+{
+    internal PlannedRemoval(SmallGrid piece, PieceModel live, IReferencable? network, List<ItemAmount> refund)
+    {
+        Piece = piece;
+        Live = live;
+        Network = network;
+        Refund = refund;
+    }
+
+    internal SmallGrid Piece { get; }
+
+    internal PieceModel Live { get; }
+
+    internal IReferencable? Network { get; }
+
+    internal List<ItemAmount> Refund { get; }
+}
+
+/// <summary>Everything the preflight found for one request. Ready when no problem was found.</summary>
+internal sealed class RunPlan
+{
+    internal RunPlan(RunRequest request)
+    {
+        Request = request;
+    }
+
+    internal RunRequest Request { get; }
+
+    internal RunLayout? Layout { get; set; }
+
+    internal List<PlannedCell> Cells { get; } = new List<PlannedCell>();
+
+    internal List<LayoutCell> KeptCells { get; } = new List<LayoutCell>();
+
+    /// <summary>Layout cells no piece could be chosen for (each also a problem).</summary>
+    internal List<LayoutCell> Unchosen { get; } = new List<LayoutCell>();
+
+    internal List<PlannedRemoval> Removals { get; } = new List<PlannedRemoval>();
+
+    internal List<LayoutIssue> Problems { get; } = new List<LayoutIssue>();
+
+    internal List<LayoutIssue> Warnings { get; } = new List<LayoutIssue>();
+
+    /// <summary>The run's new cells on no frame and no wall plane (CellSupports).</summary>
+    internal List<GridCell> AirCells { get; } = new List<GridCell>();
+
+    internal Thing? From { get; set; }
+
+    internal List<ItemStock> Stocks { get; } = new List<ItemStock>();
+
+    /// <summary>Every thing read around the edit, by id, for naming.</summary>
+    internal Dictionary<long, SmallGrid> Things { get; } = new Dictionary<long, SmallGrid>();
+
+    internal RunForecast? Forecast { get; set; }
+
+    /// <summary>Which way items move at each touched cell after the edit (chutes only).</summary>
+    internal Dictionary<GridCell, CellFlow> Flow { get; } = new Dictionary<GridCell, CellFlow>();
+
+    internal bool Ready => Problems.Count == 0;
+
+    internal void Problem(string code, string message, long? id = null, GridCell? cell = null) =>
+        Problems.Add(new LayoutIssue(code, message, cell, id));
+
+    internal HashSet<long> RemovedIds()
+    {
+        HashSet<long> ids = new HashSet<long>();
+        foreach (PlannedRemoval removal in Removals)
+        {
+            ids.Add(removal.Piece.ReferenceId);
+        }
+
+        return ids;
+    }
+}

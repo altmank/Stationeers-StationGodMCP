@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>StationGodMCP</AssemblyName>
+    <RootNamespace>StationGodMCP</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>XCeled</Authors>
+    <Description>Lets an AI agent read and operate a running Stationeers game through the Model Context Protocol.</Description>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>annotations</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- The tests build next to the mod; their net8 assemblies must never be picked up as references here. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
+    <Deterministic>true</Deterministic>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+    <!-- Override with -p:StationeersPath=... or the STATIONEERS_DIR environment variable. -->
+    <StationeersPath Condition="'$(StationeersPath)' == '' And '$(STATIONEERS_DIR)' != ''">$(STATIONEERS_DIR)</StationeersPath>
+    <StationeersPath Condition="'$(StationeersPath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Stationeers</StationeersPath>
+    <ManagedPath>$(StationeersPath)\rocketstation_Data\Managed</ManagedPath>
+    <BepInExCorePath>$(StationeersPath)\BepInEx\core</BepInExCorePath>
+    <LaunchPadPath>$(StationeersPath)\BepInEx\plugins\StationeersLaunchPad</LaunchPadPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src\StationGodMCP.Mod\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Analyzers only: nothing is shipped with the mod. -->
+    <PackageReference Include="Microsoft.Unity.Analyzers" Version="1.21.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp" HintPath="$(ManagedPath)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="BepInEx" HintPath="$(BepInExCorePath)\BepInEx.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCorePath)\0Harmony.dll" Private="false" />
+    <Reference Include="StationeersMods.Interface" HintPath="$(LaunchPadPath)\StationeersMods.Interface.dll" Private="false" />
+    <Reference Include="Newtonsoft.Json" HintPath="$(ManagedPath)\Newtonsoft.Json.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(ManagedPath)\UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AnimationModule" HintPath="$(ManagedPath)\UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(ManagedPath)\UnityEngine.PhysicsModule.dll" Private="false" />
+  </ItemGroup>
+
+  <Target Name="CopyPluginToModRoot" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildProjectDirectory)" />
+    <!-- LaunchPad scans enabled mod directories recursively. Keep one loadable mod DLL. -->
+    <Delete Files="$(TargetPath);$(IntermediateOutputPath)$(TargetFileName)" />
+  </Target>
+</Project>

@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <!-- StationeersLaunchPad scans enabled mod folders recursively for DLLs, so the sidecar's build output is kept
+         out of the source tree and away from any mod folder. Must be set before Microsoft.Common.props is imported. -->
+    <StationGodServerRoot Condition="'$(StationGodServerRoot)' == ''">$(LOCALAPPDATA)\StationGodMCP\build</StationGodServerRoot>
+    <BaseOutputPath>$(StationGodServerRoot)\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(StationGodServerRoot)\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>
