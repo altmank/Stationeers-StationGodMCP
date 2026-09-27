@@ -27,10 +27,11 @@ internal sealed class RerouteSegment
 
 /// <summary>
 /// The old run a reroute replaces: listed pieces, or the pieces of the shortest way through one network between two
-/// things on it (devices or pieces, by the model's links). It must meet everything else at exactly two cells, each a
-/// cell of the old run with an end joining something outside it; the new route runs between those two cells (free
-/// once the old pieces are gone) and its ends join the same things again. A run with branches or a dead end is
-/// refused: name a segment without them.
+/// things on it (devices or pieces, by the model's links). A device on several networks of the kind (an APC's input
+/// and output) meets them at different ports: the network is the one both ends share (RerouteNetworks), or the one at
+/// the port the caller names. It must meet everything else at exactly two cells, each a cell of the old run with an
+/// end joining something outside it; the new route runs between those two cells (free once the old pieces are gone)
+/// and its ends join the same things again. A run with branches or a dead end is refused: name a segment without them.
 /// </summary>
 internal static class Reroutes
 {
@@ -56,25 +57,25 @@ internal static class Reroutes
         return Bounded(pieces);
     }
 
-    internal static RerouteSegment Between(RunKind kind, ThingId from, ThingId to)
+    internal static RerouteSegment Between(RunKind kind, RerouteEndArg from, RerouteEndArg to)
     {
-        if (!(GameLookup.RequireThing(from) is SmallGrid a) || !(GameLookup.RequireThing(to) is SmallGrid b))
+        if (!(GameLookup.RequireThing(from.Id) is SmallGrid a) || !(GameLookup.RequireThing(to.Id) is SmallGrid b))
         {
             throw ApiErrors.InvalidArgument("between names two devices or pieces.");
         }
 
-        long? network = NetworkNear(kind, a);
-        if (network == null || NetworkNear(kind, b) != network)
+        RerouteNetworkChoice choice = RerouteNetworks.Shared(EndOf(kind, a, from.Port, "reroute.between[0]"),
+            EndOf(kind, b, to.Port, "reroute.between[1]"), kind.Noun);
+        if (choice is RerouteNetworkChoice.Refused refused)
         {
-            throw ApiErrors.Refused("not_on_one_network",
-                $"{a.PrefabName} {a.ReferenceId} and {b.PrefabName} {b.ReferenceId} are not on one {kind.Noun} " +
-                "network (a device on several networks of the kind cannot say which).");
+            throw ApiErrors.Refused(refused.Code, refused.Message);
         }
 
-        List<SmallGrid> members = kind.Family.NetworkMembers(new ThingId(network.Value));
+        long network = ((RerouteNetworkChoice.Chosen)choice).Network;
+        List<SmallGrid> members = kind.Family.NetworkMembers(new ThingId(network));
         if (members.Count > 4 * MaximumPieces)
         {
-            throw ApiErrors.Refused("too_many_pieces", $"Network {network.Value} has {members.Count} pieces.");
+            throw ApiErrors.Refused("too_many_pieces", $"Network {network} has {members.Count} pieces.");
         }
 
         Dictionary<long, PieceModel> models = new Dictionary<long, PieceModel>();
@@ -116,17 +117,61 @@ internal static class Reroutes
 
     private static SmallGrid Find(List<SmallGrid> members, long id) => members.Find(member => member.ReferenceId == id);
 
-    private static long? NetworkNear(RunKind kind, SmallGrid thing)
+    // How the end meets the kind's networks: a piece is its own network; a device each of its ports of the kind (only
+    // the named one) with the network of the piece the game joins there.
+    private static RerouteEndNetworks EndOf(RunKind kind, SmallGrid thing, int? port, string name)
     {
+        string label = $"{thing.PrefabName} {thing.ReferenceId}";
         if (kind.Family.IsMember(thing))
         {
-            return kind.Family.NetworkOf(thing)?.ReferenceId;
+            if (port.HasValue)
+            {
+                throw ApiErrors.InvalidArgument($"{name}.port: {label} is a {kind.Noun} piece, not a device.");
+            }
+
+            return new RerouteEndNetworks(label,
+                new List<EndNetwork> { new EndNetwork(null, kind.Family.NetworkOf(thing)?.ReferenceId) });
         }
 
-        if (thing is Device device)
+        if (!(thing is Device device))
         {
-            List<long> networks = kind.Family.DeviceNetworks(device);
-            return networks.Count == 1 ? networks[0] : (long?)null;
+            throw ApiErrors.InvalidArgument($"{name}: {label} is neither a {kind.Noun} piece nor a device.");
+        }
+
+        List<EndNetwork> ports = new List<EndNetwork>();
+        for (int index = 0; index < (device.OpenEnds?.Count ?? 0); index++)
+        {
+            Connection end = device.OpenEnds![index];
+            if (end?.Transform != null && ((int)end.ConnectionType & kind.AnyEndType) != 0)
+            {
+                ports.Add(new EndNetwork(index, NetworkAt(kind, device, end)));
+            }
+        }
+
+        if (!port.HasValue)
+        {
+            return new RerouteEndNetworks(label, ports);
+        }
+
+        EndNetwork? named = ports.Find(candidate => candidate.Port == port.Value);
+        if (named == null)
+        {
+            throw ApiErrors.InvalidArgument(
+                $"{name}.port {port.Value} is not a {kind.Noun} port of {label}; its {kind.Noun} ports are " +
+                $"[{string.Join("; ", ports)}] (connections lists them).");
+        }
+
+        return new RerouteEndNetworks($"{label} port {port.Value}", new List<EndNetwork> { named });
+    }
+
+    private static long? NetworkAt(RunKind kind, Device device, Connection end)
+    {
+        foreach (Thing attached in EndsReader.AttachedAt(device, end))
+        {
+            if (attached is SmallGrid piece && kind.Family.IsMember(piece) && !piece.IsBeingDestroyed)
+            {
+                return kind.Family.NetworkOf(piece)?.ReferenceId;
+            }
         }
 
         return null;

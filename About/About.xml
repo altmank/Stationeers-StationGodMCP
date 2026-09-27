@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.1.0</Version>
+  <Version>1.1.1</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -68,6 +68,10 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.1.1
+- Route rule inside_frames now accepts the top of a frame beam and the outer faces of frames, judged the same way as frames_first and prefer frame_edges; it used to refuse them as the empty cell above.
+- Rerouting between an APC (or any device on several networks of the kind) and another end no longer fails with not_on_one_network: the network both ends share is used, and an end may name a device port as {reference_id, port}. When no network or several are shared, the error lists each end's ports and networks.
+
 v1.1.0
 - New paste_blueprint tool: with BlueprintMod loaded, paste a blueprint at a position and quarter turn you give, as the D.B.P.U. does, with no player needed, so it works on a dedicated server. It also reports progress and undoes. 72 tools now.
 - New setting [Pipe] Name (or STATIONGODMCP_PIPE_NAME): a second game or test server on the same machine can listen on its own pipe. mod_info reports pipe_name.

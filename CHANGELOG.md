@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1
+
+- **`inside_frames` accepts beam tops.** The route rule now judges a cell by every frame it sits in or on, the same
+  way `frames_first` and `prefer: frame_edges` do, so the top of a frame beam and the outer faces of frames count as
+  on the frame. It used to judge the top of a beam by the empty cell above and refuse it.
+- **Reroute between an APC and its network.** `reroute: {between: [...]}` failed with `not_on_one_network` when an end
+  was a device on several networks of the kind, such as an APC's input and output. It now uses the one network both
+  ends share, and an end may name a device port as `{reference_id, port}`. When the ends share no network, or
+  several (`ambiguous_port`), the error lists each end's ports and their networks.
+
 ## 1.1.0
 
 - **Paste blueprints without a player.** With BlueprintMod loaded, the new `paste_blueprint` tool pastes a blueprint

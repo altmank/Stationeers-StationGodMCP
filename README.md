@@ -261,7 +261,7 @@ Materials follow the game's deconstruction rule. Each build state takes its `Too
 How to use:
 
 1. Survey: `grid_survey {room_id: "<id>"}` or `{min: [x, y, z], max: [x, y, z]}`. Each 2 m cell gives its frame, walls, room and a 64-character string of its 0.5 m cells (see `legend`), then the cables, pipes and devices there, each device port with the cell a piece joining it stands in, and the networks. `support` marks the same 64 cells by what would hold a piece up: `e` a frame edge or corner, `f` on or inside a frame, `w` on a wall's plane, `a` air.
-2. Plan: `plan_cable_route {from: {reference_id: "<device>", port: 1}, to: {reference_id: "<cable>"}, prefer: "frame_edges"}`, or a reroute: `{reroute: {between: ["<device a>", "<device b>"]}, avoid_walkways: true}`. It returns the route's waypoints, `place_arguments` and `place_cables`' own dry run.
+2. Plan: `plan_cable_route {from: {reference_id: "<device>", port: 1}, to: {reference_id: "<cable>"}, prefer: "frame_edges"}`, or a reroute: `{reroute: {between: ["<device a>", "<device b>"]}, avoid_walkways: true}`. A `between` end may be `{reference_id, port}`: an APC, transformer or pump sits on two networks, and the reroute runs through the one both ends share; if they share none or several, the error lists each end's ports and networks. It returns the route's waypoints, `place_arguments` and `place_cables`' own dry run.
 3. Dry run: `place_cables {waypoints: [[x, y, z], ...], grade: "heavy"}` (the default grade), or one piece: `{piece: {at: [x, y, z], ends: ["+x", "-y"]}}`. Read `ready`, `problems`, `cells` (each cell's piece, turn, shape, ends and what each end joins), `would_bridge`, `would_split`, `networks_before`, `networks_after` and `materials`.
 4. Real run: the same call with `dry_run: false, confirm: true`; poll `{job_id}` until `applied`.
 
@@ -274,7 +274,7 @@ What it does:
 - `branches` add side runs to a run: each attaches to a cell of the run (or an earlier branch) with a junction, and its first cell joins ports and ends as a run end does. `plan_*_route` fills them in for several starts.
 - A long straight the run must join in its middle, or cross, is split into single pieces of its own grade, colour and owner in the same job, then joined (`long_split` warning; `allow_split_long: false` refuses with `long_piece` instead).
 - `would_loop` (a warning): the run joins something that is already joined another way, so the network gets a second path. Keep it only if that redundancy is meant.
-- `plan_*_route` follows frames first (`frames_first`, on by default): a cell in air, on no frame and no wall plane, costs as much as 50 more cells over frames, so a route over frames or along walls wins whenever the search box holds one, even a much longer one. Only where none exists does the route cross air, with as few air cells as possible and a `through_air` note. `route.air_cells` counts the new cells in air (0 for a clean route) and `route.air` lists them; `frames_first: false` turns the rule off. The top of a frame beam counts as frame: it lies on the bottom plane of the empty cell above.
+- `plan_*_route` follows frames first (`frames_first`, on by default): a cell in air, on no frame and no wall plane, costs as much as 50 more cells over frames, so a route over frames or along walls wins whenever the search box holds one, even a much longer one. Only where none exists does the route cross air, with as few air cells as possible and a `through_air` note. `route.air_cells` counts the new cells in air (0 for a clean route) and `route.air` lists them; `frames_first: false` turns the rule off. The top of a frame beam counts as frame: it lies on the bottom plane of the empty cell above. `inside_frames: true` is the strict form: only cells inside a frame or on its surface (beam tops and outer faces included, a wall plane alone not) are used at all.
 - The place tools' dry run counts the new pieces in air (`air_cells`) and names them in a `through_air` warning.
 - `plan_*_route` takes several starts (`from: {reference_id, ports: [2, 3]}` or an array) and grows one tree: the first start routes to the target, every other start to the nearest cell of the tree so far. A device with separate power and data ports gets one run with a junction, never two parallel runs closing a loop. `to` may be `{network_id}` (the nearest piece of that network) or a long straight (any of its cells).
 
@@ -389,6 +389,8 @@ delete the sidecar folder and remove the agent's MCP registration.
   52-piece blueprint at a quarter turn of 0, every piece where the blueprint puts it, pipe and cable networks
   joined as designed), and the `[Pipe] Name` setting with `STATIONGODMCP_PIPE_NAME` (`mod_info` reports it).
   Not yet tested: `paste_blueprint` in a hosted game with players, and at 90, 180 and 270.
+- Not yet tested in game (1.1.1): `inside_frames` over beam tops, and `reroute: {between}` with an APC end or a
+  named port. Both are covered by unit tests (the network choice, the argument form and the beam geometry).
 
 ## Build
 

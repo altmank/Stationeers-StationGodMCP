@@ -229,7 +229,8 @@ internal static class PlanRouteApi
         Args fields = new Args(reroute);
         if (fields.Has("reference_ids") == fields.Has("between"))
         {
-            throw ApiErrors.InvalidArgument("reroute needs reference_ids (the old run's pieces) or between: [a, b].");
+            throw ApiErrors.InvalidArgument(
+                "reroute needs reference_ids (the old run's pieces) or between: [a, b] (ids, or {reference_id, port}).");
         }
 
         if (fields.Has("reference_ids"))
@@ -237,12 +238,7 @@ internal static class PlanRouteApi
             return kind.Ordered(Reroutes.OfPieces(kind, fields.ThingIds("reference_ids", 1024)));
         }
 
-        List<ThingId> between = fields.ThingIds("between", 2);
-        if (between.Count != 2)
-        {
-            throw ApiErrors.InvalidArgument("reroute.between names exactly two things.");
-        }
-
+        List<RerouteEndArg> between = RerouteArgs.Between(reroute["between"]);
         return kind.Ordered(Reroutes.Between(kind, between[0], between[1]));
     }
 

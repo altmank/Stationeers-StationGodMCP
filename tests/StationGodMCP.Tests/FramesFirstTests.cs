@@ -95,7 +95,7 @@ public sealed class FramesFirstTests
     // As PlanRouteApi does it: the box is the ends plus margin_m, the air bound only under frames_first.
     private static Plan Route(World world, GridCell from, GridCell to, bool framesFirst,
         RoutePreference prefer = RoutePreference.None, double marginM = 6.0, double bend = 2.0,
-        int fieldLimit = AirBound.MaximumSmallCells)
+        int fieldLimit = AirBound.MaximumSmallCells, bool insideFrames = false)
     {
         int pad = (int)Math.Ceiling(marginM * 10.0 / GridStep.CellSize) * GridStep.CellSize;
         GridCell min = new GridCell(Math.Min(from.X, to.X) - pad, Math.Min(from.Y, to.Y) - pad,
@@ -103,7 +103,7 @@ public sealed class FramesFirstTests
         GridCell max = new GridCell(Math.Max(from.X, to.X) + pad, Math.Max(from.Y, to.Y) + pad,
             Math.Max(from.Z, to.Z) + pad);
         RouteRules search = new RouteRules(bend, AxisOrder.Any, 400, min, max);
-        RouteRuleSet rules = new RouteRuleSet(prefer, false, false, false, false, new HashSet<long>(),
+        RouteRuleSet rules = new RouteRuleSet(prefer, insideFrames, false, false, false, new HashSet<long>(),
             new HashSet<long>(), false, framesFirst);
         Stopwatch watch = Stopwatch.StartNew();
         AirBound? bound = framesFirst
@@ -146,6 +146,57 @@ public sealed class FramesFirstTests
         Assert.Equal(CellSupport.Air, world.Support(M(705.5, 204, 657)));
         Assert.Equal(CellSupport.Air, world.Support(M(708, 204.5, 657)));
         Assert.Equal(CellSupport.FrameEdge, world.Support(M(704, 204, 664)));
+    }
+
+    [Fact]
+    public void InsideFramesTakesTheTopOfABeamAndRefusesTheGap()
+    {
+        // The beam top y 204 belongs to the empty 2 m cell above (y 204 to 206); inside_frames once judged it by that
+        // cell alone and refused it.
+        World world = Solar();
+        RouteRuleSet rules = new RouteRuleSet(RoutePreference.None, true, false, false, false, new HashSet<long>(),
+            new HashSet<long>());
+        Assert.False(world.Small(M(708, 204, 657)).Large.Frame);
+        Assert.True(rules.Cost(world.Small(M(708, 204, 657))).Passable);
+        Assert.True(rules.Cost(world.Small(M(707, 204, 657))).Passable);
+        Assert.True(rules.Cost(world.Small(M(707.5, 203, 657))).Passable);
+        Assert.True(rules.Cost(world.Small(M(698, 203, 657))).Passable);
+        Assert.True(rules.Cost(world.Small(M(704, 204, 664))).Passable);
+        Assert.False(rules.Cost(world.Small(M(704, 204, 657))).Passable);
+        Assert.False(rules.Cost(world.Small(M(705.5, 203, 657))).Passable);
+        Assert.False(rules.Cost(world.Small(M(708, 204.5, 657))).Passable);
+        Assert.False(rules.Cost(world.Small(M(697.5, 203, 657))).Passable);
+    }
+
+    [Fact]
+    public void InsideFramesRefusesAWallPlaneWithoutAFrame()
+    {
+        World world = new World().Wall(Large(0, 0, 0), "-x");
+        RouteRuleSet rules = new RouteRuleSet(RoutePreference.None, true, false, false, false, new HashSet<long>(),
+            new HashSet<long>());
+        Assert.Equal(CellSupport.Wall, world.Support(M(0, 1, 1)));
+        Assert.False(rules.Cost(world.Small(M(0, 1, 1))).Passable);
+    }
+
+    [Fact]
+    public void AnInsideFramesRouteRunsAlongTheBeamTops()
+    {
+        // The accepted solar route's ends on the beam tops: inside_frames alone finds a route, every cell on a frame
+        // and none in the gap, the same one frames_first with frame_edges finds.
+        foreach (bool framesFirst in new[] { false, true })
+        {
+            Plan plan = Route(Solar(), M(708, 204, 657), M(700, 204, 664), framesFirst, RoutePreference.FrameEdges,
+                insideFrames: true);
+            Assert.NotNull(plan.Result.Cells);
+            Assert.Equal(0, plan.Air);
+            Assert.DoesNotContain(plan.Cells, InTheGap);
+            Assert.All(plan.Cells, cell => Assert.True(RouteRuleSet.OnFrame(Solar().Small(cell)), $"{cell}"));
+        }
+
+        Plan corner = Route(Solar(), M(708, 204, 657), M(700, 204, 657.5), false, insideFrames: true);
+        Assert.NotNull(corner.Result.Cells);
+        Assert.Equal(0, corner.Air);
+        Assert.DoesNotContain(corner.Cells, InTheGap);
     }
 
     [Fact]

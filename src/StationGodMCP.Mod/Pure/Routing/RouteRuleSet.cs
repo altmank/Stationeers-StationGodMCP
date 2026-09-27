@@ -89,7 +89,7 @@ internal enum RoutePreference
 /// <summary>
 /// The route rules as a cost per cell (kind agnostic; the kind decides what blocks through the facts). A blocked cell
 /// or an axis another kind's piece lies along is never used; a cell holding the kind's own piece is never passed
-/// through (it would join that piece); inside_frames refuses cells outside frame cells; avoid_networks refuses cells
+/// through (it would join that piece); inside_frames refuses cells on no frame (OnFrame); avoid_networks refuses cells
 /// next to pieces of networks not named as the route's own ends' (so the route never runs beside another network);
 /// prefer adds PreferencePenalty to cells not preferred; avoid_room_interior adds InteriorPenalty to cells in a
 /// room's 2 m cell on none of its face planes; avoid_walkways adds it to cells in a room's 2 m cell above its floor
@@ -127,6 +127,7 @@ internal sealed class RouteRuleSet
 
     internal RoutePreference Prefer { get; }
 
+    /// <summary>Refuse every cell not inside or on the surface of a frame (OnFrame).</summary>
     internal bool InsideFrames { get; }
 
     /// <summary>Cells in air cost AirPenalty more: a route over frames or along walls wins whenever one exists.</summary>
@@ -158,7 +159,7 @@ internal sealed class RouteRuleSet
 
     internal CellCost Cost(SmallCellFacts cell)
     {
-        if (cell.Blocked != null || cell.FamilyPiece || (InsideFrames && !cell.Large.Frame))
+        if (cell.Blocked != null || cell.FamilyPiece || (InsideFrames && !OnFrame(cell)))
         {
             return CellCost.Blocked;
         }
@@ -204,6 +205,15 @@ internal sealed class RouteRuleSet
 
         return CellCost.Of(cost, cell.BlockedAxes);
     }
+
+    /// <summary>
+    /// inside_frames' test: the cell is inside a frame cell or on its surface (CellSupport.Frame or FrameEdge), judged
+    /// over every 2 m cell it touches as frames_first and prefer frame_edges judge it. A cell on a frame's minimum face
+    /// plane belongs to the 2 m cell beyond that face, so the top of a beam (y 204 on frames spanning y 202 to 204)
+    /// sits in the empty cell above and still counts; a cell only on a wall's plane does not.
+    /// </summary>
+    internal static bool OnFrame(SmallCellFacts cell) =>
+        cell.Support == CellSupport.Frame || cell.Support == CellSupport.FrameEdge;
 
     /// <summary>
     /// On a wall's plane (index 0 of an axis whose minimum face carries one) or the layer beside it (index 1 beside
