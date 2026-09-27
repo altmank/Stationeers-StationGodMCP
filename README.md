@@ -345,6 +345,9 @@ Removing:
 
 With [BlueprintMod](https://steamcommunity.com/sharedfiles/filedetails/?id=3672138641) loaded, `paste_blueprint` pastes one of its blueprints at a position and turn you give, with no player needed. The console's `bppaste` takes both from the local player, so it cannot run on a dedicated server; this tool makes the call the D.B.P.U. makes instead. BlueprintMod is optional: the mod finds it by name at run time, and without it the tool answers `mod_missing`.
 
+A dedicated server with no player connected can hold its world paused; BlueprintMod places pieces over game time,
+so a paste then stops part way until the console command `pause false` (the `status` counts stop moving).
+
 - Paste: `name` (a file in BlueprintMod's Blueprints folder, with or without `.blueprint`, or an absolute path), `anchor` `[x, y, z]` (the world position in metres where the blueprint's reference point lands: the large-grid point the copying player stood on, x and z odd whole metres, y even) and `rotation` 0, 90, 180 or 270 (default 0), added to the angle the blueprint was copied at so every piece stays on the grid. The reply comes at once: `started`, `file`, `entries`, `anchor`, `rotation`, `copy_y_angle` and `expected_duration_s`. BlueprintMod then places the pieces over 2 to 30 seconds (0.15 s per entry).
 - `status: true`: how the last paste this tool started went, `created`, `failed`, `skipped`, `pasted`, `complete`, `cancelled`, and whether another paste is running (`other_active`). The counts stay readable after the paste ends.
 - `undo: true`: BlueprintMod's `bpundo`, and its answer as `message`. It cancels a running paste and removes what it placed, or removes the last finished paste.
@@ -382,8 +385,10 @@ delete the sidecar folder and remove the agent's MCP registration.
   including branches, `frames_first` and `remove_loops`; `place_structure` and `remove_structure`. Their guards,
   forecasts, route search and rotation maths are covered by unit tests; the parts that call the game follow the
   game's own code.
-- Not yet tested in game (1.1.0): `paste_blueprint` and the `[Pipe] Name` setting. Their replies, argument checks
-  and pipe name rules are covered by unit tests.
+- Tested (1.1.0) on a creative dedicated server: `paste_blueprint` paste, `status` and `undo` (a 5-piece and a
+  52-piece blueprint at a quarter turn of 0, every piece where the blueprint puts it, pipe and cable networks
+  joined as designed), and the `[Pipe] Name` setting with `STATIONGODMCP_PIPE_NAME` (`mod_info` reports it).
+  Not yet tested: `paste_blueprint` in a hosted game with players, and at 90, 180 and 270.
 
 ## Build
 
