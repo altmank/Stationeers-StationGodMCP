@@ -94,11 +94,14 @@ internal static class CleanApi
         }
 
         HashSet<long> keep = new HashSet<long>();
+        bool loops = names.Exists(name => name.Trim().ToLowerInvariant() == CleanOperationSet.RemoveLoops);
+        bool redundant = names.Exists(name => name.Trim().ToLowerInvariant() == CleanOperationSet.RemoveRedundant);
         if (args.Has("keep_ids"))
         {
-            if (!names.Exists(name => name.Trim().ToLowerInvariant() == CleanOperationSet.RemoveLoops))
+            if (!loops && !redundant)
             {
-                throw ApiErrors.InvalidArgument("keep_ids spares loops from remove_loops; ask for remove_loops too.");
+                throw ApiErrors.InvalidArgument(
+                    "keep_ids spares pieces from remove_loops and remove_redundant; ask for one of them too.");
             }
 
             foreach (ThingId id in args.ThingIds("keep_ids", UpgradePlanner.MaximumPieces))
@@ -107,7 +110,27 @@ internal static class CleanApi
             }
         }
 
-        return CleanOperationCatalogue.Parse(names, new CleanOptions(keep));
+        foreach (string name in new[] { "only_ids", "older_than_id", "root" })
+        {
+            if (args.Has(name) && !redundant)
+            {
+                throw ApiErrors.InvalidArgument($"{name} goes with remove_redundant; ask for it too.");
+            }
+        }
+
+        HashSet<long>? only = null;
+        if (args.Has("only_ids"))
+        {
+            only = new HashSet<long>();
+            foreach (ThingId id in args.ThingIds("only_ids", UpgradePlanner.MaximumPieces))
+            {
+                only.Add(id.Value);
+            }
+        }
+
+        RedundancyOptions redundancy = new RedundancyOptions(only, args.OptionalThingId("older_than_id")?.Value,
+            args.OptionalThingId("root")?.Value);
+        return CleanOperationCatalogue.Parse(names, new CleanOptions(keep, redundancy));
     }
 }
 
@@ -120,7 +143,8 @@ internal static class UpgradeApi
     {
         if (args.Has("job_id"))
         {
-            args.Reject("job_id", "network_id", "reference_ids", "to", "operations", "keep_ids", "dry_run",
+            args.Reject("job_id", "network_id", "reference_ids", "to", "operations", "keep_ids", "only_ids",
+                "older_than_id", "root", "wait", "dry_run",
                 "confirm", "from_id", "skip_unmatched", "refund", "limit");
             return HeldTickJobs.Status(args.String("job_id").Trim());
         }
@@ -146,7 +170,7 @@ internal static class UpgradeApi
         }
 
         return plan.Ready
-            ? UpgradeJobs.Start(request, plan)
+            ? UpgradeJobs.Start(request, plan, args.OptionalBool("wait") ?? false)
             : UpgradeReports.Of(plan, UpgradeReports.Refused, null);
     }
 
@@ -159,7 +183,7 @@ internal static class UpgradeApi
         }
 
         PieceSelection selection = network
-            ? new PieceSelection.Network(args.ThingId("network_id"))
+            ? new PieceSelection.Network(NetworkHandles.Resolve(args, "network_id", family))
             : new PieceSelection.Pieces(args.ThingIds("reference_ids", UpgradePlanner.MaximumPieces));
         UpgradeOptions options = new UpgradeOptions(
             args.OptionalBool("skip_unmatched") ?? false,

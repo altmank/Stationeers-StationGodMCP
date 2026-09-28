@@ -55,7 +55,8 @@ internal static class RunApi
         if (args.Has("job_id"))
         {
             return Status(args, "waypoints", "cells", "piece", "branches", "grade", "join", "extra_ends",
-                "remove_ids", "assume_removed", "allow_bridge", "allow_split", "allow_split_long");
+                "remove_ids", "assume_removed", "allow_bridge", "allow_split", "allow_split_long", "root", "join_to",
+                "join_trunk", "wait");
         }
 
         List<ExtraEnd> extra = RunArgs.ExtraEnds(args);
@@ -69,19 +70,20 @@ internal static class RunApi
             args.Has("assume_removed")
                 ? args.ThingIds("assume_removed", RunPlanner.MaximumRemovals)
                 : new List<ThingId>());
-        return Run(args, new RunRequest(kind, kind.PlaceTool, build, removal, RunArgs.Options(args)));
+        return Run(args, new RunRequest(kind, kind.PlaceTool, build, removal, RunArgs.Options(args, kind)));
     }
 
     internal static object Remove(Args args, RunKind kind)
     {
         if (args.Has("job_id"))
         {
-            return Status(args, "reference_ids", "waypoints", "cells", "allow_split", "allow_bridge");
+            return Status(args, "reference_ids", "waypoints", "cells", "allow_split", "allow_bridge", "root", "wait");
         }
 
         args.Reject(kind.RemoveTool, "grade", "join", "extra_ends", "piece", "branches", "remove_ids",
-            "assume_removed", "allow_split_long", "network_id", "kind");
-        return Run(args, new RunRequest(kind, kind.RemoveTool, null, Removal(args, kind), RunArgs.Options(args)));
+            "assume_removed", "allow_split_long", "network_id", "kind", "join_to", "join_trunk");
+        return Run(args,
+            new RunRequest(kind, kind.RemoveTool, null, Removal(args, kind), RunArgs.Options(args, kind)));
     }
 
     /// <summary>
@@ -91,7 +93,7 @@ internal static class RunApi
     internal static RunReportView PlanRemoval(Args args)
     {
         args.Reject("plan_removal", "dry_run", "confirm", "job_id", "grade", "join", "extra_ends", "piece",
-            "branches", "remove_ids", "assume_removed", "allow_split_long");
+            "branches", "remove_ids", "assume_removed", "allow_split_long", "join_to", "join_trunk", "wait");
         RunKind kind = (args.OptionalString("kind") ?? "cable").Trim().ToLowerInvariant() switch
         {
             "cable" => new CableRunKind(),
@@ -100,7 +102,7 @@ internal static class RunApi
             _ => throw ApiErrors.InvalidArgument("kind must be cable, pipe or chute.")
         };
         RunPlan plan = RunPlanner.Plan(new RunRequest(kind, "plan_removal", null, Removal(args, kind),
-            RunArgs.Options(args)));
+            RunArgs.Options(args, kind)));
         return RunReports.Of(plan, RunReports.DryRun, null);
     }
 
@@ -116,7 +118,7 @@ internal static class RunApi
 
         if (args.Has("network_id"))
         {
-            ThingId network = args.ThingId("network_id");
+            ThingId network = NetworkHandles.Resolve(args, "network_id", kind.Family);
             List<ThingId> ids = new List<ThingId>();
             foreach (SmallGrid member in kind.Family.NetworkMembers(network))
             {
@@ -176,7 +178,8 @@ internal static class RunApi
         }
 
         return plan.Ready
-            ? RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null))
+            ? RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null),
+                args.OptionalBool("wait") ?? false)
             : RunReports.Of(plan, RunReports.Refused, null);
     }
 }

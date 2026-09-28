@@ -214,20 +214,19 @@ internal static class RunArgs
                throw ApiErrors.InvalidArgument($"grade must be one of {string.Join(", ", kind.GradeNames)}.");
     }
 
-    internal static RunOptions Options(Args args)
+    /// <summary>
+    /// The guards' allowances, the coil source, the list limit and the targets. allow_bridge entries and join_to are
+    /// network handles (NetworkHandles): a network id, a piece or device id, or {reference_id, port}.
+    /// </summary>
+    internal static RunOptions Options(Args args, RunKind kind)
     {
-        HashSet<long> bridge = new HashSet<long>();
-        if (args.Has("allow_bridge"))
-        {
-            foreach (ThingId id in args.ThingIds("allow_bridge", 64))
-            {
-                bridge.Add(id.Value);
-            }
-        }
-
+        HashSet<long> bridge = NetworkHandles.ResolveAllowances(args, "allow_bridge", 64, kind.Family);
+        ThingId? joinTo = args.Has("join_to") ? NetworkHandles.Resolve(args, "join_to", kind.Family) : (ThingId?)null;
+        RunTargets targets = new RunTargets(args.OptionalThingId("root"), joinTo,
+            args.OptionalBool("join_trunk") ?? false);
         return new RunOptions(new EditAllowance(bridge, args.OptionalBool("allow_split") ?? false),
             args.OptionalThingId("from_id"), args.OptionalBool("refund") ?? true,
             args.OptionalInt("limit", 1, RunPath.MaximumCells) ?? DefaultListLimit,
-            args.OptionalBool("allow_split_long") ?? true);
+            args.OptionalBool("allow_split_long") ?? true, targets);
     }
 }

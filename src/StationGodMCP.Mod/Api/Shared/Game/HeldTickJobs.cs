@@ -15,39 +15,72 @@ namespace StationGodMCP.Api.Shared.Game;
 /// one asks the game to hold its tick (GameManager.PauseGameTick, what a save does); every frame after that
 /// (StationGodMod.Update) moves the job on. A job lets the tick go when it finishes, or earlier when a step says so
 /// and goes on without it (a check that needs the game to run), and may hold it again later. A save that starts
-/// meanwhile owns the tick: the runner never lets the tick go while a save is running.
+/// meanwhile owns the tick: the runner never lets the tick go while a save is running. A run that finds the slot
+/// taken answers busy with the running job's id; with wait it is queued (up to MaximumWaiting) and started, in
+/// order, once the slot is free and nothing else holds the tick. A queued job's own first step runs its whole
+/// preflight again, so the world the earlier jobs left is what it is checked against.
 /// </summary>
 internal static class HeldTickJobs
 {
     private const float TickWaitSeconds = 15f;
     private const int KeptJobs = 16;
+    internal const int MaximumWaiting = 8;
 
     private static readonly Dictionary<string, object> Finished = new Dictionary<string, object>();
     private static readonly Queue<string> FinishedOrder = new Queue<string>();
+    private static readonly JobLine<QueuedJob> Waiting = new JobLine<QueuedJob>(MaximumWaiting);
     private static HeldTickJob? _active;
     private static bool _tickHeld;
     private static long _next;
 
-    /// <summary>Starts a job made for its id (prefix-number) and returns it; refused while another one runs.</summary>
-    internal static HeldTickJob Start(string prefix, Func<string, HeldTickJob> create)
+    /// <summary>
+    /// Starts a job made for its id (prefix-number) and returns its view. While another job runs (or a save or
+    /// something else holds the tick): busy with the running job's id, or with wait the job is queued and its
+    /// queued view returned.
+    /// </summary>
+    internal static object Start(string prefix, string tool, Func<string, HeldTickJob> create, bool wait,
+        object? preflight)
     {
-        if (_active != null)
-        {
-            throw ApiErrors.Refused("busy", $"Job {_active.Id} is still running; poll it with job_id.");
-        }
-
         if (GameManager.GameState != GameState.Running)
         {
             throw ApiErrors.Refused("game_not_running", "The world is not running.");
         }
 
-        if (IsSaving() || GameManager.GameTickPaused)
+        bool tickTaken = IsSaving() || GameManager.GameTickPaused;
+        if (_active == null && Waiting.Count == 0 && !tickTaken)
         {
-            throw ApiErrors.Refused("tick_held",
-                "The game tick is held by something else (a save or a world settings change); try again.");
+            return Launch(NextId(prefix), create).View();
         }
 
-        HeldTickJob job = create(prefix + "-" + (++_next).ToString(CultureInfo.InvariantCulture));
+        if (!wait)
+        {
+            if (_active == null && tickTaken)
+            {
+                throw ApiErrors.Refused("tick_held",
+                    "The game tick is held by something else (a save or a world settings change); try again, or " +
+                    "pass wait: true to queue the run.");
+            }
+
+            return new JobBusyView(tool, _active?.Id ?? string.Empty, Waiting.Count,
+                (_active != null ? $"Job {_active.Id} is still running" : "Jobs are waiting for the slot") +
+                "; nothing was changed. Poll it with job_id, or pass wait: true to queue this run behind it.");
+        }
+
+        string id = NextId(prefix);
+        if (!Waiting.Add(id, new QueuedJob(tool, create)))
+        {
+            return new JobBusyView(tool, _active?.Id ?? string.Empty, Waiting.Count,
+                $"{MaximumWaiting} runs are already queued; nothing was changed. Try again once one has started.");
+        }
+
+        return new JobQueuedView(id, tool, Waiting.PositionOf(id) ?? 1, _active?.Id, preflight);
+    }
+
+    private static string NextId(string prefix) => prefix + "-" + (++_next).ToString(CultureInfo.InvariantCulture);
+
+    private static HeldTickJob Launch(string id, Func<string, HeldTickJob> create)
+    {
+        HeldTickJob job = create(id);
         GameManager.PauseGameTick();
         _tickHeld = true;
         _active = job;
@@ -61,19 +94,39 @@ internal static class HeldTickJobs
             return _active.View();
         }
 
+        int? position = Waiting.PositionOf(id);
+        if (position.HasValue)
+        {
+            return new JobQueuedView(id, ToolOf(id), position.Value, _active?.Id, null);
+        }
+
         return Finished.TryGetValue(id, out object view)
             ? view
-            : throw ApiErrors.Refused("job_not_found", $"No job {id} is running or among the last {KeptJobs}.");
+            : throw ApiErrors.Refused("job_not_found", $"No job {id} is running, queued or among the last {KeptJobs}.");
     }
 
-    /// <summary>Moves the running job on; called every frame on the host.</summary>
+    private static string ToolOf(string id)
+    {
+        string tool = string.Empty;
+        foreach (KeyValuePair<string, QueuedJob> entry in Waiting.Entries())
+        {
+            if (entry.Key == id)
+            {
+                tool = entry.Value.Tool;
+            }
+        }
+
+        return tool;
+    }
+
+    /// <summary>Moves the running job on, or starts the next queued one; called every frame on the host.</summary>
     internal static void Tick()
     {
         if (_active == null)
         {
+            StartWaiting();
             return;
         }
-
         JobStep step;
         try
         {
@@ -114,14 +167,7 @@ internal static class HeldTickJobs
             ReleaseTick();
         }
 
-        string id = _active!.Id;
-        Finished[id] = done.View;
-        FinishedOrder.Enqueue(id);
-        while (FinishedOrder.Count > KeptJobs)
-        {
-            Finished.Remove(FinishedOrder.Dequeue());
-        }
-
+        Remember(_active!.Id, done.View);
         _active = null;
         _tickHeld = false;
     }
@@ -146,6 +192,64 @@ internal static class HeldTickJobs
         }
 
         _active = null;
+        Waiting.Clear();
+    }
+
+    // The next queued job, once nothing holds the tick; one the world can no longer run is dropped, refused.
+    private static void StartWaiting()
+    {
+        if (Waiting.Count == 0 || IsSaving() || GameManager.GameTickPaused)
+        {
+            return;
+        }
+
+        if (!Waiting.TryTake(out string id, out QueuedJob queued))
+        {
+            return;
+        }
+
+        if (GameManager.GameState != GameState.Running)
+        {
+            Remember(id, new JobDroppedView(id, queued.Tool, new ErrorView("game_not_running",
+                "The world stopped running before the queued run started; nothing was changed.")));
+            return;
+        }
+
+        try
+        {
+            Launch(id, queued.Create);
+        }
+        catch (Exception exception)
+        {
+            // Building the job's first state: nothing of the world has been touched yet.
+            StationGodMod.LogWarning($"queued job {id} failed to start: {exception}");
+            ReleaseTick();
+            _active = null;
+            Remember(id, new JobDroppedView(id, queued.Tool, new ErrorView("internal_error", exception.Message)));
+        }
+    }
+
+    private static void Remember(string id, object view)
+    {
+        Finished[id] = view;
+        FinishedOrder.Enqueue(id);
+        while (FinishedOrder.Count > KeptJobs)
+        {
+            Finished.Remove(FinishedOrder.Dequeue());
+        }
+    }
+
+    private sealed class QueuedJob
+    {
+        internal QueuedJob(string tool, Func<string, HeldTickJob> create)
+        {
+            Tool = tool;
+            Create = create;
+        }
+
+        internal string Tool { get; }
+
+        internal Func<string, HeldTickJob> Create { get; }
     }
 
     internal static bool IsSaving() => (bool)GameMembers.SaveIsSaving.Invoke(null);

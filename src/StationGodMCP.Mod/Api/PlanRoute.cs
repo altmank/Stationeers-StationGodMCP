@@ -39,6 +39,7 @@ internal static class PlanRouteApi
 
     internal static PlanRouteView Handle(Args args, RunKind kind)
     {
+        args = WithJoinTarget(args, kind);
         string tool = kind.PlanTool;
         Grade grade = RunArgs.Grade(args, kind);
         RerouteSegment? segment = Segment(args, kind);
@@ -251,6 +252,44 @@ internal static class PlanRouteApi
         return cells;
     }
 
+    /// <summary>
+    /// The request with join_to set to the network the route is meant to reach when the caller gave none: to's
+    /// network_id handle, or to's piece or device port when a piece of the kind is joined there. The place tool then
+    /// checks the route really joins it (not_joined), and place_arguments carries the handle, not a stale id.
+    /// </summary>
+    private static Args WithJoinTarget(Args args, RunKind kind)
+    {
+        if (args.Has("join_to") || !(args.Optional("to") is JObject to))
+        {
+            return args;
+        }
+
+        JToken? handle = to["network_id"] ?? (to["reference_id"] != null
+            ? new JObject { ["reference_id"] = to["reference_id"]!.DeepClone(), ["port"] = to["port"]?.DeepClone() }
+            : null);
+        if (handle is JObject item && item["port"]?.Type == JTokenType.Null)
+        {
+            item.Remove("port");
+        }
+
+        if (handle == null)
+        {
+            return args;
+        }
+
+        try
+        {
+            NetworkHandles.Resolve(handle, "to", kind.Family);
+        }
+        catch (ApiException)
+        {
+            // An open port or a device with no network of the kind yet: nothing to join, nothing to check.
+            return args;
+        }
+
+        return args.With("join_to", handle);
+    }
+
     private static RunReportView DryRun(Args args, RunKind kind, Grade grade, RouteTree tree, List<ThingId> removes,
         AssumedRemovals assumed)
     {
@@ -258,7 +297,7 @@ internal static class PlanRouteApi
                          throw ApiErrors.InvalidArgument(error ?? "The route's shape is not valid.");
         RunRequest request = new RunRequest(kind, kind.PlaceTool,
             new RunBuild(shape, grade, RunArgs.Join(args), tree.Extra),
-            new RunRemoval(removes, new List<GridCell>(), Ids(assumed.Others)), RunArgs.Options(args));
+            new RunRemoval(removes, new List<GridCell>(), Ids(assumed.Others)), RunArgs.Options(args, kind));
         return RunReports.Of(RunPlanner.Plan(request), RunReports.DryRun, null);
     }
 
@@ -419,7 +458,10 @@ internal static class PlanRouteApi
             place["assume_removed"] = IdArray(Ids(assumed.Others));
         }
 
-        foreach (string name in new[] { "allow_bridge", "allow_split", "allow_split_long", "from_id" })
+        foreach (string name in new[]
+                 {
+                     "allow_bridge", "allow_split", "allow_split_long", "from_id", "root", "join_to", "join_trunk"
+                 })
         {
             JToken? value = args.Optional(name);
             if (value != null)

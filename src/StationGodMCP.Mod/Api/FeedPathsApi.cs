@@ -117,7 +117,7 @@ internal static class FeedPathsApi
         List<long> networks = kind.Family.DeviceNetworks(root);
         if (args.Has("network_id"))
         {
-            long wanted = args.ThingId("network_id").Value;
+            long wanted = NetworkHandles.Resolve(args, "network_id", kind.Family).Value;
             if (!networks.Contains(wanted))
             {
                 throw ApiErrors.Refused("not_on_network",

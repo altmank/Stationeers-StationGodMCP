@@ -74,7 +74,8 @@ internal static class RouteEnds
     {
         if (token is JObject item && item["network_id"] != null)
         {
-            return OfNetwork(kind, new Args(item).ThingId("network_id"), name, ignore);
+            return OfNetwork(kind, NetworkHandles.Resolve(item["network_id"]!, $"{name}.network_id", kind.Family),
+                name, ignore);
         }
 
         return Resolve(token, name, kind, type, ignore, true);

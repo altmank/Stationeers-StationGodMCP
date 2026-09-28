@@ -26,6 +26,7 @@ internal static class RunPlanner
 {
     internal const int MaximumRemovals = 1024;
 
+    /// <summary>The preflight; with join_trunk, the run with the tap to join_to added when it stops short (RunTaps).</summary>
     internal static RunPlan Plan(RunRequest request)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
@@ -33,6 +34,12 @@ internal static class RunPlanner
             throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host builds pieces.");
         }
 
+        RunPlan plan = PlanOnce(request);
+        return request.Options.Targets.JoinTrunk ? RunTaps.Tapped(request, plan, PlanOnce) : plan;
+    }
+
+    private static RunPlan PlanOnce(RunRequest request)
+    {
         RunPlan plan = new RunPlan(request);
         ReadRemovals(plan);
         if (request.Build != null)
@@ -50,9 +57,24 @@ internal static class RunPlanner
         }
 
         plan.Forecast = RunForecastBuilder.Build(plan);
+        FindRoots(plan, plan.Forecast);
         Guard(plan, plan.Forecast);
         request.Kind.CheckEdit(plan);
+        RunTaps.Check(plan);
         return plan;
+    }
+
+    // root, or every supplier of the networks the edit touches (NetworkRoots): what would_split measures against.
+    private static void FindRoots(RunPlan plan, RunForecast forecast)
+    {
+        ThingId? root = plan.Request.Options.Targets.Root;
+        if (root.HasValue)
+        {
+            plan.Roots.Add(root.Value.Value);
+            return;
+        }
+
+        plan.Roots.UnionWith(NetworkRoots.Suppliers(forecast.Context.NetworksBefore.Values));
     }
 
     private static void ReadRemovals(RunPlan plan)
@@ -527,7 +549,7 @@ internal static class RunPlanner
 
         LostLinks(plan, forecast);
         Loops(plan, forecast);
-        plan.Problems.AddRange(EditGuards.Check(forecast.Result, plan.Request.Options.Allow));
+        plan.Problems.AddRange(EditGuards.Check(forecast.Result, plan.Request.Options.Allow, plan.Roots));
         HashSet<int> touched = Touched(plan, forecast);
         foreach (KeyValuePair<int, KindGuard> guard in forecast.Guards)
         {

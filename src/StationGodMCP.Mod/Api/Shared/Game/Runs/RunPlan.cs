@@ -29,6 +29,11 @@ internal sealed class RunRequest
     internal RunRemoval Removal { get; }
 
     internal RunOptions Options { get; }
+
+    /// <summary>The same request with another run (a tap added) and options.</summary>
+    internal RunRequest With(RunShape shape, RunOptions options) =>
+        new RunRequest(Kind, Tool, Build != null ? new RunBuild(shape, Build.Grade, Build.Join, Build.Extra) : null,
+            Removal, options);
 }
 
 /// <summary>
@@ -84,14 +89,22 @@ internal sealed class RunRemoval
 
 internal sealed class RunOptions
 {
-    internal RunOptions(EditAllowance allow, ThingId? from, bool refund, int listLimit, bool splitLong = true)
+    internal RunOptions(EditAllowance allow, ThingId? from, bool refund, int listLimit, bool splitLong = true,
+        RunTargets? targets = null)
     {
         Allow = allow;
         From = from;
         Refund = refund;
         ListLimit = listLimit;
         SplitLong = splitLong;
+        Targets = targets ?? RunTargets.None;
     }
+
+    /// <summary>root, join_to and join_trunk.</summary>
+    internal RunTargets Targets { get; }
+
+    internal RunOptions WithTargets(RunTargets targets) =>
+        new RunOptions(Allow, From, Refund, ListLimit, SplitLong, targets);
 
     /// <summary>
     /// allow_split_long: a long straight the run must join in its middle or cross is split into singles in the same
@@ -107,6 +120,34 @@ internal sealed class RunOptions
     internal bool Refund { get; }
 
     internal int ListLimit { get; }
+}
+
+/// <summary>
+/// What the run is meant to reach and feed from: root, the device a would_split measures cut-off devices against
+/// (null: every supplier on the network); join_to, the network the run must end up on (checked, not_joined when it
+/// does not); join_trunk, add the missing tap to join_to (a tip one cell short of it, or next to it without a matching
+/// end) instead of only warning.
+/// </summary>
+internal sealed class RunTargets
+{
+    internal RunTargets(ThingId? root, ThingId? joinTo, bool joinTrunk)
+    {
+        Root = root;
+        JoinTo = joinTo;
+        JoinTrunk = joinTrunk;
+    }
+
+    internal static RunTargets None => new RunTargets(null, null, false);
+
+    internal ThingId? Root { get; }
+
+    internal ThingId? JoinTo { get; }
+
+    internal bool JoinTrunk { get; }
+
+    internal RunTargets WithJoinTo(ThingId? joinTo) => new RunTargets(Root, joinTo, JoinTrunk);
+
+    internal RunTargets WithoutTrunk() => new RunTargets(Root, JoinTo, false);
 }
 
 /// <summary>
@@ -238,6 +279,12 @@ internal sealed class RunPlan
     internal Dictionary<GridCell, CellFlow> Flow { get; } = new Dictionary<GridCell, CellFlow>();
 
     internal bool Ready => Problems.Count == 0;
+
+    /// <summary>The devices would_split measures cut-off devices against (the root, or every supplier found).</summary>
+    internal HashSet<long> Roots { get; } = new HashSet<long>();
+
+    /// <summary>The tap join_trunk added (its cells), or null.</summary>
+    internal NearMiss? Tap { get; set; }
 
     internal void Problem(string code, string message, long? id = null, GridCell? cell = null) =>
         Problems.Add(new LayoutIssue(code, message, cell, id));

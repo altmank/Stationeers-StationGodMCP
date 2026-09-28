@@ -21,9 +21,9 @@ namespace StationGodMCP.Api.Shared.Game.Upgrades;
 /// </summary>
 internal static class UpgradeJobs
 {
-    internal static object Start(UpgradeRequest request, UpgradePlan plan) =>
-        HeldTickJobs.Start("upgrade", id => new WaitingForTick(id, request,
-            UpgradeReports.Of(plan, UpgradeReports.Scheduled, id), Time.realtimeSinceStartup)).View();
+    internal static object Start(UpgradeRequest request, UpgradePlan plan, bool wait) =>
+        HeldTickJobs.Start("upgrade", request.Goal.Tool, id => new WaitingForTick(id, request,
+            UpgradeReports.Of(plan, UpgradeReports.Scheduled, id), Time.realtimeSinceStartup), wait, null);
 }
 
 /// <summary>A running upgrade or clean job in one of its states.</summary>

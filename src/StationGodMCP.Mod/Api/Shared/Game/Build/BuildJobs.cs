@@ -38,8 +38,9 @@ internal abstract class BuildWork
 /// <summary>Confirmed place_structure and remove_structure runs, on the shared runner (HeldTickJobs).</summary>
 internal static class BuildJobs
 {
-    internal static object Start(string prefix, BuildWork work) =>
-        HeldTickJobs.Start(prefix, id => new BuildWaiting(id, work, Time.realtimeSinceStartup)).View();
+    internal static object Start(string prefix, BuildWork work, bool wait) =>
+        HeldTickJobs.Start(prefix, work.Tool, id => new BuildWaiting(id, work, Time.realtimeSinceStartup), wait,
+            work.Preflight);
 }
 
 /// <summary>Waiting for the game tick to stop; then the final check and the work, in one frame.</summary>

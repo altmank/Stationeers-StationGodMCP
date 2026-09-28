@@ -253,6 +253,9 @@ internal sealed class UpgradePlan
     /// <summary>The loops remove_loops found, with what it cuts; null when remove_loops was not asked for.</summary>
     internal List<LoopRecord>? Loops { get; set; }
 
+    /// <summary>What remove_redundant removed and kept, with why; null when it was not asked for.</summary>
+    internal RedundancyRecord? Redundancy { get; set; }
+
     internal List<UpgradeProblemView> Problems { get; } = new List<UpgradeProblemView>();
 
     internal Thing? From { get; set; }

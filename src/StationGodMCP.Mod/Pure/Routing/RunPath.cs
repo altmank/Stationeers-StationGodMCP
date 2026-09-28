@@ -247,7 +247,7 @@ internal sealed class RunShape
     private readonly HashSet<GridCell> _fills;
 
     private RunShape(List<GridCell> cells, Dictionary<GridCell, EndSet> ends, List<RunTip> tips, List<RunLeg> legs,
-        List<GridCell> main, HashSet<GridCell> fills)
+        List<GridCell> main, HashSet<GridCell> fills, List<RunBranch> branches)
     {
         Cells = cells;
         Ends = ends;
@@ -255,7 +255,11 @@ internal sealed class RunShape
         Legs = legs;
         Main = main;
         _fills = fills;
+        Branches = branches;
     }
+
+    /// <summary>The branches as given, in order.</summary>
+    internal List<RunBranch> Branches { get; }
 
     internal List<GridCell> Cells { get; }
 
@@ -349,7 +353,8 @@ internal sealed class RunShape
         }
 
         error = null;
-        return new RunShape(cells, ends, tips, legs, new List<GridCell>(run), new HashSet<GridCell>());
+        return new RunShape(cells, ends, tips, legs, new List<GridCell>(run), new HashSet<GridCell>(),
+            new List<RunBranch>(branches));
     }
 
     /// <summary>
@@ -374,6 +379,84 @@ internal sealed class RunShape
             added.Add(fill.Key);
         }
 
-        return new RunShape(cells, ends, Tips, Legs, Main, added);
+        return new RunShape(cells, ends, Tips, Legs, Main, added, Branches);
+    }
+
+    /// <summary>
+    /// Which part of the tree a cell belongs to: "run" for the main run, "branch N" for branch N (0-based), "fill" for
+    /// a split long straight's cell, null for a cell the shape does not hold.
+    /// </summary>
+    internal string? PartOf(GridCell cell)
+    {
+        if (Main.Contains(cell))
+        {
+            return "run";
+        }
+
+        for (int index = 0; index < Branches.Count; index++)
+        {
+            foreach (GridCell own in Branches[index].Cells)
+            {
+                if (own.Equals(cell))
+                {
+                    return "branch " + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+            }
+        }
+
+        return _fills.Contains(cell) ? "fill" : null;
+    }
+
+    /// <summary>
+    /// The shape with the tip carried on by cells (each a neighbour of the one before, the first a neighbour of the
+    /// tip): the main run's first cell is extended backwards, its last forwards, a branch's first backwards. Null
+    /// with the reason when the cells do not continue the tip or a cell is already laid.
+    /// </summary>
+    internal RunShape? WithTap(GridCell tip, IReadOnlyList<GridCell> cells, out string? error)
+    {
+        if (cells.Count == 0)
+        {
+            error = "A tap needs at least one cell.";
+            return null;
+        }
+
+        List<GridCell> path = new List<GridCell>(cells.Count + 1) { tip };
+        path.AddRange(cells);
+        for (int index = 1; index < path.Count; index++)
+        {
+            if (!GridStep.Between(path[index - 1], path[index]).HasValue)
+            {
+                error = $"Tap cell {path[index]} is not next to {path[index - 1]}.";
+                return null;
+            }
+        }
+
+        List<GridCell> main = new List<GridCell>(Main);
+        List<RunBranch> branches = new List<RunBranch>(Branches);
+        List<GridCell> backwards = new List<GridCell>(cells);
+        backwards.Reverse();
+        if (main.Count > 0 && main[main.Count - 1].Equals(tip) && main.Count > 1)
+        {
+            main.AddRange(cells);
+        }
+        else if (main.Count > 0 && main[0].Equals(tip))
+        {
+            main.InsertRange(0, backwards);
+        }
+        else
+        {
+            int found = branches.FindIndex(branch => branch.Cells.Count > 0 && branch.Cells[0].Equals(tip));
+            if (found < 0)
+            {
+                error = $"{tip} is not a tip of the run.";
+                return null;
+            }
+
+            List<GridCell> branch = new List<GridCell>(backwards);
+            branch.AddRange(branches[found].Cells);
+            branches[found] = new RunBranch(branch, branches[found].Attach);
+        }
+
+        return Of(main, branches, out error);
     }
 }

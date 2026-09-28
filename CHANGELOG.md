@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.3.0
+
+Tools for refactoring a whole network, each replacing a step that had to be done by hand in a live cable refactor.
+
+- **Splits name the devices cut off.** `would_split` (place, remove, `plan_removal`, `remove_structure`) now lists
+  each network a split leaves with its devices (`components`), the devices that feed it (`root`: the request's
+  `root`, else every supplier on it: an APC's, transformer's or battery's output, a generator, a solar panel) and
+  `cut_off`, the devices no root reaches afterwards. The problem message names them too.
+- **New clean operation `remove_redundant`** (`clean_cables`, `clean_pipes`; never by default): removes every piece
+  no device needs, oldest first, keeping every remaining piece joined, so each device stays on the network with its
+  root. `keep_ids` never go (for example a new run's `created_ids`); `only_ids` and `older_than_id` narrow the
+  candidates; a piece joined to a device port never goes. It finds the loops `remove_loops` cannot: an old feed and
+  a new drop meeting at a device's port piece. The report says why each candidate stays and which devices need it.
+- **Tap check.** A run end that stops next to, or one free cell short of, a piece of another network warns
+  `not_joined`. `join_to` names the network a run must end up on, `join_trunk: true` adds the missing tap
+  (`tap_added`). The route planners set `join_to` from `to` and pass it on in `place_arguments`, so a saved plan that
+  ends one cell short of its trunk is caught when it is built.
+- **Network handles.** Every `network_id` (and `to: {network_id}`, `join_to`, `allow_bridge` entries) also takes the
+  reference id of a piece or device on the network, or `{reference_id, port}` of a device port, resolved to the
+  current id when the call runs. Replies list them in `resolved_networks`.
+- **Busy job slot.** A real run that finds another job running answers status `busy` with `running_job_id` instead
+  of a refusal; `wait: true` queues it (up to 8) and starts it once the slot is free, checked again from scratch.
+- **Created ids.** A run job's log lists `created_ids` and `created_by_part` (run, each branch, joined neighbours).
+- **Fix: `remove_structure`'s breach check.** It follows the game's air rule and judges the whole request at once.
+  A wall plate on the face of a finished frame no longer counts as a breach (the frame still seals the face; 185
+  false alarms on one base), and two plates back to back between rooms are flagged when both are removed together
+  (38 missed before, each checked alone while the other still stood).
+
 ## 1.2.0
 
 - **Plan as if old pieces were gone.** `assume_removed: [ids]` on `plan_cable_route`, `plan_pipe_route` and

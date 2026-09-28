@@ -20,9 +20,9 @@ namespace StationGodMCP.Api.Shared.Game.Structures;
 /// </summary>
 internal static class StructureJobs
 {
-    internal static object Start(StructureSwapRequest request, StructureSwapPlan plan) =>
-        HeldTickJobs.Start("replace", id => new StructureWaitingForTick(id, request,
-            StructureReports.Of(plan, StructureReports.Scheduled, id), Time.realtimeSinceStartup)).View();
+    internal static object Start(StructureSwapRequest request, StructureSwapPlan plan, bool wait) =>
+        HeldTickJobs.Start("replace", request.Family.Tool, id => new StructureWaitingForTick(id, request,
+            StructureReports.Of(plan, StructureReports.Scheduled, id), Time.realtimeSinceStartup), wait, null);
 }
 
 /// <summary>A running replace job in one of its states.</summary>

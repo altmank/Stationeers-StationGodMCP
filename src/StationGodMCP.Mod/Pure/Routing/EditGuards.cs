@@ -117,7 +117,11 @@ internal static class EditGuards
     internal const string WouldBridge = "would_bridge";
     internal const string WouldSplit = "would_split";
 
-    internal static List<LayoutIssue> Check(Forecast forecast, EditAllowance allow)
+    /// <summary>
+    /// The guards' problems. roots: the devices that feed the networks (SplitAnalysis); each would_split names every
+    /// part's devices and those cut off from a root.
+    /// </summary>
+    internal static List<LayoutIssue> Check(Forecast forecast, EditAllowance allow, ICollection<long>? roots = null)
     {
         List<LayoutIssue> problems = new List<LayoutIssue>();
         foreach (ForecastNetwork merge in forecast.Merges)
@@ -153,11 +157,13 @@ internal static class EditGuards
             return problems;
         }
 
-        foreach (ForecastSplit split in forecast.Splits)
+        List<SplitDetail> details = SplitAnalysis.Of(forecast, roots ?? new HashSet<long>());
+        for (int index = 0; index < forecast.Splits.Count; index++)
         {
+            ForecastSplit split = forecast.Splits[index];
             problems.Add(new LayoutIssue(WouldSplit,
-                $"Network {split.Network} would fall into {split.Parts.Count} networks; pass allow_split if that is " +
-                "meant.", null, split.Network));
+                $"Network {split.Network} would fall into {split.Parts.Count} networks." +
+                $"{SplitAnalysis.Describe(details[index])} Pass allow_split if that is meant.", null, split.Network));
         }
 
         foreach (ForecastPort port in forecast.Cut)

@@ -44,7 +44,7 @@ internal static class ReplaceStructuresApi
                 }
 
                 return plan.Ready
-                    ? StructureJobs.Start(request, plan)
+                    ? StructureJobs.Start(request, plan, args.OptionalBool("wait") ?? false)
                     : StructureReports.Of(plan, StructureReports.Refused, null);
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or reference_ids or room_id.");

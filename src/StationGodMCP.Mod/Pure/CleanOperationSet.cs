@@ -7,20 +7,22 @@ namespace StationGodMCP.Pure;
 /// <summary>
 /// The clean tools' operations by name, the order they run in, and which may not run together. The order is fixed:
 /// dead ends go first so every later operation sees the network without them; then loops are cut (never by default:
-/// a loop may be deliberate redundancy); then long straights are split or runs merged; junctions are simplified last,
-/// against the network as the earlier operations leave it.
+/// a loop may be deliberate redundancy), then whatever no device needs (remove_redundant, never by default
+/// either); then long straights are split or runs merged; junctions are simplified last, against the network as the
+/// earlier operations leave it.
 /// </summary>
 internal static class CleanOperationSet
 {
     internal const string RemoveDeadEnds = "remove_dead_ends";
     internal const string RemoveLoops = "remove_loops";
+    internal const string RemoveRedundant = "remove_redundant";
     internal const string SplitLongStraights = "split_long_straights";
     internal const string MergeStraights = "merge_straights";
     internal const string SimplifyJunctions = "simplify_junctions";
 
     /// <summary>Every operation, in the order they run.</summary>
     internal static readonly string[] Order =
-        { RemoveDeadEnds, RemoveLoops, SplitLongStraights, MergeStraights, SimplifyJunctions };
+        { RemoveDeadEnds, RemoveLoops, RemoveRedundant, SplitLongStraights, MergeStraights, SimplifyJunctions };
 
     /// <summary>What runs when the request names none: junction simplification only.</summary>
     internal static readonly string[] Default = { SimplifyJunctions };

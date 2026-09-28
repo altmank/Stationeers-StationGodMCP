@@ -669,15 +669,23 @@ internal sealed class RunBridgeSideView
     public List<ThingView> Devices { get; }
 }
 
-/// <summary>A network that would fall apart, the parts (networks_after indexes), and ports left joined to nothing.</summary>
+/// <summary>
+/// A network that would fall apart, the parts (networks_after indexes), and ports left joined to nothing. components:
+/// each part with its devices and whether it holds a root; root: the devices that feed the network (the request's
+/// root, else every supplier on it); cut_off: the devices no root reaches after the edit (null: no root on it).
+/// </summary>
 internal sealed class RunSplitView
 {
-    internal RunSplitView(ThingId? networkId, List<int> parts, List<RunPortView> cutPorts, bool allowed)
+    internal RunSplitView(ThingId? networkId, List<int> parts, List<RunPortView> cutPorts, bool allowed,
+        RunSplitDevicesView? devices = null)
     {
         NetworkId = networkId;
         Parts = parts;
         CutPorts = cutPorts;
         Allowed = allowed;
+        Components = devices?.Components ?? new List<RunSplitPartView>();
+        Root = devices?.Roots ?? new List<ThingView>();
+        CutOff = devices?.CutOff;
     }
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -688,6 +696,47 @@ internal sealed class RunSplitView
     public List<RunPortView> CutPorts { get; }
 
     public bool Allowed { get; }
+
+    public List<RunSplitPartView> Components { get; }
+
+    public List<ThingView> Root { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+    public List<ThingView>? CutOff { get; }
+}
+
+/// <summary>The device side of a split: every part's devices, the roots found and the devices cut off from them.</summary>
+internal sealed class RunSplitDevicesView
+{
+    internal RunSplitDevicesView(List<RunSplitPartView> components, List<ThingView> roots, List<ThingView>? cutOff)
+    {
+        Components = components;
+        Roots = roots;
+        CutOff = cutOff;
+    }
+
+    internal List<RunSplitPartView> Components { get; }
+
+    internal List<ThingView> Roots { get; }
+
+    internal List<ThingView>? CutOff { get; }
+}
+
+/// <summary>One network a split leaves (networks_after index), its device ports and whether a root is among them.</summary>
+internal sealed class RunSplitPartView
+{
+    internal RunSplitPartView(int index, List<RunPortView> devices, bool holdsRoot)
+    {
+        Index = index;
+        Devices = devices;
+        HoldsRoot = holdsRoot;
+    }
+
+    public int Index { get; }
+
+    public List<RunPortView> Devices { get; }
+
+    public bool HoldsRoot { get; }
 }
 
 /// <summary>
@@ -793,12 +842,47 @@ internal sealed class RunLogView
 
     public List<UpgradeRefundView> Refunded { get; } = new List<UpgradeRefundView>();
 
+    /// <summary>
+    /// The reference id of every piece the run built, new and changed (a changed piece is a new thing with a new id),
+    /// in build order: the keep set for clean_* remove_redundant, without guessing from id ranges.
+    /// </summary>
+    public List<ThingId> CreatedIds { get; } = new List<ThingId>();
+
+    /// <summary>The same ids by part of the run: run, branch N, joined (a neighbour made a junction), fill.</summary>
+    public List<RunCreatedPartView> CreatedByPart { get; } = new List<RunCreatedPartView>();
+
     /// <summary>The step that failed and why; null when every step was done.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ErrorView? StoppedAt { get; set; }
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ErrorView? RefundError { get; set; }
+
+    internal void AddCreated(string part, ThingId id)
+    {
+        CreatedIds.Add(id);
+        RunCreatedPartView? entry = CreatedByPart.Find(known => known.Part == part);
+        if (entry == null)
+        {
+            entry = new RunCreatedPartView(part);
+            CreatedByPart.Add(entry);
+        }
+
+        entry.Ids.Add(id);
+    }
+}
+
+/// <summary>One part of a run (run, branch N, joined, fill) and the ids built for it.</summary>
+internal sealed class RunCreatedPartView
+{
+    internal RunCreatedPartView(string part)
+    {
+        Part = part;
+    }
+
+    public string Part { get; }
+
+    public List<ThingId> Ids { get; } = new List<ThingId>();
 }
 
 /// <summary>

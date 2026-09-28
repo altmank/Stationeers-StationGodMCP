@@ -312,9 +312,12 @@ internal static class RunReports
     {
         bool allowed = plan.Request.Options.Allow.Split;
         List<RunSplitView> splits = new List<RunSplitView>();
-        foreach (ForecastSplit split in forecast.Result.Splits)
+        List<SplitDetail> details = SplitAnalysis.Of(forecast.Result, plan.Roots);
+        for (int index = 0; index < forecast.Result.Splits.Count; index++)
         {
-            splits.Add(new RunSplitView(new ThingId(split.Network), split.Parts, new List<RunPortView>(), allowed));
+            ForecastSplit split = forecast.Result.Splits[index];
+            splits.Add(new RunSplitView(new ThingId(split.Network), split.Parts, new List<RunPortView>(), allowed,
+                DevicesOf(plan, details[index])));
         }
 
         if (forecast.Result.Cut.Count > 0)
@@ -325,11 +328,32 @@ internal static class RunReports
                 cut.Add(PortView(plan, port));
             }
 
-            splits.Add(new RunSplitView(null, new List<int>(), cut, allowed));
+            splits.Add(new RunSplitView(null, new List<int>(), cut, allowed,
+                DevicesOf(plan, details[details.Count - 1])));
         }
 
         return splits;
     }
+
+    private static RunSplitDevicesView DevicesOf(RunPlan plan, SplitDetail detail)
+    {
+        List<RunSplitPartView> parts = new List<RunSplitPartView>(detail.Parts.Count);
+        foreach (SplitPart part in detail.Parts)
+        {
+            parts.Add(new RunSplitPartView(part.Index, part.Ports.ConvertAll(port => PortView(plan, port)),
+                part.HoldsRoot));
+        }
+
+        return new RunSplitDevicesView(parts, detail.Roots.ConvertAll(id => DeviceView(plan, id)),
+            detail.CutOff?.ConvertAll(id => DeviceView(plan, id)));
+    }
+
+    private static ThingView DeviceView(RunPlan plan, long id) =>
+        plan.Things.TryGetValue(id, out SmallGrid device)
+            ? GameLookup.ViewOf(device)
+            : GameLookup.TryFindThing(new ThingId(id), out Thing thing)
+                ? GameLookup.ViewOf(thing)
+                : new ThingView(new ThingId(id), null, null);
 
     private static RunLinksView Links(RunPlan plan, RunForecast forecast)
     {

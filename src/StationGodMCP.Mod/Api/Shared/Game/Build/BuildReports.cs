@@ -33,7 +33,8 @@ internal static class BuildReports
         "Gives back what deconstructing by hand does: every build state's items down to the kit.",
         "Refused: indestructible, rocket, broken, the game's own refusal, a mounted device; unless allowed: items " +
         "or gas inside (allow_contents), a removal joining spaces whose pressures differ by 1 kPa or more " +
-        "(allow_breach).",
+        "(allow_breach). The breach check judges the whole request at once: a face stays sealed while anything " +
+        "left on it, or a finished frame beside it, blocks air.",
         "Cable, pipe and chute pieces are removed as remove_cables, remove_pipes and remove_chutes remove them; " +
         "their would_split is a warning here.",
         "A real run needs dry_run: false and confirm: true; poll the job with job_id."

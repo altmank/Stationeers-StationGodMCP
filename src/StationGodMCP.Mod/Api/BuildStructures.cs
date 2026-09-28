@@ -29,7 +29,8 @@ internal static class PlaceStructureApi
                 }
 
                 PlaceReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
-                return BuildJobs.Start("place", new PlaceWork(run.Arguments, preflight));
+                return BuildJobs.Start("place", new PlaceWork(run.Arguments, preflight),
+                    args.OptionalBool("wait") ?? false);
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or placements.");
         }
@@ -56,7 +57,8 @@ internal static class RemoveStructureApi
                 }
 
                 RemoveReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
-                return BuildJobs.Start("remove", new RemoveWork(run.Arguments, preflight));
+                return BuildJobs.Start("remove", new RemoveWork(run.Arguments, preflight),
+                    args.OptionalBool("wait") ?? false);
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or reference_ids.");
         }

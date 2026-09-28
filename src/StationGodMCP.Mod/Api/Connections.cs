@@ -13,6 +13,7 @@ using Assets.Scripts.Objects.Pipes;
 using Networks;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 
 namespace StationGodMCP.Api;
@@ -59,8 +60,15 @@ internal static class ConnectionsApi
             return EndsReader.Read(GameLookup.RequireThing(args.ThingId("reference_id")));
         }
 
-        ThingId id = args.ThingId("network_id");
         string kind = args.String("kind").Trim().ToLowerInvariant();
+        UpgradeFamily family = kind switch
+        {
+            "cable" => new CableFamily(),
+            "pipe" => new PipeFamily(),
+            "chute" => new ChuteFamily(),
+            _ => throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.")
+        };
+        ThingId id = NetworkHandles.Resolve(args, "network_id", family);
         return NetworkReader.Read(kind, id, PageRequest.From(args, DefaultLimit, MaximumLimit));
     }
 }

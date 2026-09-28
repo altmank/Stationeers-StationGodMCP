@@ -113,7 +113,9 @@ internal static class ApiHost
                 throw ApiErrors.Refused("method_not_found", $"Unknown StationGodMCP method '{method}'.");
             }
 
-            object result = handler(new Args(request["params"] as JObject));
+            ResolvedNetworks.Begin();
+            object result = ResolvedNetworks.Attach(handler(new Args(request["params"] as JObject)),
+                ResolvedNetworks.Take());
             return Serialize(new ReplyView(requestId, result, MethodStats.Record(method, watch, true)));
         }
         catch (ApiException exception)

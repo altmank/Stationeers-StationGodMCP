@@ -185,7 +185,7 @@ internal static class RemovePlanner
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
         };
         Items(piece, facts.Items);
-        Breach(piece, facts);
+        Breach(piece, facts, removed);
         foreach (GuardFinding finding in RemovalRule.Judge(facts, plan.Arguments.Allow))
         {
             plan.Add(finding, takedown.Index, piece.ReferenceId);
@@ -246,9 +246,11 @@ internal static class RemovePlanner
         }
     }
 
-    // A piece that blocks air joins, when it goes, the cells on both sides of each face it holds (unless another
-    // airtight piece stays on that face), or each cell it fills with its open neighbours.
-    private static void Breach(Structure piece, RemovalFacts facts)
+    // A piece that blocks air joins, when it goes, the cells on both sides of each face it holds, or each cell it
+    // fills with its open neighbours, unless the face stays sealed (FaceSeal): something left on the face, or the
+    // structure filling a cell beside it (a finished frame), blocks air. Every piece of the request counts as gone at
+    // once, so two plates back to back on one face breach when both go, and neither alone.
+    private static void Breach(Structure piece, RemovalFacts facts, HashSet<long> removed)
     {
         if (piece is SmallGrid || piece.CanAirPass)
         {
@@ -261,7 +263,7 @@ internal static class RemovePlanner
         {
             if (FaceMath.TrySplitFace(slot.Point, out GridPoint a, out GridPoint b))
             {
-                if (!OtherSeal(grid, slot.Point, piece))
+                if (!Sealed(grid, slot.Point, CellBlocker(grid, a), CellBlocker(grid, b), piece, removed))
                 {
                     AddOnce(sides, a);
                     AddOnce(sides, b);
@@ -272,14 +274,13 @@ internal static class RemovePlanner
 
             foreach (GridPoint face in FaceMath.FacesOf(slot.Cell))
             {
-                if (OtherSeal(grid, face, piece) || !FaceMath.TrySplitFace(face, out GridPoint one, out GridPoint two))
+                if (!FaceMath.TrySplitFace(face, out GridPoint one, out GridPoint two))
                 {
                     continue;
                 }
 
                 GridPoint neighbour = one.Equals(slot.Cell) ? two : one;
-                Cell? cell = grid.GetCell(StructureSlots.GridOf(neighbour));
-                if (cell == null || !cell.IsBlocked)
+                if (!Sealed(grid, face, null, CellBlocker(grid, neighbour), piece, removed))
                 {
                     AddOnce(sides, neighbour);
                 }
@@ -307,17 +308,30 @@ internal static class RemovePlanner
         }
     }
 
-    private static bool OtherSeal(GridController grid, GridPoint face, Structure piece)
+    private static bool Sealed(GridController grid, GridPoint face, AirBlocker? cellA, AirBlocker? cellB,
+        Structure piece, HashSet<long> removed)
     {
+        List<AirBlocker> onFace = new List<AirBlocker>();
         foreach (Structure structure in new List<Structure>(grid.GetFaceStructures(StructureSlots.GridOf(face))))
         {
-            if (structure != null && structure != piece && !structure.IsBeingDestroyed && !structure.CanAirPass)
+            if (structure != null && structure != piece && !structure.IsBeingDestroyed)
             {
-                return true;
+                onFace.Add(new AirBlocker(structure.ReferenceId, !structure.CanAirPass));
             }
         }
 
-        return false;
+        HashSet<long> gone = new HashSet<long>(removed) { piece.ReferenceId };
+        return FaceSeal.Sealed(onFace, cellA, cellB, gone);
+    }
+
+    // The structure filling a 2 m cell (its Center slot), as air sees it; null for an empty cell.
+    private static AirBlocker? CellBlocker(GridController grid, GridPoint point)
+    {
+        Cell? cell = grid.GetCell(StructureSlots.GridOf(point));
+        Structure? centre = cell?.Lookup[StructureElement.Center];
+        return centre != null && !centre.IsBeingDestroyed
+            ? new AirBlocker(centre.ReferenceId, !centre.CanAirPass)
+            : (AirBlocker?)null;
     }
 
     // A device's end that joins something now will be open once it goes (the network piece or device there stays).

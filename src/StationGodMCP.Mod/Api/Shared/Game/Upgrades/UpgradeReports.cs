@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
@@ -27,8 +28,37 @@ internal static class UpgradeReports
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Coils(plan), request.Refund, RefundTotals(plan),
             Networks(plan));
         return new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(), DeadEnds(plan),
-            Loops(plan));
+            Loops(plan), Redundant(plan));
     }
+
+    private static UpgradeRedundancyView? Redundant(UpgradePlan plan)
+    {
+        RedundancyRecord? record = plan.Redundancy;
+        if (record == null)
+        {
+            return null;
+        }
+
+        Dictionary<string, int> byReason = new Dictionary<string, int>();
+        List<UpgradeRedundantKeptView> kept = new List<UpgradeRedundantKeptView>();
+        foreach (KeptPiece piece in record.Result.Kept)
+        {
+            byReason[piece.Reason] = (byReason.TryGetValue(piece.Reason, out int count) ? count : 0) + 1;
+            if (kept.Count < plan.Request.ListLimit && record.Things.TryGetValue(piece.Id, out SmallGrid thing))
+            {
+                kept.Add(new UpgradeRedundantKeptView(GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position),
+                    piece.Reason, piece.Devices.ConvertAll(id => Named(record, id)), piece.Pieces));
+            }
+        }
+
+        return new UpgradeRedundancyView(record.Candidates, record.Result.Removed.ConvertAll(id => new ThingId(id)),
+            record.Roots.ConvertAll(id => Named(record, id)), byReason, kept, record.Result.Kept.Count);
+    }
+
+    private static ThingView Named(RedundancyRecord record, long id) =>
+        record.Things.TryGetValue(id, out SmallGrid thing) ? GameLookup.ViewOf(thing)
+        : GameLookup.TryFindThing(new ThingId(id), out Thing found) ? GameLookup.ViewOf(found)
+        : new ThingView(new ThingId(id), null, null);
 
     private static List<UpgradeLoopView>? Loops(UpgradePlan plan)
     {

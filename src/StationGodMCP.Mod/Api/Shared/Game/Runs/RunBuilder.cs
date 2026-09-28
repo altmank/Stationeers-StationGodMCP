@@ -149,6 +149,8 @@ internal static class RunBuilder
 
             SmallGrid built = cell.IsChange ? Change(plan, cell) : Place(plan, cell);
             outcome.Built[cell.ForecastId] = built;
+            string part = plan.Request.Build?.Shape.PartOf(cell.Cell) ?? (cell.IsChange ? "joined" : "fill");
+            outcome.Log.AddCreated(part, new ThingId(built.ReferenceId));
             if (cell.IsChange)
             {
                 outcome.Replaced.Add(cell.Existing!);

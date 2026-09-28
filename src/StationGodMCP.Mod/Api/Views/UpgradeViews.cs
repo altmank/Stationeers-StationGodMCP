@@ -15,9 +15,10 @@ internal sealed class UpgradeReportView
 {
     internal UpgradeReportView(UpgradeHeader header, UpgradeCounts counts, UpgradeLists lists,
         UpgradeResources resources, UpgradeConnectivityView? connectivity, UpgradeDeadEnds? deadEnds = null,
-        List<UpgradeLoopView>? loops = null)
+        List<UpgradeLoopView>? loops = null, UpgradeRedundancyView? redundant = null)
     {
         Loops = loops;
+        Redundant = redundant;
         Tool = header.Tool;
         Target = header.Target;
         Status = header.Status;
@@ -89,6 +90,10 @@ internal sealed class UpgradeReportView
     /// <summary>remove_loops only: every loop found, its pieces, what is cut, and whether it was spared.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<UpgradeLoopView>? Loops { get; }
+
+    /// <summary>remove_redundant only: what it removed, and each candidate it kept with why.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public UpgradeRedundancyView? Redundant { get; }
 
     public ThingView? From { get; }
 
@@ -1167,4 +1172,65 @@ internal sealed class UpgradeVerificationView
 
     /// <summary>Each network as it is after the swap (the same report shapes as before it).</summary>
     public List<object> Networks { get; }
+}
+
+/// <summary>
+/// What remove_redundant decided: how many candidates it weighed, the pieces it removes, the roots it measured
+/// against, and every candidate it keeps (counted by reason, up to limit listed) with the devices that need it.
+/// </summary>
+internal sealed class UpgradeRedundancyView
+{
+    internal UpgradeRedundancyView(int candidates, List<ThingId> removed, List<ThingView> root,
+        Dictionary<string, int> keptByReason, List<UpgradeRedundantKeptView> kept, int keptCount)
+    {
+        Candidates = candidates;
+        Removed = removed;
+        Root = root;
+        KeptByReason = keptByReason;
+        Kept = kept;
+        KeptCount = keptCount;
+    }
+
+    public int Candidates { get; }
+
+    public List<ThingId> Removed { get; }
+
+    public List<ThingView> Root { get; }
+
+    public int KeptCount { get; }
+
+    /// <summary>device_port, keep_ids, blocked:(why), needed.</summary>
+    public Dictionary<string, int> KeptByReason { get; }
+
+    public List<UpgradeRedundantKeptView> Kept { get; }
+}
+
+/// <summary>
+/// A candidate remove_redundant keeps: device_port (devices: the ones whose port it joins), keep_ids, blocked:(why),
+/// or needed (devices: those removing it would cut off from the root; pieces_cut_off: how many kept pieces with them).
+/// </summary>
+internal sealed class UpgradeRedundantKeptView
+{
+    internal UpgradeRedundantKeptView(ThingView piece, PositionView position, string reason, List<ThingView> devices,
+        int piecesCutOff)
+    {
+        ReferenceId = piece.ReferenceId;
+        PrefabName = piece.PrefabName;
+        Position = position;
+        Reason = reason;
+        Devices = devices;
+        PiecesCutOff = piecesCutOff;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public string? PrefabName { get; }
+
+    public PositionView Position { get; }
+
+    public string Reason { get; }
+
+    public List<ThingView> Devices { get; }
+
+    public int PiecesCutOff { get; }
 }

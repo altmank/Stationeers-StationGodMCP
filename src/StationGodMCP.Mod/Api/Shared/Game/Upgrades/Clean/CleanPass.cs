@@ -22,18 +22,22 @@ internal interface ICleanOperation
     void Plan(CleanPass pass);
 }
 
-/// <summary>What the operations take from the request besides their names: the pieces whose loops stay.</summary>
+/// <summary>What the operations take from the request besides their names: kept pieces, remove_redundant filters.</summary>
 internal sealed class CleanOptions
 {
-    internal CleanOptions(HashSet<long> keep)
+    internal CleanOptions(HashSet<long> keep, RedundancyOptions? redundancy = null)
     {
         Keep = keep;
+        Redundancy = redundancy ?? RedundancyOptions.None;
     }
 
     internal static CleanOptions None => new CleanOptions(new HashSet<long>());
 
-    /// <summary>remove_loops spares every loop holding one of these pieces.</summary>
+    /// <summary>remove_loops spares every loop holding one of these pieces; remove_redundant never removes them.</summary>
     internal HashSet<long> Keep { get; }
+
+    /// <summary>remove_redundant: only_ids, older_than_id, root.</summary>
+    internal RedundancyOptions Redundancy { get; }
 }
 
 /// <summary>The operations by name; the only place a new operation is registered.</summary>
@@ -44,6 +48,7 @@ internal static class CleanOperationCatalogue
         {
             CleanOperationSet.RemoveDeadEnds => new RemoveDeadEnds(),
             CleanOperationSet.RemoveLoops => new RemoveLoops(options.Keep),
+            CleanOperationSet.RemoveRedundant => new RemoveRedundant(options.Keep, options.Redundancy),
             CleanOperationSet.SplitLongStraights => new SplitLongStraights(),
             CleanOperationSet.MergeStraights => new MergeStraights(),
             CleanOperationSet.SimplifyJunctions => new SimplifyJunctions(),

@@ -210,6 +210,14 @@ internal sealed class Args
         return items;
     }
 
+    /// <summary>These parameters with one more set (a default a tool derives, e.g. plan routes' join_to).</summary>
+    internal Args With(string name, JToken value)
+    {
+        JObject copy = (JObject)_parameters.DeepClone();
+        copy[name] = value.DeepClone();
+        return new Args(copy);
+    }
+
     private JToken? Token(string name)
     {
         JToken? token = _parameters[name];
