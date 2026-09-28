@@ -42,7 +42,7 @@ public sealed class MoveGasWireTests
                 atmosphere_id = "21", before = OldAtmosphere(100.0), after = OldAtmosphere(50.0)
             }
         },
-        total = new { before = OldAtmosphere(100.0), after = OldAtmosphere(50.0) },
+        total = new { before = OldAtmosphere(100.0), after = OldAtmosphere(50.0), after_boiling = (object?)null },
         joined_by = new List<object>
         {
             new { reference_id = "30", prefab_name = "StructureGasTankStorage", display_name = "Tank Storage" }
@@ -57,7 +57,7 @@ public sealed class MoveGasWireTests
             new GasMemberView(new GasOwnerView("pipe_network", new ThingId(20), null, "Pipe Network"),
                 new ThingId(21), NewAtmosphere(100.0), NewAtmosphere(50.0))
         },
-        new GasTotalView(NewAtmosphere(100.0), NewAtmosphere(50.0)),
+        new GasTotalView(NewAtmosphere(100.0), NewAtmosphere(50.0), null),
         new List<ThingView> { new ThingView(new ThingId(30), "StructureGasTankStorage", "Tank Storage") });
 
     [Fact]
@@ -85,6 +85,26 @@ public sealed class MoveGasWireTests
         };
         WireCheck.Same(old,
             new MoveGasView("8", "applied", false, false, NewSide(), null, new List<MovedGasView>(), null));
+    }
+
+    [Fact]
+    public void LandingPadOwnerAndBoiledTotal()
+    {
+        var old = new
+        {
+            owner = new
+            {
+                kind = "landing_pad_network", reference_id = "40", prefab_name = (string?)null,
+                display_name = "Landing Pad Network"
+            },
+            atmosphere_id = "41", before = OldAtmosphere(900.0), after = OldAtmosphere(0.0)
+        };
+        WireCheck.Same(old, new GasMemberView(
+            new GasOwnerView("landing_pad_network", new ThingId(40), null, "Landing Pad Network"), new ThingId(41),
+            NewAtmosphere(900.0), NewAtmosphere(0.0)));
+        WireCheck.Same(
+            new { before = OldAtmosphere(100.0), after = OldAtmosphere(110.0), after_boiling = OldAtmosphere(450.0) },
+            new GasTotalView(NewAtmosphere(100.0), NewAtmosphere(110.0), NewAtmosphere(450.0)));
     }
 
     [Fact]

@@ -16,9 +16,11 @@ namespace StationGodMCP.Api;
 /// atmosphere_contents: what gas or liquid one thing holds. Read only.
 ///
 /// A thing reports its own internal atmosphere (Thing.InternalAtmosphere: canister, portable tank, tank, suit), the
-/// pipe network a pipe belongs to (INetworkedPipe.PipeNetwork), every pipe network a device is connected to
+/// pipe network a pipe belongs to (INetworkedPipe.PipeNetwork), the landing pad network a pad piece belongs to
+/// (INetworkedLandingPad.LandingPadNetwork: every piece of one pad shares its atmosphere), every pipe network a device
+/// is connected to
 /// (Device.ConnectedPipeNetworks), and the internal atmosphere of each item in its slots (the canister in a tank
-/// storage or an air conditioner); organ slots are left out. A pipe network's reference id works too
+/// storage or an air conditioner); organ slots are left out. A pipe or landing pad network's reference id works too
 /// (Referencable.Find), and so does an atmosphere id owned by a thing or a network, as water_sources reports it.
 /// Room and world air cannot be looked up this way: no tool reports those ids.
 /// </summary>
@@ -39,7 +41,7 @@ internal static class AtmosphereContentsApi
         else if (Referencable.Find<AtmosphericsNetwork>(id.Value) is AtmosphericsNetwork network)
         {
             subject = AtmosphereOwners.OwnerOf(network, origin);
-            atmospheres.Add(Entry("pipe_network", network.Atmosphere, subject, null));
+            atmospheres.Add(Entry(AtmosphereOwners.SourceOf(network), network.Atmosphere, subject, null));
         }
         else if (Referencable.Find<Atmosphere>(id.Value) is Atmosphere atmosphere &&
                  (atmosphere.Thing != null || atmosphere.AtmosphericsNetwork != null))
@@ -48,12 +50,14 @@ internal static class AtmosphereContentsApi
             subject = owned
                 ? AtmosphereOwners.OwnerOf(atmosphere.Thing!, origin)
                 : AtmosphereOwners.OwnerOf(atmosphere.AtmosphericsNetwork!, origin);
-            atmospheres.Add(Entry(owned ? "internal" : "pipe_network", atmosphere, subject, null));
+            atmospheres.Add(Entry(owned ? "internal" : AtmosphereOwners.SourceOf(atmosphere.AtmosphericsNetwork!),
+                atmosphere, subject, null));
         }
         else
         {
             throw ApiErrors.Refused(ApiErrors.ThingNotFoundCode,
-                $"No thing, pipe network or thing's atmosphere has reference id {id}. Room and world air cannot be " +
+                $"No thing, pipe or landing pad network or thing's atmosphere has reference id {id}. Room and world " +
+                "air cannot be " +
                 "looked up this way.");
         }
 
@@ -61,7 +65,8 @@ internal static class AtmosphereContentsApi
         {
             string? name = thing != null ? thing.DisplayName : null;
             throw ApiErrors.Refused("no_atmosphere",
-                $"{name} ({id}) holds no gas or liquid: it has no internal atmosphere, is not a pipe, " +
+                $"{name} ({id}) holds no gas or liquid: it has no internal atmosphere, is not a pipe or a landing " +
+                "pad piece, " +
                 "is connected to no pipe network and has nothing with an atmosphere in its slots.");
         }
 
@@ -72,7 +77,8 @@ internal static class AtmosphereContentsApi
     /// <remarks>Allocation free, so a world scan can filter on it: AddThing's tests without building entries.</remarks>
     internal static bool HoldsAtmosphere(Thing thing)
     {
-        if (thing.InternalAtmosphere != null || (thing is INetworkedPipe pipe && pipe.PipeNetwork != null))
+        if (thing.InternalAtmosphere != null || (thing is INetworkedPipe pipe && pipe.PipeNetwork != null) ||
+            (thing is INetworkedLandingPad pad && pad.LandingPadNetwork != null))
         {
             return true;
         }
@@ -124,6 +130,13 @@ internal static class AtmosphereContentsApi
         {
             atmospheres.Add(Entry("pipe_network", pipe.PipeNetwork.Atmosphere,
                 AtmosphereOwners.OwnerOf(pipe.PipeNetwork, origin), null));
+        }
+
+        if (thing is INetworkedLandingPad pad && pad.LandingPadNetwork != null &&
+            seen.Add(pad.LandingPadNetwork.ReferenceId))
+        {
+            atmospheres.Add(Entry("landing_pad_network", pad.LandingPadNetwork.Atmosphere,
+                AtmosphereOwners.OwnerOf(pad.LandingPadNetwork, origin), null));
         }
 
         if (thing is Device device && device.ConnectedPipeNetworks != null)

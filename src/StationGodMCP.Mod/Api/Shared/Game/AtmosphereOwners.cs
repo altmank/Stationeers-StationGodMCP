@@ -30,6 +30,10 @@ internal static class AtmosphereOwners
             GameLookup.ViewOf(thing.Position), origin.DistanceTo(thing.Position));
     }
 
+    /// <summary>What a network atmosphere is reported as: landing_pad_network or pipe_network.</summary>
+    internal static string SourceOf(AtmosphericsNetwork network) =>
+        network is LandingPadNetwork ? "landing_pad_network" : "pipe_network";
+
     /// <summary>A pipe network, its devices, and where it is: at its first device, else its first pipe.</summary>
     internal static NetworkOwnerView OwnerOf(AtmosphericsNetwork network, PlayerOrigin origin)
     {

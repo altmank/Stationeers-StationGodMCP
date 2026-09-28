@@ -11,6 +11,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
 using Networks;
 using Newtonsoft.Json.Linq;
+using Objects.Electrical;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
@@ -54,6 +55,18 @@ namespace StationGodMCP.Api;
 /// spreads it. The burst check uses each side's settled pressure: the members pooled as AtmosphereHelper.Mix pools
 /// two, checked against every member's rating. Exact for sets joined for all matter; an approximation where a join
 /// carries only gases or only liquids (PortablesConnector). The sets are found when the move is asked for.
+///
+/// Receiving side (CODE, AtmosphericsNetwork.EvaluateIncorrectMatterState, Mole.StateChangeLiquid): liquid over
+/// GameConstants.MAX_ALLOWED_RATIO_VOLUME_LIQUIDS_GAS_PIPE of a gas pipe network's volume, and frozen moles over
+/// MinFrozenMolesToDamage in any network, damage it every tick; a liquid arriving somewhere that changes state boils
+/// over the next ticks, so the pressure once it has boiled is checked too. Each is refused only when the move makes it
+/// worse (GasSide.RefuseIfReceivingBursts).
+///
+/// Landing pads (CODE, Networks.LandingPadNetwork): every pad piece is an INetworkedLandingPad on one
+/// LandingPadNetwork, an AtmosphericsNetwork whose atmosphere all pieces share (volume: 500 L per
+/// LandingPadGasStorage, 1 L per other piece; content type All, so no liquid rule; PreventStateChange, so liquids stay
+/// liquid there). Its burst rating is Chemistry.Limits.MAXPressureGasPipe for every piece. No device joins it to
+/// another atmosphere every tick: the pad's pumps and tank connectors move a volume per tick.
 ///
 /// Sync (CODE): nothing is marked by hand; Atmosphere.PrepareForWrite sets the gas network flags from the mixture's
 /// own dirty tracking. Host only. Not supported: the planet, world cells (refused) and rooms.
@@ -220,6 +233,13 @@ internal sealed class GasEnd
     /// <summary>The owning pipe network, for a network atmosphere; else null.</summary>
     internal AtmosphericsNetwork? Network { get; }
 
+    /// <summary>
+    /// Whether the game changes this atmosphere's matter state (Atmosphere.StateChange): not for a thing or network
+    /// with PreventStateChange, such as a landing pad network.
+    /// </summary>
+    internal bool ChangesState =>
+        Thing != null ? !Thing.PreventStateChange : Network != null && !Network.PreventStateChange;
+
     // Unity's == reports a destroyed Thing as null.
     internal bool IsGone =>
         Atmosphere.BeingDestroyed || (!ReferenceEquals(Thing, null) && (Thing == null || Thing.IsBeingDestroyed));
@@ -231,8 +251,9 @@ internal sealed class GasEnd
         thing != null && thing.InternalAtmosphere != null ? new GasEnd(thing.InternalAtmosphere, thing, null) : null;
 
     // Resolved as atmosphere_contents resolves an id, narrowed to exactly one atmosphere: a thing's internal
-    // atmosphere, else a pipe's network; a pipe network id; an atmosphere id owned by a thing or a network. A device
-    // with no internal atmosphere of its own is refused rather than guessed: pass the network's id.
+    // atmosphere, else a pipe's network, else a landing pad piece's pad network (INetworkedLandingPad: every piece
+    // shares one atmosphere); a pipe or landing pad network id; an atmosphere id owned by a thing or a network. A
+    // device with no internal atmosphere of its own is refused rather than guessed: pass the network's id.
     internal static GasEnd Resolve(ThingId id, string name)
     {
         Thing thing = Thing.Find(id.Value);
@@ -266,9 +287,14 @@ internal sealed class GasEnd
             return FromNetwork(pipe.PipeNetwork, name);
         }
 
+        if (thing is INetworkedLandingPad pad && pad.LandingPadNetwork != null)
+        {
+            return FromNetwork(pad.LandingPadNetwork, name);
+        }
+
         throw ApiErrors.Refused("no_atmosphere",
-            $"'{name}': {thing.DisplayName} ({thing.ReferenceId}) has no internal atmosphere and is not a pipe. " +
-            "For a device's pipe network, pass the network's id.");
+            $"'{name}': {thing.DisplayName} ({thing.ReferenceId}) has no internal atmosphere and is not a pipe or " +
+            "a landing pad piece. For a device's pipe network, pass the network's id.");
     }
 
     private static GasEnd FromNetwork(AtmosphericsNetwork network, string name)
@@ -276,7 +302,8 @@ internal sealed class GasEnd
         if (network.Atmosphere == null)
         {
             throw ApiErrors.Refused("no_atmosphere",
-                $"'{name}': pipe network {network.ReferenceId} has no atmosphere yet.");
+                $"'{name}': {AtmosphereOwners.SourceOf(network).Replace('_', ' ')} {network.ReferenceId} has no " +
+                "atmosphere yet.");
         }
 
         return Checked(new GasEnd(network.Atmosphere, null, network), name);
@@ -323,7 +350,8 @@ internal sealed class GasEnd
         }
 
         AtmosphericsNetwork network = Network!;
-        return new GasOwnerView("pipe_network", new ThingId(network.ReferenceId), null, network.DisplayName);
+        return new GasOwnerView(AtmosphereOwners.SourceOf(network), new ThingId(network.ReferenceId), null,
+            network.DisplayName);
     }
 
     /// <summary>The first rating this pressure breaks, or null. Ratings come from the game's burst rules.</summary>
@@ -361,7 +389,9 @@ internal sealed class GasEnd
         return ratings;
     }
 
-    // AtmosphericsNetwork.ScanStructuresAndEvaluate: every member, at each of its cells that can hold air.
+    // AtmosphericsNetwork.ScanStructuresAndEvaluate: every member, at each of its cells that can hold air. A landing
+    // pad's gas storage also damages itself at the same rating reached, not only passed
+    // (LandingPadGasStorage.OnAtmosphericTick against LandingPadNetwork.MaxPressureKpa).
     private static void AddNetworkRatings(AtmosphericsNetwork network, List<PressureRating> ratings)
     {
         List<INetworkedStructure> members;
@@ -397,8 +427,8 @@ internal sealed class GasEnd
         {
             if (grid.CanContainAtmos(grids[index]))
             {
-                ratings.Add(new PressureRating(member.MaxPressure.ToDouble(), OutsideKpa(grids[index]), false,
-                    member.GetAsThing.DisplayName));
+                ratings.Add(new PressureRating(member.MaxPressure.ToDouble(), OutsideKpa(grids[index]),
+                    member is LandingPadGasStorage, member.GetAsThing.DisplayName));
             }
         }
     }

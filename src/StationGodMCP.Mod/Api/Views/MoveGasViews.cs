@@ -95,7 +95,7 @@ internal sealed class GasMemberView
     public AtmosphereView After { get; }
 }
 
-/// <summary>What owns an atmosphere: a thing, or a pipe network (no prefab).</summary>
+/// <summary>What owns an atmosphere: a thing, or a pipe or landing pad network (no prefab).</summary>
 internal sealed class GasOwnerView
 {
     internal GasOwnerView(string kind, ThingId referenceId, string? prefabName, string? displayName)
@@ -106,7 +106,7 @@ internal sealed class GasOwnerView
         DisplayName = displayName;
     }
 
-    /// <summary>thing or pipe_network.</summary>
+    /// <summary>thing, pipe_network or landing_pad_network.</summary>
     public string Kind { get; }
 
     public ThingId ReferenceId { get; }
@@ -119,15 +119,19 @@ internal sealed class GasOwnerView
 /// <summary>A side's members pooled: pressure and temperature as if the game had mixed them all.</summary>
 internal sealed class GasTotalView
 {
-    internal GasTotalView(AtmosphereView before, AtmosphereView after)
+    internal GasTotalView(AtmosphereView before, AtmosphereView after, AtmosphereView? afterBoiling)
     {
         Before = before;
         After = after;
+        AfterBoiling = afterBoiling;
     }
 
     public AtmosphereView Before { get; }
 
     public AtmosphereView After { get; }
+
+    /// <summary>After, once every liquid that would boil has; null when none would.</summary>
+    public AtmosphereView? AfterBoiling { get; }
 }
 
 internal sealed class AtmosphereView

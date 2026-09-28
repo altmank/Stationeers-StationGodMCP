@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.2
+
+Landing pad atmospheres in the gas tools, and move_gas checks the receiving side by the game's matter rules.
+
+- **Landing pads.** Every piece of a landing pad shares one atmosphere, the pad network's (the pad's gas storage
+  tanks give it 500 L each). `atmosphere_contents` now reports it for any pad piece or the pad network's id
+  (`source: landing_pad_network`), `find_things has_atmosphere` counts pad pieces, and `move_gas` takes a pad piece,
+  the pad network or its atmosphere id as `from` or `to` (owner `kind: landing_pad_network`). Before, they were
+  refused `no_atmosphere`. The pad's burst rating is the gas pipe rating, at every piece; its gas storage is damaged
+  already at the rating. The pad holds liquids as liquids: its atmosphere never changes state.
+- **The receiving side's matter rules.** `move_gas` is refused `would_burst` when the move would make the target
+  worse by one of the game's own rules: liquid filling over 2% of a gas pipe network's volume (spread over the members
+  joined for liquids), gas or liquid freezing in a network at the settled temperature, or the pressure once arriving
+  liquid has boiled where the atmosphere changes state (each liquid turned into its gas, paying its latent heat).
+  `force` still skips every check.
+- **`total.after_boiling`** in `move_gas` replies: the pooled state once every liquid that would boil has, null when
+  none would or the atmosphere never changes state.
+
 ## 1.3.1
 
 Fixes from the first live run of 1.3.0 on a dedicated server.

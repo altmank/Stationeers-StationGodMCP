@@ -13,7 +13,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
 | `rooms` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas, its devices. | `reference_id` (only the room that thing is in), `include_cells`, `include_devices` |
-| `atmosphere_contents` | What gas or liquid one thing holds: a canister, tank, suit, a pipe's whole network, or every network a device is on. | `reference_id` |
+| `atmosphere_contents` | What gas or liquid one thing holds: a canister, tank, suit, a pipe's whole network, a landing pad's shared atmosphere, or every network a device is on. | `reference_id` |
 | `water_sources` | Every canister, tank, device and pipe network that holds water, polluted water or steam, largest first. | `min_mol` |
 | `move_gas` | Move gas and liquid between atmospheres, or delete it. | `from`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `force`; `transfer_id` to poll |
 | `outer_frames` | Frames with a face on the planet's outside air. | `near_player_m`, `include_inner`, `limit`, `offset` |
@@ -39,20 +39,30 @@ and can hold air. A sealed space bigger than 1200 cells has no room, so frames f
 
 `move_gas` uses the game's own gas calls: each gas leaves with its share of the heat and arrives with it.
 
-- `from` and `to` are reference ids of a canister, portable tank, tank or suit, a pipe (its network), a pipe network
-  id, or an atmosphere id from `atmosphere_contents`. Rooms, the planet and world cells are refused.
+- `from` and `to` are reference ids of a canister, portable tank, tank or suit, a pipe (its network), any landing pad
+  piece (the pad's shared atmosphere), a pipe or landing pad network id, or an atmosphere id from
+  `atmosphere_contents`. Rooms, the planet and world cells are refused.
 - `gases` names the gases (`Oxygen`, `Nitrogen`, `CarbonDioxide`, `LiquidOxygen`, `Steam`...); omit for all of them.
   `amount_mol` caps each; omit for all of it. `delete: true` instead of `to` destroys the gas.
 - **Joined sets:** the game keeps some atmospheres at one mix every tick, for example a Gas Tank Storage's canisters and
   its pipe network, or two networks joined by an open valve. By default (`joined: true`) gas is taken from every member
   in proportion, so it does not flow back. `joined: false` moves between the named atmospheres only.
-- **Burst check:** refused with `would_burst` when a side's settled pressure would exceed any member's rating. `force`
-  skips it.
+- **Burst check:** refused with `would_burst` when a side's settled pressure would exceed any member's rating. The
+  receiving side is also refused when the move makes it worse by one of the game's matter rules: liquid over 2% of a
+  gas pipe network's volume, gas or liquid freezing in a network, or the pressure once arriving liquid has boiled
+  (`total.after_boiling` in the reply shows that state). `force` skips every check.
 - **Timing:** the game changes gas only on its atmospherics thread, so the move is queued (`status: queued`) and applied
   at the next atmospherics tick, about half a second later, never while paused. The reply is the prediction; call again
   with only `transfer_id` for the outcome.
 - To undo, move each gas back; it returns at the other side's temperature by then.
 - Host only (`not_host` on a client).
+
+### Landing pads
+
+Every piece of one landing pad (tiles, gas storage tanks, the tank connectors, the data and power connection) shares
+one atmosphere, the pad network's. Name any piece, or the network's id, in `atmosphere_contents` or `move_gas`. Its
+volume is 500 L per gas storage piece and 1 L per other piece. It holds gases and liquids alike and never changes their
+state, so liquid ozone stays liquid there, but boils once moved into a warm pipe network: check `after_boiling`.
 
 Empty a canister's oxygen into a pipe network, `move_gas`:
 

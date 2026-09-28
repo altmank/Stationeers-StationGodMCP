@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.3.1</Version>
+  <Version>1.3.2</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -13,7 +13,7 @@ StationGod MCP connects an AI agent such as Claude Code or Codex to your running
 [*][b]Devices and logic:[/b] find devices anywhere in the world, read and write their logic values, slots and memory, many at once, and record how values change over time.
 [*][b]Chips:[/b] read, write, compile, pause, step and restart IC10 programs, including a suit's chip, and set IC Housing pins. With StationeersLua installed, also Lua chips on consoles, computers, tablets and visors, with their errors and print log.
 [*][b]Your base and planet:[/b] rooms and their air, the planet's atmosphere and weather, plants and their genes, damage, fire risk, water, food, your vitals, the game clock, what you are looking at.
-[*][b]Items and gas:[/b] find and count items, move them between slots, label and paint structures, move gas between canisters, tanks and pipe networks.
+[*][b]Items and gas:[/b] find and count items, move them between slots, label and paint structures, move gas between canisters, tanks, pipe networks and landing pads.
 [*][b]Solar, dishes and traders:[/b] aim solar panels and satellite dishes, check landing pads, buy and sell with a landed trader.
 [*][b]Cables, pipes and chutes:[/b] plan a route, lay it, remove it or reroute it. Every piece gets the right shape for its connections, runs follow frames rather than crossing open air, and a run that would join two networks, overload a cable, burst a pipe or push items the wrong way is refused or flagged.
 [*][b]Upgrades and clean-up:[/b] turn a cable network into heavy or super heavy cable, or a pipe network into insulated pipe, in place; replace junctions that have open ends, merge or split long straights, cut redundant loops and remove dead-end stubs.
@@ -68,6 +68,10 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.3.2
+- Landing pads hold gas: atmosphere_contents and move_gas take any landing pad piece (or the pad network) as the pad's one shared atmosphere, and find_things counts pad pieces as holding gas.
+- move_gas refuses a move that would damage what receives it: liquid over 2% of a gas pipe network, gas or liquid freezing in a network, or the pressure once arriving liquid has boiled. The reply adds that boiled state.
+
 v1.3.1
 - place_structure places batteries, small transformers, vents, pipes, small tanks, valves and other ordinary devices again; they were refused as rocket parts because they may also be fitted in a rocket. remove_structure's rocket check had the same mistake.
 - Two walls back to back on one face can be placed in one request.

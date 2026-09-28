@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Items;
+using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
@@ -18,6 +20,11 @@ internal sealed class GasSnapshot
     // kPa scale of the offset below that.
     private const double FullOfLiquidKpa = 1013249.9694824219;
     private const double LiquidOffsetScaleKpa = 10.0;
+
+    // AtmosphericsNetwork.MinFrozenMolesToDamage (moles per litre of network volume) and the liquid share above which
+    // Atmosphere.IsAboveArmstrong counts a network atmosphere as pressurised.
+    private const double FrozenMolesPerLitre = 0.05000000074505806;
+    private const double NetworkLiquidRatioFloor = 0.0001;
 
     private readonly double[] _moles;
     private readonly double[] _energies;
@@ -103,9 +110,7 @@ internal sealed class GasSnapshot
         GasMixture mixture = ToMixture();
         double liquidVolume = mixture.VolumeLiquids.ToDouble();
         double minimumGas = Atmosphere.GetMinimumGasVolume(Mode).ToDouble();
-        double gasVolume = Math.Max(VolumeL - liquidVolume, minimumGas);
-        double pressure = IdealGas.Pressure(mixture.GetTotalMolesGasses, mixture.Temperature,
-            new VolumeLitres(gasVolume)).ToDouble();
+        double pressure = GasPressureKpa(mixture, liquidVolume);
         bool liquidMode = Mode == AtmosphereHelper.AtmosphereMode.Thing ||
                           Mode == AtmosphereHelper.AtmosphereMode.Network ||
                           Mode == AtmosphereHelper.AtmosphereMode.None;
@@ -115,6 +120,123 @@ internal sealed class GasSnapshot
         }
 
         return pressure;
+    }
+
+    // Atmosphere.PressureGasses: the gas moles alone at the mixture's temperature in Atmosphere.GetGasVolume.
+    private double GasPressureKpa(GasMixture mixture, double liquidVolume)
+    {
+        double minimumGas = Atmosphere.GetMinimumGasVolume(Mode).ToDouble();
+        double gasVolume = Math.Max(VolumeL - liquidVolume, minimumGas);
+        return IdealGas.Pressure(mixture.GetTotalMolesGasses, mixture.Temperature, new VolumeLitres(gasVolume))
+            .ToDouble();
+    }
+
+    /// <summary>Atmosphere.LiquidVolumeRatio: the share of the volume the liquids fill.</summary>
+    internal double LiquidVolumeRatio() => VolumeL > 0.0 ? ToMixture().VolumeLiquids.ToDouble() / VolumeL : 0.0;
+
+    /// <summary>AtmosphericsNetwork.MinFrozenMolesToDamage: the frozen moles a network tolerates.</summary>
+    internal double FrozenLimitMol() => FrozenMolesPerLitre * VolumeL;
+
+    /// <summary>
+    /// The moles AtmosphericsNetwork.EvaluateIncorrectMatterState would find frozen, with the mixture settled to one
+    /// temperature (GasMixture.EqualiseInternalEnergy): GasMixture.CheckForFreezing at the gas pressure, counted only
+    /// while the network's gate is open (Atmosphere.IsAboveArmstrong, or liquids over FrozenLimitMol).
+    /// </summary>
+    internal double FrozenMol()
+    {
+        GasMixture mixture = ToMixture();
+        mixture.EqualiseInternalEnergy();
+        double liquidVolume = mixture.VolumeLiquids.ToDouble();
+        double liquidRatio = VolumeL > 0.0 ? liquidVolume / VolumeL : 0.0;
+        bool network = Mode == AtmosphereHelper.AtmosphereMode.Network;
+        bool aboveArmstrong = PressureKpa() > Chemistry.ArmstrongLimit.ToDouble() ||
+                              (network && liquidRatio > NetworkLiquidRatioFloor);
+        if (!aboveArmstrong && !(mixture.GetTotalMolesLiquids.ToDouble() > FrozenLimitMol()))
+        {
+            return 0.0;
+        }
+
+        return mixture.CheckForFreezing(new PressurekPa(GasPressureKpa(mixture, liquidVolume)))
+            .GetTotalMolesGassesAndLiquids.ToDouble();
+    }
+
+    /// <summary>
+    /// These contents once every liquid that can evaporate has boiled into its gas, as Mole.StateChangeLiquid turns
+    /// it (MoleHelper.EvaporationType; the energy scaled by MoleHelper.EvaporationRatio), each mole paying its latent
+    /// heat of vaporisation out of the pooled energy, settled to one temperature. Null when nothing would boil, or
+    /// when a boiled liquid would end below its evaporation temperature at the resulting gas pressure: then it does
+    /// not all boil, and its vapour stays at the game's evaporation pressure instead.
+    /// </summary>
+    internal GasSnapshot? Boiled()
+    {
+        double[] moles = (double[])_moles.Clone();
+        double energy = EnergyJ();
+        List<Chemistry.GasType> boiled = new List<Chemistry.GasType>();
+        double minimum = Chemistry.MINIMUM_QUANTITY_MOLES.ToDouble();
+        for (int index = 0; index < _moles.Length; index++)
+        {
+            Chemistry.GasType liquid = GasTypes.All[index];
+            int gas = BoilsInto(liquid);
+            if (_moles[index] <= minimum || gas < 0)
+            {
+                continue;
+            }
+
+            Mole mole = new Mole(liquid, new MoleQuantity(_moles[index]), new MoleEnergy(_energies[index]));
+            energy -= _moles[index] * mole.LatentHeatOfVaporization();
+            energy -= _energies[index] * (1.0 - MoleHelper.EvaporationRatio(liquid));
+            moles[gas] += _moles[index];
+            moles[index] = 0.0;
+            boiled.Add(liquid);
+        }
+
+        if (boiled.Count == 0 || !(energy > 0.0))
+        {
+            return null;
+        }
+
+        GasSnapshot result = Settled(moles, energy);
+        GasMixture mixture = result.ToMixture();
+        double temperature = mixture.Temperature.ToDouble();
+        PressurekPa gasPressure = new PressurekPa(result.GasPressureKpa(mixture, mixture.VolumeLiquids.ToDouble()));
+        foreach (Chemistry.GasType liquid in boiled)
+        {
+            if (temperature < MoleHelper.EvaporationTemperature(liquid, gasPressure).ToDouble())
+            {
+                return null;
+            }
+        }
+
+        return result;
+    }
+
+    private static int BoilsInto(Chemistry.GasType type) =>
+        Mole.MatterState(type) == AtmosphereHelper.MatterState.Liquid && MoleHelper.CanEvaporate(type)
+            ? GasTypes.IndexOf(MoleHelper.EvaporationType(type))
+            : -1;
+
+    // GasMixture.TotalEnergy's setter hands each gas its heat capacity's share: one temperature.
+    private GasSnapshot Settled(double[] moles, double energy)
+    {
+        GasMixture mixture = GasMixtureHelper.Create();
+        for (int index = 0; index < moles.Length; index++)
+        {
+            if (moles[index] > 0.0)
+            {
+                mixture.Add(new Mole(GasTypes.All[index], new MoleQuantity(moles[index]), new MoleEnergy(1.0)));
+            }
+        }
+
+        mixture.TotalEnergy = new MoleEnergy(energy);
+        double[] energies = new double[moles.Length];
+        for (int index = 0; index < moles.Length; index++)
+        {
+            energies[index] = moles[index] > 0.0
+                ? mixture.GetMoleValue(GasTypes.All[index]).Energy.ToDouble()
+                : 0.0;
+        }
+
+        return new GasSnapshot(moles, energies, VolumeL, Mode);
     }
 
     private double LiquidOffsetKpa(GasMixture mixture, double liquidVolume)
@@ -251,19 +373,106 @@ internal sealed class GasSide
 
     internal void RefuseIfBursting(string name)
     {
-        double predicted = SettledPressureKpa();
+        RefuseIfOverPressure(name, SettledPressureKpa(), "would settle at");
+    }
+
+    /// <summary>
+    /// The receiving side's matter rules, each refused only when the move makes it worse: the pressure once its
+    /// liquids have boiled, liquid in a gas pipe network, and gas or liquid freezing in a network.
+    /// </summary>
+    internal void RefuseIfReceivingBursts(string name)
+    {
+        GasSnapshot? boiled = AfterBoiling(After);
+        if (boiled != null)
+        {
+            double pressure = boiled.PressureKpa();
+            GasSnapshot? boiledBefore = AfterBoiling(Before);
+            double pressureBefore = (boiledBefore ?? GasSnapshot.Pool(Before)).PressureKpa();
+            if (pressure > pressureBefore)
+            {
+                RefuseIfOverPressure(name, pressure,
+                    $"once its liquids boil (at {boiled.TemperatureK():0.#} K) would reach");
+            }
+        }
+
+        RefuseIfLiquidInGasNetwork(name);
+        RefuseIfFreezing(name);
+    }
+
+    private void RefuseIfOverPressure(string name, double predicted, string verb)
+    {
         foreach (GasEnd member in All.Members)
         {
             PressureRating? broken = member.FirstBroken(predicted);
             if (broken != null)
             {
                 throw ApiErrors.Refused("would_burst",
-                    $"'{name}' would settle at {predicted:0.#} kPa against a limit of " +
+                    $"'{name}' {verb} {predicted:0.#} kPa against a limit of " +
                     $"{broken.LimitFor(predicted):0.#} kPa ({broken.Member}: {broken.MaxKpa:0.#} kPa across, " +
                     $"{broken.OutsideKpa:0.#} kPa outside). Pass force to move it anyway.");
             }
         }
     }
+
+    // AtmosphericsNetwork.EvaluateIncorrectMatterState: a gas pipe network whose liquids fill more than
+    // GameConstants.MAX_ALLOWED_RATIO_VOLUME_LIQUIDS_GAS_PIPE of its volume damages its weakest member every tick.
+    // The liquid spreads over the members joined for liquids, each taking its volume's share.
+    private void RefuseIfLiquidInGasNetwork(string name)
+    {
+        GasEnd? gasNetwork = LiquidSet.Members.Find(member =>
+            member.Network != null && member.Network.NetworkContentType == Pipe.ContentType.Gas);
+        if (gasNetwork == null)
+        {
+            return;
+        }
+
+        double ratio = Pooled(LiquidSet, After).LiquidVolumeRatio();
+        double limit = GameConstants.MAX_ALLOWED_RATIO_VOLUME_LIQUIDS_GAS_PIPE;
+        if (ratio > limit && ratio > Pooled(LiquidSet, Before).LiquidVolumeRatio())
+        {
+            throw ApiErrors.Refused("would_burst",
+                $"'{name}': liquid would fill {ratio * 100.0:0.##}% of gas pipe network " +
+                $"{gasNetwork.Network!.ReferenceId}, over the {limit * 100.0:0.#}% a gas pipe holds without " +
+                "bursting. " +
+                "Move it into a liquid network or tank, or pass force to move it anyway.");
+        }
+    }
+
+    // AtmosphericsNetwork.EvaluateIncorrectMatterState: frozen moles over MinFrozenMolesToDamage damage a network.
+    private void RefuseIfFreezing(string name)
+    {
+        if (!All.Members.Exists(member => member.Network != null))
+        {
+            return;
+        }
+
+        GasSnapshot after = GasSnapshot.Pool(After);
+        double frozen = after.FrozenMol();
+        double limit = after.FrozenLimitMol();
+        if (frozen > limit && frozen > GasSnapshot.Pool(Before).FrozenMol())
+        {
+            throw ApiErrors.Refused("would_burst",
+                $"'{name}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the " +
+                $"{limit:0.#} mol a network of {after.VolumeL:0} L tolerates. Pass force to move it anyway.");
+        }
+    }
+
+    private GasSnapshot Pooled(JoinedSet set, GasSnapshot[] snapshots)
+    {
+        GasSnapshot[] parts = new GasSnapshot[set.Members.Count];
+        for (int index = 0; index < parts.Length; index++)
+        {
+            parts[index] = snapshots[IndexOf(set.Members[index].Atmosphere)];
+        }
+
+        return GasSnapshot.Pool(parts);
+    }
+
+    /// <summary>Whether any member's atmosphere changes matter state (a landing pad network's does not).</summary>
+    private bool ChangesState => All.Members.Exists(member => member.ChangesState);
+
+    private GasSnapshot? AfterBoiling(GasSnapshot[] snapshots) =>
+        ChangesState ? GasSnapshot.Pool(snapshots).Boiled() : null;
 
     internal GasSideView ToView(GasSnapshot[] after)
     {
@@ -281,7 +490,8 @@ internal sealed class GasSide
             joiners.Add(GameLookup.ViewOf(joiner));
         }
 
-        GasTotalView total = new GasTotalView(GasSnapshot.Pool(Before).ToView(), GasSnapshot.Pool(after).ToView());
+        GasTotalView total = new GasTotalView(GasSnapshot.Pool(Before).ToView(), GasSnapshot.Pool(after).ToView(),
+            AfterBoiling(after)?.ToView());
         return new GasSideView(members, total, joiners);
     }
 
@@ -402,6 +612,7 @@ internal sealed class GasPlan
     {
         Source.RefuseIfBursting("from");
         Target?.RefuseIfBursting("to");
+        Target?.RefuseIfReceivingBursts("to");
     }
 
     internal MoveGasView ToView(long transferId) =>
