@@ -8,3 +8,4 @@ Sidecar/*.zip
 *.suo
 .vs/
 .idea/
+release/
