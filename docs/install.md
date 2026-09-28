@@ -22,11 +22,11 @@ StationGod MCP has two parts:
 
 **Steam Workshop:** subscribe to StationGod MCP and enable it in StationeersLaunchPad.
 
-**Without the Workshop** (a dedicated server, a non-Steam setup): download the mod package zip from the
+**Without the Workshop** (a dedicated server, a non-Steam setup): download `StationGodMCP.zip` from the
 [latest GitHub Release](https://github.com/altmank/Stationeers-StationGodMCP/releases/latest) and extract it into the
-game's local mods folder (`Documents\My Games\Stationeers\mods\StationGodMCP` for a player; a dedicated server's own
-`mods` folder), so that `About\About.xml` and `StationGodMCP.dll` sit directly in that folder. Then enable it in
-StationeersLaunchPad.
+game's local mods folder (`Documents\My Games\Stationeers\mods` for a player; a dedicated server's own `mods`
+folder). The zip holds one `StationGodMCP` folder, so you end up with `mods\StationGodMCP\About\About.xml` and
+`mods\StationGodMCP\StationGodMCP.dll`. Then enable it in StationeersLaunchPad.
 
 ## 2. Get the sidecar
 
@@ -49,6 +49,19 @@ Extract one archive to a folder outside every Stationeers mod and Workshop folde
 | --- | --- | --- |
 | `StationGodMCP.Server-win-x64.zip` | nothing | `StationGodMCP.Server.exe` |
 | `StationGodMCP.Server-portable.zip` | .NET 8 runtime | `dotnet StationGodMCP.Server.dll` |
+
+Every Release has the same four files:
+
+| File | What it is |
+| --- | --- |
+| `StationGodMCP.zip` | The mod package: one `StationGodMCP` folder for the mods folder. |
+| `StationGodMCP.Server-win-x64.zip` | The self-contained sidecar. |
+| `StationGodMCP.Server-portable.zip` | The portable sidecar. |
+| `SHA256SUMS.txt` | The SHA-256 of each zip. |
+
+The newest one downloads from `https://github.com/altmank/Stationeers-StationGodMCP/releases/latest/download/<file>`,
+a given version from `https://github.com/altmank/Stationeers-StationGodMCP/releases/download/v<version>/<file>` (for
+example `.../releases/download/v1.3.1/StationGodMCP.zip`).
 
 The executable is unsigned, so Windows SmartScreen may ask before its first run. The portable build runs through
 Microsoft's signed `dotnet` host instead.

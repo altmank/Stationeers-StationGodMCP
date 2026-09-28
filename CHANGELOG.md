@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.3.1
+
+Fixes from the first live run of 1.3.0 on a dedicated server.
+
+- **`place_structure` places ordinary devices again.** Batteries, small transformers, passive vents, pipes, small
+  tanks, radiators, gas tank storage, valves and portables connectors were refused as "a rocket part", because they
+  may also be fitted in a rocket. Now only what the game places solely in a rocket (strictly internal pieces), the
+  fuselage and the launch mount are refused, plus any placement into a rocket's cells. `remove_structure` had the same
+  mistake: its `rocket` refusal now means a piece that is part of a rocket.
+- **Walls back to back in one request.** Two plates on one face, one facing into each cell, were refused
+  `overlaps_placement`. A face holds one wall per side, as in the game.
+- **Devices aimed at a cell's centre stand on its floor.** A 0.5 m-grid device (a battery, a valve) given at a
+  point inside a cell stayed in the air there and was refused "requires a Frame below". When the point as given cannot
+  be built, the device is now set down on the surface behind it, as the placement cursor's ray lands on a surface: the
+  floor plane below a standing device, the face at the back of a mounted one (a transformer facing up sits on the
+  floor). A point as given that can be built is kept.
+- **Positions in messages are in metres.** Problems and warnings printed cells ten times too large
+  ("Cell (-13060, 2200, -7075)" for (-1306, 220, -707.5)).
+- **`plan_removal` on a dedicated server.** With no local player and no `from_id` it reported a `no_local_player`
+  problem; it only prices the refund, so that is now a warning.
+- **Smaller fixes.** A tap's changed trunk piece is listed under `created_by_part` `joined`, not `run`; a plan lists
+  the network `to` names once in `resolved_networks`, not as both `to` and `to.network_id`; two plates back to back
+  removed together report their breach once.
+
 ## 1.3.0
 
 Tools for refactoring a whole network, each replacing a step that had to be done by hand in a live cable refactor.

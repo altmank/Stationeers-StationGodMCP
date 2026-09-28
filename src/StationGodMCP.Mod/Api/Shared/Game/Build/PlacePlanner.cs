@@ -129,18 +129,20 @@ internal static class PlacePlanner
     }
 
     /// <summary>The cursor check again for one resolved placement, as things stand now (the job's step before it).</summary>
-    internal static string? Recheck(PlannedPlacement placement)
+    internal static string? Recheck(PlannedPlacement placement) =>
+        Check(placement.Prefab!, placement.Cursor!, placement.Position!.Value, placement.Rotation);
+
+    private static string? Check(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation)
     {
-        Structure prefab = placement.Prefab!;
         HashSet<long> none = new HashSet<long>();
-        string? refusal = CursorCheck.Refusal(placement.Cursor!, placement.Position!.Value, placement.Rotation, none);
-        if (refusal == null && prefab is SmallGrid piece)
+        string? refusal = CursorCheck.Refusal(cursor, position, rotation, none);
+        if (refusal != null || !(prefab is SmallGrid piece))
         {
-            refusal = CursorCheck.SlotTaken(piece,
-                CursorCheck.SmallCells(prefab, placement.Position.Value, placement.Rotation), none);
+            return refusal;
         }
 
-        return refusal;
+        Grid3[] cells = CursorCheck.SmallCells(prefab, position, rotation);
+        return CursorCheck.RocketCell(cells) ?? CursorCheck.SlotTaken(piece, cells, none);
     }
 
     private static void Resolve(PlacePlan plan, BuildCatalogue catalogue, List<ColorSwatch> swatches,
@@ -176,11 +178,8 @@ internal static class PlacePlanner
         }
 
         placement.Cursor = cursor;
-        Metres at = placement.Args.At;
-        Vector3 position = CursorCheck.Snap(cursor, new Vector3((float)at.X, (float)at.Y, (float)at.Z),
-            placement.Rotation);
+        Vector3 position = Aim(placement, cursor, out string? refusal);
         placement.Position = position;
-        string? refusal = Recheck(placement);
         if (refusal != null)
         {
             plan.Problem("cannot_place", $"{prefab.PrefabName} at {Describe(position)}: {refusal}.", index);
@@ -191,6 +190,60 @@ internal static class PlacePlanner
         {
             placement.Cost.AddRange(BuildMaterials.Amounts(prefab, placement.State.Value, plan.Items));
         }
+    }
+
+    // Where the cursor would put the piece aimed at `at`, and why it would not build there. The cursor snaps the point
+    // its ray lands on, which is a surface: a small-grid device aimed at a floor stands on the floor plane, a mounted one
+    // on the face it mounts to. So when the point as given cannot be built, a small-grid device is tried again set down
+    // on the surface behind it (CursorAim): along its down for a grid-placed device, along its back for a mounted one.
+    // A point as given that can be built is kept.
+    private static Vector3 Aim(PlannedPlacement placement, Structure cursor, out string? refusal)
+    {
+        Structure prefab = placement.Prefab!;
+        Metres at = placement.Args.At;
+        Vector3 given = CursorCheck.Snap(cursor, new Vector3((float)at.X, (float)at.Y, (float)at.Z),
+            placement.Rotation);
+        refusal = Check(prefab, cursor, given, placement.Rotation);
+        GridStep? away = placement.Turn == null ? null : AwayFromSurface(prefab, placement.Turn);
+        if (refusal == null || !away.HasValue)
+        {
+            return given;
+        }
+
+        (double x, double y, double z) = CursorAim.OntoFloor(at.X, at.Y, at.Z, away.Value);
+        Vector3 surface = CursorCheck.Snap(cursor, new Vector3((float)x, (float)y, (float)z), placement.Rotation);
+        if (surface == given)
+        {
+            return given;
+        }
+
+        string? surfaceRefusal = Check(prefab, cursor, surface, placement.Rotation);
+        if (surfaceRefusal == null)
+        {
+            refusal = null;
+            return surface;
+        }
+
+        refusal = $"{refusal}; set down on the surface at {Describe(surface)}: {surfaceRefusal}";
+        return given;
+    }
+
+    // Which way a small-grid device the cursor sets down on a surface points away from it: its up when grid-placed,
+    // its forward when mounted; null for cable, pipe and chute pieces (laid through any cell), face-placed pieces and 2 m
+    // devices (those snap to their cell's centre).
+    private static GridStep? AwayFromSurface(Structure prefab, CubeRotation turn)
+    {
+        if (!(prefab is SmallGrid) || NetworkToolOf(prefab) != null || prefab.GridSize >= CursorAim.LargeCell)
+        {
+            return null;
+        }
+
+        return prefab.PlacementType switch
+        {
+            PlacementSnap.Grid => turn.Up,
+            PlacementSnap.FaceMount => turn.Forward,
+            _ => null
+        };
     }
 
     // The turn asked for; a grid-placed piece only as the cursor turns it (its RotationAxis, 90 degrees, 180 about x
@@ -239,12 +292,16 @@ internal static class PlacePlanner
         return false;
     }
 
+    // The place tool of a cable, pipe or chute piece; null for anything else (devices on those networks included).
+    private static string? NetworkToolOf(Structure prefab) =>
+        new CableFamily().IsPiece(prefab) ? "place_cables"
+        : new PipeFamily().IsPiece(prefab) ? "place_pipes"
+        : new ChuteFamily().IsPiece(prefab) ? "place_chutes"
+        : null;
+
     private static void NetworkPieceNote(PlacePlan plan, Structure prefab, int index)
     {
-        string? tool = new CableFamily().IsPiece(prefab) ? "place_cables"
-            : new PipeFamily().IsPiece(prefab) ? "place_pipes"
-            : new ChuteFamily().IsPiece(prefab) ? "place_chutes"
-            : null;
+        string? tool = NetworkToolOf(prefab);
         if (tool != null)
         {
             plan.Warn("network_piece",
@@ -292,7 +349,7 @@ internal static class PlacePlanner
     // before each build would stop the run at the second one.
     private static void Overlaps(PlacePlan plan)
     {
-        Dictionary<string, int> seen = new Dictionary<string, int>();
+        Dictionary<PlacementSpot, int> seen = new Dictionary<PlacementSpot, int>();
         foreach (PlannedPlacement placement in plan.Placements)
         {
             if (!placement.Resolved)
@@ -300,7 +357,7 @@ internal static class PlacePlanner
                 continue;
             }
 
-            string key = SpotKey(placement);
+            PlacementSpot key = SpotOf(placement);
             if (seen.TryGetValue(key, out int first))
             {
                 plan.Problem("overlaps_placement",
@@ -313,12 +370,16 @@ internal static class PlacePlanner
         }
     }
 
-    private static string SpotKey(PlannedPlacement placement)
+    // The slot a placement takes, as the game's slots tell pieces apart: a face-placed piece takes one side of its
+    // face (two plates back to back are two slots).
+    private static PlacementSpot SpotOf(PlannedPlacement placement)
     {
         Structure prefab = placement.Prefab!;
         Vector3 p = placement.Position!.Value;
-        string slot = prefab is SmallGrid ? "small:" + prefab.GetType().Name : prefab.PlacementType.ToString();
-        return string.Format(CultureInfo.InvariantCulture, "{0:0.00},{1:0.00},{2:0.00}/{3}", p.x, p.y, p.z, slot);
+        bool small = prefab is SmallGrid;
+        string slot = small ? "small:" + prefab.GetType().Name : prefab.PlacementType.ToString();
+        GridStep? side = !small && prefab.PlacementType == PlacementSnap.Face ? placement.Turn?.Forward : null;
+        return PlacementSpot.Of(p.x, p.y, p.z, slot, side);
     }
 
     private static void Source(PlacePlan plan)

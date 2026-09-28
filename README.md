@@ -38,8 +38,9 @@ that passes its requests to the game.
 1. Subscribe on the Steam Workshop and enable StationGod MCP in StationeersLaunchPad.
 2. In the mod's `Sidecar` folder, extract `StationGodMCP.Server-win-x64.zip` (no .NET needed) or
    `StationGodMCP.Server-portable.zip` (needs .NET 8) to a folder outside every mod folder, for example
-   `%LOCALAPPDATA%\StationGodMCP\server`. The same archives, with checksums, and a mod package for installs without
-   the Workshop are on the [GitHub Releases](https://github.com/altmank/Stationeers-StationGodMCP/releases) page.
+   `%LOCALAPPDATA%\StationGodMCP\server`. The same archives, with `SHA256SUMS.txt`, and the mod package
+   `StationGodMCP.zip` for installs without the Workshop (extract it into `Documents\My Games\Stationeers\mods`)
+   are on the [GitHub Releases](https://github.com/altmank/Stationeers-StationGodMCP/releases) page.
 3. Register it with your agent. Claude Code, in PowerShell:
 
    ```powershell
@@ -100,7 +101,7 @@ A single local game needs none. The settings cover the local pipe's name and rem
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
   tools that need it, which answer `game_changed`; `mod_info` lists them.
 
-## Status (1.3.0)
+## Status (1.3.1)
 
 **Proven in real play on a live base:** the device, logic, IC10 and Lua chip tools, `set_ic_source` on Lua chips
 included; the item and container tools, `find_things`, `move_item`, `label` and `paint`; `planet`, `plants`,
@@ -114,6 +115,10 @@ included.
 addition, with real runs: `would_split` naming the devices cut off (`components`, `root`, `cut_off`),
 `remove_redundant`, the tap check (`not_joined`, `join_to`, `join_trunk`), network handles, the job slot (`busy`,
 `wait: true`), `created_ids`, `grid_survey`'s support classes, and `remove_structure`'s corrected `would_breach`.
+The 1.3.1 fixes, with real runs: `place_structure` building batteries, a large battery, an in-line small tank, a pipe,
+a small transformer, a passive vent, a valve, a portables connector and gas tank storage, the devices given at their
+cell's centre and set down on the floor; two walls back to back in one request; `plan_removal` without a player;
+cell positions in messages in metres.
 
 ## Documentation
 

@@ -41,7 +41,8 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    saves and ownership follow as for normal building. Players without the mod see ordinary cables and pipes.
 
 A finished run job's log lists `created_ids`, every piece it built, and `created_by_part`, the same ids grouped by
-`run`, `branch N`, `joined` (a neighbour turned into a junction) and `fill`.
+`run`, `branch N`, `joined` (an existing piece the run changed: a neighbour or a tap's trunk piece turned into a
+junction) and `fill`.
 
 ## Tools
 

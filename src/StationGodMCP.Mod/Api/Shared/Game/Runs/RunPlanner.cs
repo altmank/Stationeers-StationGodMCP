@@ -518,7 +518,13 @@ internal static class RunPlanner
         }
 
         Human human = Human.LocalHuman;
-        if (human == null)
+        if (human == null && SourceRule.NoLocalPlayer(plan.Request.Tool) == GuardLevel.Warning)
+        {
+            plan.Warnings.Add(new LayoutIssue("no_local_player", "There is no local player (a dedicated server); the " +
+                                                                 "refund is an estimate, and a real removal takes " +
+                                                                 "from_id to receive it.", null, null));
+        }
+        else if (human == null)
         {
             plan.Problem("no_local_player", "There is no local player to take coils from; pass from_id.");
         }

@@ -101,7 +101,7 @@ internal static class RunApi
             "chute" => new ChuteRunKind(),
             _ => throw ApiErrors.InvalidArgument("kind must be cable, pipe or chute.")
         };
-        RunPlan plan = RunPlanner.Plan(new RunRequest(kind, "plan_removal", null, Removal(args, kind),
+        RunPlan plan = RunPlanner.Plan(new RunRequest(kind, SourceRule.PlanRemoval, null, Removal(args, kind),
             RunArgs.Options(args, kind)));
         return RunReports.Of(plan, RunReports.DryRun, null);
     }

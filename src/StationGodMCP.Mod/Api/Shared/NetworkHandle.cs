@@ -52,6 +52,34 @@ internal abstract class NetworkHandle
 
     internal const int MaximumPort = 64;
 
+    /// <summary>
+    /// The handle a planner's to names, as join_to's default, and the argument it is recorded under in
+    /// resolved_networks (the name to's own resolution uses, so a reply lists it once): to.network_id, or to's
+    /// {reference_id, port} as "to"; null when to names neither.
+    /// </summary>
+    internal static JToken? TargetOf(JObject to, out string argument)
+    {
+        if (to["network_id"] is JToken network)
+        {
+            argument = "to.network_id";
+            return network;
+        }
+
+        argument = "to";
+        if (to["reference_id"] == null)
+        {
+            return null;
+        }
+
+        JObject handle = new JObject { ["reference_id"] = to["reference_id"]!.DeepClone() };
+        if (to["port"] is JToken port && port.Type != JTokenType.Null)
+        {
+            handle["port"] = port.DeepClone();
+        }
+
+        return handle;
+    }
+
     /// <summary>The handle in a token: a reference id or {reference_id, port}; else invalid_argument.</summary>
     internal static NetworkHandle Read(JToken? token, string name)
     {
@@ -131,16 +159,22 @@ internal static class ResolvedNetworks
     internal static void Record(string argument, NetworkHandle handle, ThingId network)
     {
         _current ??= new List<ResolvedNetworkView>();
+        object given = handle.Given;
         foreach (ResolvedNetworkView known in _current)
         {
-            if (known.Argument == argument)
+            // One entry per argument, and one per handle: join_to defaulted from to's handle is not listed twice.
+            if (known.Argument == argument || (known.NetworkId.Equals(network) && SameGiven(known.Given, given)))
             {
                 return;
             }
         }
 
-        _current.Add(new ResolvedNetworkView(argument, handle.Given, network));
+        _current.Add(new ResolvedNetworkView(argument, given, network));
     }
+
+    private static bool SameGiven(object known, object given) =>
+        known.Equals(given) || (known is HandleGivenView a && given is HandleGivenView b &&
+                                a.ReferenceId.Equals(b.ReferenceId) && a.Port == b.Port);
 
     /// <summary>What was resolved since Begin, or null for nothing; the list is handed over and forgotten.</summary>
     internal static List<ResolvedNetworkView>? Take()

@@ -264,14 +264,7 @@ internal static class PlanRouteApi
             return args;
         }
 
-        JToken? handle = to["network_id"] ?? (to["reference_id"] != null
-            ? new JObject { ["reference_id"] = to["reference_id"]!.DeepClone(), ["port"] = to["port"]?.DeepClone() }
-            : null);
-        if (handle is JObject item && item["port"]?.Type == JTokenType.Null)
-        {
-            item.Remove("port");
-        }
-
+        JToken? handle = NetworkHandle.TargetOf(to, out string argument);
         if (handle == null)
         {
             return args;
@@ -279,7 +272,7 @@ internal static class PlanRouteApi
 
         try
         {
-            NetworkHandles.Resolve(handle, "to", kind.Family);
+            NetworkHandles.Resolve(handle, argument, kind.Family);
         }
         catch (ApiException)
         {

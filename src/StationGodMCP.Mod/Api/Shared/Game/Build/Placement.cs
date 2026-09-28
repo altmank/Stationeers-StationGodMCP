@@ -7,7 +7,7 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
-using Objects.Rockets;
+using Networks;
 using Objects.RoboticArm;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -106,9 +106,10 @@ internal sealed class BuildCatalogue
             return $"{prefab.PrefabName} has no build states.";
         }
 
-        if (prefab is IRocketInternals || prefab is StructureFuselage || prefab is LaunchMount)
+        if (RocketParts.Of(prefab).RocketOnly)
         {
-            return $"{prefab.PrefabName} is a rocket part; rockets are not built by this tool.";
+            return $"{prefab.PrefabName} is a rocket part (the game places it only in a rocket); rockets are not " +
+                   "built by this tool.";
         }
 
         return _kitBuilt.Contains(prefab.PrefabHash)
@@ -193,6 +194,25 @@ internal static class CursorCheck
         }
     }
 
+    /// <summary>
+    /// A rocket's cell among the small cells the piece would take (SmallCell.Owner is the RocketNetwork): a piece
+    /// placed there becomes part of that rocket; null when none is.
+    /// </summary>
+    internal static string? RocketCell(Grid3[] cells)
+    {
+        GridController world = GridController.World;
+        foreach (Grid3 grid in cells)
+        {
+            if (world.GetSmallCell(grid)?.Owner is RocketNetwork)
+            {
+                return $"the cell at {GridText.Metres(grid.x, grid.y, grid.z)} is inside a rocket; rockets are not " +
+                       "built by this tool";
+            }
+        }
+
+        return null;
+    }
+
     // The cells a small-grid piece would take, as SmallGrid.CanConstruct reads them.
     internal static Grid3[] SmallCells(Structure prefab, Vector3 position, Quaternion rotation) =>
         prefab.GridBounds != null && prefab.GridBounds.IsValid()
@@ -214,7 +234,7 @@ internal static class CursorCheck
             if (holder != null && !holder.IsBeingDestroyed && !ignore.Contains(holder.ReferenceId))
             {
                 return $"{holder.DisplayName} ({holder.PrefabName} {holder.ReferenceId}) already takes that slot of " +
-                       $"the cell at {grid}";
+                       $"the cell at {GridText.Metres(grid.x, grid.y, grid.z)}";
             }
         }
 

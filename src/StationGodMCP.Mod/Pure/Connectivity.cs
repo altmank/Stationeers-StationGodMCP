@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
 
-/// <summary>A 0.5 m small-grid cell (Grid3 in small-grid units).</summary>
+/// <summary>A 0.5 m small-grid cell (the game's Grid3, in decimetres).</summary>
 internal readonly struct GridCell : IEquatable<GridCell>
 {
     internal GridCell(int x, int y, int z)
@@ -27,7 +27,8 @@ internal readonly struct GridCell : IEquatable<GridCell>
 
     public override int GetHashCode() => unchecked((X * 73856093) ^ (Y * 19349663) ^ (Z * 83492791));
 
-    public override string ToString() => $"({X}, {Y}, {Z})";
+    /// <summary>The point in metres, as players and the other tools give positions (the fields are decimetres).</summary>
+    public override string ToString() => GridText.Metres(X, Y, Z);
 }
 
 /// <summary>

@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.3.0</Version>
+  <Version>1.3.1</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -68,6 +68,14 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.3.1
+- place_structure places batteries, small transformers, vents, pipes, small tanks, valves and other ordinary devices again; they were refused as rocket parts because they may also be fitted in a rocket. remove_structure's rocket check had the same mistake.
+- Two walls back to back on one face can be placed in one request.
+- A small device given at a cell's centre that cannot stand there is set down on the floor below (or the face behind a mounted one), as the placement cursor does, instead of being refused for a missing frame.
+- Positions in messages are in metres (they were ten times too large).
+- plan_removal on a dedicated server only warns that there is no player to receive the refund.
+- A tap's changed trunk piece is logged as joined; resolved_networks lists each handle once; a breach through two plates back to back is reported once.
+
 v1.3.0
 - Removal checks name the devices a split would cut off from their APC or generator, not just how many networks it makes.
 - New clean operation remove_redundant: removes every cable or pipe piece no device needs, oldest first, keeping new pieces you name. It finds old and new feeds that meet at a device, which remove_loops cannot.
@@ -75,6 +83,27 @@ v1.3.0
 - Networks can be named by any piece or device on them, or a device port, so a name stays valid after edits change the network id.
 - A run started while another job is busy says so with that job's id, or waits its turn with wait: true. Run jobs list the ids of the pieces they built.
 - Fix: remove_structure no longer calls removing a wall plate on a finished frame a breach, and now catches two plates back to back removed together.
+
+v1.2.0
+- Route planners can plan as if old pieces were already gone (assume_removed) and remove them in the same job, so a new run can go where old cable is about to be taken out.
+- New route preference hidden: the least visible route, inside frames first, then frame surfaces, walls, air. Routes report their new cells by how visible they are.
+- Bus mode: give a trunk instead of a target, and every start branches from it; the trunk and its drops are one job. Up to 16 starts per plan (was 8).
+- grid_survey marks cells inside a frame ('i') apart from its surface, lists each network's floating cells, and can show what removing each piece gives back.
+- New feed_paths tool: which rooms each device's feed passes through from an APC, flagging daisy chains. New plan_removal tool: a removal's refund and split check without doing it. 74 tools now.
+- Fix: materials given back after a job (walls and frames swapped, cables removed...) were made at the player's position and could hurt the suit. They now go straight into the inventory: matching stacks first, then empty slots, and only what does not fit onto the ground in front of the player.
+
+v1.1.1
+- Route rule inside_frames now accepts the top of a frame beam and the outer faces of frames, judged the same way as frames_first and prefer frame_edges; it used to refuse them as the empty cell above.
+- Rerouting between an APC (or any device on several networks of the kind) and another end no longer fails with not_on_one_network: the network both ends share is used, and an end may name a device port as {reference_id, port}. When no network or several are shared, the error lists each end's ports and networks.
+
+v1.1.0
+- New paste_blueprint tool: with BlueprintMod loaded, paste a blueprint at a position and quarter turn you give, as the D.B.P.U. does, with no player needed, so it works on a dedicated server. It also reports progress and undoes. 72 tools now.
+- New setting [Pipe] Name (or STATIONGODMCP_PIPE_NAME): a second game or test server on the same machine can listen on its own pipe. mod_info reports pipe_name.
+
+v1.0.0
+- First release: an MCP server for Stationeers with 71 tools for devices and logic, IC10 and Lua chips, rooms, air, planet, plants, items, gas, traders, solar panels and dishes.
+- Build and rebuild cables, pipes and chutes, upgrade and clean up networks, swap walls and frames, and place or remove any kit-built structure, each with a dry run, a held game tick and a check afterwards.
+- Local games over a named pipe; dedicated servers over authenticated TCP.
 </ChangeLog>
   <WorkshopHandle>0</WorkshopHandle>
   <Tags />

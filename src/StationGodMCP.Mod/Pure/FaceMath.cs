@@ -35,7 +35,8 @@ internal readonly struct GridPoint : IEquatable<GridPoint>
 
     public override int GetHashCode() => unchecked((X * 73856093) ^ (Y * 19349663) ^ (Z * 83492791));
 
-    public override string ToString() => $"({X}, {Y}, {Z})";
+    /// <summary>The point in metres, as players and the other tools give positions (the fields are decimetres).</summary>
+    public override string ToString() => GridText.Metres(X, Y, Z);
 }
 
 /// <summary>

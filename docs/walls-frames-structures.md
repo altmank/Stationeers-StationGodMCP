@@ -83,7 +83,10 @@ Tool wear, welder fuel and battery charge are not charged.
 3. The same call with `dry_run: false, confirm: true`; poll `{job_id}`. `result.verification` confirms each piece
    stands as planned: prefab, position, turn, build state, label and colour.
 
-- **Position:** `at` is any point in the cell, snapped as the placement cursor snaps it.
+- **Position:** `at` is any point in the cell, snapped as the placement cursor snaps it. A 2 m device snaps to its
+  cell's centre. A 0.5 m-grid device (a battery, a valve, a transformer) that cannot be built at the point as given is
+  set down on the surface behind it, as the cursor's ray lands on a surface: the floor plane below a standing device,
+  the face at the back of a mounted one. So a cell's centre works; a point as given that can be built is kept.
 - **Turn:** at most one of `rotation` (`[x, y, z]` degrees, multiples of 90), `facing` (`+x`, `-x`, `+y`, `-y`, `+z`,
   `-z`) with an optional `up`, or `face` for pieces placed on a cell face such as walls: `face: "+x"` puts the piece on
   the cell's +x face, looking into the cell. A grid piece may only turn about the axes its cursor turns it
@@ -96,8 +99,13 @@ Tool wear, welder fuel and battery charge are not charged.
 - **Cost:** every build state's items up to the chosen state, from your inventory or `from_id`. `free: true` places
   without materials, in creative worlds only (`not_creative` otherwise).
 - **Refused per placement:** `invalid_prefab` (not loaded, not a structure, no kit builds it, a rocket part),
-  `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason), `not_labelable`, `not_paintable`,
-  `invalid_color`, `overlaps_placement`.
+  `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason, or a cell inside a rocket),
+  `not_labelable`, `not_paintable`, `invalid_color`, `overlaps_placement` (two placements of the request in one slot).
+- **Rocket parts** are what the game places only in a rocket (strictly internal pieces), the fuselage and the launch
+  mount. Batteries, tanks, pipes, valves, vents and other devices that may also be fitted in a rocket are placed as
+  usual.
+- **Walls back to back:** a face holds one wall per side, so two plates on one face, one facing into each cell, go
+  in one request.
 
 ## Removing structures
 
@@ -117,7 +125,8 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 The breach check judges the whole request at once, by the game's own air rule: a face stays sealed while anything left
 on it blocks air, or while the structure filling a cell beside it does (a finished frame). So a wall plate on a
 finished frame's face never breaches, and two plates back to back on one face breach only when both are removed in the
-same request.
+same request; that breach is reported once, on the first of them. `rocket` means part of a rocket: placed in one, a
+rocket-only piece, a fuselage or a launch mount.
 
 Cable, pipe and chute pieces are removed as the remove tools remove them, with their checks; `would_split` is only a
 warning here, so read it.

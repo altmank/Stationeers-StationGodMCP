@@ -408,6 +408,14 @@ internal sealed class RunShape
     }
 
     /// <summary>
+    /// The part of a run a built piece is logged under (created_by_part): "joined" for an existing piece the run changed
+    /// (a trunk piece a tap turned into a junction, a neighbour the run joined), else the cell's part of the shape, or
+    /// "fill" for a split long straight's cell or a run with no shape.
+    /// </summary>
+    internal static string BuiltPart(RunShape? shape, GridCell cell, bool changesExisting) =>
+        changesExisting ? "joined" : shape?.PartOf(cell) ?? "fill";
+
+    /// <summary>
     /// The shape with the tip carried on by cells (each a neighbour of the one before, the first a neighbour of the
     /// tip): the main run's first cell is extended backwards, its last forwards, a branch's first backwards. Null
     /// with the reason when the cells do not continue the tip or a cell is already laid.

@@ -10,7 +10,6 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
-using Objects.Rockets;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Views;
@@ -123,9 +122,10 @@ internal static class RemovePlanner
             }
         }
 
+        BreachedFaces breached = new BreachedFaces();
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
-            Guard(plan, takedown, seen);
+            Guard(plan, takedown, seen, breached);
         }
 
         foreach (RunKind kind in Kinds)
@@ -170,14 +170,15 @@ internal static class RemovePlanner
         return null;
     }
 
-    private static void Guard(RemovePlan plan, PlannedTakedown takedown, HashSet<long> removed)
+    private static void Guard(RemovePlan plan, PlannedTakedown takedown, HashSet<long> removed,
+        BreachedFaces breached)
     {
         Structure piece = takedown.Piece;
         RemovalFacts facts = new RemovalFacts
         {
             BeingDestroyed = piece.IsBeingDestroyed,
             Indestructible = piece.Indestructable,
-            Rocket = InRocket(piece),
+            Rocket = RocketParts.Of(piece).PartOfRocket,
             Broken = piece.CurrentBuildStateIndex < 0,
             GameRefusal = GameRefusal(piece),
             Mounted = MountedOn(piece),
@@ -185,7 +186,13 @@ internal static class RemovePlanner
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
         };
         Items(piece, facts.Items);
-        Breach(piece, facts, removed);
+        List<GridPoint> opened = Breach(piece, facts, removed);
+        if (facts.BreachKpa.HasValue && facts.BreachKpa.Value >= RemovalRule.BreachKpa && !breached.Claim(opened))
+        {
+            // Another piece of this request already reported the breach of these faces (plates back to back).
+            facts.BreachKpa = null;
+        }
+
         foreach (GuardFinding finding in RemovalRule.Judge(facts, plan.Arguments.Allow))
         {
             plan.Add(finding, takedown.Index, piece.ReferenceId);
@@ -196,10 +203,6 @@ internal static class RemovePlanner
             OpenPorts(plan, takedown, device, removed);
         }
     }
-
-    private static bool InRocket(Structure piece) =>
-        piece.RocketData?.Network != null || piece is IRocketInternals || piece is StructureFuselage ||
-        piece is LaunchMount || (piece is SmallGrid small && RunPlanner.InRocket(small));
 
     private static string? GameRefusal(Structure piece)
     {
@@ -249,12 +252,13 @@ internal static class RemovePlanner
     // A piece that blocks air joins, when it goes, the cells on both sides of each face it holds, or each cell it
     // fills with its open neighbours, unless the face stays sealed (FaceSeal): something left on the face, or the
     // structure filling a cell beside it (a finished frame), blocks air. Every piece of the request counts as gone at
-    // once, so two plates back to back on one face breach when both go, and neither alone.
-    private static void Breach(Structure piece, RemovalFacts facts, HashSet<long> removed)
+    // once, so two plates back to back on one face breach when both go, and neither alone. Returns the faces it opens.
+    private static List<GridPoint> Breach(Structure piece, RemovalFacts facts, HashSet<long> removed)
     {
+        List<GridPoint> opened = new List<GridPoint>();
         if (piece is SmallGrid || piece.CanAirPass)
         {
-            return;
+            return opened;
         }
 
         GridController grid = GridController.World;
@@ -265,6 +269,7 @@ internal static class RemovePlanner
             {
                 if (!Sealed(grid, slot.Point, CellBlocker(grid, a), CellBlocker(grid, b), piece, removed))
                 {
+                    AddOnce(opened, slot.Point);
                     AddOnce(sides, a);
                     AddOnce(sides, b);
                 }
@@ -282,6 +287,7 @@ internal static class RemovePlanner
                 GridPoint neighbour = one.Equals(slot.Cell) ? two : one;
                 if (!Sealed(grid, face, null, CellBlocker(grid, neighbour), piece, removed))
                 {
+                    AddOnce(opened, face);
                     AddOnce(sides, neighbour);
                 }
             }
@@ -306,6 +312,8 @@ internal static class RemovePlanner
                 "{0:0.#} kPa in the cell at {1}, {2:0.#} kPa in the cell at {3}", pressures[high],
                 Describe(sides[high]), pressures[low], Describe(sides[low]));
         }
+
+        return opened;
     }
 
     private static bool Sealed(GridController grid, GridPoint face, AirBlocker? cellA, AirBlocker? cellB,
