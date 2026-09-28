@@ -49,7 +49,8 @@ internal static class LookingAtApi
             origin.DistanceTo(thing.Position),
             thing is Device device && Devices.IsInAllDevices(device),
             AtmosphereContentsApi.HoldsAtmosphere(thing),
-            ParentOf(thing));
+            ParentOf(thing),
+            thing is Structure ? Orientations.Of(thing) : null);
 
     private static HeldInView? ParentOf(Thing thing)
     {

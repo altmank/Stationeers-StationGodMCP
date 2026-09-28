@@ -393,7 +393,8 @@ internal static class GridSurveyApi
             }
         }
 
-        return new SurveyDeviceView(GameLookup.ViewOf(device), GameLookup.ViewOf(device.Position), ports);
+        return new SurveyDeviceView(GameLookup.ViewOf(device), GameLookup.ViewOf(device.Position), ports,
+            Orientations.Of(device));
     }
 
     private static ThingId? NetworkAt(SmallCell? cell, Connection end)

@@ -72,6 +72,9 @@ namespace StationGodMCP.Api;
 /// proportion and given to by volume (MoveGasPlaces.cs). A room must be given named gases as a source, so its
 /// breathable air is never emptied by omission.
 ///
+/// dry_run (1.3.5): the same prediction and the same checks (a refusal is the same error), with nothing queued: status
+/// dry_run and no transfer_id.
+///
 /// Sync (CODE): nothing is marked by hand; Atmosphere.PrepareForWrite sets the gas network flags from the mixture's
 /// own dirty tracking. Host only. Not supported: a single world cell by its atmosphere id (refused). The planet (from
 /// "planet", delete only): PlanetGasRemoval.cs.
@@ -87,7 +90,7 @@ internal static class MoveGasApi
 
         if (args.Has("transfer_id"))
         {
-            args.Reject("transfer_id", "from", "to", "delete", "gases", "amount_mol", "force", "joined");
+            args.Reject("transfer_id", "from", "to", "delete", "gases", "amount_mol", "force", "joined", "dry_run");
             return GasMoves.Outcome(args.ThingId("transfer_id").Value);
         }
 
@@ -103,7 +106,7 @@ internal static class MoveGasApi
             plan.RefuseIfBursting();
         }
 
-        return plan.ToView(GasMoves.Enqueue(plan));
+        return (args.OptionalBool("dry_run") ?? false) ? plan.ToDryRunView() : plan.ToView(GasMoves.Enqueue(plan));
     }
 }
 

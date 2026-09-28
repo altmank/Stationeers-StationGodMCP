@@ -75,7 +75,8 @@ internal static class FindThingsApi
             GameLookup.ViewOf(position),
             origin.DistanceTo(position),
             thing is Device device && Devices.IsInAllDevices(device),
-            AtmosphereContentsApi.HoldsAtmosphere(thing));
+            AtmosphereContentsApi.HoldsAtmosphere(thing),
+            thing is Structure ? Orientations.Of(thing) : null);
     }
 }
 

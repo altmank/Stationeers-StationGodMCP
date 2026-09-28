@@ -79,7 +79,10 @@ Tool wear, welder fuel and battery charge are not charged.
    ```
 
    Read `ready`, `problems`, `warnings`, and each placement's snapped `position`, `orientation`, `face`,
-   `build_state` and `cost`.
+   `build_state` and `cost`. A device (or an in-line tank, a passive vent) also lists `ports`: each port's `index`,
+   `at` (the cell a pipe or cable joining it would stand in), `toward`, `type` and `role`, where they would land at
+   that position and turn, in `grid_survey`'s shape. Check them before building, and turn the device if a port lands
+   in the wrong cell.
 3. The same call with `dry_run: false, confirm: true`; poll `{job_id}`. `result.verification` confirms each piece
    stands as planned: prefab, position, turn, build state, label and colour.
 
@@ -90,9 +93,11 @@ Tool wear, welder fuel and battery charge are not charged.
 - **Turn:** at most one of `rotation` (`[x, y, z]` degrees, multiples of 90), `facing` (`+x`, `-x`, `+y`, `-y`, `+z`,
   `-z`) with an optional `up`, or `face` for pieces placed on a cell face such as walls: `face: "+x"` puts the piece on
   the cell's +x face, looking into the cell. A grid piece may only turn about the axes its cursor turns it
-  (`invalid_rotation`).
+  (`invalid_rotation`). To re-place a device as it stands, copy the `rotation` that `grid_survey`, `find_things`,
+  `looking_at` or `connections` report (`facing` and `up`, or `euler` as `rotation`); reverse `facing` to turn it round.
 - **Build state:** `finished` (default), `first` (as a kit leaves it, costing only the kit), or an index.
-- **Label and colour:** `label` as the Labeller writes it; `color` a name or index (`paint` lists them).
+- **Label and colour:** `label` as the Labeller writes it (not on the pipe-size in-line tanks, which the game
+  cannot rename); `color` a name or index (`paint` lists them).
 - **Checks:** the game's own placement cursor for that prefab (blocked cells and faces, collisions, each class's own
   rules, support for face-mounted pieces), nothing loose and nobody inside a piece that fills its cell. The check runs
   again just before each piece is built, so later placements see earlier ones.

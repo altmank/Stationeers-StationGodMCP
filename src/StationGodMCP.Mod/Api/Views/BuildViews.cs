@@ -1,7 +1,9 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -26,29 +28,45 @@ internal sealed class BuildIssueView
     public ThingId? ReferenceId { get; }
 }
 
-/// <summary>A piece's orientation: where it faces and where its top points, and the Euler angles in degrees.</summary>
+/// <summary>
+/// A piece's orientation: where it faces (its front) and where its top points, and the Euler angles in degrees. For a
+/// piece on the grid's axes the angles are the quarter turns place_structure's rotation takes, and facing with up is
+/// the same turn as place_structure's facing and up, so either form places it again as it stands (facing reversed:
+/// turned 180 degrees). facing and up are null for a piece turned off the grid's axes; euler is then as the game holds it.
+/// </summary>
 internal sealed class OrientationView
 {
-    internal OrientationView(string facing, string up, RotationView euler)
+    internal OrientationView(string? facing, string? up, RotationView euler)
     {
         Facing = facing;
         Up = up;
         Euler = euler;
     }
 
-    public string Facing { get; }
+    public string? Facing { get; }
 
-    public string Up { get; }
+    public string? Up { get; }
 
     public RotationView Euler { get; }
+
+    /// <summary>A quarter-turn rotation, its Euler angles as place_structure's rotation takes them.</summary>
+    internal static OrientationView Of(CubeRotation turn)
+    {
+        (int x, int y, int z) = turn.EulerTurns();
+        return new OrientationView(turn.Forward.Name, turn.Up.Name, new RotationView(x * 90, y * 90, z * 90));
+    }
+
+    /// <summary>A rotation off the grid's axes: no facing or up, only the Euler angles as the game holds them.</summary>
+    internal static OrientationView OffGrid(RotationView euler) => new OrientationView(null, null, euler);
 }
 
 /// <summary>One placement as planned: the prefab, where and how it would stand, its state, look and cost.</summary>
 internal sealed class PlacementView
 {
     internal PlacementView(int index, PlacementPrefabView prefab, PlacementSpotView spot, PlacementLookView look,
-        List<UpgradeAmountView> cost)
+        List<UpgradeAmountView> cost, List<SurveyPortView>? ports = null)
     {
+        Ports = ports;
         Index = index;
         PrefabName = prefab.PrefabName;
         PrefabHash = prefab.PrefabHash;
@@ -82,6 +100,14 @@ internal sealed class PlacementView
 
     /// <summary>For a piece on a cell face (a wall): which face of the cell it sits on.</summary>
     public string? Face { get; }
+
+    /// <summary>
+    /// A device (or another thing with ends that is not a cable, pipe or chute piece): its cable, pipe and chute ports
+    /// as they would stand at this position and turn, in grid_survey's shape (network_id is null: nothing is joined
+    /// yet). Left out for anything else.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<SurveyPortView>? Ports { get; }
 
     public int? BuildState { get; }
 

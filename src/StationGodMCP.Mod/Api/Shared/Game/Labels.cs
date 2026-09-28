@@ -20,7 +20,8 @@ namespace StationGodMCP.Api.Shared.Game;
 /// (portable tanks and canisters, crates, portable generators, rovers), Device (every logic device, including Sign and
 /// Label), ItemRenamable, ProgrammableChip, Plant, Flag, BobbleHead, Chicken, HydroponicTray, StructureInLineTank,
 /// LaunchMount, StructureFuselage, LandingPadCenter. Plain structures (pipes, cables, frames, walls) and ordinary items
-/// cannot be renamed. A class may still refuse the Labeller before reaching its base; this is the class rule only.
+/// cannot be renamed, nor can the pipe-size in-line tanks (InLineTank: a Pipe with no Labeller answer), unlike the big
+/// ones (StructureInLineTank); LabelRule words that refusal. A class may still refuse the Labeller before reaching its base; this is the class rule only.
 /// </summary>
 internal static class Labels
 {

@@ -1,5 +1,6 @@
 #nullable enable
 
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
@@ -26,8 +27,10 @@ internal sealed class LookingAtView
 internal sealed class LookingAtTargetView
 {
     internal LookingAtTargetView(ThingView thing, string? customName, string kind, string runtimeType,
-        PositionView position, double? distanceM, bool isDevice, bool hasAtmosphere, HeldInView? parent)
+        PositionView position, double? distanceM, bool isDevice, bool hasAtmosphere, HeldInView? parent,
+        OrientationView? rotation = null)
     {
+        Rotation = rotation;
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
         DisplayName = thing.DisplayName;
@@ -67,6 +70,13 @@ internal sealed class LookingAtTargetView
 
     /// <summary>For a thing in a slot: its holder and the slot.</summary>
     public HeldInView? Parent { get; }
+
+    /// <summary>
+    /// How it stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it can be
+    /// placed again as it stands or turned (facing reversed: 180 degrees). Structures only; left out otherwise.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public OrientationView? Rotation { get; }
 }
 
 /// <summary>The button, switch, port or slot under the crosshair.</summary>

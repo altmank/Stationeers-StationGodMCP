@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
@@ -9,8 +10,9 @@ namespace StationGodMCP.Api.Views;
 internal sealed class ConnectionsView
 {
     internal ConnectionsView(ThingView thing, PositionView position, NetworkRefView? ownNetwork,
-        List<ConnectionEndView> ends)
+        List<ConnectionEndView> ends, OrientationView? rotation = null)
     {
+        Rotation = rotation;
         Thing = thing;
         Position = position;
         OwnNetwork = ownNetwork;
@@ -21,6 +23,13 @@ internal sealed class ConnectionsView
     public ThingView Thing { get; }
 
     public PositionView Position { get; }
+
+    /// <summary>
+    /// How the thing stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it
+    /// can be placed again as it stands or turned (facing reversed: 180 degrees).
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public OrientationView? Rotation { get; }
 
     /// <summary>A pipe, cable or chute's own network; null for a device.</summary>
     public NetworkRefView? OwnNetwork { get; }

@@ -246,8 +246,10 @@ internal sealed class SurveyPieceView
 
 internal sealed class SurveyDeviceView
 {
-    internal SurveyDeviceView(ThingView device, PositionView at, List<SurveyPortView> ports)
+    internal SurveyDeviceView(ThingView device, PositionView at, List<SurveyPortView> ports,
+        OrientationView? rotation = null)
     {
+        Rotation = rotation;
         ReferenceId = device.ReferenceId;
         PrefabName = device.PrefabName;
         DisplayName = device.DisplayName;
@@ -262,6 +264,13 @@ internal sealed class SurveyDeviceView
     public string? DisplayName { get; }
 
     public PositionView At { get; }
+
+    /// <summary>
+    /// How the device stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it
+    /// can be placed again as it stands or turned (facing reversed: 180 degrees).
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public OrientationView? Rotation { get; }
 
     public List<SurveyPortView> Ports { get; }
 }

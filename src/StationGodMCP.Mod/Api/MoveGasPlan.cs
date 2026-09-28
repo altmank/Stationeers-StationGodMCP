@@ -638,6 +638,11 @@ internal sealed class GasPlan
     }
 
     internal MoveGasView ToView(long transferId) =>
-        new MoveGasView(transferId.ToString(CultureInfo.InvariantCulture), "queued", true, Request.Joined,
+        new MoveGasView(transferId.ToString(CultureInfo.InvariantCulture), MoveGasView.Queued, true, Request.Joined,
             Source.ToView(Source.After), Target?.ToView(Target.After), Moved, null);
+
+    /// <summary>The prediction alone: nothing was queued, so there is no transfer id.</summary>
+    internal MoveGasView ToDryRunView() =>
+        new MoveGasView(null, MoveGasView.DryRun, true, Request.Joined, Source.ToView(Source.After),
+            Target?.ToView(Target.After), Moved, null);
 }

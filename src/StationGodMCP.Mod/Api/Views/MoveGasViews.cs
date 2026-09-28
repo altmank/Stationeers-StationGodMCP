@@ -8,7 +8,12 @@ namespace StationGodMCP.Api.Views;
 /// <summary>move_gas: a queued move's prediction, or an applied or failed move's outcome.</summary>
 internal sealed class MoveGasView
 {
-    internal MoveGasView(string transferId, string status, bool predicted, bool joined, GasSideView? from,
+    internal const string Queued = "queued";
+
+    /// <summary>status of a dry run: the prediction only, nothing queued.</summary>
+    internal const string DryRun = "dry_run";
+
+    internal MoveGasView(string? transferId, string status, bool predicted, bool joined, GasSideView? from,
         GasSideView? to, List<MovedGasView> moved, ErrorView? error)
     {
         TransferId = transferId;
@@ -22,9 +27,10 @@ internal sealed class MoveGasView
         Error = error;
     }
 
-    public string TransferId { get; }
+    /// <summary>Null for a dry run (nothing was queued).</summary>
+    public string? TransferId { get; }
 
-    /// <summary>queued (the reply is a prediction), applied, or failed.</summary>
+    /// <summary>queued (the reply is a prediction), dry_run (a prediction, nothing queued), applied, or failed.</summary>
     public string Status { get; }
 
     public bool Predicted { get; }

@@ -15,7 +15,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | `rooms` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas, its devices. | `reference_id` (only the room that thing is in), `include_cells`, `include_devices` |
 | `atmosphere_contents` | What gas or liquid one thing holds: a canister, tank, suit, a pipe's whole network, a landing pad's shared atmosphere, or every network a device is on. | `reference_id` |
 | `water_sources` | Every canister, tank, device and pipe network that holds water, polluted water or steam, largest first. | `min_mol` |
-| `move_gas` | Move gas and liquid between atmospheres, or delete it. | `from`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `force`; `transfer_id` to poll |
+| `move_gas` | Move gas and liquid between atmospheres, or delete it. | `from`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `force`, `dry_run`; `transfer_id` to poll |
 | `outer_frames` | Frames with a face on the planet's outside air. | `near_player_m`, `include_inner`, `limit`, `offset` |
 | `planet` | The planet's atmosphere: pressure, temperature and its parts, every gas, today's and the orbit's temperature range, ice and cloud reservoirs. | none |
 | `weather` | The storm schedule, when the next event can come, every event this world can roll, and the season. | none |
@@ -55,7 +55,8 @@ and can hold air. A sealed space bigger than 1200 cells has no room, so frames f
   (`total.after_boiling` in the reply shows that state). `force` skips every check.
 - **Timing:** the game changes gas only on its atmospherics thread, so the move is queued (`status: queued`) and applied
   at the next atmospherics tick, about half a second later, never while paused. The reply is the prediction; call again
-  with only `transfer_id` for the outcome.
+  with only `transfer_id` for the outcome. `dry_run: true` returns the same prediction after the same checks and
+  queues nothing (`status: dry_run`, no `transfer_id`).
 - **Rooms:** `{"room_id": "<id>"}` (the `room_id` from `rooms`) or `{"room_of": "<reference id>"}` (the room that
   thing is in; the player's id gives the room you stand in) as `from` or `to`. The game keeps no room-wide
   atmosphere, only one per 2 m cell, so a room here is every cell of it that has air of its own; cells without are

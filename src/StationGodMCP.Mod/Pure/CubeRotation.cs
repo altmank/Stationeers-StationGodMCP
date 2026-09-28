@@ -15,6 +15,9 @@ internal sealed class CubeRotation : IEquatable<CubeRotation>
     private const double AngleTolerance = 0.01;
     private const double EntryTolerance = 0.01;
 
+    // x turns in the order EulerTurns tries them: none, a quarter either way, then a half turn.
+    private static readonly int[] EulerXOrder = { 0, 1, 3, 2 };
+
     private readonly int[] _m;
 
     private CubeRotation(int[] m)
@@ -61,6 +64,30 @@ internal sealed class CubeRotation : IEquatable<CubeRotation>
     /// <summary>Quaternion.Euler with quarter turns about each axis.</summary>
     internal static CubeRotation FromEuler(int xTurns, int yTurns, int zTurns) =>
         AboutY(yTurns).Times(AboutX(xTurns)).Times(AboutZ(zTurns));
+
+    /// <summary>
+    /// Quarter turns about x, y and z whose Quaternion.Euler is this rotation: the form place_structure's rotation
+    /// takes, so a readout can be placed again as it stands. x stays 0 whenever it can and is 180 only when nothing
+    /// else gives the rotation (as Unity's eulerAngles keeps x within -90 to 90).
+    /// </summary>
+    internal (int X, int Y, int Z) EulerTurns()
+    {
+        foreach (int x in EulerXOrder)
+        {
+            for (int y = 0; y < 4; y++)
+            {
+                for (int z = 0; z < 4; z++)
+                {
+                    if (FromEuler(x, y, z).Equals(this))
+                    {
+                        return (x, y, z);
+                    }
+                }
+            }
+        }
+
+        throw new InvalidOperationException("Every quarter-turn rotation is some Euler quarter turns.");
+    }
 
     /// <summary>The rotation whose forward and up are these directions; null when they are on one axis.</summary>
     internal static CubeRotation? FromFacing(GridStep forward, GridStep up)

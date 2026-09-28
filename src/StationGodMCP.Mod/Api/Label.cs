@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using ObjectLabel = Assets.Scripts.Objects.Label;
 
 namespace StationGodMCP.Api;
@@ -75,8 +76,7 @@ internal static class LabelApi
         if (!Labels.CanRename(thing))
         {
             throw ApiErrors.Refused("not_labelable",
-                $"{thing.DisplayName} ({id}) is a {thing.GetType().Name}; the Labeller cannot rename that class " +
-                "(pipes, cables, frames and ordinary items take no label).");
+                LabelRule.NotLabelable($"{thing.DisplayName} ({id})", thing.GetType().Name));
         }
 
         LabelStateView previous = StateOf(thing);

@@ -28,7 +28,11 @@ these tools need a gateway.
   `runtime_type: "DynamicGasCanister"` finds every portable tank whatever its prefab or label; `has_atmosphere: true`
   every thing that holds gas; `labelled_only: true` every label in the world. Each result says whether the Labeller can
   rename it (`labelable`), whether the device tools take it (`is_device`) and whether `atmosphere_contents` has
-  something for it.
+  something for it; a structure also reports how it stands turned (`rotation`).
+- `label` renames what the hand Labeller renames. The pipe-size in-line tanks (`StructureInLineTankGas1x1` and the
+  rest, insulated too) are not among them: the game has no rename for them, and StationGod keeps no names of its own,
+  so `label` refuses them with `not_labelable`. The big in-line tanks take a label. To name a small one, label a sign
+  or a device beside it.
 - Results are sorted nearest first and paged (`limit`, `offset`).
 
 ## Moving items

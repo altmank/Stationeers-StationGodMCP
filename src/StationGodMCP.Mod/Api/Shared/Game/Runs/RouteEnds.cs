@@ -16,7 +16,9 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// pieces (its cell; leaving through one of its open ends is free, through another makes it a junction; a long
 /// straight as a target offers every cell of it, and the place tool splits it), {reference_id, port} of a device (the
 /// cell a piece joining that port stands in; port may be left out when the device has one port of the kind), and as a
-/// target {network_id}: every cell of every piece of that network. Starts may be several (up to MaximumStarts): an array of ends, or
+/// target {network_id}: every cell of every piece of that network. {reference_id, port} of a thing of the kind with its
+/// own ends that is neither a piece nor a device (an in-line tank, a passive vent; 1.3.5): the cell beyond its free end
+/// (port names the end when it has several free). Starts may be several (up to MaximumStarts): an array of ends, or
 /// {reference_id, ports: [...]} for several ports of one device. Pieces being removed (a reroute, assume_removed) count as gone.
 /// </summary>
 internal static class RouteEnds
@@ -124,8 +126,96 @@ internal static class RouteEnds
             return OfDevice(kind, device, fields.OptionalInt("port", 0, 64), type, name, ignore);
         }
 
+        if (thing is SmallGrid member && kind.Family.IsMember(member))
+        {
+            if (ignore.Contains(member.ReferenceId))
+            {
+                throw ApiErrors.InvalidArgument($"{name} names a thing being removed (assume_removed).");
+            }
+
+            return OfFreeEnd(kind, member, fields.OptionalInt("port", 0, 64), type, name, ignore);
+        }
+
         throw ApiErrors.InvalidArgument(
-            $"{name}: {thing.DisplayName} ({thing.PrefabName}) is neither a {kind.Noun} piece nor a device.");
+            $"{name}: {thing.DisplayName} ({thing.PrefabName}) is neither a {kind.Noun} piece, a device, nor a " +
+            $"{kind.Noun} thing with ends (an in-line tank, a passive vent).");
+    }
+
+    /// <summary>
+    /// The small cell a piece joining a thing's end stands in, for reserve_ports: a device's port (its end's own cell,
+    /// as grid_survey lists it), or one end of a network thing such as an in-line tank (the cell beyond that end).
+    /// </summary>
+    internal static GridCell JoiningCell(Thing thing, int port, string name)
+    {
+        Connection? end = thing is SmallGrid owner && owner.OpenEnds != null && port < owner.OpenEnds.Count
+            ? owner.OpenEnds[port]
+            : null;
+        if (end?.Transform == null)
+        {
+            throw ApiErrors.InvalidArgument(
+                $"{name}: {thing.DisplayName} ({thing.ReferenceId}) has no end {port} (connections lists its ends).");
+        }
+
+        return thing is Device
+            ? PieceShapes.Cell(end.GetLocalGrid())
+            : PieceShapes.Cell(end.GetFacingGrid());
+    }
+
+    // A cable, pipe or chute thing that is neither a piece the route tools lay nor a device (an in-line tank, a passive
+    // vent: pipes with their own ends): the route meets it at the cell beyond its free end (the one named, or the only
+    // one), and the piece there needs an end back toward it, as at a device port.
+    private static RouteEndpoint OfFreeEnd(RunKind kind, SmallGrid member, int? port, int type, string name,
+        HashSet<long> ignore)
+    {
+        PieceModel model = PieceShapes.Live(member);
+        List<PieceModel> around = new List<PieceModel>();
+        foreach (SmallGrid neighbour in LinkSurvey.Neighbourhood(new List<PieceModel> { model }).Values)
+        {
+            if (!ignore.Contains(neighbour.ReferenceId))
+            {
+                around.Add(PieceShapes.Live(neighbour));
+            }
+        }
+
+        List<PieceEnd> connected = Connectivity.ConnectedEnds(model, around);
+        List<(int Index, bool Free)> candidates = new List<(int Index, bool Free)>();
+        List<Connection> ends = member.OpenEnds != null ? new List<Connection>(member.OpenEnds) : new List<Connection>();
+        for (int index = 0; index < ends.Count; index++)
+        {
+            Connection end = ends[index];
+            if (end?.Transform != null && ((int)end.ConnectionType & type) != 0)
+            {
+                GridCell local = PieceShapes.Cell(end.GetLocalGrid());
+                GridCell facing = PieceShapes.Cell(end.GetFacingGrid());
+                candidates.Add((index, !connected.Exists(joined => joined.Local.Equals(local) &&
+                                                                    joined.Facing.Equals(facing))));
+            }
+        }
+
+        int? chosen = EndChoice.Pick(candidates, port, out string? error);
+        if (!chosen.HasValue)
+        {
+            throw ApiErrors.InvalidArgument($"{name}: {member.PrefabName} {member.ReferenceId}: {error} " +
+                                            "(connections lists its ends).");
+        }
+
+        Connection picked = ends[chosen.Value];
+        GridCell own = PieceShapes.Cell(picked.GetLocalGrid());
+        GridCell cell = PieceShapes.Cell(picked.GetFacingGrid());
+        GridStep? into = GridStep.Between(cell, own);
+        IReferencable? network = kind.Family.NetworkOf(member);
+        List<long> networks = network != null ? new List<long> { network.ReferenceId } : new List<long>();
+        SmallCell? small = GridController.World.GetSmallCell(PieceShapes.Grid(cell));
+        SmallGrid? piece = small != null ? kind.SlotOf(small) : null;
+        if (piece != null && !piece.IsBeingDestroyed && !ignore.Contains(piece.ReferenceId))
+        {
+            RouteEndpoint joined = OfCells(kind, piece, new List<GridCell> { cell });
+            List<long> both = new List<long>(joined.Networks);
+            both.AddRange(networks.FindAll(id => !both.Contains(id)));
+            return new RouteEndpoint(joined.Ends, both, into);
+        }
+
+        return new RouteEndpoint(RouteEnd.Open(cell), networks, into);
     }
 
     // Each cell of the piece: leaving through an open end there is free, any other way makes a junction.

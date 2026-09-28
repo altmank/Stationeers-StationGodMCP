@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.3.5
+
+Layout helpers found missing during a live relayout.
+
+- **Rotation readout.** `grid_survey` devices, `find_things` and `looking_at` for structures, and `connections` report
+  `rotation {facing, up, euler {x, y, z}}` in the forms `place_structure` takes: `facing` (the front) with `up`, or
+  `euler` as quarter turns for `rotation`. Either re-places a device as it stands; `facing` reversed turns it 180
+  degrees. A piece off the grid's axes has `facing` and `up` null. `place_structure`'s own `orientation.euler` now
+  gives the same quarter turns.
+- **Port preview.** `place_structure`'s dry run lists, for a device (or an in-line tank, a passive vent), `ports`
+  `[{index, at, toward, type, role, network_id}]` where they would land at the requested position and turn, in
+  `grid_survey`'s shape (`network_id` null).
+- **Route ends at in-line tanks and passive vents.** `plan_pipe_route` (and the other planners, for their kind) take
+  `{reference_id}` of a pipe thing with its own ends that is neither a pipe piece nor a device as `from` or `to`: the
+  cell beyond its free end, with the pipe there given an end toward it. `port` names the end when several are free;
+  a joined or unknown end is refused with the free ends listed.
+- **Reserved cells.** `plan_*_route` take `reserve_cells [[x, y, z], ...]` and `reserve_ports [{reference_id, port}]`:
+  cells the search treats as blocked (a port's being the cell a piece joining it stands in), so one run cannot take
+  another port's cell. A reserved cell that is one of the route's own ends is released; `notes` report both.
+- **`move_gas` `dry_run: true`:** the same prediction after the same checks, nothing queued (`status: dry_run`,
+  `transfer_id` null). Not with `from: "planet"`.
+- **`label` on in-line tanks.** The pipe-size in-line tanks (class `InLineTank`) are refused with their own reason: the
+  game's Labeller has no rename for that class, and StationGod keeps no names of its own. The big in-line tanks
+  (`StructureInLineTank`) take a label as before; `find_things`' `labelable` already told them apart.
+
 ## 1.3.4
 
 Rooms in move_gas.

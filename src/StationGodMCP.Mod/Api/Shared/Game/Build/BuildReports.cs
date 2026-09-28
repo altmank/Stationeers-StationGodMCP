@@ -82,9 +82,7 @@ internal static class BuildReports
             ? new PlacementPrefabView(prefab.PrefabName, prefab.PrefabHash, prefab.DisplayName,
                 prefab.BuildStates.Count)
             : new PlacementPrefabView(placement.Args.Prefab.ToString(), null, null, null);
-        OrientationView? orientation = placement.Turn != null
-            ? new OrientationView(placement.Turn.Forward.Name, placement.Turn.Up.Name, Euler(placement.Rotation))
-            : null;
+        OrientationView? orientation = placement.Turn != null ? OrientationView.Of(placement.Turn) : null;
         string? face = prefab != null && prefab.PlacementType == PlacementSnap.Face && placement.Turn != null
             ? placement.Turn.Forward.Opposite.Name
             : null;
@@ -92,7 +90,8 @@ internal static class BuildReports
             placement.Position.HasValue ? GameLookup.ViewOf(placement.Position.Value) : null, orientation, face);
         ColorView? color = placement.ColorIndex >= 0 ? ColorOf(placement.ColorIndex) : null;
         return new PlacementView(placement.Index, prefabView, spot,
-            new PlacementLookView(placement.State, placement.Args.Label, color), Amounts(placement.Cost));
+            new PlacementLookView(placement.State, placement.Args.Label, color), Amounts(placement.Cost),
+            placement.Ports);
     }
 
     internal static RotationView Euler(Quaternion rotation)

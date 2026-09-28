@@ -36,6 +36,7 @@ internal static class PlanRouteApi
     private const int DefaultMaxLength = 400;
     private const double BendCost = 2.0;
     private const double MinimumBendsCost = 25.0;
+    private const int MaximumReservedPorts = 64;
 
     internal static PlanRouteView Handle(Args args, RunKind kind)
     {
@@ -75,13 +76,14 @@ internal static class PlanRouteApi
         List<long> own = to?.Networks ?? new List<long>();
         RouteRuleSet rules = Rules(args, starts, own, false);
         List<string> notes = Notes(rules, assumed);
-        RouteTree tree = Grow(args, starts, main, facts, rules);
+        RouteReservation reserved = Reservation(args, starts, to, trunk, notes);
+        RouteTree tree = Grow(args, starts, main, facts, rules, reserved);
         bool supportedSearched = rules.FramesFirst;
         if (tree.GaveUp && rules.FramesFirst)
         {
             // frames_first never costs a route the plain search finds: past the air field's box size the search can
             // run out of cells looking for a supported way that does not exist.
-            RouteTree second = Grow(args, starts, main, facts, rules.WithoutFramesFirst());
+            RouteTree second = Grow(args, starts, main, facts, rules.WithoutFramesFirst(), reserved);
             if (second.Found)
             {
                 tree = second;
@@ -107,7 +109,7 @@ internal static class PlanRouteApi
             }
             else if (RunArgs.Join(args) == JoinMode.All)
             {
-                RouteTree retry = Grow(args, starts, main, facts, Rules(args, starts, own, true));
+                RouteTree retry = Grow(args, starts, main, facts, Rules(args, starts, own, true), reserved);
                 RunReportView? second = retry.Found ? DryRun(args, kind, grade, retry, removes, assumed) : null;
                 if (second != null && !HasWarning(second, RunPlanner.WouldLoop))
                 {
@@ -139,11 +141,69 @@ internal static class PlanRouteApi
     // The main route from the first start to the target (or the trunk as given), then each other start to the
     // nearest cell of the tree.
     private static RouteTree Grow(Args args, List<RouteEndpoint> starts, RouteMain main, GridFacts facts,
-        RouteRuleSet rules) =>
+        RouteRuleSet rules, RouteReservation reserved) =>
         RouteTrees.Grow(starts, main,
-            new RouteSearch(cell => rules.Cost(facts.Small(cell)), (from, to) => SearchRules(args, from, to),
-                (search, goals) => AirBoundOf(rules, facts, search, goals)),
+            new RouteSearch(reserved.Guard(cell => rules.Cost(facts.Small(cell))),
+                (from, to) => SearchRules(args, from, to), (search, goals) => AirBoundOf(rules, facts, search, goals)),
             RouteEnds.JunctionCost);
+
+    /// <summary>
+    /// reserve_cells (positions) and reserve_ports ({reference_id, port}: the cell a piece joining that port stands in)
+    /// as cells the search treats as blocked, so this run leaves them for another; any that is one of this route's own
+    /// ends is released, with a note.
+    /// </summary>
+    private static RouteReservation Reservation(Args args, List<RouteEndpoint> starts, RouteEndpoint? to,
+        List<GridCell>? trunk, List<string> notes)
+    {
+        if (!args.Has("reserve_cells") && !args.Has("reserve_ports"))
+        {
+            return RouteReservation.None;
+        }
+
+        List<GridCell> cells = args.Has("reserve_cells") ? RunArgs.Cells(args, "reserve_cells") : new List<GridCell>();
+        if (args.Has("reserve_ports"))
+        {
+            List<Args?> items = args.Objects("reserve_ports", MaximumReservedPorts);
+            for (int index = 0; index < items.Count; index++)
+            {
+                string name = $"reserve_ports[{index}]";
+                Args item = items[index] ?? throw ApiErrors.InvalidArgument($"{name} must be {{reference_id, port}}.");
+                Thing thing = GameLookup.RequireThing(item.ThingId("reference_id"));
+                int port = item.OptionalInt("port", 0, 64) ??
+                           throw ApiErrors.InvalidArgument($"{name}.port is required (connections lists the ends).");
+                cells.Add(RouteEnds.JoiningCell(thing, port, name));
+            }
+        }
+
+        List<GridCell> ends = new List<GridCell>();
+        foreach (RouteEndpoint start in starts)
+        {
+            ends.AddRange(CellsOf(start.Ends));
+        }
+
+        if (to != null)
+        {
+            ends.AddRange(CellsOf(to.Ends));
+        }
+
+        RouteReservation reserved = RouteReservation.Of(cells, ends);
+        notes.Add($"reserve: {reserved.Count} cell(s) kept free (the search treats them as blocked).");
+        if (reserved.Released.Count > 0)
+        {
+            notes.Add($"reserve: {reserved.Released.Count} reserved cell(s) are this route's own ends and were not " +
+                      "blocked: " + string.Join(", ", reserved.Released.ConvertAll(cell => PieceShapes.CentreOf(cell)
+                          .ToString())) + ".");
+        }
+
+        int crossed = trunk?.FindAll(reserved.Contains).Count ?? 0;
+        if (crossed > 0)
+        {
+            notes.Add($"reserve: the trunk is laid as given and passes {crossed} reserved cell(s); only the drops " +
+                      "keep clear of them.");
+        }
+
+        return reserved;
+    }
 
     /// <summary>trunk: {waypoints} or {cells}, a run laid as given that every start branches from; null without one.</summary>
     private static List<GridCell>? Trunk(Args args)

@@ -45,6 +45,9 @@ internal sealed class PlannedPlacement
 
     internal List<ItemAmount> Cost { get; } = new List<ItemAmount>();
 
+    /// <summary>Its cable, pipe and chute ports where it would stand; null for anything but a device-like thing.</summary>
+    internal List<SurveyPortView>? Ports { get; set; }
+
     /// <summary>Resolved far enough to be built: prefab, cursor, position, rotation and state.</summary>
     internal bool Resolved => Prefab != null && Cursor != null && Position.HasValue && State.HasValue;
 }
@@ -92,6 +95,10 @@ internal sealed class PlacePlan
 /// </summary>
 internal static class PlacePlanner
 {
+    // The end types grid_survey lists as ports.
+    private const int PortTypes = (int)(NetworkType.PowerAndData | NetworkType.Pipe | NetworkType.PipeLiquid |
+                                        NetworkType.Chute);
+
     internal static PlacePlan Plan(PlaceArguments arguments)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
@@ -180,6 +187,7 @@ internal static class PlacePlanner
         placement.Cursor = cursor;
         Vector3 position = Aim(placement, cursor, out string? refusal);
         placement.Position = position;
+        placement.Ports = PortPreview(prefab, position, placement.Rotation);
         if (refusal != null)
         {
             plan.Problem("cannot_place", $"{prefab.PrefabName} at {Describe(position)}: {refusal}.", index);
@@ -292,6 +300,24 @@ internal static class PlacePlanner
         return false;
     }
 
+    // The cable, pipe and chute ports of a device, or of another thing with ends that is not a network piece (an in-line
+    // tank, a passive vent), as they would stand there: the ends of the prefab turned and moved there (PieceShapes.Placed,
+    // Connection.SetGrids' way), in grid_survey's shape. Null for network pieces and things without ends.
+    private static List<SurveyPortView>? PortPreview(Structure prefab, Vector3 position, Quaternion rotation)
+    {
+        if (!(prefab is SmallGrid) || NetworkToolOf(prefab) != null)
+        {
+            return null;
+        }
+
+        PieceModel? model = PieceShapes.Placed(prefab, position, rotation, 0);
+        return model?.Ends.Count > 0
+            ? PortCells.Of(model.Ends, PortTypes).ConvertAll(port => new SurveyPortView(port.Index,
+                GameLookup.ViewOf(PieceShapes.CentreOf(port.Cell)), port.Toward?.Name ?? "?",
+                ((NetworkType)port.Type).ToString(), ((ConnectionRole)port.Role).ToString(), null))
+            : null;
+    }
+
     // The place tool of a cable, pipe or chute piece; null for anything else (devices on those networks included).
     private static string? NetworkToolOf(Structure prefab) =>
         new CableFamily().IsPiece(prefab) ? "place_cables"
@@ -317,8 +343,7 @@ internal static class PlacePlanner
         int index = placement.Index;
         if (placement.Args.Label != null && !Labels.CanRename(prefab))
         {
-            plan.Problem("not_labelable", $"{prefab.PrefabName} is a {prefab.GetType().Name}; the Labeller cannot " +
-                                          "rename that class.", index);
+            plan.Problem("not_labelable", LabelRule.NotLabelable(prefab.PrefabName, prefab.GetType().Name), index);
         }
 
         string? color = placement.Args.Color;

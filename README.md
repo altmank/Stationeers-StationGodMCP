@@ -122,7 +122,8 @@ cell positions in messages in metres.
 
 **Not yet tested in game:** the 1.3.2 landing pad atmospheres in `atmosphere_contents` and `move_gas`,
 `move_gas`'s receiving-side checks (liquid in a gas pipe, freezing, pressure after boiling), the 1.3.3 planet gas
-removal, and the 1.3.4 rooms in `move_gas`.
+removal, the 1.3.4 rooms in `move_gas`, and the 1.3.5 layout helpers (rotation readouts, `place_structure`'s port
+preview, in-line tank and passive vent route ends, `reserve_cells` and `reserve_ports`, `move_gas` `dry_run`).
 
 ## Documentation
 

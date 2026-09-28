@@ -73,8 +73,10 @@ grid, centres on multiples of 0.5 m: four small cells per axis in each 2 m cell.
 - `support`: what would hold a piece there: `i` inside a frame (hidden in the frame's body), `e` a frame edge or
   corner, `f` a frame's face, `w` a wall's plane, `a` air.
 
-Then every piece with its ends and network, every device with each port's cell, direction, type and role, and the
-networks with their loads or contents. `network_visibility` counts each network's cells by class and lists the floating
+Then every piece with its ends and network, every device with its `rotation` and each port's cell, direction, type
+and role, and the networks with their loads or contents. `rotation` is `{facing, up, euler}` in the forms
+`place_structure` takes, so a device can be placed again as it stands, or turned: `facing` reversed is a half turn.
+`find_things`, `looking_at` and `connections` report the same `rotation` for structures. `network_visibility` counts each network's cells by class and lists the floating
 ones; `include_refund: true` adds what removing each piece would give back. Pages of 27 cells (`limit` up to 125,
 `offset`).
 
@@ -85,7 +87,14 @@ ones; `include_refund: true` adds what removing each piece would give back. Page
 **Ends.** `from` and `to` are each `{at: [x, y, z]}` (a cell), `{reference_id}` of a piece (joined; leaving through an
 open end is free, any other direction makes it a junction) or `{reference_id, port}` of a device port (`port` may be
 left out when the device has one port of the kind). `to` may also be `{network_id}`, the nearest piece of that network,
-or a long straight, any of its cells.
+or a long straight, any of its cells. For pipes, `{reference_id}` of an in-line tank or a passive vent (or another
+pipe thing with its own ends that is neither a pipe piece nor a device) is the cell beyond its free end, and the pipe
+there gets an end toward it, as at a device port; name the end with `port` when more than one is free.
+
+**Keeping cells free.** `reserve_cells: [[x, y, z], ...]` and `reserve_ports: [{reference_id, port}]` are cells the
+search treats as blocked, a port's being the cell a piece joining it stands in. Reserve a device's other ports while
+routing to one of them, so this run cannot take the cell the next run needs. A reserved cell that is one of the
+route's own ends is released, and `notes` say how many cells were kept free.
 
 **Rules.**
 

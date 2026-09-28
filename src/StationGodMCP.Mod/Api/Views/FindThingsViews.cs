@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
@@ -49,8 +50,9 @@ internal sealed class FoundThingView
 
     internal FoundThingView(ThingView thing, string? customName, string gameName, string kind, string runtimeType,
         bool labelable, string location, string? carriedBy, List<HeldInView> heldIn, PositionView position,
-        double? distanceM, bool isDevice, bool hasAtmosphere)
+        double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null)
     {
+        Rotation = rotation;
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
         DisplayName = thing.DisplayName;
@@ -107,4 +109,11 @@ internal sealed class FoundThingView
 
     /// <summary>atmosphere_contents has something to report for it.</summary>
     public bool HasAtmosphere { get; }
+
+    /// <summary>
+    /// How it stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it can be
+    /// placed again as it stands or turned (facing reversed: 180 degrees). Structures only; left out otherwise.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public OrientationView? Rotation { get; }
 }

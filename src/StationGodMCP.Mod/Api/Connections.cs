@@ -97,7 +97,8 @@ internal static class EndsReader
         }
 
         return new ConnectionsView(
-            GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position), OwnNetwork(grid), views);
+            GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position), OwnNetwork(grid), views,
+            Orientations.Of(thing));
     }
 
     private static ConnectionEndView ReadEnd(SmallGrid grid, Connection end, int index)

@@ -42,7 +42,7 @@ internal static class PlanetGasRemoval
                 "read-only, so a removal would not last.");
         }
 
-        args.Reject("planet", "to", "force", "joined", "transfer_id");
+        args.Reject("planet", "to", "force", "joined", "transfer_id", "dry_run");
         if (args.OptionalBool("delete") != true)
         {
             throw ApiErrors.InvalidArgument("From 'planet' only delete: true is supported.");
