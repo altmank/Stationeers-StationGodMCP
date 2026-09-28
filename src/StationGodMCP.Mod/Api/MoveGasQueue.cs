@@ -8,6 +8,7 @@ using Assets.Scripts.Atmospherics;
 using HarmonyLib;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -157,7 +158,7 @@ internal sealed class PendingGasMove
         List<MovedGasView> moved = new List<MovedGasView>();
         foreach (Chemistry.GasType gas in Plan.Request.Gases)
         {
-            MovedGasView? one = MoveOne(gas, source.For(gas), Plan.Request.Target?.Atmosphere);
+            MovedGasView? one = MoveOne(gas, source.For(gas), target);
             if (one != null)
             {
                 moved.Add(one);
@@ -179,53 +180,43 @@ internal sealed class PendingGasMove
         return side.ToView(side.Live());
     }
 
-    // Every member of the set gives its share: GasMixture.Remove(GasType, MoleQuantity) returns the removed Mole with
-    // its share of that member's energy, and GasMixture.Add puts that same Mole into the target. Deleting drops it.
-    private MovedGasView? MoveOne(Chemistry.GasType gas, JoinedSet set, Atmosphere? target)
+    // Every member of the set still there gives its share: GasMixture.Remove(GasType, MoleQuantity) returns the
+    // removed Mole with its share of that member's energy. The target receives the sum, moles and energy together
+    // (GasMixture.Add), where its place puts it: the named atmosphere, or a room's cells by volume. Deleting drops it.
+    private MovedGasView? MoveOne(Chemistry.GasType gas, JoinedSet set, GasSide? target)
     {
-        double total = 0.0;
-        foreach (GasEnd member in set.Members)
+        List<GasEnd> live = set.Members.FindAll(member => !member.IsGone);
+        double[] held = new double[live.Count];
+        for (int index = 0; index < held.Length; index++)
         {
-            total += member.Atmosphere.GasMixture.GetMoleValue(gas).Quantity.ToDouble();
+            held[index] = live[index].Atmosphere.GasMixture.GetMoleValue(gas).Quantity.ToDouble();
         }
 
-        double amount = Plan.Request.AmountMol.HasValue ? Math.Min(total, Plan.Request.AmountMol.Value) : total;
-        if (!(amount > 0.0))
-        {
-            return null;
-        }
-
+        double[] taken = GasShares.Proportional(held, Plan.Request.AmountMol);
         double movedMoles = 0.0;
         double movedEnergy = 0.0;
-        foreach (GasEnd member in set.Members)
+        for (int index = 0; index < taken.Length; index++)
         {
-            Mole removed = TakeShare(member.Atmosphere, gas, amount / total);
-            if (!removed.IsValid)
+            if (!(taken[index] > 0.0))
             {
                 continue;
             }
 
-            if (target != null)
+            Mole removed = live[index].Atmosphere.GasMixture.Remove(gas, new MoleQuantity(taken[index]));
+            if (removed.IsValid)
             {
-                target.GasMixture.Add(removed);
+                movedMoles += removed.Quantity.ToDouble();
+                movedEnergy += removed.Energy.ToDouble();
             }
-
-            movedMoles += removed.Quantity.ToDouble();
-            movedEnergy += removed.Energy.ToDouble();
         }
 
-        return new MovedGasView(gas.ToString(), movedMoles, movedEnergy);
-    }
-
-    private static Mole TakeShare(Atmosphere atmosphere, Chemistry.GasType gas, double share)
-    {
-        double have = atmosphere.GasMixture.GetMoleValue(gas).Quantity.ToDouble();
-        if (!(have > 0.0))
+        if (!(movedMoles > 0.0))
         {
-            return default;
+            return null;
         }
 
-        return atmosphere.GasMixture.Remove(gas, new MoleQuantity(have * Math.Min(1.0, share)));
+        target?.Deliver(gas, movedMoles, movedEnergy);
+        return new MovedGasView(gas.ToString(), movedMoles, movedEnergy);
     }
 }
 

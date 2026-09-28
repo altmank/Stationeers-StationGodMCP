@@ -66,31 +66,40 @@ internal sealed class JoinEdge
 /// <summary>The atmospheres joined to a start, the start first, and the things that join them.</summary>
 internal sealed class JoinedSet
 {
+    // Members by atmosphere: a room side has up to 1200 cells, looked up once per cell and gas.
+    private readonly Dictionary<Atmosphere, int> _index = new Dictionary<Atmosphere, int>(AtmosphereIdentity.Instance);
+
     private JoinedSet(List<GasEnd> members, List<Thing> joiners)
     {
-        Members = members;
+        Members = new List<GasEnd>(members.Count);
         Joiners = joiners;
+        foreach (GasEnd member in members)
+        {
+            AddMember(member);
+        }
     }
 
+    /// <summary>The members, the start first. Read only: members are added through this set only.</summary>
     internal List<GasEnd> Members { get; }
 
     internal List<Thing> Joiners { get; }
 
     internal static JoinedSet Alone(GasEnd end) => new JoinedSet(new List<GasEnd> { end }, new List<Thing>());
 
+    /// <summary>A room's cells, which share every gas and liquid; no device joins them.</summary>
+    internal static JoinedSet OfCells(List<GasEnd> cells) => new JoinedSet(cells, new List<Thing>());
+
     internal bool Contains(Atmosphere atmosphere) => IndexOf(atmosphere) >= 0;
 
-    internal int IndexOf(Atmosphere atmosphere)
-    {
-        for (int index = 0; index < Members.Count; index++)
-        {
-            if (ReferenceEquals(Members[index].Atmosphere, atmosphere))
-            {
-                return index;
-            }
-        }
+    internal int IndexOf(Atmosphere atmosphere) => _index.TryGetValue(atmosphere, out int index) ? index : -1;
 
-        return -1;
+    private void AddMember(GasEnd member)
+    {
+        if (!_index.ContainsKey(member.Atmosphere))
+        {
+            _index[member.Atmosphere] = Members.Count;
+            Members.Add(member);
+        }
     }
 
     /// <summary>
@@ -125,7 +134,7 @@ internal sealed class JoinedSet
                     "the named one only.");
             }
 
-            Members.Add(member);
+            AddMember(member);
         }
 
         if (joiner != null && !Joiners.Contains(joiner))
@@ -137,13 +146,10 @@ internal sealed class JoinedSet
     /// <summary>The members of this set and then those of another that this one lacks.</summary>
     internal JoinedSet Union(JoinedSet other)
     {
-        JoinedSet union = new JoinedSet(new List<GasEnd>(Members), new List<Thing>(Joiners));
+        JoinedSet union = new JoinedSet(Members, new List<Thing>(Joiners));
         foreach (GasEnd member in other.Members)
         {
-            if (!union.Contains(member.Atmosphere))
-            {
-                union.Members.Add(member);
-            }
+            union.AddMember(member);
         }
 
         foreach (Thing joiner in other.Joiners)

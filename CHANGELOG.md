@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.4
+
+Rooms in move_gas.
+
+- **`move_gas` takes a room as `from` or `to`:** `{"room_id": "<id>"}` (as `rooms` reports it) or
+  `{"room_of": "<reference id>"}` (the room that thing is in). The room is every cell of it with air of its own. From a
+  room, each named gas is taken from every cell in proportion to what the cell holds (`amount_mol` caps the room's
+  total), with its share of heat, in one atmospherics tick; `gases` is required, so a room's air is never emptied by
+  omission. Into a room, each gas is spread over the cells by volume, so no single cell spikes. The side reports
+  `room {room_id, room_type, cell_count, cells_with_air, volume_l}` and the room's pressure before and after in
+  `total`; room sides list no per-cell `members`. Every side now carries `room` (null for an atmosphere). The tank or
+  network on the other side keeps every burst and matter check. New errors `room_not_found`, `not_in_room`.
+
 ## 1.3.3
 
 Planet gas removal.

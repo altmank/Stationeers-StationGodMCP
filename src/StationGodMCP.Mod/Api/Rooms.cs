@@ -72,7 +72,8 @@ internal static class RoomsApi
         return live;
     }
 
-    private static Room RequireRoom(ThingId id, RoomController rooms)
+    /// <summary>The room a thing is in, or refused not_in_room.</summary>
+    internal static Room RequireRoom(ThingId id, RoomController rooms)
     {
         Thing thing = GameLookup.RequireThing(id);
         Room? room = RoomOf(thing, rooms);
@@ -83,6 +84,24 @@ internal static class RoomsApi
 
         return room;
     }
+
+    /// <summary>A live room by the room_id this tool reports, or refused room_not_found.</summary>
+    internal static Room RequireRoomById(ThingId roomId)
+    {
+        foreach (Room room in LiveRooms())
+        {
+            if (room.RoomId == roomId.Value)
+            {
+                return room;
+            }
+        }
+
+        throw ApiErrors.Refused("room_not_found",
+            $"No closed room has room_id {roomId}; the rooms tool lists them (a room's id changes when it is " +
+            "worked out again).");
+    }
+
+    internal static string IdOf(Room room) => room.RoomId.ToString(CultureInfo.InvariantCulture);
 
     // The cell of the thing's centre (WorldGrid(Thing)), which also places a carried item or a standing player.
     private static Room? RoomOf(Thing? thing, RoomController rooms) =>
@@ -181,6 +200,4 @@ internal static class RoomsApi
         gases.Sort(static (a, b) => b.AmountMol.CompareTo(a.AmountMol));
         return gases;
     }
-
-    private static string IdOf(Room room) => room.RoomId.ToString(CultureInfo.InvariantCulture);
 }

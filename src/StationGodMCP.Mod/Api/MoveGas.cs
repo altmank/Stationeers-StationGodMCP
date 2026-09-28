@@ -68,8 +68,13 @@ namespace StationGodMCP.Api;
 /// liquid there). Its burst rating is Chemistry.Limits.MAXPressureGasPipe for every piece. No device joins it to
 /// another atmosphere every tick: the pad's pumps and tank connectors move a volume per tick.
 ///
+/// Rooms (from or to {"room_id"} or {"room_of"}): every cell of a closed room with air of its own, taken from in
+/// proportion and given to by volume (MoveGasPlaces.cs). A room must be given named gases as a source, so its
+/// breathable air is never emptied by omission.
+///
 /// Sync (CODE): nothing is marked by hand; Atmosphere.PrepareForWrite sets the gas network flags from the mixture's
-/// own dirty tracking. Host only. Not supported: world cells (refused) and rooms. The planet (from "planet", delete only): PlanetGasRemoval.cs.
+/// own dirty tracking. Host only. Not supported: a single world cell by its atmosphere id (refused). The planet (from
+/// "planet", delete only): PlanetGasRemoval.cs.
 /// </summary>
 internal static class MoveGasApi
 {
@@ -111,12 +116,12 @@ internal abstract class GasDestination
 
     internal sealed class Into : GasDestination
     {
-        internal Into(GasEnd target)
+        internal Into(GasPlace target)
         {
             Target = target;
         }
 
-        internal GasEnd Target { get; }
+        internal GasPlace Target { get; }
     }
 
     internal sealed class Deleted : GasDestination
@@ -134,7 +139,7 @@ internal sealed class GasMoveRequest
 {
     private const int MaximumGasNames = 256;
 
-    private GasMoveRequest(GasEnd source, GasDestination destination, Chemistry.GasType[] gases, double? amountMol,
+    private GasMoveRequest(GasPlace source, GasDestination destination, Chemistry.GasType[] gases, double? amountMol,
         bool force, bool joined)
     {
         Source = source;
@@ -145,7 +150,7 @@ internal sealed class GasMoveRequest
         Joined = joined;
     }
 
-    internal GasEnd Source { get; }
+    internal GasPlace Source { get; }
 
     internal GasDestination Destination { get; }
 
@@ -161,15 +166,21 @@ internal sealed class GasMoveRequest
     /// </summary>
     internal bool Joined { get; }
 
-    internal GasEnd? Target => (Destination as GasDestination.Into)?.Target;
+    internal GasPlace? Target => (Destination as GasDestination.Into)?.Target;
 
     internal static GasMoveRequest Parse(Args args)
     {
-        GasEnd source = GasEnd.Resolve(args.ThingId("from"), "from");
+        GasPlace source = GasPlace.Resolve(GasPlaceArg.Required(args, "from"), "from");
         GasDestination destination = ParseDestination(args);
-        if (destination is GasDestination.Into into && ReferenceEquals(into.Target.Atmosphere, source.Atmosphere))
+        if (destination is GasDestination.Into into && into.Target.SameAs(source))
         {
-            throw ApiErrors.InvalidArgument("'from' and 'to' are the same atmosphere.");
+            throw ApiErrors.InvalidArgument("'from' and 'to' are the same atmosphere or room.");
+        }
+
+        if (source.RequiresNamedGases && !args.Has("gases"))
+        {
+            throw ApiErrors.InvalidArgument("Name the gases to take out of a room ('gases'): a room's air is never " +
+                                            "emptied by omission.");
         }
 
         Chemistry.GasType[] gases = args.Has("gases") ? ParseGases(args.Array("gases", MaximumGasNames)) : GasTypes.All;
@@ -188,7 +199,7 @@ internal sealed class GasMoveRequest
 
         return delete
             ? GasDestination.Deleted.Instance
-            : new GasDestination.Into(GasEnd.Resolve(args.ThingId("to"), "to"));
+            : new GasDestination.Into(GasPlace.Resolve(GasPlaceArg.Required(args, "to"), "to"));
     }
 
     internal static Chemistry.GasType[] ParseGases(JArray array)
@@ -243,7 +254,9 @@ internal sealed class GasEnd
     /// with PreventStateChange, such as a landing pad network.
     /// </summary>
     internal bool ChangesState =>
-        Thing != null ? !Thing.PreventStateChange : Network != null && !Network.PreventStateChange;
+        Thing != null ? !Thing.PreventStateChange :
+        Network != null ? !Network.PreventStateChange :
+        Atmosphere.Mode == AtmosphereHelper.AtmosphereMode.World;
 
     // Unity's == reports a destroyed Thing as null.
     internal bool IsGone =>
@@ -251,6 +264,9 @@ internal sealed class GasEnd
 
     internal static GasEnd? OfNetwork(AtmosphericsNetwork? network) =>
         network != null && network.Atmosphere != null ? new GasEnd(network.Atmosphere, null, network) : null;
+
+    /// <summary>A room cell's own World-mode atmosphere: no owner, no burst rating.</summary>
+    internal static GasEnd OfWorldCell(Atmosphere atmosphere) => new GasEnd(atmosphere, null, null);
 
     internal static GasEnd? OfThing(Thing? thing) =>
         thing != null && thing.InternalAtmosphere != null ? new GasEnd(thing.InternalAtmosphere, thing, null) : null;
@@ -327,15 +343,17 @@ internal sealed class GasEnd
         }
 
         throw ApiErrors.Refused("refused",
-            $"'{name}': atmosphere {atmosphere.ReferenceId} is a {atmosphere.Mode} atmosphere. The planet, world " +
-            "cells and rooms are not moved to or from.");
+            $"'{name}': atmosphere {atmosphere.ReferenceId} is a {atmosphere.Mode} atmosphere. A single world cell " +
+            "is not moved to or from; name its room ({\"room_id\"} or {\"room_of\"}) instead.");
     }
 
     private static GasEnd Checked(GasEnd end, string name)
     {
         if (end.Atmosphere.IsGlobalAtmosphere || end.Atmosphere.Mode == AtmosphereHelper.AtmosphereMode.World)
         {
-            throw ApiErrors.Refused("refused", $"'{name}' is the planet's or a world cell's atmosphere.");
+            throw ApiErrors.Refused("refused",
+                $"'{name}' is the planet's or a world cell's atmosphere; name a room ({{\"room_id\"}} or " +
+                "{\"room_of\"}) instead.");
         }
 
         if (end.IsGone)
@@ -354,7 +372,12 @@ internal sealed class GasEnd
                 Thing.DisplayName);
         }
 
-        AtmosphericsNetwork network = Network!;
+        if (Network == null)
+        {
+            return new GasOwnerView("world_cell", new ThingId(Atmosphere.ReferenceId), null, null);
+        }
+
+        AtmosphericsNetwork network = Network;
         return new GasOwnerView(AtmosphereOwners.SourceOf(network), new ThingId(network.ReferenceId), null,
             network.DisplayName);
     }

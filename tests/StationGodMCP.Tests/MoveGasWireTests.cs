@@ -46,7 +46,8 @@ public sealed class MoveGasWireTests
         joined_by = new List<object>
         {
             new { reference_id = "30", prefab_name = "StructureGasTankStorage", display_name = "Tank Storage" }
-        }
+        },
+        room = (object?)null
     };
 
     private static GasSideView NewSide() => new GasSideView(
@@ -58,7 +59,7 @@ public sealed class MoveGasWireTests
                 new ThingId(21), NewAtmosphere(100.0), NewAtmosphere(50.0))
         },
         new GasTotalView(NewAtmosphere(100.0), NewAtmosphere(50.0), null),
-        new List<ThingView> { new ThingView(new ThingId(30), "StructureGasTankStorage", "Tank Storage") });
+        new List<ThingView> { new ThingView(new ThingId(30), "StructureGasTankStorage", "Tank Storage") }, null);
 
     [Fact]
     public void QueuedMoveSameWire()
@@ -118,5 +119,23 @@ public sealed class MoveGasWireTests
         };
         WireCheck.Same(failed, MoveGasView.Failed("9", new ErrorView("atmosphere_not_found", "Gone.")));
         WireCheck.Same(new { transfer_id = "10", status = "queued" }, new GasMoveWaitingView("10"));
+    }
+
+    [Fact]
+    public void RoomSideSameWire()
+    {
+        var old = new
+        {
+            members = new List<object>(),
+            total = new { before = OldAtmosphere(101.0), after = OldAtmosphere(95.5), after_boiling = (object?)null },
+            joined_by = new List<object>(),
+            room = new
+            {
+                room_id = "123", room_type = "None", cell_count = 40, cells_with_air = 38, volume_l = 304000.0
+            }
+        };
+        WireCheck.Same(old, new GasSideView(new List<GasMemberView>(),
+            new GasTotalView(NewAtmosphere(101.0), NewAtmosphere(95.5), null), new List<ThingView>(),
+            new GasRoomView("123", "None", 40, 38, 304000.0)));
     }
 }

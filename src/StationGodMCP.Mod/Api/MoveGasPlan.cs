@@ -10,6 +10,7 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -59,7 +60,11 @@ internal sealed class GasSnapshot
 
     internal double MolesOf(int index) => _moles[index];
 
-    /// <summary>Several atmospheres as one: moles, energies and volumes added, as AtmosphereHelper.Mix pools.</summary>
+    /// <summary>
+    /// Several atmospheres as one: moles, energies and volumes added, as AtmosphereHelper.Mix pools (and
+    /// Room.CacheRoomData, for a room's cells). The pool keeps its parts' mode when they share one (a room's World
+    /// cells), else counts as a network.
+    /// </summary>
     internal static GasSnapshot Pool(GasSnapshot[] parts)
     {
         if (parts.Length == 1)
@@ -71,8 +76,15 @@ internal sealed class GasSnapshot
         double[] moles = new double[count];
         double[] energies = new double[count];
         double volume = 0.0;
+        AtmosphereHelper.AtmosphereMode mode =
+            parts.Length > 0 ? parts[0].Mode : AtmosphereHelper.AtmosphereMode.Network;
         foreach (GasSnapshot part in parts)
         {
+            if (part.Mode != mode)
+            {
+                mode = AtmosphereHelper.AtmosphereMode.Network;
+            }
+
             for (int index = 0; index < count; index++)
             {
                 moles[index] += part._moles[index];
@@ -82,7 +94,7 @@ internal sealed class GasSnapshot
             volume += part.VolumeL;
         }
 
-        return new GasSnapshot(moles, energies, volume, AtmosphereHelper.AtmosphereMode.Network);
+        return new GasSnapshot(moles, energies, volume, mode);
     }
 
     /// <summary>What Mole.Remove would take: the amount capped at what is there, and its share of energy.</summary>
@@ -316,8 +328,9 @@ internal sealed class GasSnapshot
 /// </summary>
 internal sealed class GasSide
 {
-    private GasSide(JoinedSet gasSet, JoinedSet liquidSet)
+    private GasSide(GasPlace place, JoinedSet gasSet, JoinedSet liquidSet)
     {
+        Place = place;
         GasSet = gasSet;
         LiquidSet = liquidSet;
         All = gasSet.Union(liquidSet);
@@ -330,6 +343,9 @@ internal sealed class GasSide
         }
     }
 
+    /// <summary>What was named: one atmosphere, or a room.</summary>
+    internal GasPlace Place { get; }
+
     internal JoinedSet GasSet { get; }
 
     internal JoinedSet LiquidSet { get; }
@@ -340,18 +356,35 @@ internal sealed class GasSide
 
     internal GasSnapshot[] After { get; }
 
-    internal static GasSide Of(GasEnd end, bool joined)
+    internal static GasSide Of(GasPlace place, GasEnd end, bool joined)
     {
         if (!joined)
         {
             JoinedSet alone = JoinedSet.Alone(end);
-            return new GasSide(alone, alone);
+            return new GasSide(place, alone, alone);
         }
 
-        return new GasSide(
+        return new GasSide(place,
             JoinedSet.Collect(end, AtmosphereHelper.MatterState.Gas),
             JoinedSet.Collect(end, AtmosphereHelper.MatterState.Liquid));
     }
+
+    /// <summary>A room's cells: every gas and liquid is shared between all of them.</summary>
+    internal static GasSide OfCells(GasPlace place, List<GasEnd> cells)
+    {
+        JoinedSet all = JoinedSet.OfCells(cells);
+        return new GasSide(place, all, all);
+    }
+
+    /// <summary>The predicted arrival of a gas, where the named place puts it.</summary>
+    internal void Receive(int gasIndex, double moles, double energy) => Place.Receive(this, gasIndex, moles, energy);
+
+    /// <summary>The arrival itself, on the atmospherics thread.</summary>
+    internal void Deliver(Chemistry.GasType gas, double moles, double energy) =>
+        Place.Deliver(this, gas, moles, energy);
+
+    /// <summary>Whether the move can no longer be applied here: an atmosphere was destroyed.</summary>
+    internal bool AnyGone() => Place.IsGone(this);
 
     /// <summary>The members a gas of this type is shared between.</summary>
     internal JoinedSet For(Chemistry.GasType gas) =>
@@ -474,10 +507,12 @@ internal sealed class GasSide
     private GasSnapshot? AfterBoiling(GasSnapshot[] snapshots) =>
         ChangesState ? GasSnapshot.Pool(snapshots).Boiled() : null;
 
+    // A room lists no members (up to 1200 cells): its room and total say it all.
     internal GasSideView ToView(GasSnapshot[] after)
     {
-        List<GasMemberView> members = new List<GasMemberView>(All.Members.Count);
-        for (int index = 0; index < All.Members.Count; index++)
+        GasRoomView? room = Place.RoomView(after);
+        List<GasMemberView> members = new List<GasMemberView>(room == null ? All.Members.Count : 0);
+        for (int index = 0; room == null && index < All.Members.Count; index++)
         {
             GasEnd member = All.Members[index];
             members.Add(new GasMemberView(member.OwnerView(), new ThingId(member.Atmosphere.ReferenceId),
@@ -492,7 +527,7 @@ internal sealed class GasSide
 
         GasTotalView total = new GasTotalView(GasSnapshot.Pool(Before).ToView(), GasSnapshot.Pool(after).ToView(),
             AfterBoiling(after)?.ToView());
-        return new GasSideView(members, total, joiners);
+        return new GasSideView(members, total, joiners, room);
     }
 
     internal GasSnapshot[] Live()
@@ -504,19 +539,6 @@ internal sealed class GasSide
         }
 
         return live;
-    }
-
-    internal bool AnyGone()
-    {
-        foreach (GasEnd member in All.Members)
-        {
-            if (member.IsGone)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
 
@@ -542,10 +564,9 @@ internal sealed class GasPlan
 
     internal static GasPlan Predict(GasMoveRequest request)
     {
-        GasSide source = GasSide.Of(request.Source, request.Joined);
-        GasEnd? targetEnd = request.Target;
-        GasSide? target = targetEnd != null ? GasSide.Of(targetEnd, request.Joined) : null;
-        if (targetEnd != null && source.All.Contains(targetEnd.Atmosphere))
+        GasSide source = request.Source.SideOf(request.Joined);
+        GasSide? target = request.Target?.SideOf(request.Joined);
+        if (target != null && target.All.Members.Exists(member => source.All.Contains(member.Atmosphere)))
         {
             throw ApiErrors.Refused("same_joined_set",
                 "'to' is joined to 'from' (the game mixes them every tick), so the gas would flow straight back. " +
@@ -576,35 +597,36 @@ internal sealed class GasPlan
         Chemistry.GasType gas)
     {
         int gasIndex = GasTypes.IndexOf(gas);
-        JoinedSet set = source.For(gas);
-        double total = 0.0;
-        foreach (GasEnd member in set.Members)
+        List<GasEnd> members = source.For(gas).Members;
+        double[] held = new double[members.Count];
+        for (int index = 0; index < held.Length; index++)
         {
-            total += source.Before[source.IndexOf(member.Atmosphere)].MolesOf(gasIndex);
+            held[index] = source.Before[source.IndexOf(members[index].Atmosphere)].MolesOf(gasIndex);
         }
 
-        double amount = request.AmountMol.HasValue ? Math.Min(total, request.AmountMol.Value) : total;
-        if (!(amount > 0.0))
-        {
-            return null;
-        }
-
+        double[] taken = GasShares.Proportional(held, request.AmountMol);
         double movedMoles = 0.0;
         double movedEnergy = 0.0;
-        foreach (GasEnd member in set.Members)
+        for (int index = 0; index < taken.Length; index++)
         {
-            GasSnapshot before = source.Before[source.IndexOf(member.Atmosphere)];
-            (double moles, double energy) = before.Take(gasIndex, amount * before.MolesOf(gasIndex) / total);
-            source.Change(member.Atmosphere, gasIndex, -moles, -energy);
+            if (!(taken[index] > 0.0))
+            {
+                continue;
+            }
+
+            GasSnapshot before = source.Before[source.IndexOf(members[index].Atmosphere)];
+            (double moles, double energy) = before.Take(gasIndex, taken[index]);
+            source.Change(members[index].Atmosphere, gasIndex, -moles, -energy);
             movedMoles += moles;
             movedEnergy += energy;
         }
 
-        if (target != null)
+        if (!(movedMoles > 0.0))
         {
-            target.Change(request.Target!.Atmosphere, gasIndex, movedMoles, movedEnergy);
+            return null;
         }
 
+        target?.Receive(gasIndex, movedMoles, movedEnergy);
         return new MovedGasView(gas.ToString(), movedMoles, movedEnergy);
     }
 

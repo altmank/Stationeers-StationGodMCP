@@ -120,8 +120,9 @@ a small transformer, a passive vent, a valve, a portables connector and gas tank
 cell's centre and set down on the floor; two walls back to back in one request; `plan_removal` without a player;
 cell positions in messages in metres.
 
-**Not yet tested in game:** the 1.3.2 landing pad atmospheres in `atmosphere_contents` and `move_gas`, and
-`move_gas`'s receiving-side checks (liquid in a gas pipe, freezing, pressure after boiling).
+**Not yet tested in game:** the 1.3.2 landing pad atmospheres in `atmosphere_contents` and `move_gas`,
+`move_gas`'s receiving-side checks (liquid in a gas pipe, freezing, pressure after boiling), the 1.3.3 planet gas
+removal, and the 1.3.4 rooms in `move_gas`.
 
 ## Documentation
 

@@ -41,8 +41,9 @@ and can hold air. A sealed space bigger than 1200 cells has no room, so frames f
 
 - `from` and `to` are reference ids of a canister, portable tank, tank or suit, a pipe (its network), any landing pad
   piece (the pad's shared atmosphere), a pipe or landing pad network id, or an atmosphere id from
-  `atmosphere_contents`. Rooms and world cells are refused. `from: "planet"` with `delete: true` and named `gases` takes those gases out of the
-  planet's own air (the mix Terraforming Reloaded reads) and its clouds and ice caps; it needs Terraforming Reloaded.
+  `atmosphere_contents`, or a room (below). A single world cell is refused. `from: "planet"` with `delete: true` and
+  named `gases` takes those gases out of the planet's own air (the mix Terraforming Reloaded reads) and its clouds and
+  ice caps; it needs Terraforming Reloaded.
 - `gases` names the gases (`Oxygen`, `Nitrogen`, `CarbonDioxide`, `LiquidOxygen`, `Steam`...); omit for all of them.
   `amount_mol` caps each; omit for all of it. `delete: true` instead of `to` destroys the gas.
 - **Joined sets:** the game keeps some atmospheres at one mix every tick, for example a Gas Tank Storage's canisters and
@@ -55,6 +56,18 @@ and can hold air. A sealed space bigger than 1200 cells has no room, so frames f
 - **Timing:** the game changes gas only on its atmospherics thread, so the move is queued (`status: queued`) and applied
   at the next atmospherics tick, about half a second later, never while paused. The reply is the prediction; call again
   with only `transfer_id` for the outcome.
+- **Rooms:** `{"room_id": "<id>"}` (the `room_id` from `rooms`) or `{"room_of": "<reference id>"}` (the room that
+  thing is in; the player's id gives the room you stand in) as `from` or `to`. The game keeps no room-wide
+  atmosphere, only one per 2 m cell, so a room here is every cell of it that has air of its own; cells without are
+  left out, and a room with none is refused `no_atmosphere`. From a room, `gases` is required, so its breathable air
+  is never emptied by leaving `gases` out. Each named gas is taken from every cell in proportion to what the cell
+  holds (`amount_mol` caps the room's total), each with its share of heat, in one tick. Into a room, each gas is
+  spread over the cells by volume, so the room is at once at the mix the game would settle it to, instead of one cell
+  spiking to many times the room's pressure while the game spreads it. A room has no burst rating; the tank or network
+  on the other side keeps every check. The reply's side has `room {room_id, room_type, cell_count, cells_with_air,
+  volume_l}`, no per-cell `members`, and `total.before` / `total.after` are the room's air, pressure included, over
+  its cells with air (the `rooms` tool also counts cells without air of their own at the planet's air, so it can
+  differ slightly).
 - To undo, move each gas back; it returns at the other side's temperature by then.
 - Host only (`not_host` on a client).
 
@@ -69,6 +82,12 @@ Empty a canister's oxygen into a pipe network, `move_gas`:
 
 ```json
 { "from": "171002", "to": "169540", "gases": ["Oxygen"] }
+```
+
+Clear the nitrous oxide out of the room you stand in into a tank (`rooms` gives `local_player_room_id`):
+
+```json
+{ "from": { "room_id": "5321" }, "to": "124640", "gases": ["NitrousOxide"] }
 ```
 
 ## Planet and weather

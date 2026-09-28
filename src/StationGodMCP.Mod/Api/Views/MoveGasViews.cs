@@ -60,20 +60,52 @@ internal sealed class GasMoveWaitingView
 
 internal sealed class GasSideView
 {
-    internal GasSideView(List<GasMemberView> members, GasTotalView total, List<ThingView> joinedBy)
+    internal GasSideView(List<GasMemberView> members, GasTotalView total, List<ThingView> joinedBy,
+        GasRoomView? room)
     {
         Members = members;
         Total = total;
         JoinedBy = joinedBy;
+        Room = room;
     }
 
-    /// <summary>The named atmosphere first, then those joined to it.</summary>
+    /// <summary>The named atmosphere first, then those joined to it; empty for a room.</summary>
     public List<GasMemberView> Members { get; }
 
+    /// <summary>The members pooled; for a room, the room's air over its cells with air of their own.</summary>
     public GasTotalView Total { get; }
 
     /// <summary>The devices that join the members.</summary>
     public List<ThingView> JoinedBy { get; }
+
+    /// <summary>The room, when a room was named; else null.</summary>
+    public GasRoomView? Room { get; }
+}
+
+/// <summary>A room named as a move's from or to.</summary>
+internal sealed class GasRoomView
+{
+    internal GasRoomView(string roomId, string roomType, int cellCount, int cellsWithAir, double volumeL)
+    {
+        RoomId = roomId;
+        RoomType = roomType;
+        CellCount = cellCount;
+        CellsWithAir = cellsWithAir;
+        VolumeL = volumeL;
+    }
+
+    /// <summary>As the rooms tool reports it.</summary>
+    public string RoomId { get; }
+
+    public string RoomType { get; }
+
+    public int CellCount { get; }
+
+    /// <summary>The cells with an atmosphere of their own: the ones gas is taken from or given to.</summary>
+    public int CellsWithAir { get; }
+
+    /// <summary>The volume of those cells.</summary>
+    public double VolumeL { get; }
 }
 
 internal sealed class GasMemberView
