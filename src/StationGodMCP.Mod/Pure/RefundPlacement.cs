@@ -50,7 +50,7 @@ internal abstract class RefundStep
 }
 
 /// <summary>
-/// Where a refund of one item goes, in LU's order: first onto matching stacks the holder already carries anywhere in
+/// Where a refund of one item goes, in the player's order: first onto matching stacks the holder already carries anywhere in
 /// its inventory (each up to its maximum, in the order offered), then as new stacks into empty slots that accept the
 /// item, then, only for what is left, onto the ground beside the holder. Never more per new item than a full stack.
 /// </summary>

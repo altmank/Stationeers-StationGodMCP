@@ -216,7 +216,7 @@ public sealed class FramesFirstTests
     [Fact]
     public void TheSolarRouteFollowsTheEastBeamAndTheCrossbar()
     {
-        // The route LU accepted: north along the east beam's top (x 708) to z 664, west along the crossbar to x 700.
+        // The accepted route: north along the east beam's top (x 708) to z 664, west along the crossbar to x 700.
         Plan plan = Route(Solar(), M(708, 204, 657), M(700, 204, 664), true, RoutePreference.FrameEdges);
         List<GridCell> expected = new List<GridCell>();
         for (int z = 6570; z <= 6640; z += GridStep.CellSize)

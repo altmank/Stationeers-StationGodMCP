@@ -33,7 +33,7 @@ internal readonly struct PieceOption
 /// <summary>
 /// Which one-cell piece of a kit, turned how, has exactly a set of ends: the first in the kit's order, then in
 /// rotation order, as the kit's own merge picks the first matching constructable (MultiMergeConstructor.Construct).
-/// Pieces of more than one cell (the long straights) are never offered: LU prefers single straights, and a run is
+/// Pieces of more than one cell (the long straights) are never offered: the base layout prefers single straights, and a run is
 /// built one cell at a time. A directed piece (a chute junction) fits the same ends at more than one turn, each
 /// sending items out a different way: Orientations lists the first option per output direction, and the caller picks.
 /// </summary>

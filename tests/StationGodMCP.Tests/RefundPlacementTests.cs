@@ -7,7 +7,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Where a refund goes (RefundPlacement), in LU's order: matching stacks held first, then empty slots that take the
+/// Where a refund goes (RefundPlacement), in the player's order: matching stacks held first, then empty slots that take the
 /// item, the ground beside the holder only for what is left. The 2026-09-27 incident: 25 wall kits made at the
 /// player's position hit the suit.
 /// </summary>

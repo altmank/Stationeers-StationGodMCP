@@ -161,7 +161,7 @@ public sealed class PlannerFeaturesTests
 
         RouteTree free = Grow(world, new[] { port }, To(M(700, 204, 664)), prefer: RoutePreference.FrameEdges);
         Assert.True(free.Found);
-        // The route LU accepted for the panel: north along the east beam top, west along the crossbar.
+        // The accepted route for the panel: north along the east beam top, west along the crossbar.
         Assert.Equal(M(708, 204, 664), free.Main[(6640 - 6570) / GridStep.CellSize]);
         Assert.Equal(1, RunPath.Bends(free.Main));
         Assert.All(free.Main, cell => Assert.NotEqual(CellVisibility.Air, world.Visibility(cell)));

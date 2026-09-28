@@ -399,7 +399,7 @@ public sealed class BuildViewTests
                 new List<BuildIssueView> { new BuildIssueView("network_piece", "m", 0) }, new List<string>()),
             new List<PlacementView> { placement },
             new List<BuildMaterialView> { new BuildMaterialView("ItemWallLight", 1, 4) },
-            new ThingView(new ThingId(9), "Human", "LU"), false);
+            new ThingView(new ThingId(9), "Human", "Player"), false);
 
         JObject json = JObject.Parse(WireCheck.New(report));
         Assert.Equal("place_structure", (string?)json["tool"]);

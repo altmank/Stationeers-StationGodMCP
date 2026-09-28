@@ -113,13 +113,13 @@ public sealed class ThingHealthWireTests
             has_more = false,
             local_player = new
             {
-                reference_id = "151", display_name = "LU", position = new { x = 0.0, y = 1.0, z = 2.0 }
+                reference_id = "151", display_name = "Player", position = new { x = 0.0, y = 1.0, z = 2.0 }
             }
         };
         PageRequest page = PageRequest.From(new Args(JObject.Parse("{\"offset\": 2, \"limit\": 1}")), 200, 500);
         HealthScanView view = new HealthScanView(
             Slice<HealthView>.Page(new List<HealthView> { NewRecord(true) }, page, 3), 2, 0, 5000, 0.25,
-            new LocalPlayerView(new ThingId(151), "LU", new PositionView(0.0, 1.0, 2.0)));
+            new LocalPlayerView(new ThingId(151), "Player", new PositionView(0.0, 1.0, 2.0)));
         Dictionary<string, string> renames = new Dictionary<string, string>
         {
             ["things[].ratio"] = "damage_ratio",

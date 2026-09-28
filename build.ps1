@@ -101,7 +101,7 @@ try {
     Write-Host "Staged $package"
 
     if ($Deploy) {
-        # A running game holds the old DLL and keeps running it; LU may be playing.
+        # A running game holds the old DLL and keeps running it; the player may be in game.
         # A brand-new mod the game has never loaded is the one safe exception: pass -Force.
         if (-not $Force -and (Get-Process -Name 'rocketstation' -ErrorAction SilentlyContinue)) {
             throw 'Stationeers is running: close the game before deploying (or -Force for a mod it has never loaded).'
