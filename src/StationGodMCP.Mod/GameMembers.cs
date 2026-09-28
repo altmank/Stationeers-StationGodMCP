@@ -250,6 +250,8 @@ internal static class GameMembers
         Field(typeof(PlanetaryAtmosphereSimulation), "_iceClouds", PrivateStatic);
     internal static readonly GameField PlanetIceCaps =
         Field(typeof(PlanetaryAtmosphereSimulation), "_iceCaps", PrivateStatic);
+    internal static readonly GameField PlanetGlobalInteraction =
+        Field(typeof(PlanetaryAtmosphereSimulation), "GlobalInteraction", PrivateStatic);
 
     // ---- Terraforming Reloaded: another mod, optional; its absence is not a game change ----
     internal static readonly GameType TerraformingGate = Optional("TerraformingReloaded.Patching.Gate");

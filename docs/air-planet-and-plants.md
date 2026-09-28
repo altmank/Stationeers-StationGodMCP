@@ -41,7 +41,8 @@ and can hold air. A sealed space bigger than 1200 cells has no room, so frames f
 
 - `from` and `to` are reference ids of a canister, portable tank, tank or suit, a pipe (its network), any landing pad
   piece (the pad's shared atmosphere), a pipe or landing pad network id, or an atmosphere id from
-  `atmosphere_contents`. Rooms, the planet and world cells are refused.
+  `atmosphere_contents`. Rooms and world cells are refused. `from: "planet"` with `delete: true` and named `gases` takes those gases out of the
+  planet's own air (the mix Terraforming Reloaded reads) and its clouds and ice caps; it needs Terraforming Reloaded.
 - `gases` names the gases (`Oxygen`, `Nitrogen`, `CarbonDioxide`, `LiquidOxygen`, `Steam`...); omit for all of them.
   `amount_mol` caps each; omit for all of it. `delete: true` instead of `to` destroys the gas.
 - **Joined sets:** the game keeps some atmospheres at one mix every tick, for example a Gas Tank Storage's canisters and

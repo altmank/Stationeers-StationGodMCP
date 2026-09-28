@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.3
+
+Planet gas removal.
+
+- **`move_gas from: "planet"`** with `delete: true` and named `gases` takes those gases out of the planet's own
+  air, `PlanetaryAtmosphereSimulation._globalGasMix` (what Terraforming Reloaded reads through `GetGlobalGasMix`), and
+  out of its liquid clouds, ice clouds and ice caps, under the game's `GlobalInteraction` lock on the atmospherics
+  thread. Without `amount_mol` it repeats for 30 ticks, since outdoor cells hand a residual back. Needs Terraforming
+  Reloaded (`terraforming_mod_required`): the stock game keeps the planet read-only. Refused without `gases`.
+
 ## 1.3.2
 
 Landing pad atmospheres in the gas tools, and move_gas checks the receiving side by the game's matter rules.

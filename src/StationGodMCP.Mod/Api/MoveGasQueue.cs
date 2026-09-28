@@ -235,5 +235,6 @@ internal static class GasMovesTickPatch
     private static void Postfix()
     {
         GasMoves.ApplyPending();
+        PlanetGasRemoval.ApplyPending();
     }
 }

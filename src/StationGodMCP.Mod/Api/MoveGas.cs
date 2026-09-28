@@ -69,7 +69,7 @@ namespace StationGodMCP.Api;
 /// another atmosphere every tick: the pad's pumps and tank connectors move a volume per tick.
 ///
 /// Sync (CODE): nothing is marked by hand; Atmosphere.PrepareForWrite sets the gas network flags from the mixture's
-/// own dirty tracking. Host only. Not supported: the planet, world cells (refused) and rooms.
+/// own dirty tracking. Host only. Not supported: world cells (refused) and rooms. The planet (from "planet", delete only): PlanetGasRemoval.cs.
 /// </summary>
 internal static class MoveGasApi
 {
@@ -84,6 +84,11 @@ internal static class MoveGasApi
         {
             args.Reject("transfer_id", "from", "to", "delete", "gases", "amount_mol", "force", "joined");
             return GasMoves.Outcome(args.ThingId("transfer_id").Value);
+        }
+
+        if (args.IsWord("from", "planet"))
+        {
+            return PlanetGasRemoval.Handle(args);
         }
 
         GasMoveRequest request = GasMoveRequest.Parse(args);
@@ -186,7 +191,7 @@ internal sealed class GasMoveRequest
             : new GasDestination.Into(GasEnd.Resolve(args.ThingId("to"), "to"));
     }
 
-    private static Chemistry.GasType[] ParseGases(JArray array)
+    internal static Chemistry.GasType[] ParseGases(JArray array)
     {
         List<Chemistry.GasType> gases = new List<Chemistry.GasType>(array.Count);
         foreach (JToken item in array)
