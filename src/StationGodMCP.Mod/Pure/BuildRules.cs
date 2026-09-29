@@ -409,6 +409,36 @@ internal static class RemovalRule
     }
 
     /// <summary>
+    /// A pipe network holding gas or liquid that a removal splits (an in-line tank or passive vent between its pipes):
+    /// the game divides the contents among the networks left by volume, which moves them, so it is refused as the pipe
+    /// tools refuse it (contents_would_move), unless allow_contents (a warning then). Null for no split or no contents.
+    /// </summary>
+    internal static GuardFinding? Divided(long network, double moles, IReadOnlyList<double> partMoles,
+        RemovalAllowance allow)
+    {
+        if (partMoles.Count < 2 || moles < GasFloorMol)
+        {
+            return null;
+        }
+
+        List<string> shares = new List<string>(partMoles.Count);
+        foreach (double part in partMoles)
+        {
+            shares.Add(part.ToString("0.###", CultureInfo.InvariantCulture));
+        }
+
+        string what = string.Format(CultureInfo.InvariantCulture,
+            "removing it splits pipe network {0}, which holds {1:0.###} mol, into {2} networks", network, moles,
+            partMoles.Count);
+        string consequence = $"the game divides the contents among them by volume: {string.Join(" + ", shares)} mol";
+        return allow.Contents
+            ? new GuardFinding("contents_would_move", GuardLevel.Warning,
+                $"{what}; allow_contents is set, so {consequence}")
+            : new GuardFinding("contents_would_move", GuardLevel.Refusal,
+                $"{what}; {consequence}. Empty it first, or pass allow_contents to remove it anyway");
+    }
+
+    /// <summary>
     /// A refund holder (from_id) the request removes, or one held inside something it removes: the refund would be
     /// destroyed with it.
     /// </summary>

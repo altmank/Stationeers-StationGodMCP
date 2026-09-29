@@ -161,6 +161,7 @@ internal static class RemovePlanner
         }
 
         Squeeze(plan, gas);
+        Divided(plan, gas);
         HolderRemoved(plan, seen);
 
         foreach (NetworkRun run in runs)
@@ -393,6 +394,28 @@ internal static class RemovePlanner
             if (worst != null)
             {
                 plan.Add(worst, taken.First.Index, taken.First.Piece.ReferenceId);
+            }
+        }
+    }
+
+    // A network the job splits by taking an in-line tank or passive vent from it while it holds gas: its contents move
+    // between the networks left, which remove_pipes refuses (contents_would_move) and so does this, unless
+    // allow_contents (pipes-25). A split by pipe pieces alone is their remove tool's own finding (NetworkGuard).
+    private static void Divided(RemovePlan plan, Dictionary<long, NetworkTakedown> gas)
+    {
+        foreach (NetworkTakedown taken in gas.Values)
+        {
+            if (taken.First.Kind != null)
+            {
+                continue;
+            }
+
+            List<double> shares = taken.Outcome.Parts.ConvertAll(static part => part.Moles);
+            GuardFinding? finding = RemovalRule.Divided(taken.Network, taken.Outcome.MolesBefore, shares,
+                plan.Arguments.Allow);
+            if (finding != null)
+            {
+                plan.Add(finding, taken.First.Index, taken.First.Piece.ReferenceId);
             }
         }
     }

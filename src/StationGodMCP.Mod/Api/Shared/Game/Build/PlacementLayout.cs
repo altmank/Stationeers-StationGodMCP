@@ -84,7 +84,7 @@ internal static class PlacementLayout
         Box3 render = Bodies.RenderBox(prefab, position, rotation);
         MountRect? mount = small.Count > 0 && turn != null ? MountOf(prefab, small, turn, render) : null;
         List<LayoutConflict> conflicts = new List<LayoutConflict>();
-        SectionsView? sections = mount != null ? Sections(mount, facts, conflicts) : null;
+        SectionsView? sections = mount != null ? Sections(mount, facts, conflicts, !IsRunPiece(prefab)) : null;
         HashSet<GridCell> own = new HashSet<GridCell>(small);
         if (prefab is SmallGrid && !Openings.IsDoor(prefab))
         {
@@ -133,7 +133,12 @@ internal static class PlacementLayout
     private static MountRect? MountOf(Structure prefab, List<GridCell> small, CubeRotation turn, Box3 render) =>
         MountRect.Of(Box3.OfSmallCells(small), MountOutward(prefab, turn), render);
 
-    private static SectionsView Sections(MountRect mount, GridFacts facts, List<LayoutConflict> conflicts)
+    // A cable, pipe or chute piece: it rests on no wall section, so crossing a seam means nothing for it (pipes-27).
+    private static bool IsRunPiece(Structure prefab) =>
+        new CableFamily().IsPiece(prefab) || new PipeFamily().IsPiece(prefab) || new ChuteFamily().IsPiece(prefab);
+
+    private static SectionsView Sections(MountRect mount, GridFacts facts, List<LayoutConflict> conflicts,
+        bool seamMatters)
     {
         List<SectionWallView> walls = new List<SectionWallView>();
         List<GridCell> faces = mount.Faces();
@@ -160,7 +165,7 @@ internal static class PlacementLayout
         }
 
         bool crosses = faces.Count > 1;
-        if (crosses)
+        if (crosses && seamMatters)
         {
             conflicts.Add(new LayoutConflict(ConflictCodes.CrossesSeam, ConflictLevel.Warning,
                 $"It spans {faces.Count} wall sections on {mount.Plane} ({mount}): it crosses the seam between " +

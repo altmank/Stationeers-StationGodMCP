@@ -236,10 +236,12 @@ internal static class RouteEnds
         }
 
         List<PieceEnd> connected = Connectivity.ConnectedEnds(model, around);
+        ChuteFlowResult? flow = leavingOnly ? LineFlow(piece) : null;
         List<RouteEnd> ends = new List<RouteEnd>(cells.Count);
         foreach (GridCell cell in cells)
         {
-            EndSet open = RouteEnd.OpenAt(model, cell, connected, leavingOnly);
+            EndSet open = RouteEnd.OpenAt(model, cell, connected, leavingOnly,
+                flow != null ? index => flow.Of(piece.ReferenceId, index) : null);
             if (leavingOnly && open.Count == 0)
             {
                 throw ApiErrors.InvalidArgument(
@@ -254,6 +256,17 @@ internal static class RouteEnds
         IReferencable? network = kind.Family.NetworkOf(piece);
         List<long> networks = network != null ? new List<long> { network.ReferenceId } : new List<long>();
         return new RouteEndpoint(ends, networks);
+    }
+
+    // The item flow of the piece's chute network as it stands (ChuteFlow), so a start never leaves through an open end
+    // the line already sends items in by; null when the network is too large to solve.
+    private static ChuteFlowResult? LineFlow(SmallGrid piece)
+    {
+        ChuteSurroundings around = ChuteSurroundings.Of(new List<SmallGrid> { piece });
+        return around.TooLarge
+            ? null
+            : ChuteFlow.Solve(new ChuteFlowGraph(new List<PieceModel>(around.Before.Values), around.Ports,
+                new HashSet<long>(), new List<RunLeg>()));
     }
 
     // Every cell of every piece of the network; joining one through an open end is free.

@@ -111,13 +111,15 @@ internal static class RunBuilder
             }
         }
 
-        // The new pieces grow outward from a swapped long's singles, so each joins the long's network and none stands
-        // alone first to take the long's network over in a merge (GrowthOrder).
+        // The changed pieces first; then the new pieces grow outward from them and from a swapped long's singles, so
+        // each joins the network standing there and none stands alone first to take that network over in a merge
+        // (GrowthOrder).
         List<PlannedCell> ordered = plan.Cells.FindAll(static cell => cell.IsChange);
-        List<PieceModel> singles = plan.Cells
+        List<PieceModel> standing = ordered.ConvertAll(static cell => cell.Model);
+        standing.AddRange(plan.Cells
             .FindAll(cell => cell.SplitFrom != null && swapped.Contains(cell.SplitFrom))
-            .ConvertAll(static cell => cell.Model);
-        ordered.AddRange(GrowthOrder.From(singles,
+            .ConvertAll(static cell => cell.Model));
+        ordered.AddRange(GrowthOrder.From(standing,
             plan.Cells.FindAll(cell => !cell.IsChange && (cell.SplitFrom == null || !swapped.Contains(cell.SplitFrom))),
             static cell => cell.Model));
         foreach (PlannedCell cell in ordered)
@@ -228,7 +230,7 @@ internal static class RunBuilder
                 }
             }
 
-            SmallGrid built = cell.IsChange ? Change(plan, cell) : Place(plan, cell, over);
+            SmallGrid built = cell.IsChange ? Change(plan, cell, gas) : Place(plan, cell, over);
             outcome.Built[cell.ForecastId] = built;
             // The gas this piece's merges queued lands before the next piece can merge the survivor away (JobGas).
             gas.Settle();
@@ -278,7 +280,11 @@ internal static class RunBuilder
 
     // The kit's merge: the new piece takes the old one's cell (owner and colour kept), joins its network, the old one
     // leaves (its devices registered through the new one) and is destroyed.
-    private static SmallGrid Change(RunPlan plan, PlannedCell cell)
+    // A new pipe with no connected neighbour but the old piece in its own cell (the only pipe of its network) is given
+    // a network of its own when it registers (Pipe.OnRegistered); that network is merged into the old one's as
+    // SwapSplit merges a swapped long's singles, so the old network keeps its id and its gas, instead of losing both
+    // with its last pipe (pipes-23).
+    private static SmallGrid Change(RunPlan plan, PlannedCell cell, JobGas gas)
     {
         UpgradeFamily family = plan.Request.Kind.Family;
         SmallGrid old = cell.Existing!;
@@ -290,9 +296,16 @@ internal static class RunBuilder
         };
         SmallGrid built = Spawn(instance, cell);
         RequireInPlace(plan, cell, built);
-        if (family.NetworkOf(built) == null && network != null)
+        IReferencable? kept = family.NetworkOf(old) ?? network;
+        IReferencable? theirs = family.NetworkOf(built);
+        if (theirs == null && kept != null)
         {
-            family.Join(built, network);
+            family.Join(built, kept);
+        }
+        else if (family is PipeFamily && kept != null && theirs != null && kept != theirs)
+        {
+            PipeFamily.Merge(kept, theirs);
+            gas.Settle();
         }
 
         IReferencable? own = family.NetworkOf(old);

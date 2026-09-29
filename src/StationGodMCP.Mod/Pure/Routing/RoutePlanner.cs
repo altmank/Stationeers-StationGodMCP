@@ -113,16 +113,20 @@ internal sealed class RouteEnd
 
     /// <summary>
     /// The directions of the piece's ends at the cell that nothing is connected to. With leavingOnly (a chute start),
-    /// only those items can leave through: not an Input end (ChuteRoles.TakesIn), which takes items into the piece.
+    /// only those items can leave through: not an Input end (ChuteRoles.TakesIn), which takes items into the piece, and
+    /// not an end the line's flow already sends items in by (flow, by end index; a plain straight's open end upstream of
+    /// a junction).
     /// </summary>
     internal static EndSet OpenAt(PieceModel piece, GridCell cell, IReadOnlyList<PieceEnd> connected,
-        bool leavingOnly)
+        bool leavingOnly, Func<int, FlowDirection>? flow = null)
     {
         EndSet open = EndSet.None;
-        foreach (PieceEnd end in piece.Ends)
+        for (int index = 0; index < piece.Ends.Count; index++)
         {
+            PieceEnd end = piece.Ends[index];
             GridStep? step = end.Facing.Equals(cell) ? GridStep.Between(cell, end.Local) : null;
-            if (!step.HasValue || (leavingOnly && ChuteRoles.TakesIn(end.Role)))
+            if (!step.HasValue || (leavingOnly && (ChuteRoles.TakesIn(end.Role) ||
+                                                   flow?.Invoke(index) == FlowDirection.In)))
             {
                 continue;
             }
