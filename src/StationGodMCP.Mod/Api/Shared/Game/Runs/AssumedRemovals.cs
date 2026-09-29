@@ -65,7 +65,7 @@ internal sealed class AssumedRemovals
             else if (!(thing is SmallGrid small))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"assume_removed: {thing.DisplayName} ({thing.PrefabName} {id}) does not stand on the small grid.");
+                    $"assume_removed: {Names.Of(thing)} ({thing.PrefabName} {id}) does not stand on the small grid.");
             }
             else if (kind.Family.IsPiece(small))
             {

@@ -316,19 +316,19 @@ internal static class MovePlanner
         if (slot.Get() != null)
         {
             return ApiErrors.Refused("slot_occupied",
-                $"{SlotAccess.Label(slot)} already has {slot.Get().DisplayName} planted; a plant slot holds one "
+                $"{SlotAccess.Label(slot)} already has {Names.Of(slot.Get())} planted; a plant slot holds one "
                 + "plant.");
         }
 
         if (quantity != 1)
         {
             return ApiErrors.InvalidArgument(
-                $"Slot {slot.SlotIndex} of {target.DisplayName} is a plant slot: planting takes one {item.DisplayName} "
+                $"Slot {slot.SlotIndex} of {Names.Of(target)} is a plant slot: planting takes one {Names.Of(item)} "
                 + "off the stack, as a player plants, so pass quantity 1.");
         }
 
         return GrowerSlots.PlantingPrefab(item) == null
-            ? ApiErrors.Refused("slot_refuses", $"The game has no plant that {item.DisplayName} grows into.")
+            ? ApiErrors.Refused("slot_refuses", $"The game has no plant that {Names.Of(item)} grows into.")
             : null;
     }
 
@@ -348,11 +348,11 @@ internal static class MovePlanner
                     GrowerRefusalText.NotFertiliser(SlotAccess.Label(slot), GrowerSlots.ItemOf(item)));
             case GrowerRefusal.Occupied:
                 return ApiErrors.Refused("slot_occupied",
-                    $"{SlotAccess.Label(slot)} already holds {slot.Get().DisplayName}; a fertiliser slot holds one "
+                    $"{SlotAccess.Label(slot)} already holds {Names.Of(slot.Get())}; a fertiliser slot holds one "
                     + "fertiliser, added only when it is empty.");
             case GrowerRefusal.OneUnit:
                 return ApiErrors.InvalidArgument(
-                    $"{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {item.DisplayName} off the "
+                    $"{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {Names.Of(item)} off the "
                     + "stack, so pass quantity 1.");
             default:
                 return null;
@@ -379,7 +379,7 @@ internal static class MovePlanner
         target = destination;
         if (item == null)
         {
-            return ApiErrors.Refused("not_movable", $"{found.DisplayName} is not an item that fits in a slot.");
+            return ApiErrors.Refused("not_movable", $"{Names.Of(found)} is not an item that fits in a slot.");
         }
 
         ApiException? refusal = DestinationRefusal(item, destination) ?? SourceRefusal(item);
@@ -394,13 +394,13 @@ internal static class MovePlanner
             if (holder == item)
             {
                 return ApiErrors.Refused(
-                    "invalid_destination", $"{destination.DisplayName} is {item.DisplayName} or inside it.");
+                    "invalid_destination", $"{Names.Of(destination)} is {Names.Of(item)} or inside it.");
             }
         }
 
         if (destination.Slots == null || destination.Slots.Count == 0)
         {
-            return ApiErrors.Refused("no_slots", $"{destination.DisplayName} has no slots.");
+            return ApiErrors.Refused("no_slots", $"{Names.Of(destination)} has no slots.");
         }
 
         return null;
@@ -417,7 +417,7 @@ internal static class MovePlanner
     {
         return IsVaultDisplaySlot(target, index)
             ? ApiErrors.Refused("vault_display_slot",
-                $"Slot {index} of {target.DisplayName} only shows the vault's store; use vault_deposit to store items.")
+                $"Slot {index} of {Names.Of(target)} only shows the vault's store; use vault_deposit to store items.")
             : null;
     }
 
@@ -438,13 +438,13 @@ internal static class MovePlanner
 
         if (from.IsLocked)
         {
-            return ApiErrors.Refused("slot_locked", $"{item.DisplayName} is in a locked slot.");
+            return ApiErrors.Refused("slot_locked", $"{Names.Of(item)} is in a locked slot.");
         }
 
         return GrowerSlotRule.TakesOut(GrowerSlots.KindOf(from.Parent, from), item is Plant, item is Seed)
             ? null
             : ApiErrors.Refused("planted",
-                $"{item.DisplayName} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, "
+                $"{Names.Of(item)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, "
                 + "only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.");
     }
 
@@ -459,9 +459,9 @@ internal static class MovePlanner
         }
 
         return item is Stackable
-            ? ApiErrors.InvalidArgument($"{item.DisplayName} has {whole}; cannot take {quantity}.")
+            ? ApiErrors.InvalidArgument($"{Names.Of(item)} has {whole}; cannot take {quantity}.")
             : ApiErrors.InvalidArgument(
-                $"{item.DisplayName} is not a stack: it moves whole, so quantity can only be 1 (or left out).");
+                $"{Names.Of(item)} is not a stack: it moves whole, so quantity can only be 1 (or left out).");
     }
 
     private static ApiException? ChooseSlot(ItemMove move, DynamicThing item, Thing target, int quantity,
@@ -488,12 +488,12 @@ internal static class MovePlanner
         if (slot == null)
         {
             return ApiErrors.Refused(
-                "slot_not_found", $"{target.DisplayName} has no slot {index} (it has {target.Slots.Count}).");
+                "slot_not_found", $"{Names.Of(target)} has no slot {index} (it has {target.Slots.Count}).");
         }
 
         if (slot == item.ParentSlot)
         {
-            return ApiErrors.Refused("same_slot", $"{item.DisplayName} is already in that slot.");
+            return ApiErrors.Refused("same_slot", $"{Names.Of(item)} is already in that slot.");
         }
 
         ApiException? vaultSlot = VaultSlotRefusal(target, index);
@@ -504,7 +504,7 @@ internal static class MovePlanner
 
         if (slot.IsLocked)
         {
-            return ApiErrors.Refused("slot_locked", $"Slot {index} of {target.DisplayName} is locked.");
+            return ApiErrors.Refused("slot_locked", $"Slot {index} of {Names.Of(target)} is locked.");
         }
 
         if (GrowerSlotRule.HandDecides(GrowerSlots.KindOf(target, slot)))
@@ -528,7 +528,7 @@ internal static class MovePlanner
         Slot.AllowMove(item, slot)
             ? null
             : ApiErrors.Refused("slot_refuses",
-                $"{SlotAccess.Label(slot)} does not take {item.DisplayName}: {SlotAccess.WhyRefused(item, slot)}.");
+                $"{SlotAccess.Label(slot)} does not take {Names.Of(item)}: {SlotAccess.WhyRefused(item, slot)}.");
 
     // Slot.CanMerge, for the whole stack only, and only when all of it fits under Stackable.MaxQuantity.
     private static ApiException? MergeRefusal(ItemMove move, DynamicThing item, Slot slot, int quantity,
@@ -538,7 +538,7 @@ internal static class MovePlanner
         if (!move.Merge)
         {
             return ApiErrors.Refused("slot_occupied",
-                $"{SlotAccess.Label(slot)} holds {slot.Get().DisplayName}, and merge is false, so {item.DisplayName} "
+                $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} "
                 + "does not join it.");
         }
 
@@ -546,7 +546,7 @@ internal static class MovePlanner
         if (occupant == null || !(item is Stackable stack) || !Slot.CanMerge(item, slot))
         {
             return ApiErrors.Refused("slot_occupied",
-                $"{SlotAccess.Label(slot)} holds {slot.Get().DisplayName}, which {item.DisplayName} cannot join.");
+                $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, which {Names.Of(item)} cannot join.");
         }
 
         if (quantity < stack.Quantity)
@@ -559,7 +559,7 @@ internal static class MovePlanner
         {
             return ApiErrors.Refused(
                 "stack_full",
-                $"{occupant.DisplayName} holds {occupant.Quantity} of {occupant.MaxQuantity}; "
+                $"{Names.Of(occupant)} holds {occupant.Quantity} of {occupant.MaxQuantity}; "
                 + $"{quantity} more do not fit.");
         }
 
@@ -599,7 +599,7 @@ internal static class MovePlanner
         }
 
         slot = null;
-        return ApiErrors.Refused("no_free_slot", $"{target.DisplayName} has no slot that takes {item.DisplayName}.");
+        return ApiErrors.Refused("no_free_slot", $"{Names.Of(target)} has no slot that takes {Names.Of(item)}.");
     }
 
     // A grower's plant or fertiliser slot is taken by the grower rules, hidden or not (a plant into a plant slot,
@@ -736,7 +736,7 @@ internal sealed class MovePlan
     private ApiException Failed(Exception? thrown = null) =>
         ApiErrors.Refused(
             "move_failed",
-            $"The game did not put {Item.DisplayName} into slot {Slot.SlotIndex} of {Target.DisplayName}"
+            $"The game did not put {Names.Of(Item)} into slot {Slot.SlotIndex} of {Names.Of(Target)}"
             + (thrown == null ? "" : $" (it threw {thrown.GetType().Name}: {thrown.Message})")
             + "; read the slots before retrying.");
 }

@@ -193,7 +193,8 @@ inside frames where possible, `plan_cable_route`:
   along its own axis; frames and walls never block cables or pipes. 1.4.5+ also each piece's own rule: no end
   entering an umbilical the way it faces (cables, pipes, chutes); under a pipe-mounted device (an analyser, a pipe
   heater) only a straight pipe along it, of its content (gas or liquid); no pipe into an in-line tank's or passive
-  vent's cell.
+  vent's cell (the run planner refuses such a cell first, since the tank or vent is a pipe it cannot change:
+  `cannot_change`, `no_kit` or `long_piece`; `cell_blocked` "cannot merge with" is only the backstop).
 - **Removal in the same job.** `remove_ids` removes pieces before building, so a device is never unpowered between its
   old cable and its new one. A burnt cable an overload left (`StructureCableStraightBurnt` and the like) may be named
   too, which frees its cell.

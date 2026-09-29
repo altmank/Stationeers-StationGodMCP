@@ -71,7 +71,7 @@ internal static class NetworkRoots
         Thing thing = GameLookup.RequireThing(root);
         if (!(thing is Device device))
         {
-            throw ApiErrors.InvalidArgument($"root: {thing.DisplayName} ({thing.PrefabName}) is not a device.");
+            throw ApiErrors.InvalidArgument($"root: {Names.Of(thing)} ({thing.PrefabName}) is not a device.");
         }
 
         List<long> on = family.DeviceNetworks(device);

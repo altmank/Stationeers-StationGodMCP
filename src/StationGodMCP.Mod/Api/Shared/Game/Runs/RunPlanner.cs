@@ -94,7 +94,7 @@ internal static class RunPlanner
             else if (!(thing is SmallGrid piece) || !(kind.Family.IsPiece(thing) || kind.IsDebris(thing)))
             {
                 plan.Problem($"not_a_{kind.Noun}_piece",
-                    $"{thing.DisplayName} ({thing.PrefabName}) is not a {kind.Noun} piece; remove_structure removes " +
+                    $"{Names.Of(thing)} ({thing.PrefabName}) is not a {kind.Noun} piece; remove_structure removes " +
                     "other structures.", thing.ReferenceId);
             }
             else if (seen.Add(piece.ReferenceId))
@@ -176,7 +176,7 @@ internal static class RunPlanner
             if (!(thing is SmallGrid piece))
             {
                 plan.Problem("not_a_small_grid_thing",
-                    $"assume_removed: {thing.DisplayName} ({thing.PrefabName}) does not stand on the small grid.",
+                    $"assume_removed: {Names.Of(thing)} ({thing.PrefabName}) does not stand on the small grid.",
                     thing.ReferenceId);
                 continue;
             }
@@ -632,8 +632,8 @@ internal static class RunPlanner
             if (plan.From != null && stock.Available < stock.Needed)
             {
                 plan.Problem(plan.Request.Kind.ShortageCode,
-                    $"{stock.Needed} {kit.Item.DisplayName} needed, {stock.Available} held by " +
-                    $"{plan.From.DisplayName}.", plan.From.ReferenceId);
+                    $"{stock.Needed} {Names.Of(kit.Item)} needed, {stock.Available} held by " +
+                    $"{Names.Of(plan.From)}.", plan.From.ReferenceId);
             }
         }
     }

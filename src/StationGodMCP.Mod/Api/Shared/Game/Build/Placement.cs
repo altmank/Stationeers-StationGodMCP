@@ -258,7 +258,7 @@ internal static class CursorCheck
             SmallGrid? holder = cell == null ? null : SlotOf(cell, piece);
             if (holder != null && !holder.IsBeingDestroyed && !ignore.Contains(holder.ReferenceId))
             {
-                return $"{holder.DisplayName} ({holder.PrefabName} {holder.ReferenceId}) already takes that slot of " +
+                return $"{Names.Of(holder)} ({holder.PrefabName} {holder.ReferenceId}) already takes that slot of " +
                        $"the cell at {GridText.Metres(grid.x, grid.y, grid.z)}";
             }
         }
@@ -294,7 +294,7 @@ internal static class CursorCheck
             if (thing != null && !thing.IsBeingDestroyed && thing.ParentSlot == null &&
                 !ignore.Contains(thing.ReferenceId) && cursor.BoundsIntersectWith(thing))
             {
-                return $"{thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId}) is inside it";
+                return $"{Names.Of(thing)} ({thing.PrefabName} {thing.ReferenceId}) is inside it";
             }
         }
 

@@ -192,7 +192,7 @@ internal sealed class VaultTarget
         if (!IngotVaults.IsRemote(thing))
         {
             throw ApiErrors.Refused("not_a_vault",
-                $"{thing.DisplayName} ({id}) is not an Ingot Vault or a Remote Vault.");
+                $"{Names.Of(thing)} ({id}) is not an Ingot Vault or a Remote Vault.");
         }
 
         DeviceImportExport remote = (DeviceImportExport)thing;
@@ -210,7 +210,7 @@ internal sealed class VaultTarget
         if (!Vault.OnOff || !Vault.Powered)
         {
             throw ApiErrors.Refused("vault_unpowered",
-                $"{Vault.DisplayName} ({Vault.ReferenceId}) is {(Vault.OnOff ? "unpowered" : "off")}; the vault " +
+                $"{Names.Of(Vault)} ({Vault.ReferenceId}) is {(Vault.OnOff ? "unpowered" : "off")}; the vault " +
                 "neither imports nor vends then. Nothing was changed.");
         }
     }
@@ -248,7 +248,7 @@ internal sealed class VaultStore
     {
         // The vault makes its ReagentMixture in Awake; a vault without one has never been live.
         ReagentMixture ingots = vault.ReagentMixture ??
-                                throw ApiErrors.Refused("vault_not_ready", $"{vault.DisplayName} has no store yet.");
+                                throw ApiErrors.Refused("vault_not_ready", $"{Names.Of(vault)} has no store yet.");
         Dictionary<int, double> ores = GameMembers.VaultOres.GetValue(vault) as Dictionary<int, double> ??
                                        throw new GameChangedException(GameMembers.VaultOres.Name);
         return new VaultStore(vault, ingots, ores);

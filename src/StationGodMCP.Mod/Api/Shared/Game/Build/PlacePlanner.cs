@@ -232,7 +232,7 @@ internal static class PlacePlanner
         }
 
         List<string> names = near.ConvertAll(broken =>
-            $"{broken.DisplayName} ({broken.PrefabName} {broken.ReferenceId})");
+            $"{Names.Of(broken)} ({broken.PrefabName} {broken.ReferenceId})");
         return $" (broken there: {string.Join(", ", names)}; a broken structure still takes its place; remove it " +
                "first with remove_structure allow_broken)";
     }
@@ -258,7 +258,7 @@ internal static class PlacePlanner
         Objects.Structures.Frame? frame = world.GetCell(centre)?.Lookup[StructureElement.Center] as Objects.Structures.Frame;
         return frame == null || frame.IsBeingDestroyed
             ? string.Empty
-            : $" (the spot is inside {frame.DisplayName} ({frame.PrefabName} {frame.ReferenceId}); the game wants the " +
+            : $" (the spot is inside {Names.Of(frame)} ({frame.PrefabName} {frame.ReferenceId}); the game wants the " +
               "cell it stands in free and a frame in the cell under it: set it on top of the frame, 2 m higher)";
     }
 
@@ -1053,8 +1053,8 @@ internal static class PlacePlanner
             if (plan.From != null && stock.Available < stock.Needed)
             {
                 plan.Problem("not_enough_materials",
-                    $"{stock.Needed} {prefab.DisplayName} ({prefab.PrefabName}) needed, {stock.Available} held by " +
-                    $"{plan.From.DisplayName}.");
+                    $"{stock.Needed} {Names.Of(prefab)} ({prefab.PrefabName}) needed, {stock.Available} held by " +
+                    $"{Names.Of(plan.From)}.");
             }
         }
     }

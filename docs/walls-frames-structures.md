@@ -65,7 +65,7 @@ id, cells and air (within 1 %). A room that appears because a finished frame clo
 | `would_open` | The old piece blocks air or gravity and the target does not. Making a leaky piece airtight is allowed (`seals`). |
 | `would_overstress` (walls) | The face's pressure difference is at or above what the new wall bears; the game would damage it until it breaks. Above its stress mark the piece is only flagged: `stressed` in its entry and the face's verdict. |
 | `cell_occupied` (frames) | Finishing a frame closes its cell, which would seal in whatever is there: a pipe, cable, device, player, creature or loose item. |
-| `cannot_place` (1.4.5+) | A player's placement cursor would refuse the new piece where the old one stands, once the old one is gone (the rule `check_replaceable` asks; the game's reason is in the message). Not checked where the game has no placement cursors (a dedicated server). |
+| `cannot_place` (1.4.5+) | A player's placement cursor would refuse the new piece where the old one stands, once the old one is gone (the rule `check_replaceable` asks; the game's reason is in the message); the old piece must also stand where the cursor snaps it, at a quarter turn the cursor gives the new prefab. Not checked for a prefab the game has no placement cursor for (it makes one for every structure prefab at start, a dedicated server too). |
 | `not_enough_materials` | One per missing item. |
 
 Kept with a reason: `already_at_target`, `special_piece`, `not_selected`, `indestructible`, `broken`,
@@ -218,11 +218,16 @@ behind every face-mounted piece, and collisions. The thing itself is treated as 
 also stand where the cursor snaps it, at a quarter turn the cursor gives its prefab. Each result is
 `{reference_id, prefab_name, replaceable, rule, reason}`: `replaceable` true, false (`rule` one of `support`, `mount`,
 `host`, `location`, `adjacent`, `collision`, `rotation`, `no_kit`, `off_grid`, or null for a reason the table does not
-know; `reason` the game's text) or null (not checked: no placement cursor for the prefab, not a structure, no such
-thing). Up to 1024 ids per call. `lint_layout`'s `not_replaceable` runs the same check over a room or box.
+know; `reason` the game's text) or null (not checked: no placement cursor for the prefab, which the game makes for every
+structure prefab at start, a dedicated server too, so this is rare; not a structure; no such thing). Up to 1024 ids per
+call. `lint_layout`'s `not_replaceable` runs the same check over a room or box.
 
 Not seen: a device whose own check stops at itself before the port rule (vents, lights, consoles, APCs) is not checked
 for ports straight onto other devices' ports; loose things inside are ignored.
+
+The game's frame cursor looks only at 2 m structures, not at small-grid devices, so a player (and `place_structure`)
+can put a frame around a station battery or another device that needs a frame below. The game allows it; the device
+then stands inside a frame, not on one, and `check_replaceable` answers false (`support`) for it.
 
 ### Placing where you look (1.4.3+)
 

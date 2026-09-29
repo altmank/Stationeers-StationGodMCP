@@ -94,13 +94,13 @@ internal static class NetworkHandles
             else if (!(thing is Device device))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{entry}: {thing.DisplayName} ({thing.PrefabName}) is neither a {family.NetworkKind} piece, a " +
+                    $"{entry}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} piece, a " +
                     "device nor a network.");
             }
             else if (BridgingPorts(device, bridges) < 2)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{entry}: {device.DisplayName} ({device.PrefabName}) has no two {family.NetworkKind} ports that " +
+                    $"{entry}: {Names.Of(device)} ({device.PrefabName}) has no two {family.NetworkKind} ports that " +
                     "could share a network, so it bridges nothing; name a network, a piece of one or " +
                     "{reference_id, port}.");
             }
@@ -147,7 +147,7 @@ internal static class NetworkHandles
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{name}: {thing.DisplayName} ({thing.PrefabName}) is neither a {family.NetworkKind} piece nor a device.");
+            $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} piece nor a device.");
     }
 
     private static ThingId OfPort(Thing thing, int port, string name, UpgradeFamily family)

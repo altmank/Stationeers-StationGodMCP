@@ -190,7 +190,7 @@ internal static class RemovePlanner
         string where = thing is DynamicThing { ParentSlot: { } } ? "carried or in a slot" : "loose";
         string what = thing is Item ? "an item" : thing is DynamicThing ? "a movable thing" : "a thing";
         plan.Problems.Add(new BuildIssueView("not_a_structure",
-            $"{thing.DisplayName} ({thing.PrefabName}) is {what} ({where}), not a structure; move_item moves items " +
+            $"{Names.Of(thing)} ({thing.PrefabName}) is {what} ({where}), not a structure; move_item moves items " +
             "and movable things.", index, id));
         return null;
     }
@@ -268,7 +268,7 @@ internal static class RemovePlanner
         {
             if (attached != null && !attached.IsBeingDestroyed)
             {
-                return $"{attached.DisplayName} ({attached.PrefabName} {attached.ReferenceId})";
+                return $"{Names.Of(attached)} ({attached.PrefabName} {attached.ReferenceId})";
             }
         }
 
@@ -451,7 +451,7 @@ internal static class RemovePlanner
         }
     }
 
-    private static string Name(Thing thing) => $"{thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId})";
+    private static string Name(Thing thing) => $"{Names.Of(thing)} ({thing.PrefabName} {thing.ReferenceId})";
 
     // A device mounted on a face the piece holds, or standing on one, left with nothing to rest on once the request is
     // done (MountSupport): the faces a large piece holds (a wall's face; the six faces of a cell a frame fills), every
@@ -500,7 +500,7 @@ internal static class RemovePlanner
 
             if (MountSupport.Loses(holders, piece.ReferenceId, removed))
             {
-                return $"{thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId})";
+                return $"{Names.Of(thing)} ({thing.PrefabName} {thing.ReferenceId})";
             }
         }
 
@@ -712,7 +712,7 @@ internal static class RemovePlanner
                 }
 
                 plan.Warnings.Add(new BuildIssueView("port_left_open",
-                    $"Its {end.ConnectionType} end joins {attached.DisplayName} ({attached.PrefabName} " +
+                    $"Its {end.ConnectionType} end joins {Names.Of(attached)} ({attached.PrefabName} " +
                     $"{attached.ReferenceId}); that end will be open.", takedown.Index,
                     new ThingId(device.ReferenceId)));
             }

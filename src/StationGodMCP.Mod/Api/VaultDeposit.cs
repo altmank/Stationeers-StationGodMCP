@@ -266,14 +266,14 @@ internal static class VaultRule
         if (!Takes(item) || (import != null && import.Type != Slot.Class.None && item.SlotType != import.Type))
         {
             return ApiErrors.Refused("not_vault_material",
-                $"{item.DisplayName} is not something the vault imports: it keeps ingots, ores and ices only.");
+                $"{Names.Of(item)} is not something the vault imports: it keeps ingots, ores and ices only.");
         }
 
         if (item is Ingot ingot && !(ingot.CreatedReagentMixture != null &&
                                      ingot.CreatedReagentMixture.TotalReagents > VaultStore.Trace))
         {
             return ApiErrors.Refused("no_reagents",
-                $"{item.DisplayName} carries no reagents; the vault would destroy it and store nothing.");
+                $"{Names.Of(item)} carries no reagents; the vault would destroy it and store nothing.");
         }
 
         return null;
@@ -341,13 +341,13 @@ internal sealed class DepositPlan
 
         if (!seen.Add(found.ReferenceId))
         {
-            return ApiErrors.InvalidArgument($"{found.DisplayName} ({entry.Id}) is named twice.");
+            return ApiErrors.InvalidArgument($"{Names.Of(found)} ({entry.Id}) is named twice.");
         }
 
         item = found as DynamicThing;
         if (item == null)
         {
-            return ApiErrors.Refused("not_vault_material", $"{found.DisplayName} is not an item.");
+            return ApiErrors.Refused("not_vault_material", $"{Names.Of(found)} is not an item.");
         }
 
         Slot? slot = item.ParentSlot;
@@ -355,12 +355,12 @@ internal sealed class DepositPlan
         {
             // The vault may be importing or exporting it (its _importingItem); let the vault finish with it.
             return ApiErrors.Refused("in_vault_slot",
-                $"{item.DisplayName} is in a slot of {slot.Parent.DisplayName}; take it out or let the vault finish.");
+                $"{Names.Of(item)} is in a slot of {Names.Of(slot.Parent)}; take it out or let the vault finish.");
         }
 
         if (slot != null && slot.IsLocked)
         {
-            return ApiErrors.Refused("slot_locked", $"{item.DisplayName} is in a locked slot.");
+            return ApiErrors.Refused("slot_locked", $"{Names.Of(item)} is in a locked slot.");
         }
 
         return VaultRule.Refusal(item, target.Vault);
@@ -379,11 +379,11 @@ internal sealed class DepositPlan
     {
         if (quantity > held + VaultStore.Trace)
         {
-            return ApiErrors.InvalidArgument($"{item.DisplayName} holds {held}; cannot take {quantity}.");
+            return ApiErrors.InvalidArgument($"{Names.Of(item)} holds {held}; cannot take {quantity}.");
         }
 
         return item is Stackable && Math.Abs(quantity - Math.Round(quantity)) > VaultStore.Trace
-            ? ApiErrors.InvalidArgument($"{item.DisplayName} counts whole items; quantity {quantity} is not whole.")
+            ? ApiErrors.InvalidArgument($"{Names.Of(item)} counts whole items; quantity {quantity} is not whole.")
             : null;
     }
 

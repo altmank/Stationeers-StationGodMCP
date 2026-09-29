@@ -108,7 +108,7 @@ internal static class AtResolver
         }
 
         return new ResolvedAt(ToMetres(OffsetIn(spec, thingFrame, start)),
-            $"{thing.DisplayName} {thing.ReferenceId} ({anchor.ToString().ToLowerInvariant()} {start}) in the " +
+            $"{Names.Of(thing)} {thing.ReferenceId} ({anchor.ToString().ToLowerInvariant()} {start}) in the " +
             $"{thingFrame.Name} frame" + OffsetText(spec), null);
     }
 
@@ -281,7 +281,7 @@ internal static class AtResolver
                 if (turn == null)
                 {
                     throw ApiErrors.Refused("ambiguous_axis",
-                        $"{name}: {target.DisplayName} is turned off the grid's axes; use frame world or player.");
+                        $"{name}: {Names.Of(target)} is turned off the grid's axes; use frame world or player.");
                 }
 
                 return Frame3.Of(turn.Right, turn.Up, turn.Forward, "target");

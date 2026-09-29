@@ -115,7 +115,7 @@ internal static class PlantGenesApi
         if (plant == null)
         {
             error = ApiErrors.Refused("not_a_plant",
-                $"{thing.DisplayName} ({thing.GetType().Name}) is not a plant, seed or plant produce.");
+                $"{Names.Of(thing)} ({thing.GetType().Name}) is not a plant, seed or plant produce.");
             return false;
         }
 
@@ -338,7 +338,7 @@ internal static class GeneSets
         List<GeneCollection> sets = plant.StackedGeneCollections;
         if (sets == null || sets.Count == 0)
         {
-            error = ApiErrors.Refused("no_genes", $"{plant.DisplayName} has no gene set yet.");
+            error = ApiErrors.Refused("no_genes", $"{Names.Of(plant)} has no gene set yet.");
             return false;
         }
 
@@ -346,7 +346,7 @@ internal static class GeneSets
         if (index >= sets.Count)
         {
             error = ApiErrors.Refused("unit_out_of_range",
-                $"{plant.DisplayName} has {sets.Count} gene set(s), the top one last: " +
+                $"{Names.Of(plant)} has {sets.Count} gene set(s), the top one last: " +
                 $"unit must be 0 to {sets.Count - 1}.");
             return false;
         }
@@ -354,7 +354,7 @@ internal static class GeneSets
         set = sets[index];
         if (set == null)
         {
-            error = ApiErrors.Refused("no_genes", $"Gene set {index} of {plant.DisplayName} is empty.");
+            error = ApiErrors.Refused("no_genes", $"Gene set {index} of {Names.Of(plant)} is empty.");
             return false;
         }
 

@@ -60,7 +60,7 @@ internal static class VaultWithdrawApi
         if (!plan.Fits)
         {
             throw ApiErrors.Refused("no_room",
-                $"{holder.DisplayName} takes {VaultAmount.Of(plan.Placed)} of {quantity} {prefab.DisplayName}; " +
+                $"{Names.Of(holder)} takes {VaultAmount.Of(plan.Placed)} of {quantity} {Names.Of(prefab)}; " +
                 "free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed.");
         }
 
@@ -79,12 +79,12 @@ internal static class VaultWithdrawApi
         if (quantity > amount + VaultStore.Trace)
         {
             throw ApiErrors.Refused("not_enough_stock",
-                $"The vault holds {VaultAmount.Of(amount)} {prefab.DisplayName}; cannot take {quantity}.");
+                $"The vault holds {VaultAmount.Of(amount)} {Names.Of(prefab)}; cannot take {quantity}.");
         }
 
         if (stock.CountsWhole && Math.Abs(quantity - Math.Round(quantity)) > VaultStore.Trace)
         {
-            throw ApiErrors.InvalidArgument($"{prefab.DisplayName} counts whole items; quantity {quantity} is not whole.");
+            throw ApiErrors.InvalidArgument($"{Names.Of(prefab)} counts whole items; quantity {quantity} is not whole.");
         }
     }
 
@@ -106,7 +106,7 @@ internal static class VaultWithdrawApi
 
         return holder.Slots != null && holder.Slots.Count > 0
             ? holder
-            : throw ApiErrors.Refused("no_slots", $"{holder.DisplayName} has no slots.");
+            : throw ApiErrors.Refused("no_slots", $"{Names.Of(holder)} has no slots.");
     }
 
     private static SlotChoice Choice(Args args) => args.Has("to_slot") ? SlotChoice.Parse(args) : new SlotChoice.Auto();
@@ -237,12 +237,12 @@ internal sealed class Delivery
         if (slot == null)
         {
             throw ApiErrors.Refused("slot_not_found",
-                $"{Holder.DisplayName} has no slot {index} (it has {Holder.Slots.Count}).");
+                $"{Names.Of(Holder)} has no slot {index} (it has {Holder.Slots.Count}).");
         }
 
         if (slot.IsLocked)
         {
-            throw ApiErrors.Refused("slot_locked", $"Slot {index} of {Holder.DisplayName} is locked.");
+            throw ApiErrors.Refused("slot_locked", $"Slot {index} of {Names.Of(Holder)} is locked.");
         }
 
         if (!SlotAccess.Reaches(slot))
@@ -256,9 +256,9 @@ internal sealed class Delivery
             DynamicThing? occupant = slot.Get();
             throw occupant != null
                 ? ApiErrors.Refused("slot_occupied",
-                    $"{SlotAccess.Label(slot)} holds {occupant.DisplayName}, which {prefab.DisplayName} cannot join.")
+                    $"{SlotAccess.Label(slot)} holds {Names.Of(occupant)}, which {Names.Of(prefab)} cannot join.")
                 : ApiErrors.Refused("slot_refuses",
-                    $"{SlotAccess.Label(slot)} does not take {prefab.DisplayName}: {SlotAccess.WhyRefused(prefab, slot)}.");
+                    $"{SlotAccess.Label(slot)} does not take {Names.Of(prefab)}: {SlotAccess.WhyRefused(prefab, slot)}.");
         }
     }
 

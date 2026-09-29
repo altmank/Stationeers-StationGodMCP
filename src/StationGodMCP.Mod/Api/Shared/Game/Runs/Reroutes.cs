@@ -45,7 +45,7 @@ internal static class Reroutes
             Thing thing = GameLookup.RequireThing(id);
             if (!(thing is SmallGrid piece) || !kind.Family.IsPiece(piece))
             {
-                throw ApiErrors.InvalidArgument($"{thing.DisplayName} ({thing.PrefabName}) is not a {kind.Noun} piece.");
+                throw ApiErrors.InvalidArgument($"{Names.Of(thing)} ({thing.PrefabName}) is not a {kind.Noun} piece.");
             }
 
             if (!pieces.Contains(piece))

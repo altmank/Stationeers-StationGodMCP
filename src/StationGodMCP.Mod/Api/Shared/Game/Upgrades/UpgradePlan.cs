@@ -361,7 +361,7 @@ internal static class UpgradePlanner
             else if (!(thing is SmallGrid piece) || !family.IsPiece(thing))
             {
                 plan.Problem($"not_a_{family.NetworkKind}_piece",
-                    $"{thing.DisplayName} ({thing.PrefabName}) is not a {family.NetworkKind} piece" +
+                    $"{Names.Of(thing)} ({thing.PrefabName}) is not a {family.NetworkKind} piece" +
                     (thing is CableRuptured
                         ? "; a burnt cable is on no network: remove it with remove_cables."
                         : "."), thing);
@@ -399,8 +399,8 @@ internal static class UpgradePlanner
             if (plan.From != null && stock.Available < stock.Needed)
             {
                 plan.Problem("not_enough_coils",
-                    $"{stock.Needed} {kit.Item.DisplayName} needed, {stock.Available} held by " +
-                    $"{plan.From.DisplayName}.", plan.From);
+                    $"{stock.Needed} {Names.Of(kit.Item)} needed, {stock.Available} held by " +
+                    $"{Names.Of(plan.From)}.", plan.From);
             }
         }
     }

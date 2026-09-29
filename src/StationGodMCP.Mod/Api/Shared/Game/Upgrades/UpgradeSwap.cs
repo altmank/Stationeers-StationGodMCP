@@ -144,7 +144,7 @@ internal sealed class PieceSwap
             if (taken < _swap.Cost)
             {
                 Stop(log, "coils_short",
-                    $"Only {taken} of {_swap.Cost} {_stock.Item.DisplayName} could be taken for this piece; it " +
+                    $"Only {taken} of {_swap.Cost} {Names.Of(_stock.Item)} could be taken for this piece; it " +
                     "was swapped and the run stopped after it.");
             }
         }

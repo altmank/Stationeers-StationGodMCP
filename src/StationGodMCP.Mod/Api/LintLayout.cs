@@ -239,7 +239,7 @@ internal static class LintLayoutApi
                 {
                     findings.Add(new LintFinding(LintCodes.RunAlongDoor,
                         $"{piece.PrefabName} {piece.ReferenceId} runs along the jamb of door {door.ReferenceId} " +
-                        $"({door.DisplayName}).", piece.ReferenceId, Bodies.V(piece.Position), door.ReferenceId));
+                        $"({Names.Of(door)}).", piece.ReferenceId, Bodies.V(piece.Position), door.ReferenceId));
                     break;
                 }
             }
@@ -264,7 +264,7 @@ internal static class LintLayoutApi
         if (mounted && mount != null && mount.CrossesAvoidableSeam)
         {
             findings.Add(new LintFinding(LintCodes.DeviceCrossesSeam,
-                $"{device.DisplayName} ({device.PrefabName} {device.ReferenceId}) spans {mount.Faces().Count} wall " +
+                $"{Names.Of(device)} ({device.PrefabName} {device.ReferenceId}) spans {mount.Faces().Count} wall " +
                 $"sections on {mount.Plane}.", device.ReferenceId, at));
         }
 
@@ -277,7 +277,7 @@ internal static class LintLayoutApi
             if (back && !front)
             {
                 findings.Add(new LintFinding(LintCodes.MountedFacesOutOfRoom,
-                    $"{device.DisplayName} ({device.PrefabName} {device.ReferenceId}) faces {mount.Outward.Name}, " +
+                    $"{Names.Of(device)} ({device.PrefabName} {device.ReferenceId}) faces {mount.Outward.Name}, " +
                     "out of the room behind it.", device.ReferenceId, at));
             }
         }
@@ -285,7 +285,7 @@ internal static class LintLayoutApi
         if (Controls.Has(device.PrefabName) && (mount == null || !mounted || mount.Outward.IsVertical))
         {
             findings.Add(new LintFinding(LintCodes.ControlsNotOnWall,
-                $"{device.DisplayName} ({device.PrefabName} {device.ReferenceId}) has controls and is not mounted on " +
+                $"{Names.Of(device)} ({device.PrefabName} {device.ReferenceId}) has controls and is not mounted on " +
                 "a wall.", device.ReferenceId, at));
         }
     }
@@ -313,7 +313,7 @@ internal static class LintLayoutApi
             if (zone.IsDoor)
             {
                 findings.Add(new LintFinding(LintCodes.PortIntoDoorway,
-                    $"{device.DisplayName} ({device.ReferenceId}) port {index} ({end.ConnectionType}) joins in the " +
+                    $"{Names.Of(device)} ({device.ReferenceId}) port {index} ({end.ConnectionType}) joins in the " +
                     $"keep-out of door {zone.Id}.", device.ReferenceId, at, zone.Id));
             }
 
@@ -332,7 +332,7 @@ internal static class LintLayoutApi
             }
 
             findings.Add(new LintFinding(LintCodes.PortCellForeignNetwork,
-                $"{device.DisplayName} ({device.ReferenceId}) port {index} ({end.ConnectionType}): its joining cell " +
+                $"{Names.Of(device)} ({device.ReferenceId}) port {index} ({end.ConnectionType}): its joining cell " +
                 $"holds {piece.PrefabName} {piece.ReferenceId}, which does not join it, so nothing can.",
                 device.ReferenceId, at, piece.ReferenceId));
         }
@@ -359,7 +359,7 @@ internal static class LintLayoutApi
                     ? "overlap: one lies inside the other"
                     : System.FormattableString.Invariant($"run {depth:0.00} m into each other");
                 findings.Add(new LintFinding(LintCodes.DeviceVisualOverlap,
-                    $"{devices[a].DisplayName} ({devices[a].ReferenceId}) and {devices[b].DisplayName} " +
+                    $"{Names.Of(devices[a])} ({devices[a].ReferenceId}) and {Names.Of(devices[b])} " +
                     $"({devices[b].ReferenceId}) {how}.", devices[a].ReferenceId, Bodies.V(devices[a].Position),
                     devices[b].ReferenceId));
             }
@@ -401,7 +401,7 @@ internal static class LintLayoutApi
         things.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
         foreach (Structure thing in things)
         {
-            string name = $"{thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId})";
+            string name = $"{Names.Of(thing)} ({thing.PrefabName} {thing.ReferenceId})";
             switch (PlayerPlacement.AsItStands(thing, catalogue))
             {
                 case PlacementVerdict.Refused refused:

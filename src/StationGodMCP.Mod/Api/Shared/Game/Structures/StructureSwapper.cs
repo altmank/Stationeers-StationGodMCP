@@ -102,7 +102,7 @@ internal static class StructureSwapper
             if (taken < line.Charge && log.StoppedAt == null)
             {
                 log.StoppedAt = new StructureStopView(new ThingId(swap.OldId), new ErrorView("materials_short",
-                        $"Only {taken} of {line.Charge} {plan.Items[line.Item].DisplayName} could be taken for this " +
+                        $"Only {taken} of {line.Charge} {Names.Of(plan.Items[line.Item])} could be taken for this " +
                         "piece; it was swapped and the run stopped after it."), false, false,
                     new ThingId(built.ReferenceId));
             }

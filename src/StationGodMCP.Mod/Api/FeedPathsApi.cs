@@ -39,7 +39,7 @@ internal static class FeedPathsApi
         Thing thing = GameLookup.RequireThing(args.ThingId("root"));
         if (!(thing is Device root))
         {
-            throw ApiErrors.InvalidArgument($"root: {thing.DisplayName} ({thing.PrefabName}) is not a device.");
+            throw ApiErrors.InvalidArgument($"root: {Names.Of(thing)} ({thing.PrefabName}) is not a device.");
         }
 
         long network = NetworkOf(args, kind, root);

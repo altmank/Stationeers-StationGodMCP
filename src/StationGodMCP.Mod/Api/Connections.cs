@@ -82,7 +82,7 @@ internal static class EndsReader
         {
             throw ApiErrors.Refused(
                 "not_connectable",
-                $"{thing.DisplayName} ({thing.GetType().Name}) is not a pipe, cable, chute or device, so it has no "
+                $"{Names.Of(thing)} ({thing.GetType().Name}) is not a pipe, cable, chute or device, so it has no "
                 + "connection ends.");
         }
 

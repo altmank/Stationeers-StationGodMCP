@@ -318,7 +318,7 @@ internal sealed class GasEnd
         }
 
         throw ApiErrors.Refused("no_atmosphere",
-            $"'{name}': {thing.DisplayName} ({thing.ReferenceId}) has no internal atmosphere and is not a pipe or " +
+            $"'{name}': {Names.Of(thing)} ({thing.ReferenceId}) has no internal atmosphere and is not a pipe or " +
             "a landing pad piece. For a device's pipe network, pass the network's id.");
     }
 

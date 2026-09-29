@@ -165,7 +165,7 @@ internal sealed class FrameFamily : StructureFamily
         {
             if (human != null && !human.IsBeingDestroyed && Inside(human.Position, centre))
             {
-                return $"{human.DisplayName} {human.ReferenceId}";
+                return $"{Names.Of(human)} {human.ReferenceId}";
             }
         }
 

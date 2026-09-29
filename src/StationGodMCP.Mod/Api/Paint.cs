@@ -242,7 +242,7 @@ internal static class PaintColor
             index = GameManager.GetColorIndex(thing.PaintableMaterial);
             return index >= 0 ? null : ApiErrors.Refused(
                 "invalid_color",
-                $"{thing.DisplayName} has no prefab colour to restore (its paint is a mask material).");
+                $"{Names.Of(thing)} has no prefab colour to restore (its paint is a mask material).");
         }
 
         if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out index))
@@ -312,12 +312,12 @@ internal static class Painter
             // Structure.SetCustomColor throws this for a render mode the check above did not know.
             return ApiErrors.Refused(
                 "not_paintable",
-                $"{thing.DisplayName} refused the paint (its SetCustomColor is not implemented).");
+                $"{Names.Of(thing)} refused the paint (its SetCustomColor is not implemented).");
         }
 
         int now = GameManager.GetColorIndex(thing.CustomColor);
         return now == colorIndex ? null : ApiErrors.Refused(
-            "paint_failed", $"{thing.DisplayName} still shows colour index {now} after painting it {colorIndex}.");
+            "paint_failed", $"{Names.Of(thing)} still shows colour index {now} after painting it {colorIndex}.");
     }
 
     private static ApiException? Refusal(Thing thing)
@@ -326,18 +326,18 @@ internal static class Painter
         {
             return ApiErrors.Refused(
                 "has_color_state",
-                $"{thing.DisplayName} keeps its colour as an animator state; the spray can does not paint it.");
+                $"{Names.Of(thing)} keeps its colour as an animator state; the spray can does not paint it.");
         }
 
         if (!thing.IsPaintable)
         {
-            return ApiErrors.Refused("not_paintable", $"{thing.DisplayName} has no paintable material.");
+            return ApiErrors.Refused("not_paintable", $"{Names.Of(thing)} has no paintable material.");
         }
 
         return thing is Structure structure && structure.structureRenderMode != StructureRenderMode.Standard
             ? ApiErrors.Refused(
                 "not_paintable",
-                $"{thing.DisplayName} is a batched structure, which the game cannot repaint.")
+                $"{Names.Of(thing)} is a batched structure, which the game cannot repaint.")
             : null;
     }
 }

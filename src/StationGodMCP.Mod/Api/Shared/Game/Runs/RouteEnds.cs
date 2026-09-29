@@ -137,7 +137,7 @@ internal static class RouteEnds
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{name}: {thing.DisplayName} ({thing.PrefabName}) is neither a {kind.Noun} piece, a device, nor a " +
+            $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {kind.Noun} piece, a device, nor a " +
             $"{kind.Noun} thing with ends (an in-line tank, a passive vent).");
     }
 
@@ -153,7 +153,7 @@ internal static class RouteEnds
         if (end?.Transform == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{name}: {thing.DisplayName} ({thing.ReferenceId}) has no end {port} (connections lists its ends).");
+                $"{name}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} (connections lists its ends).");
         }
 
         GridCell local = PieceShapes.Cell(end.GetLocalGrid());

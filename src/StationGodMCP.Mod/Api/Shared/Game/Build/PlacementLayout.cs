@@ -234,7 +234,7 @@ internal static class PlacementLayout
             {
                 SmallGrid thing = body.Thing;
                 conflicts.Add(new LayoutConflict(ConflictCodes.VisualOverlap, ConflictLevel.Warning,
-                    $"Its body and {thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId}, at {body.Render}) " +
+                    $"Its body and {Names.Of(thing)} ({thing.PrefabName} {thing.ReferenceId}, at {body.Render}) " +
                     (double.IsPositiveInfinity(depth)
                         ? "overlap: one lies inside the other."
                         : System.FormattableString.Invariant($"run {depth:0.00} m into each other.")),
@@ -268,7 +268,7 @@ internal static class PlacementLayout
             if (own.Contains(joining) && PieceFor(world.GetSmallCell(end.GetLocalGrid()), (int)end.ConnectionType) == null)
             {
                 conflicts.Add(new LayoutConflict(ConflictCodes.BlocksRouteCells, ConflictLevel.Warning,
-                    $"It would stand in the joining cell {PieceShapes.CentreOf(joining)} of {device.DisplayName}'s " +
+                    $"It would stand in the joining cell {PieceShapes.CentreOf(joining)} of {Names.Of(device)}'s " +
                     $"free port {index} ({end.ConnectionType}), which then cannot be connected.", device.ReferenceId));
             }
         }
@@ -294,7 +294,7 @@ internal static class PlacementLayout
                 SmallGrid? thing = Blocker(there);
                 conflicts.Add(new LayoutConflict(ConflictCodes.FrontBlocked, ConflictLevel.Warning,
                     $"Right in front of it, at {PieceShapes.CentreOf(front)}, stands " +
-                    $"{(thing != null ? $"{thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId})" : "something")}.",
+                    $"{(thing != null ? $"{Names.Of(thing)} ({thing.PrefabName} {thing.ReferenceId})" : "something")}.",
                     thing != null ? thing.ReferenceId : (long?)null));
                 break;
             }
@@ -368,7 +368,7 @@ internal static class PlacementLayout
                 if (other != null && !ignore.Contains(other.ReferenceId))
                 {
                     occupant = GameLookup.ViewOf(other);
-                    blocked = $"{other.DisplayName} ({other.PrefabName} {other.ReferenceId}) stands in the cell";
+                    blocked = $"{Names.Of(other)} ({other.PrefabName} {other.ReferenceId}) stands in the cell";
                 }
                 else if (own.Contains(port.Cell))
                 {

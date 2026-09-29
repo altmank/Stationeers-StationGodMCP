@@ -99,7 +99,7 @@ internal sealed class ChuteRunKind : RunKind
     {
         DynamicThing? item = ChuteFamily.ItemIn(piece);
         return item != null
-            ? $"{item.DisplayName} ({item.ReferenceId}) rides in it and would be lost with it (a chute does not drop " +
+            ? $"{Names.Of(item)} ({item.ReferenceId}) rides in it and would be lost with it (a chute does not drop " +
               "what it carries when destroyed); let it pass or take it out first"
             : null;
     }

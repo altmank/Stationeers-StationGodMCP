@@ -11,10 +11,15 @@
   - `lint_layout`: `not_replaceable` (problem) and `replaceable_unchecked` (info) on every piece, device and 2 m
     structure in the area; `structures` counts the 2 m ones.
   - `replace_walls`, `replace_frames`: `cannot_place` when a player could not place the new piece where the old one
-    stands.
+    stands, including when the old piece stands off the cursor's grid or at a turn the cursor never gives.
   - `place_cables`, `place_pipes`, `place_chutes`: each piece's own rule too (no end entering an umbilical the way it
-    faces; only a straight pipe along a pipe-mounted device, of its content; no pipe into an in-line tank's cell),
-    as `cell_blocked`.
+    faces; only a straight pipe along a pipe-mounted device, of its content), as `cell_blocked`. A pipe into an
+    in-line tank's or passive vent's cell is refused by the planner first (`cannot_change`, `no_kit` or
+    `long_piece`).
+  - The game's frame cursor does not look at small-grid devices, so a frame can go around a station battery (a player
+    can do it too); the battery then fails `check_replaceable` (`support`). Documented.
+- **Names in messages.** A thing whose prefab has no English name (the game shows `<N:EN:StructureCrewUmbilicalDoor>`)
+  is named by its prefab name in every message.
 
 ## 1.4.4
 

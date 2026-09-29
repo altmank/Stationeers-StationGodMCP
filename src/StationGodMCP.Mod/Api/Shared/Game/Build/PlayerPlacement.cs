@@ -55,16 +55,24 @@ internal static class PlayerPlacement
 
     /// <summary>
     /// The verdict on a placement that stands in for the replaced things: whether a player could place the prefab
-    /// there once they are gone, every other neighbour present. The cursor's CanConstruct and, for a face-mounted
-    /// piece, CanMountOnWall are both asked (PlayerPlacementRule.Judge). Not checked without a placement cursor.
+    /// there once they are gone, every other neighbour present. It must stand where the cursor snaps it, at a quarter
+    /// turn the cursor gives the prefab (Stance); then the cursor's CanConstruct and, for a face-mounted piece,
+    /// CanMountOnWall are both asked (PlayerPlacementRule.Judge). Not checked without a placement cursor.
     /// </summary>
     internal static PlacementVerdict Replacing(Structure prefab, Structure? cursor, Vector3 position,
         Quaternion rotation, IReadOnlyCollection<Structure> replaced)
     {
         if (cursor == null)
         {
-            return PlacementVerdict.Unchecked($"the game has no placement cursor for {prefab.PrefabName} (they are " +
-                                              "made when a player's inventory loads; a dedicated server has none)");
+            return PlacementVerdict.Unchecked($"the game has no placement cursor for {prefab.PrefabName} (it makes " +
+                                              "one for each structure prefab when its inventory manager starts, a " +
+                                              "dedicated server too; a prefab registered after that has none)");
+        }
+
+        PlacementVerdict? stance = Stance(prefab, cursor, position, rotation);
+        if (stance != null)
+        {
+            return stance;
         }
 
         HashSet<long> ids = new HashSet<long>();
@@ -87,8 +95,7 @@ internal static class PlayerPlacement
 
     /// <summary>
     /// Whether a player could place the thing again where it stands, with its neighbours present: some kit builds it,
-    /// it stands where the cursor snaps it and at a turn the cursor gives it, and the game's checks pass once it is
-    /// gone (Replacing).
+    /// and Replacing allows it with the thing gone.
     /// </summary>
     internal static PlacementVerdict AsItStands(Structure thing, BuildCatalogue catalogue)
     {
@@ -104,14 +111,15 @@ internal static class PlayerPlacement
                 PlacementRules.NoKit);
         }
 
-        Structure? cursor = catalogue.CursorOf(prefab);
-        Vector3 position = thing.ThingTransformPosition;
-        Quaternion rotation = thing.ThingTransformRotation;
-        if (cursor == null)
-        {
-            return Replacing(prefab, null, position, rotation, new[] { thing });
-        }
+        return Replacing(prefab, catalogue.CursorOf(prefab), thing.ThingTransformPosition,
+            thing.ThingTransformRotation, new[] { thing });
+    }
 
+    // Where and how the cursor could hold the prefab: at a quarter turn, one its cursor gives it (PlacePlanner.
+    // CursorAllows), where it snaps it (the cursor aims into a cell and snaps; a face-placed piece then sits half a
+    // cell back on the face). Null when it could stand so.
+    private static PlacementVerdict? Stance(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation)
+    {
         CubeRotation? turn = CubeRotation.FromQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
         if (turn == null)
         {
@@ -125,19 +133,15 @@ internal static class PlayerPlacement
                 PlacementRules.Rotation);
         }
 
-        // The cursor aims into a cell and snaps; a face-placed piece then sits half a cell back on the face.
         Vector3 aim = prefab.PlacementType == PlacementSnap.Face
             ? position + rotation * Vector3.forward * cursor.GridSize / 2f
             : position;
         Vector3 snapped = CursorCheck.Snap(cursor, aim, rotation);
-        if (!PlayerPlacementRule.OnGrid((snapped - position).sqrMagnitude))
-        {
-            return PlacementVerdict.Refuse($"it stands at {PlacePlanner.Describe(position)}, where the cursor never " +
-                                           $"puts it (it snaps it to {PlacePlanner.Describe(snapped)})",
+        return PlayerPlacementRule.OnGrid((snapped - position).sqrMagnitude)
+            ? null
+            : PlacementVerdict.Refuse($"it stands at {PlacePlanner.Describe(position)}, where the cursor never " +
+                                      $"puts it (it snaps it to {PlacePlanner.Describe(snapped)})",
                 PlacementRules.OffGrid);
-        }
-
-        return Replacing(prefab, cursor, position, rotation, new[] { thing });
     }
 
     // The cursor's CanConstruct and whose refusal it is: a text naming a replaced thing; "requires a Frame below" where
@@ -158,7 +162,7 @@ internal static class PlayerPlacement
             Structure? other = DoorSide(position, ids);
             return other == null
                 ? new GameCheck(refusal, true)
-                : new GameCheck($"{other.DisplayName} ({other.PrefabName} {other.ReferenceId}) holds the door's face",
+                : new GameCheck($"{Names.Of(other)} ({other.PrefabName} {other.ReferenceId}) holds the door's face",
                     false);
         }
 
@@ -245,7 +249,7 @@ internal static class PlayerPlacement
             case DeviceCableMounted _:
                 SmallGrid? device = GridController.World.GetSmallCell(position)?.Device;
                 return device != null && !device.IsBeingDestroyed && !ids.Contains(device.ReferenceId)
-                    ? $"{device.DisplayName} ({device.PrefabName} {device.ReferenceId}) is in the way"
+                    ? $"{Names.Of(device)} ({device.PrefabName} {device.ReferenceId}) is in the way"
                     : null;
             case SmallGrid piece:
                 return PlacementCheck.Refusal(prefab, position, rotation, ids) ??
@@ -295,7 +299,7 @@ internal static class PlayerPlacement
                                (other.GetGridPosition() - position).sqrMagnitude < 0.01f);
                 if (blocks)
                 {
-                    return $"{other.DisplayName} ({other.PrefabName} {other.ReferenceId}) is in the way";
+                    return $"{Names.Of(other)} ({other.PrefabName} {other.ReferenceId}) is in the way";
                 }
             }
         }

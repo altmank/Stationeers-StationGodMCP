@@ -224,7 +224,7 @@ internal static class RunBuilder
                 {
                     refund.Add(new ItemAmount(cell.Kit.Item, taken));
                     outcome.Log.StoppedAt = new ErrorView("coils_short",
-                        $"Only {taken} of {cell.Cost} {cell.Kit.Item.DisplayName} could be taken for cell " +
+                        $"Only {taken} of {cell.Cost} {Names.Of(cell.Kit.Item)} could be taken for cell " +
                         $"{cell.Cell}; the build stopped before it (what was taken is given back).");
                     return null;
                 }

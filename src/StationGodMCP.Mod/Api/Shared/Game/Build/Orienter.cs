@@ -79,7 +79,7 @@ internal static class Orienter
         if (token is JObject thing && thing["reference_id"] != null)
         {
             Thing found = GameLookup.RequireThing(new Args(thing).ThingId("reference_id"));
-            return new OrientTarget.At(Bodies.V(found.Position), $"{found.DisplayName} {found.ReferenceId}");
+            return new OrientTarget.At(Bodies.V(found.Position), $"{Names.Of(found)} {found.ReferenceId}");
         }
 
         if (token is JArray || token is JObject)

@@ -148,7 +148,7 @@ internal sealed class PinCheck
         if (!IsReadable(device))
         {
             throw ApiErrors.Refused("logic_not_readable",
-                $"Pin d{index}: device {id} ({device.DisplayName}) has no readable logic, so a screwdriver would " +
+                $"Pin d{index}: device {id} ({Names.Of(device)}) has no readable logic, so a screwdriver would " +
                 "skip it.");
         }
 
@@ -156,7 +156,7 @@ internal sealed class PinCheck
         if (!_allowOffNetwork && network != null && !network.DataDeviceList.Contains(device))
         {
             throw ApiErrors.Refused("not_on_data_network",
-                $"Pin d{index}: device {id} ({device.DisplayName}) is not on IC Housing {_housing.ReferenceId}'s " +
+                $"Pin d{index}: device {id} ({Names.Of(device)}) is not on IC Housing {_housing.ReferenceId}'s " +
                 "data network, so the chip would not reach it through the pin. Connect it to the housing's data " +
                 "network, or pass allow_off_network to store it anyway.");
         }

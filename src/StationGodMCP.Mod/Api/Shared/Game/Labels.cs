@@ -9,6 +9,7 @@ using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using Objects.Electrical;
 using Objects.Rockets;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -34,8 +35,10 @@ internal static class Labels
     internal static string? CustomNameOf(Thing thing) =>
         string.IsNullOrEmpty(thing.CustomName) ? null : Text.Plain(thing.CustomName);
 
-    /// <summary>The game's name for the thing's prefab, whatever it has been labelled.</summary>
-    internal static string GameNameOf(Thing thing) => Localization.GetThingName(thing.PrefabName);
+    /// <summary>The game's name for the thing's prefab, whatever it has been labelled; the prefab name when the
+    /// language file has none.</summary>
+    internal static string GameNameOf(Thing thing) =>
+        ThingName.Shown(Localization.GetThingName(thing.PrefabName), thing.PrefabName);
 
     /// <summary>
     /// Whether the name the game shows (the label when there is one), or under a label the prefab's own name, contains

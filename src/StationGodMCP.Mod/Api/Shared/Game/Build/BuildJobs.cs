@@ -304,7 +304,7 @@ internal sealed class PlaceWork : BuildWork
                 {
                     GiveBack(plan, taken, log);
                     return Stop(log, placement, "materials_short",
-                        $"Only {got} of {amount.Quantity} {amount.Prefab.DisplayName} could be taken; it was not " +
+                        $"Only {got} of {amount.Quantity} {Names.Of(amount.Prefab)} could be taken; it was not " +
                         "built (what was taken for it is given back) and nothing more was.");
                 }
             }

@@ -128,7 +128,7 @@ internal static class StructureSwapPlanner
             else if (!(thing is Structure structure) || !family.IsMember(thing))
             {
                 plan.Problem($"not_a_{family.Noun}",
-                    $"{thing.DisplayName} ({thing.PrefabName}) is not a {family.Noun}.", thing);
+                    $"{Names.Of(thing)} ({thing.PrefabName}) is not a {family.Noun}.", thing);
             }
             else
             {
@@ -278,8 +278,8 @@ internal static class StructureSwapPlanner
             if (plan.From != null && stock.Available < stock.Needed)
             {
                 plan.Problem("not_enough_materials",
-                    $"{stock.Needed} {item.DisplayName} ({item.PrefabName}) needed, {stock.Available} held by " +
-                    $"{plan.From.DisplayName}.", plan.From);
+                    $"{stock.Needed} {Names.Of(item)} ({item.PrefabName}) needed, {stock.Available} held by " +
+                    $"{Names.Of(plan.From)}.", plan.From);
             }
         }
     }

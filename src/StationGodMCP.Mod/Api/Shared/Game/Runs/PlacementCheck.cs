@@ -82,7 +82,7 @@ internal static class PlacementCheck
         {
             if (occupant != own && (occupant.SmallCollisionType & mask) != SmallGridBlock.None)
             {
-                return $"{occupant.DisplayName} ({occupant.PrefabName} {occupant.ReferenceId}) stands there";
+                return $"{Names.Of(occupant)} ({occupant.PrefabName} {occupant.ReferenceId}) stands there";
             }
         }
 
@@ -136,7 +136,9 @@ internal static class PlacementCheck
 
     // Pipe.CanConstruct's own rules: a device mounted on a pipe in its origin cell takes only a straight pipe along it
     // and of its content (PlayerPlacementRule.PipeUnderMountedDevice), and no cell may hold a pipe-slot thing that is
-    // not plain piping (an in-line tank, a passive vent: "Cannot merge with").
+    // not plain piping (an in-line tank, a passive vent: "Cannot merge with"). The run planners refuse such a cell
+    // before this is asked (the tank or vent is a pipe they cannot change: cannot_change, no_kit or long_piece); this
+    // stays as the backstop for every other caller (check_replaceable's neighbours, piece restores).
     private static string? PipeRefusal(Pipe pipe, Vector3 position, Quaternion rotation, HashSet<long> ignore)
     {
         GridController world = GridController.World;
@@ -146,7 +148,7 @@ internal static class PlacementCheck
             string? under = PlayerPlacementRule.PipeUnderMountedDevice(pipe.IsStraight,
                 AxisOf(rotation * Vector3.forward), AxisOf(mounted.ThingTransform.forward),
                 mounted.contentType == pipe.PipeContentType,
-                $"{mounted.DisplayName} ({mounted.PrefabName} {mounted.ReferenceId})");
+                $"{Names.Of(mounted)} ({mounted.PrefabName} {mounted.ReferenceId})");
             if (under != null)
             {
                 return under;
@@ -158,7 +160,7 @@ internal static class PlacementCheck
             Pipe? other = world.GetSmallCell(grid)?.Pipe;
             if (other != null && !(other is Piping) && !other.IsBeingDestroyed && !ignore.Contains(other.ReferenceId))
             {
-                return $"a pipe cannot merge with {other.DisplayName} ({other.PrefabName} {other.ReferenceId})";
+                return $"a pipe cannot merge with {Names.Of(other)} ({other.PrefabName} {other.ReferenceId})";
             }
         }
 
@@ -191,7 +193,7 @@ internal static class PlacementCheck
             if (world.GetSmallCell(grid)?.Device is IUmbilical umbilical &&
                 Vector3.Dot(forwards[index], umbilical.AsThing.Transform.forward) > 0.5f)
             {
-                return $"an end would enter {umbilical.AsThing.DisplayName} ({umbilical.AsThing.ReferenceId}) the " +
+                return $"an end would enter {Names.Of(umbilical.AsThing)} ({umbilical.AsThing.ReferenceId}) the " +
                        "way it faces, which the game refuses (only the umbilical's own connector joins it)";
             }
         }
@@ -210,7 +212,7 @@ internal static class PlacementCheck
         {
             if (Collides(piece, ends, occupant))
             {
-                return $"{occupant.DisplayName} ({occupant.PrefabName} {occupant.ReferenceId}) is in the way";
+                return $"{Names.Of(occupant)} ({occupant.PrefabName} {occupant.ReferenceId}) is in the way";
             }
         }
 

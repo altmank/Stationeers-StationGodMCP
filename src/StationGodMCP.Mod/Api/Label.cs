@@ -76,7 +76,7 @@ internal static class LabelApi
         if (!Labels.CanRename(thing))
         {
             throw ApiErrors.Refused("not_labelable",
-                LabelRule.NotLabelable($"{thing.DisplayName} ({id})", thing.GetType().Name));
+                LabelRule.NotLabelable($"{Names.Of(thing)} ({id})", thing.GetType().Name));
         }
 
         LabelStateView previous = StateOf(thing);
