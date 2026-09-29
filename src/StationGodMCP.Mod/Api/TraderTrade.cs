@@ -275,9 +275,13 @@ internal static class TradeSession
             throw ApiErrors.Refused("not_landed", "This trader is not landed at a pad; " + LandedNow() + ".");
         }
 
+        // The pad's On follows its power (LandingPadCenter.RefreshPadPower: on while a finished data and power
+        // connection on its network is powered), so off is the game's "unpowered" (CanTraderLand).
         if (pad is LandingPadCenter center && (!center.OnOff || center.Error != 0))
         {
-            throw ApiErrors.Refused("pad_unavailable", "The trader's landing pad is off or has an error.");
+            throw ApiErrors.Refused("pad_unavailable", !center.OnOff
+                ? "The trader's landing pad is off: unpowered (no powered data and power connection on its network)."
+                : "The trader's landing pad has an error.");
         }
 
         return contact;

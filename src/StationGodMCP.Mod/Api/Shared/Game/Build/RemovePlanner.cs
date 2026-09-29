@@ -811,7 +811,9 @@ internal static class RemovePlanner
                 case UpgradeFamily.HoldsContents:
                 case "contents_would_move":
                     (plan.Arguments.Allow.Contents ? plan.Warnings : plan.Problems).Add(new BuildIssueView(
-                        issue.Code, message + (plan.Arguments.Allow.Contents ? "" : " (allow_contents)"), index, id));
+                        issue.Code, plan.Arguments.Allow.Contents
+                            ? $"{kind.RemoveTool}'s check: {RemovalRule.AllowedContents(issue.Message)}"
+                            : message + " (allow_contents)", index, id));
                     break;
                 case "cannot_remove" when index.HasValue && AlreadyRefused(plan, index.Value):
                     break;

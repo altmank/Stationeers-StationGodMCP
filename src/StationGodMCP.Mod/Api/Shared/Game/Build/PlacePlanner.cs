@@ -342,7 +342,10 @@ internal static class PlacePlanner
         if (placement.SupportedBy != null)
         {
             plan.Warn("supported_by_placement",
-                $"{prefab.PrefabName} at {Describe(position)}: the game wants a frame below it for support, which " +
+                $"{prefab.PrefabName} at {Describe(position)}: the game wants " +
+                (prefab.PlacementType == PlacementSnap.FaceMount
+                    ? "a support behind it"
+                    : "a frame below it for support") + ", which " +
                 $"placements[{placement.SupportedBy.Index}] ({placement.SupportedBy.Prefab!.PrefabName}) puts there; " +
                 "the job checks it again once that stands.", index);
         }
@@ -620,12 +623,23 @@ internal static class PlacePlanner
     }
 
     // "Requires a Frame below" where an earlier placement of this request puts a structure that allows mounting (a
-    // frame) in the 2 m cell the game looks in (SupportDepth below the piece's origin): it does not stand during the
-    // preflight, so the job's own check before each placement (Recheck, once the earlier ones stand) decides.
+    // frame) in the 2 m cell the game looks in (SupportDepth below the piece's origin), or a face-mounted piece's
+    // "requires support" where one puts its support behind it (PlannedMount): it does not stand during the preflight,
+    // so the job's own check before each placement (Recheck, once the earlier ones stand) decides.
     private static PlannedPlacement? PlannedSupport(PlacePlan plan, PlannedPlacement placement, Vector3 position,
         string refusal)
     {
-        if (!RequiresFrameRefusal(refusal) || !(placement.Prefab is SmallGrid piece))
+        if (!(placement.Prefab is SmallGrid piece))
+        {
+            return null;
+        }
+
+        if (piece.PlacementType == PlacementSnap.FaceMount && StartsWithText(refusal, MissingSupport))
+        {
+            return PlannedMount(plan, placement, piece, position);
+        }
+
+        if (!RequiresFrameRefusal(refusal))
         {
             return null;
         }
@@ -633,6 +647,39 @@ internal static class PlacePlanner
         Vector3 up = placement.Rotation * Vector3.up;
         return PlannedFrameIn(plan, placement, LargeCells.Below(new Vec3(position.x, position.y, position.z),
             new Vec3(up.x, up.y, up.z), SupportDepth(piece)));
+    }
+
+    // A face-mounted piece's support, as SmallGrid.CanMountOnWall finds it behind its back (half its grid size back
+    // along its forward): a frame an earlier placement puts in the 2 m cell there, or, unless the piece requires a
+    // frame, a plate an earlier placement puts on the face between (its position is that face's centre).
+    private static PlannedPlacement? PlannedMount(PlacePlan plan, PlannedPlacement placement, SmallGrid piece,
+        Vector3 position)
+    {
+        Vector3 forward = placement.Rotation * Vector3.forward;
+        GridCell behind = LargeCells.Containing(Bodies.V(position - forward * (piece.GridSize / 2f)));
+        PlannedPlacement? frame = PlannedFrameIn(plan, placement, behind);
+        if (frame != null || piece.RequiresFrame)
+        {
+            return frame;
+        }
+
+        Vector3 face = new Vector3(behind.X / 10f, behind.Y / 10f, behind.Z / 10f) +
+                       forward * (float)(CursorAim.LargeCell / 2.0);
+        foreach (PlannedPlacement earlier in plan.Placements)
+        {
+            if (ReferenceEquals(earlier, placement))
+            {
+                break;
+            }
+
+            if (earlier.Prefab != null && earlier.Prefab.PlacementType == PlacementSnap.Face &&
+                earlier.Prefab.AllowMounting && earlier.Position is { } plate && (plate - face).sqrMagnitude < 1e-4f)
+            {
+                return earlier;
+            }
+        }
+
+        return null;
     }
 
     // How far below its origin, along its up, the game looks for the frame a piece stands on: half its grid size
@@ -676,11 +723,13 @@ internal static class PlacePlanner
 
     // The game's "requires a Frame below" refusal as the cursor check words it, whatever the reply appends to it;
     // never when the game has no text for it.
-    private static bool RequiresFrameRefusal(string refusal)
-    {
-        string? requires = RequiresFrame;
-        return !string.IsNullOrEmpty(requires) && refusal.StartsWith(requires, System.StringComparison.Ordinal);
-    }
+    private static bool RequiresFrameRefusal(string refusal) => StartsWithText(refusal, RequiresFrame);
+
+    private static bool StartsWithText(string refusal, string? text) =>
+        !string.IsNullOrEmpty(text) && refusal.StartsWith(text, System.StringComparison.Ordinal);
+
+    // A face-mounted piece's "Placement requires support" (CanMountResult InvalidMissingSupport: nothing behind it).
+    private static string? MissingSupport => Text.Plain(InterfaceStrings.TooltipPlacementSnapFaceMountMissingSupport);
 
     // The game's "requires a Frame below" refusal as the cursor check words it; null when the game has no text for it.
     private static string? RequiresFrame => Text.Plain(GameStrings.PlacementRequiresFrame.DisplayString);

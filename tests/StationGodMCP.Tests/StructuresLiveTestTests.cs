@@ -63,7 +63,8 @@ public sealed class StructuresLiveTestTests
         Assert.Equal(GuardLevel.Refusal, gas.Level);
         Assert.Contains("pipe network 6910", gas.Message);
         GuardFinding allowed = Assert.Single(RemovalRule.Judge(facts, new RemovalAllowance(true, false)));
-        Assert.Equal("gas_lost", allowed.Code);
+        Assert.Equal("contents_deleted", allowed.Code);
+        Assert.Contains("deletes it with the pieces removed", allowed.Message);
     }
 
     // structures-2: the cell a step ahead of a point, read without rounding onto the face plane.

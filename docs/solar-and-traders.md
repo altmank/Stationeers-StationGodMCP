@@ -24,7 +24,9 @@ out with the game's own geometry and checks. No gateway is needed.
 panel's tilt range, and the panel's aim now. Every pose has a twin that faces the same way (horizontal + 180,
 vertical 180 - vertical); when both reach the sun it answers the one nearer the panel's current aim, so a tracker that
 writes every answer never swings the panel round. With the sun below the horizon it gives the pose closest to the sun
-now: tilted toward where it set until midnight, toward where it will rise after. The game stops a turning panel
+now: tilted toward where it set until midnight, toward where it will rise after. `alignment_ratio` is the panel's Ratio
+at that pose from its facing alone, before shading; with the sun below the horizon the game's Ratio is 0 whatever it
+says, since the ground shades the panel. The game stops a turning panel
 within its rotation tolerance, up to about 0.4 degrees short of the written Horizontal. A flat panel reports
 `can_turn: false`. `operable: false` means the panel is not finished (or is broken): the game generates
 nothing from it at any angle. `sun.eclipse` is always false on a dedicated server: the game works out eclipses only in

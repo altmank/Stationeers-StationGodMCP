@@ -312,6 +312,34 @@ internal static class RemovalRule
 
     internal const double GasFloorMol = 0.001;
 
+    /// <summary>Warning: allowed gas let out where it stood (a tank).</summary>
+    internal const string GasReleased = "gas_released";
+
+    /// <summary>
+    /// Warning: allowed gas or liquid the game deletes with what is removed. Not gas_lost, which is the job status of
+    /// a failed gas check that holds every later pipe job (pipes-28).
+    /// </summary>
+    internal const string ContentsDeleted = "contents_deleted";
+
+    /// <summary>
+    /// A pipe tool's contents refusal (holds_contents, contents_would_move) that allow_contents lifts, reworded as the
+    /// warning it becomes: its "empty it first" advice is dropped and the allowance named.
+    /// </summary>
+    internal static string AllowedContents(string message)
+    {
+        string trimmed = message.TrimEnd();
+        foreach (string advice in new[] { " Empty it first.", "; empty it first." })
+        {
+            if (trimmed.EndsWith(advice, StringComparison.Ordinal))
+            {
+                trimmed = trimmed.Substring(0, trimmed.Length - advice.Length);
+                break;
+            }
+        }
+
+        return trimmed.TrimEnd('.') + "; allow_contents is set, so it is removed anyway.";
+    }
+
     internal const string BrokenWhat =
         "it is broken (the game's broken state, left by fire, pressure or other damage, a burst pipe or a burnt " +
         "cable; the game cannot repair it, only deconstruct it)";
@@ -344,13 +372,14 @@ internal static class RemovalRule
 
         if (facts.GasMoles >= GasFloorMol)
         {
-            string fate = facts.GasFate == GasFate.Released
+            bool released = facts.GasFate == GasFate.Released;
+            string fate = released
                 ? "the game lets it out into the cell where it stood"
-                : "the game deletes it with the device";
-            findings.Add(Allowable(allow.Contents, "holds_gas", "gas_" + (facts.GasFate == GasFate.Released ?
-                    "released" : "lost"), $"it holds {facts.GasMoles:0.###} mol of gas or liquid{facts.GasWhere}",
-                "allow_contents",
-                fate));
+                : facts.GasWhere.Length == 0
+                    ? "the game deletes it with the device"
+                    : "the game deletes it with the pieces removed";
+            findings.Add(Allowable(allow.Contents, "holds_gas", released ? GasReleased : ContentsDeleted,
+                $"it holds {facts.GasMoles:0.###} mol of gas or liquid{facts.GasWhere}", "allow_contents", fate));
         }
 
         if (facts.BreachKpa.HasValue && facts.BreachKpa.Value >= BreachKpa)

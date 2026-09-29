@@ -11,7 +11,7 @@ namespace StationGodMCP.Tests;
 /// <summary>
 /// The structures fixes from round 5 of the headless live test (2026-09-29): the frame note is read from the snapped
 /// placement (structures-36), a burst pipe or burnt cable is broken for remove_structure (structures-37), and a paste
-/// is refused while another still places (structures-38).
+/// is refused while another still places (structures-38); remove_structure's pipe wording (pipes-28).
 /// </summary>
 public sealed class StructuresRound5Tests
 {
@@ -80,5 +80,40 @@ public sealed class StructuresRound5Tests
         Assert.Null(PasteGate.Busy(placing: true, complete: true, cancelled: false, created: 9));
         Assert.Null(PasteGate.Busy(placing: true, complete: false, cancelled: true, created: 2));
         Assert.Null(PasteGate.Busy(placing: false, complete: false, cancelled: false, created: 0));
+    }
+
+    // pipes-28: allowed gas the game deletes is contents_deleted (gas_lost is the job status that holds pipe jobs),
+    // worded by what goes: the device, or the pieces removed.
+    [Theory]
+    [InlineData("", "deletes it with the device")]
+    [InlineData(" in pipe network 2526, whose last member this removal takes", "deletes it with the pieces removed")]
+    public void DeletedContentsAreNotGasLost(string where, string fate)
+    {
+        RemovalFacts facts = new RemovalFacts { GasMoles = 20, GasFate = GasFate.Lost, GasWhere = where };
+        GuardFinding allowed = Assert.Single(RemovalRule.Judge(facts, new RemovalAllowance(true, false)));
+        Assert.Equal(RemovalRule.ContentsDeleted, allowed.Code);
+        Assert.Equal("contents_deleted", allowed.Code);
+        Assert.Contains(fate, allowed.Message);
+    }
+
+    // pipes-28: an allowed pipe-tool contents refusal drops its "empty it first" advice.
+    [Theory]
+    [InlineData("Network 7 holds 3 mol and would split in 2; the game would divide the contents among the parts. " +
+                "Empty it first.", "among the parts; allow_contents is set, so it is removed anyway.")]
+    [InlineData("Removing every pipe of network 7 would delete its 3 mol; empty it first.",
+        "delete its 3 mol; allow_contents is set, so it is removed anyway.")]
+    public void AnAllowedContentsRefusalDropsItsAdvice(string message, string ending)
+    {
+        string allowed = RemovalRule.AllowedContents(message);
+        Assert.EndsWith(ending, allowed);
+        Assert.DoesNotContain("mpty it first", allowed);
+    }
+
+    // pipes-28: long_piece names the family's own clean tool.
+    [Fact]
+    public void ALongPieceNamesItsOwnCleanTool()
+    {
+        Assert.Equal(" (clean_pipes with split_long_straights)", RunLayoutPlanner.SplitHow("clean_pipes"));
+        Assert.Equal(string.Empty, RunLayoutPlanner.SplitHow(null));
     }
 }

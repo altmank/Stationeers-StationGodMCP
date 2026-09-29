@@ -133,9 +133,11 @@ internal static class PlacementLayout
     private static MountRect? MountOf(Structure prefab, List<GridCell> small, CubeRotation turn, Box3 render) =>
         MountRect.Of(Box3.OfSmallCells(small), MountOutward(prefab, turn), render);
 
-    // A cable, pipe or chute piece: it rests on no wall section, so crossing a seam means nothing for it (pipes-27).
+    // A cable, pipe or chute piece, or a small-grid member of a pipe line that sits in the line (an in-line tank, a
+    // passive vent): it rests on no wall section, so crossing a seam means nothing for it (pipes-27, pipes-29).
     private static bool IsRunPiece(Structure prefab) =>
-        new CableFamily().IsPiece(prefab) || new PipeFamily().IsPiece(prefab) || new ChuteFamily().IsPiece(prefab);
+        new CableFamily().IsPiece(prefab) || new PipeFamily().IsPiece(prefab) || new ChuteFamily().IsPiece(prefab) ||
+        prefab is InLineTank || prefab is StructureInLineTank || prefab is PassiveVent;
 
     private static SectionsView Sections(MountRect mount, GridFacts facts, List<LayoutConflict> conflicts,
         bool seamMatters)

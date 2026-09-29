@@ -63,6 +63,10 @@ internal sealed class RunSurroundings
 
     internal Dictionary<GridCell, string> Blocked { get; } = new Dictionary<GridCell, string>();
 
+    /// <summary>The tool whose split_long_straights splits the family's long straights (clean_pipes for pipes); null
+    /// when the family has none.</summary>
+    internal string? SplitTool { get; set; }
+
     internal void AddPiece(PieceModel piece)
     {
         foreach (GridCell cell in piece.Cells)
@@ -488,6 +492,10 @@ internal static class RunLayoutPlanner
 
     // Changed pieces must be changeable; a single end becomes a straight with its far end open; a new piece with no
     // end at all (a one-cell run that joins nothing) has no direction for one.
+    // How to split a long straight: the family's own clean tool, when it has one.
+    internal static string SplitHow(string? tool) =>
+        tool == null ? string.Empty : $" ({tool} with split_long_straights)";
+
     private static void Finish(RunLayout layout, RunSurroundings around, LayoutCell entry, PipeContent? content)
     {
         if (entry.Ends.IsEmpty && entry.Existing == null)
@@ -502,8 +510,8 @@ internal static class RunLayoutPlanner
             {
                 layout.Problems.Add(new LayoutIssue("long_piece",
                     $"Cell {entry.Cell} is part of a long straight ({entry.Existing.Cells.Count} cells) that would " +
-                    "need a new end in the middle; split it first (clean_cables or clean_pipes with " +
-                    "split_long_straights) or route around it.", entry.Cell, entry.Existing.Id));
+                    $"need a new end in the middle; split it first{SplitHow(around.SplitTool)} or route around it.",
+                    entry.Cell, entry.Existing.Id));
             }
             else if (around.Fixed.TryGetValue(entry.Existing.Id, out string reason))
             {

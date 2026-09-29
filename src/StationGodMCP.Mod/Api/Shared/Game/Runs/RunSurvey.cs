@@ -22,7 +22,7 @@ internal static class RunSurvey
     internal static RunSurroundings Around(RunKind kind, Grade grade, IReadOnlyList<GridCell> run,
         IReadOnlyList<ExtraEnd> extra, SmallGridBlock mask, HashSet<long> ignore, Dictionary<long, SmallGrid> things)
     {
-        RunSurroundings around = new RunSurroundings();
+        RunSurroundings around = new RunSurroundings { SplitTool = kind.CleanTool };
         HashSet<GridCell> cells = new HashSet<GridCell>();
         foreach (GridCell cell in run)
         {

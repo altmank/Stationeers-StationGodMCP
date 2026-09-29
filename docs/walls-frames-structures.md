@@ -116,7 +116,9 @@ Tool wear, welder fuel and battery charge are not charged.
   A piece that needs a frame below it (a station battery, a dish, landing pad parts) may stand on a frame an
   earlier placement of the same request puts there (in the cell the game looks in for that piece: half its size
   below a battery, its whole size below a dish or pad part), also when a point above that frame is set down onto
-  it: warning `supported_by_placement`, checked again once that frame stands. When the reason is "requires a Frame below" and a frame fills the spot's own cell, `cannot_place`
+  it: warning `supported_by_placement`, checked again once that frame stands. So may a face-mounted piece (a solar
+  panel, a wall light) whose support behind it, a frame in the cell behind or a plate on that face (a frame only for a
+  piece that requires one), an earlier placement puts there. When the reason is "requires a Frame below" and a frame fills the spot's own cell, `cannot_place`
   says so: such pieces stand in the free cell on top of a frame.
 - **Cost:** every build state's items up to the chosen state, from your inventory or `from_id`. `free: true` places
   without materials, in creative worlds only (`not_creative` otherwise).
@@ -249,7 +251,7 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 | Code | Level | Meaning |
 | --- | --- | --- |
 | `visual_overlap` | warning | Its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (1.4.4+). A small device under a console's overhang clashes even where their small cells do not; neighbours flush on one wall only touch, or overlap by a rim, and do not; a thing sharing one of its cells (a device on a pipe) is skipped. |
-| `crosses_section_seam` | warning | Its mesh spans more than one 2 m section by more than 0.1 m. |
+| `crosses_section_seam` | warning | Its mesh spans more than one 2 m section by more than 0.1 m. Not given for cable, pipe and chute pieces, in-line tanks and passive vents, which rest on no section. |
 | `in_door_keepout` | problem | A cell in a door's keep-out; `allow_door_keepout` makes it a warning. |
 | `crosses_window` | warning | It stands on or rests against a window. |
 | `blocks_route_cells` | warning | It would take the joining cell of a free port of a device beside it. |
@@ -279,6 +281,11 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 | `would_burst` | An in-line tank or passive vent that is not the last of its pipe network takes its volume away, and the game keeps the network's gas in what is left. The pressure of what is left would be over its weakest pipe, which would burst; the message gives the forecast and how much gas to take out first. Removed with pipe pieces of its network, the network the request leaves in one piece keeps all its gas and its id; where the request splits it, each part gets its share by volume at each split, in the job's order. | none |
 | `refund_holder_removed` | `from_id` is removed by the same request, or is inside something it removes: the refund would be destroyed with it. | another `from_id`, or `refund_to` |
 | `port_left_open` (warning) | A device end that joins a cable, pipe, chute or device now. | not needed |
+
+An allowed guard becomes a warning with its own code: `broken_removed`, `items_dropped`, `gas_released` (a tank's gas
+let out where it stood), `contents_deleted` (gas or liquid the game deletes with what is removed; not the job status
+`gas_lost`, which only a failed gas check gives) and `breach`; an allowed `contents_would_move` or `holds_contents`
+keeps its code as a warning.
 
 The breach check judges the whole request at once, by the game's own air rule: a face stays sealed while anything left
 on it blocks air, or while the structure filling a cell beside it does (a finished frame). So a wall plate on a

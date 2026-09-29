@@ -297,7 +297,7 @@ public sealed class RemovalRuleTests
         Assert.False(RemovalRule.Refused(allowed));
 
         RemovalFacts lost = new RemovalFacts { GasMoles = 1, GasFate = GasFate.Lost };
-        Assert.Equal("gas_lost", RemovalRule.Judge(lost, All).Single().Code);
+        Assert.Equal("contents_deleted", RemovalRule.Judge(lost, All).Single().Code);
     }
 
     [Fact]
