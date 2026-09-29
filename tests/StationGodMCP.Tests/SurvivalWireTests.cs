@@ -246,8 +246,9 @@ public sealed class SurvivalWireTests
 
     private static AtmosphereContentsView NewContents()
     {
-        StructureOwnerView owner = new StructureOwnerView(new ThingView(new ThingId(50), "StructureTankSmall", "Tank"),
-            "Tank", new PositionView(0.0, 0.0, 0.0), null);
+        StructureOwnerView owner = new StructureOwnerView("structure",
+            new ThingView(new ThingId(50), "StructureTankSmall", "Tank"), "Tank", new PositionView(0.0, 0.0, 0.0),
+            null);
         HeldAtmosphereView atmosphere = new HeldAtmosphereView(new ThingId(51),
             new AtmosphereState(100.0, 101.3, 293.15, 57.5, 1.0),
             new List<HeldGasView>
@@ -297,7 +298,8 @@ public sealed class SurvivalWireTests
             new List<WaterSourceView>
             {
                 new WaterSourceView(true,
-                    new StructureOwnerView(new ThingView(new ThingId(50), "StructureTankSmall", "Tank"), "Tank",
+                    new StructureOwnerView("structure",
+                        new ThingView(new ThingId(50), "StructureTankSmall", "Tank"), "Tank",
                         new PositionView(0.0, 0.0, 0.0), null),
                     new ThingId(51), new AtmosphereState(100.0, 101.3, 293.15, 0.0, 0.0), NewWater())
             },

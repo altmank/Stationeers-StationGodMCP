@@ -33,15 +33,9 @@ internal static class PlanetGasRemoval
     private static readonly object Gate = new object();
     private static readonly List<PendingPlanetRemoval> Pending = new List<PendingPlanetRemoval>();
 
+    // The arguments are checked before the mod, so a malformed call answers the same with or without it.
     internal static object Handle(Args args)
     {
-        if (GameMembers.TerraformingGate.OrNull == null)
-        {
-            throw ApiErrors.Refused("terraforming_mod_required",
-                "Removing gas from the planet needs Terraforming Reloaded: the stock game keeps the planet's air " +
-                "read-only, so a removal would not last.");
-        }
-
         args.Reject("planet", "to", "force", "joined", "transfer_id", "dry_run");
         if (args.OptionalBool("delete") != true)
         {
@@ -56,6 +50,13 @@ internal static class PlanetGasRemoval
 
         Chemistry.GasType[] gases = GasMoveRequest.ParseGases(args.Array("gases", 64));
         double? amountMol = args.OptionalPositiveDouble("amount_mol");
+        if (GameMembers.TerraformingGate.OrNull == null)
+        {
+            throw ApiErrors.Refused("terraforming_mod_required",
+                "Removing gas from the planet needs Terraforming Reloaded: the stock game keeps the planet's air " +
+                "read-only, so a removal would not last.");
+        }
+
         GlobalGasMix planet = PlanetaryAtmosphereSimulation.GetGlobalGasMix();
         List<PlanetGasLine> before = new List<PlanetGasLine>();
         foreach (Chemistry.GasType gas in gases)

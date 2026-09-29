@@ -18,7 +18,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class AtmosphereOwners
 {
-    /// <summary>An ItemOwnerView for an item, else a StructureOwnerView.</summary>
+    /// <summary>An ItemOwnerView for an item, else a StructureOwnerView of its kind (structure, dynamic...).</summary>
     internal static object OwnerOf(Thing thing, PlayerOrigin origin)
     {
         if (thing is Item item)
@@ -26,7 +26,7 @@ internal static class AtmosphereOwners
             return new ItemOwnerView(WorldItems.Describe(item, origin).Fields(), thing.GetType().Name);
         }
 
-        return new StructureOwnerView(GameLookup.ViewOf(thing), thing.GetType().Name,
+        return new StructureOwnerView(ThingKinds.Of(thing), GameLookup.ViewOf(thing), thing.GetType().Name,
             GameLookup.ViewOf(thing.Position), origin.DistanceTo(thing.Position));
     }
 

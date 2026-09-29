@@ -173,6 +173,25 @@ internal sealed class GasSnapshot
     }
 
     /// <summary>
+    /// The moles a room's cells would freeze out of their air, settled to one temperature: GasMixture.CheckForFreezing
+    /// at the gas pressure, with no tolerance (Atmosphere.StateChange in World mode takes any amount).
+    /// </summary>
+    internal double FrozenInAirMol()
+    {
+        GasMixture mixture = ToMixture();
+        mixture.EqualiseInternalEnergy();
+        return mixture.CheckForFreezing(new PressurekPa(GasPressureKpa(mixture, mixture.VolumeLiquids.ToDouble())))
+            .GetTotalMolesGassesAndLiquids.ToDouble();
+    }
+
+    /// <summary>Atmosphere.PressureGasses: the gas moles alone, the pressure a liquid's state change uses.</summary>
+    internal double GasOnlyPressureKpa()
+    {
+        GasMixture mixture = ToMixture();
+        return GasPressureKpa(mixture, mixture.VolumeLiquids.ToDouble());
+    }
+
+    /// <summary>
     /// These contents once every liquid that can evaporate has boiled into its gas, as Mole.StateChangeLiquid turns
     /// it (MoleHelper.EvaporationType; the energy scaled by MoleHelper.EvaporationRatio), each mole paying its latent
     /// heat of vaporisation out of the pooled energy, settled to one temperature. Null when nothing would boil, or
@@ -430,6 +449,7 @@ internal sealed class GasSide
 
         RefuseIfLiquidInGasNetwork(name);
         RefuseIfFreezing(name);
+        RefuseIfLostInRoom(name);
     }
 
     private void RefuseIfOverPressure(string name, double predicted, string verb)
@@ -487,6 +507,42 @@ internal sealed class GasSide
             throw ApiErrors.Refused("would_burst",
                 $"'{name}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the " +
                 $"{limit:0.#} mol a network of {after.VolumeL:0} L tolerates. Pass force to move it anyway.");
+        }
+    }
+
+    // Atmosphere.StateChange in World mode: a room's cells freeze out any amount, and a liquid under its minimum
+    // liquid pressure evaporates until it freezes unless the room can boil it all (Pure/RoomLiquids).
+    private void RefuseIfLostInRoom(string name)
+    {
+        if (All.Members.Count == 0 ||
+            !All.Members.TrueForAll(member => member.Atmosphere.Mode == AtmosphereHelper.AtmosphereMode.World))
+        {
+            return;
+        }
+
+        GasSnapshot before = GasSnapshot.Pool(Before);
+        GasSnapshot after = GasSnapshot.Pool(After);
+        double minimum = Chemistry.MINIMUM_QUANTITY_MOLES.ToDouble();
+        List<LiquidArrival> arrivals = new List<LiquidArrival>();
+        for (int index = 0; index < GasTypes.All.Length; index++)
+        {
+            Chemistry.GasType type = GasTypes.All[index];
+            double added = after.MolesOf(index) - before.MolesOf(index);
+            if (added > minimum && Mole.MatterState(type) == AtmosphereHelper.MatterState.Liquid &&
+                MoleHelper.CanEvaporate(type))
+            {
+                arrivals.Add(new LiquidArrival(type.ToString(), added, Mole.MinLiquidPressure(type).ToDouble()));
+            }
+        }
+
+        RoomAirAfter air = new RoomAirAfter(after.GasOnlyPressureKpa(), after.TemperatureK(),
+            before.FrozenInAirMol(), after.FrozenInAirMol(), after.Boiled() != null);
+        string? loss = RoomLiquids.Loss(air, arrivals);
+        if (loss != null)
+        {
+            throw ApiErrors.Refused("would_burst",
+                $"'{name}' is a room: {loss} (the game spawns ice only per cell of 50 mol and holds smaller amounts " +
+                "out of the air). Move liquids into a tank or liquid network, or pass force to move it anyway.");
         }
     }
 

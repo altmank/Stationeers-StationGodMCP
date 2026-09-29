@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Assets.Scripts.Atmospherics;
+using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
@@ -16,7 +17,8 @@ namespace StationGodMCP.Api;
 /// Read only.
 ///
 /// Found through AtmosphericsManager.AllAtmospheres, the game's own list of every atmosphere: Thing-mode atmospheres
-/// (a thing's own) and Network-mode ones (a pipe network's). Room and world air is left out, and so are organs and
+/// (a thing's own) and Network-mode ones (a pipe network's), and PipeNetwork.AllPipeNetworks for a network whose
+/// atmosphere the game has not listed yet. Room and world air is left out, and so are organs and
 /// bodies (a stomach holds water too). Largest liquid water first.
 /// </summary>
 internal static class WaterSourcesApi
@@ -28,7 +30,7 @@ internal static class WaterSourcesApi
         double minimum = args.OptionalPositiveDouble("min_mol") ?? args.OptionalPositiveDouble("min_moles") ??
             DefaultMinimumMol;
         PlayerOrigin origin = PlayerOrigin.Current();
-        List<Atmosphere> atmospheres = Pools.Snapshot(AtmosphericsManager.AllAtmospheres);
+        List<Atmosphere> atmospheres = Atmospheres();
         List<WaterRow> rows = new List<WaterRow>();
         for (int index = 0; index < atmospheres.Count; index++)
         {
@@ -58,6 +60,25 @@ internal static class WaterSourcesApi
         }
 
         return new WaterSourcesView(sources, sum.ToView(), minimum, origin.View);
+    }
+
+    // AtmosphericsManager.AllAtmospheres, plus every pipe network's atmosphere: a network made since the last
+    // atmospherics tick (or while paused) has its atmosphere only queued (AtmosphericsManager.RegisterFromMainThread)
+    // until HandleMainThreadRegistrations adds it to the list on the next tick.
+    private static List<Atmosphere> Atmospheres()
+    {
+        List<Atmosphere> atmospheres = Pools.Snapshot(AtmosphericsManager.AllAtmospheres);
+        HashSet<Atmosphere> listed = new HashSet<Atmosphere>(atmospheres);
+        foreach (PipeNetwork network in Pools.Snapshot(PipeNetwork.AllPipeNetworks))
+        {
+            Atmosphere? atmosphere = network?.Atmosphere;
+            if (atmosphere != null && listed.Add(atmosphere))
+            {
+                atmospheres.Add(atmosphere);
+            }
+        }
+
+        return atmospheres;
     }
 
     // A thing's own atmosphere, not a body's or an organ's; or a pipe network's.

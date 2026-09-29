@@ -18,53 +18,24 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class GasMoves
 {
-    private const int MaximumPending = 64;
-    private const int KeptOutcomes = 64;
+    private static readonly TransferLedger<PendingGasMove, MoveGasView> Ledger =
+        new TransferLedger<PendingGasMove, MoveGasView>(64, 64);
 
-    private static readonly object Gate = new object();
-    private static readonly Queue<PendingGasMove> Pending = new Queue<PendingGasMove>();
-    private static readonly Dictionary<long, MoveGasView> Outcomes = new Dictionary<long, MoveGasView>();
-    private static readonly Queue<long> OutcomeOrder = new Queue<long>();
-    private static long _nextId;
+    internal static long Enqueue(GasPlan plan) =>
+        Ledger.TryEnqueue(id => new PendingGasMove(id, plan)) ??
+        throw ApiErrors.Refused("busy",
+            $"{Ledger.MaximumPending} moves are already waiting for the next atmospherics tick " +
+            "(is the game paused?).");
 
-    internal static long Enqueue(GasPlan plan)
-    {
-        lock (Gate)
+    // A move being applied reads as queued until its outcome is kept.
+    internal static object Outcome(long id) =>
+        Ledger.Find(id) switch
         {
-            if (Pending.Count >= MaximumPending)
-            {
-                throw ApiErrors.Refused("busy",
-                    $"{MaximumPending} moves are already waiting for the next atmospherics tick " +
-                    "(is the game paused?).");
-            }
-
-            long id = ++_nextId;
-            Pending.Enqueue(new PendingGasMove(id, plan));
-            return id;
-        }
-    }
-
-    internal static object Outcome(long id)
-    {
-        lock (Gate)
-        {
-            if (Outcomes.TryGetValue(id, out MoveGasView outcome))
-            {
-                return outcome;
-            }
-
-            foreach (PendingGasMove move in Pending)
-            {
-                if (move.Id == id)
-                {
-                    return new GasMoveWaitingView(id.ToString(CultureInfo.InvariantCulture));
-                }
-            }
-        }
-
-        throw ApiErrors.Refused("transfer_not_found",
-            $"No move {id} is waiting or among the last {KeptOutcomes} applied.");
-    }
+            TransferState<MoveGasView>.Done done => done.Outcome,
+            TransferState<MoveGasView>.Waiting => new GasMoveWaitingView(id.ToString(CultureInfo.InvariantCulture)),
+            _ => throw ApiErrors.Refused("transfer_not_found",
+                $"No move {id} is waiting or among the last {Ledger.KeptOutcomes} applied.")
+        };
 
     // Called by the Harmony postfix on the atmospherics thread, where Mole getters are live and no atmospherics job
     // runs yet. Never throws into the game's tick.
@@ -75,9 +46,9 @@ internal static class GasMoves
             return;
         }
 
-        while (TryDequeue(out PendingGasMove? move))
+        while (Ledger.TryBegin(out long id, out PendingGasMove? move))
         {
-            Keep(move!.Id, ApplySafely(move));
+            Ledger.Complete(id, ApplySafely(move!));
         }
     }
 
@@ -96,34 +67,6 @@ internal static class GasMoves
         {
             // GasMixture.Remove and GasMixture.Add run inside the game's atmospherics tick; nothing may escape it.
             return MoveGasView.Failed(id, new ErrorView("move_failed", exception.Message));
-        }
-    }
-
-    private static bool TryDequeue(out PendingGasMove? move)
-    {
-        lock (Gate)
-        {
-            if (Pending.Count > 0)
-            {
-                move = Pending.Dequeue();
-                return true;
-            }
-        }
-
-        move = null;
-        return false;
-    }
-
-    private static void Keep(long id, MoveGasView outcome)
-    {
-        lock (Gate)
-        {
-            Outcomes[id] = outcome;
-            OutcomeOrder.Enqueue(id);
-            while (OutcomeOrder.Count > KeptOutcomes)
-            {
-                Outcomes.Remove(OutcomeOrder.Dequeue());
-            }
         }
     }
 }
@@ -163,6 +106,12 @@ internal sealed class PendingGasMove
             {
                 moved.Add(one);
             }
+        }
+
+        if (moved.Count == 0)
+        {
+            throw ApiErrors.Refused("nothing_to_move",
+                "By the time the move was applied the source held none of the requested gases; nothing moved.");
         }
 
         GasSideView? to = target == null ? null : AppliedView(target, targetBefore!);

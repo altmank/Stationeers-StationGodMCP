@@ -19,11 +19,16 @@ internal sealed class ItemOwnerView : ItemFieldsView
     public string RuntimeType { get; }
 }
 
-/// <summary>A structure or device that owns an atmosphere.</summary>
+/// <summary>
+/// A thing other than an item that owns an atmosphere: a structure or device (kind structure), or a portable tank or
+/// other dynamic thing (kind dynamic), in find_things' kinds.
+/// </summary>
 internal sealed class StructureOwnerView
 {
-    internal StructureOwnerView(ThingView thing, string runtimeType, PositionView position, double? distanceM)
+    internal StructureOwnerView(string kind, ThingView thing, string runtimeType, PositionView position,
+        double? distanceM)
     {
+        Kind = kind;
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
         DisplayName = thing.DisplayName;
@@ -33,7 +38,7 @@ internal sealed class StructureOwnerView
     }
 
     [JsonProperty(Order = -2)]
-    public string Kind => "structure";
+    public string Kind { get; }
 
     public ThingId ReferenceId { get; }
 
