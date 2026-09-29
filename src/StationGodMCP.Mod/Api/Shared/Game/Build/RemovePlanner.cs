@@ -217,7 +217,7 @@ internal static class RemovePlanner
             BeingDestroyed = piece.IsBeingDestroyed,
             Indestructible = piece.Indestructable,
             Rocket = RocketParts.Of(piece).PartOfRocket,
-            Broken = piece.IsBroken,
+            Broken = Wrecks.IsBroken(piece),
             GameRefusal = GameRefusal(piece),
             Mounted = MountedOn(piece) ?? Unsupported(piece, removed, grid),
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
@@ -246,9 +246,10 @@ internal static class RemovePlanner
     // What removing it gives back. A broken piece gives nothing: the game deconstructs one (Structure.AttackWith, the
     // BrokenBuildStates branch) with StructureDestroyed(destroyedFromDamage: true), which skips the kit refund
     // (BuildStates[0].Tool.Deconstruct); its build state below 0 would give nothing by MaterialRule anyway, and a piece
-    // at full damage not yet swapped to its broken state (still at 0 or above) is on its way there.
+    // at full damage not yet swapped to its broken state (still at 0 or above) is on its way there. A burst pipe and a
+    // burnt cable are wrecks too (Wrecks.IsBroken): neither gives anything back.
     private static List<ItemAmount> RefundOf(Structure piece) =>
-        piece.IsBroken ? new List<ItemAmount>() : BuildMaterials.RefundOf(piece);
+        Wrecks.IsBroken(piece) ? new List<ItemAmount>() : BuildMaterials.RefundOf(piece);
 
     private static string? GameRefusal(Structure piece)
     {

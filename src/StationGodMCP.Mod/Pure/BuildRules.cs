@@ -216,8 +216,9 @@ internal sealed class RemovalFacts
     internal bool Rocket { get; set; }
 
     /// <summary>
-    /// The game's broken state (Structure.IsBroken: damage at its maximum, or a build state below 0, the broken mesh
-    /// the game swaps in and then heals, so health reads 100 %).
+    /// A wreck (HealthCondition.IsWreck): the game's broken state (Structure.IsBroken: damage at its maximum, or a build
+    /// state below 0, the broken mesh the game swaps in and then heals, so health reads 100 %), a burst pipe or a burnt
+    /// cable.
     /// </summary>
     internal bool Broken { get; set; }
 
@@ -312,8 +313,8 @@ internal static class RemovalRule
     internal const double GasFloorMol = 0.001;
 
     internal const string BrokenWhat =
-        "it is broken (the game's broken state, left by fire, pressure or other damage; the game cannot repair it, " +
-        "only deconstruct it)";
+        "it is broken (the game's broken state, left by fire, pressure or other damage, a burst pipe or a burnt " +
+        "cable; the game cannot repair it, only deconstruct it)";
 
     internal const string BrokenConsequence =
         "it goes as the game deconstructs a broken thing, which gives nothing back";

@@ -74,6 +74,7 @@ internal static class PasteBlueprintApi
             throw ApiErrors.InvalidArgument($"The blueprint '{path}' has no entries.");
         }
 
+        RefuseWhilePlacing();
         Vector3 position = new Vector3((float)anchor.X, (float)anchor.Y, (float)anchor.Z);
         object? refusal = Call(GameMembers.BlueprintStartPaste,
             new object?[] { data, position, copyYAngle, (float)rotation.Degrees });
@@ -88,7 +89,23 @@ internal static class PasteBlueprintApi
             copyYAngle, BlueprintFiles.ExpectedDurationSeconds(entries));
     }
 
-    private static BlueprintPasteStatusView Status()
+    // A paste still placing (anyone's) refuses a new one: BlueprintMod answered a second start as started and pasted
+    // nothing (structures-38).
+    private static void RefuseWhilePlacing()
+    {
+        object? active = ActivePaste();
+        string? busy = active == null
+            ? null
+            : PasteGate.Busy(true, GameMembers.PasteComplete.GetValue(active) is bool complete && complete,
+                GameMembers.PasteCancelled.GetValue(active) is bool cancelled && cancelled,
+                GameMembers.PasteCreated.GetValue(active) is int created ? created : 0);
+        if (busy != null)
+        {
+            throw ApiErrors.Refused(PasteRefusedCode, busy);
+        }
+    }
+
+        private static BlueprintPasteStatusView Status()
     {
         object? active = ActivePaste();
         TrackedPaste? last = _last;

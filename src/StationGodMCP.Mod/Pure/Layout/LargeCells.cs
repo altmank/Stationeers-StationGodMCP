@@ -18,6 +18,16 @@ internal static class LargeCells
         new GridCell(Centre(point.X), Centre(point.Y), Centre(point.Z));
 
     /// <summary>
+    /// The 2 m cell a piece stands in: its origin read a hair (0.01 m) along its up, as SmallGrid.HasFrameBelow reads
+    /// the cell it must find free. An origin on a face plane (a battery set on a frame's bottom plane) stands in the
+    /// cell on its up side, inside that frame; the game's own small-grid lookup of that point rounds it back onto the
+    /// plane and into the cell below, which is why this is not read through GridController.GetCell (structures-36).
+    /// </summary>
+    internal static GridCell StoodIn(Vec3 origin, Vec3 up) => Containing(origin + up * StandHair);
+
+    private const double StandHair = 0.01;
+
+    /// <summary>
     /// The 2 m cell the game looks in for the frame a piece stands on: depth metres below its origin, along its up
     /// (SmallGrid.HasFrameBelow: half the piece's grid size; LargeElectrical and LandingPadModular: all of it).
     /// </summary>

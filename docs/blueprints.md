@@ -50,7 +50,8 @@ necessarily the one `status` reports. In a shared world, check what stands befor
   over game time, so the paste stops part way (the `status` counts stop moving) until the console command
   `pause false`.
 - **Refused:** `paste_refused` with BlueprintMod's own message (the same blueprint already pasted at that position and
-  turn, not enough DeanamicMatter); `blueprint_failed` (BlueprintMod threw, with its error, such as a file that is not a
+  turn, not enough DeanamicMatter), or while a paste (anyone's) is still placing: nothing is started, so wait until
+  `status` no longer says `active`; `blueprint_failed` (BlueprintMod threw, with its error, such as a file that is not a
   blueprint); `invalid_argument` (no such file, naming the path it looked at; a rotation other than 0, 90, 180 or 270);
   `game_changed` (BlueprintMod no longer has something the tool calls).
 - **Multiplayer:** host only. BlueprintMod shows its paste effect to every player and the game sends them the new

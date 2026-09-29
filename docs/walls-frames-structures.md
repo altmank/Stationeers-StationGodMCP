@@ -272,7 +272,7 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 | `not_a_structure` | An item or another movable thing: use `move_item`. | none |
 | `being_destroyed`, `indestructible`, `rocket`, `game_refuses` | The game would not deconstruct it. | none |
 | `has_mounted` | A device is mounted on it (a light, sensor, console or vent on a wall), or stands on it, and nothing else would hold that face: a plate on the same face, or a frame beside it. The game would leave the device hanging in the air. Remove the device in the same request, or first. | none |
-| `broken` | It is broken: fire, pressure or other damage wrecked it. The game cannot repair a broken structure, only deconstruct it, and that gives nothing back. | `allow_broken` |
+| `broken` | It is broken (`is_broken`): fire, pressure or other damage wrecked it, including a burst pipe or a burnt cable. The game cannot repair a broken structure, only deconstruct it, and that gives nothing back. | `allow_broken` |
 | `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. An in-line tank or passive vent that is the last of its pipe network (with the rest of the request) takes the network's gas with it: the game deletes it. So does one left as the last of a part of a network the request splits, since the job removes pipe pieces first, and so does a pipe piece left as the last of such a part when the request removes pipe pieces alone. The job's gas check expects exactly that gas gone (`planned_loss_mol`) and does not put it back. | `allow_contents` |
 | `contents_would_move` | An in-line tank or passive vent between pipes of a network that holds gas or liquid: removing it splits the network, and the game divides the contents among the networks left by volume (the message names each share). `remove_pipes` refuses the same split. | `allow_contents` |
 | `would_breach` | It blocks air, and removing it joins spaces whose pressures differ by 1 kPa or more, such as a pressurised room and the outside. | `allow_breach` |
@@ -296,7 +296,8 @@ no player on a dedicated server.
 A structure that reaches full damage and has a broken model (a burnt-out vent, a burst pipe) is not destroyed: the
 game swaps in the broken model and heals the damage, so it reads 0 damage and 100 % health while it is a wreck. It
 still takes its place, so nothing can be built there. `find_things {broken: true}` and `thing_health {broken_only:
-true}` list them; both report `is_broken` and `condition: "broken"`.
+true}` list them; both report `is_broken` and `condition: "broken"`. A burst pipe (bursting does not damage it) and
+a burnt cable (the separate, undamaged piece an overload leaves) count as broken too, here and in `remove_structure`.
 
 `remove_structure {reference_ids, allow_broken: true}` removes them as the game's own deconstruction of a broken thing
 does: nothing is given back (the game skips the kit refund for a broken thing), and the game's own deconstruct refusal

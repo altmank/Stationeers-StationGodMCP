@@ -61,3 +61,18 @@ internal static class BlueprintFiles
     internal static double ExpectedDurationSeconds(int entries) =>
         Math.Round(Math.Min(MaximumSeconds, Math.Max(MinimumSeconds, entries * SecondsPerEntry)), DurationDecimals);
 }
+
+/// <summary>
+/// Whether a new paste may start: not while BlueprintMod still places one (its ActivePaste, neither complete nor
+/// cancelled). BlueprintMod keeps one paste running at a time; a second start while one places answered as started
+/// and pasted nothing (structures-38), so it is refused instead, whoever started the running one.
+/// </summary>
+internal static class PasteGate
+{
+    /// <summary>Why a paste may not start now; null when it may.</summary>
+    internal static string? Busy(bool placing, bool complete, bool cancelled, int created) =>
+        placing && !complete && !cancelled
+            ? $"Another paste is still placing ({created} pieces created so far); nothing was started. Wait " +
+              "until paste_blueprint status says it is no longer active, then paste again."
+            : null;
+}

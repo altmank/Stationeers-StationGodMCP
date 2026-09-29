@@ -250,8 +250,9 @@ internal static class PlacePlanner
     /// The game's "requires a Frame below" (SmallGrid.HasFrameBelow: Battery, MountedSmallGrid, LargeElectrical,
     /// radiators) also refuses a spot inside a frame: the cell the piece stands in must be clear (IsBlockedGrid) and the
     /// cell under it hold a frame. When a frame fills the spot's own cell, say so and where the piece would stand;
-    /// empty otherwise. The cell is read just above the piece's origin, as the game reads it (HasFrameBelow's
-    /// registered position, 0.01 m up): an origin on the frame's bottom plane stands in the frame, not below it.
+    /// empty otherwise. The cell is the one the snapped placement stands in (LargeCells.StoodIn: just above its origin,
+    /// as HasFrameBelow's registered position reads it), taken as a whole cell centre: an origin on the frame's bottom
+    /// plane stands in the frame, not below it, and every point that snaps to that placement gets the same note.
     /// </summary>
     internal static string FrameNote(Vector3 position, Quaternion rotation, string refusal)
     {
@@ -261,8 +262,9 @@ internal static class PlacePlanner
             return string.Empty;
         }
 
-        Vector3 inside = position + rotation * Vector3.up * 0.01f;
-        Objects.Structures.Frame? frame = world.GetCell(inside)?.Lookup[StructureElement.Center] as Objects.Structures.Frame;
+        GridCell stoodIn = LargeCells.StoodIn(Bodies.V(position), Bodies.V(rotation * Vector3.up));
+        Vector3 centre = new Vector3(stoodIn.X / 10f, stoodIn.Y / 10f, stoodIn.Z / 10f);
+        Objects.Structures.Frame? frame = world.GetCell(centre)?.Lookup[StructureElement.Center] as Objects.Structures.Frame;
         return frame == null || frame.IsBeingDestroyed
             ? string.Empty
             : $" (the spot is inside {frame.DisplayName} ({frame.PrefabName} {frame.ReferenceId}); the game wants the " +
@@ -273,7 +275,7 @@ internal static class PlacePlanner
     {
         foreach (Structure? structure in structures)
         {
-            if (structure != null && structure.IsBroken && !structure.IsBeingDestroyed && !found.Contains(structure))
+            if (structure != null && Wrecks.IsBroken(structure) && !structure.IsBeingDestroyed && !found.Contains(structure))
             {
                 found.Add(structure);
             }
@@ -583,7 +585,9 @@ internal static class PlacePlanner
             return given;
         }
 
-        (double x, double y, double z) = CursorAim.OntoFloor(at.X, at.Y, at.Z, away.Value);
+        // From the snapped placement, not the point as given: two points the cursor snaps to one placement get one
+        // verdict (structures-36: 229.9 went down to the plane at 228 while 230, its snap, stands on the plane at 230).
+        (double x, double y, double z) = CursorAim.OntoFloor(given.x, given.y, given.z, away.Value);
         Vector3 surface = CursorCheck.Snap(cursor, new Vector3((float)x, (float)y, (float)z), placement.Rotation);
         if (surface == given)
         {
