@@ -93,7 +93,7 @@ internal static class PlacementLayout
 
         if (small.Count > 0)
         {
-            Surroundings(render, own, ignore, facts, conflicts);
+            Surroundings(render, Box3.OfSmallCells(small), own, ignore, facts, conflicts);
         }
 
         if (mount != null && prefab.PlacementType == PlacementSnap.FaceMount)
@@ -201,9 +201,9 @@ internal static class PlacementLayout
         }
     }
 
-    // Things near it: whose render box it runs into (visual_overlap) and whose free port cell it would take
+    // Things near it: whose body it clashes with (visual_overlap, VisualClash) and whose free port cell it would take
     // (blocks_route_cells). A thing sharing one of its cells stands there by design (a device on a pipe) and is skipped.
-    private static void Surroundings(Box3 render, HashSet<GridCell> own, HashSet<long> ignore,
+    private static void Surroundings(Box3 render, Box3? footprint, HashSet<GridCell> own, HashSet<long> ignore,
         GridFacts facts, List<LayoutConflict> conflicts)
     {
         Dictionary<long, SmallGrid> near = new Dictionary<long, SmallGrid>();
@@ -243,12 +243,13 @@ internal static class PlacementLayout
             }
 
             Box3 box = Bodies.RenderBox(thing);
-            double depth = render.Penetration(box);
+            double depth = VisualClash.Depth(render, footprint, box,
+                cells.Count > 0 ? Box3.OfSmallCells(cells) : (Box3?)null);
             if (depth > ConflictCodes.OverlapToleranceM)
             {
                 conflicts.Add(new LayoutConflict(ConflictCodes.VisualOverlap, ConflictLevel.Warning,
-                    $"Its body runs {depth:0.00} m into {thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId}) " +
-                    "at " + box + ".", thing.ReferenceId));
+                    $"Its body and {thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId}, at {box}) run " +
+                    $"{depth:0.00} m into each other's footprint.", thing.ReferenceId));
             }
 
             if (thing is Device device)

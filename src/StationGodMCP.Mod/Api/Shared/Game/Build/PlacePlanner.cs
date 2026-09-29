@@ -551,8 +551,22 @@ internal static class PlacePlanner
     // and warnings on the plan; info findings stay in the view only.
     private static void Layout(PlacePlan plan, PlannedPlacement placement, Vector3 position)
     {
-        LayoutPreview layout = PlacementLayout.Of(placement.Prefab!, position, placement.Rotation, placement.Turn,
-            plan.Facts, plan.Arguments.AllowDoorKeepOut, new HashSet<long>());
+        LayoutPreview layout;
+        try
+        {
+            layout = PlacementLayout.Of(placement.Prefab!, position, placement.Rotation, placement.Turn, plan.Facts,
+                plan.Arguments.AllowDoorKeepOut, new HashSet<long>());
+        }
+        catch (System.Exception exception) when (!(exception is ApiException))
+        {
+            // The preview reads prefab data (bounds, ends) a modded prefab may not have: the placement itself stays
+            // checked by the game's cursor, and the failure is named.
+            StationGodMod.LogWarning($"Layout preview of {placement.Prefab!.PrefabName} failed: {exception}");
+            plan.Warn("layout_preview_failed", $"The layout preview could not be made: {exception.Message}",
+                placement.Index);
+            return;
+        }
+
         placement.Layout = layout;
         foreach (LayoutConflict conflict in layout.Conflicts)
         {

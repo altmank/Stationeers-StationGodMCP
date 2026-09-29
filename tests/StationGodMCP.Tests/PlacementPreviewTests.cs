@@ -134,3 +134,38 @@ public sealed class PlacementPreviewTests
         Assert.DoesNotContain("port_checks", json);
     }
 }
+
+/// <summary>visual_overlap's clash rule (1.4.3): both bodies must reach into each other's footprint.</summary>
+public sealed class VisualClashTests
+{
+    // The console's footprint on the wall z = 668, and the gas sensor's cell beside it.
+    private static readonly Box3 ConsoleCells = new Box3(new Vec3(718.25, 200.25, 667.75), new Vec3(719.25, 201.25, 668.25));
+    private static readonly Box3 SensorCell = new Box3(new Vec3(719.25, 200.25, 667.75), new Vec3(719.75, 200.75, 668.25));
+
+    [Fact]
+    public void AMeshOverhangingAFlushNeighboursCellIsNotAClash()
+    {
+        // Even a console mesh reaching 0.5 m over the sensor's cell: the sensor's small mesh does not reach back.
+        Box3 consoleMesh = new Box3(new Vec3(718.2, 200.2, 668.0), new Vec3(719.75, 201.3, 668.2));
+        Box3 sensorMesh = new Box3(new Vec3(719.3, 200.3, 668.0), new Vec3(719.7, 200.7, 668.15));
+        Assert.True(VisualClash.Depth(consoleMesh, ConsoleCells, sensorMesh, SensorCell) <=
+                    ConflictCodes.OverlapToleranceM);
+    }
+
+    [Fact]
+    public void TwoBodiesInEachOthersFootprintClash()
+    {
+        Box3 bigMesh = new Box3(new Vec3(718, 200, 667.8), new Vec3(720, 202, 668.3));
+        Box3 bigCells = new Box3(new Vec3(718.25, 200.25, 667.75), new Vec3(719.75, 201.75, 668.25));
+        Box3 sensorMesh = new Box3(new Vec3(719.3, 200.3, 668.0), new Vec3(719.7, 200.7, 668.15));
+        Assert.True(VisualClash.Depth(bigMesh, bigCells, sensorMesh, SensorCell) > ConflictCodes.OverlapToleranceM);
+    }
+
+    [Fact]
+    public void WithoutFootprintsTheMeshBoxesDecide()
+    {
+        Box3 a = new Box3(new Vec3(0, 0, 0), new Vec3(1, 1, 1));
+        Box3 b = new Box3(new Vec3(0.5, 0.5, 0.5), new Vec3(2, 2, 2));
+        Assert.Equal(0.5, VisualClash.Depth(a, null, b, ConsoleCells), 6);
+    }
+}

@@ -158,6 +158,21 @@ internal static class ConflictCodes
     internal const double OverlapToleranceM = 0.1;
 }
 
+/// <summary>
+/// How far two bodies clash. A mesh box (Thing.Bounds) may overhang the small cells the game registers a piece in by up
+/// to about a third of a metre (the cells come from Bounds * 0.9, rounded), so a device's mesh reaching over a flush
+/// neighbour's cell is how the game builds them side by side, not a clash. With both footprints known, the clash is the
+/// lesser of each mesh box running into the other's footprint box: it counts only when both reach into each other.
+/// Without a footprint on either side, the mesh boxes alone.
+/// </summary>
+internal static class VisualClash
+{
+    internal static double Depth(Box3 renderA, Box3? footprintA, Box3 renderB, Box3? footprintB) =>
+        footprintA.HasValue && footprintB.HasValue
+            ? Math.Min(renderA.Penetration(footprintB.Value), renderB.Penetration(footprintA.Value))
+            : renderA.Penetration(renderB);
+}
+
 /// <summary>Which way a port moves what flows through it, from its connection role's name.</summary>
 internal static class PortFlow
 {

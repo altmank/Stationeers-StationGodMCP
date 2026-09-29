@@ -316,17 +316,19 @@ internal static class LintLayoutApi
         }
     }
 
-    // device_visual_overlap: render boxes running into each other by more than the tolerance, once per pair; things
-    // sharing a small cell (a device on a pipe) are skipped.
+    // device_visual_overlap: bodies clashing by more than the tolerance (VisualClash), once per pair; things sharing a
+    // small cell (a device on a pipe) are skipped.
     private static void Overlaps(List<SmallGrid> devices, List<LintFinding> findings)
     {
         List<Box3> boxes = devices.ConvertAll(device => Bodies.RenderBox(device));
         List<HashSet<GridCell>> cells = devices.ConvertAll(device => new HashSet<GridCell>(Bodies.SmallCells(device)));
+        List<Box3?> footprints = cells.ConvertAll(set =>
+            set.Count > 0 ? Box3.OfSmallCells(new List<GridCell>(set)) : (Box3?)null);
         for (int a = 0; a < devices.Count; a++)
         {
             for (int b = a + 1; b < devices.Count; b++)
             {
-                double depth = boxes[a].Penetration(boxes[b]);
+                double depth = VisualClash.Depth(boxes[a], footprints[a], boxes[b], footprints[b]);
                 if (depth <= ConflictCodes.OverlapToleranceM || cells[a].Overlaps(cells[b]))
                 {
                     continue;

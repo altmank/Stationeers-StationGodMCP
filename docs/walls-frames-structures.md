@@ -159,7 +159,7 @@ rule:
 | `port_cell_foreign_network` | warning | a port whose joining cell holds a piece that does not join it |
 | `floating_run` | warning | a piece in air |
 | `run_crosses_window` | warning | a piece on a window's face |
-| `device_visual_overlap` | warning | two devices' bodies running more than 0.1 m into each other |
+| `device_visual_overlap` | warning | two devices whose mesh boxes each run more than 0.1 m into the other's footprint |
 | `mounted_faces_out_of_room` | warning | a mounted device facing out of the room behind it |
 | `device_crosses_seam` | warning | a mounted device spanning two wall sections |
 | `pipe_along_door` | info | a run hugging a door's jamb |
@@ -217,7 +217,7 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 
 | Code | Level | Meaning |
 | --- | --- | --- |
-| `visual_overlap` | warning | Its render box runs more than 0.1 m into another thing's. Neighbours flush on one wall only touch; a thing sharing one of its cells (a device on a pipe) is skipped. |
+| `visual_overlap` | warning | Its mesh box and another thing's each run more than 0.1 m into the other's small-cell footprint. A mesh overhanging a flush neighbour's cell alone is not a clash (the game builds them side by side); a thing sharing one of its cells (a device on a pipe) is skipped. |
 | `crosses_section_seam` | warning | It spans more than one 2 m section. |
 | `in_door_keepout` | problem | A cell in a door's keep-out; `allow_door_keepout` makes it a warning. |
 | `crosses_window` | warning | It stands on or rests against a window. |
