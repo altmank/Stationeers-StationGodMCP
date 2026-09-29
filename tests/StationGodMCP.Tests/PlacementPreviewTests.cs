@@ -8,7 +8,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>place_structure's layout preview (1.4.2): mount plane, sections, flow, uprightness, visual up.</summary>
+/// <summary>place_structure's layout preview (1.4.3): mount plane, sections, flow, uprightness, visual up.</summary>
 public sealed class PlacementPreviewTests
 {
     private static GridStep S(string name) => RunModels.Step(name);

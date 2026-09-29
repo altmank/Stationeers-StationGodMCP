@@ -49,7 +49,11 @@ internal sealed class PlannedPlacement
     /// <summary>Its cable, pipe and chute ports where it would stand; null for anything but a device-like thing.</summary>
     internal List<SurveyPortView>? Ports { get; set; }
 
+    /// <summary>orient's search result; null when the turn was given.</summary>
+    internal OrientResultView? Orient { get; set; }
+
     /// <summary>The layout preview at the planned position and turn; null until resolved that far.</summary>
+
     internal LayoutPreview? Layout { get; set; }
 
     /// <summary>Resolved far enough to be built: prefab, cursor, position, rotation and state.</summary>
@@ -233,7 +237,7 @@ internal static class PlacePlanner
         }
 
         NetworkPieceNote(plan, prefab, index);
-        if (!Turn(plan, prefab, placement))
+        if (placement.Args.Orient == null && !Turn(plan, prefab, placement))
         {
             return;
         }
@@ -247,6 +251,11 @@ internal static class PlacePlanner
         }
 
         placement.Cursor = cursor;
+        if (placement.Args.Orient != null && !Orient(plan, prefab, cursor, placement))
+        {
+            return;
+        }
+
         Vector3 position = Aim(placement, cursor, out string? refusal);
         placement.Position = position;
         placement.Ports = PortPreview(prefab, position, placement.Rotation);
@@ -264,6 +273,85 @@ internal static class PlacePlanner
         {
             placement.Cost.AddRange(BuildMaterials.Amounts(prefab, placement.State.Value, plan.Items));
         }
+    }
+
+    // orient: every turn the cursor can give the prefab, aimed and checked as a plain placement would be, scored
+    // against the intent (OrientSearch) with the layout preview's conflicts; the best is the placement's turn. A
+    // device whose flow a logic Mode reverses is scored both ways, and a Mode write is suggested when that wins.
+    private static bool Orient(PlacePlan plan, Structure prefab, Structure cursor, PlannedPlacement placement)
+    {
+        OrientIntent intent = Orienter.Read(placement.Args.Orient!);
+        System.Func<Vec3, GridStep, bool> roomAhead = Orienter.RoomAhead(plan.Facts);
+        bool reversible = Orienter.ReversibleFlow(prefab) && (intent.FlowFrom != null || intent.FlowTo != null);
+        List<OrientScore> scores = new List<OrientScore>();
+        foreach (CubeRotation turn in CubeRotation.All)
+        {
+            if (!CursorAllows(prefab, turn))
+            {
+                continue;
+            }
+
+            SetTurn(placement, turn);
+            Vector3 position = Aim(placement, cursor, out string? refusal);
+            LayoutPreview layout = PlacementLayout.Of(prefab, position, placement.Rotation, turn, plan.Facts,
+                plan.Arguments.AllowDoorKeepOut, new HashSet<long>());
+            GridStep front = turn.Forward;
+            GridStep back
+ = prefab.PlacementType == PlacementSnap.Grid && prefab is SmallGrid
+                ? turn.Up.Opposite
+                : turn.Forward.Opposite;
+            OrientCandidate candidate = new OrientCandidate(turn, back, front, Bodies.V(position),
+                Orienter.Ports(prefab, position, placement.Rotation, PortTypes), refusal, layout.Penalty,
+                Uprightness.Problem(turn, VisualUp.Of(prefab.PrefabName).LocalUp));
+            scores.Add(OrientSearch.Score(candidate, intent, roomAhead));
+            if (reversible)
+            {
+                scores.Add(OrientSearch.Score(candidate, intent, roomAhead, true));
+            }
+        }
+
+        List<OrientScore> ranked = OrientSearch.Rank(scores);
+        OrientScore? best = ranked.Count > 0 && !ranked[0].Excluded ? ranked[0] : null;
+        List<OrientChoiceView> alternatives = new List<OrientChoiceView>();
+        for (int index = 1; index < ranked.Count && alternatives.Count < 3; index++)
+        {
+            alternatives.Add(Orienter.ViewOf(ranked[index]));
+        }
+
+        ModeFlipView? flip = best != null && best.ReversedFlow
+            ? new ModeFlipView("Mode", 1, $"{prefab.PrefabName} moves gas the other way with Mode 1 (Left); the " +
+                                          "chosen turn meets the flow only so. Write it after building (write_logic).")
+            : null;
+        placement.Orient = new OrientResultView(best != null ? Orienter.ViewOf(best) : null, alternatives,
+            ranked.Count, flip);
+        if (best == null)
+        {
+            plan.Problem("no_orientation", $"orient: no turn of {prefab.PrefabName} can be built there as asked " +
+                                           $"({ranked.Count} tried); see orient.alternatives.", placement.Index);
+            return false;
+        }
+
+        SetTurn(placement, best.Candidate.Turn);
+        return true;
+    }
+
+    /// <summary>
+    /// Whether place_structure accepts the turn: a grid-placed prefab only as its cursor turns it (a piece the cursor
+    /// turns itself, a cable or pipe, any turn); a face-placed or mounted one any turn, the cursor check deciding.
+    /// </summary>
+    internal static bool CursorAllows(Structure prefab, CubeRotation turn)
+    {
+        RotationAxis axes = prefab.RotationAxis;
+        return prefab.PlacementType != PlacementSnap.Grid || prefab is ISmartRotatable ||
+               PlacementRule.CursorCanTurn(turn, (axes & RotationAxis.X) != 0, (axes & RotationAxis.Y) != 0,
+                   (axes & RotationAxis.Z) != 0, prefab is IMounted);
+    }
+
+    private static void SetTurn(PlannedPlacement placement, CubeRotation turn)
+    {
+        placement.Turn = turn;
+        (double x, double y, double z, double w) = turn.ToQuaternion();
+        placement.Rotation = new Quaternion((float)x, (float)y, (float)z, (float)w);
     }
 
     // Where the cursor would put the piece aimed at `at`, and why it would not build there. The cursor snaps the point

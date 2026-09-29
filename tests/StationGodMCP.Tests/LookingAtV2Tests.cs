@@ -8,7 +8,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>looking_at v2 (1.4.2): the view basis, snapped axes, the hit and the body box.</summary>
+/// <summary>looking_at v2 (1.4.3): the view basis, snapped axes, the hit and the body box.</summary>
 public sealed class LookingAtV2Tests
 {
     private static readonly Vec3 Up = new Vec3(0, 1, 0);

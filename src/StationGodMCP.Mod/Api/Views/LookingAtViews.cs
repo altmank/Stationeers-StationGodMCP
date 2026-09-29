@@ -99,7 +99,6 @@ internal sealed class LookingAtTargetView
     public bool? FacingMe { get; }
 }
 
-
 /// <summary>The button, switch, port or slot under the crosshair.</summary>
 internal sealed class LookingAtInteractableView
 {

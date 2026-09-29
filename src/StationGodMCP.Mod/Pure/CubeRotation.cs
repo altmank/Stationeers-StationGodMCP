@@ -27,6 +27,34 @@ internal sealed class CubeRotation : IEquatable<CubeRotation>
 
     internal static CubeRotation Identity { get; } = new CubeRotation(new[] { 1, 0, 0, 0, 1, 0, 0, 0, 1 });
 
+    /// <summary>
+    /// All 24 quarter-turn rotations, upright ones first (up +y, facing +z, +x, -z, -x), then lying and upside down;
+    /// the identity first, so searches that keep order on ties prefer the plain stance.
+    /// </summary>
+    internal static IReadOnlyList<CubeRotation> All { get; } = BuildAll();
+
+    private static List<CubeRotation> BuildAll()
+    {
+        string[] ups = { "+y", "+z", "+x", "-z", "-x", "-y" };
+        string[] forwards = { "+z", "+x", "-z", "-x", "+y", "-y" };
+        List<CubeRotation> all = new List<CubeRotation>(24);
+        foreach (string up in ups)
+        {
+            foreach (string forward in forwards)
+            {
+                GridStep.TryParse(forward, out GridStep f);
+                GridStep.TryParse(up, out GridStep u);
+                CubeRotation? rotation = FromFacing(f, u);
+                if (rotation != null && !all.Contains(rotation))
+                {
+                    all.Add(rotation);
+                }
+            }
+        }
+
+        return all;
+    }
+
     internal GridStep Right => StepOf(Column(0));
 
     internal GridStep Up => StepOf(Column(1));

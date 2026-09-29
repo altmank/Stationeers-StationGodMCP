@@ -28,9 +28,14 @@ Placement and layout tools: doors and windows everywhere.
   `crosses_section_seam`, `in_door_keepout`, `crosses_window`, `blocks_route_cells`, `front_blocked`,
   `faces_out_of_room`, `not_upright`) and `port_checks` (what stands in each port's joining cell, whether it joins on
   build and which network, flow direction, door keep-out). Warnings only, except the door keep-out.
-- **`grid_survey`** marks keep-out cells
-
- `x` and window cells `g` in `support`, names each face structure's `kind`
+- **Place by intent:** `place_structure`'s `orient` {`mount`, `upright`, `controls_toward`, `ports`, `flow`} tries
+  every turn the cursor allows, scores each with the layout preview and uses the best; the reply echoes the choice,
+  its reasons and the next three. A turbo volume pump is also scored with its flow reversed (`mode_flip`: write
+  `Mode` 1).
+- **New `describe_prefab`:** a prefab in its own frame: placement, allowed turns, small cells and boxes from its
+  origin, ports (joining cell offset, outward direction, flow), `visual_up` (with its source; a small table of live
+  facts, guesses marked) and a Mode that reverses its flow. 78 tools.
+- **`grid_survey`** marks keep-out cells `x` and window cells `g` in `support`, names each face structure's `kind`
   (wall, window, door) and lists `doors` with their faces, plane, band and port cells.
 
 ## 1.4.2

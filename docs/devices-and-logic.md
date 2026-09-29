@@ -31,13 +31,13 @@ memory, but for any device in the world at once and without a chip.
 | `sample_logic` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `targets: [{reference_id, logic_type}]`, `duration_seconds` (default 5), `interval_seconds` (default 0.5) |
 | `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents. | `reference_id`, or `network_id` with `kind` |
 | `list_gateways` | The scopes device tools accept: `world` and every StationGod Gateway. | none |
-| `looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.2+), the surface the look ray hits and the grid there, and the target's body. | `max_distance_m` |
+| `looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.3+), the surface the look ray hits and the grid there, and the target's body. | `max_distance_m` |
 | `game_clock` | Game time, paused or not, time of day, days past. | none |
 | `run_console_command` | Any console command, with the lines it printed. | `command`, `max_output_lines` |
 | `read_console` | The latest console lines, including Unity errors and stack traces. | `lines` |
 | `mod_info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
 
-## Where you look (1.4.2+)
+## Where you look (1.4.3+)
 
 `looking_at` also answers the words a player uses: "on this wall", "to my right", "a metre up".
 
@@ -55,7 +55,6 @@ memory, but for any device in the world at once and without a chip.
   front points at you.
 
 ## Examples
-
 
 Examples show a tool's name and the arguments the agent passes.
 

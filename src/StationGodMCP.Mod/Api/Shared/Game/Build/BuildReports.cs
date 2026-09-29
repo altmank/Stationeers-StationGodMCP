@@ -92,7 +92,7 @@ internal static class BuildReports
         ColorView? color = placement.ColorIndex >= 0 ? ColorOf(placement.ColorIndex) : null;
         return new PlacementView(placement.Index, prefabView, spot,
             new PlacementLookView(placement.State, placement.Args.Label, color), Amounts(placement.Cost),
-            placement.Ports, placement.Layout?.View);
+            placement.Ports, placement.Layout?.View, placement.Orient);
 
     }
 
@@ -144,7 +144,7 @@ internal static class BuildReports
         return whole >= 360 ? whole - 360 : whole;
     }
 
-    private static string SnapName(PlacementSnap snap) => snap switch
+    internal static string SnapName(PlacementSnap snap) => snap switch
     {
         PlacementSnap.Grid => "grid",
         PlacementSnap.Face => "face",

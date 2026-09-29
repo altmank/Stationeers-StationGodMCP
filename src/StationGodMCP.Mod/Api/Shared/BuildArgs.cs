@@ -63,8 +63,9 @@ internal abstract class PrefabRef
 internal sealed class PlacementArgs
 {
     internal PlacementArgs(int index, PrefabRef prefab, Metres at, RotationSpec rotation, BuildStatePick state,
-        string? label, string? color)
+        string? label, string? color, JObject? orient = null)
     {
+        Orient = orient;
         Index = index;
         Prefab = prefab;
         At = at;
@@ -87,6 +88,9 @@ internal sealed class PlacementArgs
     internal string? Label { get; }
 
     internal string? Color { get; }
+
+    /// <summary>orient: the intent the turn is searched for (Orienter); null when the turn is given.</summary>
+    internal JObject? Orient { get; }
 }
 
 internal sealed class PlaceArguments
@@ -187,14 +191,14 @@ internal static class BuildArgs
     internal const int MaximumRemovals = 256;
 
     private static readonly string[] PlacementFields =
-        { "prefab", "at", "rotation", "facing", "up", "face", "build_state", "label", "color" };
+        { "prefab", "at", "rotation", "facing", "up", "face", "build_state", "label", "color", "orient" };
 
     internal static BuildForm<PlaceArguments> ParsePlace(Args args)
     {
         if (args.Has("job_id"))
         {
             return Poll<PlaceArguments>(args, "placements", "from_id", "free", "prefab", "at", "rotation", "facing",
-                "up", "face", "build_state", "label", "color", "allow_door_keepout");
+                "up", "face", "build_state", "label", "color", "allow_door_keepout", "orient");
         }
 
         List<PlacementArgs> placements = new List<PlacementArgs>();
@@ -251,9 +255,16 @@ internal static class BuildArgs
     {
         PrefabRef prefab = PrefabOf(item.Optional("prefab"), prefix + "prefab");
         JToken at = item.Optional("at") ?? throw ApiErrors.InvalidArgument($"{prefix}at is required.");
+        JObject? orient = item.OptionalObject("orient");
+        if (orient != null && (item.Has("rotation") || item.Has("facing") || item.Has("face") || item.Has("up")))
+        {
+            throw ApiErrors.InvalidArgument($"{prefix}orient chooses the turn: leave out rotation, facing, face and up.");
+        }
+
         return new PlacementArgs(index, prefab, PositionOf(at, prefix + "at"), RotationOf(item, prefix),
             StateOf(item.Optional("build_state"), prefix + "build_state"), Text(item, "label", prefix),
-            ColorOf(item.Optional("color"), prefix + "color"));
+            ColorOf(item.Optional("color"), prefix + "color"), orient);
+
     }
 
     internal static Metres PositionOf(JToken token, string name)
@@ -350,7 +361,7 @@ internal static class BuildArgs
             ? step
             : throw ApiErrors.InvalidArgument($"{name} must be one of +x, -x, +y, -y, +z, -z.");
 
-    private static PrefabRef PrefabOf(JToken? token, string name)
+    internal static PrefabRef PrefabOf(JToken? token, string name)
     {
         if (token != null && token.Type == JTokenType.Integer)
         {

@@ -189,3 +189,191 @@ internal sealed class PlacementLayoutView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<PortCheckView>? PortChecks { get; }
 }
+
+/// <summary>One turn orient scored: the turn, its score (lower is better; null when excluded) and why.</summary>
+internal sealed class OrientChoiceView
+{
+    internal OrientChoiceView(OrientationView orientation, double? score, List<string> reasons, bool reversedFlow)
+    {
+        Facing = orientation.Facing;
+        Up = orientation.Up;
+        Euler = orientation.Euler;
+        Score = score;
+        Reasons = reasons;
+        ReversedFlow = reversedFlow;
+    }
+
+    public string? Facing { get; }
+
+    public string? Up { get; }
+
+    public RotationView Euler { get; }
+
+    public double? Score { get; }
+
+    public List<string> Reasons { get; }
+
+    /// <summary>Scored with the device's flow reversed by its Mode (see mode_flip).</summary>
+    public bool ReversedFlow { get; }
+}
+
+/// <summary>A logic write that makes the chosen turn meet the flow: a turbo volume pump's Mode.</summary>
+internal sealed class ModeFlipView
+{
+    internal ModeFlipView(string logicType, int value, string reason)
+    {
+        LogicType = logicType;
+        Value = value;
+        Reason = reason;
+    }
+
+    public string LogicType { get; }
+
+    public int Value { get; }
+
+    public string Reason { get; }
+}
+
+/// <summary>orient's result: the turn chosen, the next best, and a Mode flip when the flow needs one.</summary>
+internal sealed class OrientResultView
+{
+    internal OrientResultView(OrientChoiceView? chosen, List<OrientChoiceView> alternatives, int tried,
+        ModeFlipView? modeFlip)
+    {
+        Chosen = chosen;
+        Alternatives = alternatives;
+        Tried = tried;
+        ModeFlip = modeFlip;
+    }
+
+    /// <summary>Null when no turn can be built where asked (every one excluded).</summary>
+    public OrientChoiceView? Chosen { get; }
+
+    public List<OrientChoiceView> Alternatives { get; }
+
+    /// <summary>How many turns were tried.</summary>
+    public int Tried { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ModeFlipView? ModeFlip { get; }
+}
+
+/// <summary>A prefab's port in its own frame: its joining cell's offset from the origin and the way a run leaves.</summary>
+internal sealed class PrefabPortView
+{
+    internal PrefabPortView(int index, string type, string role, string? flow, PointView at, string outward)
+    {
+        Index = index;
+        Type = type;
+        Role = role;
+        Flow = flow;
+        At = at;
+        Outward = outward;
+    }
+
+    public int Index { get; }
+
+    public string Type { get; }
+
+    public string Role { get; }
+
+    public string? Flow { get; }
+
+    /// <summary>The joining cell's offset from the origin, unturned (metres, x right, y up, z forward).</summary>
+    public PointView At { get; }
+
+    /// <summary>The way a run leaves the port, unturned.</summary>
+    public string Outward { get; }
+}
+
+/// <summary>Which of a prefab's own axes reads as its top, and how that is known.</summary>
+internal sealed class VisualUpView
+{
+    internal VisualUpView(string local, bool lyingAllowed, string source, bool verified)
+    {
+        Local = local;
+        LyingAllowed = lyingAllowed;
+        Source = source;
+        Verified = verified;
+    }
+
+    public string Local { get; }
+
+    public bool LyingAllowed { get; }
+
+    public string Source { get; }
+
+    /// <summary>false: a guess not yet seen in a live game.</summary>
+    public bool Verified { get; }
+}
+
+/// <summary>describe_prefab: a buildable prefab in its own frame.</summary>
+internal sealed class DescribePrefabView
+{
+    internal DescribePrefabView(PlacementPrefabView prefab, string runtimeType, string placement, float gridSizeM,
+        bool smallGrid, string rotationAxes, List<OrientationView> allowedRotations, List<PointView> smallCells,
+        BoxView renderBox, BoxView? gridBox, List<PrefabPortView> ports, VisualUpView visualUp,
+        ModeFlipView? reversibleFlow, bool hasCursor)
+    {
+        PrefabName = prefab.PrefabName;
+        PrefabHash = prefab.PrefabHash;
+        DisplayName = prefab.DisplayName;
+        BuildStates = prefab.BuildStates;
+        RuntimeType = runtimeType;
+        Placement = placement;
+        GridSizeM = gridSizeM;
+        SmallGrid = smallGrid;
+        RotationAxes = rotationAxes;
+        AllowedRotations = allowedRotations;
+        SmallCells = smallCells;
+        RenderBox = renderBox;
+        GridBox = gridBox;
+        Ports = ports;
+        VisualUp = visualUp;
+        ReversibleFlow = reversibleFlow;
+        HasCursor = hasCursor;
+    }
+
+    public string? PrefabName { get; }
+
+    public int? PrefabHash { get; }
+
+    public string? DisplayName { get; }
+
+    public int? BuildStates { get; }
+
+    public string RuntimeType { get; }
+
+    /// <summary>grid, face or face_mount: how the cursor snaps it.</summary>
+    public string Placement { get; }
+
+    public float GridSizeM { get; }
+
+    public bool SmallGrid { get; }
+
+    /// <summary>The axes the cursor turns a grid-placed prefab about.</summary>
+    public string RotationAxes { get; }
+
+    /// <summary>The turns place_structure accepts (a face-mounted piece: every turn; the cursor check decides).</summary>
+    public List<OrientationView> AllowedRotations { get; }
+
+    /// <summary>The small cells it takes, as offsets from its origin, unturned.</summary>
+    public List<PointView> SmallCells { get; }
+
+    /// <summary>The box its meshes fill, relative to its origin, unturned.</summary>
+    public BoxView RenderBox { get; }
+
+    /// <summary>The small cells' box relative to its origin (its real footprint); null for 2 m structures.</summary>
+    public BoxView? GridBox { get; }
+
+    public List<PrefabPortView> Ports { get; }
+
+    public VisualUpView VisualUp { get; }
+
+    /// <summary>A logic Mode that reverses its flow (turbo volume pumps); null otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ModeFlipView? ReversibleFlow { get; }
+
+    /// <summary>The game has a placement cursor for it (origin snapped as placing snaps it).</summary>
+    public bool HasCursor { get; }
+}

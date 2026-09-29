@@ -258,7 +258,6 @@ internal static class PlacementLayout
         }
     }
 
-
     private static void FreePortsTaken(Device device, HashSet<GridCell> own, List<LayoutConflict> conflicts)
     {
         if (device.OpenEnds == null)

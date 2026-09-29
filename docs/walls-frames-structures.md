@@ -15,7 +15,8 @@ connections and guard against merging networks, which `place_structure` does not
 | --- | --- | --- |
 | `replace_walls` | Replace walls and windows with another wall or window prefab, in place. | `room_id` or `reference_ids`, `to` (required), `from_prefabs`, `skip_unmatched` |
 | `replace_frames` | Replace frames with another frame prefab, or finish unfinished frames, in place. | `room_id` or `reference_ids`, `to` (optional), `from_prefabs`, `skip_unmatched` |
-| `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face`, `build_state`, `label`, `color`; or `placements: [...]` |
+| `describe_prefab` | A prefab in its own frame: placement, allowed turns, footprint, ports, visual up (1.4.3+). | `prefab` |
+| `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]` |
 | `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `refund_to` |
 
 ## Replacing walls and frames
@@ -113,7 +114,32 @@ Tool wear, welder fuel and battery charge are not charged.
 - **Walls back to back:** a face holds one wall per side, so two plates on one face, one facing into each cell, go
   in one request.
 
-### The layout preview (1.4.2+)
+### Placing by intent (1.4.3+)
+
+Instead of `rotation`, `facing`, `face` or `up`, give `orient` and let the tool pick the turn:
+
+```json
+{ "prefab": "StructureConsole3x3", "at": [719, 200.5, 668],
+  "orient": { "mount": "wall", "controls_toward": "room" } }
+```
+
+- `mount`: `wall`, `floor`, `ceiling`, or the axis the surface is on.
+- `upright` (default true): its visual top points up.
+- `controls_toward`, and each of `ports: [{role, index, type, toward}]`, and `flow: {from, to}` (inputs face `from`,
+  outputs `to`) take a target: an axis, `room`, `player`, a point, or `{reference_id}`.
+
+Every turn the placement cursor allows is aimed and checked as a plain placement would be, scored (refused or off
+the mount: excluded; not upright: +20; each target missed: up to +10 by angle; the layout preview's conflicts:
+problem 100, warning 10) and the best used. The reply's `orient` echoes `chosen` with its `reasons`, the next three
+`alternatives`, and `tried`. A turbo volume pump is also scored with its flow reversed; when that wins, `mode_flip`
+says to write `Mode` 1 after building.
+
+`describe_prefab {prefab}` shows a prefab before it stands anywhere: how it is placed and turned
+(`allowed_rotations`), its small cells and boxes relative to its origin, its ports (joining cell offset, the way a
+run leaves, role, flow), `visual_up` (which own axis reads as its top, with the source of that fact; `verified:
+false` marks a guess) and a flow its `Mode` reverses.
+
+### The layout preview (1.4.3+)
 
 Every placement's dry run carries `layout`, read from the game's own data for that prefab at that position and turn:
 
@@ -137,7 +163,6 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 - `port_checks`: each port with what stands in its joining cell now (`occupant`), whether that piece `joins` it on
   build and `would_join_network`, why it is `blocked`, its `flow` (`in` or `out`) and whether its cell is in a door's
   keep-out.
-
 
 ## Removing structures
 

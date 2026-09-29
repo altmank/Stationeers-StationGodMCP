@@ -64,8 +64,10 @@ internal sealed class OrientationView
 internal sealed class PlacementView
 {
     internal PlacementView(int index, PlacementPrefabView prefab, PlacementSpotView spot, PlacementLookView look,
-        List<UpgradeAmountView> cost, List<SurveyPortView>? ports = null, PlacementLayoutView? layout = null)
+        List<UpgradeAmountView> cost, List<SurveyPortView>? ports = null, PlacementLayoutView? layout = null,
+        OrientResultView? orient = null)
     {
+        Orient = orient;
         Layout = layout;
         Ports = ports;
         Index = index;
@@ -127,8 +129,12 @@ internal sealed class PlacementView
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public PlacementLayoutView? Layout { get; }
-}
 
+    /// <summary>With orient: the turn chosen, the next best and a Mode flip when needed; left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public OrientResultView? Orient { get; }
+
+}
 
 internal sealed class PlacementPrefabView
 {

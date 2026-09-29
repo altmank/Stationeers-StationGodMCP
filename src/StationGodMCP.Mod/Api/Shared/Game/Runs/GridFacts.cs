@@ -88,7 +88,6 @@ internal sealed class GridFacts
     }
 
     internal LargeCellFacts Large(GridCell large)
-
     {
         if (_large.TryGetValue(large, out LargeCellFacts facts))
         {
