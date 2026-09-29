@@ -142,4 +142,23 @@ public sealed class PlantGenesWireTests
         batch.Failed(new GeneNotWrittenView(1, "Nope", null, unknown));
         WireCheck.Same(old, new GenesWrittenView(Header, batch.Build()));
     }
+
+    [Theory]
+    [InlineData("{\"DarkPerDay\": null}", "DarkPerDay")]
+    [InlineData("{\"WaterUsage\": 0.5, \"LightPerDay\": \"x\"}", "LightPerDay")]
+    [InlineData("{\"WaterUsage\": true}", "WaterUsage")]
+    public void AGeneThatIsNotANumberRefusesTheWholeCall(string json, string gene)
+    {
+        // air-18: null used to fail only its own gene, while "x" refused the whole call.
+        ApiException error = Assert.Throws<ApiException>(() => GeneArgs.RequireNumbers(JObject.Parse(json)));
+        Assert.Equal(ApiErrors.InvalidArgumentCode, error.Code);
+        Assert.Contains(gene, error.Message);
+    }
+
+    [Fact]
+    public void NumericGenesPass()
+    {
+        JObject genes = JObject.Parse("{\"WaterUsage\": 1, \"LightPerDay\": -0.25, \"Nope\": 2}");
+        Assert.Same(genes, GeneArgs.RequireNumbers(genes));
+    }
 }

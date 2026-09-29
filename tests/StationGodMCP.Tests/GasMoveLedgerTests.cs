@@ -106,6 +106,16 @@ public sealed class GasMoveLedgerTests
     }
 
     [Fact]
+    public void BoilingThatSettlesJustAboveFreezingDoesNotFinish()
+    {
+        // The live case (air-17): predicted to settle at 273.187 K, the last drops still froze out of the room.
+        Assert.False(LiquidBoiling.BoilsAway(273.187, 250.0, 273.15));
+        Assert.False(LiquidBoiling.BoilsAway(273.6, 250.0, 273.15));
+        Assert.True(LiquidBoiling.BoilsAway(273.65, 250.0, 273.15));
+        Assert.True(LiquidBoiling.BoilsAway(277.614, 250.0, 273.15));
+    }
+
+    [Fact]
     public void BoilingThatCoolsUnderTheBoilingPointDoesNotFinish()
     {
         Assert.False(LiquidBoiling.BoilsAway(290.0, 373.0, 273.15));

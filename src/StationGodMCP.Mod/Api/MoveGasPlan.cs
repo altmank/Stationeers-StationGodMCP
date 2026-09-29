@@ -195,10 +195,10 @@ internal sealed class GasSnapshot
     /// These contents once every liquid that can evaporate has boiled into its gas, as Mole.StateChangeLiquid turns
     /// it (MoleHelper.EvaporationType; the energy scaled by MoleHelper.EvaporationRatio), each mole paying its latent
     /// heat of vaporisation out of the pooled energy, settled to one temperature. Null when nothing would boil, or
-    /// when any boiled liquid would end below its evaporation temperature at the resulting gas pressure or below its
-    /// freezing point (Pure/LiquidBoiling): then it does not all boil, and what is left stays liquid at the game's
-    /// evaporation pressure, or freezes. So one liquid that stays liquid (water beside boiling liquid nitrogen) makes
-    /// the whole result null.
+    /// when any boiled liquid would end below its evaporation temperature at the resulting gas pressure or within
+    /// 0.5 K of its freezing point (Pure/LiquidBoiling): then it does not all boil, and what is left stays liquid at
+    /// the game's evaporation pressure, or freezes. So one liquid that stays liquid (water beside boiling liquid
+    /// nitrogen) makes the whole result null.
     /// </summary>
     internal GasSnapshot? Boiled()
     {

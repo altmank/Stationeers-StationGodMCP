@@ -27,6 +27,12 @@ namespace StationGodMCP.Api;
 /// (PlantLifeRequirements.GetMutationBias), clamped to -1..1. The save stores every unit's set
 /// (Plant.InitialiseSaveData), so an edit is saved and inherited like a natural gene.
 ///
+/// The list can hold one set more than the stack (live, 1.4.4 round 3: crate seed bags of quantity 1, 2 and 3 held
+/// 2, 3 and 4). The Plant.Genes getter adds a set to an empty list, and Plant.DeserializeSave, when the saved sets do
+/// not number the quantity, adds quantity new ones on top of whatever is there. Planting copies the top set and
+/// using a unit removes the top set (DecrementQuantity, RemoveQuantity), so the extra one is the bottom set (unit 0),
+/// which no unit ever plants. The tool reports the game's list as it is.
+///
 /// Ranges: a gene Value is -1..1 (GeneCollection.MutateValue and Stackable.SetGene clamp to it), Stability -1..1
 /// (GeneWrapper.Stabilise). Fifteen genes scale one PlantStat of PlantLifeRequirements: PlantStat.Get is
 /// Lerp(Base, Max, v) for v > 0 and Lerp(Base, Min, -v) otherwise, Min and Max swapped when the stat is inverted
@@ -154,7 +160,7 @@ internal abstract class GenesRequest
                 "Argument 'genes' must be an object of gene name to value, with at least one gene.");
         }
 
-        return new Write(id, unit, genes, args.OptionalBool("force") ?? false);
+        return new Write(id, unit, GeneArgs.RequireNumbers(genes), args.OptionalBool("force") ?? false);
     }
 
     internal sealed class Read : GenesRequest
@@ -340,7 +346,7 @@ internal static class GeneSets
         if (index >= sets.Count)
         {
             error = ApiErrors.Refused("unit_out_of_range",
-                $"{plant.DisplayName} has {sets.Count} gene set(s), one per unit of its stack: " +
+                $"{plant.DisplayName} has {sets.Count} gene set(s), the top one last: " +
                 $"unit must be 0 to {sets.Count - 1}.");
             return false;
         }
@@ -550,14 +556,8 @@ internal static class GeneWriter
 
     private static bool TryValue(Gene gene, JToken token, bool force, out double value, out ApiException? error)
     {
-        value = 0.0;
+        // GenesRequest.Parse has refused any value that is not a number.
         error = null;
-        if (token.Type != JTokenType.Integer && token.Type != JTokenType.Float)
-        {
-            error = ApiErrors.InvalidArgument($"Gene {gene}: the value must be a number.");
-            return false;
-        }
-
         value = token.Value<double>();
         if (double.IsNaN(value) || double.IsInfinity(value))
         {
