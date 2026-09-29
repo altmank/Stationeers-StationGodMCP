@@ -25,7 +25,10 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// UsedPower while on and built, in error or not (Device.GetUsedPower asks only OnOff and IsStructureCompleted).
 /// <para>
 /// switchedOn: the same numbers for the device as if it were on (Error is kept as it is): what a device that is off
-/// now brings once it is switched on (the would_overload_when_on warning).
+/// now brings once it is switched on (the would_overload_when_on warning). A number that follows a charge is taken at
+/// the game's ceiling there instead (Pure/SwitchedOnLoads): a battery's output and input PowerMaximum each, an APC's
+/// output its MaximumPower, a power transmitter's input MaxPowerTransmission and its output at most that, so the
+/// warning is the same in the dry run and the real run however the charge drifts between them.
 /// </para>
 /// </summary>
 internal static class PortLoads
@@ -40,7 +43,9 @@ internal static class PortLoads
         bool on = switchedOn || device.OnOff;
         bool error = device.Error == 1;
         Connection end = device.OpenEnds[index];
-        return device is ElectricalInputOutput io ? InputOutput(io, end, on, error) : Single(device, on);
+        return device is ElectricalInputOutput io
+            ? InputOutput(io, end, on, error, switchedOn)
+            : Single(device, on);
     }
 
     /// <summary>
@@ -61,7 +66,7 @@ internal static class PortLoads
             : new PortPower(Math.Max(0.0, on.PotentialW - now.PotentialW), Math.Max(0.0, on.RequiredW - now.RequiredW));
     }
 
-    private static PortPower InputOutput(ElectricalInputOutput io, Connection end, bool on, bool error)
+    private static PortPower InputOutput(ElectricalInputOutput io, Connection end, bool on, bool error, bool ceiling)
     {
         bool output = IsOutput(io, end);
         if (output && (!on || error))
@@ -73,14 +78,24 @@ internal static class PortLoads
         switch (io)
         {
             case Battery battery:
-                return output
-                    ? new PortPower(Math.Max(battery.PowerStored, 0f), 0.0)
-                    : new PortPower(0.0,
-                        on && !error ? Math.Max(0.0, battery.PowerMaximum - battery.PowerStored) : 0.0);
+                if (output)
+                {
+                    return new PortPower(ceiling
+                        ? SwitchedOnLoads.BatteryOutput(battery.PowerMaximum)
+                        : Math.Max(battery.PowerStored, 0f), 0.0);
+                }
+
+                return new PortPower(0.0,
+                    !on || error ? 0.0 :
+                    ceiling ? SwitchedOnLoads.BatteryInput(battery.PowerMaximum) :
+                    Math.Max(0.0, battery.PowerMaximum - battery.PowerStored));
             case AreaPowerControl apc:
                 if (output)
                 {
-                    return new PortPower(apc.AvailablePower, 0.0);
+                    return new PortPower(ceiling
+                        ? SwitchedOnLoads.ApcOutput(io.InputNetwork?.PotentialLoad ?? 0f,
+                            apc.Battery != null ? apc.Battery.PowerMaximum : (double?)null)
+                        : apc.AvailablePower, 0.0);
                 }
 
                 double charge = apc.Battery != null && !apc.Battery.IsCharged
@@ -98,6 +113,12 @@ internal static class PortLoads
                     !on || io.OutputNetwork == null ? 0.0 :
                     error ? Math.Max(0f, transformer.UsedPower) :
                     Math.Min(transformer.Setting, demand) + transformer.UsedPower);
+            case PowerTransmitter when ceiling:
+                return output
+                    ? new PortPower(SwitchedOnLoads.TransmitterOutput(io.InputNetwork?.PotentialLoad ?? 0f,
+                        PowerTransmitter.MaxPowerTransmission), 0.0)
+                    : new PortPower(0.0, error ? Math.Max(0f, io.UsedPower) :
+                        SwitchedOnLoads.TransmitterInput(PowerTransmitter.MaxPowerTransmission));
             default:
                 return output
                     ? new PortPower(io.AvailablePower, 0.0)
