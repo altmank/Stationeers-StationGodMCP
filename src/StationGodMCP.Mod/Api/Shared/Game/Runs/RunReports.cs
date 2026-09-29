@@ -236,8 +236,14 @@ internal static class RunReports
     private static List<RunNetworkAfterView> After(RunPlan plan, RunForecast forecast)
     {
         List<RunNetworkAfterView> after = new List<RunNetworkAfterView>(forecast.Result.Networks.Count);
+        HashSet<int> touched = Touched(plan, forecast);
         foreach (ForecastNetwork network in forecast.Result.Networks)
         {
+            if (!touched.Contains(network.Index))
+            {
+                continue;
+            }
+
             List<ThingId> networks = new List<ThingId>(network.NetworksBefore.Count);
             foreach (long id in network.NetworksBefore)
             {
@@ -255,6 +261,43 @@ internal static class RunReports
         }
 
         return after;
+    }
+
+    // The networks after the edit it changes: new or changed pieces, pieces of two networks, a network losing pieces,
+    // or a device port joining it from elsewhere. A device's other network that the edit leaves as it is (read only to
+    // see whether the edit bridges the device) is not listed.
+    private static HashSet<int> Touched(RunPlan plan, RunForecast forecast)
+    {
+        HashSet<long> losing = new HashSet<long>();
+        foreach (PlannedRemoval removal in plan.Removals)
+        {
+            if (removal.Network != null)
+            {
+                losing.Add(removal.Network.ReferenceId);
+            }
+        }
+
+        HashSet<int> touched = new HashSet<int>();
+        foreach (PlannedCell cell in plan.Cells)
+        {
+            if (forecast.NodeOf.TryGetValue(cell.ForecastId, out long node) &&
+                forecast.ComponentOf.TryGetValue(node, out int index))
+            {
+                touched.Add(index);
+            }
+        }
+
+        foreach (ForecastNetwork network in forecast.Result.Networks)
+        {
+            if (network.NewPieces.Count > 0 || network.NetworksBefore.Count != 1 ||
+                losing.Contains(network.NetworksBefore[0]) ||
+                network.Ports.Exists(port => port.NetworkBefore != network.NetworksBefore[0]))
+            {
+                touched.Add(network.Index);
+            }
+        }
+
+        return touched;
     }
 
     private static RunPortView PortView(RunPlan plan, ForecastPort port, bool bridging) =>
@@ -320,15 +363,19 @@ internal static class RunReports
                 DevicesOf(plan, details[index])));
         }
 
-        if (forecast.Result.Cut.Count > 0)
+        // One entry per network the cut ports were on.
+        for (int index = forecast.Result.Splits.Count; index < details.Count; index++)
         {
-            List<RunPortView> cut = new List<RunPortView>(forecast.Result.Cut.Count);
+            SplitDetail cutDetail = details[index];
+            List<RunPortView> cut = new List<RunPortView>();
             foreach (ForecastPort port in forecast.Result.Cut)
             {
-                cut.Add(PortView(plan, port, false));
+                if (SplitAnalysis.CutEntryOf(details, forecast.Result.Splits.Count, port) == cutDetail)
+                {
+                    cut.Add(PortView(plan, port, false));
+                }
             }
 
-            SplitDetail cutDetail = details[details.Count - 1];
             splits.Add(new RunSplitView(cutDetail.Network.HasValue ? new ThingId(cutDetail.Network.Value) : null,
                 new List<int>(), cut, allowed, DevicesOf(plan, cutDetail)));
         }

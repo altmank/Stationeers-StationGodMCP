@@ -47,7 +47,8 @@ internal static class NetworkHandles
     /// <summary>
     /// Several handles (allow_bridge): an object form is resolved to its network; a plain id is kept as given (it may
     /// name a network, or a device whose ports are meant to share a network), and one naming a piece of the family
-    /// (or a device that is one of its members, a vent on a pipe) adds that piece's network too.
+    /// (or a device that is one of its members, a vent on a pipe) adds that piece's network too. A plain id naming
+    /// no thing and no network of the family is network_not_found; one naming another thing is invalid_argument.
     /// </summary>
     internal static HashSet<long> ResolveAllowances(Args args, string name, int maximum, UpgradeFamily family)
     {
@@ -70,10 +71,20 @@ internal static class NetworkHandles
             }
 
             ids.Add(handle.Id.Value);
-            if (GameLookup.TryFindThing(handle.Id, out Thing thing) && thing is SmallGrid piece &&
-                family.IsMember(piece))
+            if (!GameLookup.TryFindThing(handle.Id, out Thing thing))
+            {
+                // Not a thing: it must be a network of the family (network_not_found otherwise).
+                family.NetworkMembers(handle.Id);
+            }
+            else if (thing is SmallGrid piece && family.IsMember(piece))
             {
                 ids.Add(Resolve(array[index], entry, family).Value);
+            }
+            else if (!(thing is Device))
+            {
+                throw ApiErrors.InvalidArgument(
+                    $"{entry}: {thing.DisplayName} ({thing.PrefabName}) is neither a {family.NetworkKind} piece, a " +
+                    "device nor a network.");
             }
         }
 

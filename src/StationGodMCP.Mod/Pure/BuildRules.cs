@@ -166,6 +166,12 @@ internal static class SourceRule
     /// </summary>
     internal static GuardLevel NoLocalPlayer(string tool) =>
         tool == PlanRemoval ? GuardLevel.Warning : GuardLevel.Refusal;
+
+    /// <summary>
+    /// Whether the tool needs a source at all: one that builds takes coils or kits from it, one that refunds gives to
+    /// it; a removal with refund false moves no item, so it needs no player and no from_id.
+    /// </summary>
+    internal static bool NeedsSource(bool builds, bool refund) => builds || refund;
 }
 
 /// <summary>Whether removing a piece is refused, warned about or allowed, and why.</summary>

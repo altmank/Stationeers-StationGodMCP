@@ -60,9 +60,19 @@ internal sealed class UndoSource
     {
         List<string> notes = new List<string>();
         long? from = fromId ?? job.FromId;
-        if (!fromId.HasValue && job.FromId.HasValue)
+        if (fromId.HasValue)
+        {
+            notes.Add($"from_id {fromId.Value}: the caller's source pays and takes the refunds (instead of " +
+                      (job.FromId.HasValue ? $"the job's own, {job.FromId.Value})." : "the local player)."));
+        }
+        else if (job.FromId.HasValue)
         {
             notes.Add($"from_id {job.FromId.Value}: the job's own source pays and takes the refunds.");
+        }
+
+        if (refundTo != null)
+        {
+            notes.Add($"refund_to {refundTo}: the caller's choice for the removal's refund.");
         }
 
         string? refund = refundTo;

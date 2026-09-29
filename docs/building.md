@@ -38,8 +38,10 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    first onto matching stacks (`from_id` itself when it is one, such as a coil stack, then anywhere in it: belts,
    backpack, jetpack, suit and uniform storage, a stack in a hand), then as new stacks into empty slots that take the
    item, a holder's own slots before those of the items in them, and only what nothing takes onto the ground a metre
-   in front of the outermost holder, at rest. Never a hidden slot or a stack's own slot, such as a cable coil's: the
-   game destroys what is in it with the coil.
+   in front of the outermost holder, at rest. A `from_id` stack stored in a holder (a coil in a locker) takes the
+   refund onto itself only: what does not fit on it goes on the ground in front of that holder, never into the
+   holder's other slots. Never a hidden slot or a stack's own slot, such as a cable coil's: the game destroys what is
+   in it with the coil.
    `refunded` lists where each part went: `merged`, `slot` or `ground`.
 8. **Host only** (`not_host` on a client). Changes use the same calls as a player's own building, so other players,
    saves and ownership follow as for normal building. Players without the mod see ordinary cables and pipes.
@@ -177,13 +179,16 @@ inside frames where possible, `plan_cable_route`:
   own grade. A long straight the run must join in its middle is split into single pieces in the same job (warning
   `long_split`; `allow_split_long: false` refuses with `long_piece`).
 - **Joining.** `join: "ends"` (default) joins the run's first and last cells to open ends and device ports pointing at
-  them; `none` joins nothing extra; `all` joins at every run cell. `extra_ends` adds ends to run cells.
+  them, and a run end that joins nothing else to the piece straight ahead of it; a run end at a port, on an existing
+  piece or at a piece's open end has arrived and never joins the piece beyond (which may be across a transformer).
+  `none` joins nothing extra; `all` joins at every run cell. `extra_ends` adds ends to run cells.
 - **Branches.** `branches: [{waypoints, attach}]` adds side runs joined to the run with a junction.
 - **Placement check.** The game's server checks nothing when a structure is built, so the tool checks as the
   placement cursor would: devices, chutes and other small things block (`cell_blocked`); a pipe blocks a cable only
   along its own axis; frames and walls never block cables or pipes.
 - **Removal in the same job.** `remove_ids` removes pieces before building, so a device is never unpowered between its
-  old cable and its new one.
+  old cable and its new one. A burnt cable an overload left (`StructureCableStraightBurnt` and the like) may be named
+  too, which frees its cell.
 - **Tap check.** A run end left open next to, or one free cell short of, another network's piece warns `not_joined`.
   `join_to` names the network the run must end up on; `join_trunk: true` adds the missing tap (warning `tap_added`).
   The planners set `join_to` themselves when `to` names a network, piece or port.
@@ -208,7 +213,8 @@ overrides the removal's refund target. `plan.notes` says which applied.
 ## Removing pieces
 
 `remove_cables`, `remove_pipes` and `remove_chutes` take `reference_ids`, or the pieces in the cells of `waypoints` or
-`cells`. A network that only loses pieces keeps its id. `plan_removal` prices a removal without doing it; see
+`cells`. A network that only loses pieces keeps its id. `remove_cables` also removes burnt cables (by id or cell;
+they refund nothing). With `refund: false` nothing is given back, so no player or `from_id` is needed. `plan_removal` prices a removal without doing it; see
 [cleanup-and-refactor.md](cleanup-and-refactor.md#pricing-a-removal).
 
 ## Guards
@@ -219,7 +225,7 @@ Each refusal names what it found. An `allow_*` argument accepts that one case af
 | --- | --- | --- |
 | `would_bridge` | The run would join two or more networks, or two ports of one device (both sides of an APC or transformer, a battery's input and output, a pump's two sides, a device's chute output into its own input). Names the networks and the devices on each. | `allow_bridge`, naming every network of the merge, or the device |
 | `would_split` | A removal would split a network or leave a device port joined to nothing. Lists each resulting network with its devices (`components`), the devices that feed it (`root`: your `root`, else every supplier: an APC's, transformer's or battery's output, a generator, a solar panel) and `cut_off`, the devices no root reaches afterwards. | `allow_split` |
-| `would_overload` | A cable network after the edit would carry more than its weakest cable, so the game would burn a cable every power tick. | none: upgrade the cable or keep the networks apart |
+| `would_overload` | A cable network after the edit would carry more than its weakest cable, so the game would burn a cable every power tick. Counted over the networks it keeps, a network the edit replaces whole (a reroute), and every device port it newly joins, from the device's own state (a battery's charge and free capacity, an APC's or transformer's supply and demand, a generator's rate, a consumer's use). | none: upgrade the cable or keep the networks apart |
 | `would_burst` | A pipe network's pressure after the edit would exceed its weakest pipe. | none |
 | `holds_contents`, `contents_would_move` | A pipe removal would delete a network's gas or liquid, or divide it. | none: empty it first with `move_gas` |
 | `content_mismatch` | A pipe of the other content (gas and liquid never join). | none |

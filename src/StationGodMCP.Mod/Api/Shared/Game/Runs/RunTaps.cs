@@ -61,7 +61,8 @@ internal static class RunTaps
             listed++;
             plan.Warnings.Add(new LayoutIssue(NotJoined,
                 $"The run end at {Metres(tip.Cell)} stops {Gap(miss)} {Describe(plan, miss.Piece)} without joining " +
-                $"it (its open end points {OpenStep(plan.Layout, tip.Cell)}). If the run should join that network, " +
+                $"it (the run's own open end there points {OpenStep(plan.Layout, tip.Cell)}). If the run should " +
+                "join that network, " +
                 $"add the tap ({TapText(miss)}; join_to with join_trunk: true adds it); if the networks are meant " +
                 "to stay apart, ignore this.", tip.Cell, miss.Piece));
         }

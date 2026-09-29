@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
@@ -360,7 +361,10 @@ internal static class UpgradePlanner
             else if (!(thing is SmallGrid piece) || !family.IsPiece(thing))
             {
                 plan.Problem($"not_a_{family.NetworkKind}_piece",
-                    $"{thing.DisplayName} ({thing.PrefabName}) is not a {family.NetworkKind} piece.", thing);
+                    $"{thing.DisplayName} ({thing.PrefabName}) is not a {family.NetworkKind} piece" +
+                    (thing is CableRuptured
+                        ? "; a burnt cable is on no network: remove it with remove_cables."
+                        : "."), thing);
             }
             else
             {

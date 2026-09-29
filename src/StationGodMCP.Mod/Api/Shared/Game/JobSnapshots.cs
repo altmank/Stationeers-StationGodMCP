@@ -97,14 +97,7 @@ internal static class JobSnapshots
             string? name = grade == null
                 ? null
                 : System.Array.Find(kind.GradeNames, candidate => kind.GradeOf(candidate)?.SameAs(grade) == true);
-            PieceModel model = PieceShapes.Live(piece);
-            List<PieceCell> cells = new List<PieceCell>(model.Cells.Count);
-            foreach (GridCell cell in model.Cells)
-            {
-                cells.Add(new PieceCell(cell, EndSet.AtCell(model, cell)));
-            }
-
-            return new NetworkPiece(kind.PlaceTool, name, cells);
+            return new NetworkPiece(kind.PlaceTool, name, NetworkPiece.CellsOf(PieceShapes.Live(piece)));
         }
 
         return null;

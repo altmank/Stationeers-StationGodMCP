@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
@@ -42,6 +43,20 @@ internal sealed class NetworkPower
     internal double? LowestFuseW { get; }
 }
 
+/// <summary>What one device port supplies to and draws from its network (PowerTick's per-device numbers).</summary>
+internal sealed class PortPower
+{
+    internal PortPower(double potentialW, double requiredW)
+    {
+        PotentialW = potentialW;
+        RequiredW = requiredW;
+    }
+
+    internal double PotentialW { get; }
+
+    internal double RequiredW { get; }
+}
+
 /// <summary>A network after an edit as power sees it: the supply and demand it pools and its weakest cable.</summary>
 internal sealed class PowerAfter
 {
@@ -71,10 +86,15 @@ internal sealed class PowerAfter
     internal bool Overloads => LowestCableW.HasValue && FlowW > LowestCableW.Value;
 
     /// <summary>
-    /// The pooled numbers of the networks before it holds, with the weakest of their cables and of the new pieces.
+    /// The pooled numbers of the networks before it holds, with the weakest of their cables and of the new pieces,
+    /// plus what its ports bring from outside those networks: a port whose network the edit removes whole brings that
+    /// network's numbers (a reroute replacing every piece keeps its devices' load), and a port on no network now, or
+    /// on one that stays apart, brings its device's own estimate (joining). Without them a network of new pieces only
+    /// would forecast 0 W however much its devices move.
     /// </summary>
     internal static PowerAfter Of(ForecastNetwork network, IReadOnlyDictionary<long, NetworkPower> before,
-        IReadOnlyDictionary<long, double> newRatings)
+        IReadOnlyDictionary<long, double> newRatings, ICollection<long>? gone = null,
+        Func<ForecastPort, PortPower?>? joining = null)
     {
         double potential = 0.0;
         double required = 0.0;
@@ -91,6 +111,34 @@ internal sealed class PowerAfter
             required += power.RequiredW;
             cable = Lowest(cable, power.LowestCableW);
             fuse = Lowest(fuse, power.LowestFuseW);
+        }
+
+        HashSet<long> pooledGone = new HashSet<long>();
+        foreach (ForecastPort port in network.Ports)
+        {
+            long? was = port.NetworkBefore;
+            if (was.HasValue && network.NetworksBefore.Contains(was.Value))
+            {
+                continue;
+            }
+
+            if (was.HasValue && gone != null && gone.Contains(was.Value))
+            {
+                if (pooledGone.Add(was.Value) && before.TryGetValue(was.Value, out NetworkPower old))
+                {
+                    potential += old.PotentialW;
+                    required += old.RequiredW;
+                }
+
+                continue;
+            }
+
+            PortPower? own = joining?.Invoke(port);
+            if (own != null)
+            {
+                potential += own.PotentialW;
+                required += own.RequiredW;
+            }
         }
 
         foreach (long piece in network.NewPieces)
@@ -167,12 +215,12 @@ internal static class EditGuards
                 "meant.", null, split.Network));
         }
 
-        List<long>? cutOff = forecast.Cut.Count > 0 ? details[details.Count - 1].CutOff : null;
-        string cutNote = cutOff != null && cutOff.Count > 0
-            ? $" Cut off from the root: {string.Join(", ", cutOff)}."
-            : string.Empty;
         foreach (ForecastPort port in forecast.Cut)
         {
+            List<long>? cutOff = SplitAnalysis.CutEntryOf(details, forecast.Splits.Count, port)?.CutOff;
+            string cutNote = cutOff != null && cutOff.Count > 0
+                ? $" Cut off from the root: {string.Join(", ", cutOff)}."
+                : string.Empty;
             problems.Add(new LayoutIssue(WouldSplit,
                 $"Port {port.Index} of device {port.DeviceId} would lose its connection to network " +
                 $"{port.NetworkBefore}.{cutNote} Pass allow_split if that is meant.", null, port.DeviceId));

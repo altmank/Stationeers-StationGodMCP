@@ -37,6 +37,30 @@ internal sealed class NetworkPiece
     internal string? Grade { get; }
 
     internal List<PieceCell> Cells { get; }
+
+    /// <summary>
+    /// The piece cell by cell as singles build it again: its own ends in each cell, and in a long straight also the
+    /// ends towards its neighbouring cells (the piece runs on through them), so every cell has the ends of a single.
+    /// </summary>
+    internal static List<PieceCell> CellsOf(PieceModel model)
+    {
+        List<PieceCell> cells = new List<PieceCell>(model.Cells.Count);
+        foreach (GridCell cell in model.Cells)
+        {
+            EndSet ends = EndSet.AtCell(model, cell);
+            foreach (GridStep step in GridStep.All)
+            {
+                if (model.Occupies(step.From(cell)))
+                {
+                    ends = ends.With(step);
+                }
+            }
+
+            cells.Add(new PieceCell(cell, ends));
+        }
+
+        return cells;
+    }
 }
 
 /// <summary>A structure as it stood before a job removed it: enough to build it again the same way.</summary>

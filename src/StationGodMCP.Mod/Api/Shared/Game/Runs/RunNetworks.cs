@@ -23,6 +23,12 @@ internal sealed class RunNetworkContext
 
     /// <summary>Each removed piece by id.</summary>
     internal Dictionary<long, SmallGrid> Removed { get; } = new Dictionary<long, SmallGrid>();
+
+    /// <summary>Networks before the edit that lose every piece (Forecast.Gone).</summary>
+    internal HashSet<long> Gone { get; } = new HashSet<long>();
+
+    /// <summary>Each device with a port the edit may affect, by id.</summary>
+    internal Dictionary<long, Device> Devices { get; } = new Dictionary<long, Device>();
 }
 
 /// <summary>
@@ -85,7 +91,17 @@ internal static class RunNetworks
             }
         }
 
-        PowerAfter power = PowerAfter.Of(after, before, ratings);
+        foreach (long id in context.Gone)
+        {
+            if (context.NetworksBefore.TryGetValue(id, out IReferencable found) && found is CableNetwork network)
+            {
+                before[id] = new NetworkPower(network.PotentialLoad, network.RequiredLoad, null, null);
+            }
+        }
+
+        PowerAfter power = PowerAfter.Of(after, before, ratings, context.Gone,
+            port => PortLoads.Of(context.Devices.TryGetValue(port.DeviceId, out Device device) ? device : null,
+                port.Index));
         RunPowerAfterView view = new RunPowerAfterView(power.PotentialW, power.RequiredW, power.FlowW,
             power.LowestCableW, power.LowestFuseW, power.Overloads);
         return power.Overloads

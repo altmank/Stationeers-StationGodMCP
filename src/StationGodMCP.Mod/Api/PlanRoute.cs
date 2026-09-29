@@ -105,6 +105,12 @@ internal static class PlanRouteApi
             return new PlanRouteView(tool, null, Failure(tree), null, null, notes);
         }
 
+        string? blocked = BlockedCell(NewCells(tree, facts), kind, mask, ignore);
+        if (blocked != null)
+        {
+            return new PlanRouteView(tool, null, blocked, null, null, notes);
+        }
+
         RunReportView dryRun = DryRun(args, kind, grade, tree, removes, assumed);
         if (HasWarning(dryRun, RunPlanner.WouldLoop))
         {
@@ -657,6 +663,25 @@ internal static class PlanRouteApi
 
     private static List<PositionView> Positions(IReadOnlyList<GridCell> cells) =>
         RunPath.Waypoints(cells).ConvertAll(cell => GameLookup.ViewOf(PieceShapes.CentreOf(cell)));
+
+    // A route is found only when every new piece may stand where it goes. The search keeps its way clear, but an end
+    // cell is taken as given: a port whose joining cell another device fills (a battery pushed against it) would yield
+    // a route the place tool then refuses.
+    private static string? BlockedCell(List<GridCell> cells, RunKind kind, SmallGridBlock mask, HashSet<long> ignore)
+    {
+        foreach (GridCell cell in cells)
+        {
+            string? blocked = PlacementCheck.CellBlocked(
+                Assets.Scripts.GridController.World.GetSmallCell(PieceShapes.Grid(cell)), mask, kind, ignore);
+            if (blocked != null)
+            {
+                return $"cell_blocked: no {kind.Noun} piece can stand in cell {cell} of the route (an end's joining " +
+                       $"cell): {blocked}. Clear it, or route from another port or a free cell.";
+            }
+        }
+
+        return null;
+    }
 
     private static string Failure(RouteTree tree)
     {

@@ -190,7 +190,7 @@ internal static class RunApi
         List<Structure> removed = new List<Structure>();
         foreach (PlannedRemoval removal in plan.Removals)
         {
-            if (!removal.Assumed)
+            if (!removal.Assumed && !removal.Debris)
             {
                 removed.Add(removal.Piece);
             }

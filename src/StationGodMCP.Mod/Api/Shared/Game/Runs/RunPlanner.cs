@@ -90,10 +90,11 @@ internal static class RunPlanner
             {
                 plan.Problem(ApiErrors.ThingNotFoundCode, $"No thing with reference id {id}.", id.Value);
             }
-            else if (!(thing is SmallGrid piece) || !kind.Family.IsPiece(thing))
+            else if (!(thing is SmallGrid piece) || !(kind.Family.IsPiece(thing) || kind.IsDebris(thing)))
             {
                 plan.Problem($"not_a_{kind.Noun}_piece",
-                    $"{thing.DisplayName} ({thing.PrefabName}) is not a {kind.Noun} piece.", thing.ReferenceId);
+                    $"{thing.DisplayName} ({thing.PrefabName}) is not a {kind.Noun} piece; remove_structure removes " +
+                    "other structures.", thing.ReferenceId);
             }
             else if (seen.Add(piece.ReferenceId))
             {
@@ -105,7 +106,7 @@ internal static class RunPlanner
         foreach (GridCell cell in removal.Cells)
         {
             SmallCell? small = world.GetSmallCell(PieceShapes.Grid(cell));
-            SmallGrid? piece = small != null ? kind.SlotOf(small) : null;
+            SmallGrid? piece = small != null ? PieceOrDebris(kind, small) : null;
             if (piece == null || piece.IsBeingDestroyed)
             {
                 plan.Warnings.Add(new LayoutIssue("cell_empty", $"No {kind.Noun} piece stands in {cell}.", cell));
@@ -131,9 +132,17 @@ internal static class RunPlanner
             }
 
             plan.Things[piece.ReferenceId] = piece;
+            bool debris = kind.IsDebris(piece);
             plan.Removals.Add(new PlannedRemoval(piece, PieceShapes.Live(piece), kind.Family.NetworkOf(piece),
-                BuildMaterials.RefundOf(piece)));
+                debris ? new List<ItemAmount>() : BuildMaterials.RefundOf(piece), debris: debris));
         }
+    }
+
+    // The kind's piece in the cell, else a burnt piece there (a Unity object: no null coalescing).
+    private static SmallGrid? PieceOrDebris(RunKind kind, SmallCell cell)
+    {
+        SmallGrid? piece = kind.SlotOf(cell);
+        return piece != null ? piece : kind.DebrisIn(cell);
     }
 
     internal const string AssumedPresentCode = "assumed_present";
@@ -623,6 +632,11 @@ internal static class RunPlanner
 
             plan.Problem(ApiErrors.ThingNotFoundCode, $"No thing with reference id {from.Value} {role}.",
                 from.Value.Value);
+            return null;
+        }
+
+        if (!SourceRule.NeedsSource(plan.Request.Build != null, plan.Request.Options.Refund))
+        {
             return null;
         }
 

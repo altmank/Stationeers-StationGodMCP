@@ -222,16 +222,20 @@ internal sealed class PieceLook
 internal sealed class PlannedRemoval
 {
     internal PlannedRemoval(SmallGrid piece, PieceModel live, IReferencable? network, List<ItemAmount> refund,
-        bool assumed = false)
+        bool assumed = false, bool debris = false)
     {
         Piece = piece;
         Live = live;
         Network = network;
         Refund = refund;
         Assumed = assumed;
+        Debris = debris;
     }
 
     internal bool Assumed { get; }
+
+    /// <summary>What is left of a destroyed piece (a burnt cable, RunKind.IsDebris): no refund, no undo.</summary>
+    internal bool Debris { get; }
 
     internal SmallGrid Piece { get; }
 

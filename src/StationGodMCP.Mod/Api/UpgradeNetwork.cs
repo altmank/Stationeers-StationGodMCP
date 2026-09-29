@@ -179,7 +179,9 @@ internal static class UpgradeApi
         bool network = args.Has("network_id");
         if (network == args.Has("reference_ids"))
         {
-            throw ApiErrors.InvalidArgument("Pass network_id (from connections) or reference_ids, not both.");
+            throw ApiErrors.InvalidArgument(network
+                ? "Pass network_id (from connections) or reference_ids, not both."
+                : "Pass network_id (from connections) or reference_ids.");
         }
 
         PieceSelection selection = network

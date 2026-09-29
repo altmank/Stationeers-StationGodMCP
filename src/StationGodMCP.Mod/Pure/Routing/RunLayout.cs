@@ -12,8 +12,9 @@ internal enum JoinMode
 
     /// <summary>
     /// The default: the run's first and last cells join every open piece end and device port pointing at them, and
-    /// the piece straight ahead of a run end that joins no device port (turned into a junction when it has no end
-    /// there). A run end at a port has reached it: the piece beyond is some other network's.
+    /// the piece straight ahead of a run end that joins no device port and no piece (turned into a junction when it
+    /// has no end there). A run end at a port, or on or at a piece, has reached it: the piece beyond is some other
+    /// network's (a route to a network ends on one of its pieces; the piece past it may be across a transformer).
     /// </summary>
     Ends,
 
@@ -341,12 +342,14 @@ internal static class RunLayoutPlanner
     }
 
     // A run end meets the piece straight ahead of it, which gains an end towards the run when it has none; a run end
-    // that joins a device port has reached where it goes and meets nothing beyond.
+    // that joins a device port or a piece (standing on one, or at its open end) has reached where it goes and meets
+    // nothing beyond.
     private static void JoinAhead(RunLayout layout, RunSurroundings around, LayoutCell entry, GridCell behind,
         HashSet<GridCell> inRun, PipeContent? content, RunShape shape)
     {
         GridStep ahead = GridStep.Between(behind, entry.Cell)!.Value;
-        if (entry.Ends.Contains(ahead) || entry.Joins.Exists(static join => join.Kind == "port"))
+        if (entry.Ends.Contains(ahead) || entry.Existing != null ||
+            entry.Joins.Exists(static join => join.Kind == "port" || join.Kind == "piece"))
         {
             return;
         }
@@ -468,7 +471,7 @@ internal static class RunLayoutPlanner
             }
         }
 
-        if (entry.Ends.Count == 1)
+        if (entry.Ends.Count == 1 && !ContinuesInside(entry))
         {
             GridStep only = entry.Ends.Steps()[0];
             entry.AddOpen(only.Opposite);
@@ -478,6 +481,25 @@ internal static class RunLayoutPlanner
         }
 
         BlockedPorts(layout, around, entry);
+    }
+
+    // An end cell of a long straight: the piece goes on into its next cell, so a single end there is not open.
+    private static bool ContinuesInside(LayoutCell entry)
+    {
+        if (entry.Existing == null || entry.Existing.Cells.Count < 2)
+        {
+            return false;
+        }
+
+        foreach (GridStep step in GridStep.All)
+        {
+            if (entry.Existing.Occupies(step.From(entry.Cell)))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // A new piece in a free port's joining cell with no end towards the port leaves that port unusable: nothing else

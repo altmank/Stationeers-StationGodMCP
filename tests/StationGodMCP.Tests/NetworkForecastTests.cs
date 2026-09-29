@@ -208,4 +208,61 @@ public sealed class PowerAfterTests
         };
         Assert.False(PowerAfter.Of(Merged(1), before, new Dictionary<long, double>()).Overloads);
     }
+
+    private static ForecastNetwork NewOnly(params ForecastPort[] ports)
+    {
+        ForecastNetwork after = new ForecastNetwork(0);
+        after.NewPieces.Add(-1);
+        after.Ports.AddRange(ports);
+        return after;
+    }
+
+    [Fact]
+    public void ARunOfNewPiecesBetweenAFullAndAnEmptyBatteryOverloadsFromTheirOwnState()
+    {
+        ForecastPort output = new ForecastPort(10, 1, true, null, -1);
+        ForecastPort input = new ForecastPort(11, 0, true, null, -1);
+        Dictionary<ForecastPort, PortPower> own = new Dictionary<ForecastPort, PortPower>
+        {
+            [output] = new PortPower(3600000.0, 0.0),
+            [input] = new PortPower(0.0, 3600000.0)
+        };
+        PowerAfter power = PowerAfter.Of(NewOnly(output, input), new Dictionary<long, NetworkPower>(),
+            new Dictionary<long, double> { [-1] = 5000.0 }, new HashSet<long>(),
+            port => own.TryGetValue(port, out PortPower found) ? found : null);
+        Assert.Equal(3600000.0, power.FlowW);
+        Assert.True(power.Overloads);
+    }
+
+    [Fact]
+    public void ARerouteReplacingEveryPieceKeepsTheOldNetworksLoadOnce()
+    {
+        Dictionary<long, NetworkPower> before = new Dictionary<long, NetworkPower>
+        {
+            [7] = new NetworkPower(6000.0, 2830000.0, null, null)
+        };
+        ForecastPort source = new ForecastPort(20, 2, true, 7, -1);
+        ForecastPort sink = new ForecastPort(21, 0, true, 7, -1);
+        PowerAfter power = PowerAfter.Of(NewOnly(source, sink), before,
+            new Dictionary<long, double> { [-1] = 5000.0 }, new HashSet<long> { 7 },
+            _ => new PortPower(1e9, 1e9));
+        Assert.Equal(6000.0, power.PotentialW);
+        Assert.Equal(2830000.0, power.RequiredW);
+        Assert.True(power.Overloads);
+    }
+
+    [Fact]
+    public void APortOnANetworkTheResultHoldsIsNotCountedTwice()
+    {
+        Dictionary<long, NetworkPower> before = new Dictionary<long, NetworkPower>
+        {
+            [1] = new NetworkPower(4000.0, 4000.0, 5000.0, null)
+        };
+        ForecastNetwork after = Merged(1);
+        after.Ports.Add(new ForecastPort(30, 0, true, 1, 1));
+        PowerAfter power = PowerAfter.Of(after, before, new Dictionary<long, double> { [-1] = 5000.0 },
+            new HashSet<long>(), _ => new PortPower(1e9, 1e9));
+        Assert.Equal(4000.0, power.FlowW);
+        Assert.False(power.Overloads);
+    }
 }

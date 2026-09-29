@@ -264,6 +264,9 @@ internal sealed class CableNetworkRecord : NetworkRecord
     private readonly CableNetwork _network;
     private readonly int _cablesBefore;
 
+    // The weakest cable when the plan was made: the job's report after the swap still says what it was before.
+    private readonly double? _lowestBefore;
+
     private CableNetwork? _now;
 
     internal CableNetworkRecord(CableNetwork network, List<PlannedSwap> swaps)
@@ -271,7 +274,14 @@ internal sealed class CableNetworkRecord : NetworkRecord
             Copy(network.CableList).ConvertAll(static cable => (SmallGrid)cable))
     {
         _network = network;
-        _cablesBefore = Copy(network.CableList).Count;
+        List<Cable> cables = Copy(network.CableList);
+        _cablesBefore = cables.Count;
+        foreach (Cable cable in cables)
+        {
+            _lowestBefore = _lowestBefore.HasValue
+                ? Math.Min(_lowestBefore.Value, cable.MaxVoltage)
+                : cable.MaxVoltage;
+        }
     }
 
     internal override object Report() => ReportOf(_network, true);
@@ -303,7 +313,8 @@ internal sealed class CableNetworkRecord : NetworkRecord
 
         return new CableNetworkReportView(new ThingId(network.ReferenceId),
             new CableNetworkCounts(cables.Count, Swaps.Count, network.FuseList.Count),
-            new CableNetworkRatings(network.RequiredLoad, network.PotentialLoad, before, after, fuse),
+            new CableNetworkRatings(network.RequiredLoad, network.PotentialLoad, predict ? before : _lowestBefore,
+                after, fuse),
             ViewsOf(network.DeviceList), predict ? null : RenumberedFrom(network));
     }
 

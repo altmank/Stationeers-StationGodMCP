@@ -37,7 +37,7 @@ internal sealed class SplitDetail
         CutOff = cutOff;
     }
 
-    /// <summary>The network before the edit; null for the ports cut from networks that stay whole.</summary>
+    /// <summary>The network before the edit (for cut ports, the network every port of the entry was on).</summary>
     internal long? Network { get; }
 
     internal List<SplitPart> Parts { get; }
@@ -97,11 +97,7 @@ internal static class SplitAnalysis
             details.Add(OfSplit(forecast, split, roots));
         }
 
-        if (forecast.Cut.Count > 0)
-        {
-            details.Add(OfCutPorts(forecast, roots));
-        }
-
+        details.AddRange(OfCutPorts(forecast, roots));
         return details;
     }
 
@@ -178,10 +174,11 @@ internal static class SplitAnalysis
         return new SplitDetail(split.Network, parts, found, Sorted(cut));
     }
 
-    // Ports joined to nothing after the edit whose network does not split: every device among them is cut off, unless
-    // it is a root itself or keeps another port on a network. A root port cut from a network that stays whole cuts off
-    // every device left on it that no other root feeds. The entry names the network when every cut port was on one.
-    private static SplitDetail OfCutPorts(Forecast forecast, NetworkRootSet roots)
+    // Ports joined to nothing after the edit, one entry per network they were on (in id order): every device among
+    // them is cut off, unless it is a root itself or keeps another port on a network. A root port cut from a network
+    // that stays whole cuts off every device left on it that no other root feeds. Roots are the network's own: those
+    // among its cut ports and those its ports keep after the edit; with none, nothing is called cut off (null).
+    private static IEnumerable<SplitDetail> OfCutPorts(Forecast forecast, NetworkRootSet roots)
     {
         HashSet<long> stillJoined = new HashSet<long>();
         foreach (ForecastNetwork network in forecast.Networks)
@@ -192,24 +189,37 @@ internal static class SplitAnalysis
             }
         }
 
-        HashSet<long> cut = new HashSet<long>();
-        HashSet<long> present = new HashSet<long>();
-        HashSet<long> unfed = new HashSet<long>();
-        HashSet<long> networks = new HashSet<long>();
+        SortedDictionary<long, List<ForecastPort>> byNetwork = new SortedDictionary<long, List<ForecastPort>>();
         foreach (ForecastPort port in forecast.Cut)
         {
-            if (port.NetworkBefore.HasValue)
+            long network = port.NetworkBefore ?? 0;
+            if (!byNetwork.TryGetValue(network, out List<ForecastPort> ports))
             {
-                networks.Add(port.NetworkBefore.Value);
+                ports = new List<ForecastPort>();
+                byNetwork[network] = ports;
             }
 
+            ports.Add(port);
+        }
+
+        foreach (KeyValuePair<long, List<ForecastPort>> group in byNetwork)
+        {
+            yield return OfCutNetwork(forecast, group.Key, group.Value, stillJoined, roots);
+        }
+    }
+
+    private static SplitDetail OfCutNetwork(Forecast forecast, long network, List<ForecastPort> ports,
+        HashSet<long> stillJoined, NetworkRootSet roots)
+    {
+        HashSet<long> cut = new HashSet<long>();
+        HashSet<long> present = new HashSet<long>();
+        bool rootCut = false;
+        foreach (ForecastPort port in ports)
+        {
             if (roots.Holds(port))
             {
                 present.Add(port.DeviceId);
-                if (port.NetworkBefore.HasValue && !forecast.Splits.Exists(split => split.Network == port.NetworkBefore))
-                {
-                    unfed.Add(port.NetworkBefore.Value);
-                }
+                rootCut = true;
             }
             else if (!stillJoined.Contains(port.DeviceId))
             {
@@ -217,14 +227,25 @@ internal static class SplitAnalysis
             }
         }
 
-        foreach (long network in unfed)
+        foreach (ForecastNetwork after in forecast.Networks)
+        {
+            foreach (ForecastPort port in after.Ports)
+            {
+                if (port.NetworkBefore == network && roots.Holds(port.DeviceId, network))
+                {
+                    present.Add(port.DeviceId);
+                }
+            }
+        }
+
+        if (rootCut && !forecast.Splits.Exists(split => split.Network == network))
         {
             cut.UnionWith(LeftWithoutRoot(forecast, network, roots));
         }
 
         cut.ExceptWith(present);
-        long? only = networks.Count == 1 ? new List<long>(networks)[0] : (long?)null;
-        return new SplitDetail(only, new List<SplitPart>(), Sorted(present), Sorted(cut));
+        return new SplitDetail(network, new List<SplitPart>(), Sorted(present),
+            present.Count > 0 ? Sorted(cut) : null);
     }
 
     // The devices whose ports stay on what is left of the network when no port left on it is a root's.
@@ -249,6 +270,20 @@ internal static class SplitAnalysis
         }
 
         return devices;
+    }
+
+    /// <summary>The cut-port entry for the port's network (Of lists the splits first, then one per network).</summary>
+    internal static SplitDetail? CutEntryOf(List<SplitDetail> details, int splits, ForecastPort port)
+    {
+        for (int index = splits; index < details.Count; index++)
+        {
+            if (details[index].Network == (port.NetworkBefore ?? 0))
+            {
+                return details[index];
+            }
+        }
+
+        return null;
     }
 
     /// <summary>A one-line summary for a would_split message: each part's devices, and those cut off.</summary>

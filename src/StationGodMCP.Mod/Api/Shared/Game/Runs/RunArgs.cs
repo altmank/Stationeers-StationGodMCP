@@ -162,6 +162,7 @@ internal static class RunArgs
         Args fields = new Args(piece);
         GridCell cell = CellOf(PositionOf(piece["at"] ?? JValue.CreateNull(), $"{name}.at"));
         JArray ends = fields.Array("ends", 6);
+        EndSet seen = EndSet.None;
         for (int index = 0; index < ends.Count; index++)
         {
             string? text = ends[index].Type == JTokenType.String ? (string?)ends[index] : null;
@@ -171,6 +172,13 @@ internal static class RunArgs
                 return null;
             }
 
+            if (seen.Contains(step))
+            {
+                error = $"{name}.ends[{index}] repeats {step.Name}; name each end once.";
+                return null;
+            }
+
+            seen = seen.With(step);
             extra.Add(new ExtraEnd(cell, step));
         }
 
@@ -287,6 +295,12 @@ internal static class RunArgs
     {
         HashSet<long> bridge = NetworkHandles.ResolveAllowances(args, "allow_bridge", 64, kind.Family);
         ThingId? joinTo = args.Has("join_to") ? NetworkHandles.Resolve(args, "join_to", kind.Family) : (ThingId?)null;
+        if (joinTo.HasValue)
+        {
+            // A handle naming nothing is taken as a network id: it must be one (network_not_found otherwise).
+            kind.Family.NetworkMembers(joinTo.Value);
+        }
+
         RunTargets targets = new RunTargets(args.OptionalThingId("root"), joinTo,
             args.OptionalBool("join_trunk") ?? false);
         return new RunOptions(new EditAllowance(bridge, args.OptionalBool("allow_split") ?? false),

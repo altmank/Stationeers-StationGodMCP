@@ -56,6 +56,15 @@ internal abstract class RunKind
     internal abstract SmallGrid? SlotOf(SmallCell cell);
 
     /// <summary>
+    /// What is left of a piece the game destroyed (a burnt cable): on no network, built by no coil, removed by the
+    /// remove tool for nothing and cleared by the place tool's remove_ids. None for pipes and chutes.
+    /// </summary>
+    internal virtual bool IsDebris(Thing thing) => false;
+
+    /// <summary>The debris standing in the cell, if any (a burnt cable takes SmallCell.Other).</summary>
+    internal virtual SmallGrid? DebrisIn(SmallCell cell) => null;
+
+    /// <summary>
     /// Whether two ports of one device on one network of this kind is a bridge: a power port (cables), any pipe port
     /// of the kind (pipes: a pump's or regulator's two sides).
     /// </summary>
@@ -192,6 +201,12 @@ internal sealed class CableRunKind : RunKind
     internal override PipeContent? ContentOf(Grade grade) => null;
 
     internal override SmallGrid? SlotOf(SmallCell cell) => cell.Cable;
+
+    // Cable.Break (CODE) destroys the cable and spawns its RupturedPrefab, a CableRuptured
+    // (StructureCableStraightBurnt, StructureCableStraightHBurnt, ...).
+    internal override bool IsDebris(Thing thing) => thing is CableRuptured;
+
+    internal override SmallGrid? DebrisIn(SmallCell cell) => cell.Other as CableRuptured;
 
     internal override bool Bridges(Connection end) => (end.ConnectionType & NetworkType.Power) != NetworkType.None;
 

@@ -137,6 +137,12 @@ internal static class FeedPathsApi
                        $"Port {port.Value} of {root.PrefabName} {root.ReferenceId} joins no {kind.Noun} network.");
         }
 
+        if (networks.Count == 0)
+        {
+            throw ApiErrors.Refused("not_on_network",
+                $"{root.PrefabName} {root.ReferenceId} is on no {kind.Noun} network.");
+        }
+
         if (networks.Count != 1)
         {
             throw ApiErrors.InvalidArgument(

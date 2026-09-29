@@ -212,6 +212,12 @@ internal static class RunForecastBuilder
             forecast.Representatives[representative.Key] = representative.Value;
         }
 
+        context.Gone.UnionWith(result.Gone);
+        foreach (KeyValuePair<Device, ForecastPort> port in forecastParts.Ports)
+        {
+            context.Devices[port.Key.ReferenceId] = port.Key;
+        }
+
         foreach (ForecastNetwork network in result.Networks)
         {
             forecast.Guards[network.Index] = kind.GuardOf(network, context);

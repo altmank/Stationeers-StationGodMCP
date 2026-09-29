@@ -100,6 +100,10 @@ internal static class NetworkRoots
         return OverridesGeneration(device.GetType()) && device.PowerCableNetwork == network;
     }
 
+    /// <summary>A generator by class (not an input/output device): it overrides GetGeneratedPower.</summary>
+    internal static bool IsGenerator(Device device) =>
+        !(device is ElectricalInputOutput) && OverridesGeneration(device.GetType());
+
     private static bool OverridesGeneration(Type type)
     {
         if (!Generates.TryGetValue(type, out bool generates))
