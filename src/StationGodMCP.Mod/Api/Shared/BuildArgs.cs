@@ -557,7 +557,7 @@ internal static class BuildArgs
     private static BuildForm<T> Poll<T>(Args args, params string[] others)
     {
         args.Reject("job_id", others);
-        args.Reject("job_id", "dry_run", "confirm");
+        args.Reject("job_id", "dry_run", "confirm", GasHoldVerdict.AcknowledgeArgument);
         return new BuildForm<T>.Poll(args.String("job_id").Trim());
     }
 

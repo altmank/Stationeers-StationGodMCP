@@ -21,6 +21,12 @@
 - **Names in messages.** A thing whose prefab has no English name (the game shows `<N:EN:StructureCrewUmbilicalDoor>`)
   is named by its prefab name in every message, in the game's own texts too ("Placement is blocked by
   StructureCrewUmbilicalDoor.", which lost the name before), and in every `display_name` field.
+- **Acknowledging a gas loss lifts the gas hold.** After a pipe job ends `gas_lost`, pipe jobs no longer stay refused
+  until the world is reloaded: a real run of `place_pipes`, `remove_pipes`, `upgrade_pipes`, `clean_pipes`,
+  `place_structure`, `remove_structure` or `undo_job` with `acknowledge_gas_lost` naming the job that set the hold
+  lifts it and goes on; the reply's `gas_hold` repeats the loss (job, networks, missing mol). Another job's id is
+  refused (`gas_hold_mismatch`). Dry runs report `gas_hold` without lifting it. A later loss holds pipe jobs again.
+  Agents must ask the user before acknowledging.
 - **`undo_job` knows a job it already undid:** the plan says it was already undone and lists the undo's jobs in
   `plan.undone_by`, instead of reporting the world as diverged.
 

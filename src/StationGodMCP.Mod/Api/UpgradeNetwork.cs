@@ -145,7 +145,7 @@ internal static class UpgradeApi
         {
             args.Reject("job_id", "network_id", "reference_ids", "to", "operations", "keep_ids", "only_ids",
                 "older_than_id", "root", "wait", "dry_run",
-                "confirm", "from_id", "skip_unmatched", "refund", "limit");
+                "confirm", "from_id", "skip_unmatched", "refund", "limit", GasHoldVerdict.AcknowledgeArgument);
             return HeldTickJobs.Status(args.String("job_id").Trim());
         }
 
@@ -164,13 +164,15 @@ internal static class UpgradeApi
 
         UpgradeRequest request = Parse(args, family, goal);
         UpgradePlan plan = UpgradePlanner.Plan(request);
+        string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
         if (dryRun)
         {
+            GasHold.Preview(request.Family is PipeFamily, acknowledge);
             return UpgradeReports.Of(plan, UpgradeReports.DryRun, null);
         }
 
         return plan.Ready
-            ? UpgradeJobs.Start(request, plan, args.OptionalBool("wait") ?? false)
+            ? UpgradeJobs.Start(request, plan, args.OptionalBool("wait") ?? false, acknowledge)
             : UpgradeReports.Of(plan, UpgradeReports.Refused, null);
     }
 

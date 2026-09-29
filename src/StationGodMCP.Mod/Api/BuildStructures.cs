@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -25,6 +26,12 @@ internal static class PlaceStructureApi
                 return HeldTickJobs.Status(poll.JobId);
             case BuildForm<PlaceArguments>.Run run:
                 PlacePlan plan = PlacePlanner.Plan(run.Arguments);
+                string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
+                if (!run.Confirmed)
+                {
+                    GasHold.Preview(plan.TouchesPipes, acknowledge);
+                }
+
                 if (!run.Confirmed || !plan.Ready)
                 {
                     return BuildReports.Of(plan, run.Confirmed ? BuildReports.Refused : BuildReports.DryRun, null);
@@ -32,7 +39,8 @@ internal static class PlaceStructureApi
 
                 PlaceReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
                 PlaceWork placing = new PlaceWork(run.Arguments, preflight, plan.TouchesPipes);
-                return JobSnapshots.Record(BuildJobs.Start("place", placing, args.OptionalBool("wait") ?? false),
+                return JobSnapshots.Record(
+                    BuildJobs.Start("place", placing, args.OptionalBool("wait") ?? false, acknowledge),
                     "place_structure", new List<Structure>(), args);
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or placements.");
@@ -54,6 +62,12 @@ internal static class RemoveStructureApi
                 return HeldTickJobs.Status(poll.JobId);
             case BuildForm<RemoveArguments>.Run run:
                 RemovePlan plan = RemovePlanner.Plan(run.Arguments);
+                string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
+                if (!run.Confirmed)
+                {
+                    GasHold.Preview(plan.TouchesPipes, acknowledge);
+                }
+
                 if (!run.Confirmed || !plan.Ready)
                 {
                     return BuildReports.Of(plan, run.Confirmed ? BuildReports.Refused : BuildReports.DryRun, null);
@@ -61,7 +75,8 @@ internal static class RemoveStructureApi
 
                 RemoveReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
                 RemoveWork removing = new RemoveWork(run.Arguments, preflight, plan.TouchesPipes);
-                return JobSnapshots.Record(BuildJobs.Start("remove", removing, args.OptionalBool("wait") ?? false),
+                return JobSnapshots.Record(
+                    BuildJobs.Start("remove", removing, args.OptionalBool("wait") ?? false, acknowledge),
                     "remove_structure", plan.Takedowns.ConvertAll(takedown => takedown.Piece), args);
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or reference_ids.");

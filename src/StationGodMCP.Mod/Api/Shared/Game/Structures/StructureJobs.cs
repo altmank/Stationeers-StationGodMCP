@@ -22,7 +22,8 @@ internal static class StructureJobs
 {
     internal static object Start(StructureSwapRequest request, StructureSwapPlan plan, bool wait) =>
         HeldTickJobs.Start("replace", request.Family.Tool, id => new StructureWaitingForTick(id, request,
-            StructureReports.Of(plan, StructureReports.Scheduled, id), Time.realtimeSinceStartup), wait, null, false);
+            StructureReports.Of(plan, StructureReports.Scheduled, id), Time.realtimeSinceStartup), wait, null, false,
+            null);
 }
 
 /// <summary>A running replace job in one of its states.</summary>

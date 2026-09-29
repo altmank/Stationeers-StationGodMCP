@@ -134,7 +134,7 @@ internal abstract class JobGas
                 GasOrphans.Of(_before.Orphans, after.Orphans), withheld);
             if (!check.Ok)
             {
-                GasHold.Set(jobId, check.Summary);
+                GasHold.Set(check.Loss(jobId));
                 StationGodMod.LogWarning($"job {jobId} gas check failed: {check.Summary}");
             }
 
@@ -150,25 +150,42 @@ internal abstract class JobGas
 /// <summary>
 /// Pipe jobs refused after a job's gas check failed, so a fault that lost gas once cannot lose more before someone
 /// looks. Lifted when the world is left (loading a save or going to the menu; checked every frame by
-/// StationGodMod.Update).
+/// StationGodMod.Update), or by a run that acknowledges the loss: acknowledge_gas_lost naming the job that set the hold
+/// (GasHoldRule), lifted once that run starts. A later failed check sets it again, with its own job.
 /// </summary>
 internal static class GasHold
 {
-    private static string? _reason;
+    private static GasLoss? _loss;
 
-    internal static bool Held => _reason != null;
+    internal static void Set(GasLoss loss) => _loss = loss;
 
-    internal static void Set(string jobId, string summary) =>
-        _reason = $"Job {jobId}'s gas check failed: {summary} Poll that job with job_id for its gas_check.";
+    /// <summary>What the hold means for a run that does or does not touch pipe networks, with its acknowledgement.</summary>
+    internal static GasHoldVerdict Judge(bool touchesPipes, string? acknowledge) =>
+        GasHoldRule.Judge(_loss, touchesPipes, acknowledge);
 
-    internal static ApiException Refusal() => ApiErrors.Refused("gas_check_failed", _reason ?? string.Empty);
+    internal static ApiException Refusal(GasHoldVerdict.Refusing refusing) =>
+        ApiErrors.Refused(refusing.Code, refusing.Message);
+
+    /// <summary>A dry run's view of the hold, for its reply (GasHoldReply); nothing is lifted.</summary>
+    internal static void Preview(bool touchesPipes, string? acknowledge) =>
+        GasHoldReply.Record(Judge(touchesPipes, acknowledge), GasHoldStage.DryRun);
+
+    /// <summary>Lifts the hold a started run acknowledged, if it is still the one that run named.</summary>
+    internal static void Lift(GasHoldVerdict verdict)
+    {
+        if (verdict is GasHoldVerdict.Lifting lifting && _loss != null && ReferenceEquals(_loss, lifting.Hold))
+        {
+            _loss = null;
+            StationGodMod.LogWarning($"gas hold lifted: {lifting.Hold.Describe()} was acknowledged.");
+        }
+    }
 
     /// <summary>Called every frame: a world that is no longer running is not the one the hold was for.</summary>
     internal static void LiftIfWorldLeft()
     {
-        if (_reason != null && (GameManager.GameState == GameState.None || GameManager.GameState == GameState.Loading))
+        if (_loss != null && (GameManager.GameState == GameState.None || GameManager.GameState == GameState.Loading))
         {
-            _reason = null;
+            _loss = null;
         }
     }
 }

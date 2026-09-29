@@ -120,6 +120,31 @@ internal sealed class GasCheckView
 
     internal const string GasLostStatus = "gas_lost";
 
+    /// <summary>
+    /// The loss this failed check records for the gas hold (GasHold): the networks of every family that is not whole
+    /// (its networks now, or before when none are left), every ghost and orphan it left, and what those families lack.
+    /// </summary>
+    internal GasLoss Loss(string jobId)
+    {
+        SortedSet<long> networks = new SortedSet<long>();
+        double missing = 0.0;
+        foreach (GasFamilyView family in Families)
+        {
+            if (family.Ok)
+            {
+                continue;
+            }
+
+            missing += family.MissingMol;
+            List<ThingId> ids = family.NetworksAfter.Count > 0 ? family.NetworksAfter : family.NetworksBefore;
+            ids.ForEach(id => networks.Add(id.Value));
+        }
+
+        Ghosts.ForEach(ghost => networks.Add(ghost.NetworkId.Value));
+        Orphans.ForEach(orphan => networks.Add(orphan.NetworkId.Value));
+        return new GasLoss(jobId, new List<long>(networks), missing, Summary);
+    }
+
     internal static GasCheckView Unchecked(string reason) =>
         new GasCheckView(false, false, reason, new List<GasFamilyView>(), new List<GasGhostView>(),
             new List<GasRefillView>(), new List<ThingId>(), new List<GasGhostView>(), new List<GasOrphanView>(),
@@ -158,13 +183,13 @@ internal sealed class GasCheckView
             ? $"Contents kept: {audit.Families.Count} network famil{(audit.Families.Count == 1 ? "y" : "ies")} " +
               $"changed, {Mol(kept)} mol in them now."
             : audit.Ok
-            ? $"GAS CHECK FAILED{orphanText}. Further pipe jobs are refused until the world is loaded again."
+            ? $"GAS CHECK FAILED{orphanText}." + HoldText
             : (missing >= 0.0
                   ? $"GAS LOST: {Mol(missing)} mol missing from the networks the job changed"
                   : $"GAS CHECK FAILED: {Mol(-missing)} mol more in the networks the job changed than before") +
               (audit.Ghosts.Count > 0 ? $"; {audit.Ghosts.Count} network(s) without pipes hold gas (ghosts)" : "") +
               orphanText +
-              ". Further pipe jobs are refused until the world is loaded again.";
+              "." + HoldText;
         if (put > 0.0)
         {
             text += $" {Mol(put)} mol the game's merge had lost was put back.";
@@ -189,6 +214,10 @@ internal sealed class GasCheckView
 
         return text;
     }
+
+    private const string HoldText =
+        " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss " +
+        "(acknowledge_gas_lost with this job's id, only after the user has agreed).";
 
     private static string Mol(double moles) => moles.ToString("0.###", CultureInfo.InvariantCulture);
 
@@ -363,4 +392,66 @@ internal sealed class GasRefillView
     public double Mol { get; }
 
     public double EnergyJ { get; }
+}
+
+/// <summary>
+/// The gas hold as it bears on one run (a reply's gas_hold): status none, not_applicable, held, mismatch or
+/// acknowledged; whether it applies to the run; whether this reply lifted it; the loss holding pipe jobs; and a note
+/// that says what a dry run would do, or repeats the loss a real run acknowledged.
+/// </summary>
+internal sealed class GasHoldView
+{
+    private GasHoldView(string status, bool applies, bool lifted, string? heldByJobId, GasLossView? loss, string note)
+    {
+        Status = status;
+        Applies = applies;
+        Lifted = lifted;
+        HeldByJobId = heldByJobId;
+        Loss = loss;
+        Note = note;
+    }
+
+    public string Status { get; }
+
+    /// <summary>The hold stops this run unless it is acknowledged with HeldByJobId.</summary>
+    public bool Applies { get; }
+
+    /// <summary>This run acknowledged the loss and lifted the hold.</summary>
+    public bool Lifted { get; }
+
+    /// <summary>The job whose failed gas check holds pipe jobs; the id acknowledge_gas_lost must name.</summary>
+    public string? HeldByJobId { get; }
+
+    public GasLossView? Loss { get; }
+
+    public string Note { get; }
+
+    internal static GasHoldView Of(GasHoldVerdict verdict, GasHoldStage stage) =>
+        new GasHoldView(verdict.Status, verdict.Applies,
+            verdict is GasHoldVerdict.Lifting && stage == GasHoldStage.Started, verdict.Hold?.JobId,
+            verdict.Hold != null ? GasLossView.Of(verdict.Hold) : null, verdict.Note(stage));
+}
+
+/// <summary>The loss holding pipe jobs: the job, its networks, the missing moles and its gas check's summary.</summary>
+internal sealed class GasLossView
+{
+    private GasLossView(string jobId, List<ThingId> networks, double missingMol, string summary)
+    {
+        JobId = jobId;
+        Networks = networks;
+        MissingMol = missingMol;
+        Summary = summary;
+    }
+
+    public string JobId { get; }
+
+    public List<ThingId> Networks { get; }
+
+    public double MissingMol { get; }
+
+    public string Summary { get; }
+
+    internal static GasLossView Of(GasLoss loss) =>
+        new GasLossView(loss.JobId, loss.Networks.ConvertAll(static id => new ThingId(id)), loss.MissingMol,
+            loss.Summary);
 }

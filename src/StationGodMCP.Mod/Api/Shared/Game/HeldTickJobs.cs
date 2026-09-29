@@ -6,6 +6,7 @@ using System.Globalization;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -36,25 +37,31 @@ internal static class HeldTickJobs
     /// <summary>
     /// Starts a job made for its id (prefix-number) and returns its view. While another job runs (or a save or
     /// something else holds the tick): busy with the running job's id, or with wait the job is queued and its
-    /// queued view returned. A job that changes pipe networks is refused while a gas check has failed (GasHold).
+    /// queued view returned. A job that changes pipe networks is refused while a gas check has failed (GasHold),
+    /// unless acknowledge names the job that failed it: the hold is then lifted once this job starts (a queued one when
+    /// it leaves the queue, if the hold is still that job's then). The reply's gas_hold says which (GasHoldReply).
     /// </summary>
     internal static object Start(string prefix, string tool, Func<string, HeldTickJob> create, bool wait,
-        object? preflight, bool pipeNetworks)
+        object? preflight, bool pipeNetworks, string? acknowledge)
     {
         if (GameManager.GameState != GameState.Running)
         {
             throw ApiErrors.Refused("game_not_running", "The world is not running.");
         }
 
-        if (pipeNetworks && GasHold.Held)
+        GasHoldVerdict hold = GasHold.Judge(pipeNetworks, acknowledge);
+        if (hold is GasHoldVerdict.Refusing refusing)
         {
-            throw GasHold.Refusal();
+            throw GasHold.Refusal(refusing);
         }
 
         bool tickTaken = IsSaving() || GameManager.GameTickPaused;
         if (_active == null && Waiting.Count == 0 && !tickTaken)
         {
-            return Launch(NextId(prefix), create).View();
+            object view = Launch(NextId(prefix), create).View();
+            GasHold.Lift(hold);
+            GasHoldReply.Record(hold, GasHoldStage.Started);
+            return view;
         }
 
         if (!wait)
@@ -66,18 +73,21 @@ internal static class HeldTickJobs
                     "pass wait: true to queue the run.");
             }
 
+            GasHoldReply.Record(hold, GasHoldStage.NotStarted);
             return new JobBusyView(tool, _active?.Id ?? string.Empty, Waiting.Count,
                 (_active != null ? $"Job {_active.Id} is still running" : "Jobs are waiting for the slot") +
                 "; nothing was changed. Poll it with job_id, or pass wait: true to queue this run behind it.");
         }
 
         string id = NextId(prefix);
-        if (!Waiting.Add(id, new QueuedJob(tool, create, pipeNetworks)))
+        if (!Waiting.Add(id, new QueuedJob(tool, create, pipeNetworks, acknowledge)))
         {
+            GasHoldReply.Record(hold, GasHoldStage.NotStarted);
             return new JobBusyView(tool, _active?.Id ?? string.Empty, Waiting.Count,
                 $"{MaximumWaiting} runs are already queued; nothing was changed. Try again once one has started.");
         }
 
+        GasHoldReply.Record(hold, GasHoldStage.Queued);
         return new JobQueuedView(id, tool, Waiting.PositionOf(id) ?? 1, _active?.Id, preflight);
     }
 
@@ -223,16 +233,17 @@ internal static class HeldTickJobs
             return;
         }
 
-        if (queued.PipeNetworks && GasHold.Held)
+        GasHoldVerdict hold = GasHold.Judge(queued.PipeNetworks, queued.Acknowledge);
+        if (hold is GasHoldVerdict.Refusing refusing)
         {
-            ApiException refusal = GasHold.Refusal();
-            Remember(id, new JobDroppedView(id, queued.Tool, new ErrorView(refusal.Code, refusal.Message)));
+            Remember(id, new JobDroppedView(id, queued.Tool, new ErrorView(refusing.Code, refusing.Message)));
             return;
         }
 
         try
         {
             Launch(id, queued.Create);
+            GasHold.Lift(hold);
         }
         catch (Exception exception)
         {
@@ -256,11 +267,12 @@ internal static class HeldTickJobs
 
     private sealed class QueuedJob
     {
-        internal QueuedJob(string tool, Func<string, HeldTickJob> create, bool pipeNetworks)
+        internal QueuedJob(string tool, Func<string, HeldTickJob> create, bool pipeNetworks, string? acknowledge)
         {
             Tool = tool;
             Create = create;
             PipeNetworks = pipeNetworks;
+            Acknowledge = acknowledge;
         }
 
         internal string Tool { get; }
@@ -268,6 +280,9 @@ internal static class HeldTickJobs
         internal Func<string, HeldTickJob> Create { get; }
 
         internal bool PipeNetworks { get; }
+
+        /// <summary>The run's acknowledge_gas_lost, judged again when it leaves the queue.</summary>
+        internal string? Acknowledge { get; }
     }
 
     internal static bool IsSaving() => (bool)GameMembers.SaveIsSaving.Invoke(null);

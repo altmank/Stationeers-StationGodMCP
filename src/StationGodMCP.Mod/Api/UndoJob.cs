@@ -23,7 +23,9 @@ namespace StationGodMCP.Api;
 /// queues the placement jobs behind it (wait), each checked again against the world the jobs before it left. Every
 /// call takes the job's own from_id (UndoSource), or the caller's; removing what a free placement built gives nothing
 /// back. A real run is recorded (JobSnapshots.RecordUndo): undoing the same job again is refused as already undone, with
-/// the undo's own jobs named, unless every one of them was refused.
+/// the undo's own jobs named, unless every one of them was refused. acknowledge_gas_lost is passed on to every call, so a
+/// held pipe job is judged by the tool that runs it; a real run the hold would refuse in any of its calls is refused
+/// before the first job starts (GasHoldReply.Refusal).
 /// </summary>
 internal static class UndoJobApi
 {
@@ -45,6 +47,7 @@ internal static class UndoJobApi
 
         long? fromId = args.OptionalThingId("from_id")?.Value;
         string? refundTo = RefundTo(args);
+        string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
         JObject job = JobSnapshots.Wire(HeldTickJobs.Status(jobId));
         RecordedJob? recorded = JobSnapshots.Of(jobId);
         string tool = job.Value<string>("tool") ?? recorded?.Tool ?? "unknown";
@@ -57,15 +60,19 @@ internal static class UndoJobApi
         List<PieceRestore> groups = plan.RestorePieces;
         UndoRemovals removals = UndoRemovals.Of(plan.Remove, groups, JobSnapshots.PieceToolOf);
         plan.Notes.AddRange(RemovalNotes(removals, groups, source));
-        JObject? removeArguments =
-            removals.Structures.Count > 0 ? RemoveArguments(removals.Structures, source) : null;
+        JObject? removeArguments = removals.Structures.Count > 0
+            ? Acknowledging(RemoveArguments(removals.Structures, source), acknowledge)
+            : null;
         List<ThingSnapshot> structures = plan.RestoreStructures;
-        JObject? placeArguments = structures.Count > 0 ? PlaceArguments(structures, source) : null;
+        JObject? placeArguments = structures.Count > 0
+            ? Acknowledging(PlaceArguments(structures, source), acknowledge)
+            : null;
         List<UndoPieceRunView> pieceRuns = new List<UndoPieceRunView>(groups.Count);
         for (int index = 0; index < groups.Count; index++)
         {
             pieceRuns.Add(new UndoPieceRunView(groups[index].Tool,
-                PieceArguments(groups[index], removals.ByRun[index], plan, args, source), null));
+                Acknowledging(PieceArguments(groups[index], removals.ByRun[index], plan, args, source), acknowledge),
+                null));
         }
 
         if (!plan.Ready)
@@ -85,6 +92,12 @@ internal static class UndoJobApi
         {
             return new UndoJobView(jobId, tool, dryRun ? "dry_run" : "refused", ViewOf(plan, ready), removeArguments,
                 placeArguments, removal, placement, checkedRuns);
+        }
+
+        // The checks above judged the hold for every call; one it refuses would otherwise stop the undo half way.
+        if (GasHoldReply.Refusal is { } held)
+        {
+            throw GasHold.Refusal(held);
         }
 
         return Start(jobId, tool, plan, removeArguments, placeArguments, pieceRuns);
@@ -138,6 +151,17 @@ internal static class UndoJobApi
         "place_chutes" => PlaceChutesApi.Handle(args),
         _ => throw new System.ArgumentException($"No place tool {tool}.", nameof(tool))
     };
+
+    // The caller's acknowledge_gas_lost on one of the calls, so the tool that runs a held pipe job judges it.
+    private static JObject Acknowledging(JObject arguments, string? acknowledge)
+    {
+        if (acknowledge != null)
+        {
+            arguments[GasHoldVerdict.AcknowledgeArgument] = acknowledge;
+        }
+
+        return arguments;
+    }
 
     private static Args DryRun(JObject arguments) => new Args((JObject)arguments.DeepClone());
 

@@ -5,6 +5,7 @@ using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Runs;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
@@ -144,7 +145,7 @@ internal static class RunApi
     private static object Status(Args args, params string[] others)
     {
         args.Reject("job_id", others);
-        args.Reject("job_id", "dry_run", "confirm", "from_id", "refund", "limit");
+        args.Reject("job_id", "dry_run", "confirm", "from_id", "refund", "limit", GasHoldVerdict.AcknowledgeArgument);
         return HeldTickJobs.Status(args.String("job_id").Trim());
     }
 
@@ -164,8 +165,10 @@ internal static class RunApi
         }
 
         RunPlan plan = RunPlanner.Plan(request);
+        string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
         if (dryRun)
         {
+            GasHold.Preview(request.Kind.Family is PipeFamily, acknowledge);
             return RunReports.Of(plan, RunReports.DryRun, null);
         }
 
@@ -178,7 +181,8 @@ internal static class RunApi
         }
 
         return plan.Ready
-            ? JobSnapshots.Record(RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null), wait),
+            ? JobSnapshots.Record(
+                RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null), wait, acknowledge),
                 request.Tool, Removed(plan), args, Burnt(plan))
             : RunReports.Of(plan, RunReports.Refused, null);
     }

@@ -55,9 +55,9 @@ internal abstract class BuildWork
 /// </summary>
 internal static class BuildJobs
 {
-    internal static object Start(string prefix, BuildWork work, bool wait) =>
+    internal static object Start(string prefix, BuildWork work, bool wait, string? acknowledgeGasLost) =>
         HeldTickJobs.Start(prefix, work.Tool, id => new BuildWaiting(id, work, Time.realtimeSinceStartup), wait,
-            work.Preflight, work.TouchesPipes);
+            work.Preflight, work.TouchesPipes, acknowledgeGasLost);
 }
 
 /// <summary>What can change a pipe network: a pipe network member (a pipe piece, in-line tank, passive vent) or a thing

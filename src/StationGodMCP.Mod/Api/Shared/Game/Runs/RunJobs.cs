@@ -20,10 +20,10 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// </summary>
 internal static class RunJobs
 {
-    internal static object Start(RunRequest request, RunReportView preflight, bool wait) =>
+    internal static object Start(RunRequest request, RunReportView preflight, bool wait, string? acknowledgeGasLost) =>
         HeldTickJobs.Start("run", request.Tool,
             id => new RunWaiting(id, request, preflight, Time.realtimeSinceStartup), wait, preflight,
-            request.Kind.Family is PipeFamily);
+            request.Kind.Family is PipeFamily, acknowledgeGasLost);
 }
 
 /// <summary>A running run job in one of its states.</summary>

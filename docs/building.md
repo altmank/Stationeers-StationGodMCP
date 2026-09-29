@@ -26,7 +26,7 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    | `applied_with_differences` | Done, but the check found something other than planned; the job lists it. |
    | `applied_unchecked` | Done, but the check afterwards could not run; the job says why. Look before relying on it. |
    | `stopped` | A piece failed part way. The job lists what was done and where it stopped; nothing after that was done. For upgrades, running the same call again resumes. |
-   | `gas_lost` | Pipe network contents went missing and could not be put back; `gas_check` says how much and where. Every later pipe job is refused (`gas_check_failed`), and so is a `place_structure` / `remove_structure` run that places or removes anything with a pipe; other structure runs and dry runs are not. Only loading a save (or going back to the menu) lifts it. |
+   | `gas_lost` | Pipe network contents went missing and could not be put back; `gas_check` says how much and where. Every later pipe job is refused (`gas_check_failed`), and so is a `place_structure` / `remove_structure` run that places or removes anything with a pipe; other structure runs and dry runs are not. Loading a save (or going back to the menu) lifts it, and so does a run that acknowledges the loss (`acknowledge_gas_lost`, see *Gas hold* below); ask the user first. |
    | `refused` | The checks in the held tick failed; nothing changed. |
 
 5. **One job at a time.** A real run that finds another job running answers `busy` with `running_job_id` and changes
@@ -281,6 +281,27 @@ mole. Every job that can change pipe networks (`place_pipes`, `remove_pipes`, `u
 | `orphans` | Networks the game no longer lists that pipes still name (`network_id`, `pipes`, `mol`, `energy_j`, `volume_l`). Nothing simulates them and their gas counts where it sits, so a copy of gas the game already moved shows as gas that appeared. Any fails the check. |
 | `old_orphans` | Such networks that were there before the job: not its doing, left as they are. |
 | `checked` | False only when a save took the game tick before the check. |
+
+**Gas hold.** A job that ends `gas_lost` holds pipe jobs: every later real run that touches a pipe network
+(`place_pipes`, `remove_pipes`, `upgrade_pipes`, `clean_pipes`, `undo_job`, and a `place_structure` /
+`remove_structure` run that places or removes anything with a pipe end) is refused with `gas_check_failed`, so a
+fault that lost gas once cannot lose more before someone looks. Dry runs still answer, and runs that touch no pipe are
+not held. The hold ends when the world is left (a save loaded, or back to the menu), or when a run acknowledges the
+loss:
+
+- **Ask the user before acknowledging a gas loss.** Show them the job's `gas_check` (how much went missing, from
+  which networks) and go on only once they agree to accept it. An agent never acknowledges a loss on its own.
+- Pass `acknowledge_gas_lost` with the id of the job that set the hold (the one that ended `gas_lost`, as the
+  refusal names it). The hold is lifted as the run starts, and the run goes on as usual. A run queued with `wait`
+  lifts it when it leaves the queue, if that job's loss still holds pipe jobs then.
+- The reply's `gas_hold` repeats the loss, so the acknowledgement is on record: `status` `acknowledged`, `lifted`
+  true, `held_by_job_id`, `loss` (`job_id`, `networks`, `missing_mol`, `summary`) and a `note`.
+- Another job's id is refused with `gas_hold_mismatch`, naming the holding job and its loss. Nothing is lifted.
+- A dry run with or without `acknowledge_gas_lost` reports `gas_hold` (`applies`: whether the hold would refuse the
+  real run; the note says what acknowledging would lift) and lifts nothing.
+- `undo_job` passes `acknowledge_gas_lost` on to every call it makes, and refuses a real run the hold would refuse in
+  any of them before starting the first.
+- A later job that ends `gas_lost` holds pipe jobs again, under its own job id: each loss is acknowledged by itself.
 
 ## Chutes
 

@@ -109,7 +109,8 @@ A single local game needs none. The settings cover the local pipe's name and rem
 - **The building tools refuse rather than guess.** They never make materials, never delete a pipe network's
   contents, never remove a chute with an item in it, never touch rocket or indestructible pieces, and never swap a
   wall or frame in a way that opens a room. Every job that changes pipe networks checks their contents before and
-  after (`gas_check`) and stops further pipe jobs if anything went missing.
+  after (`gas_check`) and stops further pipe jobs if anything went missing, until the world is reloaded or the user
+  agrees to accept the loss (`acknowledge_gas_lost`).
 - **Remote access is not encrypted.** The TCP transport checks a shared secret but sends everything in plain text.
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
   tools that need it, which answer `game_changed`; `mod_info` lists them.

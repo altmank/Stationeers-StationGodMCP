@@ -125,8 +125,10 @@ internal static class ApiHost
             }
 
             ResolvedNetworks.Begin();
+            GasHoldReply.Begin();
             object result = ResolvedNetworks.Attach(handler(new Args(request["params"] as JObject)),
                 ResolvedNetworks.Take());
+            result = GasHoldReply.Attach(result, GasHoldReply.Take());
             return Serialize(new ReplyView(requestId, result, MethodStats.Record(method, watch, true)));
         }
         catch (ApiException exception)
