@@ -65,7 +65,7 @@ internal sealed class ChipState
         CompilationError = compilationError;
         ErrorLine = errorLine;
         ErrorType = errorType;
-        ErrorCode = errorCode;
+        ErrorCode = Text.Plain(errorCode);
         CompileError = compileError;
     }
 
@@ -77,6 +77,7 @@ internal sealed class ChipState
 
     internal string? ErrorType { get; }
 
+    /// <summary>ProgrammableChip.GetErrorCode as plain text: the game colours the error type with rich-text tags.</summary>
     internal string? ErrorCode { get; }
 
     /// <summary>Where compiling failed; null while the source compiles.</summary>
@@ -655,7 +656,8 @@ internal sealed class StableSelectorView
         PrefabHash = prefabHash;
         NameHash = nameHash;
         CollisionCount = collisionCount;
-        Ic10Example = nameHash.HasValue
+        // The chip cannot read a device off its network: an lbn with the pair reads other devices or none.
+        Ic10Example = reachable && nameHash.HasValue
             ? "lbn r0 " + prefabHash.ToString(System.Globalization.CultureInfo.InvariantCulture) + " " +
               nameHash.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) + " <LogicType> Average"
             : null;
@@ -679,8 +681,12 @@ internal sealed class StableSelectorView
     /// <summary>A batch instruction with this pair selects this device and no other.</summary>
     public bool Unique => Reachable && CollisionCount == 1;
 
-    /// <summary>How many devices on the holder's data network have this pair.</summary>
+    /// <summary>
+    /// How many devices the chip reaches (on the holder's data network) have this pair. An unreachable device is not
+    /// among them, so its count is of the other devices an lbn with its pair would read.
+    /// </summary>
     public int CollisionCount { get; }
 
+    /// <summary>An lbn with the pair; null when the device is unreachable or has no name hash.</summary>
     public string? Ic10Example { get; }
 }

@@ -36,12 +36,15 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 
 - `set_ic_source` compiles the program at once and restarts it at line 0. A paused chip stays paused; registers and the
   stack are kept (`sp` goes back to 0). A compile error sets `compilation_error`, `compile_error_line` (0-based) and
-  `compile_error_type`; `error_line` and `error_type` are the runtime error's.
-- The chip stores its program as ASCII and runs what it stores: CRLF line ends become LF and each non-ASCII character
-  `?`. The reply's `warnings` say so (`crlf_normalised`, `non_ascii_replaced`).
+  `compile_error_type`; `error_line` and `error_type` are the runtime error's. `error_code` is the game's error text
+  as plain text (the game colours it with rich-text tags; they are removed).
+- The chip stores its program as ASCII and runs what it stores: CRLF and lone CR line ends become LF (the chip splits
+  lines on LF only, so a CR-only program would be one line) and each non-ASCII character `?`. The reply's `warnings`
+  say so (`crlf_normalised`, `cr_normalised`, `non_ascii_replaced`).
 - The chip runs a program of any length, but the in-game editor holds 128 lines of up to 90 characters and 4096
   characters in all, and cuts a longer program when a player opens and submits it. The program is still written;
-  `warnings` has `over_editor_lines`, `over_editor_line_length` or `over_editor_size`.
+  `warnings` has `over_editor_lines`, `over_editor_line_length` or `over_editor_size`. `over_editor_line_length` names
+  every long line (0-based); past 10 it gives their count and the first 10.
 - `control_ic_execution` `pause` holds the chip; `step` runs exactly one instruction and stays paused (a running chip is
   paused first); `resume` lets it run. `step` is refused, with nothing changed, while the program has a compile error
   (`ic_compile_error`) or the holder is off or unpowered (`ic_not_operable`). Pausing holds IC Housings and suits only:
@@ -49,7 +52,10 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 - `resolve_ic_selectors` lists the devices the chip's batch instructions (`lb`, `lbn`, `sb`, `sbn`) reach: those on the
   holder's data network (`batch_device_count`; null when it has none). A selector is `unique` when exactly one device
   on that network has its prefab and name hash. A device named in `target_reference_ids` that is off the network is
-  listed with `reachable: false`; an id that is not a device is `device_not_found`.
+  listed with `reachable: false` and no `ic10_example`: the chip cannot read it, and an `lbn` with its pair reads the
+  reachable devices that share the pair instead, or none. `collision_count` counts reachable devices only, so for an
+  unreachable device it is how many other devices that pair would read. An id that is not a device is
+  `device_not_found`.
 - A register or stack value that is not finite reads as a string: `"NaN"`, `"Infinity"`, `"-Infinity"`.
 - `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it.
 - A holder with no chip: `get_ic_status` answers only `has_chip: false`, the holder and its pins (no `housing`, power
