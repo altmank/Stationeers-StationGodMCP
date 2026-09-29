@@ -126,6 +126,15 @@ internal readonly struct GasTolerance
     internal bool Negligible(GasMix mix) => Close(mix.TotalMol, 0.0, AbsoluteMol) &&
                                            Close(mix.TotalEnergyJ, 0.0, AbsoluteJ);
 
+    /// <summary>A mix whose totals lie between two others (moles and energy), within the tolerance at either end.</summary>
+    internal bool Between(GasMix low, GasMix high, GasMix value) =>
+        AtLeast(value.TotalMol, low.TotalMol, AbsoluteMol) && AtLeast(high.TotalMol, value.TotalMol, AbsoluteMol) &&
+        AtLeast(value.TotalEnergyJ, low.TotalEnergyJ, AbsoluteJ) &&
+        AtLeast(high.TotalEnergyJ, value.TotalEnergyJ, AbsoluteJ);
+
+    private bool AtLeast(double a, double b, double absolute) =>
+        a >= b || Close(a, b, absolute);
+
     private bool Close(double a, double b, double absolute) =>
         Math.Abs(a - b) <= absolute + Relative * Math.Max(Math.Abs(a), Math.Abs(b));
 }
@@ -176,10 +185,11 @@ internal sealed class NetworkGas
 /// </summary>
 internal sealed class PlannedGasLoss
 {
-    internal PlannedGasLoss(long network, double share)
+    internal PlannedGasLoss(long network, double share, bool atMost = false)
     {
         Network = network;
         Share = Math.Max(0.0, Math.Min(1.0, share));
+        AtMost = atMost;
     }
 
     internal long Network { get; }
@@ -187,9 +197,22 @@ internal sealed class PlannedGasLoss
     /// <summary>The part of the network's contents deleted, 0 to 1.</summary>
     internal double Share { get; }
 
+    /// <summary>
+    /// A release the job only sets up (remove_structure with allow_burst: a network left over its weakest pipe bursts
+    /// on a later atmospheric tick, and leaks there): at the check anything from none of the share to all of it may be
+    /// gone. False for a deletion the job itself makes, all of which must be gone.
+    /// </summary>
+    internal bool AtMost { get; }
+
     /// <summary>A forecast's moles as a share of the moles it was made from.</summary>
     internal static PlannedGasLoss Of(long network, double lostMol, double molesBefore) =>
-        new PlannedGasLoss(network, molesBefore > 0.0 ? lostMol / molesBefore : 0.0);
+        new PlannedGasLoss(network, ShareOf(lostMol, molesBefore));
+
+    /// <summary>A burst's release (AtMost): the moles a network left holds, as a share of the network's before.</summary>
+    internal static PlannedGasLoss Burst(long network, double releasedMol, double molesBefore) =>
+        new PlannedGasLoss(network, ShareOf(releasedMol, molesBefore), true);
+
+    private static double ShareOf(double moles, double molesBefore) => molesBefore > 0.0 ? moles / molesBefore : 0.0;
 }
 
 /// <summary>
@@ -202,16 +225,27 @@ internal sealed class PlannedGasLoss
 internal sealed class GasFamily
 {
     internal GasFamily(List<NetworkGas> before, List<NetworkGas> after, GasMix gasBefore, GasMix gasAfter,
-        GasMix plannedLoss, GasTolerance tolerance)
+        GasMix plannedLoss, GasTolerance tolerance, GasMix? plannedRelease = null)
     {
         Before = before;
         After = after;
         GasBefore = gasBefore;
         GasAfter = gasAfter;
         PlannedLoss = plannedLoss;
+        PlannedRelease = plannedRelease ?? GasMix.Empty(gasBefore.Types);
         Expected = gasBefore.Minus(plannedLoss);
-        Conserved = tolerance.Same(Expected, gasAfter);
+        Floor = Expected.Minus(PlannedRelease);
+        Conserved = tolerance.Same(Expected, gasAfter) || tolerance.Between(Floor, Expected, gasAfter);
     }
+
+    /// <summary>
+    /// What a planned burst may let out (PlannedGasLoss.AtMost: allow_burst); the burst comes on a later tick, so at
+    /// the check anything from none of it to all of it may be gone. Empty for most jobs.
+    /// </summary>
+    internal GasMix PlannedRelease { get; }
+
+    /// <summary>The least it may hold after the job: Expected less the planned release.</summary>
+    internal GasMix Floor { get; }
 
     internal List<NetworkGas> Before { get; }
 
@@ -229,7 +263,10 @@ internal sealed class GasFamily
 
     internal bool Emptied => After.Count == 0;
 
-    /// <summary>It holds what it was expected to hold (Expected), within the tolerance.</summary>
+    /// <summary>
+    /// It holds what it was expected to hold (Expected), within the tolerance; with a planned release, anything from
+    /// Floor to Expected.
+    /// </summary>
     internal bool Conserved { get; }
 
     /// <summary>
@@ -311,7 +348,7 @@ internal sealed class GasAudit
         }
 
         List<GasFamily> grouped = families.Group(liveBefore, liveAfter, tolerance, TypesOf(before, after),
-            SharesOf(planned));
+            SharesOf(planned, false), SharesOf(planned, true));
         List<NetworkGas> ghosts = new List<NetworkGas>();
         List<NetworkGas> oldGhosts = new List<NetworkGas>();
         Dictionary<long, NetworkGas> beforeById = AllById(before);
@@ -402,12 +439,18 @@ internal sealed class GasAudit
         return owners;
     }
 
-    // The planned share of each network, several losses of one network added (at most all of it).
-    private static Dictionary<long, double> SharesOf(IReadOnlyList<PlannedGasLoss>? planned)
+    // The planned share of each network, deletions (atMost false) or burst releases (atMost true), several losses of
+    // one network added (at most all of it).
+    private static Dictionary<long, double> SharesOf(IReadOnlyList<PlannedGasLoss>? planned, bool atMost)
     {
         Dictionary<long, double> shares = new Dictionary<long, double>();
         foreach (PlannedGasLoss loss in planned ?? Array.Empty<PlannedGasLoss>())
         {
+            if (loss.AtMost != atMost)
+            {
+                continue;
+            }
+
             shares[loss.Network] = shares.TryGetValue(loss.Network, out double share)
                 ? Math.Min(1.0, share + loss.Share)
                 : loss.Share;
@@ -438,7 +481,8 @@ internal sealed class GasAudit
         }
 
         internal List<GasFamily> Group(Dictionary<long, NetworkGas> liveBefore, Dictionary<long, NetworkGas> liveAfter,
-            GasTolerance tolerance, int types, Dictionary<long, double> plannedShares)
+            GasTolerance tolerance, int types, Dictionary<long, double> plannedShares,
+            Dictionary<long, double> releaseShares)
         {
             Dictionary<long, List<long>> members = new Dictionary<long, List<long>>();
             List<long> ids = new List<long>(_parent.Keys);
@@ -458,7 +502,8 @@ internal sealed class GasAudit
             List<GasFamily> families = new List<GasFamily>(members.Count);
             foreach (List<long> group in members.Values)
             {
-                families.Add(FamilyOf(group, liveBefore, liveAfter, tolerance, types, plannedShares));
+                families.Add(FamilyOf(group, liveBefore, liveAfter, tolerance, types, plannedShares,
+                    releaseShares));
             }
 
             families.Sort(static (a, b) => Lowest(a).CompareTo(Lowest(b)));
@@ -467,13 +512,14 @@ internal sealed class GasAudit
 
         private static GasFamily FamilyOf(List<long> group, Dictionary<long, NetworkGas> liveBefore,
             Dictionary<long, NetworkGas> liveAfter, GasTolerance tolerance, int types,
-            Dictionary<long, double> plannedShares)
+            Dictionary<long, double> plannedShares, Dictionary<long, double> releaseShares)
         {
             List<NetworkGas> before = new List<NetworkGas>();
             List<NetworkGas> after = new List<NetworkGas>();
             GasMix gasBefore = GasMix.Empty(types);
             GasMix gasAfter = GasMix.Empty(types);
             GasMix plannedLoss = GasMix.Empty(types);
+            GasMix plannedRelease = GasMix.Empty(types);
             foreach (long id in group)
             {
                 if (liveBefore.TryGetValue(id, out NetworkGas then))
@@ -485,6 +531,11 @@ internal sealed class GasAudit
                         // The game's split divides a network's whole mixture by volume: a share of every gas goes.
                         plannedLoss = plannedLoss.Plus(then.Gas.Scaled(share));
                     }
+
+                    if (releaseShares.TryGetValue(id, out double released))
+                    {
+                        plannedRelease = plannedRelease.Plus(then.Gas.Scaled(released));
+                    }
                 }
 
                 if (liveAfter.TryGetValue(id, out NetworkGas now))
@@ -494,7 +545,7 @@ internal sealed class GasAudit
                 }
             }
 
-            return new GasFamily(before, after, gasBefore, gasAfter, plannedLoss, tolerance);
+            return new GasFamily(before, after, gasBefore, gasAfter, plannedLoss, tolerance, plannedRelease);
         }
 
         private static long Lowest(GasFamily family)
@@ -616,7 +667,7 @@ internal sealed class GasRefillPlan
 
 /// <summary>
 /// How a family that lost gas is made whole: what it lacks, gas by gas (expected contents minus contents after, each
-/// gas's positive part; a planned loss is not lacking), goes into the family's live networks by volume, as the game's
+/// gas's positive part; a planned loss is not lacking, nor is a planned burst's release, Floor), goes into the family's live networks by volume, as the game's
 /// own split divides a network's contents (NetworkAtmosphereEvent.Apply). A family that gained gas, or has no live
 /// network, gets nothing. A refill never takes a network over the rating of its weakest pipe: when any of the
 /// family's networks would end above it, the family gets nothing and stays short (withheld), since a burst pipe vents
@@ -640,7 +691,8 @@ internal static class GasRefills
                 continue;
             }
 
-            GasMix lacking = family.Expected.Lacking(family.GasAfter);
+            // Below the floor only: a planned burst's release (allow_burst) is expected gone, not put back.
+            GasMix lacking = family.Floor.Lacking(family.GasAfter);
             if (tolerance.Negligible(lacking))
             {
                 continue;

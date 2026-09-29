@@ -22,7 +22,7 @@ connections and guard against merging networks, which `place_structure` does not
 | `show_preview` | Draw wire boxes in your game for a planned placement's footprint, body and ports, or any cells and boxes; timed, nothing built (1.4.3+). | as `place_structure`, or `cells`, `boxes`; `seconds`, `clear` |
 | `describe_prefab` | A prefab in its own frame: placement, allowed turns, footprint, ports, visual up (1.4.3+). | `prefab` |
 | `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]` |
-| `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `refund_to` |
+| `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `allow_burst`, `refund_to` |
 
 ## Replacing walls and frames
 
@@ -314,7 +314,7 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 | `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. An in-line tank or passive vent that is the last of its pipe network (with the rest of the request) takes the network's gas with it: the game deletes it. So does one left as the last of a part of a network the request splits, since the job removes pipe pieces first, and so does a pipe piece left as the last of such a part when the request removes pipe pieces alone. The job's gas check expects exactly that gas gone (`planned_loss_mol`) and does not put it back. | `allow_contents` |
 | `contents_would_move` | An in-line tank or passive vent between pipes of a network that holds gas or liquid: removing it splits the network, and the game divides the contents among the networks left by volume (the message names each share). `remove_pipes` refuses the same split. | `allow_contents` |
 | `would_breach` | It blocks air, and removing it joins spaces whose pressures differ by 1 kPa or more, such as a pressurised room and the outside. | `allow_breach` |
-| `would_burst` | An in-line tank or passive vent that is not the last of its pipe network takes its volume away, and the game keeps the network's gas in what is left. The pressure of what is left would be over its weakest pipe, which would burst; the message gives the forecast and how much gas to take out first. Removed with pipe pieces of its network, the network the request leaves in one piece keeps all its gas and its id; where the request splits it, each part gets its share by volume at each split, in the job's order. | none |
+| `would_burst` | An in-line tank or passive vent that is not the last of its pipe network takes its volume away, and the game keeps the network's gas in what is left. The pressure of what is left would be over its weakest pipe, which would burst; the message gives the forecast and how much gas to take out first. Removed with pipe pieces of its network, the network the request leaves in one piece keeps all its gas and its id; where the request splits it, each part gets its share by volume at each split, in the job's order. | `allow_burst` |
 | `refund_holder_removed` | `from_id` is removed by the same request, or is inside something it removes: the refund would be destroyed with it. | another `from_id`, or `refund_to` |
 | `port_left_open` (warning) | A device end that joins a cable, pipe, chute or device now. | not needed |
 
@@ -334,6 +334,25 @@ Cable, pipe and chute pieces are removed as the remove tools remove them, with t
 warning here, so read it (it does not ask for `allow_split` or `root`, which `remove_structure` does not take; price
 the split against a root with `plan_removal`). Those checks run with `remove_structure`'s own refund (`refund_to`, `from_id`), so they need
 no player on a dedicated server.
+
+### Letting a pipe burst (`allow_burst`)
+
+Outdoors a burst into the atmosphere can be acceptable. `allow_burst: true` lets the dry run and the real run go ahead
+where `would_burst` would refuse; every other check still applies. The reply warns `will_burst` once for each network
+left over its weakest pipe, and lists the same in `will_burst`:
+
+- the forecast: `network_id`, `networks_left`, `volume_left_l`, `pressure_now_kpa`, `pressure_after_kpa` and
+  `rating_kpa` (the weakest pipe left);
+- `pipes` expected to burst: the weakest pipes left that stand in a cell holding air, each with `reference_id`,
+  `prefab_name`, `rating_kpa`, `where` and `pressure_there_kpa`. The game damages only a pipe in such a cell, so a
+  network whose weakest pipes all sit inside walls or frames bursts nowhere: `pipes` is empty and nothing leaks;
+- `where` they leak: a room id, or `outdoors` when no closed room has the cell;
+- the gas expected out: a burst pipe leaks until the network is down to the pressure where it leaks, so
+  `released_mol` of the `holds_mol` the network holds, gas by gas in `gases`.
+
+The burst itself comes on a later game tick, after the job. The job's gas check expects that release
+(`planned_release_mol` on the family): anything from none of it gone to all of it is fine and is never put back, so
+the release alone never ends the job `gas_lost`. Without `allow_burst` nothing changes: the removal is refused.
 
 ### Broken structures
 

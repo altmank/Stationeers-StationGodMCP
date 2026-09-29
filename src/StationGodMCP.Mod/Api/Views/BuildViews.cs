@@ -321,7 +321,7 @@ internal sealed class RemovalView
 internal sealed class RemoveReportView
 {
     internal RemoveReportView(BuildHeader header, List<RemovalView> removals, List<UpgradeAmountView> refund,
-        string refundTo, ThingView? from)
+        string refundTo, ThingView? from, List<BurstView>? willBurst = null)
     {
         Tool = "remove_structure";
         Status = header.Status;
@@ -333,6 +333,7 @@ internal sealed class RemoveReportView
         Refund = refund;
         RefundTo = refundTo;
         From = from;
+        WillBurst = willBurst ?? new List<BurstView>();
         Notes = header.Notes;
     }
 
@@ -358,7 +359,85 @@ internal sealed class RemoveReportView
 
     public ThingView? From { get; }
 
+    /// <summary>Networks left over their weakest pipe that allow_burst lets the request leave so; empty otherwise.</summary>
+    public List<BurstView> WillBurst { get; }
+
     public List<string> Notes { get; }
+}
+
+/// <summary>
+/// A pipe network left over its weakest pipe by a remove_structure request with allow_burst (will_burst): the
+/// forecast pressure against the rating, the pipes expected to burst and where each leaks (a room id, or outdoors),
+/// and the gas expected out (released_mol of the holds_mol it holds, gas by gas).
+/// </summary>
+internal sealed class BurstView
+{
+    internal BurstView(BurstForecast forecast)
+    {
+        NetworkSqueeze squeeze = forecast.Squeeze;
+        NetworkId = new ThingId(squeeze.Network);
+        NetworksLeft = squeeze.Parts;
+        VolumeLeftL = squeeze.LeftL;
+        PressureNowKpa = squeeze.BeforeKpa;
+        PressureAfterKpa = squeeze.AfterKpa;
+        RatingKpa = squeeze.LowestKpa ?? 0.0;
+        Pipes = forecast.Pipes.ConvertAll(static pipe => new BurstPipeView(pipe));
+        Where = forecast.Where;
+        HoldsMol = forecast.HoldsMol;
+        ReleasedMol = forecast.ReleasedMol;
+        Gases = forecast.Released.ConvertAll(static gas => new GasAmountView(gas.Gas, gas.Mol));
+    }
+
+    /// <summary>The network the request takes from (its id before the job).</summary>
+    public ThingId NetworkId { get; }
+
+    /// <summary>How many networks the job leaves of it; above 1, the rest of this entry is one of them.</summary>
+    public int NetworksLeft { get; }
+
+    public double VolumeLeftL { get; }
+
+    public double PressureNowKpa { get; }
+
+    public double PressureAfterKpa { get; }
+
+    /// <summary>The weakest pipe left.</summary>
+    public double RatingKpa { get; }
+
+    /// <summary>The weakest pipes left in cells that hold air; empty when none is, and then none bursts.</summary>
+    public List<BurstPipeView> Pipes { get; }
+
+    /// <summary>Where they leak: room ids, or outdoors.</summary>
+    public List<string> Where { get; }
+
+    public double HoldsMol { get; }
+
+    public double ReleasedMol { get; }
+
+    public List<GasAmountView> Gases { get; }
+}
+
+/// <summary>A pipe expected to burst, and where it leaks.</summary>
+internal sealed class BurstPipeView
+{
+    internal BurstPipeView(BurstPipe pipe)
+    {
+        ReferenceId = new ThingId(pipe.Id);
+        PrefabName = pipe.Prefab;
+        RatingKpa = pipe.RatingKpa;
+        Where = pipe.Where;
+        PressureThereKpa = pipe.OutsideKpa;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public string PrefabName { get; }
+
+    public double RatingKpa { get; }
+
+    /// <summary>The room id of the cell it leaks into, or outdoors.</summary>
+    public string Where { get; }
+
+    public double PressureThereKpa { get; }
 }
 
 /// <summary>A piece a job placed or removed, by its placement's or removal's index.</summary>

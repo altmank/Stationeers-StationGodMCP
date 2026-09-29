@@ -282,11 +282,12 @@ internal sealed class NetworkSqueeze
 /// <summary>The allow flags of remove_structure.</summary>
 internal sealed class RemovalAllowance
 {
-    internal RemovalAllowance(bool contents, bool breach, bool broken = false)
+    internal RemovalAllowance(bool contents, bool breach, bool broken = false, bool burst = false)
     {
         Contents = contents;
         Breach = breach;
         Broken = broken;
+        Burst = burst;
     }
 
     internal bool Contents { get; }
@@ -295,6 +296,105 @@ internal sealed class RemovalAllowance
 
     /// <summary>allow_broken: remove a broken piece as the game deconstructs one, which gives nothing back.</summary>
     internal bool Broken { get; }
+
+    /// <summary>
+    /// allow_burst: remove an in-line tank or passive vent although the network left is squeezed past its weakest
+    /// pipe (would_burst), e.g. outdoors, where a burst into the atmosphere is acceptable; warned as will_burst.
+    /// </summary>
+    internal bool Burst { get; }
+}
+
+/// <summary>
+/// A pipe the forecast pressure is expected to burst: one of the weakest pipes left that stands in a cell holding air
+/// (the game damages only such a member, AtmosphericsNetwork.ScanStructuresAndEvaluate), with where its gas goes.
+/// </summary>
+internal sealed class BurstPipe
+{
+    /// <summary>What Where reads for a cell in no closed room.</summary>
+    internal const string Outdoors = "outdoors";
+
+    internal BurstPipe(long id, string prefab, double ratingKpa, string where, double outsideKpa)
+    {
+        Id = id;
+        Prefab = prefab;
+        RatingKpa = ratingKpa;
+        Where = where;
+        OutsideKpa = outsideKpa;
+    }
+
+    internal long Id { get; }
+
+    internal string Prefab { get; }
+
+    internal double RatingKpa { get; }
+
+    /// <summary>The room id of the cell it leaks into, or "outdoors" (Outdoors).</summary>
+    internal string Where { get; }
+
+    /// <summary>The pressure of that cell now.</summary>
+    internal double OutsideKpa { get; }
+}
+
+/// <summary>One gas a burst lets out, and how much.</summary>
+internal sealed class ReleasedGas
+{
+    internal ReleasedGas(string gas, double mol)
+    {
+        Gas = gas;
+        Mol = mol;
+    }
+
+    internal string Gas { get; }
+
+    internal double Mol { get; }
+}
+
+/// <summary>
+/// A network left over its weakest pipe that allow_burst lets the removal leave so: the squeeze, the gas it holds,
+/// the pipes expected to burst and the gas expected out through them.
+/// </summary>
+internal sealed class BurstForecast
+{
+    internal BurstForecast(NetworkSqueeze squeeze, double holdsMol, List<BurstPipe> pipes, List<ReleasedGas> released)
+    {
+        Squeeze = squeeze;
+        HoldsMol = holdsMol;
+        Pipes = pipes;
+        Released = released;
+        foreach (ReleasedGas gas in released)
+        {
+            ReleasedMol += gas.Mol;
+        }
+
+        List<string> where = new List<string>();
+        foreach (BurstPipe pipe in pipes)
+        {
+            if (!where.Contains(pipe.Where))
+            {
+                where.Add(pipe.Where);
+            }
+        }
+
+        Where = where;
+    }
+
+    internal NetworkSqueeze Squeeze { get; }
+
+    /// <summary>What the network left holds once the job is done: the most a burst can let out.</summary>
+    internal double HoldsMol { get; }
+
+    /// <summary>The weakest pipes left in cells that hold air; empty when none is (then none bursts).</summary>
+    internal List<BurstPipe> Pipes { get; }
+
+    /// <summary>The gas expected out, gas by gas (RemovalRule.ReleasedShare of what it holds).</summary>
+    internal List<ReleasedGas> Released { get; }
+
+    internal double ReleasedMol { get; }
+
+    /// <summary>The distinct places of Pipes: room ids, or "outdoors".</summary>
+    internal List<string> Where { get; }
+
+    internal bool Bursts => Pipes.Count > 0;
 }
 
 /// <summary>
@@ -303,7 +403,8 @@ internal sealed class RemovalAllowance
 /// repair a broken structure, only deconstruct it, and that gives nothing back; the game does not ask CanDeconstruct
 /// on that path, so its refusal is not asked either), items in its slots or gas inside (allow_contents: items drop
 /// where it stood, as a hand deconstruction does; a tank releases its gas there, other devices lose it), and joining
-/// spaces whose pressures differ by at least BreachKpa (allow_breach). Allowed ones become warnings.
+/// spaces whose pressures differ by at least BreachKpa (allow_breach), and squeezing a pipe network past its weakest
+/// pipe (would_burst; allow_burst: will_burst). Allowed ones become warnings.
 /// </summary>
 internal static class RemovalRule
 {
@@ -451,10 +552,79 @@ internal static class RemovalRule
         return new GuardFinding("would_burst", GuardLevel.Refusal, string.Format(CultureInfo.InvariantCulture,
             "removing it takes {0:0.#} L off pipe network {1} and {2}: " +
             "{3:0.#} kPa now, {4:0.#} kPa after, over the weakest pipe left (rated {5:0.#} kPa), which would burst; " +
-            "take at least {6:0.#} % of its gas out first (move_gas)", squeeze.RemovedL, squeeze.Network,
+            "take at least {6:0.#} % of its gas out first (move_gas), or pass allow_burst where a burst is " +
+            "acceptable (outdoors)", squeeze.RemovedL, squeeze.Network,
             where, squeeze.BeforeKpa, squeeze.AfterKpa, squeeze.LowestKpa.Value,
             Math.Ceiling(share * 10.0) / 10.0));
     }
+
+    /// <summary>
+    /// The share of a burst network's gas expected out: a burst pipe leaks until the network is down to the pressure
+    /// of the cell it leaks into (Pipe.LeakMix, every atmospheric tick), taken as the lowest such pressure among the
+    /// pipes expected to burst (the most that can go). Nothing without such a pipe, or a network not above it.
+    /// </summary>
+    internal static double ReleasedShare(double afterKpa, IReadOnlyList<BurstPipe> pipes)
+    {
+        if (pipes.Count == 0 || afterKpa <= 0.0)
+        {
+            return 0.0;
+        }
+
+        double outside = double.MaxValue;
+        foreach (BurstPipe pipe in pipes)
+        {
+            outside = Math.Min(outside, Math.Max(0.0, pipe.OutsideKpa));
+        }
+
+        return Math.Max(0.0, Math.Min(1.0, 1.0 - outside / afterKpa));
+    }
+
+    /// <summary>
+    /// would_burst lifted by allow_burst: the warning will_burst, naming the forecast pressure, the rating, the pipes
+    /// expected to burst with where each leaks (a room id, or outdoors), and the gas expected out.
+    /// </summary>
+    internal static GuardFinding WillBurst(BurstForecast forecast)
+    {
+        NetworkSqueeze squeeze = forecast.Squeeze;
+        string left = squeeze.Parts > 1
+            ? string.Format(CultureInfo.InvariantCulture, "the {0:0.#} L network left of pipe network {1} ({2} " +
+                "networks left)", squeeze.LeftL, squeeze.Network, squeeze.Parts)
+            : string.Format(CultureInfo.InvariantCulture, "pipe network {0} ({1:0.#} L left)", squeeze.Network,
+                squeeze.LeftL);
+        string what = string.Format(CultureInfo.InvariantCulture,
+            "removing it squeezes {0} to {1:0.#} kPa (now {2:0.#} kPa), over its weakest pipe (rated {3:0.#} kPa); " +
+            "allow_burst is set, so it goes ahead", left, squeeze.AfterKpa, squeeze.BeforeKpa,
+            squeeze.LowestKpa ?? 0.0);
+        if (!forecast.Bursts)
+        {
+            return new GuardFinding("will_burst", GuardLevel.Warning,
+                what + ", but none of its weakest pipes stands in a cell that holds air, and the game damages only " +
+                "such a pipe: none is expected to burst, and nothing to leak");
+        }
+
+        List<string> pipes = new List<string>(forecast.Pipes.Count);
+        foreach (BurstPipe pipe in forecast.Pipes)
+        {
+            pipes.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1} ({2}, {3:0.#} kPa there)", pipe.Prefab,
+                pipe.Id, PlaceOf(pipe.Where), pipe.OutsideKpa));
+        }
+
+        List<string> gases = new List<string>(forecast.Released.Count);
+        foreach (ReleasedGas gas in forecast.Released)
+        {
+            gases.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1:0.###} mol", gas.Gas, gas.Mol));
+        }
+
+        List<string> places = forecast.Where.ConvertAll(PlaceOf);
+        return new GuardFinding("will_burst", GuardLevel.Warning, string.Format(CultureInfo.InvariantCulture,
+            "{0}: expected to burst: {1} (the game damages one of them, the most worn, until it bursts); it then " +
+            "leaks until the network is down to the pressure where it leaks: about {2:0.###} mol of the {3:0.###} mol " +
+            "it holds ({4}) into {5}",
+            what, string.Join(", ", pipes), forecast.ReleasedMol, forecast.HoldsMol,
+            gases.Count > 0 ? string.Join(", ", gases) : "no gas", string.Join(" or ", places)));
+    }
+
+    private static string PlaceOf(string where) => where == BurstPipe.Outdoors ? where : "room " + where;
 
     /// <summary>
     /// A pipe network holding gas or liquid that a removal splits (an in-line tank or passive vent between its pipes):

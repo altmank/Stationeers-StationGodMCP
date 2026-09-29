@@ -85,6 +85,12 @@ internal sealed class RemovePlan
     /// </summary>
     internal List<PlannedGasLoss> GasLosses { get; } = new List<PlannedGasLoss>();
 
+    /// <summary>
+    /// The networks left over their weakest pipe that allow_burst lets the request leave so (will_burst): what bursts,
+    /// where, and what leaks out. Their releases are in GasLosses too, as at-most losses (PlannedGasLoss.Burst).
+    /// </summary>
+    internal List<BurstForecast> Bursts { get; } = new List<BurstForecast>();
+
     internal bool Ready => Problems.Count == 0;
 
     /// <summary>Whether any piece is a pipe network member or has a pipe end (PipeContact).</summary>
@@ -297,7 +303,7 @@ internal static class RemovePlanner
             TakedownOutcome outcome = PipeTakedown.Run(Members(network, out Dictionary<long, SmallGrid> members),
                 LinkSurvey.GameLinks(members, new HashSet<long>(members.Keys), new List<long>()),
                 RemovalOrder(plan, network), plan.KeptWhole.Contains(network.ReferenceId), before.TotalMol());
-            model[network.ReferenceId] = new NetworkTakedown(network.ReferenceId, before, outcome, takedown);
+            model[network.ReferenceId] = new NetworkTakedown(network.ReferenceId, before, outcome, takedown, members);
         }
 
         return model;
@@ -369,7 +375,9 @@ internal static class RemovePlanner
     // whole mixture to what is left; structures-23: 605 mol N2 went from 5.5 MPa to 73.7 MPa in two pipes rated
     // 60.8 MPa). Each network left gets the gas the model gives it (all of it for a network kept whole, a share by
     // volume at each split of the job's order); over its weakest pipe the removal is refused as the pipe tools refuse
-    // it (would_burst), naming the network left furthest over its rating.
+    // it (would_burst), naming the network left furthest over its rating. With allow_burst each network left over its
+    // weakest pipe is warned instead (will_burst, BurstOf), and what it may let out is a planned release the job's gas
+    // check expects (PlannedGasLoss.Burst: the burst comes on a later tick, so none or all of it may be gone).
     private static void Squeeze(RemovePlan plan, Dictionary<long, NetworkTakedown> gas)
     {
         foreach (NetworkTakedown taken in gas.Values)
@@ -385,9 +393,22 @@ internal static class RemovePlanner
                 }
 
                 double after = taken.Before.WithVolume(part.VolumeL * molesBefore / part.Moles).PressureKpa();
-                GuardFinding? finding = RemovalRule.Squeeze(new NetworkSqueeze(taken.Network,
-                    taken.Before.PressureKpa(), after, taken.Outcome.RemovedL, part.VolumeL, part.LowestKpa,
-                    taken.Outcome.Parts.Count));
+                NetworkSqueeze squeeze = new NetworkSqueeze(taken.Network, taken.Before.PressureKpa(), after,
+                    taken.Outcome.RemovedL, part.VolumeL, part.LowestKpa, taken.Outcome.Parts.Count);
+                GuardFinding? finding = RemovalRule.Squeeze(squeeze);
+                if (finding != null && plan.Arguments.Allow.Burst)
+                {
+                    BurstForecast burst = BurstOf(taken, part, squeeze);
+                    plan.Bursts.Add(burst);
+                    plan.Add(RemovalRule.WillBurst(burst), taken.First.Index, taken.First.Piece.ReferenceId);
+                    if (burst.Bursts)
+                    {
+                        plan.GasLosses.Add(PlannedGasLoss.Burst(taken.Network, burst.HoldsMol, molesBefore));
+                    }
+
+                    continue;
+                }
+
                 double ratio = after / part.LowestKpa.Value;
                 if (finding != null && ratio > worstRatio)
                 {
@@ -401,6 +422,64 @@ internal static class RemovePlanner
                 plan.Add(worst, taken.First.Index, taken.First.Piece.ReferenceId);
             }
         }
+    }
+
+    // A network left over its weakest pipe, as it would burst. The game damages only a member in a cell that holds air
+    // (AtmosphericsNetwork.ScanStructuresAndEvaluate: an exposed member; a pipe inside a wall or frame is not), so the
+    // pipes expected to burst are the weakest of those still over their rating; each leaks into its cells (Pipe
+    // .OnAtmosphericTick, LeakMix): the room there, or outdoors when no closed room has the cell. What leaks is the
+    // part's share of the network's mix, down to the pressure where it leaks (RemovalRule.ReleasedShare).
+    private static BurstForecast BurstOf(NetworkTakedown taken, TakedownPart part, NetworkSqueeze squeeze)
+    {
+        List<BurstPipe> exposed = new List<BurstPipe>();
+        foreach (long id in part.Members)
+        {
+            if (taken.Members.TryGetValue(id, out SmallGrid member) && member is Pipe pipe &&
+                pipe.MaxPressure.ToDouble() < squeeze.AfterKpa && ExposedOf(pipe) is { } burst)
+            {
+                exposed.Add(burst);
+            }
+        }
+
+        double weakest = double.MaxValue;
+        exposed.ForEach(pipe => weakest = System.Math.Min(weakest, pipe.RatingKpa));
+        List<BurstPipe> pipes = exposed.FindAll(pipe => pipe.RatingKpa <= weakest);
+        double share = RemovalRule.ReleasedShare(squeeze.AfterKpa, pipes) * part.Moles / taken.Outcome.MolesBefore;
+        List<ReleasedGas> released = new List<ReleasedGas>();
+        for (int index = 0; index < GasTypes.All.Length; index++)
+        {
+            double moles = taken.Before.MolesOf(index) * share;
+            if (moles >= RemovalRule.GasFloorMol)
+            {
+                released.Add(new ReleasedGas(GasTypes.All[index].ToString(), moles));
+            }
+        }
+
+        return new BurstForecast(squeeze, part.Moles, pipes, released);
+    }
+
+    // The pipe as a burst would find it: its first cell that holds air, the room of that cell (or outdoors) and the
+    // pressure there; null when no cell of it holds air.
+    private static BurstPipe? ExposedOf(Pipe pipe)
+    {
+        GridController grid = GridController.World;
+        AtmosphericsController air = AtmosphericsController.World;
+        RoomController? rooms = RoomController.World;
+        foreach (WorldGrid cell in new List<WorldGrid>(pipe.CurrentGrids ?? new List<WorldGrid>()))
+        {
+            if (!grid.CanContainAtmos(cell))
+            {
+                continue;
+            }
+
+            Room? room = rooms?.GetRoom(cell);
+            Atmosphere? atmosphere = air.SampleGlobalAtmosphere(cell);
+            return new BurstPipe(pipe.ReferenceId, pipe.PrefabName, pipe.MaxPressure.ToDouble(),
+                room != null ? RoomsApi.IdOf(room) : BurstPipe.Outdoors,
+                atmosphere != null ? atmosphere.PressureGassesAndLiquids.ToDouble() : 0.0);
+        }
+
+        return null;
     }
 
     // A network the job splits by taking an in-line tank or passive vent from it while it holds gas: its contents move
@@ -925,13 +1004,18 @@ internal sealed class NetworkRun
 /// <summary>A pipe network the request takes members from: its gas now and as the job leaves it.</summary>
 internal sealed class NetworkTakedown
 {
-    internal NetworkTakedown(long network, GasSnapshot before, TakedownOutcome outcome, PlannedTakedown first)
+    internal NetworkTakedown(long network, GasSnapshot before, TakedownOutcome outcome, PlannedTakedown first,
+        Dictionary<long, SmallGrid> members)
     {
         Network = network;
         Before = before;
         Outcome = outcome;
         First = first;
+        Members = members;
     }
+
+    /// <summary>Its members now, by reference id (the ids TakedownPart.Members names).</summary>
+    internal Dictionary<long, SmallGrid> Members { get; }
 
     internal long Network { get; }
 

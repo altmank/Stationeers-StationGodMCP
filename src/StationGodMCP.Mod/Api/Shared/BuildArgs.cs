@@ -291,7 +291,7 @@ internal static class BuildArgs
         if (args.Has("job_id"))
         {
             return Poll<RemoveArguments>(args, "reference_ids", "allow_contents", "allow_breach", "allow_broken",
-                "refund_to", "from_id");
+                "allow_burst", "refund_to", "from_id");
         }
 
         if (!args.Has("reference_ids"))
@@ -301,7 +301,8 @@ internal static class BuildArgs
 
         List<ThingId> ids = args.ThingIds("reference_ids", MaximumRemovals);
         RemovalAllowance allow = new RemovalAllowance(args.OptionalBool("allow_contents") ?? false,
-            args.OptionalBool("allow_breach") ?? false, args.OptionalBool("allow_broken") ?? false);
+            args.OptionalBool("allow_breach") ?? false, args.OptionalBool("allow_broken") ?? false,
+            args.OptionalBool("allow_burst") ?? false);
         RefundTo refundTo = RefundToOf(args.OptionalString("refund_to"));
         bool confirmed = Confirmed(args);
         return new BuildForm<RemoveArguments>.Run(

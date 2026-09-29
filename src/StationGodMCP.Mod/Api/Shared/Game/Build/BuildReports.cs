@@ -36,6 +36,9 @@ internal static class BuildReports
         "(allow_broken), items or gas inside (allow_contents), a removal joining spaces whose pressures differ by 1 kPa or more " +
         "(allow_breach). The breach check judges the whole request at once: a face stays sealed while anything " +
         "left on it, or a finished frame beside it, blocks air.",
+        "An in-line tank or passive vent whose removal squeezes the network left past its weakest pipe is refused " +
+        "(would_burst) unless allow_burst, e.g. outdoors: then will_burst names the pipes expected to burst, where " +
+        "they leak (a room id or outdoors) and the gas expected out, and the job's gas check expects that release.",
         "Cable, pipe and chute pieces are removed as remove_cables, remove_pipes and remove_chutes remove them; " +
         "their would_split is a warning here.",
         "A real run needs dry_run: false and confirm: true; poll the job with job_id."
@@ -75,7 +78,8 @@ internal static class BuildReports
 
         return new RemoveReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings, RemoveNotes),
             removals, Amounts(all), plan.Arguments.RefundTo.ToString().ToLowerInvariant(),
-            plan.From != null ? GameLookup.ViewOf(plan.From) : null);
+            plan.From != null ? GameLookup.ViewOf(plan.From) : null,
+            plan.Bursts.ConvertAll(static burst => new BurstView(burst)));
     }
 
     internal static PlacementView ViewOf(PlannedPlacement placement)

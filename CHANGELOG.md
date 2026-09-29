@@ -27,6 +27,12 @@
   lifts it and goes on; the reply's `gas_hold` repeats the loss (job, networks, missing mol). Another job's id is
   refused (`gas_hold_mismatch`). Dry runs report `gas_hold` without lifting it. A later loss holds pipe jobs again.
   Agents must ask the user before acknowledging.
+- **`remove_structure` `allow_burst`.** Removing an in-line tank or passive vent that squeezes the network left past
+  its weakest pipe is still refused (`would_burst`) by default; `allow_burst: true` lets it go ahead where a burst is
+  acceptable, e.g. outdoors. The reply warns `will_burst` for each such network, and its `will_burst` list gives the
+  forecast pressure and rating, the pipes expected to burst, where each leaks (a room id or `outdoors`) and the gases
+  and moles expected out. The job's gas check expects that release (`planned_release_mol`): it is never put back and
+  never ends the job `gas_lost`.
 - **`undo_job` knows a job it already undid:** the plan says it was already undone and lists the undo's jobs in
   `plan.undone_by`, instead of reporting the world as diverged.
 

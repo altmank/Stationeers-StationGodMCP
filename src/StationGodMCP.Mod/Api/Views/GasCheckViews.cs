@@ -156,6 +156,7 @@ internal sealed class GasCheckView
         double kept = 0.0;
         double deleted = 0.0;
         double planned = 0.0;
+        double release = 0.0;
         double missing = 0.0;
         foreach (GasFamily family in audit.Families)
         {
@@ -167,6 +168,7 @@ internal sealed class GasCheckView
             {
                 kept += family.GasAfter.TotalMol;
                 planned += family.PlannedLoss.TotalMol;
+                release += family.PlannedRelease.TotalMol;
                 missing += family.MissingMol;
             }
         }
@@ -207,6 +209,12 @@ internal sealed class GasCheckView
                     "(allow_contents).";
         }
 
+        if (release > 0.0)
+        {
+            text += $" Up to {Mol(release)} mol may leak out once the networks the plan leaves over their weakest " +
+                    "pipe burst (allow_burst, will_burst); that release is expected and not put back.";
+        }
+
         if (deleted > 0.0)
         {
             text += $" {Mol(deleted)} mol went with the last pipes of networks the job removed.";
@@ -228,7 +236,8 @@ internal sealed class GasCheckView
 internal sealed class GasFamilyView
 {
     private GasFamilyView(List<ThingId> networksBefore, List<ThingId> networksAfter, double molBefore,
-        double molAfter, double energyBeforeJ, double energyAfterJ, double plannedLossMol, bool emptied, bool ok)
+        double molAfter, double energyBeforeJ, double energyAfterJ, double plannedLossMol, double plannedReleaseMol,
+        bool emptied, bool ok)
     {
         NetworksBefore = networksBefore;
         NetworksAfter = networksAfter;
@@ -237,6 +246,7 @@ internal sealed class GasFamilyView
         EnergyBeforeJ = energyBeforeJ;
         EnergyAfterJ = energyAfterJ;
         PlannedLossMol = plannedLossMol;
+        PlannedReleaseMol = plannedReleaseMol;
         MissingMol = emptied ? 0.0 : molBefore - plannedLossMol - molAfter;
         Emptied = emptied;
         Ok = ok;
@@ -260,6 +270,13 @@ internal sealed class GasFamilyView
     /// </summary>
     public double PlannedLossMol { get; }
 
+    /// <summary>
+    /// What a burst the plan let happen may let out (remove_structure with allow_burst, will_burst): the burst comes on
+    /// a later tick, so the family is ok holding anything from its expected contents down to this much less; never put
+    /// back.
+    /// </summary>
+    public double PlannedReleaseMol { get; }
+
     /// <summary>Before, less the planned loss, minus after; negative when gas appeared. Zero for an emptied family.</summary>
     public double MissingMol { get; }
 
@@ -270,8 +287,8 @@ internal sealed class GasFamilyView
 
     internal static GasFamilyView Of(GasFamily family) =>
         new GasFamilyView(Ids(family.Before), Ids(family.After), family.GasBefore.TotalMol, family.GasAfter.TotalMol,
-            family.GasBefore.TotalEnergyJ, family.GasAfter.TotalEnergyJ, family.PlannedLoss.TotalMol, family.Emptied,
-            family.Emptied || family.Conserved);
+            family.GasBefore.TotalEnergyJ, family.GasAfter.TotalEnergyJ, family.PlannedLoss.TotalMol,
+            family.PlannedRelease.TotalMol, family.Emptied, family.Emptied || family.Conserved);
 
     internal static List<ThingId> Ids(List<NetworkGas> networks) =>
         networks.ConvertAll(static network => new ThingId(network.Id));
