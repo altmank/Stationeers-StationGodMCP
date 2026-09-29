@@ -97,7 +97,8 @@ A single local game needs none. The settings cover the local pipe's name and rem
   Every player who joins needs the same version, because the StationGod Gateway is a new structure.
 - **The building tools refuse rather than guess.** They never make materials, never delete a pipe network's
   contents, never remove a chute with an item in it, never touch rocket or indestructible pieces, and never swap a
-  wall or frame in a way that opens a room.
+  wall or frame in a way that opens a room. Every job that changes pipe networks checks their contents before and
+  after (`gas_check`) and stops further pipe jobs if anything went missing.
 - **Remote access is not encrypted.** The TCP transport checks a shared secret but sends everything in plain text.
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
   tools that need it, which answer `game_changed`; `mod_info` lists them.
@@ -126,7 +127,8 @@ cell positions in messages in metres.
 removal, the 1.3.4 rooms in `move_gas`, and the 1.3.5 layout helpers (rotation readouts, `place_structure`'s port
 preview, in-line tank and passive vent route ends, `reserve_cells` and `reserve_ports`, `move_gas` `dry_run`), and
 the 1.4.0 Ingot Vault tools (`vault_contents`, `vault_deposit`, `vault_withdraw`) and `move_item`'s refusal of a
-vault's display slots.
+vault's display slots, and the 1.4.1 gas check of pipe jobs (`gas_check`, `gas_lost`, the queued gas applied after
+every piece).
 
 ## Documentation
 

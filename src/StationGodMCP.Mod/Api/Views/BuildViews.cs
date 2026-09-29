@@ -382,7 +382,8 @@ internal sealed class BuildCheckView
 /// <summary>What a job did: the final check's report, the pieces, the materials, where it stopped, the checks.</summary>
 internal sealed class BuildJobResult
 {
-    internal BuildJobResult(object? finalCheck, BuildLog log, List<BuildCheckView> verification, ErrorView? error)
+    internal BuildJobResult(object? finalCheck, BuildLog log, List<BuildCheckView> verification, ErrorView? error,
+        GasCheckView? gasCheck = null)
     {
         FinalCheck = finalCheck;
         Placed = log.Placed;
@@ -393,6 +394,7 @@ internal sealed class BuildJobResult
         StoppedAt = log.StoppedAt;
         Verification = verification;
         Error = error;
+        GasCheck = gasCheck;
     }
 
     public object? FinalCheck { get; }
@@ -412,6 +414,10 @@ internal sealed class BuildJobResult
     public List<BuildCheckView> Verification { get; }
 
     public ErrorView? Error { get; }
+
+    /// <summary>The pipe networks' contents before and after the job.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public GasCheckView? GasCheck { get; }
 }
 
 /// <summary>What a job has done so far, as it goes.</summary>

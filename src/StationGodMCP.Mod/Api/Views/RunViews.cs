@@ -785,6 +785,7 @@ internal sealed class RunJobView
         FinalCheck = result?.FinalCheck;
         Log = result?.Log;
         Verification = result?.Verification;
+        GasCheck = result?.GasCheck;
         Error = result?.Error;
     }
 
@@ -805,6 +806,10 @@ internal sealed class RunJobView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public RunVerificationView? Verification { get; }
 
+    /// <summary>The pipe networks' contents before and after (pipe runs only).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public GasCheckView? GasCheck { get; }
+
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ErrorView? Error { get; }
 }
@@ -812,13 +817,16 @@ internal sealed class RunJobView
 internal sealed class RunJobResultView
 {
     internal RunJobResultView(RunReportView? finalCheck, RunLogView? log, RunVerificationView? verification,
-        ErrorView? error)
+        ErrorView? error, GasCheckView? gasCheck = null)
     {
         FinalCheck = finalCheck;
         Log = log;
         Verification = verification;
         Error = error;
+        GasCheck = gasCheck;
     }
+
+    internal GasCheckView? GasCheck { get; }
 
     internal RunReportView? FinalCheck { get; }
 

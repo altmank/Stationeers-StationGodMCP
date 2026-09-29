@@ -962,7 +962,8 @@ internal sealed class PipeNetworkAir
 /// A confirmed run, polled by job_id. status: waiting (for the game tick to stop), applied (swapped and every check
 /// after it passed), applied_with_differences (swapped, but a check after it failed: see verification), stopped (a
 /// swap failed part way: swapped lists what was done, stopped_at why), applied_unchecked (swapped, but the check
-/// after it could not run: see error), refused (nothing was changed).
+/// after it could not run: see error), gas_lost (pipe contents went missing: see gas_check), refused (nothing was
+/// changed).
 /// </summary>
 internal sealed class UpgradeJobView
 {
@@ -983,6 +984,7 @@ internal sealed class UpgradeJobView
         RefundDelivered = result?.Refunded ?? new List<UpgradeRefundView>();
         RefundError = result?.RefundError;
         Verification = result?.Verification;
+        GasCheck = result?.GasCheck;
         Error = result?.Error;
     }
 
@@ -1020,13 +1022,17 @@ internal sealed class UpgradeJobView
 
     public UpgradeVerificationView? Verification { get; }
 
+    /// <summary>The pipe networks' contents before and after (pipe jobs only).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public GasCheckView? GasCheck { get; }
+
     public ErrorView? Error { get; }
 }
 
 internal sealed class UpgradeJobResult
 {
     internal UpgradeJobResult(UpgradeReportView? finalCheck, UpgradeSwapLog log, UpgradeVerificationView? verification,
-        ErrorView? error)
+        ErrorView? error, GasCheckView? gasCheck = null)
     {
         FinalCheck = finalCheck;
         Swapped = log.Swapped;
@@ -1038,6 +1044,7 @@ internal sealed class UpgradeJobResult
         RefundError = log.RefundError;
         Verification = verification;
         Error = error;
+        GasCheck = gasCheck;
     }
 
     internal UpgradeReportView? FinalCheck { get; }
@@ -1059,6 +1066,8 @@ internal sealed class UpgradeJobResult
     internal UpgradeVerificationView? Verification { get; }
 
     internal ErrorView? Error { get; }
+
+    internal GasCheckView? GasCheck { get; }
 }
 
 /// <summary>What a swap loop did, piece by piece, and what it used and gave back.</summary>

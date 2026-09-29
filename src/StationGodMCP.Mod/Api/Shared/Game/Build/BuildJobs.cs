@@ -26,8 +26,11 @@ internal abstract class BuildWork
     /// <summary>The final check's report, or null (with the error) when it refuses.</summary>
     internal abstract object? FinalCheck(out ErrorView? refusal);
 
-    /// <summary>Places or removes everything, in this frame, as far as it goes.</summary>
-    internal abstract void Apply(BuildLog log);
+    /// <summary>
+    /// Places or removes everything, in this frame, as far as it goes; the gas changes each placement queues are
+    /// applied before the next one (JobGas.Settle).
+    /// </summary>
+    internal abstract void Apply(BuildLog log, JobGas gas);
 
     /// <summary>Whether Unity has finished what Apply started (removed pieces destroyed).</summary>
     internal abstract bool Settled();
@@ -35,12 +38,15 @@ internal abstract class BuildWork
     internal abstract List<BuildCheckView> Verify(BuildLog log);
 }
 
-/// <summary>Confirmed place_structure and remove_structure runs, on the shared runner (HeldTickJobs).</summary>
+/// <summary>
+/// Confirmed place_structure and remove_structure runs, on the shared runner (HeldTickJobs). Either can join or split
+/// pipe networks (an in-line tank, a passive vent, a pipe piece), so both have their contents checked (JobGas).
+/// </summary>
 internal static class BuildJobs
 {
     internal static object Start(string prefix, BuildWork work, bool wait) =>
         HeldTickJobs.Start(prefix, work.Tool, id => new BuildWaiting(id, work, Time.realtimeSinceStartup), wait,
-            work.Preflight);
+            work.Preflight, true);
 }
 
 /// <summary>Waiting for the game tick to stop; then the final check and the work, in one frame.</summary>
@@ -82,6 +88,7 @@ internal sealed class BuildWaiting : HeldTickJob
                 : JobStep.Next(this);
         }
 
+        JobGas gas = JobGas.Open(true);
         object? finalCheck;
         ErrorView? refusal;
         try
@@ -99,8 +106,8 @@ internal sealed class BuildWaiting : HeldTickJob
         }
 
         BuildLog log = new BuildLog();
-        _work.Apply(log);
-        return JobStep.Next(new BuildSettling(Id, _work, finalCheck, log));
+        _work.Apply(log, gas);
+        return JobStep.Next(new BuildSettling(Id, _work, finalCheck, log, gas));
     }
 
     private BuildJobView Refused(object? finalCheck, ErrorView error) =>
@@ -116,14 +123,16 @@ internal sealed class BuildSettling : HeldTickJob
     private readonly BuildWork _work;
     private readonly object? _finalCheck;
     private readonly BuildLog _log;
+    private readonly JobGas _gas;
     private int _frames;
 
-    internal BuildSettling(string id, BuildWork work, object? finalCheck, BuildLog log)
+    internal BuildSettling(string id, BuildWork work, object? finalCheck, BuildLog log, JobGas gas)
         : base(id)
     {
         _work = work;
         _finalCheck = finalCheck;
         _log = log;
+        _gas = gas;
     }
 
     internal override object View() => new BuildJobView(Id, _work.Tool, "verifying", _work.Preflight, null);
@@ -140,12 +149,13 @@ internal sealed class BuildSettling : HeldTickJob
             return JobStep.Next(this);
         }
 
+        GasCheckView? gasCheck = _gas.Close(Id);
         List<BuildCheckView> checks = _work.Verify(_log);
         string status = _log.StoppedAt != null ? "stopped"
             : checks.TrueForAll(check => check.Ok) ? "applied"
             : "applied_with_differences";
-        return JobStep.Finish(new BuildJobView(Id, _work.Tool, status, _work.Preflight,
-            new BuildJobResult(_finalCheck, _log, checks, null)), true);
+        return JobStep.Finish(new BuildJobView(Id, _work.Tool, GasCheckView.JobStatus(status, gasCheck),
+            _work.Preflight, new BuildJobResult(_finalCheck, _log, checks, null, gasCheck)), true);
     }
 }
 
@@ -181,7 +191,7 @@ internal sealed class PlaceWork : BuildWork
         return BuildReports.Of(_plan, _plan.Ready ? BuildReports.Scheduled : BuildReports.Refused, null);
     }
 
-    internal override void Apply(BuildLog log)
+    internal override void Apply(BuildLog log, JobGas gas)
     {
         PlacePlan plan = _plan!;
         Dictionary<int, ItemStock> stocks = new Dictionary<int, ItemStock>();
@@ -197,6 +207,8 @@ internal sealed class PlaceWork : BuildWork
             {
                 break;
             }
+
+            gas.Settle();
         }
 
         foreach (ItemStock stock in plan.Stocks)
@@ -382,7 +394,9 @@ internal sealed class RemoveWork : BuildWork
         return BuildReports.Of(_plan, _plan.Ready ? BuildReports.Scheduled : BuildReports.Refused, null);
     }
 
-    internal override void Apply(BuildLog log)
+    // Removals only split networks, and the game chains splits made in one frame itself (Pipe.OnDestroy divides from
+    // the live atmosphere of a network still awaiting its share): the gas is applied and checked once, at the end.
+    internal override void Apply(BuildLog log, JobGas gas)
     {
         RemovePlan plan = _plan!;
         List<PlannedTakedown> done = new List<PlannedTakedown>();

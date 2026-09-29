@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.4.1
+
+Fix: pipe jobs lost gas when one job merged pipe networks more than once.
+
+- **The cause.** The game moves a merged network's gas to the survivor through a queued event, applied only at the
+  start of the next game tick. A job holds the tick and builds a whole run in one frame, so a run that joined a
+  gas-holding network and also joined a second network (a branch, an extra end, a loop closed) merged twice in one
+  tick: the second merge copied a survivor that had not yet received the first merge's gas, and that gas then landed
+  in a network with no pipes left. The same happened at an in-line tank's port: the tank network's gas ended up in a
+  pipeless network its devices still read, while the tank's own network read 0 mol. Both jobs reported success.
+- **The fix.** Every job that can change pipe networks (`place_pipes`, `remove_pipes`, `upgrade_pipes`,
+  `clean_pipes`, `place_structure`, `remove_structure`) applies the game's queued gas changes right after each piece
+  it builds, where the tick would apply them, so every merge and split sees the contents the one before left.
+- **`gas_check`.** The same jobs read every pipe network before and after and compare each family of networks they
+  changed, moles and energy: `gas_check {checked, ok, summary, families, ghosts, recovered, ghosts_cleared,
+  old_ghosts}`. A family short of gas gets what it lacks put back (`recovered`) and pipeless networks left holding a
+  copy are emptied and dropped (`ghosts_cleared`). If anything is still missing the job ends `gas_lost`, not
+  `applied`, and every later pipe job is refused (`gas_check_failed`) until the world is loaded again.
+- Removing a network's last pipes still deletes its contents as the game does (only with `allow_contents`); the
+  check reports that family as `emptied`, not as a loss.
+
 ## 1.4.0
 
 Ingot Vault tools (needs the Ingot Vault mod, Workshop 3749011679; without it they answer

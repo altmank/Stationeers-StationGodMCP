@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using UnityEngine;
 
@@ -14,13 +15,15 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// With the game tick held: once it has stopped, the whole preflight runs again and, only if it finds nothing, the
 /// removals are made in that frame; the frame after they are gone, every change and new piece is built in one frame;
 /// once the replaced pieces are gone, the result is checked and the tick let go. No power, atmospherics or logic tick
-/// sees a device between its old cable and its new one.
+/// sees a device between its old cable and its new one. A pipe run's queued gas changes are applied after the
+/// removals and after every piece built, and its contents are checked at the end (JobGas).
 /// </summary>
 internal static class RunJobs
 {
     internal static object Start(RunRequest request, RunReportView preflight, bool wait) =>
         HeldTickJobs.Start("run", request.Tool,
-            id => new RunWaiting(id, request, preflight, Time.realtimeSinceStartup), wait, preflight);
+            id => new RunWaiting(id, request, preflight, Time.realtimeSinceStartup), wait, preflight,
+            request.Kind.Family is PipeFamily);
 }
 
 /// <summary>A running run job in one of its states.</summary>
@@ -79,6 +82,7 @@ internal sealed class RunWaiting : ActiveRun
                 : JobStep.Next(this);
         }
 
+        JobGas gas = JobGas.Open(Request.Kind.Family is PipeFamily);
         RunPlan plan;
         try
         {
@@ -100,7 +104,7 @@ internal sealed class RunWaiting : ActiveRun
         RunReportView finalCheck = RunReports.Of(plan, RunReports.Scheduled, Id);
         RunOutcome outcome = new RunOutcome();
         RunBuilder.Remove(plan, outcome);
-        return JobStep.Next(new RunAwaitingRemovals(this, plan, outcome, finalCheck));
+        return JobStep.Next(new RunAwaitingRemovals(this, plan, outcome, finalCheck, gas));
     }
 }
 
@@ -112,14 +116,17 @@ internal sealed class RunAwaitingRemovals : ActiveRun
     private readonly RunPlan _plan;
     private readonly RunOutcome _outcome;
     private readonly RunReportView _finalCheck;
+    private readonly JobGas _gas;
     private int _frames;
 
-    internal RunAwaitingRemovals(ActiveRun waiting, RunPlan plan, RunOutcome outcome, RunReportView finalCheck)
+    internal RunAwaitingRemovals(ActiveRun waiting, RunPlan plan, RunOutcome outcome, RunReportView finalCheck,
+        JobGas gas)
         : base(waiting.Id, waiting.Request, waiting.Preflight)
     {
         _plan = plan;
         _outcome = outcome;
         _finalCheck = finalCheck;
+        _gas = gas;
     }
 
     internal override object Failed(ErrorView error) =>
@@ -143,12 +150,14 @@ internal sealed class RunAwaitingRemovals : ActiveRun
             return JobStep.Next(this);
         }
 
+        // The removed pieces' splits (Pipe.OnDestroy, at the end of the removal frame) land before any merge.
+        _gas.Settle();
         if (_outcome.Log.StoppedAt == null)
         {
-            RunBuilder.Build(_plan, _outcome);
+            RunBuilder.Build(_plan, _outcome, _gas);
         }
 
-        return JobStep.Next(new RunAwaitingCheck(this, _plan, _outcome, _finalCheck));
+        return JobStep.Next(new RunAwaitingCheck(this, _plan, _outcome, _finalCheck, _gas));
     }
 }
 
@@ -160,14 +169,17 @@ internal sealed class RunAwaitingCheck : ActiveRun
     private readonly RunPlan _plan;
     private readonly RunOutcome _outcome;
     private readonly RunReportView _finalCheck;
+    private readonly JobGas _gas;
     private int _frames;
 
-    internal RunAwaitingCheck(ActiveRun previous, RunPlan plan, RunOutcome outcome, RunReportView finalCheck)
+    internal RunAwaitingCheck(ActiveRun previous, RunPlan plan, RunOutcome outcome, RunReportView finalCheck,
+        JobGas gas)
         : base(previous.Id, previous.Request, previous.Preflight)
     {
         _plan = plan;
         _outcome = outcome;
         _finalCheck = finalCheck;
+        _gas = gas;
     }
 
     // The run is done; only the check after it failed.
@@ -183,12 +195,13 @@ internal sealed class RunAwaitingCheck : ActiveRun
             return JobStep.Next(this);
         }
 
+        GasCheckView? gasCheck = _gas.Close(Id);
         RunVerificationView verification = RunCheck.Verify(_plan, _outcome);
         string status = _outcome.Log.StoppedAt != null ? "stopped"
             : verification.Ok ? "applied"
             : "applied_with_differences";
-        return JobStep.Finish(new RunJobView(Id, Request.Tool, status, Preflight,
-            new RunJobResultView(_finalCheck, _outcome.Log, verification, null)), true);
+        return JobStep.Finish(new RunJobView(Id, Request.Tool, GasCheckView.JobStatus(status, gasCheck), Preflight,
+            new RunJobResultView(_finalCheck, _outcome.Log, verification, null, gasCheck)), true);
     }
 }
 

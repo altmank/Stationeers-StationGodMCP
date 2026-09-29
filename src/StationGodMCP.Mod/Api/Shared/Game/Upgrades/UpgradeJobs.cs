@@ -23,7 +23,8 @@ internal static class UpgradeJobs
 {
     internal static object Start(UpgradeRequest request, UpgradePlan plan, bool wait) =>
         HeldTickJobs.Start("upgrade", request.Goal.Tool, id => new WaitingForTick(id, request,
-            UpgradeReports.Of(plan, UpgradeReports.Scheduled, id), Time.realtimeSinceStartup), wait, null);
+            UpgradeReports.Of(plan, UpgradeReports.Scheduled, id), Time.realtimeSinceStartup), wait, null,
+            request.Family is PipeFamily);
 }
 
 /// <summary>A running upgrade or clean job in one of its states.</summary>
@@ -89,6 +90,7 @@ internal sealed class WaitingForTick : ActiveUpgrade
 
     private JobStep SwapNow()
     {
+        JobGas gas = JobGas.Open(Request.Family is PipeFamily);
         UpgradePlan plan;
         try
         {
@@ -109,8 +111,8 @@ internal sealed class WaitingForTick : ActiveUpgrade
 
         UpgradeReportView finalCheck = UpgradeReports.Of(plan, UpgradeReports.Scheduled, Id);
         Dictionary<long, List<SmallGrid>> replacements = new Dictionary<long, List<SmallGrid>>();
-        UpgradeSwapLog log = UpgradeSwap.Run(plan, replacements);
-        return JobStep.Next(new AwaitingCheck(this, plan, new SwapOutcome(finalCheck, log, replacements)));
+        UpgradeSwapLog log = UpgradeSwap.Run(plan, replacements, gas);
+        return JobStep.Next(new AwaitingCheck(this, plan, new SwapOutcome(finalCheck, log, replacements), gas));
     }
 }
 
@@ -142,13 +144,15 @@ internal sealed class AwaitingCheck : ActiveUpgrade
 
     private readonly UpgradePlan _plan;
     private readonly SwapOutcome _outcome;
+    private readonly JobGas _gas;
     private int _frames;
 
-    internal AwaitingCheck(ActiveUpgrade waiting, UpgradePlan plan, SwapOutcome outcome)
+    internal AwaitingCheck(ActiveUpgrade waiting, UpgradePlan plan, SwapOutcome outcome, JobGas gas)
         : base(waiting.Id, waiting.Request, waiting.Preflight)
     {
         _plan = plan;
         _outcome = outcome;
+        _gas = gas;
     }
 
     // The swap is done; only the check after it failed.
@@ -164,12 +168,13 @@ internal sealed class AwaitingCheck : ActiveUpgrade
             return JobStep.Next(this);
         }
 
+        GasCheckView? gasCheck = _gas.Close(Id);
         UpgradeVerificationView verification = UpgradeCheck.Verify(_plan, _outcome);
         string status = _outcome.Log.StoppedAt != null ? "stopped"
             : verification.Ok ? "applied"
             : "applied_with_differences";
-        UpgradeJobView view = new UpgradeJobView(Id, Request.Goal.Tool, status, Preflight,
-            new UpgradeJobResult(_outcome.FinalCheck, _outcome.Log, verification, null));
+        UpgradeJobView view = new UpgradeJobView(Id, Request.Goal.Tool, GasCheckView.JobStatus(status, gasCheck),
+            Preflight, new UpgradeJobResult(_outcome.FinalCheck, _outcome.Log, verification, null, gasCheck));
         return JobStep.Finish(view, true);
     }
 

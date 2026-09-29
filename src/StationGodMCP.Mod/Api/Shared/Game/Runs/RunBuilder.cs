@@ -34,7 +34,8 @@ internal sealed class RunOutcome
 /// piece built into the old one's cell, put into its network, the old one leaves and is destroyed), then every new
 /// piece is built as a coil's placement builds it (Constructor.SpawnConstruct; Cable.OnRegistered and
 /// Pipe.OnRegistered join and merge the networks around it). Each cell's coils are taken before it is built; the
-/// first failure stops the build and the log says where.
+/// first failure stops the build and the log says where. After each piece the gas its merges queued is applied
+/// (JobGas.Settle), so no merge copies a network whose gas is still on its way.
 /// </summary>
 internal static class RunBuilder
 {
@@ -71,7 +72,7 @@ internal static class RunBuilder
         }
     }
 
-    internal static void Build(RunPlan plan, RunOutcome outcome)
+    internal static void Build(RunPlan plan, RunOutcome outcome, JobGas gas)
     {
         Dictionary<int, ItemStock> stocks = new Dictionary<int, ItemStock>();
         foreach (ItemStock stock in plan.Stocks)
@@ -98,7 +99,7 @@ internal static class RunBuilder
                 break;
             }
 
-            BuildOne(plan, cell, stocks, used, refund, outcome);
+            BuildOne(plan, cell, stocks, used, refund, outcome, gas);
         }
 
         foreach (ItemStock stock in plan.Stocks)
@@ -125,7 +126,7 @@ internal static class RunBuilder
     }
 
     private static void BuildOne(RunPlan plan, PlannedCell cell, Dictionary<int, ItemStock> stocks,
-        Dictionary<int, int> used, List<ItemAmount> refund, RunOutcome outcome)
+        Dictionary<int, int> used, List<ItemAmount> refund, RunOutcome outcome, JobGas gas)
     {
         try
         {
@@ -149,6 +150,8 @@ internal static class RunBuilder
 
             SmallGrid built = cell.IsChange ? Change(plan, cell) : Place(plan, cell);
             outcome.Built[cell.ForecastId] = built;
+            // The gas this piece's merges queued lands before the next piece can merge the survivor away (JobGas).
+            gas.Settle();
             string part = RunShape.BuiltPart(plan.Request.Build?.Shape, cell.Cell, cell.IsChange);
             outcome.Log.AddCreated(part, new ThingId(built.ReferenceId));
             if (cell.IsChange)

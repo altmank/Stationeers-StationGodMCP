@@ -36,14 +36,19 @@ internal static class HeldTickJobs
     /// <summary>
     /// Starts a job made for its id (prefix-number) and returns its view. While another job runs (or a save or
     /// something else holds the tick): busy with the running job's id, or with wait the job is queued and its
-    /// queued view returned.
+    /// queued view returned. A job that changes pipe networks is refused while a gas check has failed (GasHold).
     /// </summary>
     internal static object Start(string prefix, string tool, Func<string, HeldTickJob> create, bool wait,
-        object? preflight)
+        object? preflight, bool pipeNetworks)
     {
         if (GameManager.GameState != GameState.Running)
         {
             throw ApiErrors.Refused("game_not_running", "The world is not running.");
+        }
+
+        if (pipeNetworks && GasHold.Held)
+        {
+            throw GasHold.Refusal();
         }
 
         bool tickTaken = IsSaving() || GameManager.GameTickPaused;
@@ -67,7 +72,7 @@ internal static class HeldTickJobs
         }
 
         string id = NextId(prefix);
-        if (!Waiting.Add(id, new QueuedJob(tool, create)))
+        if (!Waiting.Add(id, new QueuedJob(tool, create, pipeNetworks)))
         {
             return new JobBusyView(tool, _active?.Id ?? string.Empty, Waiting.Count,
                 $"{MaximumWaiting} runs are already queued; nothing was changed. Try again once one has started.");
@@ -215,6 +220,13 @@ internal static class HeldTickJobs
             return;
         }
 
+        if (queued.PipeNetworks && GasHold.Held)
+        {
+            ApiException refusal = GasHold.Refusal();
+            Remember(id, new JobDroppedView(id, queued.Tool, new ErrorView(refusal.Code, refusal.Message)));
+            return;
+        }
+
         try
         {
             Launch(id, queued.Create);
@@ -241,15 +253,18 @@ internal static class HeldTickJobs
 
     private sealed class QueuedJob
     {
-        internal QueuedJob(string tool, Func<string, HeldTickJob> create)
+        internal QueuedJob(string tool, Func<string, HeldTickJob> create, bool pipeNetworks)
         {
             Tool = tool;
             Create = create;
+            PipeNetworks = pipeNetworks;
         }
 
         internal string Tool { get; }
 
         internal Func<string, HeldTickJob> Create { get; }
+
+        internal bool PipeNetworks { get; }
     }
 
     internal static bool IsSaving() => (bool)GameMembers.SaveIsSaving.Invoke(null);

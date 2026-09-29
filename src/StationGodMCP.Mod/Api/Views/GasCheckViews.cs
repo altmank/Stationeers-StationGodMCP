@@ -1,0 +1,248 @@
+#nullable enable
+
+using System.Collections.Generic;
+using System.Globalization;
+using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
+
+namespace StationGodMCP.Api.Views;
+
+/// <summary>
+/// A job's check of the pipe networks' contents (gas_check): every family of networks it changed, read before the job
+/// and again after, once every gas change the job queued had been applied. Ok when each family holds what it held
+/// (or lost it to the removal of its last pipe, which the planner holds back unless allowed) and no network without
+/// pipes is left holding gas. Gas a family lost in the game's merge is put back into its networks (recovered) and the
+/// empty networks left holding it are cleared; what could not be put back leaves the check failed, the job
+/// gas_lost, and further pipe jobs refused.
+/// </summary>
+internal sealed class GasCheckView
+{
+    private GasCheckView(bool isChecked, bool ok, string summary, List<GasFamilyView> families,
+        List<GasGhostView> ghosts, List<GasRefillView> recovered, List<ThingId> ghostsCleared,
+        List<GasGhostView> oldGhosts)
+    {
+        Checked = isChecked;
+        Ok = ok;
+        Summary = summary;
+        Families = families;
+        Ghosts = ghosts;
+        Recovered = recovered;
+        GhostsCleared = ghostsCleared;
+        OldGhosts = oldGhosts;
+    }
+
+    /// <summary>False when the check could not be made (a save held the tick); nothing is known then.</summary>
+    public bool Checked { get; }
+
+    public bool Ok { get; }
+
+    public string Summary { get; }
+
+    public List<GasFamilyView> Families { get; }
+
+    /// <summary>Networks without pipes the job left holding gas: where the missing gas sits.</summary>
+    public List<GasGhostView> Ghosts { get; }
+
+    /// <summary>Gas put back into a family's networks after the game's merge lost it.</summary>
+    public List<GasRefillView> Recovered { get; }
+
+    /// <summary>Networks without pipes the job left, emptied and dropped once their family was whole again.</summary>
+    public List<ThingId> GhostsCleared { get; }
+
+    /// <summary>Networks without pipes that held the same gas before the job: not the job's doing, left as they are.</summary>
+    public List<GasGhostView> OldGhosts { get; }
+
+    internal static GasCheckView Of(GasAudit audit, List<GasRefill> recovered, List<long> ghostsCleared)
+    {
+        List<GasFamilyView> families = new List<GasFamilyView>(audit.Families.Count);
+        foreach (GasFamily family in audit.Families)
+        {
+            families.Add(GasFamilyView.Of(family));
+        }
+
+        List<GasGhostView> ghosts = new List<GasGhostView>(audit.Ghosts.Count);
+        foreach (GasNetworkGhost ghost in audit.Ghosts)
+        {
+            ghosts.Add(GasGhostView.Of(ghost.Network, ghost.Family));
+        }
+
+        List<GasGhostView> oldGhosts = new List<GasGhostView>(audit.OldGhosts.Count);
+        foreach (NetworkGas ghost in audit.OldGhosts)
+        {
+            oldGhosts.Add(GasGhostView.Of(ghost, null));
+        }
+
+        List<GasRefillView> refills = new List<GasRefillView>(recovered.Count);
+        foreach (GasRefill refill in recovered)
+        {
+            refills.Add(new GasRefillView(new ThingId(refill.Into), refill.Gas.TotalMol, refill.Gas.TotalEnergyJ));
+        }
+
+        List<ThingId> cleared = ghostsCleared.ConvertAll(static id => new ThingId(id));
+        return new GasCheckView(true, audit.Ok, Summarise(audit, recovered), families, ghosts, refills, cleared,
+            oldGhosts);
+    }
+
+    /// <summary>
+    /// A finished job's status with its gas check: gas_lost when the check failed, whatever the rest found;
+    /// applied_with_differences for an otherwise clean job whose lost gas had to be put back.
+    /// </summary>
+    internal static string JobStatus(string status, GasCheckView? check) =>
+        check == null || !check.Checked ? status
+        : !check.Ok ? GasLostStatus
+        : check.Recovered.Count > 0 && status == "applied" ? "applied_with_differences"
+        : status;
+
+    internal const string GasLostStatus = "gas_lost";
+
+    internal static GasCheckView Unchecked(string reason) =>
+        new GasCheckView(false, false, reason, new List<GasFamilyView>(), new List<GasGhostView>(),
+            new List<GasRefillView>(), new List<ThingId>(), new List<GasGhostView>());
+
+    private static string Summarise(GasAudit audit, List<GasRefill> recovered)
+    {
+        double kept = 0.0;
+        double deleted = 0.0;
+        double missing = 0.0;
+        foreach (GasFamily family in audit.Families)
+        {
+            if (family.Emptied)
+            {
+                deleted += family.GasBefore.TotalMol;
+            }
+            else
+            {
+                kept += family.GasAfter.TotalMol;
+                missing += family.MissingMol;
+            }
+        }
+
+        double put = 0.0;
+        recovered.ForEach(refill => put += refill.Gas.TotalMol);
+        string text = audit.Ok
+            ? $"Contents kept: {audit.Families.Count} network famil{(audit.Families.Count == 1 ? "y" : "ies")} " +
+              $"changed, {Mol(kept)} mol in them now."
+            : (missing >= 0.0
+                  ? $"GAS LOST: {Mol(missing)} mol missing from the networks the job changed"
+                  : $"GAS CHECK FAILED: {Mol(-missing)} mol more in the networks the job changed than before") +
+              (audit.Ghosts.Count > 0 ? $"; {audit.Ghosts.Count} network(s) without pipes hold gas (ghosts)" : "") +
+              ". Further pipe jobs are refused until the world is loaded again.";
+        if (put > 0.0)
+        {
+            text += $" {Mol(put)} mol the game's merge had lost was put back.";
+        }
+
+        if (deleted > 0.0)
+        {
+            text += $" {Mol(deleted)} mol went with the last pipes of networks the job removed.";
+        }
+
+        return text;
+    }
+
+    private static string Mol(double moles) => moles.ToString("0.###", CultureInfo.InvariantCulture);
+}
+
+/// <summary>One family of networks: which networks it was before and is now, and what they held.</summary>
+internal sealed class GasFamilyView
+{
+    private GasFamilyView(List<ThingId> networksBefore, List<ThingId> networksAfter, double molBefore,
+        double molAfter, double energyBeforeJ, double energyAfterJ, bool emptied, bool ok)
+    {
+        NetworksBefore = networksBefore;
+        NetworksAfter = networksAfter;
+        MolBefore = molBefore;
+        MolAfter = molAfter;
+        EnergyBeforeJ = energyBeforeJ;
+        EnergyAfterJ = energyAfterJ;
+        MissingMol = emptied ? 0.0 : molBefore - molAfter;
+        Emptied = emptied;
+        Ok = ok;
+    }
+
+    public List<ThingId> NetworksBefore { get; }
+
+    public List<ThingId> NetworksAfter { get; }
+
+    public double MolBefore { get; }
+
+    public double MolAfter { get; }
+
+    public double EnergyBeforeJ { get; }
+
+    public double EnergyAfterJ { get; }
+
+    /// <summary>Before minus after; negative when gas appeared. Zero for an emptied family.</summary>
+    public double MissingMol { get; }
+
+    /// <summary>Every pipe of the family was removed: its contents went with the last one, as the game deletes them.</summary>
+    public bool Emptied { get; }
+
+    public bool Ok { get; }
+
+    internal static GasFamilyView Of(GasFamily family) =>
+        new GasFamilyView(Ids(family.Before), Ids(family.After), family.GasBefore.TotalMol, family.GasAfter.TotalMol,
+            family.GasBefore.TotalEnergyJ, family.GasAfter.TotalEnergyJ, family.Emptied,
+            family.Emptied || family.Conserved);
+
+    internal static List<ThingId> Ids(List<NetworkGas> networks) =>
+        networks.ConvertAll(static network => new ThingId(network.Id));
+}
+
+/// <summary>
+/// A network with no pipes that holds gas (the game keeps it while a gas change for it is queued). Devices can still
+/// be registered on it, so their ports read it instead of the pipes they sit on.
+/// </summary>
+internal sealed class GasGhostView
+{
+    private GasGhostView(ThingId networkId, double mol, double energyJ, List<ThingId> devices,
+        List<ThingId>? familyNetworks)
+    {
+        NetworkId = networkId;
+        Mol = mol;
+        EnergyJ = energyJ;
+        Devices = devices;
+        FamilyNetworks = familyNetworks;
+    }
+
+    public ThingId NetworkId { get; }
+
+    public double Mol { get; }
+
+    public double EnergyJ { get; }
+
+    /// <summary>Devices still registered on it.</summary>
+    public List<ThingId> Devices { get; }
+
+    /// <summary>The live networks of the family whose pipes it held; null when it held none before the job.</summary>
+    public List<ThingId>? FamilyNetworks { get; }
+
+    internal static GasGhostView Of(NetworkGas network, GasFamily? family)
+    {
+        List<ThingId> devices = new List<ThingId>(network.Devices.Count);
+        foreach (long device in network.Devices)
+        {
+            devices.Add(new ThingId(device));
+        }
+
+        return new GasGhostView(new ThingId(network.Id), network.Gas.TotalMol, network.Gas.TotalEnergyJ, devices,
+            family != null ? GasFamilyView.Ids(family.After) : null);
+    }
+}
+
+/// <summary>Gas put into a network to make its family whole.</summary>
+internal sealed class GasRefillView
+{
+    internal GasRefillView(ThingId into, double mol, double energyJ)
+    {
+        Into = into;
+        Mol = mol;
+        EnergyJ = energyJ;
+    }
+
+    public ThingId Into { get; }
+
+    public double Mol { get; }
+
+    public double EnergyJ { get; }
+}

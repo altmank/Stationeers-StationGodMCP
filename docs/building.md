@@ -26,6 +26,7 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    | `applied_with_differences` | Done, but the check found something other than planned; the job lists it. |
    | `applied_unchecked` | Done, but the check afterwards could not run; the job says why. Look before relying on it. |
    | `stopped` | A piece failed part way. The job lists what was done and where it stopped; nothing after that was done. For upgrades, running the same call again resumes. |
+   | `gas_lost` | Pipe network contents went missing and could not be put back; `gas_check` says how much and where. Every later pipe job is refused (`gas_check_failed`) until the world is loaded again. |
    | `refused` | The checks in the held tick failed; nothing changed. |
 
 5. **One job at a time.** A real run that finds another job running answers `busy` with `running_job_id` and changes
@@ -191,6 +192,21 @@ The same tools and arguments with `grade` required. The contents always stay in 
 pipe adds volume (pressure falls); a removed pipe leaves the network before it goes, so its volume leaves and its gas
 stays (pressure rises, refused above the weakest pipe). The last pipes of a network that still holds gas or liquid are
 never removed. `would_bridge` lists each network's gases, pressure and temperature, so you can see whether they may mix.
+
+**Contents are checked.** The game moves gas between merged or split pipe networks at the next game tick, not at
+once; a job applies those changes after every piece it builds, so a run that joins several networks keeps every
+mole. Every job that can change pipe networks (`place_pipes`, `remove_pipes`, `upgrade_pipes`, `clean_pipes`,
+`place_structure`, `remove_structure`) then compares each family of networks it changed, before and after, in
+`gas_check`:
+
+| Field | Meaning |
+| --- | --- |
+| `ok`, `summary` | Every family holds what it held, and no network without pipes holds gas. |
+| `families` | `networks_before`, `networks_after`, `mol_before`, `mol_after`, `energy_before_j`, `energy_after_j`, `missing_mol`; `emptied` when all its pipes were removed (the contents go with the last pipe, as in the game). |
+| `ghosts` | Networks without pipes left holding gas, with the devices still registered on them: where missing gas sits. |
+| `recovered`, `ghosts_cleared` | Gas the game's merge lost, put back into the family's networks by volume, and the pipeless networks emptied and dropped after. The job then ends `applied_with_differences`. |
+| `old_ghosts` | Pipeless networks that already held the same gas before the job: not its doing, left as they are. |
+| `checked` | False only when a save took the game tick before the check. |
 
 ## Chutes
 

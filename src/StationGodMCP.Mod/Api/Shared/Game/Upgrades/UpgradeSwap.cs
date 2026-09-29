@@ -26,7 +26,7 @@ namespace StationGodMCP.Api.Shared.Game.Upgrades;
 /// </summary>
 internal static class UpgradeSwap
 {
-    internal static UpgradeSwapLog Run(UpgradePlan plan, Dictionary<long, List<SmallGrid>> replacements)
+    internal static UpgradeSwapLog Run(UpgradePlan plan, Dictionary<long, List<SmallGrid>> replacements, JobGas gas)
     {
         UpgradeSwapLog log = new UpgradeSwapLog();
         Dictionary<int, int> used = new Dictionary<int, int>();
@@ -45,6 +45,7 @@ internal static class UpgradeSwap
 
             PieceSwap one = new PieceSwap(plan.Request.Family, swap, StockFor(plan, swap.Target));
             one.Run(log, used);
+            gas.Settle();
             if (one.Completed || one.Replacements.Count > 0)
             {
                 replacements[swap.GroupId] = one.Replacements;
