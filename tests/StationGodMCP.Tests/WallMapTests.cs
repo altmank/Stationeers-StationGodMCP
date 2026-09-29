@@ -9,7 +9,7 @@ namespace StationGodMCP.Tests;
 /// <summary>wall_map and find_spot (1.4.3): the elevation text, free rectangles, the spot filter and rank.</summary>
 public sealed class WallMapTests
 {
-    // LU's wall z = 668 seen from +z: columns x 717 to 720 (right is -x seen from +z, so column 0 is x 720), rows y
+    // A wall z = 668 seen from +z: columns x 717 to 720 (right is -x seen from +z, so column 0 is x 720), rows y
     // 202 down to 200. A console (key A) at x 718.5 to 719, y 200.5 to 201; a pipe at x 719.5, y 201.
     private static WallMap Lu()
     {

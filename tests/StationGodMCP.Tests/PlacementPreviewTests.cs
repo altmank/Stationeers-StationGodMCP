@@ -13,7 +13,7 @@ public sealed class PlacementPreviewTests
 {
     private static GridStep S(string name) => RunModels.Step(name);
 
-    // The Coolant Monitor console as the game registered it on the wall z = 668: four small cells, x 718.5 and 719,
+    // A wall console as the game registers it on the wall z = 668: four small cells, x 718.5 and 719,
     // y 200.5 and 201.
     private static readonly List<GridCell> Console = new List<GridCell>
     {

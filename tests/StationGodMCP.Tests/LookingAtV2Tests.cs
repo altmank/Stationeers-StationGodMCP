@@ -65,7 +65,7 @@ public sealed class LookingAtV2Tests
     [Fact]
     public void BoxesOfSmallCellsHaveHalfMetreCells()
     {
-        // The Coolant Monitor console's four cells on the wall z = 668.
+        // A wall console's four cells on the wall z = 668.
         Box3 box = Box3.OfSmallCells(new List<GridCell>
         {
             new GridCell(7185, 2005, 6680), new GridCell(7190, 2005, 6680), new GridCell(7185, 2010, 6680),
