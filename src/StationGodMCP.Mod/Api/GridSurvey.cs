@@ -44,7 +44,10 @@ internal static class GridSurveyApi
         "chute or 'o'. support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell " +
         "the small cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a " +
         "frame's face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
-        "(plan_*_route frames_first avoids 'a' cells). network_visibility counts each listed network's cells the " +
+        "(plan_*_route frames_first avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
+        "configured band either side inside its rectangle: the planners never route there without " +
+        "allow_door_keepout; the floor slab under a threshold is not in it) and 'g' a window's face (routes pay " +
+        "extra, crosses_window). A door's face is no wall support. network_visibility counts each listed network's cells the " +
         "same way (inside, frame_surface, wall, air) and lists the floating (air) ones.";
 
     internal static GridSurveyView Handle(Args args)
@@ -111,7 +114,8 @@ internal static class GridSurveyApi
         {
             foreach (Structure wall in facts.FaceStructures(cell, face))
             {
-                walls.Add(new SurveyWallView(face.Name, GameLookup.ViewOf(wall), !wall.CanAirPass));
+                walls.Add(new SurveyWallView(face.Name, GameLookup.ViewOf(wall), !wall.CanAirPass,
+                    Openings.KindOf(wall).ToString().ToLowerInvariant()));
             }
         }
 
@@ -121,7 +125,55 @@ internal static class GridSurveyApi
             : null;
         return new SurveyCellView(GameLookup.ViewOf(PieceShapes.CentreOf(cell)),
             room != null ? room.RoomId.ToString(CultureInfo.InvariantCulture) : null, frameView, walls,
-            SmallCellCode.Encode(cell, facts.Occupancy), CellSupports.Encode(cell, facts.Large));
+            SmallCellCode.Encode(cell, facts.Occupancy), OpeningZones.Overlay(CellSupports.Encode(cell, facts.Large),
+                ZonesOf(facts, cell)));
+    }
+
+    private static List<OpeningZone> ZonesOf(GridFacts facts, GridCell large)
+    {
+        List<OpeningZone> zones = new List<OpeningZone>(SmallCellCode.PerCell);
+        for (int index = 0; index < SmallCellCode.PerCell; index++)
+        {
+            zones.Add(facts.Opening(SmallCellCode.SmallAt(large, index)));
+        }
+
+        return zones;
+    }
+
+    // Every door on a face of the page's cells, once.
+    private static List<SurveyDoorView> Doors(GridFacts facts, List<GridCell> cells)
+    {
+        Dictionary<long, Structure> doors = new Dictionary<long, Structure>();
+        foreach (GridCell cell in cells)
+        {
+            foreach (GridStep face in GridStep.All)
+            {
+                foreach (Structure structure in facts.FaceStructures(cell, face))
+                {
+                    if (Openings.IsDoor(structure))
+                    {
+                        doors[structure.ReferenceId] = structure;
+                    }
+                }
+            }
+        }
+
+        List<long> ids = new List<long>(doors.Keys);
+        ids.Sort();
+        List<SurveyDoorView> views = new List<SurveyDoorView>(ids.Count);
+        foreach (long id in ids)
+        {
+            Structure door = doors[id];
+            List<GridCell> faces = Openings.FacesOf(door);
+            int axis = faces.Count > 0 ? FacePoints.AxisOf(faces[0]) : -1;
+            string plane = axis < 0 ? "?" : FacePlane.Of(faces[0]).ToString();
+            List<GridCell> ports = new List<GridCell>(Openings.PortCellsOf(door));
+            views.Add(new SurveyDoorView(GameLookup.ViewOf(door),
+                faces.ConvertAll(face => GameLookup.ViewOf(PieceShapes.CentreOf(face))), plane, facts.Band.Metres,
+                ports.ConvertAll(port => GameLookup.ViewOf(PieceShapes.CentreOf(port)))));
+        }
+
+        return views;
     }
 
     private static SurveyContents Contents(GridFacts facts, List<GridCell> cells, bool includeNetworks,
@@ -186,7 +238,7 @@ internal static class GridSurveyApi
             }
         }
 
-        return new SurveyContents(pieceViews, deviceViews, networkViews, tallies.Views());
+        return new SurveyContents(pieceViews, deviceViews, networkViews, tallies.Views(), Doors(facts, cells));
     }
 
     private static void AddPiece(Dictionary<long, SmallGrid> pieces, SmallGrid? piece)

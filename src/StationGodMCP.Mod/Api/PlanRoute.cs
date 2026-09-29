@@ -77,13 +77,14 @@ internal static class PlanRouteApi
         RouteRuleSet rules = Rules(args, starts, own, false);
         List<string> notes = Notes(rules, assumed);
         RouteReservation reserved = Reservation(args, starts, to, trunk, notes);
-        RouteTree tree = Grow(args, starts, main, facts, rules, reserved);
+        OpeningGuard openings = Openings(args, facts, starts, to, notes);
+        RouteTree tree = Grow(args, starts, main, facts, rules, reserved, openings);
         bool supportedSearched = rules.FramesFirst;
         if (tree.GaveUp && rules.FramesFirst)
         {
             // frames_first never costs a route the plain search finds: past the air field's box size the search can
             // run out of cells looking for a supported way that does not exist.
-            RouteTree second = Grow(args, starts, main, facts, rules.WithoutFramesFirst(), reserved);
+            RouteTree second = Grow(args, starts, main, facts, rules.WithoutFramesFirst(), reserved, openings);
             if (second.Found)
             {
                 tree = second;
@@ -109,7 +110,8 @@ internal static class PlanRouteApi
             }
             else if (RunArgs.Join(args) == JoinMode.All)
             {
-                RouteTree retry = Grow(args, starts, main, facts, Rules(args, starts, own, true), reserved);
+                RouteTree retry = Grow(args, starts, main, facts, Rules(args, starts, own, true), reserved,
+                    openings);
                 RunReportView? second = retry.Found ? DryRun(args, kind, grade, retry, removes, assumed) : null;
                 if (second != null && !HasWarning(second, RunPlanner.WouldLoop))
                 {
@@ -141,9 +143,9 @@ internal static class PlanRouteApi
     // The main route from the first start to the target (or the trunk as given), then each other start to the
     // nearest cell of the tree.
     private static RouteTree Grow(Args args, List<RouteEndpoint> starts, RouteMain main, GridFacts facts,
-        RouteRuleSet rules, RouteReservation reserved) =>
+        RouteRuleSet rules, RouteReservation reserved, OpeningGuard openings) =>
         RouteTrees.Grow(starts, main,
-            new RouteSearch(reserved.Guard(cell => rules.Cost(facts.Small(cell))),
+            new RouteSearch(openings.Guard(reserved.Guard(cell => rules.Cost(facts.Small(cell)))),
                 (from, to) => SearchRules(args, from, to), (search, goals) => AirBoundOf(rules, facts, search, goals)),
             RouteEnds.JunctionCost);
 
@@ -203,6 +205,42 @@ internal static class PlanRouteApi
         }
 
         return reserved;
+    }
+
+    /// <summary>
+    /// Every door's keep-out ([Layout] DoorKeepOutBand either side of its face, inside its rectangle) blocked unless
+    /// allow_door_keepout, and window cells made dearer (OpeningGuard); the route's own end cells are released.
+    /// </summary>
+    private static OpeningGuard Openings(Args args, GridFacts facts, List<RouteEndpoint> starts, RouteEndpoint? to,
+        List<string> notes)
+    {
+        List<GridCell> ends = new List<GridCell>();
+        foreach (RouteEndpoint start in starts)
+        {
+            ends.AddRange(CellsOf(start.Ends));
+        }
+
+        if (to != null)
+        {
+            ends.AddRange(CellsOf(to.Ends));
+        }
+
+        bool allow = args.OptionalBool("allow_door_keepout") ?? false;
+        OpeningGuard guard = new OpeningGuard(facts.Opening, ends, allow);
+        List<GridCell> released = guard.ReleasedInKeepOut();
+        if (released.Count > 0)
+        {
+            notes.Add($"door keep-out: {released.Count} of this route's own end cells stand in a door's keep-out " +
+                      "and were not blocked: " + string.Join(", ", released.ConvertAll(cell =>
+                          PieceShapes.CentreOf(cell).ToString())) + ".");
+        }
+
+        notes.Add(allow
+            ? "allow_door_keepout: the route may pass through doorways (their face and the band either side)."
+            : $"Doors: the route keeps out of every door's face and {facts.Band.Metres} m either side of it inside " +
+              "the door's rectangle (jambs, top edge and threshold; not inside the floor slab); cells on a window " +
+              $"cost {OpeningGuard.WindowPenalty} more (crosses_window when it still does).");
+        return guard;
     }
 
     /// <summary>trunk: {waypoints} or {cells}, a run laid as given that every start branches from; null without one.</summary>
@@ -513,7 +551,8 @@ internal static class PlanRouteApi
 
         foreach (string name in new[]
                  {
-                     "allow_bridge", "allow_split", "allow_split_long", "from_id", "root", "join_to", "join_trunk"
+                     "allow_bridge", "allow_split", "allow_split_long", "from_id", "root", "join_to", "join_trunk",
+                     "allow_door_keepout"
                  })
         {
             JToken? value = args.Optional(name);

@@ -230,7 +230,9 @@ internal static class RunPlanner
         plan.Layout = layout;
         plan.Problems.AddRange(layout.Problems);
         plan.Warnings.AddRange(layout.Warnings);
-        FindAir(plan, layout, new GridFacts(kind, mask, ignore));
+        GridFacts facts = new GridFacts(kind, mask, ignore);
+        FindAir(plan, layout, facts);
+        FindOpenings(plan, layout, facts);
         Dictionary<int, RunCatalogue> catalogues = new Dictionary<int, RunCatalogue>();
         List<OrientableCell> orientable = new List<OrientableCell>();
         long next = -1;
@@ -319,6 +321,70 @@ internal static class RunPlanner
             $"{plan.AirCells.Count} new pieces float in air (on no frame and no wall plane): " +
             $"{string.Join(", ", listed)}{more}. Route over frames or along walls (plan_*_route frames_first), or " +
             "build a frame under them.", plan.AirCells[0]));
+    }
+
+    internal const string InDoorKeepOut = "in_door_keepout";
+
+    internal const string CrossesWindow = "crosses_window";
+
+    // The run's new pieces in a door's keep-out (a problem, or a warning with allow_door_keepout) or on a window (a
+    // warning): one issue per door and per window.
+    private static void FindOpenings(RunPlan plan, RunLayout layout, GridFacts facts)
+    {
+        Dictionary<long, List<GridCell>> doors = new Dictionary<long, List<GridCell>>();
+        Dictionary<long, List<GridCell>> windows = new Dictionary<long, List<GridCell>>();
+        foreach (LayoutCell cell in layout.Cells)
+        {
+            if (!cell.InRun || cell.Action != CellAction.Place)
+            {
+                continue;
+            }
+
+            OpeningZone zone = facts.Opening(cell.Cell);
+            Dictionary<long, List<GridCell>>? into = zone.IsDoor ? doors : zone.IsWindow ? windows : null;
+            if (into == null)
+            {
+                continue;
+            }
+
+            if (!into.TryGetValue(zone.Id, out List<GridCell> cells))
+            {
+                cells = new List<GridCell>();
+                into[zone.Id] = cells;
+            }
+
+            cells.Add(cell.Cell);
+        }
+
+        bool allow = plan.Request.Options.AllowDoorKeepOut;
+        foreach (KeyValuePair<long, List<GridCell>> door in doors)
+        {
+            LayoutIssue issue = new LayoutIssue(InDoorKeepOut,
+                $"{door.Value.Count} new piece(s) stand in the keep-out of door {door.Key} (its face and " +
+                $"{facts.Band.Metres} m either side, inside its rectangle): {Listed(door.Value)}. " +
+                (allow ? "Allowed (allow_door_keepout)." : "Route around the doorway, or pass allow_door_keepout."),
+                door.Value[0], door.Key);
+            (allow ? plan.Warnings : plan.Problems).Add(issue);
+        }
+
+        foreach (KeyValuePair<long, List<GridCell>> window in windows)
+        {
+            plan.Warnings.Add(new LayoutIssue(CrossesWindow,
+                $"{window.Value.Count} new piece(s) run across the face of window {window.Key}: " +
+                $"{Listed(window.Value)}. Route beside it along the frame, or keep it if meant.", window.Value[0],
+                window.Key));
+        }
+    }
+
+    private static string Listed(List<GridCell> cells)
+    {
+        List<string> listed = new List<string>(AirListed);
+        for (int index = 0; index < cells.Count && index < AirListed; index++)
+        {
+            listed.Add(Metres(cells[index]));
+        }
+
+        return string.Join(", ", listed) + (cells.Count > AirListed ? $" and {cells.Count - AirListed} more" : "");
     }
 
     private static string Metres(GridCell cell)

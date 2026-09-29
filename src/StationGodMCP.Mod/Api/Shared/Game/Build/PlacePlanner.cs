@@ -9,6 +9,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Pipes;
 using Assets.Scripts.Util;
+using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
@@ -78,6 +79,10 @@ internal sealed class PlacePlan
     internal List<ItemStock> Stocks { get; } = new List<ItemStock>();
 
     internal bool Ready => Problems.Count == 0;
+
+    /// <summary>The grid as the layout checks read it, for the whole run.</summary>
+    internal GridFacts Facts { get; } =
+        new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
 
     internal void Problem(string code, string message, int? index = null) =>
         Problems.Add(new BuildIssueView(code, message, index));
@@ -248,6 +253,8 @@ internal static class PlacePlanner
                 index);
         }
 
+        OpeningIssues(plan, placement, position);
+
         Look(plan, swatches, placement);
         if (!plan.Arguments.Free && placement.State.HasValue)
         {
@@ -371,6 +378,55 @@ internal static class PlacePlanner
                 GameLookup.ViewOf(PieceShapes.CentreOf(port.Cell)), port.Toward?.Name ?? "?",
                 ((NetworkType)port.Type).ToString(), ((ConnectionRole)port.Role).ToString(), null))
             : null;
+    }
+
+    // A small-grid piece whose cells stand in a door's keep-out (a problem, a warning with allow_door_keepout) or on a
+    // window's face (a warning). A door itself and face-placed pieces (walls) are not checked: they make the faces.
+    private static void OpeningIssues(PlacePlan plan, PlannedPlacement placement, Vector3 position)
+    {
+        Structure prefab = placement.Prefab!;
+        if (!(prefab is SmallGrid) || Openings.IsDoor(prefab))
+        {
+            return;
+        }
+
+        GridFacts facts = plan.Facts;
+        long? door = null;
+        long? window = null;
+        int inKeepOut = 0;
+        foreach (Grid3 grid in CursorCheck.SmallCells(prefab, position, placement.Rotation))
+        {
+            OpeningZone zone = facts.Opening(PieceShapes.Cell(grid));
+            if (zone.IsDoor)
+            {
+                door ??= zone.Id;
+                inKeepOut++;
+            }
+            else if (zone.IsWindow)
+            {
+                window ??= zone.Id;
+            }
+        }
+
+        int index = placement.Index;
+        if (door.HasValue)
+        {
+            string message = $"{prefab.PrefabName} takes {inKeepOut} cell(s) in the keep-out of door {door} (its " +
+                             $"face and {facts.Band.Metres} m either side, inside its rectangle)";
+            if (plan.Arguments.AllowDoorKeepOut)
+            {
+                plan.Warn(RunPlanner.InDoorKeepOut, message + "; allowed (allow_door_keepout).", index);
+            }
+            else
+            {
+                plan.Problem(RunPlanner.InDoorKeepOut, message + "; move it, or pass allow_door_keepout.", index);
+            }
+        }
+
+        if (window.HasValue)
+        {
+            plan.Warn(RunPlanner.CrossesWindow, $"{prefab.PrefabName} stands on the face of window {window}.", index);
+        }
     }
 
     // The place tool of a cable, pipe or chute piece; null for anything else (devices on those networks included).

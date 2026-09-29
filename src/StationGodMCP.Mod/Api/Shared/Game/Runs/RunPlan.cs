@@ -90,8 +90,9 @@ internal sealed class RunRemoval
 internal sealed class RunOptions
 {
     internal RunOptions(EditAllowance allow, ThingId? from, bool refund, int listLimit, bool splitLong = true,
-        RunTargets? targets = null)
+        RunTargets? targets = null, bool allowDoorKeepOut = false)
     {
+        AllowDoorKeepOut = allowDoorKeepOut;
         Allow = allow;
         From = from;
         Refund = refund;
@@ -104,7 +105,10 @@ internal sealed class RunOptions
     internal RunTargets Targets { get; }
 
     internal RunOptions WithTargets(RunTargets targets) =>
-        new RunOptions(Allow, From, Refund, ListLimit, SplitLong, targets);
+        new RunOptions(Allow, From, Refund, ListLimit, SplitLong, targets, AllowDoorKeepOut);
+
+    /// <summary>allow_door_keepout: new pieces in a door's keep-out are a warning instead of a problem.</summary>
+    internal bool AllowDoorKeepOut { get; }
 
     /// <summary>
     /// allow_split_long: a long straight the run must join in its middle or cross is split into singles in the same

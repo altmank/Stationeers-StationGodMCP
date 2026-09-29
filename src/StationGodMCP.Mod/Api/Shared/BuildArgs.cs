@@ -91,8 +91,9 @@ internal sealed class PlacementArgs
 
 internal sealed class PlaceArguments
 {
-    internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free)
+    internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free, bool allowDoorKeepOut = false)
     {
+        AllowDoorKeepOut = allowDoorKeepOut;
         Placements = placements;
         From = from;
         Free = free;
@@ -105,6 +106,9 @@ internal sealed class PlaceArguments
 
     /// <summary>Place without materials (creative worlds only).</summary>
     internal bool Free { get; }
+
+    /// <summary>allow_door_keepout: a piece in a door's keep-out is a warning instead of a problem.</summary>
+    internal bool AllowDoorKeepOut { get; }
 }
 
 /// <summary>Where remove_structure gives back what deconstructing returns.</summary>
@@ -190,7 +194,7 @@ internal static class BuildArgs
         if (args.Has("job_id"))
         {
             return Poll<PlaceArguments>(args, "placements", "from_id", "free", "prefab", "at", "rotation", "facing",
-                "up", "face", "build_state", "label", "color");
+                "up", "face", "build_state", "label", "color", "allow_door_keepout");
         }
 
         List<PlacementArgs> placements = new List<PlacementArgs>();
@@ -216,7 +220,8 @@ internal static class BuildArgs
 
         bool confirmed = Confirmed(args);
         return new BuildForm<PlaceArguments>.Run(
-            new PlaceArguments(placements, args.OptionalThingId("from_id"), args.OptionalBool("free") ?? false),
+            new PlaceArguments(placements, args.OptionalThingId("from_id"), args.OptionalBool("free") ?? false,
+                args.OptionalBool("allow_door_keepout") ?? false),
             confirmed);
     }
 

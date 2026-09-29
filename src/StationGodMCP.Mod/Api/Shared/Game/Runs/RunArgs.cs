@@ -227,6 +227,6 @@ internal static class RunArgs
         return new RunOptions(new EditAllowance(bridge, args.OptionalBool("allow_split") ?? false),
             args.OptionalThingId("from_id"), args.OptionalBool("refund") ?? true,
             args.OptionalInt("limit", 1, RunPath.MaximumCells) ?? DefaultListLimit,
-            args.OptionalBool("allow_split_long") ?? true, targets);
+            args.OptionalBool("allow_split_long") ?? true, targets, args.OptionalBool("allow_door_keepout") ?? false);
     }
 }

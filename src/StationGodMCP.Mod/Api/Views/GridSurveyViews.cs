@@ -25,6 +25,7 @@ internal sealed class GridSurveyView
         Devices = contents.Devices;
         Networks = contents.Networks;
         NetworkVisibility = contents.NetworkVisibility;
+        Doors = contents.Doors;
     }
 
     public string Legend { get; }
@@ -56,6 +57,9 @@ internal sealed class GridSurveyView
     /// position, and with include_refund what removing those pieces would give back.
     /// </summary>
     public List<SurveyNetworkVisibilityView> NetworkVisibility { get; }
+
+    /// <summary>Doors on the faces of this page's cells, with their keep-out ('x' in support).</summary>
+    public List<SurveyDoorView> Doors { get; }
 }
 
 /// <summary>One network's listed pieces: their cells by visibility, where they float, and their removal refund.</summary>
@@ -94,8 +98,9 @@ internal sealed class SurveyNetworkVisibilityView
 internal sealed class SurveyContents
 {
     internal SurveyContents(List<SurveyPieceView> pieces, List<SurveyDeviceView> devices, List<object> networks,
-        List<SurveyNetworkVisibilityView> networkVisibility)
+        List<SurveyNetworkVisibilityView> networkVisibility, List<SurveyDoorView>? doors = null)
     {
+        Doors = doors ?? new List<SurveyDoorView>();
         Pieces = pieces;
         Devices = devices;
         Networks = networks;
@@ -103,6 +108,8 @@ internal sealed class SurveyContents
     }
 
     internal List<SurveyNetworkVisibilityView> NetworkVisibility { get; }
+
+    internal List<SurveyDoorView> Doors { get; }
 
     internal List<SurveyPieceView> Pieces { get; }
 
@@ -139,7 +146,8 @@ internal sealed class SurveyCellView
     /// <summary>
     /// 64 characters in the same order: what holds a piece in each small cell up. 'i' inside a frame (every 2 m cell
     /// it touches holds one), 'e' a frame edge or corner, 'f' on a frame's face, 'w' on a wall's plane, 'a' air (the
-    /// planners' frames_first avoids these).
+    /// planners' frames_first avoids these); over those, 'x' in a door's keep-out (the planners never use it without
+    /// allow_door_keepout) and 'g' on a window's face.
     /// </summary>
     public string Support { get; }
 }
@@ -172,8 +180,9 @@ internal sealed class SurveyFrameView
 /// <summary>A face structure on one of the cell's faces (+x, -x, +y, -y, +z, -z).</summary>
 internal sealed class SurveyWallView
 {
-    internal SurveyWallView(string face, ThingView wall, bool blocksAir)
+    internal SurveyWallView(string face, ThingView wall, bool blocksAir, string kind = "wall")
     {
+        Kind = kind;
         Face = face;
         ReferenceId = wall.ReferenceId;
         PrefabName = wall.PrefabName;
@@ -187,6 +196,45 @@ internal sealed class SurveyWallView
     public string? PrefabName { get; }
 
     public bool BlocksAir { get; }
+
+    /// <summary>wall, window (any see-through face) or door (a doorway: it supports nothing, routes keep out).</summary>
+    public string Kind { get; }
+}
+
+/// <summary>
+/// A door seen in the page: the 2 m faces it covers, its face plane, and the keep-out the planners and place tools
+/// apply around it (band_m either side of the plane inside its rectangle; its own port cells released).
+/// </summary>
+internal sealed class SurveyDoorView
+{
+    internal SurveyDoorView(ThingView door, List<PositionView> faces, string plane, double bandM,
+        List<PositionView> portCells)
+    {
+        ReferenceId = door.ReferenceId;
+        PrefabName = door.PrefabName;
+        DisplayName = door.DisplayName;
+        Faces = faces;
+        Plane = plane;
+        BandM = bandM;
+        PortCells = portCells;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public string? PrefabName { get; }
+
+    public string? DisplayName { get; }
+
+    /// <summary>The centre of each 2 m face it covers.</summary>
+    public List<PositionView> Faces { get; }
+
+    /// <summary>Its face plane, e.g. "z=678".</summary>
+    public string Plane { get; }
+
+    public double BandM { get; }
+
+    /// <summary>The cells a piece joining its ports stands in: released from its keep-out.</summary>
+    public List<PositionView> PortCells { get; }
 }
 
 /// <summary>

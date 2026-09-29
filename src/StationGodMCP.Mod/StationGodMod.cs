@@ -25,7 +25,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.4.2";
+    public const string Version = "1.4.3";
 
     private readonly StationGodRequestDispatcher _dispatcher = new StationGodRequestDispatcher();
     private Harmony? _harmony;
@@ -48,6 +48,7 @@ public sealed class StationGodMod : ModBehaviour
             ConfigFile configuration = new ConfigFile(ConfigPath, true);
             Pipe = PipeSettings.Load(configuration);
             _remote = RemoteSettings.Load(configuration);
+            Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
             {

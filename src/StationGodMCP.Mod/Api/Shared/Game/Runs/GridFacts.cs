@@ -30,6 +30,11 @@ internal sealed class GridFacts
     private readonly HashSet<long> _ignore;
     private readonly Dictionary<GridCell, LargeCellFacts> _large = new Dictionary<GridCell, LargeCellFacts>();
     private readonly Dictionary<GridCell, SmallCellFacts> _small = new Dictionary<GridCell, SmallCellFacts>();
+    private readonly Dictionary<GridCell, IReadOnlyList<FaceOpening>> _faces =
+        new Dictionary<GridCell, IReadOnlyList<FaceOpening>>();
+    private readonly Dictionary<GridCell, OpeningZone> _zones = new Dictionary<GridCell, OpeningZone>();
+    private readonly Dictionary<long, HashSet<GridCell>> _doorPorts = new Dictionary<long, HashSet<GridCell>>();
+    private readonly DoorBand _band = LayoutSettings.DoorBand;
 
     internal GridFacts(RunKind kind, SmallGridBlock mask, HashSet<long> ignore)
     {
@@ -74,10 +79,11 @@ internal sealed class GridFacts
             return facts;
         }
 
+        // A door's face holds a doorway, not a wall: it supports nothing, and routes keep out of it (Opening).
         int walls = 0;
         foreach (GridStep face in GridStep.All)
         {
-            if (FaceStructures(large, face).Count > 0)
+            if (FaceStructures(large, face).Exists(structure => !Openings.IsDoor(structure)))
             {
                 walls |= 1 << face.Index;
             }
@@ -121,6 +127,64 @@ internal sealed class GridFacts
             NeighbourNetworks(cell), Support(cell), Visibility(cell));
         _small[cell] = facts;
         return facts;
+    }
+
+    /// <summary>The door keep-out band this request uses ([Layout] DoorKeepOutBand).</summary>
+    internal DoorBand Band => _band;
+
+    /// <summary>
+    /// Where the small cell stands against doors and windows (OpeningZones): in a door's keep-out (not when hidden
+    /// inside a frame's body, nor in a cell a piece joining one of that door's ports stands in), on a window, or clear.
+    /// </summary>
+    internal OpeningZone Opening(GridCell small)
+    {
+        if (_zones.TryGetValue(small, out OpeningZone zone))
+        {
+            return zone;
+        }
+
+        zone = OpeningZones.At(small, _band, FaceOpenings, Visibility(small) == CellVisibility.Inside);
+        if (zone.IsDoor && DoorPorts(zone.Id).Contains(small))
+        {
+            zone = OpeningZone.Clear;
+        }
+
+        _zones[small] = zone;
+        return zone;
+    }
+
+    /// <summary>The doors, windows and walls registered at a face point, each once.</summary>
+    internal IReadOnlyList<FaceOpening> FaceOpenings(GridCell point)
+    {
+        if (_faces.TryGetValue(point, out IReadOnlyList<FaceOpening> openings))
+        {
+            return openings;
+        }
+
+        List<FaceOpening> list = new List<FaceOpening>(1);
+        foreach (Structure structure in new List<Structure>(_grid.GetFaceStructures(Grid(point))))
+        {
+            if (structure != null && !structure.IsBeingDestroyed)
+            {
+                list.Add(new FaceOpening(Openings.KindOf(structure), structure.ReferenceId));
+            }
+        }
+
+        _faces[point] = list;
+        return list;
+    }
+
+    private HashSet<GridCell> DoorPorts(long door)
+    {
+        if (!_doorPorts.TryGetValue(door, out HashSet<GridCell> cells))
+        {
+            cells = GameLookup.TryFindThing(new ThingId(door), out Thing thing) && thing is Structure structure
+                ? Openings.PortCellsOf(structure)
+                : new HashSet<GridCell>();
+            _doorPorts[door] = cells;
+        }
+
+        return cells;
     }
 
     /// <summary>What holds a piece in the small cell up (CellSupports): read from the 2 m cells it touches only.</summary>

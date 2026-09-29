@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.4.3
+
+Placement and layout tools: doors and windows everywhere.
+
+- **Doors keep their doorway.** A door's face (jambs, top edge, threshold) and a band either side of it inside the
+  door's rectangle is its keep-out: new mod setting `[Layout] DoorKeepOutBand`, 0 to 2 m in 0.5 m steps, default
+  0.5 m. Every door counts: doors, airlocks, blast and hangar doors, hatches, roll covers, robot arm doors, the
+  Force-Field Door mod's 1x1, 2x1 and 4x2 doors (their faces from the door's own registered face points). A piece
+  hidden inside the floor slab under a threshold is not in it, and a door's own port cells are released.
+- **Route planners** (`plan_cable_route`, `plan_pipe_route`, `plan_chute_route`) never route through a keep-out
+  unless `allow_door_keepout: true` (the route's own ends are released, with a note). A door's face no longer counts
+  as a wall that holds pieces up, which drew routes onto door jambs and top edges.
+- **Place tools** (`place_cables`, `place_pipes`, `place_chutes`, `place_structure`) refuse new pieces in a keep-out
+  with `in_door_keepout` (`allow_door_keepout: true` makes it a warning).
+- **Windows** (glass, composite, padded and shuttered windows, window shutters; not floor gratings): a run across a
+  window's face costs the planners extra and warns `crosses_window`; so does a device standing on one. Never a
+  refusal.
+- **`grid_survey`** marks keep-out cells `x` and window cells `g` in `support`, names each face structure's `kind`
+  (wall, window, door) and lists `doors` with their faces, plane, band and port cells.
+
 ## 1.4.2
 
 Broken structures: find them, and remove them as the game does.

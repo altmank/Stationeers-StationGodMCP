@@ -73,6 +73,8 @@ grid, centres on multiples of 0.5 m: four small cells per axis in each 2 m cell.
   small thing, `r` a rocket's cell.
 - `support`: what would hold a piece there: `i` inside a frame (hidden in the frame's body), `e` a frame edge or
   corner, `f` a frame's face, `w` a wall's plane, `a` air.
+  Over those, `x` marks a door's keep-out and `g` a window's face (see *Doors and windows*). A door's face is no
+  wall: it holds nothing up.
 
 Then every piece with its ends and network, every device with its `rotation` and each port's cell, direction, type
 and role, and the networks with their loads or contents. `rotation` is `{facing, up, euler}` in the forms
@@ -80,6 +82,23 @@ and role, and the networks with their loads or contents. `rotation` is `{facing,
 `find_things`, `looking_at` and `connections` report the same `rotation` for structures. `network_visibility` counts each network's cells by class and lists the floating
 ones; `include_refund: true` adds what removing each piece would give back. Pages of 27 cells (`limit` up to 125,
 `offset`).
+
+## Doors and windows
+
+Every door keeps its doorway (1.4.3+): its face, with the jambs, the top edge and the threshold, and a band either side
+of it inside the door's rectangle (mod setting `[Layout] DoorKeepOutBand`, default 0.5 m) is its **keep-out**. Doors,
+airlocks, blast and hangar doors, hatches, roll covers, robot arm doors and the Force-Field Door mod's doors of every
+size count. A piece hidden inside the floor slab under a threshold is not in it, and the cells joining the door's
+own ports are released so the door can still be wired.
+
+- The route planners never route through a keep-out; `allow_door_keepout: true` lets them. A route's own end cells
+  are released, with a note.
+- `place_cables`, `place_pipes`, `place_chutes` and `place_structure` refuse a new piece there with `in_door_keepout`;
+  `allow_door_keepout: true` makes it a warning.
+- A window's face (inside its square: glass, composite, padded and shuttered windows and window shutters; floor
+  gratings are floors, not windows) is allowed but costs a route extra, and a run or device on one warns
+  `crosses_window`.
+- `grid_survey` lists `doors` (faces, plane, band, port cells) and each wall's `kind` (wall, window, door).
 
 ## Planning a route
 
@@ -184,6 +203,8 @@ Each refusal names what it found. An `allow_*` argument accepts that one case af
 | `cell_blocked`, `cannot_change`, `no_piece_for_ends`, `link_lost` | A cell is taken; a piece cannot be changed (a fuse or meter mounted, indestructible, rocket); no piece has those ends; a piece would lose a link. | none |
 | `assumed_present` | A real run while something in `assume_removed` still stands. | remove it first |
 | `would_loop` (warning) | The run joins something already joined another way: a second path. Keep it only if the redundancy is meant. | not needed |
+| `in_door_keepout` | A new piece in a door's keep-out (1.4.3+). | `allow_door_keepout` |
+| `crosses_window` (warning) | A new piece on a window's face (1.4.3+). | not needed |
 | `not_joined`, `through_air`, `open_end`, `long_split` (warnings) | A run end stops short of a network; pieces in air; an end left open; a long straight split. | not needed |
 
 ## Pipes
