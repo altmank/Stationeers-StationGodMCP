@@ -7,13 +7,16 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// resolve_ic_selectors: what a chip's pins d0..dN reach now (IcTarget.GetPins), its aliases, and for each device in
-/// the scope the prefab and name hash a batch instruction (lbn, sbn) selects it by (ILogicable.GetNameHash), with how
-/// many visible devices share that pair. Read only.
+/// resolve_ic_selectors: what a chip's pins d0..dN reach now (IcTarget.GetPins), its aliases, and the prefab and name
+/// hash a batch instruction (lb, lbn, sb, sbn) selects a device by (ILogicable.GetNameHash). Batch instructions walk
+/// only the holder's batch list (ICircuitHolder.GetBatchOutput: an IC Housing's data network; null without one, and
+/// the chip then fails with DeviceListNull), so selectors default to the devices in that list the scope shows, and
+/// uniqueness is counted over that list. A named target outside it is listed with reachable false. Read only.
 /// </summary>
 internal static class ResolveIcSelectorsApi
 {
@@ -23,8 +26,8 @@ internal static class ResolveIcSelectorsApi
     {
         DeviceScope scope = Devices.Scope(args);
         IcTarget ic = Devices.RequireCircuitHolder(scope, args);
-        HashSet<long>? targets = args.Has("target_reference_ids")
-            ? IdSet(args.ThingIds("target_reference_ids", MaximumTargets))
+        List<ThingId>? targetIds = args.Has("target_reference_ids")
+            ? args.ThingIds("target_reference_ids", MaximumTargets)
             : null;
         ProgrammableChip chip = ic.RequireChip();
 
@@ -37,46 +40,80 @@ internal static class ResolveIcSelectorsApi
                 target == null ? null : Devices.ViewOf(target, scope)));
         }
 
+        List<ScopedTarget>? batch = BatchList(ic);
+        BatchSelectors reach = new BatchSelectors(Keys(batch ?? new List<ScopedTarget>()));
+        List<ScopedTarget> listed = targetIds != null
+            ? Targets(scope, targetIds)
+            : Visible(scope, batch ?? new List<ScopedTarget>());
+        List<StableSelectorView> selectors = listed.ConvertAll(device => Selector(device, reach));
+
         return new IcSelectorsView(IcRuntime.PlaceOf(scope, ic), Devices.ViewOf(ic.Target, scope), pins,
-            IcRuntime.Aliases(chip), Selectors(scope.SortedDevices(), targets));
+            IcRuntime.Aliases(chip), selectors, batch == null ? (int?)null : reach.DeviceCount);
     }
 
-    private static List<StableSelectorView> Selectors(List<ScopedTarget> devices, HashSet<long>? targets)
+    // The devices the chip's batch instructions walk, as the chip gets them; null when the holder has no list.
+    private static List<ScopedTarget>? BatchList(IcTarget ic)
     {
-        Dictionary<long, int> pairCounts = new Dictionary<long, int>();
-        foreach (ScopedTarget device in devices)
+        List<ILogicable>? output = ic.Holder.GetBatchOutput();
+        if (output == null)
         {
-            int? nameHash = NameHash(device);
-            if (nameHash.HasValue)
+            return null;
+        }
+
+        List<ScopedTarget> batch = new List<ScopedTarget>(output.Count);
+        foreach (ILogicable logicable in output)
+        {
+            if (ScopedTarget.From(logicable) is { } device)
             {
-                long pair = Pair(device.PrefabHash, nameHash.Value);
-                pairCounts[pair] = pairCounts.TryGetValue(pair, out int count) ? count + 1 : 1;
+                batch.Add(device);
             }
         }
 
-        List<StableSelectorView> selectors = new List<StableSelectorView>();
-        foreach (ScopedTarget device in devices)
-        {
-            if (targets != null && !targets.Contains(device.ReferenceId))
-            {
-                continue;
-            }
-
-            int? nameHash = NameHash(device);
-            int collisions = nameHash.HasValue &&
-                             pairCounts.TryGetValue(Pair(device.PrefabHash, nameHash.Value), out int count)
-                ? count
-                : 0;
-            selectors.Add(new StableSelectorView(
-                new ThingView(new ThingId(device.ReferenceId), device.PrefabName, device.DisplayName),
-                device.PrefabHash, nameHash, collisions));
-        }
-
-        return selectors;
+        return batch;
     }
 
-    // The two 32-bit hashes as one key.
-    private static long Pair(int prefabHash, int nameHash) => ((long)prefabHash << 32) | (uint)nameHash;
+    private static IEnumerable<(long, int, int?)> Keys(List<ScopedTarget> batch)
+    {
+        foreach (ScopedTarget device in batch)
+        {
+            yield return (device.ReferenceId, device.PrefabHash, NameHash(device));
+        }
+    }
+
+    // Every target named must be a device the scope shows, as on every other device tool.
+    private static List<ScopedTarget> Targets(DeviceScope scope, List<ThingId> ids)
+    {
+        HashSet<long> seen = new HashSet<long>();
+        List<ScopedTarget> targets = new List<ScopedTarget>(ids.Count);
+        foreach (ThingId id in ids)
+        {
+            if (seen.Add(id.Value))
+            {
+                targets.Add(Devices.Require(scope, id));
+            }
+        }
+
+        return targets;
+    }
+
+    // The batch devices the scope shows, by reference id; the world shows them all.
+    private static List<ScopedTarget> Visible(DeviceScope scope, List<ScopedTarget> batch)
+    {
+        HashSet<long> seen = new HashSet<long>();
+        List<ScopedTarget> visible = batch.FindAll(device =>
+            seen.Add(device.ReferenceId) && (scope.IsWorld || Devices.Find(scope, device.ReferenceId) != null));
+        visible.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
+        return visible;
+    }
+
+    private static StableSelectorView Selector(ScopedTarget device, BatchSelectors reach)
+    {
+        int? nameHash = NameHash(device);
+        return new StableSelectorView(
+            new ThingView(new ThingId(device.ReferenceId), device.PrefabName, device.DisplayName),
+            device.PrefabHash, nameHash, reach.CountOf(device.PrefabHash, nameHash),
+            reach.Reaches(device.ReferenceId));
+    }
 
     private static int? NameHash(ScopedTarget device)
     {
@@ -89,16 +126,5 @@ internal static class ResolveIcSelectorsApi
             // ILogicable.GetNameHash on a device with no name yet: it has no name selector.
             return null;
         }
-    }
-
-    private static HashSet<long> IdSet(List<ThingId> ids)
-    {
-        HashSet<long> set = new HashSet<long>();
-        foreach (ThingId id in ids)
-        {
-            set.Add(id.Value);
-        }
-
-        return set;
     }
 }

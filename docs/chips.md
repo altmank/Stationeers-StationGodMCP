@@ -29,14 +29,28 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 | `set_ic_source` | Write the program, as the IC editor's export does. | `reference_id`, `source` |
 | `get_ic_status` | Current line, registers, stack, aliases, defines, jump tags, power and pause state, errors, and pins `d0` to `d5`; for Lua, compile state, last error and print log. | `reference_id`, `stack_start`, `stack_count` (default 64), `log_lines` (default 20) |
 | `control_ic_execution` | Pause, step one instruction, resume (IC10); restart (Lua). | `reference_id`, `action`: `pause`, `step`, `resume`, `restart` |
-| `resolve_ic_selectors` | What a chip's `db` and `d0`... pins and its aliases point at, and a unique prefab or name-hash selector for each device it can see. | `reference_id`, `target_reference_ids` |
+| `resolve_ic_selectors` | What a chip's `db` and `d0`... pins and its aliases point at, and the prefab and name-hash selector (`lbn`, `sbn`) of each device on its data network. | `reference_id`, `target_reference_ids` |
 | `set_ic_pins` | Set an IC Housing's pins, as turning its screws would. | `reference_id`, `pins: {d0: "<id>", d3: null}`, `allow_off_network` |
 
 ## IC10
 
-- `set_ic_source` compiles the program at once and restarts it at line 0. Compile errors show in `get_ic_status`.
-- `control_ic_execution` `pause` holds the chip; `step` runs exactly one instruction and stays paused; `resume` lets it
-  run. Pausing holds IC Housings and suits only: other holders report paused but keep running.
+- `set_ic_source` compiles the program at once and restarts it at line 0. A paused chip stays paused; registers and the
+  stack are kept (`sp` goes back to 0). A compile error sets `compilation_error`, `compile_error_line` (0-based) and
+  `compile_error_type`; `error_line` and `error_type` are the runtime error's.
+- The chip stores its program as ASCII and runs what it stores: CRLF line ends become LF and each non-ASCII character
+  `?`. The reply's `warnings` say so (`crlf_normalised`, `non_ascii_replaced`).
+- The chip runs a program of any length, but the in-game editor holds 128 lines of up to 90 characters and 4096
+  characters in all, and cuts a longer program when a player opens and submits it. The program is still written;
+  `warnings` has `over_editor_lines`, `over_editor_line_length` or `over_editor_size`.
+- `control_ic_execution` `pause` holds the chip; `step` runs exactly one instruction and stays paused (a running chip is
+  paused first); `resume` lets it run. `step` is refused, with nothing changed, while the program has a compile error
+  (`ic_compile_error`) or the holder is off or unpowered (`ic_not_operable`). Pausing holds IC Housings and suits only:
+  other holders report paused but keep running.
+- `resolve_ic_selectors` lists the devices the chip's batch instructions (`lb`, `lbn`, `sb`, `sbn`) reach: those on the
+  holder's data network (`batch_device_count`; null when it has none). A selector is `unique` when exactly one device
+  on that network has its prefab and name hash. A device named in `target_reference_ids` that is off the network is
+  listed with `reachable: false`; an id that is not a device is `device_not_found`.
+- A register or stack value that is not finite reads as a string: `"NaN"`, `"Infinity"`, `"-Infinity"`.
 - `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it.
 - A holder with no chip: `get_ic_status` answers only `has_chip: false`, the holder and its pins (no `housing`, power
   or runtime fields); the other tools refuse with `no_programmable_chip`, `resolve_ic_selectors` too. Arguments are

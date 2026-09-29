@@ -197,6 +197,9 @@ internal static class GameMembers
     internal static readonly GameField ChipStackPointerIndex = Field(typeof(ProgrammableChip), "_StackPointerIndex");
     internal static readonly GameField ChipReturnAddressIndex = Field(typeof(ProgrammableChip), "_ReturnAddressIndex");
     internal static readonly GameField ChipNextAddress = Field(typeof(ProgrammableChip), "_NextAddr");
+    internal static readonly GameField ChipCompileErrorLine =
+        Field(typeof(ProgrammableChip), "_compileErrorLineNumber");
+    internal static readonly GameField ChipCompileErrorType = Field(typeof(ProgrammableChip), "_compileErrorType");
     internal static readonly GameField ChipAliases = Field(typeof(ProgrammableChip), "_Aliases");
     internal static readonly GameField ChipDefines = Field(typeof(ProgrammableChip), "_Defines");
     internal static readonly GameField ChipJumpTags = Field(typeof(ProgrammableChip), "_JumpTags");

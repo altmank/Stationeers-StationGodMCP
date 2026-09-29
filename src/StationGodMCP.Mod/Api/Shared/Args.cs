@@ -137,7 +137,8 @@ internal sealed class Args
     }
 
     internal double Double(string name) =>
-        OptionalDouble(name) ?? throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be a finite number.");
+        OptionalDouble(name) ??
+        throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' is required: a finite number.");
 
     internal int Int(string name, int minimum, int maximum) =>
         OptionalInt(name, minimum, maximum) ??

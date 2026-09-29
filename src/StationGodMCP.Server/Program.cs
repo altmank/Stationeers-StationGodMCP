@@ -80,7 +80,22 @@ internal static class Program
         {
             if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("id", out JsonElement idElement))
             {
+                if (idElement.ValueKind is not (JsonValueKind.String or JsonValueKind.Number or JsonValueKind.Null))
+                {
+                    throw new McpException(-32600, "Invalid request: id must be a string, a number or null.");
+                }
+
                 requestId = idElement.Clone();
+            }
+
+            // A key given twice would let the last one win silently (another method, another tool).
+            string? repeated = ArgumentCheck.RepeatedKey(root) ??
+                               (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("params", out JsonElement given)
+                                   ? ArgumentCheck.RepeatedKey(given)
+                                   : null);
+            if (repeated != null)
+            {
+                throw new McpException(-32600, $"Invalid request: key '{repeated}' is given twice.");
             }
 
             if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("method", out JsonElement methodElement) ||
@@ -148,6 +163,8 @@ internal static class Program
         {
             return ToolReplies.Failure(ToolFailure.Argument(string.Join(" ", problems)));
         }
+
+        arguments = ArgumentCheck.Normalised(InputSchemas[toolName], arguments);
 
         try
         {
@@ -709,22 +726,22 @@ internal static class ToolDefinitions
             readOnly: true),
         Tool(
             "set_ic_source",
-            "Write source to the programmable chip of a visible circuit holder, as the IC editor's export does. IC10: compiled at once and restarted at line 0. Lua (a StationeersLua chip in an IC Housing, a ScriptedScreens Console or Computer board, a tablet cartridge or a Programmable Visor): no IC10 line or byte limit; up to 262144 characters (larger is refused with source_too_large). StationeersLua stores it compressed, drops the old runtime and compiles the new source on a worker thread, running its module-level code once and then tick(dt) every game tick; a source that failed before is compiled again. No separate restart is needed. The reply's lua.compiling is usually still true: call get_ic_status until it is false, then check lua.running and lua.last_error. A holder that is off or unpowered compiles when it runs again. Writes; sends the chip to multiplayer clients.",
+            "Write source to the programmable chip of a visible circuit holder, as the IC editor's export does. IC10: compiled at once and restarted at line 0; a paused chip stays paused (at line 0), and registers and the stack are kept (sp is reset to 0). The chip stores IC10 source as ASCII and runs what it stores: CRLF line ends become LF and each non-ASCII character '?' (warnings crlf_normalised, non_ascii_replaced). The chip runs source of any length, but the in-game editor holds 128 lines of up to 90 characters and 4096 characters in all, and cuts a longer source when a player opens and submits it: warnings over_editor_lines, over_editor_line_length, over_editor_size (the source is still written). compilation_error true comes with compile_error_line (0-based) and compile_error_type; error_line and error_type are the runtime error's. warnings is [] for Lua. Lua (a StationeersLua chip in an IC Housing, a ScriptedScreens Console or Computer board, a tablet cartridge or a Programmable Visor): no IC10 line or byte limit; up to 262144 characters (larger is refused with source_too_large). StationeersLua stores it compressed, drops the old runtime and compiles the new source on a worker thread, running its module-level code once and then tick(dt) every game tick; a source that failed before is compiled again. No separate restart is needed. The reply's lua.compiling is usually still true: call get_ic_status until it is false, then check lua.running and lua.last_error. A holder that is off or unpowered compiles when it runs again. Writes; sends the chip to multiplayer clients.",
             IcSourceInputSchema(),
             readOnly: false),
         Tool(
             "get_ic_status",
-            "Inspect a visible circuit holder's source, current instruction, registers, stack window, aliases, defines, jump tags, power state, pause state, compile/runtime diagnostics, and its device pins d0..d5 (pins: each pin's device reference ID, prefab and display name or null when empty, the alias the chip gave the pin, and reachable, false when the chip cannot reach the device because it is not on the housing's data network). Holders: IC Housings, suits and other worn holders, and StationeersLua / ScriptedScreens Lua holders (a Console or Computer board, a tablet cartridge, a Programmable Visor). housing.kind is ic_housing, worn_item, computer_board, cartridge or inserted_item; operable says whether the holder runs its chip now (a board: its computer on, powered and fully built; a cartridge: its tablet on and powered; a suit or visor: a charged battery). Also language (ic10 or lua), holder, chip and source_length. For a Lua chip, lua: compiling (a worker thread is compiling it; read again), has_runtime, init_complete (module-level code done, tick(dt) running), running (all of these, no error, not a library), library (a --@module chip other chips require), source_version, last_error {kind compile or runtime, line, message, traceback} or null, log {lines (the last log_lines print() lines), line_count, truncated}, and unavailable when StationeersLua's internals could not be read. Registers, stack and line fields are IC10's and mean nothing for a Lua chip. A holder with no chip answers only has_chip false, reference_id, gateway_id, holder and pins (no housing, power or runtime fields); stack_start, stack_count and log_lines are still checked.",
+            "Inspect a visible circuit holder's source, current instruction, registers, stack window, aliases, defines, jump tags, power state, pause state, compile/runtime diagnostics, and its device pins d0..d5 (pins: each pin's device reference ID, prefab and display name or null when empty, the alias the chip gave the pin, and reachable, false when the chip cannot reach the device because it is not on the housing's data network). Holders: IC Housings, suits and other worn holders, and StationeersLua / ScriptedScreens Lua holders (a Console or Computer board, a tablet cartridge, a Programmable Visor). housing.kind is ic_housing, worn_item, computer_board, cartridge or inserted_item; operable says whether the holder runs its chip now (a board: its computer on, powered and fully built; a cartridge: its tablet on and powered; a suit or visor: a charged battery). Also language (ic10 or lua), holder, chip and source_length. For a Lua chip, lua: compiling (a worker thread is compiling it; read again), has_runtime, init_complete (module-level code done, tick(dt) running), running (all of these, no error, not a library), library (a --@module chip other chips require), source_version, last_error {kind compile or runtime, line, message, traceback} or null, log {lines (the last log_lines print() lines), line_count, truncated}, and unavailable when StationeersLua's internals could not be read. compile_error_line (0-based) and compile_error_type say where compiling failed (null while the source compiles); error_line and error_type are the last runtime error's. A register or stack value that is not finite is a string (\"NaN\", \"Infinity\", \"-Infinity\"). Registers, stack and line fields are IC10's and mean nothing for a Lua chip. A holder with no chip answers only has_chip false, reference_id, gateway_id, holder and pins (no housing, power or runtime fields); stack_start, stack_count and log_lines are still checked.",
             IcStatusSchema(),
             readOnly: true),
         Tool(
             "control_ic_execution",
-            "Pause, execute exactly one IC10 instruction while remaining paused, or resume the chip of a visible circuit holder; or restart a Lua chip. Pausing holds only IC Housings and suits; other holders (toolbelts, tablets, mining robots, logic I/O devices) report paused but keep running. A Lua chip (StationeersLua) cannot pause or step (lua_chip_unsupported): restart compiles its current source again and runs it from the start, clearing a latched error, as the Lua debugger's restart does; like set_ic_source it compiles on a worker thread, so poll get_ic_status. restart on an IC10 chip is refused (not_a_lua_chip).",
+            "Pause, execute exactly one IC10 instruction while remaining paused, or resume the chip of a visible circuit holder; or restart a Lua chip. Pausing holds only IC Housings and suits; other holders (toolbelts, tablets, mining robots, logic I/O devices) report paused but keep running. A Lua chip (StationeersLua) cannot pause or step (lua_chip_unsupported): restart compiles its current source again and runs it from the start, clearing a latched error, as the Lua debugger's restart does; like set_ic_source it compiles on a worker thread, so poll get_ic_status. restart on an IC10 chip is refused (not_a_lua_chip). step on a running chip pauses it first; step is refused, with nothing changed, while the source has a compile error (ic_compile_error) or the holder is off, unpowered or not built (ic_not_operable). action ignores case. set_ic_source leaves a paused chip paused.",
             IcExecutionControlSchema(),
             readOnly: false),
         Tool(
             "resolve_ic_selectors",
-            "Resolve a circuit holder's db/d0... pins and compiled aliases (IC10), and report unique prefab/name-hash selectors for visible network devices. For a Console or Computer Lua board, db is the computer. Needs a chip in the holder (no_programmable_chip otherwise); get_ic_status lists the pins of an empty holder. Arguments are checked first, so a bad target_reference_ids is invalid_argument on any holder.",
+            "Resolve a circuit holder's db/d0... pins and compiled aliases (IC10), and report prefab/name-hash selectors (lbn/sbn) for the devices its batch instructions reach: lb, lbn, sb and sbn walk only the holder's data network (an IC Housing's), so stable_selectors defaults to the devices on it the scope shows, batch_device_count is how many it holds (null: no data network, and batch instructions fail with DeviceListNull), and a selector is unique when exactly one device on that network has the pair. target_reference_ids lists just those devices, each of which must be a device the scope shows (device_not_found otherwise); one off the network is listed with reachable false and unique false. For a Console or Computer Lua board, db is the computer. Needs a chip in the holder (no_programmable_chip otherwise); get_ic_status lists the pins of an empty holder. Arguments are checked first, so a bad target_reference_ids is invalid_argument on any holder.",
             IcSelectorSchema(),
             readOnly: true),
         Tool(
@@ -849,7 +866,8 @@ internal static class ToolDefinitions
                 type = "object",
                 properties = new
                 {
-                    min_mol = new { type = "number", exclusiveMinimum = 0, description = "Skip sources holding less water, polluted water and steam together than this; default 1 mol (0.018 litres). The old name min_moles is still read." }
+                    min_mol = new { type = "number", exclusiveMinimum = 0, description = "Skip sources holding less water, polluted water and steam together than this; default 1 mol (0.018 litres). The old name min_moles is still read." },
+                    min_moles = new { type = "number", exclusiveMinimum = 0, deprecated = true, description = "Deprecated: the old name of min_mol, still read (min_mol wins when both are given)." }
                 },
                 additionalProperties = false
             },
@@ -947,6 +965,7 @@ internal static class ToolDefinitions
                     reference_id = new { type = "string", description = "Reference ID of one thing (from find_items, list_devices, list_containers)." },
                     reference_ids = new { type = "array", minItems = 1, maxItems = 256, items = new { type = "string" }, description = "Reference IDs of up to 256 things, for one call per card." },
                     min_damage_ratio = new { type = "number", minimum = 0, exclusiveMaximum = 1, description = "Scan only: list things whose damage_ratio is above this (0.25 = the yellow band, 0.75 = red). Default 0, any damage. The older name min_ratio is still read." },
+                    min_ratio = new { type = "number", minimum = 0, exclusiveMaximum = 1, deprecated = true, description = "Deprecated: the older name of min_damage_ratio, still read (min_damage_ratio wins when both are given)." },
                     structures_only = new { type = "boolean", description = "Scan only: leave items out. Default false." },
                     broken_only = new { type = "boolean", description = "Scan only: list only things in the game's broken state (condition broken), whatever their damage numbers. Default false." },
                     near_player_m = new { type = "number", exclusiveMinimum = 0, description = "Scan only: only things within this many metres of the local player." },
@@ -2217,7 +2236,7 @@ internal static class ToolDefinitions
                     }
                 },
                 duration_seconds = new { type = "number", minimum = 0.1, maximum = 30.0, description = "Observation duration; defaults to 5 seconds." },
-                interval_seconds = new { type = "number", minimum = 0.05, maximum = 5.0, description = "Sampling interval; defaults to 0.5 seconds. At most 120 samples may be requested." }
+                interval_seconds = new { type = "number", minimum = 0.05, maximum = 5.0, description = "Least time between samples; defaults to 0.5 seconds. At most 120 samples may be requested. Each sample is a round trip to the game's main thread, so a short interval on a busy or slow game yields fewer samples than asked; sample_count says how many were taken." }
             },
             required = new[] { "targets" },
             additionalProperties = false

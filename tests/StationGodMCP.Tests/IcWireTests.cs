@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -47,8 +48,8 @@ public sealed class IcWireTests
                 gateway_id = "world", reference_id = "300", source = "yield", line_number = 3.0,
                 compilation_error = false, error_line = "", error_type = "None", error_code = "OK"
             },
-            new IcSourceSetView(Place, Ic10Chip, Chip), NoRenames, "language", "holder", "chip", "source_length",
-            "lua");
+            new IcSourceSetView(Place, Ic10Chip, Chip, new List<SourceNote>()), NoRenames, "compile_error_line",
+            "compile_error_type", "language", "holder", "chip", "source_length", "lua", "warnings");
     }
 
     [Fact]
@@ -92,7 +93,8 @@ public sealed class IcWireTests
                 new List<JumpTagView> { new JumpTagView("loop", 2) }));
         IcStatusView view = new IcStatusView(Place, Ic10Chip, Chip, new IcHolderView("ic_housing", true, true, true),
             new IcRuntimeParts(NewPins(), runtime));
-        WireCheck.SameAfterRenames(old, view, NoRenames, "language", "holder", "chip", "source_length", "lua");
+        WireCheck.SameAfterRenames(old, view, NoRenames, "compile_error_line", "compile_error_type", "language", "holder",
+            "chip", "source_length", "lua");
     }
 
     [Fact]
@@ -105,7 +107,7 @@ public sealed class IcWireTests
                 line_number = 3.0, compilation_error = false, error_line = "", error_type = "None", error_code = "OK"
             },
             new IcControlView(Place, new IcControlOutcome("step", true, 2.0), Chip, Ic10Chip), NoRenames,
-            "language", "holder", "chip", "lua");
+            "compile_error_line", "compile_error_type", "language", "holder", "chip", "lua");
         var old = new
         {
             gateway_id = "world", reference_id = "300", db = DeviceWireTests.OldDevice(),
@@ -138,8 +140,9 @@ public sealed class IcWireTests
             new List<StableSelectorView>
             {
                 new StableSelectorView(new ThingView(new ThingId(100), "StructureGasSensor", "Gas Sensor"),
-                    -1252983604, 12345, 1)
-            });
-        WireCheck.Same(old, view);
+                    -1252983604, 12345, 1, reachable: true)
+            }, 4);
+        WireCheck.SameAfterDrops(old, view, NoRenames, new[] { "note" }, "stable_selectors[].reachable",
+            "batch_device_count", "note");
     }
 }

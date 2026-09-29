@@ -46,7 +46,7 @@ public sealed class LuaIcWireTests
     public void Ic10ChipHasNoLuaBlock()
     {
         IcChip chip = new IcChip(IcChip.Ic10, LuaChip, "yield", null);
-        JObject json = Json(new IcSourceSetView(Console, chip, Clean));
+        JObject json = Json(new IcSourceSetView(Console, chip, Clean, new List<StationGodMCP.Pure.SourceNote>()));
 
         Assert.Equal("ic10", (string?)json["language"]);
         Assert.Equal(JTokenType.Null, json["lua"]!.Type);
@@ -57,7 +57,7 @@ public sealed class LuaIcWireTests
     {
         LuaStateView compiling = new LuaStateView(new LuaRuntimeFlags(true, false, false, false), 3, null, null, null);
         JObject lua = (JObject)Json(new IcSourceSetView(Console, new IcChip(IcChip.Lua, LuaChip, Script, compiling),
-            Clean))["lua"]!;
+            Clean, new List<StationGodMCP.Pure.SourceNote>()))["lua"]!;
 
         Assert.Equal(
             "{\"compiling\":true,\"has_runtime\":false,\"init_complete\":false,\"running\":false,\"library\":false," +

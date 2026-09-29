@@ -17,7 +17,14 @@ internal static class IcRuntime
     /// <summary>The chip's line and error state (ProgrammableChip.LineNumber, CompilationError...).</summary>
     internal static ChipState State(ProgrammableChip chip) =>
         new ChipState(chip.LineNumber, chip.CompilationError, chip.ErrorLineNumberString, chip.ErrorTypeString,
-            chip.GetErrorCode());
+            chip.GetErrorCode(), CompileErrorOf(chip));
+
+    // ProgrammableChip.CompileErrorLineNumber / CompileErrorType are private; their backing fields hold the values.
+    private static CompileError? CompileErrorOf(ProgrammableChip chip) =>
+        chip.CompilationError
+            ? new CompileError(Convert.ToInt32(GameMembers.ChipCompileErrorLine.GetValue(chip)),
+                GameMembers.ChipCompileErrorType.GetValue(chip)?.ToString() ?? string.Empty)
+            : null;
 
     internal static IcPlace PlaceOf(DeviceScope scope, IcTarget ic) =>
         new IcPlace(scope.Id, new ThingId(ic.Target.ReferenceId), ic.HolderView);

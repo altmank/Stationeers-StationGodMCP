@@ -1,7 +1,9 @@
 #nullable enable
 
+using System.Collections.Generic;
 using Assets.Scripts.Objects.Electrical;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -24,8 +26,11 @@ internal abstract class ChipProgram
         new IcChip(Language, new ThingView(new ThingId(chip.ReferenceId), chip.PrefabName, chip.DisplayName),
             ic.Holder.GetSourceCode(), LuaState(chip, logLines));
 
-    /// <summary>Replace the chip's source the way the IC editor's export does (ICircuitHolder.SetSourceCode).</summary>
-    internal abstract void Write(IcTarget ic, ProgrammableChip chip, string source);
+    /// <summary>
+    /// Replace the chip's source the way the IC editor's export does (ICircuitHolder.SetSourceCode); returns what was
+    /// changed in the source on the way, or would be lost to the in-game editor.
+    /// </summary>
+    internal abstract List<SourceNote> Write(IcTarget ic, ProgrammableChip chip, string source);
 
     /// <summary>Run the chip's current source again from the start.</summary>
     internal abstract void Restart(IcTarget ic, ProgrammableChip chip);
@@ -37,17 +42,20 @@ internal abstract class ChipProgram
 
     /// <summary>
     /// IC10: the holder compiles the source line by line (ProgrammableChip.SetSourceCode); execution restarts at line 0
-    /// and the chip is sent to clients.
+    /// and the chip is sent to clients. The chip gets the text it stores (Ic10Source): LF line ends, and the game's own
+    /// ASCII conversion (AsciiString) applied first, so the program it runs is the one a save keeps.
     /// </summary>
     private sealed class Ic10 : ChipProgram
     {
         internal override string Language => IcChip.Ic10;
 
-        internal override void Write(IcTarget ic, ProgrammableChip chip, string source)
+        internal override List<SourceNote> Write(IcTarget ic, ProgrammableChip chip, string source)
         {
-            ic.Holder.SetSourceCode(source);
+            string stored = new AsciiString(Ic10Source.WithUnixLineEnds(source)).ToString();
+            ic.Holder.SetSourceCode(stored);
             chip.LineNumber = 0d;
             chip.SendUpdate();
+            return Ic10Source.Notes(source, stored);
         }
 
         internal override void Restart(IcTarget ic, ProgrammableChip chip) =>
@@ -73,12 +81,13 @@ internal abstract class ChipProgram
     {
         internal override string Language => IcChip.Lua;
 
-        internal override void Write(IcTarget ic, ProgrammableChip chip, string source)
+        internal override List<SourceNote> Write(IcTarget ic, ProgrammableChip chip, string source)
         {
             LuaChips.RequireSourceSize(source);
             LuaChips.ForgetFailedSource(chip, required: false);
             ic.Holder.SetSourceCode(source);
             chip.SendUpdate();
+            return new List<SourceNote>();
         }
 
         internal override void Restart(IcTarget ic, ProgrammableChip chip)

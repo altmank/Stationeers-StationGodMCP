@@ -59,9 +59,9 @@ internal static class ControlIcExecutionApi
     private static ApiException BadAction() =>
         ApiErrors.InvalidArgument("Argument 'action' must be pause, step, resume, or restart.");
 
+    // Refusals come before the pause, so a refused step leaves a running chip running.
     private static void Step(IcTarget ic, ProgrammableChip chip)
     {
-        IcExecutionController.Pause(ic.HolderId);
         if (chip.CompilationError)
         {
             throw ApiErrors.Refused("ic_compile_error",
@@ -75,6 +75,7 @@ internal static class ControlIcExecutionApi
                 : "The worn item needs a charged battery before its IC can be stepped.");
         }
 
+        IcExecutionController.Pause(ic.HolderId);
         chip.Execute(1);
         chip.SendUpdate();
     }

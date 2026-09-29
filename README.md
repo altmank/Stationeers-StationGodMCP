@@ -86,8 +86,9 @@ materials taken from your inventory as the game would charge, and refunds put ba
 
 Every tool error has one shape, `{code, message}`, as the result's text and its structured content alike. Arguments
 are checked against the tool's schema before the call reaches the game: an argument the tool does not take (the
-message names the nearest one it does take) or a value of the wrong JSON type is `invalid_argument`. Reference ids
-are decimal strings (`"364"`). `game_unavailable` means the game could not be reached, and says whether no pipe
+message names the nearest one it does take), a value of the wrong JSON type, a word the argument's list does not hold
+(case is ignored), a key given twice and a number past a double's range (`1e309`) are `invalid_argument`. An integer
+may be written `3.0` or `1e2`. Reference ids are decimal strings (`"364"`). `game_unavailable` means the game could not be reached, and says whether no pipe
 answered or the game took the request but did not reply in time (it may still have run).
 
 ## Configuration

@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -58,13 +59,14 @@ internal sealed class IcChip
 internal sealed class ChipState
 {
     internal ChipState(double lineNumber, bool compilationError, string? errorLine, string? errorType,
-        string? errorCode)
+        string? errorCode, CompileError? compileError = null)
     {
         LineNumber = lineNumber;
         CompilationError = compilationError;
         ErrorLine = errorLine;
         ErrorType = errorType;
         ErrorCode = errorCode;
+        CompileError = compileError;
     }
 
     internal double LineNumber { get; }
@@ -76,6 +78,27 @@ internal sealed class ChipState
     internal string? ErrorType { get; }
 
     internal string? ErrorCode { get; }
+
+    /// <summary>Where compiling failed; null while the source compiles.</summary>
+    internal CompileError? CompileError { get; }
+}
+
+/// <summary>
+/// A compile error's line (0-based, as the chip counts lines) and type (ProgrammableChip.CompileErrorLineNumber and
+/// CompileErrorType). error_line and error_type are the runtime error's; a compile error lives only here and in
+/// error_code.
+/// </summary>
+internal sealed class CompileError
+{
+    internal CompileError(int line, string type)
+    {
+        Line = line;
+        Type = type;
+    }
+
+    internal int Line { get; }
+
+    internal string Type { get; }
 }
 
 /// <summary>get_ic_source: the chip's source and the line it is on.</summary>
@@ -119,8 +142,9 @@ internal sealed class IcSourceView
 /// <summary>set_ic_source: the source as the chip now holds it, and whether it compiled.</summary>
 internal sealed class IcSourceSetView
 {
-    internal IcSourceSetView(IcPlace place, IcChip chip, ChipState state)
+    internal IcSourceSetView(IcPlace place, IcChip chip, ChipState state, List<SourceNote> warnings)
     {
+        Warnings = warnings;
         GatewayId = place.GatewayId;
         ReferenceId = place.ReferenceId;
         Source = chip.Source;
@@ -129,6 +153,8 @@ internal sealed class IcSourceSetView
         ErrorLine = state.ErrorLine;
         ErrorType = state.ErrorType;
         ErrorCode = state.ErrorCode;
+        CompileErrorLine = state.CompileError?.Line;
+        CompileErrorType = state.CompileError?.Type;
         Language = chip.Language;
         Holder = place.Holder;
         Chip = chip.Chip;
@@ -152,6 +178,12 @@ internal sealed class IcSourceSetView
 
     public string? ErrorCode { get; }
 
+    /// <summary>The compile error's line (0-based); null without one.</summary>
+    public int? CompileErrorLine { get; }
+
+    /// <summary>The compile error's type, e.g. UnrecognisedInstruction; null without one.</summary>
+    public string? CompileErrorType { get; }
+
     /// <summary>ic10 or lua.</summary>
     public string Language { get; }
 
@@ -164,6 +196,9 @@ internal sealed class IcSourceSetView
 
     /// <summary>A Lua chip's runtime right after the write; null for an IC10 chip.</summary>
     public LuaStateView? Lua { get; }
+
+    /// <summary>What was changed in the source on the way in, or would be lost to the in-game editor.</summary>
+    public List<SourceNote> Warnings { get; }
 }
 
 /// <summary>get_ic_status for a holder with no chip: its pins only.</summary>
@@ -201,6 +236,8 @@ internal sealed class IcStatusView
         ErrorLine = state.ErrorLine;
         ErrorType = state.ErrorType;
         ErrorCode = state.ErrorCode;
+        CompileErrorLine = state.CompileError?.Line;
+        CompileErrorType = state.CompileError?.Type;
         Housing = housing;
         Pins = parts.Pins;
         Runtime = parts.Runtime;
@@ -228,6 +265,12 @@ internal sealed class IcStatusView
     public string? ErrorType { get; }
 
     public string? ErrorCode { get; }
+
+    /// <summary>The compile error's line (0-based); null without one.</summary>
+    public int? CompileErrorLine { get; }
+
+    /// <summary>The compile error's type, e.g. UnrecognisedInstruction; null without one.</summary>
+    public string? CompileErrorType { get; }
 
     public IcHolderView Housing { get; }
 
@@ -477,6 +520,8 @@ internal sealed class IcControlView
         ErrorLine = state.ErrorLine;
         ErrorType = state.ErrorType;
         ErrorCode = state.ErrorCode;
+        CompileErrorLine = state.CompileError?.Line;
+        CompileErrorType = state.CompileError?.Type;
         Language = chip.Language;
         Holder = place.Holder;
         Chip = chip.Chip;
@@ -503,6 +548,12 @@ internal sealed class IcControlView
     public string? ErrorType { get; }
 
     public string? ErrorCode { get; }
+
+    /// <summary>The compile error's line (0-based); null without one.</summary>
+    public int? CompileErrorLine { get; }
+
+    /// <summary>The compile error's type, e.g. UnrecognisedInstruction; null without one.</summary>
+    public string? CompileErrorType { get; }
 
     /// <summary>ic10 or lua.</summary>
     public string Language { get; }
@@ -536,12 +587,15 @@ internal readonly struct IcControlOutcome
 internal sealed class IcSelectorsView
 {
     private const string NoteText =
-        "A prefab/name-hash selector is unique only while exactly one visible device has that pair. Renaming a " +
-        "device changes its NameHash.";
+        "Batch instructions (lb, lbn, sb, sbn) reach only the devices on the holder's data network " +
+        "(batch_device_count; null: no network, and they fail with DeviceListNull). A prefab/name-hash selector is " +
+        "unique only while exactly one of those devices has that pair; reachable false: the chip's batch " +
+        "instructions do not reach the device. Renaming a device changes its NameHash.";
 
     internal IcSelectorsView(IcPlace place, DeviceView db, List<PinTargetView> pins, List<AliasView> aliases,
-        List<StableSelectorView> stableSelectors)
+        List<StableSelectorView> stableSelectors, int? batchDeviceCount)
     {
+        BatchDeviceCount = batchDeviceCount;
         GatewayId = place.GatewayId;
         ReferenceId = place.ReferenceId;
         Db = db;
@@ -566,6 +620,9 @@ internal sealed class IcSelectorsView
 
     public int StableSelectorCount { get; }
 
+    /// <summary>How many devices the chip's batch instructions walk; null when the holder has no data network.</summary>
+    public int? BatchDeviceCount { get; }
+
     public string Note => NoteText;
 }
 
@@ -585,11 +642,13 @@ internal sealed class PinTargetView
     public DeviceView? Target { get; }
 }
 
-/// <summary>A device's prefab and name hash, the pair a chip's batch instructions (lbn, sbn) select by.</summary>
+/// <summary>A device's prefab and name hash, the pair a chip's batch instructions (lbn, sbn) select by, counted over the
+/// devices those instructions reach.</summary>
 internal sealed class StableSelectorView
 {
-    internal StableSelectorView(ThingView device, int prefabHash, int? nameHash, int collisionCount)
+    internal StableSelectorView(ThingView device, int prefabHash, int? nameHash, int collisionCount, bool reachable)
     {
+        Reachable = reachable;
         ReferenceId = device.ReferenceId;
         DisplayName = device.DisplayName;
         PrefabName = device.PrefabName;
@@ -614,8 +673,13 @@ internal sealed class StableSelectorView
 
     public string SelectorKind => "prefab_and_name_hash";
 
-    public bool Unique => CollisionCount == 1;
+    /// <summary>Whether the chip's batch instructions reach the device (it is on the holder's data network).</summary>
+    public bool Reachable { get; }
 
+    /// <summary>A batch instruction with this pair selects this device and no other.</summary>
+    public bool Unique => Reachable && CollisionCount == 1;
+
+    /// <summary>How many devices on the holder's data network have this pair.</summary>
     public int CollisionCount { get; }
 
     public string? Ic10Example { get; }

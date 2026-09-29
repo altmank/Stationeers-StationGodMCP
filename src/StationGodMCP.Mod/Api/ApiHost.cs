@@ -115,7 +115,7 @@ internal static class ApiHost
         string? method = null;
         try
         {
-            JObject request = JObject.Parse(requestJson);
+            JObject request = ParseRequest(requestJson);
             requestId = request.Value<string>("id");
             method = request.Value<string>("method");
             if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
@@ -141,6 +141,28 @@ internal static class ApiHost
             // The request boundary: a bug in any tool's game calls must answer the client, not break the pipe.
             StationGodMod.LogWarning($"API request failed: {exception}");
             return Failed(requestId, method, watch, "internal_error", exception.Message);
+        }
+    }
+
+    // A key given twice would otherwise let the last one win silently (a write aimed at the wrong device).
+    private static readonly JsonLoadSettings RequestLoad = new JsonLoadSettings
+    {
+        DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error
+    };
+
+    // A line Newtonsoft cannot read, e.g. a number past a double's range (1e309) or a key given twice, is a bad
+    // request, not a bug in a tool: the reply says invalid_argument rather than internal_error.
+    private static JObject ParseRequest(string requestJson)
+    {
+        try
+        {
+            return JObject.Parse(requestJson, RequestLoad);
+        }
+        catch (JsonReaderException exception)
+        {
+            throw ApiErrors.InvalidArgument(
+                "The request is not JSON the mod accepts (every number must be finite and no key may be given " +
+                $"twice): {exception.Message}");
         }
     }
 
