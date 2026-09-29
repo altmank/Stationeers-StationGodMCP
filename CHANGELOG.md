@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
+
+2026-09-29. Fixes from a twelve-round live test of 1.4.4 on a dedicated server, the player-placement
+rule, and new controls over refunds and the gas hold. 84 tools.
 
 - **A job that takes nothing needs no player (live test round 11).** On a dedicated server with no `from_id`, the
   clean, upgrade and replace tools asked for one even when they took no coils or materials: `clean_cables`
@@ -74,6 +77,86 @@
   `place_chutes` (and `undo_job`'s rebuilds) are listed under `pieces`, no longer under `run`.
 - **`undo_job` knows a job it already undid:** the plan says it was already undone and lists the undo's jobs in
   `plan.undone_by`, instead of reporting the world as diverged.
+- **Arguments are checked against each tool's schema.** The sidecar holds every call to the input schema `tools/list`
+  publishes before it reaches the game: a property the tool does not declare (named, with the nearest declared name),
+  a value of the wrong JSON type (ids sent as numbers included: ids are strings), a missing or null required
+  argument, an array outside its size, an enum value not listed, a number past a double's range and a key given
+  twice are `invalid_argument`. JSON null is an omitted argument; integers written `3.0` or `1e2` are accepted.
+  `min_moles` (`water_sources`) and `min_ratio` (`thing_health`) stay as deprecated aliases. An enum argument names
+  exactly one member (`"Error,PressureInternal"` was ORed into `Setting` and written there). Pipe clients such as
+  the dashboard stay lenient.
+- **One error envelope.** Every tool error is `{code, message}` as both the text and `structuredContent`; a line
+  that is not JSON gets -32700 with the id where it can be recovered; `game_unavailable` says whether no pipe
+  answered within 3 s or the game took the request and did not reply within 35 s (it may still have run).
+- **No item lost in a hidden slot.** `move_item`, refunds and `vault_withdraw` skip slots a player cannot click
+  (the game's `HandleSwitch` rule) and a stack's own slot (a cable coil destroyed what was put there); moving out of
+  a vending machine's store is one-way. Refunds top up the `from_id` stack itself first, walk a stored source's
+  holders level by level, and put what is left on the ground in front of the outermost holder, not at the world
+  origin.
+- **Growers.** A seed or plant moved into a grower's plant slot is planted as a player plants it (one unit, a new
+  plant with its genes); a fertiliser slot takes only fertiliser, one unit into an empty slot; `auto` puts each kind
+  only into its own slot and never takes out a growing plant.
+- **Gas kept through pipe jobs.**
+  - `clean_pipes` `split_long_straights` no longer leaves a copy of a network's gas on a network the game no longer
+    lists; the gas check reads such orphans, so a duplicate fails it.
+  - The gas check links networks by the pipes and the cells they fill, not only by pipe id: a long straight swapped
+    for its singles is one family, not a false `gas_lost` that held every pipe job in the world.
+  - Changing the only pipe of a gas network (straight to tee, a run ending on a lone single), or joining the middle
+    of a gas-filled long straight, keeps the network's id and gas without a refill.
+  - A refill never takes a network over its weakest pipe (`gas_check.withheld`; the job ends `gas_lost` instead of
+    bursting pipes), and gas a `remove_structure` plan deletes on purpose (`allow_contents`) is expected gone
+    (`planned_loss_mol`) instead of being put back into the parts left.
+  - The gas check and gas hold apply to `place_structure` / `remove_structure` only when they touch a pipe network.
+  - `remove_redundant` never empties a network that holds contents and keeps in-line tanks and passive vents joined.
+- **`remove_structure` and pipe networks.** An in-line tank or passive vent whose removal empties its network is
+  `holds_gas`; one that splits a network holding gas or liquid is `contents_would_move` unless `allow_contents`, as
+  `remove_pipes` refuses the split; one that squeezes the gas left past the weakest pipe is `would_burst`, naming
+  the forecast pressure. A network the request takes pieces from is modelled in the job's own order.
+- **The power overload guard.** `would_overload` priced every device output port as its input (the test was always
+  false), so a fresh run from a battery or transformer output burnt cables. Ports are now priced by the game's power
+  roles and on/off/error checks per device (a data port carries nothing), a network the edit removes whole keeps
+  its load, and each newly joined port brings its device's own supply or demand. New `would_overload_when_on`
+  warning: the same count with every device that is off switched on, at the game's ceilings, passed on through
+  APCs, transformers and power transmitters up to 8 deep. The job is not refused for it.
+- **`trader_sell` sold one stack for several lines.** Five lines of 1 iron paid 5 and destroyed 1 (the game leaves
+  a destroyed stack in its slot until the end of the frame). Lines now add up against what earlier lines claimed and
+  one entry sells in one game call; a sale that would take a thing twice is refused `sell_separately`. A card not
+  held by a player or a vending machine is `card_not_usable`; `insufficient_available` counts the card holder's
+  inventory; credits are rounded to the cent; a dry run's `credits_after` is the predicted balance.
+- **Cables, pipes and chutes.**
+  - A run end at a device port, standing on a piece or joining an open end no longer joins the piece straight ahead
+    (it bridged an APC and a transformer).
+  - `would_split` roots per fed network (a battery or APC input is no root of the network that feeds it); `root`
+    must be a device on a touched network.
+  - `remove_loops` no longer fails with `internal_error` on the game's runtime; `remove_redundant` lists every
+    candidate it keeps with its reason.
+  - Burnt cables can be removed (`remove_cables`, `plan_removal`, `remove_ids`); they refund nothing and are never
+    built again by `undo_job`.
+  - `undo_job` reuses the job's own `from_id` and refund choice, and removes the job's pieces inside the run that
+    builds the old ones back, so undoing a tee on a trunk no longer cuts the network.
+  - `plan_*_route` never ends in a blocked cell; `avoid_networks` takes network handles; `plan_chute_route` refuses
+    ends that push or take items the wrong way and leaves a chute only by an end items leave by.
+  - Upgrade and clean verification follow a renumbered network (`renumbered_from`); `upgrade_pipes` and
+    `clean_pipes` see a queued `move_gas` (`atmosphere_busy`).
+- **Structures.** Placements of one request are checked against each other; a piece that needs a frame may stand on
+  a frame an earlier placement of the request puts there (`supported_by_placement`); `above_floor_m` never invents
+  a floor; `has_mounted` for a device held only by the removed piece; a breach is reported once per opening;
+  `crosses_section_seam` only for pieces that could fit one section, never for runs or in-line tanks; `find_spot`
+  searches nearest first and says why spots were ruled out; `paste_blueprint` refuses a paste while another still
+  places; the crosshair tools answer `no_camera` without a player camera.
+- **Devices and chips.** `read_memory` / `write_memory` refuse a chipless housing (`no_programmable_chip`) and a
+  range past the stack; `set_ic_source` stores IC10 as a save keeps it (CRLF and lone CR to LF, non-ASCII to `?`,
+  with warnings naming every line over the editor's limits); `compile_error_line` / `compile_error_type`; plain-text
+  `error_code`; a refused step no longer leaves the chip paused; `resolve_ic_selectors` counts over the holder's
+  batch list (`reachable`, `unique`, `batch_device_count`, no `ic10_example` for an unreachable device);
+  `paint`'s `previous_color` reads a display's shown colour; failed `*_logic_many` entries name what they asked for;
+  a `logic_type` given as a number gets the range message; the gateway prefab has its footprint.
+- **Air, solar and the rest.** A `move_gas` `transfer_id` being applied reads `queued`; a queued move with nothing to
+  move fails `nothing_to_move`; a room refuses liquid it would freeze out or cannot boil (a 0.5 K margin over
+  freezing); `water_sources` lists networks made while paused; `plant_genes` refuses a non-number gene before
+  writing; burst pipes and burnt cables are `is_broken` / `broken` everywhere; a stored item's position is its
+  outermost holder's. `dish_aim` turns the small dish and measures in double precision; `solar_aim` answers the
+  pose nearer the panel's aim; dishes report `finished`, `powered`, `on` and `can_rotate`.
 
 ## 1.4.4
 

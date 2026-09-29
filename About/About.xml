@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.4.4</Version>
+  <Version>1.5.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,57 +69,30 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
-v1.4.4
-- Fixes from the first live test of 1.4.3.
-- A device's mesh counts, not only the cells it is registered in: a small device under a console's overhang is a visual_overlap (place_structure, lint_layout), find_spot no longer offers such spots, wall sections and seams are read from the mesh, and wall_map draws a console as big as it looks. Neighbours that only touch, or overlap by 0.1 m or less, are still fine.
-- undo_job builds removed cables, pipes and chutes again through place_cables, place_pipes and place_chutes, so the bridge, burst and gas guards apply; its dry run is ready only when every step is. New pieces form on the place tools.
-- A port whose network does not change is no longer marked bridging.
-- wall_map's top_left lies on the plane; looking_at names the face plane of a floor hit; lint_layout's run_along_door (was pipe_along_door) and floating_run leave in-line tanks alone.
-- move_gas's description now says plainly that it is a cheat that bypasses the game's physics.
+v1.5.0
+Safety fixes
+- Gas is conserved: splitting a long straight pipe no longer copies a network's gas onto a dead network, changing a network's only pipe keeps its gas and id, and the gas check follows pipes cell by cell, so a swapped long pipe no longer reads as a false loss. A refill never pushes a network past its weakest pipe, and gas you chose to delete is no longer put back (which burst pipes).
+- Items are never lost in hidden slots: move_item, refunds and vault withdrawals use only slots a player could click, never a stack's own slot (a cable coil destroyed what went there). Refunds top up the source stack first and land in front of their holder, not at the world origin.
+- The power overload guard prices every port by the game's own power roles: a run from a battery or transformer output was priced as an input and could burn cables.
+- trader_sell paid for every line but destroyed only one stack when several lines sold the same goods (five lines of 1 iron paid 5, took 1). Lines now add up and each entry sells in one game call.
 
-v1.4.3
-- Doors keep their doorway: the route planners never run cables, pipes or chutes through a door's face or the band either side of it (setting [Layout] DoorKeepOutBand, default 0.5 m), and the place tools refuse new pieces there (in_door_keepout) unless allowed. Force-field doors, airlocks and hatches count. A door's face no longer holds routes up like a wall.
-- Runs and devices across a window's face get a crosses_window warning; grid_survey marks door keep-out and window cells and lists doors.
-- place_structure's dry run previews the layout: the device's real footprint and the wall sections it spans, what it would overlap or block (other devices, ports, doorways, windows, the space in front of it), whether it faces into the room and stands upright, and for each port what it would connect to.
-- place_structure can choose the turn itself (orient: mount, upright, controls toward the room or you, ports and flow toward targets), and suggests a turbo volume pump's Mode flip. New describe_prefab tool shows a prefab's footprint, ports and allowed turns before placing.
-- place_structure understands "where I look" and "a metre to my right": at the crosshair, relative to you, the crosshair or a thing (from its top, side...), on the face you look at, a height above the floor, and facings toward you, out of the face or into the room.
-- New wall_map draws a wall as you see it (seams, walls, windows, doors, devices, runs) and finds free rectangles; new find_spot ranks places for a device near you that fit one wall section, stay clear of doors and overlap nothing. New lint_layout checks a room for runs in doorways, floating or across windows, blocked ports, and devices overlapping, facing out or crossing wall seams. New undo_job undoes a place or remove job; new show_preview draws a planned device's footprint and ports in your game before building; find_things tells which machine printed an item (made_by, made_since). 83 tools.
-- looking_at tells where you look from and which way (the world axes of your forward and right), the surface your look ray hits even past 3 m and the grid there, and a structure's real size and footprint.
+New
+- check_replaceable: could a player place each thing again exactly where it stands? Made for checking what a blueprint paste left. 84 tools.
+- Only what a player could build: every tool that creates a structure asks the game's own placement cursor checks. free: true waives materials, never this rule. lint_layout reports things a player could not place again.
+- acknowledge_gas_lost: after a job ends gas_lost, pipe jobs no longer stay refused until the world is reloaded; a real run naming that job accepts the loss and goes on. Agents must ask you first.
+- remove_structure allow_burst: remove an in-line tank or passive vent even though the squeezed network will burst (e.g. outdoors); the reply forecasts which pipes burst and where the gas goes.
+- refund_to on every tool that refunds: an ordered list of targets (inventory, source, storage, a container id, ground), by default inventory, then source, storage, ground. On a dedicated server removals no longer need from_id.
+- would_overload_when_on warning: the load if every device now off on the network, also behind APCs and transformers, were switched on.
+- trader_buy dry runs add the lines up (credits, stock, room); undo_job knows a job it already undid.
 
-v1.4.2
-- remove_structure removes broken structures (a vent burnt out by fire, a burst pipe) with allow_broken, as the game's own deconstruction of a broken thing does: nothing is given back. Every other check still applies. Without the flag the refusal now says how to override it instead of "repair it first", which the game cannot do.
-- Broken things are easy to find: find_things reports is_broken and condition on every thing and filters with broken: true; thing_health's scan now lists broken things (they read 100 % health, so it missed them), broken first, with broken_only, and reports condition, the label and the networks a structure is on.
-- place_structure onto a broken structure's place stays refused, and now names the broken structure and how to remove it.
+Behaviour changes you will notice
+- Strict arguments: every call is checked against the tool's schema. Unknown arguments, wrong types and ids sent as numbers are refused with a clear message; ids are strings ("123").
+- remove_structure of an in-line tank or passive vent that splits a network holding gas or liquid needs allow_contents, as remove_pipes already did.
+- Placements a player could not make are refused (cannot_place, cell_blocked), also for replace_walls and replace_frames of an off-grid or oddly turned piece.
+- landing_pads no longer reports obstructed: the game never uses it.
+- trader_inventory's have counts only what the trader would accept from you, its conditions applied.
 
-v1.4.1
-- Fix: a pipe job that joined pipe networks more than once (a run into a network holding gas plus a branch or loop, or a change at an in-line tank's port) could lose a network's gas, while reporting success. Each piece's network merge now completes before the next, and every pipe job checks the contents of the networks it changed before and after (gas_check): missing gas is put back, and if anything is still missing the job says gas_lost and further pipe jobs are refused until the world is loaded again.
-
-v1.4.0
-- New vault_contents, vault_deposit and vault_withdraw tools for the Ingot Vault mod: read a vault's store exactly, and move ingots, ores and ices straight into and out of it (from your inventory, a container or the ground, and back into your inventory or any holder's slots) with the vault's own bookkeeping, no chute, door or vend queue. Dry run by default. 77 tools now.
-- move_item no longer puts an item into an Ingot Vault's display slots, where it would be lost.
-
-v1.3.5
-- grid_survey, find_things, looking_at and connections report how a device stands turned (facing, up, Euler angles), in the form place_structure takes, so it can be placed again the same way or turned round.
-- place_structure's dry run shows where a device's ports would land before it is built.
-- plan_pipe_route takes an in-line tank or passive vent as a route end (its free end), and the route planners can keep cells or other ports' cells free (reserve_cells, reserve_ports).
-- move_gas has a dry run: the prediction and checks without moving anything.
-- label explains that the small in-line tanks cannot be labelled (the game's Labeller cannot rename them); the big ones can.
-
-v1.3.4
-- move_gas takes a room as the source or target ({"room_id"} from the rooms tool, or {"room_of"} a thing in it): named gases are taken from every cell of the room in proportion, or spread over its cells by volume, and the reply shows the room's pressure before and after. A room must be given the gases to take, so its air is never emptied by accident.
-
-v1.3.3
-- move_gas can take named gases out of the planet's own air (from "planet", delete): the same air Terraforming Reloaded reads, plus its clouds and ice caps. Needs Terraforming Reloaded.
-
-v1.3.2
-- Landing pads hold gas: atmosphere_contents and move_gas take any landing pad piece (or the pad network) as the pad's one shared atmosphere, and find_things counts pad pieces as holding gas.
-- move_gas refuses a move that would damage what receives it: liquid over 2% of a gas pipe network, gas or liquid freezing in a network, or the pressure once arriving liquid has boiled. The reply adds that boiled state.
-
-v1.0.0 to v1.3.1 (full notes in CHANGELOG.md on GitHub)
-- First release: an MCP server for Stationeers with tools for devices and logic, IC10 and Lua chips, rooms, air, planet, plants, items, gas, traders, solar panels and dishes; build, rebuild, upgrade and clean cables, pipes and chutes, swap walls and frames, place or remove any kit-built structure, each with a dry run, a held game tick and a check afterwards. Local pipe or authenticated TCP.
-- 1.1: paste_blueprint (BlueprintMod) and a configurable pipe name. Rerouting between an APC and another end uses the network both share.
-- 1.2: assume_removed, prefer hidden, bus mode (trunk and drops in one job), feed_paths, plan_removal; refunds go into the inventory instead of hurting the suit.
-- 1.3.0: splits name the devices cut off; clean remove_redundant; not_joined and join_trunk; networks named by any piece or port; a busy job slot with wait. 1.3.1: ordinary devices were refused as rocket parts; small devices set down on the floor as the cursor does; back-to-back walls in one request.
+Also many smaller fixes from a twelve-round live test on a dedicated server: IC10 sources stored as a save keeps them, chip memory ranges checked, dish and solar aiming, growers planted as a player plants, burnt cables and burst pipes found as broken, undo_job. Full notes: CHANGELOG.md on GitHub.
 </ChangeLog>
   <WorkshopHandle>0</WorkshopHandle>
   <Tags />

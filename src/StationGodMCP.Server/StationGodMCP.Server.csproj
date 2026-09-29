@@ -5,7 +5,7 @@
     <AssemblyName>StationGodMCP.Server</AssemblyName>
     <RootNamespace>StationGodMCP.Server</RootNamespace>
     <!-- One version with the mod: build.ps1 checks this, Program.ServerVersion, the mod and About.xml agree. -->
-    <Version>1.4.4</Version>
+    <Version>1.5.0</Version>
     <LangVersion>12.0</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

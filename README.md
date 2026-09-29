@@ -115,7 +115,7 @@ A single local game needs none. The settings cover the local pipe's name and rem
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
   tools that need it, which answer `game_changed`; `mod_info` lists them.
 
-## Status (1.3.2)
+## Status (1.5.0)
 
 **Proven in real play on a live base:** the device, logic, IC10 and Lua chip tools, `set_ic_source` on Lua chips
 included; the item and container tools, `find_things`, `move_item`, `label` and `paint`; `planet`, `plants`,
@@ -125,27 +125,20 @@ and `remove_cables`; `clean_cables` (dead ends, junctions, merge and split, loop
 `plan_removal`; `replace_walls`; `place_structure` and `remove_structure` for walls, floors and ceilings, batches
 included.
 
-**Proven on a dedicated server:** `paste_blueprint` (paste, status and undo); the pipe name setting; and every 1.3.0
-addition, with real runs: `would_split` naming the devices cut off (`components`, `root`, `cut_off`),
-`remove_redundant`, the tap check (`not_joined`, `join_to`, `join_trunk`), network handles, the job slot (`busy`,
-`wait: true`), `created_ids`, `grid_survey`'s support classes, and `remove_structure`'s corrected `would_breach`.
-The 1.3.1 fixes, with real runs: `place_structure` building batteries, a large battery, an in-line small tank, a pipe,
-a small transformer, a passive vent, a valve, a portables connector and gas tank storage, the devices given at their
-cell's centre and set down on the floor; two walls back to back in one request; `plan_removal` without a player;
-cell positions in messages in metres.
+**Proven on a dedicated server:** a twelve-round live test (2026-09-29, headless, no player) ran every tool area with
+real runs and fixed what it found; its last round found nothing. Covered: cables, pipes and chutes (place, remove,
+upgrade, clean with all its operations, the route planners, `undo_job`, `refund_to`), the gas check of pipe jobs
+(merges, splits, long straights swapped, in-line tanks removed, `allow_burst` outdoors and into a room), `move_gas`
+with rooms and its `dry_run`, the placement and layout tools that need no camera (door keep-out, the layout preview,
+`orient`, `wall_map`, `find_spot`, `lint_layout`, `check_replaceable`), `replace_walls` and `replace_frames`,
+broken structures, the power overload guard, the trader tools, the chip tools and the sidecar's argument checks.
+Earlier: `paste_blueprint` (paste, status and undo), the pipe name setting, every 1.3.0 addition and the 1.3.1 fixes.
 
-**Not yet tested in game:** the 1.3.2 landing pad atmospheres in `atmosphere_contents` and `move_gas`,
-`move_gas`'s receiving-side checks (liquid in a gas pipe, freezing, pressure after boiling), the 1.3.3 planet gas
-removal, the 1.3.4 rooms in `move_gas`, and the 1.3.5 layout helpers (rotation readouts, `place_structure`'s port
-preview, in-line tank and passive vent route ends, `reserve_cells` and `reserve_ports`, `move_gas` `dry_run`), and
-the 1.4.0 Ingot Vault tools (`vault_contents`, `vault_deposit`, `vault_withdraw`) and `move_item`'s refusal of a
-vault's display slots, the 1.4.1 gas check of pipe jobs (`gas_check`, `gas_lost`, the queued gas applied after
-every piece), and the 1.4.2 broken structures (`remove_structure` `allow_broken`, `find_things` `broken`,
-`thing_health` `broken_only` and `condition`), and the 1.4.3 placement and layout tools (door keep-out and windows in
-the planners and place tools, `looking_at` v2, the `place_structure` layout preview, `orient`, relative `at`,
-`describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `undo_job`, print provenance, `show_preview`; the 1.4.3
-dry runs were tried live and their findings fixed in 1.4.4), and the 1.4.4 fixes (mesh boxes in `visual_overlap`,
-seams, `wall_map` and `find_spot`; `undo_job` restoring pieces through the place tools and its `pieces` form).
+**Not yet tested in game:** what needs a player or a camera (`looking_at`, `at` at the crosshair or relative to you,
+`show_preview`, hidden and body slots with a real inventory, the kit leaving your inventory, suit damage from
+refunds), a real `acknowledge_gas_lost` lift (no gas loss could be provoked), the 1.3.2 landing pad atmospheres in
+`move_gas`, the 1.3.3 planet gas removal (needs Terraforming Reloaded) and the 1.4.0 Ingot Vault tools (need the
+Ingot Vault mod).
 
 ## Documentation
 
