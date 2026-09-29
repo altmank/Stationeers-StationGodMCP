@@ -60,11 +60,10 @@ internal sealed class PlaneView
     /// <summary>A point's coordinates along the viewer's right and up axes.</summary>
     internal (double U, double V) Project(Vec3 point) => (point[Right.Axis], point[Up.Axis]);
 
-    internal Vec3 PointAt(double u, double v)
-    {
-        Vec3 point = Vec3.Zero.With(Plane.Axis, Plane.Metres).With(Right.Axis, u).With(Up.Axis, v);
-        return point;
-    }
+    internal Vec3 PointAt(double u, double v) => PlaneCells.PointAt(Plane, Right.Axis, Up.Axis, u, v);
+
+    /// <summary>The box the map character at (u, v) covers: the small cell on the plane and the one in front of it.</summary>
+    internal Box3 CellBox(double u, double v) => PlaneCells.CellBox(Plane, Side, Right.Axis, Up.Axis, u, v);
 
     /// <summary>+1 when the viewer's right runs along its axis' positive direction, else -1. Up is always positive: +y
     /// on a wall, +z on a floor or ceiling.</summary>
@@ -239,7 +238,7 @@ internal sealed class PlaneView
     // Keys for things on a wall map: capitals and digits, without the face letters D, F, G, W.
     private const string ThingKeys = "ABCEHIJKLMNOPQRSTUVYZ123456789";
 
-    private static char KeyOf(SmallGrid device, Dictionary<long, char> keys, List<SmallGrid> things)
+    internal static char KeyOf(SmallGrid device, Dictionary<long, char> keys, List<SmallGrid> things)
     {
         if (keys.TryGetValue(device.ReferenceId, out char key))
         {

@@ -130,6 +130,32 @@ internal readonly struct Box3
         return depth;
     }
 
+    /// <summary>
+    /// How deep one box sits in the other, for a clash: as Penetration, except that an axis on which the thinner box
+    /// lies wholly inside the other does not limit the depth, so a thin panel inside a deep body clashes however thin
+    /// it is. Infinite when one box holds the other; 0 or less when they only touch or are apart.
+    /// </summary>
+    internal double ClashDepth(Box3 other)
+    {
+        double depth = double.PositiveInfinity;
+        for (int axis = 0; axis < 3; axis++)
+        {
+            double overlap = Math.Min(Max[axis], other.Max[axis]) - Math.Max(Min[axis], other.Min[axis]);
+            if (overlap <= 0)
+            {
+                return overlap;
+            }
+
+            double thinner = Math.Min(Max[axis] - Min[axis], other.Max[axis] - other.Min[axis]);
+            if (overlap < thinner - 1e-6)
+            {
+                depth = Math.Min(depth, overlap);
+            }
+        }
+
+        return depth;
+    }
+
     /// <summary>Whether the boxes run into each other by more than the tolerance on every axis.</summary>
     internal bool Overlaps(Box3 other, double tolerance) => Penetration(other) > tolerance;
 

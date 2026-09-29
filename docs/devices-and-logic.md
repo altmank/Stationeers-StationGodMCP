@@ -47,7 +47,7 @@ memory, but for any device in the world at once and without a chip.
   degrees of a diagonal, where forward and right could be either axis. Third person and seats are handled as the
   game's own cursor handles them.
 - `hit`: the first surface on the look ray up to `max_distance_m` (default 10 m, beyond the game's 3 m reach): the
-  point, its normal and `face` axis, the `face_plane` it lies on (`z=668`), the 2 m cell on your side, the small cell a
+  point, its normal and `face` axis, the `face_plane` it lies on (`z=668`; within 0.3 m of the plane, so the top of a floor plate counts, 1.4.4+), the 2 m cell on your side, the small cell a
   mounted piece would stand in, that cell's `support` character (as `grid_survey`: `x` a door's keep-out, `g` a
   window), what was hit, and the point in the target's own frame (`local_on_target`).
 - `target.body` for a structure: `render_box` (the box its meshes fill), `centre_offset` from its origin, and

@@ -131,7 +131,9 @@ vault's display slots, the 1.4.1 gas check of pipe jobs (`gas_check`, `gas_lost`
 every piece), and the 1.4.2 broken structures (`remove_structure` `allow_broken`, `find_things` `broken`,
 `thing_health` `broken_only` and `condition`), and the 1.4.3 placement and layout tools (door keep-out and windows in
 the planners and place tools, `looking_at` v2, the `place_structure` layout preview, `orient`, relative `at`,
-`describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `undo_job`, print provenance, `show_preview`).
+`describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `undo_job`, print provenance, `show_preview`; the 1.4.3
+dry runs were tried live and their findings fixed in 1.4.4), and the 1.4.4 fixes (mesh boxes in `visual_overlap`,
+seams, `wall_map` and `find_spot`; `undo_job` restoring pieces through the place tools and its `pieces` form).
 
 ## Documentation
 

@@ -93,6 +93,7 @@ internal sealed class RunWaiting : ActiveRun
             return JobStep.Finish(Refused(null, new ErrorView(refusal.Code, refusal.Message)), true);
         }
 
+        RunPlanner.RequireAssumedGone(plan);
         if (!plan.Ready)
         {
             return JobStep.Finish(Refused(RunReports.Of(plan, RunReports.Refused, Id), new ErrorView(

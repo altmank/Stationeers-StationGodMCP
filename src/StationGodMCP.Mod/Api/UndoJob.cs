@@ -12,11 +12,13 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// undo_job: the inverse of a finished place or remove job (UndoPlanner): remove_structure every thing it built, then
-/// place_structure every thing it removed, each as it stood (the snapshot taken when the job started: JobSnapshots).
-/// Refused when the world diverged from what the job left. Dry run by default: the plan, both tools' arguments and the
-/// removal's own dry run (the placements are checked when their job starts, after the removal). A real run starts the
-/// removal job and queues the placement job behind it (wait), so the placements are checked against the world the
-/// removal left; every guard of both tools applies (gas in a pipe network refuses the removal, as it would by hand).
+/// build again every thing it removed, each as it stood (the snapshot taken when the job started: JobSnapshots): cable,
+/// pipe and chute pieces through place_cables, place_pipes and place_chutes (the pieces form, one call per tool and
+/// grade), so their would_bridge, burst and gas guards apply; everything else through place_structure. Refused when
+/// the world diverged from what the job left. Dry run by default: the plan, every tool's arguments and dry run (the
+/// piece runs checked as if the removal were done, assume_removed; place_structure only when nothing is removed
+/// first); ready only when every one of them is. A real run makes the same checks, then starts the removal job and
+/// queues the placement jobs behind it (wait), each checked again against the world the jobs before it left.
 /// </summary>
 internal static class UndoJobApi
 {
@@ -43,43 +45,76 @@ internal static class UndoJobApi
             Removed(job), recorded?.Removed ?? new Dictionary<long, ThingSnapshot>());
         UndoPlan plan = UndoPlanner.Plan(facts, Standing);
         JObject? removeArguments = plan.Remove.Count > 0 ? RemoveArguments(plan) : null;
-        JObject? placeArguments = plan.Restore.Count > 0 ? PlaceArguments(plan) : null;
-        if (dryRun || !plan.Ready)
+        List<ThingSnapshot> structures = plan.RestoreStructures;
+        JObject? placeArguments = structures.Count > 0 ? PlaceArguments(structures) : null;
+        List<UndoPieceRunView> pieceRuns = plan.RestorePieces.ConvertAll(group =>
+            new UndoPieceRunView(group.Tool, PieceArguments(group, plan, args), null));
+        if (!plan.Ready)
         {
-            object? removal = plan.Ready && removeArguments != null
-                ? RemoveStructureApi.Handle(new Args((JObject)removeArguments.DeepClone()))
-                : null;
-            return new UndoJobView(jobId, tool, dryRun ? "dry_run" : "refused", ViewOf(plan), removeArguments,
-                placeArguments, removal, null);
+            return new UndoJobView(jobId, tool, dryRun ? "dry_run" : "refused", ViewOf(plan, false), removeArguments,
+                placeArguments, null, null, pieceRuns);
         }
 
+        object? removal = removeArguments != null ? RemoveStructureApi.Handle(DryRun(removeArguments)) : null;
+        object? placement = placeArguments != null && removeArguments == null
+            ? PlaceStructureApi.Handle(DryRun(placeArguments))
+            : null;
+        List<UndoPieceRunView> checkedRuns = pieceRuns.ConvertAll(run =>
+            new UndoPieceRunView(run.Tool, run.Arguments, PlaceTool(run.Tool, DryRun(run.Arguments))));
+        bool ready = IsReady(removal) && IsReady(placement) && checkedRuns.TrueForAll(run => IsReady(run.Reply));
+        if (dryRun || !ready)
+        {
+            return new UndoJobView(jobId, tool, dryRun ? "dry_run" : "refused", ViewOf(plan, ready), removeArguments,
+                placeArguments, removal, placement, checkedRuns);
+        }
+
+        return Start(jobId, tool, plan, removeArguments, placeArguments, pieceRuns);
+    }
+
+    // The removal job first; the placements queued behind it (wait), each checked again when it starts.
+    private static UndoJobView Start(string jobId, string tool, UndoPlan plan, JObject? removeArguments,
+        JObject? placeArguments, List<UndoPieceRunView> pieceRuns)
+    {
         object? removeJob = null;
         if (removeArguments != null)
         {
-            JObject run = (JObject)removeArguments.DeepClone();
-            run["dry_run"] = false;
-            run["confirm"] = true;
-            removeJob = RemoveStructureApi.Handle(new Args(run));
+            removeJob = RemoveStructureApi.Handle(RealRun(removeArguments));
             if (JobSnapshots.Wire(removeJob)["job_id"] == null)
             {
-                return new UndoJobView(jobId, tool, "refused", ViewOf(plan), removeArguments, placeArguments,
-                    removeJob, null);
+                return new UndoJobView(jobId, tool, "refused", ViewOf(plan, false), removeArguments, placeArguments,
+                    removeJob, null, pieceRuns);
             }
         }
 
-        object? placeJob = null;
-        if (placeArguments != null)
-        {
-            JObject run = (JObject)placeArguments.DeepClone();
-            run["dry_run"] = false;
-            run["confirm"] = true;
-            run["wait"] = true;
-            placeJob = PlaceStructureApi.Handle(new Args(run));
-        }
-
-        return new UndoJobView(jobId, tool, "scheduled", ViewOf(plan), removeArguments, placeArguments, removeJob,
-            placeJob);
+        object? placeJob = placeArguments != null ? PlaceStructureApi.Handle(RealRun(placeArguments)) : null;
+        List<UndoPieceRunView> started = pieceRuns.ConvertAll(run =>
+            new UndoPieceRunView(run.Tool, run.Arguments, PlaceTool(run.Tool, RealRun(run.Arguments))));
+        return new UndoJobView(jobId, tool, "scheduled", ViewOf(plan, true), removeArguments, placeArguments,
+            removeJob, placeJob, started);
     }
+
+    private static object PlaceTool(string tool, Args args) => tool switch
+    {
+        "place_cables" => PlaceCablesApi.Handle(args),
+        "place_pipes" => PlacePipesApi.Handle(args),
+        "place_chutes" => PlaceChutesApi.Handle(args),
+        _ => throw new System.ArgumentException($"No place tool {tool}.", nameof(tool))
+    };
+
+    private static Args DryRun(JObject arguments) => new Args((JObject)arguments.DeepClone());
+
+    private static Args RealRun(JObject arguments)
+    {
+        JObject run = (JObject)arguments.DeepClone();
+        run["dry_run"] = false;
+        run["confirm"] = true;
+        run["wait"] = true;
+        return new Args(run);
+    }
+
+    // A tool's reply is ready when it says so; no reply (nothing to do there) holds nothing up.
+    private static bool IsReady(object? reply) =>
+        reply == null || JobSnapshots.Wire(reply).Value<bool?>("ready") == true;
 
     private static string? Standing(long id) =>
         GameLookup.TryFindThing(new ThingId(id), out Thing thing) && !thing.IsBeingDestroyed ? thing.PrefabName : null;
@@ -150,10 +185,10 @@ internal static class UndoJobApi
         return new JObject { ["reference_ids"] = ids };
     }
 
-    private static JObject PlaceArguments(UndoPlan plan)
+    private static JObject PlaceArguments(List<ThingSnapshot> restore)
     {
         JArray placements = new JArray();
-        foreach (ThingSnapshot snapshot in plan.Restore)
+        foreach (ThingSnapshot snapshot in restore)
         {
             (int x, int y, int z) = snapshot.Turn!.EulerTurns();
             JObject placement = new JObject
@@ -174,9 +209,57 @@ internal static class UndoJobApi
         return new JObject { ["placements"] = placements };
     }
 
-    private static UndoPlanView ViewOf(UndoPlan plan) =>
+    // The pieces form of one tool and grade: each piece's cells with the ends it had there (a long straight comes back
+    // as singles), checked as if what the undo removes were gone already (assume_removed: the small-grid things of the
+    // removal), with the caller's allow_bridge.
+    private static JObject PieceArguments(PieceRestore group, UndoPlan plan, Args args)
+    {
+        JArray pieces = new JArray();
+        foreach (ThingSnapshot snapshot in group.Pieces)
+        {
+            foreach (PieceCell cell in snapshot.Piece!.Cells)
+            {
+                JArray ends = new JArray();
+                foreach (GridStep step in cell.Ends.Steps())
+                {
+                    ends.Add(step.Name);
+                }
+
+                pieces.Add(new JObject
+                {
+                    ["at"] = new JArray(cell.Cell.X / 10.0, cell.Cell.Y / 10.0, cell.Cell.Z / 10.0),
+                    ["ends"] = ends
+                });
+            }
+        }
+
+        JObject arguments = new JObject { ["pieces"] = pieces, ["grade"] = group.Grade };
+        JArray assumed = new JArray();
+        foreach (long id in plan.Remove)
+        {
+            if (GameLookup.TryFindThing(new ThingId(id), out Thing thing) && thing is SmallGrid)
+            {
+                assumed.Add(id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+        }
+
+        if (assumed.Count > 0)
+        {
+            arguments["assume_removed"] = assumed;
+        }
+
+        JToken? allow = args.Optional("allow_bridge");
+        if (allow != null)
+        {
+            arguments["allow_bridge"] = allow.DeepClone();
+        }
+
+        return arguments;
+    }
+
+    private static UndoPlanView ViewOf(UndoPlan plan, bool ready) =>
         new UndoPlanView(plan.Remove.ConvertAll(id => new ThingId(id)),
-            plan.Restore.ConvertAll(snapshot => new ThingId(snapshot.Id)), plan.Diverged, plan.Notes, plan.Ready);
+            plan.Restore.ConvertAll(snapshot => new ThingId(snapshot.Id)), plan.Diverged, plan.Notes, ready);
 
     private static IEnumerable<JToken> Array(JToken? token) =>
         token is JArray array ? array : (IEnumerable<JToken>)new JArray();

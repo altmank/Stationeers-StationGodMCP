@@ -16,7 +16,7 @@ internal static class LintCodes
     internal const string ControlsNotOnWall = "controls_not_on_wall";
     internal const string PortIntoDoorway = "port_into_doorway";
     internal const string PortCellForeignNetwork = "port_cell_foreign_network";
-    internal const string PipeAlongDoor = "pipe_along_door";
+    internal const string RunAlongDoor = "run_along_door";
     internal const string RunCrossesWindow = "run_crosses_window";
 
     /// <summary>Every rule with its level, in report order.</summary>
@@ -30,7 +30,7 @@ internal static class LintCodes
         (DeviceVisualOverlap, ConflictLevel.Warning),
         (MountedFacesOutOfRoom, ConflictLevel.Warning),
         (DeviceCrossesSeam, ConflictLevel.Warning),
-        (PipeAlongDoor, ConflictLevel.Info),
+        (RunAlongDoor, ConflictLevel.Info),
         (ControlsNotOnWall, ConflictLevel.Info)
     };
 

@@ -31,6 +31,9 @@ internal static class LintLayoutApi
     private const long MaximumCells = 4000;
     private const int PortTypes = (int)(NetworkType.PowerAndData | NetworkType.Pipe | NetworkType.PipeLiquid |
                                         NetworkType.Chute);
+    private static readonly CableFamily Cables = new CableFamily();
+    private static readonly PipeFamily Pipes = new PipeFamily();
+    private static readonly ChuteFamily Chutes = new ChuteFamily();
 
     internal static LintLayoutView Handle(Args args)
     {
@@ -153,7 +156,7 @@ internal static class LintLayoutApi
             }
 
             Vec3 at = Bodies.V(piece.Position);
-            if (air > 0)
+            if (air > 0 && IsRunPiece(piece))
             {
                 findings.Add(new LintFinding(LintCodes.FloatingRun,
                     $"{piece.PrefabName} {piece.ReferenceId} floats in air ({air} of {cells.Count} cells on no frame " +
@@ -176,7 +179,11 @@ internal static class LintLayoutApi
         }
     }
 
-    // pipe_along_door: a run cell on the door's plane band just outside its side edges (hugging a jamb), within its
+    // A cable, pipe or chute piece a run is made of; not an in-line tank or passive vent that stands in a pipe's slot.
+    private static bool IsRunPiece(SmallGrid piece) =>
+        Cables.IsPiece(piece) || Pipes.IsPiece(piece) || Chutes.IsPiece(piece);
+
+    // run_along_door: a run cell on the door's plane band just outside its side edges (hugging a jamb), within its
     // height. Doors on floors or ceilings have no jambs and are skipped.
     private static void AlongDoor(Structure door, IEnumerable<SmallGrid> pieces, GridFacts facts,
         List<LintFinding> findings)
@@ -216,7 +223,7 @@ internal static class LintLayoutApi
                             facts.Visibility(cell) != CellVisibility.Inside;
                 if (hugs)
                 {
-                    findings.Add(new LintFinding(LintCodes.PipeAlongDoor,
+                    findings.Add(new LintFinding(LintCodes.RunAlongDoor,
                         $"{piece.PrefabName} {piece.ReferenceId} runs along the jamb of door {door.ReferenceId} " +
                         $"({door.DisplayName}).", piece.ReferenceId, Bodies.V(piece.Position), door.ReferenceId));
                     break;
@@ -238,7 +245,8 @@ internal static class LintLayoutApi
 
         Vec3 at = Bodies.V(device.Position);
         bool mounted = device.PlacementType == PlacementSnap.FaceMount;
-        MountRect? mount = MountRect.Of(Box3.OfSmallCells(cells), mounted ? turn.Forward : turn.Up);
+        MountRect? mount = MountRect.Of(Box3.OfSmallCells(cells), mounted ? turn.Forward : turn.Up,
+            Bodies.RenderBox(device));
         if (mounted && mount != null && mount.CrossesSeam)
         {
             findings.Add(new LintFinding(LintCodes.DeviceCrossesSeam,
@@ -316,28 +324,30 @@ internal static class LintLayoutApi
         }
     }
 
-    // device_visual_overlap: bodies clashing by more than the tolerance (VisualClash), once per pair; things sharing a
-    // small cell (a device on a pipe) are skipped.
+    // device_visual_overlap: mesh boxes clashing by more than the tolerance (VisualClash: one body's mesh over the
+    // other's is enough, a device under a console's overhang included), once per pair; things sharing a small cell (a
+    // device on a pipe) are skipped.
     private static void Overlaps(List<SmallGrid> devices, List<LintFinding> findings)
     {
         List<Box3> boxes = devices.ConvertAll(device => Bodies.RenderBox(device));
         List<HashSet<GridCell>> cells = devices.ConvertAll(device => new HashSet<GridCell>(Bodies.SmallCells(device)));
-        List<Box3?> footprints = cells.ConvertAll(set =>
-            set.Count > 0 ? Box3.OfSmallCells(new List<GridCell>(set)) : (Box3?)null);
         for (int a = 0; a < devices.Count; a++)
         {
             for (int b = a + 1; b < devices.Count; b++)
             {
-                double depth = VisualClash.Depth(boxes[a], footprints[a], boxes[b], footprints[b]);
+                double depth = VisualClash.Depth(boxes[a], boxes[b]);
                 if (depth <= ConflictCodes.OverlapToleranceM || cells[a].Overlaps(cells[b]))
                 {
                     continue;
                 }
 
+                string how = double.IsPositiveInfinity(depth)
+                    ? "overlap: one lies inside the other"
+                    : System.FormattableString.Invariant($"run {depth:0.00} m into each other");
                 findings.Add(new LintFinding(LintCodes.DeviceVisualOverlap,
                     $"{devices[a].DisplayName} ({devices[a].ReferenceId}) and {devices[b].DisplayName} " +
-                    System.FormattableString.Invariant($"({devices[b].ReferenceId}) run {depth:0.00} m into each other."), devices[a].ReferenceId,
-                    Bodies.V(devices[a].Position), devices[b].ReferenceId));
+                    $"({devices[b].ReferenceId}) {how}.", devices[a].ReferenceId, Bodies.V(devices[a].Position),
+                    devices[b].ReferenceId));
             }
         }
     }

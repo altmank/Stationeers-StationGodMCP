@@ -4,10 +4,46 @@ using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
 
+/// <summary>One small cell of a network piece and the ends the piece has there.</summary>
+internal sealed class PieceCell
+{
+    internal PieceCell(GridCell cell, EndSet ends)
+    {
+        Cell = cell;
+        Ends = ends;
+    }
+
+    internal GridCell Cell { get; }
+
+    internal EndSet Ends { get; }
+}
+
+/// <summary>
+/// A cable, pipe or chute piece as its place tool builds it again: the tool (place_cables, place_pipes,
+/// place_chutes), the grade name it takes (null when no coil or kit lays this piece: the tool cannot build it), and
+/// the ends in each of its cells.
+/// </summary>
+internal sealed class NetworkPiece
+{
+    internal NetworkPiece(string tool, string? grade, List<PieceCell> cells)
+    {
+        Tool = tool;
+        Grade = grade;
+        Cells = cells;
+    }
+
+    internal string Tool { get; }
+
+    internal string? Grade { get; }
+
+    internal List<PieceCell> Cells { get; }
+}
+
 /// <summary>A structure as it stood before a job removed it: enough to build it again the same way.</summary>
 internal sealed class ThingSnapshot
 {
-    internal ThingSnapshot(long id, string prefab, Vec3 position, CubeRotation? turn, int buildState, string? label)
+    internal ThingSnapshot(long id, string prefab, Vec3 position, CubeRotation? turn, int buildState, string? label,
+        NetworkPiece? piece = null)
     {
         Id = id;
         Prefab = prefab;
@@ -15,6 +51,7 @@ internal sealed class ThingSnapshot
         Turn = turn;
         BuildState = buildState;
         Label = label;
+        Piece = piece;
     }
 
     internal long Id { get; }
@@ -29,6 +66,29 @@ internal sealed class ThingSnapshot
     internal int BuildState { get; }
 
     internal string? Label { get; }
+
+    /// <summary>
+    /// Set for a cable, pipe or chute piece: it is built again by its place tool (piece by piece, with that tool's
+    /// would_bridge, burst and gas guards), never by place_structure, which joins whatever its ends touch unchecked.
+    /// </summary>
+    internal NetworkPiece? Piece { get; }
+}
+
+/// <summary>Network pieces one place tool builds again in one job: the tool, the grade, the snapshots.</summary>
+internal sealed class PieceRestore
+{
+    internal PieceRestore(string tool, string grade, List<ThingSnapshot> pieces)
+    {
+        Tool = tool;
+        Grade = grade;
+        Pieces = pieces;
+    }
+
+    internal string Tool { get; }
+
+    internal string Grade { get; }
+
+    internal List<ThingSnapshot> Pieces { get; }
 }
 
 /// <summary>What a finished job did, as its log and the snapshots taken when it started tell it.</summary>
@@ -75,6 +135,37 @@ internal sealed class UndoPlan
 
     internal List<ThingSnapshot> Restore { get; }
 
+    /// <summary>What place_structure builds again: everything restored that is not a network piece.</summary>
+    internal List<ThingSnapshot> RestoreStructures => Restore.FindAll(snapshot => snapshot.Piece == null);
+
+    /// <summary>The network pieces restored, one group per place tool and grade, in the order first met.</summary>
+    internal List<PieceRestore> RestorePieces
+    {
+        get
+        {
+            List<PieceRestore> groups = new List<PieceRestore>();
+            foreach (ThingSnapshot snapshot in Restore)
+            {
+                NetworkPiece? piece = snapshot.Piece;
+                if (piece?.Grade == null)
+                {
+                    continue;
+                }
+
+                PieceRestore? group = groups.Find(found => found.Tool == piece.Tool && found.Grade == piece.Grade);
+                if (group == null)
+                {
+                    group = new PieceRestore(piece.Tool, piece.Grade, new List<ThingSnapshot>());
+                    groups.Add(group);
+                }
+
+                group.Pieces.Add(snapshot);
+            }
+
+            return groups;
+        }
+    }
+
     /// <summary>Why the world no longer is as the job left it; the undo is refused while any is listed.</summary>
     internal List<string> Diverged { get; }
 
@@ -85,8 +176,9 @@ internal sealed class UndoPlan
 
 /// <summary>
 /// Plans the inverse of a finished job: remove everything it built, then build again everything it removed, each as it
-/// stood. Refused (diverged) when something it built is gone or is no longer that prefab, when something it removed has
-/// no snapshot or stood off the grid's axes, or when the job had not finished. The job kinds that can be undone are
+/// stood (network pieces by their place tool). Refused (diverged) when something it built is gone or is no longer that
+/// prefab, when something it removed has no snapshot, stood off the grid's axes or is a network piece no coil or kit
+/// lays, or when the job had not finished. The job kinds that can be undone are
 /// the place and remove tools (runs and structures).
 /// </summary>
 internal static class UndoPlanner
@@ -152,6 +244,11 @@ internal static class UndoPlanner
             else if (snapshot.Turn == null)
             {
                 diverged.Add($"{id} ({snapshot.Prefab}) stood off the grid's axes and cannot be placed again exactly.");
+            }
+            else if (snapshot.Piece != null && snapshot.Piece.Grade == null)
+            {
+                diverged.Add($"{id} ({snapshot.Prefab}) is a network piece no coil or kit lays; undo_job builds " +
+                             $"network pieces again only through {snapshot.Piece.Tool}, so its guards apply.");
             }
             else if (standing(id) != null)
             {

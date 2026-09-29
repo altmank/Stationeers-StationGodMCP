@@ -41,6 +41,17 @@ internal readonly struct WallCell
 
     internal bool IsFree => Thing == '\0' && !KeepOut && Face != FaceLook.Door;
 
+    /// <summary>A body's key stands in it (not a run character, not nothing).</summary>
+    internal bool HoldsBody => Thing != '\0' && !IsRunCharacter(Thing);
+
+    /// <summary>
+    /// The cell with a body's mesh over it: the body's key replaces a run character or nothing (a mesh hides what runs
+    /// behind it); a body already keyed there (registered in the cell, or met first) stays.
+    /// </summary>
+    internal WallCell WithBody(char key) => HoldsBody ? this : new WallCell(Face, key, KeepOut);
+
+    private static bool IsRunCharacter(char thing) => thing == 'c' || thing == 'p' || thing == 'b' || thing == 'h';
+
     /// <summary>
     /// The map character: the thing when one stands there, 'x' in a door's keep-out, else the face: W wall, G window,
     /// D door, F frame, '.' open.
@@ -172,4 +183,30 @@ internal sealed class WallMap
         double bottom = V(row + high - 1) - 0.25;
         return MountRect.Centres(first, last).Count == 1 && MountRect.Centres(bottom, top).Count == 1;
     }
+}
+
+/// <summary>
+/// Where a wall map's coordinates lie in the world: u along the viewer's right axis, v along the up axis, both in
+/// metres, on a face plane seen from one side.
+/// </summary>
+internal static class PlaneCells
+{
+    /// <summary>The world point at (u, v) on the plane.</summary>
+    internal static Vec3 PointAt(FacePlane plane, int rightAxis, int upAxis, double u, double v) =>
+        Vec3.Zero.With(plane.Axis, plane.Metres).With(rightAxis, u).With(upAxis, v);
+
+    /// <summary>
+    /// The box one map character covers: the 0.5 m small cell centred on the plane at (u, v) and the one in front of
+    /// it on the viewer's side.
+    /// </summary>
+    internal static Box3 CellBox(FacePlane plane, GridStep side, int rightAxis, int upAxis, double u, double v)
+    {
+        Vec3 centre = PointAt(plane, rightAxis, upAxis, u, v);
+        Vec3 half = new Vec3(0.25, 0.25, 0.25);
+        Vec3 front = Vec3.Of(side) * 0.5;
+        return Box3.Around(new[] { centre - half, centre + half, centre - half + front, centre + half + front });
+    }
+
+    /// <summary>Whether a mesh box covers a map character's cells by more than the clash tolerance (VisualClash).</summary>
+    internal static bool Covers(Box3 render, Box3 cell) => VisualClash.Clashes(render, cell);
 }

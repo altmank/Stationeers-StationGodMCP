@@ -131,12 +131,15 @@ WWAAWWW
 ```
 
 `W` wall, `G` window, `D` door, `F` frame with no plate, `.` open, `x` a door's keep-out, `c`/`p`/`b`/`h` runs, and
-a capital or digit for each device (`things` lists them). `sections` names each 2 m face and what stands on it.
-`free_rects: {w: 1, h: 1}` lists where a rectangle of free wall fits, within one section by default.
+a capital or digit for each device (`things` lists them). A device's key covers every cell its mesh reaches over by
+more than 0.1 m, not only the cells the game registers it in: a 3x3 console registers 1 x 1 m but its frame draws
+about 1.5 x 1.5 m, so it shows as 3 x 3 characters (1.4.4+). `top_left` is the world point of the first character's
+cell, on the plane. `sections` names each 2 m face and what stands on it. `free_rects: {w: 1, h: 1}` lists where a
+rectangle of free wall fits, within one section by default.
 
 `find_spot {prefab, near, plane | looking | room_id, require}` tries every 0.5 m spot within `radius_m` of `near`,
-filters them on geometry first (cells free, `avoid_doors`, `one_section`, `min_bottom_above_floor_m`,
-`front_clear_m`), then checks the nearest ones (at most `max_checks`) with the game's cursor and the layout preview
+filters them on geometry first (cells free, its mesh clear of every other thing's mesh with `no_visual_overlap`,
+`avoid_doors`, `one_section` by its mesh, `min_bottom_above_floor_m`, `front_clear_m`), then checks the nearest ones (at most `max_checks`) with the game's cursor and the layout preview
 (`no_visual_overlap`, `ports_reachable`), and returns the best with ready `place_arguments`.
 
 ### Seeing it before building (1.4.3+)
@@ -157,12 +160,12 @@ rule:
 | `run_in_door_keepout` | warning | a cable, pipe or chute piece in a door's keep-out |
 | `port_into_doorway` | warning | a device port that joins in a door's keep-out |
 | `port_cell_foreign_network` | warning | a port whose joining cell holds a piece that does not join it |
-| `floating_run` | warning | a piece in air |
+| `floating_run` | warning | a cable, pipe or chute piece in air (in-line tanks and passive vents are not runs) |
 | `run_crosses_window` | warning | a piece on a window's face |
-| `device_visual_overlap` | warning | two devices whose mesh boxes each run more than 0.1 m into the other's footprint |
+| `device_visual_overlap` | warning | two devices whose mesh boxes run more than 0.1 m into each other, or one inside the other |
 | `mounted_faces_out_of_room` | warning | a mounted device facing out of the room behind it |
-| `device_crosses_seam` | warning | a mounted device spanning two wall sections |
-| `pipe_along_door` | info | a run hugging a door's jamb |
+| `device_crosses_seam` | warning | a mounted device whose mesh spans two wall sections by more than 0.1 m |
+| `run_along_door` | info | a cable, pipe or chute piece hugging a door's jamb (`pipe_along_door` before 1.4.4) |
 | `controls_not_on_wall` | info | a console, computer, display or switch not on a wall |
 
 ### Placing where you look (1.4.3+)
@@ -211,14 +214,15 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 
 - `footprint`: the small cells the game would register it in (its real footprint, from the prefab's grid bounds),
   2 m cells for grid structures, `body` (`render_box`, the box its meshes fill, and `grid_box`, the footprint's box),
-  and `mount`: the face plane behind it (`z=668`) and the rectangle it covers there.
-- `sections`: the 2 m wall (or floor) sections that rectangle covers, with what stands on each, and `crosses_seam`.
+  and `mount`: the face plane behind it (`z=668`) and the rectangle its mesh box covers there (1.4.4+).
+- `sections`: the 2 m wall (or floor) sections that rectangle covers by more than 0.1 m, with what stands on each, and
+  `crosses_seam`.
 - `conflicts`, each `{code, level, message, reference_id}`; warnings also appear in the report's `warnings`:
 
 | Code | Level | Meaning |
 | --- | --- | --- |
-| `visual_overlap` | warning | Its mesh box and another thing's each run more than 0.1 m into the other's small-cell footprint. A mesh overhanging a flush neighbour's cell alone is not a clash (the game builds them side by side); a thing sharing one of its cells (a device on a pipe) is skipped. |
-| `crosses_section_seam` | warning | It spans more than one 2 m section. |
+| `visual_overlap` | warning | Its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (1.4.4+). A small device under a console's overhang clashes even where their small cells do not; neighbours flush on one wall only touch, or overlap by a rim, and do not; a thing sharing one of its cells (a device on a pipe) is skipped. |
+| `crosses_section_seam` | warning | Its mesh spans more than one 2 m section by more than 0.1 m. |
 | `in_door_keepout` | problem | A cell in a door's keep-out; `allow_door_keepout` makes it a warning. |
 | `crosses_window` | warning | It stands on or rests against a window. |
 | `blocks_route_cells` | warning | It would take the joining cell of a free port of a device beside it. |

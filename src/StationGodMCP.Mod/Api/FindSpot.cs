@@ -19,8 +19,8 @@ namespace StationGodMCP.Api;
 /// <summary>
 /// find_spot: ranked places for a prefab on one face plane (plane and side, or the face looked at) or on the walls of a
 /// room, near a point. Every 0.5 m spot within radius_m is aimed as the cursor snaps it, filtered on geometry first
-/// (SpotSearch.Filter: its cells free, out of door keep-outs, one wall section, high enough above the floor, clear in
-/// front), then, nearest first and at most max_checks of them, checked with the game's own cursor and the layout
+/// (SpotSearch.Filter: its cells free, its mesh box clear of every other thing's, out of door keep-outs, one wall
+/// section by its mesh box, high enough above the floor, clear in front), then, nearest first and at most max_checks of them, checked with the game's own cursor and the layout
 /// preview (PlacementLayout) for the rest (no visual overlap, ports reachable). Returned best first with ready
 /// place_structure arguments. Read only.
 /// </summary>
@@ -32,6 +32,7 @@ internal static class FindSpotApi
     private const int DefaultChecks = 40;
     private const int MaximumChecks = 200;
     private const int MaximumCandidates = 4000;
+    private const int MaximumBodyCells = 40000;
 
     internal static FindSpotView Handle(Args args)
     {
@@ -71,6 +72,8 @@ internal static class FindSpotApi
         {
             CubeRotation turn = TurnFor(prefab, plane, facing);
             (double qu, double qv) = plane.Project(near);
+            List<NearBody> bodies = NearBodies.Around(Region(plane, qu, qv, radius), facts, new HashSet<long>(),
+                NearKinds.AnyPiece, MaximumBodyCells);
             for (double u = System.Math.Floor((qu - radius) * 2.0) / 2.0; u <= qu + radius; u += 0.5)
             {
                 for (double v = System.Math.Floor((qv - radius) * 2.0) / 2.0; v <= qv + radius; v += 0.5)
@@ -88,7 +91,7 @@ internal static class FindSpotApi
                     }
 
                     Candidate? candidate = Candidate.At(prefab, cursor, plane, turn, u, v, near, facts, require,
-                        seen);
+                        seen, bodies);
                     if (candidate == null)
                     {
                         continue;
@@ -139,6 +142,13 @@ internal static class FindSpotApi
 
         return new FindSpotView(prefab.PrefabName, planes.ConvertAll(plane => $"{plane.Plane} seen from {plane.Side.Name}"),
             spots, passed.Count + filtered, filtered, checkedSpots.Count + rejected, rejected);
+    }
+
+    // The search window on the plane, a metre deep either side: where the things a spot could clash with stand.
+    private static Box3 Region(PlaneView plane, double u, double v, double radius)
+    {
+        Vec3 depth = Vec3.Of(plane.Side);
+        return new Box3(plane.PointAt(u - radius, v - radius) - depth, plane.PointAt(u + radius, v + radius) + depth);
     }
 
     private static Vec3 Near(Args args)
@@ -284,7 +294,8 @@ internal static class FindSpotApi
         internal List<LayoutConflict> Conflicts { get; private set; } = new List<LayoutConflict>();
 
         internal static Candidate? At(Structure prefab, Structure cursor, PlaneView plane, CubeRotation turn, double u,
-            double v, Vec3 near, GridFacts facts, SpotRequirements require, HashSet<Vector3> seen)
+            double v, Vec3 near, GridFacts facts, SpotRequirements require, HashSet<Vector3> seen,
+            List<NearBody> bodies)
         {
             (double x, double y, double z, double w) = turn.ToQuaternion();
             Quaternion rotation = new Quaternion((float)x, (float)y, (float)z, (float)w);
@@ -304,15 +315,29 @@ internal static class FindSpotApi
                 keepOut += facts.Opening(cell).IsDoor ? 1 : 0;
             }
 
+            Box3 render = Bodies.RenderBox(prefab, position, rotation);
             MountRect? mount = cells.Count > 0
-                ? MountRect.Of(Box3.OfSmallCells(cells), PlacementLayout.MountOutward(prefab, turn))
+                ? MountRect.Of(Box3.OfSmallCells(cells), PlacementLayout.MountOutward(prefab, turn), render)
                 : null;
             double bottom = cells.Count > 0 ? Box3.OfSmallCells(cells).Min.Y : position.y;
             double floor = AtResolver.FloorBelow(new Metres(position.x, bottom, position.z), facts);
             SpotGeometry geometry = new SpotGeometry(cells.Count, occupied, keepOut,
-                mount?.Faces().Count ?? 0, bottom - floor, FrontBlocked(cells, turn.Forward, require, facts));
+                mount?.Faces().Count ?? 0, bottom - floor, FrontBlocked(cells, turn.Forward, require, facts),
+                Clashes(render, cells, bodies));
             return new Candidate(plane, turn, rotation, position, cells, (Bodies.V(position) - near).Length,
                 SpotSearch.Filter(geometry, require));
+        }
+
+        // The things whose mesh box its own clashes with (VisualClash), those sharing one of its cells skipped.
+        private static int Clashes(Box3 render, List<GridCell> cells, List<NearBody> bodies)
+        {
+            int clashes = 0;
+            foreach (NearBody body in bodies)
+            {
+                clashes += !body.Shares(cells) && VisualClash.Clashes(render, body.Render) ? 1 : 0;
+            }
+
+            return clashes;
         }
 
         private static int FrontBlocked(List<GridCell> cells, GridStep front, SpotRequirements require,

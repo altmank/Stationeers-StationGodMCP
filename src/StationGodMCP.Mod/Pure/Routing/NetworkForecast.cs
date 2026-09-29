@@ -132,6 +132,12 @@ internal sealed class Forecast
     /// <summary>Networks before the edit with every piece removed.</summary>
     internal List<long> Gone { get; } = new List<long>();
 
+    /// <summary>
+    /// Whether the port is one of a device bridge's: the edit puts it on one network with another port of its device
+    /// that it was not on one network with before. A port whose network the edit leaves as it was never is.
+    /// </summary>
+    internal bool IsBridging(ForecastPort port) => Bridges.Exists(bridge => bridge.Ports.Contains(port));
+
     internal ForecastNetwork? NetworkOf(long node, Dictionary<long, int> componentOf) =>
         componentOf.TryGetValue(node, out int index) ? Networks[index] : null;
 }

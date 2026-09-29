@@ -39,8 +39,9 @@ internal sealed class SpotRequirements
 internal sealed class SpotGeometry
 {
     internal SpotGeometry(int cells, int occupiedCells, int keepOutCells, int sections, double bottomAboveFloorM,
-        int blockedFrontCells)
+        int blockedFrontCells, int bodyClashes = 0)
     {
+        BodyClashes = bodyClashes;
         Cells = cells;
         OccupiedCells = occupiedCells;
         KeepOutCells = keepOutCells;
@@ -56,13 +57,16 @@ internal sealed class SpotGeometry
 
     internal int KeepOutCells { get; }
 
-    /// <summary>The wall sections its mount rectangle spans (0 when it rests on no plane).</summary>
+    /// <summary>The wall sections its mesh box's rectangle spans (0 when it rests on no plane).</summary>
     internal int Sections { get; }
 
     internal double BottomAboveFloorM { get; }
 
     /// <summary>Cells within front_clear_m in front of it that hold something.</summary>
     internal int BlockedFrontCells { get; }
+
+    /// <summary>Things whose mesh box its own clashes with (VisualClash): under a console's overhang, say.</summary>
+    internal int BodyClashes { get; }
 }
 
 /// <summary>
@@ -84,6 +88,11 @@ internal static class SpotSearch
         if (geometry.OccupiedCells > 0)
         {
             failed.Add($"{geometry.OccupiedCells} cell(s) taken");
+        }
+
+        if (require.NoVisualOverlap && geometry.BodyClashes > 0)
+        {
+            failed.Add($"its body clashes with {geometry.BodyClashes} thing(s)");
         }
 
         if (require.AvoidDoors && geometry.KeepOutCells > 0)

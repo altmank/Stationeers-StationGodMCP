@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.4.4
+
+Fixes from the first live test of 1.4.3.
+
+- **Meshes, not only cells.** A device's mesh can reach well past the small cells the game registers it in: the
+  3x3 console "Coolant Monitor" registers 1 x 1 m and draws about 1.5 x 1.5 m. The mesh box now decides:
+  - `visual_overlap` (`place_structure`) and `device_visual_overlap` (`lint_layout`): two mesh boxes running more
+    than 0.1 m into each other, or one inside the other, clash. A small device placed under a console's overhang
+    clashes; neighbours flush on one wall only touch, or overlap by a rim, and still do not.
+  - `find_spot` drops spots whose mesh clashes with another thing's before any cursor check (with
+    `no_visual_overlap`, the default), and reads `one_section` from the mesh: it no longer offers the spots over the
+    console's frame.
+  - Wall sections and seams (`crosses_section_seam`, `layout.sections`, `mount`, `device_crosses_seam`) come from the
+    mesh box's rectangle; a rim 0.1 m or less past a seam does not count.
+  - `wall_map` keys every cell a device's mesh covers, so the console shows as 3 x 3 and `free_rects` avoids it.
+- **`undo_job` restores network pieces through their place tools.** Cable, pipe and chute pieces come back through
+  `place_cables`, `place_pipes` and `place_chutes` (one call per tool and grade, each piece with the ends it had),
+  so `would_bridge`, `would_split`, the burst and the gas guards apply; `place_structure` builds only the rest. A
+  network piece no coil or kit lays is refused. New `allow_bridge` passes on to those calls.
+- **`undo_job`'s dry run is ready only when every step is:** the removal's dry run, the piece runs' dry runs (checked
+  as if the removal were done) and `place_structure`'s dry run when nothing is removed first. A real run makes the
+  same checks first.
+- **New `pieces` form** on `place_cables`, `place_pipes` and `place_chutes`: up to 256 separate pieces in one job,
+  each as `piece` lays it.
+- **`assume_removed` behind a queue:** a real run queued with `wait` behind another job is checked for things still
+  standing when it starts, not when it is queued, so the job ahead may remove them; a run that is not queued is
+  refused as before.
+- **`bridging`** in a run's `networks_after` devices is true only for a port the edit joins to another port of its
+  device; a port whose network does not change (a force field's two ports already on one network) is not.
+- `wall_map`'s `top_left` is the world point on the plane (it read `z: 0`).
+- `looking_at`'s `hit.face_plane` names the plane within 0.3 m of it, so a hit on a floor plate's top (0.13 m up)
+  reads `y=...` instead of null.
+- `lint_layout`: `pipe_along_door` is now `run_along_door` (it fires for cables and chutes too); `floating_run`
+  leaves in-line tanks and passive vents alone (they are not runs).
+- `move_gas`'s description says plainly that it is a cheat that bypasses the game's physics. Its behaviour is
+  unchanged.
+
 ## 1.4.3
 
 Placement and layout tools: doors and windows everywhere.

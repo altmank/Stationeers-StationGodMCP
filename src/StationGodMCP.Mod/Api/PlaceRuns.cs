@@ -54,16 +54,16 @@ internal static class RunApi
     {
         if (args.Has("job_id"))
         {
-            return Status(args, "waypoints", "cells", "piece", "branches", "grade", "join", "extra_ends",
+            return Status(args, "waypoints", "cells", "piece", "pieces", "branches", "grade", "join", "extra_ends",
                 "remove_ids", "assume_removed", "allow_bridge", "allow_split", "allow_split_long", "root", "join_to",
                 "join_trunk", "wait");
         }
 
         List<ExtraEnd> extra = RunArgs.ExtraEnds(args);
         List<GridCell> run = RunArgs.Run(args, extra) ??
-                             throw ApiErrors.InvalidArgument("Pass waypoints, cells or piece.");
+                             throw ApiErrors.InvalidArgument("Pass waypoints, cells, piece or pieces.");
         RunBuild build = new RunBuild(RunArgs.Shape(args, run), RunArgs.Grade(args, kind),
-            args.Has("piece") ? JoinMode.None : RunArgs.Join(args), extra);
+            args.Has("piece") || args.Has("pieces") ? JoinMode.None : RunArgs.Join(args), extra);
         RunRemoval removal = new RunRemoval(
             args.Has("remove_ids") ? args.ThingIds("remove_ids", RunPlanner.MaximumRemovals) : new List<ThingId>(),
             new List<GridCell>(),
@@ -80,7 +80,7 @@ internal static class RunApi
             return Status(args, "reference_ids", "waypoints", "cells", "allow_split", "allow_bridge", "root", "wait");
         }
 
-        args.Reject(kind.RemoveTool, "grade", "join", "extra_ends", "piece", "branches", "remove_ids",
+        args.Reject(kind.RemoveTool, "grade", "join", "extra_ends", "piece", "pieces", "branches", "remove_ids",
             "assume_removed", "allow_split_long", "network_id", "kind", "join_to", "join_trunk");
         return Run(args,
             new RunRequest(kind, kind.RemoveTool, null, Removal(args, kind), RunArgs.Options(args, kind)));
@@ -92,7 +92,7 @@ internal static class RunApi
     /// </summary>
     internal static RunReportView PlanRemoval(Args args)
     {
-        args.Reject("plan_removal", "dry_run", "confirm", "job_id", "grade", "join", "extra_ends", "piece",
+        args.Reject("plan_removal", "dry_run", "confirm", "job_id", "grade", "join", "extra_ends", "piece", "pieces",
             "branches", "remove_ids", "assume_removed", "allow_split_long", "join_to", "join_trunk", "wait");
         RunKind kind = (args.OptionalString("kind") ?? "cable").Trim().ToLowerInvariant() switch
         {
@@ -169,17 +169,17 @@ internal static class RunApi
             return RunReports.Of(plan, RunReports.DryRun, null);
         }
 
-        if (plan.AssumedPresent.Count > 0)
+        // Queued behind another job (wait), assumed things may be what that job removes: the check is made again when
+        // this one starts (RunWaiting), on the world the earlier jobs left.
+        bool wait = args.OptionalBool("wait") ?? false;
+        if (!(wait && HeldTickJobs.Occupied))
         {
-            plan.Problem(RunPlanner.AssumedPresentCode,
-                $"{plan.AssumedPresent.Count} thing(s) in assume_removed still stand (first " +
-                $"{plan.AssumedPresent[0]}); remove them first, or pass the {request.Kind.Noun} pieces as " +
-                "remove_ids to remove them in this job.", plan.AssumedPresent[0]);
+            RunPlanner.RequireAssumedGone(plan);
         }
 
         return plan.Ready
-            ? JobSnapshots.Record(RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null),
-                args.OptionalBool("wait") ?? false), request.Tool, Removed(plan))
+            ? JobSnapshots.Record(RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null), wait),
+                request.Tool, Removed(plan))
             : RunReports.Of(plan, RunReports.Refused, null);
     }
 

@@ -567,7 +567,11 @@ internal sealed class RunPortView
 
     public int Port { get; }
 
-    /// <summary>A power port (cables) or a pipe port: two of one device on one network is a bridge.</summary>
+    /// <summary>
+    /// The edit bridges the device through this port: it ends on one network with another of the device's ports that it
+    /// was not on one network with before (would_bridge names the device). False for a port whose network does not
+    /// change.
+    /// </summary>
     public bool Bridging { get; }
 
     public ThingId? NetworkBefore { get; }

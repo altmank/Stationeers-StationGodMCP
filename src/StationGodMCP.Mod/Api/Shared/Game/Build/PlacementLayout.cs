@@ -61,9 +61,10 @@ internal sealed class LayoutPreview
 /// place_structure's layout preview of one placement, from the game's own data for the prefab at that position and
 /// turn: the small cells it would be registered in (GridBounds, as the game's cursor reads them), its render box
 /// (Thing.Bounds), the face plane it rests on and the 2 m wall sections it spans there, and the conflicts with what
-/// stands around it now: visual_overlap (render boxes run into each other by more than 0.1 m; neighbours flush on a
-/// wall only touch), crosses_section_seam, in_door_keepout, crosses_window, blocks_route_cells (it would stand in the
-/// cell a free port of a device beside it needs), front_blocked, faces_out_of_room, not_upright; and each port checked
+/// stands around it now: visual_overlap (render boxes run into each other by more than 0.1 m, VisualClash; neighbours
+/// flush on a wall only touch), crosses_section_seam (its render box's rectangle spans more than one 2 m section),
+/// in_door_keepout, crosses_window, blocks_route_cells (it would stand in the cell a free port of a device beside it
+/// needs), front_blocked, faces_out_of_room, not_upright; and each port checked
 /// against its joining cell (what stands there, whether it joins on build, which network). Read only.
 /// </summary>
 internal static class PlacementLayout
@@ -72,7 +73,6 @@ internal static class PlacementLayout
                                         NetworkType.Chute);
 
     private const int ListedCells = 64;
-    private const int MaximumScannedCells = 4096;
 
     internal static LayoutPreview Of(Structure prefab, Vector3 position, Quaternion rotation, CubeRotation? turn,
         GridFacts facts, bool allowDoorKeepOut, HashSet<long> ignore)
@@ -82,7 +82,7 @@ internal static class PlacementLayout
             ? Bodies.LargeCells(prefab, position, rotation)
             : new List<GridCell>();
         Box3 render = Bodies.RenderBox(prefab, position, rotation);
-        MountRect? mount = small.Count > 0 && turn != null ? MountOf(prefab, small, turn) : null;
+        MountRect? mount = small.Count > 0 && turn != null ? MountOf(prefab, small, turn, render) : null;
         List<LayoutConflict> conflicts = new List<LayoutConflict>();
         SectionsView? sections = mount != null ? Sections(mount, facts, conflicts) : null;
         HashSet<GridCell> own = new HashSet<GridCell>(small);
@@ -93,7 +93,7 @@ internal static class PlacementLayout
 
         if (small.Count > 0)
         {
-            Surroundings(render, Box3.OfSmallCells(small), own, ignore, facts, conflicts);
+            Surroundings(render, own, ignore, facts, conflicts);
         }
 
         if (mount != null && prefab.PlacementType == PlacementSnap.FaceMount)
@@ -130,8 +130,8 @@ internal static class PlacementLayout
     internal static GridStep MountOutward(Structure prefab, CubeRotation turn) =>
         prefab.PlacementType == PlacementSnap.Grid ? turn.Up : turn.Forward;
 
-    private static MountRect? MountOf(Structure prefab, List<GridCell> small, CubeRotation turn) =>
-        MountRect.Of(Box3.OfSmallCells(small), MountOutward(prefab, turn));
+    private static MountRect? MountOf(Structure prefab, List<GridCell> small, CubeRotation turn, Box3 render) =>
+        MountRect.Of(Box3.OfSmallCells(small), MountOutward(prefab, turn), render);
 
     private static SectionsView Sections(MountRect mount, GridFacts facts, List<LayoutConflict> conflicts)
     {
@@ -206,58 +206,32 @@ internal static class PlacementLayout
         }
     }
 
-    // Things near it: whose body it clashes with (visual_overlap, VisualClash) and whose free port cell it would take
-    // (blocks_route_cells). A thing sharing one of its cells stands there by design (a device on a pipe) and is skipped.
-    private static void Surroundings(Box3 render, Box3? footprint, HashSet<GridCell> own, HashSet<long> ignore,
-        GridFacts facts, List<LayoutConflict> conflicts)
+    // Things near it: whose body it clashes with (visual_overlap, VisualClash on the mesh boxes) and whose free port
+    // cell it would take (blocks_route_cells). A thing sharing one of its cells stands there by design (a device on a
+    // pipe) and is skipped.
+    private static void Surroundings(Box3 render, HashSet<GridCell> own, HashSet<long> ignore, GridFacts facts,
+        List<LayoutConflict> conflicts)
     {
-        Dictionary<long, SmallGrid> near = new Dictionary<long, SmallGrid>();
-        int scanned = 0;
-        for (int x = Floor(render.Min.X - 0.5); x <= Ceil(render.Max.X + 0.5); x += GridStep.CellSize)
+        foreach (NearBody body in NearBodies.Around(render, facts, ignore, NearKinds.AnyPiece))
         {
-            for (int y = Floor(render.Min.Y - 0.5); y <= Ceil(render.Max.Y + 0.5); y += GridStep.CellSize)
-            {
-                for (int z = Floor(render.Min.Z - 0.5); z <= Ceil(render.Max.Z + 0.5); z += GridStep.CellSize)
-                {
-                    if (++scanned > MaximumScannedCells)
-                    {
-                        break;
-                    }
-
-                    SmallCell? cell = facts.SmallAt(new GridCell(x, y, z));
-                    if (cell == null)
-                    {
-                        continue;
-                    }
-
-                    Add(near, cell.Device, ignore);
-                    Add(near, cell.Other, ignore);
-                    Add(near, cell.Pipe, ignore);
-                    Add(near, cell.Cable, ignore);
-                    Add(near, cell.Chute, ignore);
-                }
-            }
-        }
-
-        foreach (SmallGrid thing in near.Values)
-        {
-            List<GridCell> cells = Bodies.SmallCells(thing);
-            if (cells.Exists(own.Contains))
+            if (body.Shares(own))
             {
                 continue;
             }
 
-            Box3 box = Bodies.RenderBox(thing);
-            double depth = VisualClash.Depth(render, footprint, box,
-                cells.Count > 0 ? Box3.OfSmallCells(cells) : (Box3?)null);
+            double depth = VisualClash.Depth(render, body.Render);
             if (depth > ConflictCodes.OverlapToleranceM)
             {
+                SmallGrid thing = body.Thing;
                 conflicts.Add(new LayoutConflict(ConflictCodes.VisualOverlap, ConflictLevel.Warning,
-                    $"Its body and {thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId}, at {box}) run " +
-                    System.FormattableString.Invariant($"{depth:0.00} m into each other's footprint."), thing.ReferenceId));
+                    $"Its body and {thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId}, at {body.Render}) " +
+                    (double.IsPositiveInfinity(depth)
+                        ? "overlap: one lies inside the other."
+                        : System.FormattableString.Invariant($"run {depth:0.00} m into each other.")),
+                    thing.ReferenceId));
             }
 
-            if (thing is Device device)
+            if (body.Thing is Device device)
             {
                 FreePortsTaken(device, own, conflicts);
             }
@@ -434,19 +408,7 @@ internal static class PlacementLayout
         return piece != null && !piece.IsBeingDestroyed ? piece : null;
     }
 
-    private static void Add(Dictionary<long, SmallGrid> things, SmallGrid? thing, HashSet<long> ignore)
-    {
-        if (thing != null && !thing.IsBeingDestroyed && !ignore.Contains(thing.ReferenceId))
-        {
-            things[thing.ReferenceId] = thing;
-        }
-    }
-
     private static GridCell LargeAt(Vec3 point) =>
         SmallCellCode.LargeOf(new GridCell((int)System.Math.Round(point.X * 10.0),
             (int)System.Math.Round(point.Y * 10.0), (int)System.Math.Round(point.Z * 10.0)));
-
-    private static int Floor(double metres) => (int)System.Math.Floor(metres * 2.0) * GridStep.CellSize;
-
-    private static int Ceil(double metres) => (int)System.Math.Ceiling(metres * 2.0) * GridStep.CellSize;
 }

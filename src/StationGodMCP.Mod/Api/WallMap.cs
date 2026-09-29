@@ -17,6 +17,7 @@ namespace StationGodMCP.Api;
 /// wall_map: a text elevation of one face plane as seen from one side (PlaneView), 0.5 m per character: the face behind
 /// each small cell (W wall, G window, D door, F a frame with no plate, '.' open), what stands in it or right in front of
 /// it (a device's key, c cable, p pipe, b both, h chute), 'x' in a door's keep-out; a ruler row marks the 2 m seams.
+/// A device's key covers every cell its mesh box covers by more than 0.1 m, not only the small cells it is registered in.
 /// The sections (2 m faces) with what stands on each, the devices' keys, and with free_rects where a w x h rectangle
 /// fits on free wall. Read only.
 /// </summary>
@@ -25,6 +26,7 @@ internal static class WallMapApi
     private const double DefaultRadiusM = 4.0;
     private const double MaximumRadiusM = 16.0;
     private const int MaximumRects = 50;
+    private const int MaximumBodyCells = 40000;
 
     internal const string Legend =
         "Seen from the side named: columns left to right, rows top to bottom, 0.5 m each (a small cell on the " +
@@ -52,7 +54,7 @@ internal static class WallMapApi
         List<WallThingView> thingViews = things.ConvertAll(thing => new WallThingView(keys[thing.ReferenceId].ToString(),
             GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position)));
         return new WallMapView(plane.Plane.ToString(), plane.Side.Name, plane.Right.Name, plane.Up.Name,
-            map.Lines(), new PointView(map.U(0), map.V(0), 0), Sections(plane, map, facts), thingViews,
+            map.Lines(), PointView.Of(plane.PointAt(map.U(0), map.V(0))), Sections(plane, map, facts), thingViews,
             FreeRects(args, plane, map), Legend);
     }
 
@@ -86,7 +88,34 @@ internal static class WallMapApi
             }
         }
 
+        Box3 region = new Box3(plane.PointAt(uMin, vMin) - Vec3.Of(plane.Side),
+            plane.PointAt(uMax, vMax) + Vec3.Of(plane.Side));
+        foreach (NearBody body in NearBodies.Around(region, facts, new HashSet<long>(), NearKinds.Mounted,
+                     MaximumBodyCells))
+        {
+            Cover(plane, body, cells, uStart, uStep, vMax, keys, things);
+        }
+
         return new WallMap(uStart, uStep, vMax, cells);
+    }
+
+    // A body's mesh over map cells: the cells its mesh box covers by more than the clash tolerance show its key, even
+    // those outside the small cells the game registers it in (a console's frame overhangs its 1 x 1 m of cells).
+    private static void Cover(PlaneView plane, NearBody body, WallCell[,] cells, double uStart, double uStep,
+        double vTop, Dictionary<long, char> keys, List<SmallGrid> things)
+    {
+        for (int row = 0; row < cells.GetLength(0); row++)
+        {
+            for (int column = 0; column < cells.GetLength(1); column++)
+            {
+                double u = uStart + column * uStep;
+                double v = vTop - row * 0.5;
+                if (!cells[row, column].HoldsBody && PlaneCells.Covers(body.Render, plane.CellBox(u, v)))
+                {
+                    cells[row, column] = cells[row, column].WithBody(PlaneView.KeyOf(body.Thing, keys, things));
+                }
+            }
+        }
     }
 
     private static List<WallSectionView> Sections(PlaneView plane, WallMap map, GridFacts facts)

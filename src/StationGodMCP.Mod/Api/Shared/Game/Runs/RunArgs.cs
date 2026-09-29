@@ -72,13 +72,16 @@ internal static class RunArgs
         return cells;
     }
 
-    /// <summary>The run's cells from waypoints, cells or piece; null when none is given.</summary>
+    internal const int MaximumPieces = 256;
+
+    /// <summary>The run's cells from waypoints, cells, piece or pieces; null when none is given.</summary>
     internal static List<GridCell>? Run(Args args, List<ExtraEnd> extra)
     {
-        int forms = (args.Has("waypoints") ? 1 : 0) + (args.Has("cells") ? 1 : 0) + (args.Has("piece") ? 1 : 0);
+        int forms = (args.Has("waypoints") ? 1 : 0) + (args.Has("cells") ? 1 : 0) + (args.Has("piece") ? 1 : 0) +
+                    (args.Has("pieces") ? 1 : 0);
         if (forms > 1)
         {
-            throw ApiErrors.InvalidArgument("Pass one of waypoints, cells or piece.");
+            throw ApiErrors.InvalidArgument("Pass one of waypoints, cells, piece or pieces.");
         }
 
         string? error;
@@ -93,7 +96,11 @@ internal static class RunArgs
         }
         else if (args.Has("piece"))
         {
-            run = Piece(args.OptionalObject("piece")!, extra, out error);
+            run = Piece(args.OptionalObject("piece")!, "piece", extra, out error);
+        }
+        else if (args.Has("pieces"))
+        {
+            run = Pieces(args, extra, out error);
         }
         else
         {
@@ -103,17 +110,43 @@ internal static class RunArgs
         return run ?? throw ApiErrors.InvalidArgument(error ?? "The run is not valid.");
     }
 
-    private static List<GridCell>? Piece(JObject piece, List<ExtraEnd> extra, out string? error)
+    // pieces: [{at, ends}], each one piece as the piece form lays it.
+    private static List<GridCell>? Pieces(Args args, List<ExtraEnd> extra, out string? error)
+    {
+        JArray items = args.Array("pieces", MaximumPieces);
+        List<GridCell> cells = new List<GridCell>(items.Count);
+        for (int index = 0; index < items.Count; index++)
+        {
+            if (!(items[index] is JObject item))
+            {
+                error = $"pieces[{index}] must be {{at, ends}}.";
+                return null;
+            }
+
+            List<GridCell>? one = Piece(item, $"pieces[{index}]", extra, out error);
+            if (one == null)
+            {
+                return null;
+            }
+
+            cells.AddRange(one);
+        }
+
+        error = null;
+        return cells;
+    }
+
+    private static List<GridCell>? Piece(JObject piece, string name, List<ExtraEnd> extra, out string? error)
     {
         Args fields = new Args(piece);
-        GridCell cell = CellOf(PositionOf(piece["at"] ?? JValue.CreateNull(), "piece.at"));
+        GridCell cell = CellOf(PositionOf(piece["at"] ?? JValue.CreateNull(), $"{name}.at"));
         JArray ends = fields.Array("ends", 6);
         for (int index = 0; index < ends.Count; index++)
         {
-            string? name = ends[index].Type == JTokenType.String ? (string?)ends[index] : null;
-            if (!GridStep.TryParse(name, out GridStep step))
+            string? text = ends[index].Type == JTokenType.String ? (string?)ends[index] : null;
+            if (!GridStep.TryParse(text, out GridStep step))
             {
-                error = $"piece.ends[{index}] must be one of +x, -x, +y, -y, +z, -z.";
+                error = $"{name}.ends[{index}] must be one of +x, -x, +y, -y, +z, -z.";
                 return null;
             }
 
@@ -132,6 +165,17 @@ internal static class RunArgs
     /// </summary>
     internal static RunShape Shape(Args args, List<GridCell> run)
     {
+        if (args.Has("pieces"))
+        {
+            if (args.Has("branches"))
+            {
+                throw ApiErrors.InvalidArgument("branches go with waypoints or cells, not pieces.");
+            }
+
+            return RunShape.Pieces(run, out string? piecesError) ??
+                   throw ApiErrors.InvalidArgument(piecesError ?? "The pieces are not valid.");
+        }
+
         List<RunBranch> branches = new List<RunBranch>();
         if (args.Has("branches"))
         {

@@ -15,7 +15,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | `rooms` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas, its devices. | `reference_id` (only the room that thing is in), `include_cells`, `include_devices` |
 | `atmosphere_contents` | What gas or liquid one thing holds: a canister, tank, suit, a pipe's whole network, a landing pad's shared atmosphere, or every network a device is on. | `reference_id` |
 | `water_sources` | Every canister, tank, device and pipe network that holds water, polluted water or steam, largest first. | `min_mol` |
-| `move_gas` | Move gas and liquid between atmospheres, or delete it. | `from`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `force`, `dry_run`; `transfer_id` to poll |
+| `move_gas` | Move gas and liquid between atmospheres, or delete it. A cheat: it bypasses the game's physics. | `from`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `force`, `dry_run`; `transfer_id` to poll |
 | `outer_frames` | Frames with a face on the planet's outside air. | `near_player_m`, `include_inner`, `limit`, `offset` |
 | `planet` | The planet's atmosphere: pressure, temperature and its parts, every gas, today's and the orbit's temperature range, ice and cloud reservoirs. | none |
 | `weather` | The storm schedule, when the next event can come, every event this world can roll, and the season. | none |
@@ -37,7 +37,9 @@ and can hold air. A sealed space bigger than 1200 cells has no room, so frames f
 
 ## Moving gas
 
-`move_gas` uses the game's own gas calls: each gas leaves with its share of the heat and arrives with it.
+`move_gas` is a cheat: it bypasses the game's physics. Gas and liquid jump from one atmosphere to another with no
+pipe, pump or valve between them, no flow time and no power, which nothing a player builds can do. It uses the game's
+own gas calls: each gas leaves with its share of the heat and arrives with it.
 
 - `from` and `to` are reference ids of a canister, portable tank, tank or suit, a pipe (its network), any landing pad
   piece (the pad's shared atmosphere), a pipe or landing pad network id, or an atmosphere id from

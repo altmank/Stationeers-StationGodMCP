@@ -277,6 +277,37 @@ internal sealed class RunShape
     /// <summary>A cell only a split long straight put in the shape (not one the caller's run passes).</summary>
     internal bool IsFill(GridCell cell) => _fills.Contains(cell);
 
+    /// <summary>
+    /// Separate pieces (the pieces form): each cell stands alone, with no ends of its own (the caller's extra ends give
+    /// them); every cell is a tip. Null with the reason when a cell is listed twice or there are none.
+    /// </summary>
+    internal static RunShape? Pieces(IReadOnlyList<GridCell> cells, out string? error)
+    {
+        if (cells.Count == 0)
+        {
+            error = "pieces needs at least one piece.";
+            return null;
+        }
+
+        Dictionary<GridCell, EndSet> ends = new Dictionary<GridCell, EndSet>(cells.Count);
+        List<RunTip> tips = new List<RunTip>(cells.Count);
+        foreach (GridCell cell in cells)
+        {
+            if (ends.ContainsKey(cell))
+            {
+                error = $"Two pieces are given at {cell}; one cell holds one piece.";
+                return null;
+            }
+
+            ends[cell] = EndSet.None;
+            tips.Add(new RunTip(cell, null));
+        }
+
+        error = null;
+        return new RunShape(new List<GridCell>(cells), ends, tips, new List<RunLeg>(), new List<GridCell>(cells),
+            new HashSet<GridCell>(), new List<RunBranch>());
+    }
+
     /// <summary>A plain run with no branches.</summary>
     internal static RunShape Line(IReadOnlyList<GridCell> run) =>
         Of(run, new List<RunBranch>(), out string? _) ?? throw new System.ArgumentException("empty run");

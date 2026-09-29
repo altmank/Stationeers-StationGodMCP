@@ -137,6 +137,18 @@ internal static class RunPlanner
 
     internal const string AssumedPresentCode = "assumed_present";
 
+    /// <summary>A real run is refused while anything in assume_removed still stands.</summary>
+    internal static void RequireAssumedGone(RunPlan plan)
+    {
+        if (plan.AssumedPresent.Count > 0)
+        {
+            plan.Problem(AssumedPresentCode,
+                $"{plan.AssumedPresent.Count} thing(s) in assume_removed still stand (first " +
+                $"{plan.AssumedPresent[0]}); remove them first, or pass the {plan.Request.Kind.Noun} pieces as " +
+                "remove_ids to remove them in this job.", plan.AssumedPresent[0]);
+        }
+    }
+
     // assume_removed: a thing already gone is what was assumed; one still standing is checked as gone (the kind's
     // pieces forecast as removed, anything else only freed for placement) and noted, since a real run needs it gone.
     private static void ReadAssumed(RunPlan plan, RunRemoval removal, HashSet<long> seen)

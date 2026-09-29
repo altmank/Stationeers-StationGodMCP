@@ -65,7 +65,9 @@ public sealed class PlacementPreviewTests
     [InlineData(718.25, 719.25, new[] { 7190 })]
     [InlineData(717.75, 718.25, new[] { 7170, 7190 })]
     [InlineData(716.0, 718.0, new[] { 7170 })]
-    [InlineData(716.0, 718.01, new[] { 7170, 7190 })]
+    [InlineData(716.0, 718.01, new[] { 7170 })]
+    [InlineData(716.0, 718.2, new[] { 7170, 7190 })]
+    [InlineData(717.98, 718.03, new[] { 7190 })]
     public void AnIntervalCoversTheFacesItOverlaps(double min, double max, int[] centres)
     {
         Assert.Equal(new List<int>(centres), MountRect.Centres(min, max));
@@ -135,37 +137,55 @@ public sealed class PlacementPreviewTests
     }
 }
 
-/// <summary>visual_overlap's clash rule (1.4.3): both bodies must reach into each other's footprint.</summary>
+/// <summary>
+/// visual_overlap's clash rule (1.4.4): the mesh boxes decide, past 0.1 m. The numbers are live (Vulcan, 2026-09-29):
+/// Console3x3 "Coolant Monitor" 196328 on the wall z = 668, its gas sensor 161368 beside it.
+/// </summary>
 public sealed class VisualClashTests
 {
-    // The console's footprint on the wall z = 668, and the gas sensor's cell beside it.
-    private static readonly Box3 ConsoleCells = new Box3(new Vec3(718.25, 200.25, 667.75), new Vec3(719.25, 201.25, 668.25));
-    private static readonly Box3 SensorCell = new Box3(new Vec3(719.25, 200.25, 667.75), new Vec3(719.75, 200.75, 668.25));
+    // 196328's render box and its 1 x 1 m footprint; 161368 (a gas sensor at 719.5, 200.5) is flush beside it.
+    internal static readonly Box3 ConsoleMesh = new Box3(new Vec3(717.76, 200.25, 667.95), new Vec3(719.23, 201.71, 668.2));
+    internal static readonly Box3 ConsoleCells = new Box3(new Vec3(718.25, 200.25, 667.75), new Vec3(719.25, 201.25, 668.25));
+    private static readonly Box3 FlushSensorMesh = new Box3(new Vec3(719.35, 200.25, 667.96), new Vec3(719.65, 200.65, 668.17));
+
+    // A gas sensor's mesh (describe_prefab: x +-0.15, y -0.25..0.15, z -0.04..0.17) at a point on the wall.
+    internal static Box3 SensorAt(double x, double y) =>
+        new Box3(new Vec3(x - 0.15, y - 0.25, 667.96), new Vec3(x + 0.15, y + 0.15, 668.17));
 
     [Fact]
-    public void AMeshOverhangingAFlushNeighboursCellIsNotAClash()
+    public void AFlushNeighbourIsNotAClash()
     {
-        // Even a console mesh reaching 0.5 m over the sensor's cell: the sensor's small mesh does not reach back.
-        Box3 consoleMesh = new Box3(new Vec3(718.2, 200.2, 668.0), new Vec3(719.75, 201.3, 668.2));
-        Box3 sensorMesh = new Box3(new Vec3(719.3, 200.3, 668.0), new Vec3(719.7, 200.7, 668.15));
-        Assert.True(VisualClash.Depth(consoleMesh, ConsoleCells, sensorMesh, SensorCell) <=
-                    ConflictCodes.OverlapToleranceM);
+        Assert.False(VisualClash.Clashes(ConsoleMesh, FlushSensorMesh));
+        Assert.True(VisualClash.Depth(ConsoleMesh, FlushSensorMesh) <= 0);
     }
 
     [Fact]
-    public void TwoBodiesInEachOthersFootprintClash()
+    public void ASmallDeviceUnderAConsolesOverhangClashes()
     {
-        Box3 bigMesh = new Box3(new Vec3(718, 200, 667.8), new Vec3(720, 202, 668.3));
-        Box3 bigCells = new Box3(new Vec3(718.25, 200.25, 667.75), new Vec3(719.75, 201.75, 668.25));
-        Box3 sensorMesh = new Box3(new Vec3(719.3, 200.3, 668.0), new Vec3(719.7, 200.7, 668.15));
-        Assert.True(VisualClash.Depth(bigMesh, bigCells, sensorMesh, SensorCell) > ConflictCodes.OverlapToleranceM);
+        // find_spot offered (719, 201.5) and (718.5, 201.5): outside the console's cells, inside its mesh.
+        Assert.True(VisualClash.Clashes(ConsoleMesh, SensorAt(719, 201.5)));
+        Assert.True(VisualClash.Clashes(ConsoleMesh, SensorAt(718.5, 201.5)));
+        Assert.True(VisualClash.Clashes(SensorAt(719, 201.5), ConsoleMesh));
+        Assert.True(Box3.OfSmallCells(new List<GridCell> { new GridCell(7190, 2015, 6680) }).Penetration(ConsoleCells) <= 0);
     }
 
     [Fact]
-    public void WithoutFootprintsTheMeshBoxesDecide()
+    public void MeshesOverlappingByATenthOfAMetreOrLessDoNotClash()
     {
-        Box3 a = new Box3(new Vec3(0, 0, 0), new Vec3(1, 1, 1));
-        Box3 b = new Box3(new Vec3(0.5, 0.5, 0.5), new Vec3(2, 2, 2));
-        Assert.Equal(0.5, VisualClash.Depth(a, null, b, ConsoleCells), 6);
+        Box3 left = new Box3(new Vec3(0, 0, 0), new Vec3(1, 1, 0.2));
+        Assert.False(VisualClash.Clashes(left, new Box3(new Vec3(0.9, 0, 0), new Vec3(1.9, 1, 0.2))));
+        Assert.False(VisualClash.Clashes(left, new Box3(new Vec3(1, 0, 0), new Vec3(2, 1, 0.2))));
+        Assert.True(VisualClash.Clashes(left, new Box3(new Vec3(0.85, 0, 0), new Vec3(1.85, 1, 0.2))));
+    }
+
+    [Fact]
+    public void AThinBodyInsideADeepOneClashesHoweverThin()
+    {
+        Box3 deep = new Box3(new Vec3(0, 0, 0), new Vec3(1, 1, 1));
+        Box3 plate = new Box3(new Vec3(0.2, 0.2, 0.5), new Vec3(0.8, 0.8, 0.55));
+        Assert.True(double.IsPositiveInfinity(VisualClash.Depth(deep, plate)));
+        Assert.True(VisualClash.Clashes(plate, deep));
+        Assert.Equal(0.5, new Box3(new Vec3(0, 0, 0), new Vec3(1, 1, 1))
+            .ClashDepth(new Box3(new Vec3(0.5, 0.5, 0.5), new Vec3(2, 2, 2))), 6);
     }
 }

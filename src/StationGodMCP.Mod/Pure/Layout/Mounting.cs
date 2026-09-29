@@ -45,10 +45,12 @@ internal sealed class MountRect
     internal double MaxV { get; }
 
     /// <summary>
-    /// The rectangle a footprint box covers on the face plane behind it along -outward; null when its back face is not
-    /// within OnPlaneM of a face plane (it stands on nothing the grid knows).
+    /// The rectangle a piece covers on the face plane behind its footprint along -outward; null when the footprint's
+    /// back face is not within OnPlaneM of a face plane (it stands on nothing the grid knows). The plane comes from the
+    /// footprint (the small cells the game registers); the rectangle from body, the box its meshes fill, when given:
+    /// a mesh overhanging its cells covers the wall it hangs over.
     /// </summary>
-    internal static MountRect? Of(Box3 footprint, GridStep outward)
+    internal static MountRect? Of(Box3 footprint, GridStep outward, Box3? body = null)
     {
         int axis = outward.Axis;
         double back = outward.Dx + outward.Dy + outward.Dz > 0 ? footprint.Min[axis] : footprint.Max[axis];
@@ -58,15 +60,16 @@ internal sealed class MountRect
             return null;
         }
 
+        Box3 covers = body ?? footprint;
         int u = axis == 0 ? 1 : 0;
         int v = axis == 2 ? 1 : 2;
-        return new MountRect(FacePlane.Of(axis, (int)Math.Round(plane * 10.0)), outward, footprint.Min[u],
-            footprint.Max[u], footprint.Min[v], footprint.Max[v]);
+        return new MountRect(FacePlane.Of(axis, (int)Math.Round(plane * 10.0)), outward, covers.Min[u],
+            covers.Max[u], covers.Min[v], covers.Max[v]);
     }
 
     /// <summary>
-    /// The 2 m faces of the plane the rectangle lies on (face points, decimetres), every one it covers by more than a
-    /// hair: edges that only touch a face do not count.
+    /// The 2 m faces of the plane the rectangle lies on (face points, decimetres), every one it covers by more than
+    /// ConflictCodes.OverlapToleranceM: a mesh's rim a few centimetres past a seam does not count.
     /// </summary>
     internal List<GridCell> Faces()
     {
@@ -89,18 +92,35 @@ internal sealed class MountRect
     /// <summary>More than one face: the piece spans a seam between wall sections.</summary>
     internal bool CrossesSeam => Faces().Count > 1;
 
-    /// <summary>The face centres (decimetres, odd metres) whose 2 m span the interval overlaps by more than a hair.</summary>
+    /// <summary>
+    /// The face centres (decimetres, odd metres) whose 2 m span the interval overlaps by more than
+    /// ConflictCodes.OverlapToleranceM; an interval that overlaps none by that much (a small piece on a seam) is on the
+    /// face it overlaps most.
+    /// </summary>
     internal static List<int> Centres(double min, double max)
     {
         List<int> centres = new List<int>();
+        int best = 0;
+        double bestOverlap = Edge;
         int first = (int)Math.Floor((min + Edge - 1.0) / 2.0) * 2 + 1;
         for (int centre = first; centre - 1.0 < max - Edge; centre += 2)
         {
             double overlap = Math.Min(max, centre + 1.0) - Math.Max(min, centre - 1.0);
-            if (overlap > Edge)
+            if (overlap > ConflictCodes.OverlapToleranceM)
             {
                 centres.Add(centre * 10);
             }
+
+            if (overlap > bestOverlap)
+            {
+                best = centre * 10;
+                bestOverlap = overlap;
+            }
+        }
+
+        if (centres.Count == 0 && bestOverlap > Edge)
+        {
+            centres.Add(best);
         }
 
         return centres;
@@ -159,18 +179,18 @@ internal static class ConflictCodes
 }
 
 /// <summary>
-/// How far two bodies clash. A mesh box (Thing.Bounds) may overhang the small cells the game registers a piece in by up
-/// to about a third of a metre (the cells come from Bounds * 0.9, rounded), so a device's mesh reaching over a flush
-/// neighbour's cell is how the game builds them side by side, not a clash. With both footprints known, the clash is the
-/// lesser of each mesh box running into the other's footprint box: it counts only when both reach into each other.
-/// Without a footprint on either side, the mesh boxes alone.
+/// How far two bodies clash, from the boxes their meshes fill (Thing.Bounds): Box3.ClashDepth, so a thin body wholly
+/// inside another clashes however thin it is. A clash counts past ConflictCodes.OverlapToleranceM: neighbours flush on
+/// one surface only touch, or overlap by a mesh's rim. One mesh overhanging another's small cells is a clash when it
+/// reaches that body's mesh: the cells the game registers (Bounds * 0.9, rounded) can be far smaller than the mesh (a
+/// 3x3 console registers 1 x 1 m and draws 1.5 x 1.5 m), and a device placed under the overhang is hidden by it.
 /// </summary>
 internal static class VisualClash
 {
-    internal static double Depth(Box3 renderA, Box3? footprintA, Box3 renderB, Box3? footprintB) =>
-        footprintA.HasValue && footprintB.HasValue
-            ? Math.Min(renderA.Penetration(footprintB.Value), renderB.Penetration(footprintA.Value))
-            : renderA.Penetration(renderB);
+    internal static double Depth(Box3 renderA, Box3 renderB) => renderA.ClashDepth(renderB);
+
+    internal static bool Clashes(Box3 renderA, Box3 renderB) =>
+        Depth(renderA, renderB) > ConflictCodes.OverlapToleranceM;
 }
 
 /// <summary>Which way a port moves what flows through it, from its connection role's name.</summary>

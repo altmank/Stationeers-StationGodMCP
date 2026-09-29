@@ -247,7 +247,7 @@ internal static class RunReports
             List<RunPortView> ports = new List<RunPortView>(network.Ports.Count);
             foreach (ForecastPort port in network.Ports)
             {
-                ports.Add(PortView(plan, port));
+                ports.Add(PortView(plan, port, forecast.Result.IsBridging(port)));
             }
 
             after.Add(new RunNetworkAfterView(network.Index, networks, network.NewPieces.Count, ports,
@@ -257,10 +257,10 @@ internal static class RunReports
         return after;
     }
 
-    private static RunPortView PortView(RunPlan plan, ForecastPort port) =>
+    private static RunPortView PortView(RunPlan plan, ForecastPort port, bool bridging) =>
         new RunPortView(plan.Things.TryGetValue(port.DeviceId, out SmallGrid device)
                 ? GameLookup.ViewOf(device)
-                : new ThingView(new ThingId(port.DeviceId), null, null), port.Index, port.Power,
+                : new ThingView(new ThingId(port.DeviceId), null, null), port.Index, bridging,
             port.NetworkBefore.HasValue ? new ThingId(port.NetworkBefore.Value) : null);
 
     private static List<RunBridgeView> Bridges(RunPlan plan, RunForecast forecast)
@@ -325,7 +325,7 @@ internal static class RunReports
             List<RunPortView> cut = new List<RunPortView>(forecast.Result.Cut.Count);
             foreach (ForecastPort port in forecast.Result.Cut)
             {
-                cut.Add(PortView(plan, port));
+                cut.Add(PortView(plan, port, false));
             }
 
             splits.Add(new RunSplitView(null, new List<int>(), cut, allowed,
@@ -340,7 +340,7 @@ internal static class RunReports
         List<RunSplitPartView> parts = new List<RunSplitPartView>(detail.Parts.Count);
         foreach (SplitPart part in detail.Parts)
         {
-            parts.Add(new RunSplitPartView(part.Index, part.Ports.ConvertAll(port => PortView(plan, port)),
+            parts.Add(new RunSplitPartView(part.Index, part.Ports.ConvertAll(port => PortView(plan, port, false)),
                 part.HoldsRoot));
         }
 

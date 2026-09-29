@@ -217,6 +217,18 @@ internal readonly struct FacePlane : IEquatable<FacePlane>
 
     internal static FacePlane Of(int axis, int coordinate) => new FacePlane(axis, coordinate);
 
+    /// <summary>
+    /// The face plane on an axis nearest a coordinate (metres), when within tolerance metres of it; null otherwise. A
+    /// hit on a floor plate's top or a wall plate's face lies a plate's thickness off its plane.
+    /// </summary>
+    internal static FacePlane? Near(int axis, double metres, double tolerance)
+    {
+        double plane = Math.Round(metres / 2.0) * 2.0;
+        return Math.Abs(metres - plane) <= tolerance
+            ? new FacePlane(axis, (int)Math.Round(plane * 10.0))
+            : (FacePlane?)null;
+    }
+
     /// <summary>The plane a face point lies on.</summary>
     internal static FacePlane Of(GridCell facePoint)
     {

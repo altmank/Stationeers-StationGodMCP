@@ -92,6 +92,9 @@ internal static class HeldTickJobs
         return job;
     }
 
+    /// <summary>A job runs or waits, or something else holds the tick: a run started with wait now is queued.</summary>
+    internal static bool Occupied => _active != null || Waiting.Count > 0 || IsSaving() || GameManager.GameTickPaused;
+
     internal static object Status(string id)
     {
         if (_active != null && _active.Id == id)

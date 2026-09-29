@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared.Game.Runs;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using UnityEngine;
 
@@ -66,7 +68,42 @@ internal static class JobSnapshots
         return new ThingSnapshot(structure.ReferenceId, structure.PrefabName, Bodies.V(structure.ThingTransformPosition),
             CubeRotation.FromQuaternion(rotation.x, rotation.y, rotation.z, rotation.w),
             structure.CurrentBuildStateIndex,
-            string.IsNullOrEmpty(structure.CustomName) ? null : structure.CustomName);
+            string.IsNullOrEmpty(structure.CustomName) ? null : structure.CustomName, PieceOf(structure));
+    }
+
+    private static readonly RunKind[] Kinds = { new CableRunKind(), new PipeRunKind(), new ChuteRunKind() };
+
+    // A cable, pipe or chute piece as its place tool builds it again: the tool, the grade name that lays it (null when
+    // no coil or kit does) and its ends cell by cell; null for anything else.
+    private static NetworkPiece? PieceOf(Structure structure)
+    {
+        if (!(structure is SmallGrid piece))
+        {
+            return null;
+        }
+
+        foreach (RunKind kind in Kinds)
+        {
+            if (!kind.Family.IsPiece(piece))
+            {
+                continue;
+            }
+
+            Grade? grade = kind.Family.RunGradeOf(piece);
+            string? name = grade == null
+                ? null
+                : System.Array.Find(kind.GradeNames, candidate => kind.GradeOf(candidate)?.SameAs(grade) == true);
+            PieceModel model = PieceShapes.Live(piece);
+            List<PieceCell> cells = new List<PieceCell>(model.Cells.Count);
+            foreach (GridCell cell in model.Cells)
+            {
+                cells.Add(new PieceCell(cell, EndSet.AtCell(model, cell)));
+            }
+
+            return new NetworkPiece(kind.PlaceTool, name, cells);
+        }
+
+        return null;
     }
 
     /// <summary>A reply as the client sees it, for reading its fields.</summary>

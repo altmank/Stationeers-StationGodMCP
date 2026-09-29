@@ -728,12 +728,32 @@ internal sealed class UndoPlanView
     public bool Ready { get; }
 }
 
-/// <summary>undo_job: status (dry_run, refused, scheduled), the plan, both tools' arguments and their replies.</summary>
+/// <summary>
+/// One place tool call of an undo that builds network pieces again: the tool (place_cables, place_pipes,
+/// place_chutes), its arguments (the pieces form) and its reply (the dry run, or the queued job).
+/// </summary>
+internal sealed class UndoPieceRunView
+{
+    internal UndoPieceRunView(string tool, Newtonsoft.Json.Linq.JObject arguments, object? reply)
+    {
+        Tool = tool;
+        Arguments = arguments;
+        Reply = reply;
+    }
+
+    public string Tool { get; }
+
+    public Newtonsoft.Json.Linq.JObject Arguments { get; }
+
+    public object? Reply { get; }
+}
+
+/// <summary>undo_job: status (dry_run, refused, scheduled), the plan, every tool's arguments and their replies.</summary>
 internal sealed class UndoJobView
 {
     internal UndoJobView(string jobId, string tool, string status, UndoPlanView plan,
         Newtonsoft.Json.Linq.JObject? removeArguments, Newtonsoft.Json.Linq.JObject? placeArguments, object? removal,
-        object? placement)
+        object? placement, List<UndoPieceRunView> pieceRuns)
     {
         JobId = jobId;
         Tool = tool;
@@ -743,6 +763,7 @@ internal sealed class UndoJobView
         PlaceArguments = placeArguments;
         Removal = removal;
         Placement = placement;
+        PieceRuns = pieceRuns;
     }
 
     /// <summary>The job undone.</summary>
@@ -757,12 +778,18 @@ internal sealed class UndoJobView
     /// <summary>remove_structure's arguments for what the job built.</summary>
     public Newtonsoft.Json.Linq.JObject? RemoveArguments { get; }
 
-    /// <summary>place_structure's arguments for what the job removed.</summary>
+    /// <summary>place_structure's arguments for what the job removed that is not a cable, pipe or chute piece.</summary>
     public Newtonsoft.Json.Linq.JObject? PlaceArguments { get; }
 
     /// <summary>The dry run: remove_structure's dry run; a real run: its job (poll with remove_structure job_id).</summary>
     public object? Removal { get; }
 
-    /// <summary>A real run: place_structure's queued job (poll with place_structure job_id).</summary>
+    /// <summary>
+    /// The dry run: place_structure's dry run when nothing is removed first (else it is checked when its job starts);
+    /// a real run: its queued job (poll with place_structure job_id).
+    /// </summary>
     public object? Placement { get; }
+
+    /// <summary>The cable, pipe and chute pieces built again, one place tool call per tool and grade.</summary>
+    public List<UndoPieceRunView> PieceRuns { get; }
 }

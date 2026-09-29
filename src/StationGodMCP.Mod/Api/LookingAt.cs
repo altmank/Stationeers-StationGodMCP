@@ -78,15 +78,9 @@ internal static class LookingAtApi
         Vec3 point = Bodies.V(hit.point);
         Vec3 normal = Bodies.V(hit.normal).Normalized;
         GridStep? face = ViewBasis.Along(normal, FaceDegrees);
-        string? plane = null;
-        if (face.HasValue)
-        {
-            double along = point[face.Value.Axis];
-            double onPlane = System.Math.Round(along / 2.0) * 2.0;
-            plane = System.Math.Abs(along - onPlane) < 0.1
-                ? FacePlane.Of(face.Value.Axis, (int)System.Math.Round(onPlane * 10.0)).ToString()
-                : null;
-        }
+        string? plane = face.HasValue
+            ? FacePlane.Near(face.Value.Axis, point[face.Value.Axis], MountRect.OnPlaneM)?.ToString()
+            : null;
 
         GridCell small = Look.SmallCellAt(point);
         GridCell large = SmallCellCode.LargeOf(Look.SmallCellAt(point + normal * 0.3));
