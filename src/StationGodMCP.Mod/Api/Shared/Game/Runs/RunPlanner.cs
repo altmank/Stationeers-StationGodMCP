@@ -705,6 +705,11 @@ internal static class RunPlanner
             {
                 plan.Problem(guard.Value.Code, guard.Value.Message ?? guard.Value.Code);
             }
+
+            if (guard.Value.Warning != null && touched.Contains(guard.Key))
+            {
+                plan.Warnings.Add(guard.Value.Warning);
+            }
         }
 
         LayoutIssue? removal = plan.Request.Kind.RemovalProblem(forecast.Result, forecast.Context);

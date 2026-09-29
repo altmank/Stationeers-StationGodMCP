@@ -90,11 +90,13 @@ internal sealed class PowerAfter
     /// plus what its ports bring from outside those networks: a port whose network the edit removes whole brings that
     /// network's numbers (a reroute replacing every piece keeps its devices' load), and a port on no network now, or
     /// on one that stays apart, brings its device's own estimate (joining). Without them a network of new pieces only
-    /// would forecast 0 W however much its devices move.
+    /// would forecast 0 W however much its devices move. dormant: what each port adds on top once its device, off now,
+    /// is switched on (PortLoads.Dormant), counted for every port of the network after, those of the networks pooled
+    /// too, whose numbers leave an off device out; null for the network as it is.
     /// </summary>
     internal static PowerAfter Of(ForecastNetwork network, IReadOnlyDictionary<long, NetworkPower> before,
         IReadOnlyDictionary<long, double> newRatings, ICollection<long>? gone = null,
-        Func<ForecastPort, PortPower?>? joining = null)
+        Func<ForecastPort, PortPower?>? joining = null, Func<ForecastPort, PortPower?>? dormant = null)
     {
         double potential = 0.0;
         double required = 0.0;
@@ -116,6 +118,13 @@ internal sealed class PowerAfter
         HashSet<long> pooledGone = new HashSet<long>();
         foreach (ForecastPort port in network.Ports)
         {
+            PortPower? extra = dormant?.Invoke(port);
+            if (extra != null)
+            {
+                potential += extra.PotentialW;
+                required += extra.RequiredW;
+            }
+
             long? was = port.NetworkBefore;
             if (was.HasValue && network.NetworksBefore.Contains(was.Value))
             {

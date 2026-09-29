@@ -232,7 +232,8 @@ Each refusal names what it found. An `allow_*` argument accepts that one case af
 | --- | --- | --- |
 | `would_bridge` | The run would join two or more networks, or two ports of one device (both sides of an APC or transformer, a battery's input and output, a pump's two sides, a device's chute output into its own input). Names the networks and the devices on each. | `allow_bridge`, naming every network of the merge, or the device |
 | `would_split` | A removal would split a network or leave a device port joined to nothing. Lists each resulting network with its devices (`components`), the devices that feed it (`root`: your `root`, else every supplier: an APC's, transformer's or battery's output, a generator, a solar panel) and `cut_off`, the devices no root reaches afterwards. | `allow_split` |
-| `would_overload` | A cable network after the edit would carry more than its weakest cable, so the game would burn a cable every power tick. Counted over the networks it keeps, a network the edit replaces whole (a reroute), and every device port it newly joins, from the device's own state (a battery's charge and free capacity, an APC's or transformer's supply and demand, a generator's rate, a consumer's use). | none: upgrade the cable or keep the networks apart |
+| `would_overload` | A cable network after the edit would carry more than its weakest cable, so the game would burn a cable every power tick. Counted over the networks it keeps, a network the edit replaces whole (a reroute), and every device port it newly joins, from the device's own state (a battery's charge and free capacity, an APC's or transformer's supply and demand, a generator's rate, a consumer's use), with the game's own on/off and error checks: an output gives nothing while off or in error, a consumer in error still draws, a solar panel gives its rate on or off. | none: upgrade the cable or keep the networks apart |
+| `would_overload_when_on` (warning) | Safe as the devices stand, but the network would carry more than its weakest cable once its devices that are off now are switched on: the game counts an off device as nothing, so two full batteries joined while both are off would burn a cable the moment they go on. Counted as `would_overload` with every off device on the network after the edit as if on, those already on a network it keeps included; the message names the off devices. The job itself is safe while they stay off. | not needed: keep them off, upgrade the cable, or keep the networks apart |
 | `would_burst` | A pipe network's pressure after the edit would exceed its weakest pipe. | none |
 | `holds_contents`, `contents_would_move` | A pipe removal would delete a network's gas or liquid, or divide it. | none: empty it first with `move_gas` |
 | `content_mismatch` | A pipe of the other content (gas and liquid never join). | none |
@@ -242,7 +243,7 @@ Each refusal names what it found. An `allow_*` argument accepts that one case af
 | `would_loop` (warning) | The run joins something already joined another way: a second path. Keep it only if the redundancy is meant. | not needed |
 | `in_door_keepout` | A new piece in a door's keep-out (1.4.3+). | `allow_door_keepout` |
 | `crosses_window` (warning) | A new piece on a window's face (1.4.3+). | not needed |
-| `not_joined`, `through_air`, `open_end`, `long_split` (warnings) | A run end stops short of a network; pieces in air; an end left open; a long straight split. | not needed |
+| `not_joined`, `through_air`, `open_end`, `long_split` (warnings) | A run end stops short of a network; pieces in air; an end left open (with `pieces`, also an end pointing into another piece of the job that has no end back); a long straight split. | not needed |
 
 ## Pipes
 

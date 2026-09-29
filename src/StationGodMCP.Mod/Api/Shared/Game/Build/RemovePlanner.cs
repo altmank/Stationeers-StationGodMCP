@@ -73,15 +73,15 @@ internal sealed class RemovePlan
     internal Thing? From { get; set; }
 
     /// <summary>
-    /// Pipe networks that stay in one piece although the request removes an in-line tank or passive vent of theirs
-    /// and pipe pieces too: every removed member leaves the network before it goes (as the pipe tools remove a piece
-    /// that splits nothing), so the network keeps its id and all of its gas.
+    /// Pipe networks that stay in one piece although the request removes pipe pieces of theirs (and maybe an in-line
+    /// tank or passive vent too): every removed member leaves the network before it goes (as the pipe tools remove a
+    /// piece that splits nothing), so the network keeps its id and all of its gas.
     /// </summary>
     internal HashSet<long> KeptWhole { get; } = new HashSet<long>();
 
     /// <summary>
-    /// The gas the gas model forecasts the job deletes from each network it takes an in-line tank or passive vent from
-    /// (TakedownOutcome.LostMol: holds_gas, lifted by allow_contents). The job's gas check expects it gone.
+    /// The gas the gas model forecasts the job deletes from each pipe network it takes members from, pipe pieces only
+    /// included (TakedownOutcome.LostMol: holds_gas, lifted by allow_contents). The job's gas check expects it gone.
     /// </summary>
     internal List<PlannedGasLoss> GasLosses { get; } = new List<PlannedGasLoss>();
 
@@ -223,7 +223,7 @@ internal static class RemovePlanner
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
         };
-        if (takedown.Kind == null && piece is Pipe { PipeNetwork: { } network } &&
+        if (piece is Pipe { PipeNetwork: { } network } &&
             gas.TryGetValue(network.ReferenceId, out NetworkTakedown taken) && taken.First == takedown)
         {
             NetworkGas(taken, facts);
@@ -274,16 +274,20 @@ internal static class RemovePlanner
         return null;
     }
 
-    // Each pipe network the request takes an in-line tank or passive vent from, as the job leaves it (PipeTakedown):
-    // its members, the game's links among them, the order the job removes them in (the pipe pieces as their remove
-    // tool's plan lists them, then the others in reference_ids order), and whether they leave it first (KeptWhole).
+    // Each pipe network the request takes anything from (an in-line tank, a passive vent, pipe pieces only), as the
+    // job leaves it (PipeTakedown): its members, the game's links among them, the order the job removes them in (the
+    // pipe pieces as their remove tool's plan lists them, then the others in reference_ids order), and whether they
+    // leave it first (KeptWhole). Its findings go on its first member in the request that is not a pipe piece, else
+    // on its first pipe piece.
     private static Dictionary<long, NetworkTakedown> GasModel(RemovePlan plan)
     {
         Dictionary<long, NetworkTakedown> model = new Dictionary<long, NetworkTakedown>();
-        foreach (PlannedTakedown takedown in plan.Takedowns)
+        List<PlannedTakedown> reported = plan.Takedowns.FindAll(static takedown => takedown.Kind == null);
+        reported.AddRange(plan.Takedowns.FindAll(static takedown => takedown.Kind?.Family is PipeFamily));
+        foreach (PlannedTakedown takedown in reported)
         {
-            if (takedown.Kind != null || !(takedown.Piece is Pipe { PipeNetwork: { } network }) ||
-                network.Atmosphere == null || model.ContainsKey(network.ReferenceId))
+            if (!(takedown.Piece is Pipe { PipeNetwork: { } network }) || network.Atmosphere == null ||
+                model.ContainsKey(network.ReferenceId))
             {
                 continue;
             }
@@ -338,10 +342,10 @@ internal static class RemovePlanner
         return order;
     }
 
-    // The gas the job deletes from a network it takes an in-line tank or passive vent from, reported on the first of
-    // them in the request (holds_gas, allow_contents): all of it when the request removes every member (Pipe.OnDestroy
-    // of the last one divides it among nothing), or what a part of a split network holds when it loses its last
-    // member (the pipe pieces go first, so a tank the split leaves on its own goes with the gas it was given).
+    // The gas the job deletes from a network it takes members from, reported on its first member in the request
+    // (holds_gas, allow_contents): all of it when the request removes every member (Pipe.OnDestroy of the last one
+    // divides it among nothing), or what a part of a split network holds when it loses its last member (the pipe
+    // pieces go first, so a tank or a pipe piece the split leaves on its own goes with the gas it was given).
     private static void NetworkGas(NetworkTakedown taken, RemovalFacts facts)
     {
         TakedownOutcome outcome = taken.Outcome;
@@ -355,8 +359,8 @@ internal static class RemovePlanner
         facts.GasWhere = outcome.Parts.Count == 0
             ? $" in pipe network {taken.Network}, whose last member this removal takes"
             : string.Format(CultureInfo.InvariantCulture,
-                " of the {0:0.###} mol in pipe network {1}: the job removes the pipe pieces first, which splits the " +
-                "network, and a part of it then loses its last member while it still holds gas",
+                " of the {0:0.###} mol in pipe network {1}: the job's removals split the network (pipe pieces " +
+                "first), and a part of it then loses its last member while it still holds gas",
                 outcome.MolesBefore, taken.Network);
     }
 
@@ -716,8 +720,9 @@ internal static class RemovePlanner
 
     // The run tools' planner on each kind's pieces. A pipe network the request also takes an in-line tank or passive
     // vent from is planned apart, with those members forecast as gone (RunRemoval.Alongside), so its split and contents
-    // checks see the network the whole job leaves, and one that stays whole is kept whole (KeptWhole). Its gas is the
-    // gas model's (GasModel), so that plan's would_burst and holds_contents are not reported again.
+    // checks see the network the whole job leaves. A pipe network the job neither splits nor empties is kept whole
+    // (KeptWhole: RunBuilder.Remove and RemoveOne take each piece out of it first). The gas of every pipe network is
+    // the gas model's (GasModel), so a pipe plan's would_burst and holds_contents are not reported again.
     private static List<NetworkRun> NetworkRuns(RemovePlan plan)
     {
         HashSet<long> withMembers = new HashSet<long>();
@@ -754,12 +759,11 @@ internal static class RemovePlanner
             }
 
             HashSet<long> rebuilt = RunBuilder.Rebuilt(run.Plan.Forecast, run.Kind.Family);
-            foreach (long network in withMembers)
+            foreach (PlannedRemoval removal in run.Plan.Removals)
             {
-                if (!rebuilt.Contains(network) && run.Plan.Removals.Exists(removal =>
-                        !removal.Assumed && removal.Network != null && removal.Network.ReferenceId == network))
+                if (!removal.Assumed && removal.Network != null && !rebuilt.Contains(removal.Network.ReferenceId))
                 {
-                    plan.KeptWhole.Add(network);
+                    plan.KeptWhole.Add(removal.Network.ReferenceId);
                 }
             }
         }
@@ -781,7 +785,7 @@ internal static class RemovePlanner
             new RunOptions(EditAllowance.Nothing, null, false, RunArgs.DefaultListLimit));
         RunPlan runPlan = RunPlanner.Plan(request);
         plan.NetworkPlans.Add(runPlan);
-        runs.Add(new NetworkRun(kind, pieces, runPlan, alongside.Count > 0));
+        runs.Add(new NetworkRun(kind, pieces, runPlan, kind.Family is PipeFamily));
     }
 
     // A run plan's findings: its would_split warns here, contents refusals are lifted by allow_contents, anything else
@@ -910,11 +914,11 @@ internal sealed class NetworkRun
 
     internal RunPlan Plan { get; }
 
-    /// <summary>It removes pipe pieces from networks the request also takes an in-line tank or passive vent from.</summary>
+    /// <summary>It removes pipe pieces, whose networks' gas the gas model forecasts (GasModel).</summary>
     internal bool GasByModel { get; }
 }
 
-/// <summary>A pipe network the request takes an in-line tank or passive vent from: its gas now and as the job leaves it.</summary>
+/// <summary>A pipe network the request takes members from: its gas now and as the job leaves it.</summary>
 internal sealed class NetworkTakedown
 {
     internal NetworkTakedown(long network, GasSnapshot before, TakedownOutcome outcome, PlannedTakedown first)
@@ -931,6 +935,9 @@ internal sealed class NetworkTakedown
 
     internal TakedownOutcome Outcome { get; }
 
-    /// <summary>The first of its members in the request that is not a pipe piece: where its findings are reported.</summary>
+    /// <summary>
+    /// The first of its members in the request that is not a pipe piece, else its first pipe piece: where its findings
+    /// are reported.
+    /// </summary>
     internal PlannedTakedown First { get; }
 }

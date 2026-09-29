@@ -152,14 +152,15 @@ internal sealed class OrientableCell
     internal SmallGrid? SplitFrom { get; }
 }
 
-/// <summary>The kind's guard numbers for one network after an edit, and its refusal if any.</summary>
+/// <summary>The kind's guard numbers for one network after an edit, its refusal if any, and its warning if any.</summary>
 internal sealed class KindGuard
 {
-    internal KindGuard(object? view, string? code, string? message)
+    internal KindGuard(object? view, string? code, string? message, LayoutIssue? warning = null)
     {
         View = view;
         Code = code;
         Message = message;
+        Warning = warning;
     }
 
     internal object? View { get; }
@@ -167,6 +168,9 @@ internal sealed class KindGuard
     internal string? Code { get; }
 
     internal string? Message { get; }
+
+    /// <summary>A risk the edit does not cause by itself (would_overload_when_on); null for none.</summary>
+    internal LayoutIssue? Warning { get; }
 }
 
 /// <summary>Cable runs: normal, heavy or super heavy coil; power ports bridge; the flow must fit the weakest cable.</summary>

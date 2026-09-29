@@ -99,17 +99,46 @@ internal static class RunNetworks
             }
         }
 
-        PowerAfter power = PowerAfter.Of(after, before, ratings, context.Gone,
-            port => PortLoads.Of(context.Devices.TryGetValue(port.DeviceId, out Device device) ? device : null,
-                port.Index));
+        Func<ForecastPort, PortPower?> joining = port => PortLoads.Of(DeviceOf(context, port), port.Index);
+        PowerAfter power = PowerAfter.Of(after, before, ratings, context.Gone, joining);
+        PowerAfter whenOn = PowerAfter.Of(after, before, ratings, context.Gone, joining,
+            port => PortLoads.Dormant(DeviceOf(context, port), port.Index));
         RunPowerAfterView view = new RunPowerAfterView(power.PotentialW, power.RequiredW, power.FlowW,
             power.LowestCableW, power.LowestFuseW, power.Overloads);
         return power.Overloads
-            ? new KindGuard(view, "would_overload",
+            ? new KindGuard(view, WouldOverload,
                 $"The network would carry {power.FlowW:0} W (min of {power.PotentialW:0} W potential and " +
                 $"{power.RequiredW:0} W required) over a cable rated {power.LowestCableW:0} W; the game would burn " +
                 "a cable every power tick. Use a higher grade, or keep the networks apart.")
-            : new KindGuard(view, null, null);
+            : new KindGuard(view, null, null, whenOn.Overloads ? WhenOnWarning(after, context, whenOn) : null);
+    }
+
+    internal const string WouldOverload = "would_overload";
+
+    /// <summary>Warning: the edit is safe as the devices stand, but switching on the ones that are off would burn a cable.</summary>
+    internal const string WouldOverloadWhenOn = "would_overload_when_on";
+
+    private static Device? DeviceOf(RunNetworkContext context, ForecastPort port) =>
+        context.Devices.TryGetValue(port.DeviceId, out Device device) ? device : null;
+
+    // The devices that are off now on the network after the edit, which the game counts as nothing until switched on.
+    private static LayoutIssue WhenOnWarning(ForecastNetwork after, RunNetworkContext context, PowerAfter whenOn)
+    {
+        SortedSet<long> off = new SortedSet<long>();
+        foreach (ForecastPort port in after.Ports)
+        {
+            if (DeviceOf(context, port) is { OnOff: false })
+            {
+                off.Add(port.DeviceId);
+            }
+        }
+
+        return new LayoutIssue(WouldOverloadWhenOn,
+            $"Safe as the devices stand, but once the devices now off ({string.Join(", ", off)}) are switched on the " +
+            $"network would carry {whenOn.FlowW:0} W (min of {whenOn.PotentialW:0} W potential and " +
+            $"{whenOn.RequiredW:0} W required) over a cable rated {whenOn.LowestCableW:0} W, and the game would " +
+            "burn a cable at once. Keep them off, use a higher grade, or keep the networks apart.", null,
+            off.Count > 0 ? off.Min : (long?)null);
     }
 
     internal static KindGuard PipeGuard(ForecastNetwork after, RunNetworkContext context)

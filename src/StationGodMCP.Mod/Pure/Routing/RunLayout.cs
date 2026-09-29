@@ -297,6 +297,8 @@ internal static class RunLayoutPlanner
             Explicit(layout, around, end, inRun, content, shape);
         }
 
+        UnansweredEnds(layout, extra, inRun, shape);
+
         foreach (LayoutCell entry in new List<LayoutCell>(layout.Cells))
         {
             Finish(layout, around, entry, content);
@@ -438,6 +440,32 @@ internal static class RunLayoutPlanner
             entry.Joins.Add(new LayoutJoin(end.Cell, end.Step, "open", null, null));
             layout.Warnings.Add(new LayoutIssue("open_end",
                 $"The join at {end.Cell} towards {end.Step.Name} meets nothing; the end stays open.", end.Cell));
+        }
+    }
+
+    // An explicit end pointing into another cell of the run is joined only when that cell's piece has an end back (the
+    // pieces form names every piece's ends, so nothing adds one); without it the end stays open, as towards nothing.
+    // Read once every explicit end is in, so an end named by a later piece counts.
+    private static void UnansweredEnds(RunLayout layout, IReadOnlyList<ExtraEnd> extra, HashSet<GridCell> inRun,
+        RunShape shape)
+    {
+        HashSet<(GridCell, GridStep)> warned = new HashSet<(GridCell, GridStep)>();
+        foreach (ExtraEnd end in extra)
+        {
+            GridCell next = end.Step.From(end.Cell);
+            LayoutCell? entry = layout.At(end.Cell);
+            LayoutCell? other = layout.At(next);
+            if (!inRun.Contains(end.Cell) || !inRun.Contains(next) || shape.IsFill(next) || entry == null ||
+                other == null || !entry.Ends.Contains(end.Step) || other.Ends.Contains(end.Step.Opposite) ||
+                !warned.Add((end.Cell, end.Step)))
+            {
+                continue;
+            }
+
+            entry.Joins.Add(new LayoutJoin(end.Cell, end.Step, "open", null, null));
+            layout.Warnings.Add(new LayoutIssue("open_end",
+                $"The end at {end.Cell} towards {end.Step.Name} points into {next}, whose piece has no end back " +
+                $"({end.Step.Opposite.Name}); the end stays open.", end.Cell));
         }
     }
 
