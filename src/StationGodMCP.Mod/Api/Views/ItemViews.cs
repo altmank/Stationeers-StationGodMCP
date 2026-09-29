@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -87,7 +88,7 @@ internal sealed class StockItemView : IFoundItemView
         PositionView position, double? distanceM, MachineStockView machineStock)
     {
         PrefabName = prefabName;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
         Quantity = quantity;
         HeldIn = heldIn;
         Position = position;

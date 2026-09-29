@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using StationGodMCP.Api.Shared;
@@ -54,8 +53,6 @@ internal static class PlanetApi
         Chemistry.GasType.Oxygen, Chemistry.GasType.LiquidOxygen, Chemistry.GasType.NitrousOxide,
         Chemistry.GasType.LiquidNitrousOxide, Chemistry.GasType.Ozone, Chemistry.GasType.LiquidOzone
     };
-
-    private static readonly Regex RichTextTag = new Regex("<[^>]+>", RegexOptions.Compiled);
 
     private static Chemistry.GasType[]? _gasTypes;
 
@@ -221,7 +218,7 @@ internal static class PlanetApi
         double minLiquid = Mole.MinLiquidPressure(type).ToDouble();
         PlanetGasAmount amount = new PlanetGasAmount(
             type.ToString(),
-            PlainText(probe.DisplayName),
+            Text.Plain(probe.DisplayName),
             liquid ? "liquid" : "gas",
             moles,
             reading.Cells > 0.0 ? moles / reading.Cells : 0.0,
@@ -300,9 +297,6 @@ internal static class PlanetApi
         _gasTypes = types.ToArray();
         return _gasTypes;
     }
-
-    private static string? PlainText(string? text) =>
-        text == null ? null : RichTextTag.Replace(text, string.Empty).Trim();
 }
 
 /// <summary>

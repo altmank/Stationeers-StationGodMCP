@@ -91,6 +91,10 @@ message names the nearest one it does take), a value of the wrong JSON type, a w
 may be written `3.0` or `1e2`. Reference ids are decimal strings (`"364"`). `game_unavailable` means the game could not be reached, and says whether no pipe
 answered or the game took the request but did not reply in time (it may still have run).
 
+Things are named by `display_name`, the game's own name (the label, else the localised name). Where the game has no
+English name for a prefab it shows a placeholder such as `<N:EN:StructureCrewUmbilicalDoor>`; `display_name` and every
+message then carry the prefab name instead (`StructureCrewUmbilicalDoor`), the same in every tool.
+
 ## Configuration
 
 A single local game needs none. The settings cover the local pipe's name and remote access over TCP:

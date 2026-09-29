@@ -1,15 +1,20 @@
 #nullable enable
 
+using StationGodMCP.Pure;
+
 namespace StationGodMCP.Api.Shared;
 
-/// <summary>The one way a reply names a thing.</summary>
+/// <summary>
+/// The one way a reply names a thing. display_name is the game's DisplayName, but the prefab name where the game has
+/// only its "&lt;N:EN:PrefabName&gt;" placeholder (no localised name; ThingName.Displayed).
+/// </summary>
 internal sealed class ThingView
 {
     internal ThingView(ThingId referenceId, string? prefabName, string? displayName)
     {
         ReferenceId = referenceId;
         PrefabName = prefabName;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
     }
 
     public ThingId ReferenceId { get; }

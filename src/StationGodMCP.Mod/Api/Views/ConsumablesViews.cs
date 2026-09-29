@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -194,7 +195,7 @@ internal sealed class PackedView
     internal PackedView(string prefabName, string? displayName, int items, double quantity)
     {
         PrefabName = prefabName;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
         Items = items;
         Quantity = quantity;
     }
@@ -214,7 +215,7 @@ internal sealed class NotCountedView
     internal NotCountedView(string prefabName, string? displayName, string reason, int items, double quantity)
     {
         PrefabName = prefabName;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
         Reason = reason;
         Items = items;
         Quantity = quantity;

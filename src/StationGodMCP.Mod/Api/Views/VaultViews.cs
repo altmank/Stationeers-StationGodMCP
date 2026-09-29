@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -44,7 +45,7 @@ internal sealed class VaultItemView
     {
         Kind = kind;
         PrefabName = prefabName;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
         Reagent = reagent;
         MaxStack = maxStack;
     }

@@ -35,6 +35,41 @@ public sealed class UndoAndPrintsTests
     }
 
     [Fact]
+    public void AJobAlreadyUndoneSaysSoAndNamesTheUndosJobs()
+    {
+        JobFacts undone = new JobFacts("run-10", "place_cables", "applied",
+            new List<(long, string?)> { (465, null) }, new List<long> { 463 },
+            new Dictionary<long, ThingSnapshot> { [463] = Straight(463) },
+            new List<UndoStep> { new UndoStep("run-11", "applied") });
+        UndoPlan plan = UndoPlanner.Plan(undone, _ => null);
+        Assert.False(plan.Ready);
+        Assert.Equal(new List<string> { "run-11" }, plan.UndoneBy);
+        Assert.Contains(plan.Diverged, reason => reason.Contains("already undone") && reason.Contains("run-11 (applied)"));
+        Assert.DoesNotContain(plan.Diverged, reason => reason.Contains("is gone"));
+    }
+
+    [Fact]
+    public void AnEarlierUndoRefusedWholeDoesNotCountAsUndone()
+    {
+        Dictionary<long, string> world = new Dictionary<long, string>
+        {
+            [500] = "StructureCableJunctionH", [501] = "StructureCableStraightH"
+        };
+        JobFacts job = new JobFacts("run-7", "place_cables", "applied",
+            new List<(long, string?)> { (500, "StructureCableJunctionH"), (501, null) }, new List<long> { 400 },
+            new Dictionary<long, ThingSnapshot> { [400] = Straight(400) },
+            new List<UndoStep> { new UndoStep("run-8", "refused") });
+        UndoPlan plan = UndoPlanner.Plan(job, id => world.TryGetValue(id, out string prefab) ? prefab : null);
+        Assert.True(plan.Ready);
+        Assert.Null(plan.UndoneBy);
+        Assert.Contains(plan.Notes, note => note.Contains("refused"));
+    }
+
+    [Fact]
+    public void AnUndoStepNoLongerKeptStillCountsAsUndone() =>
+        Assert.False(new UndoStep("run-11", UndoStep.Unknown).Refused);
+
+    [Fact]
     public void AGoneOrChangedPieceMeansTheWorldDiverged()
     {
         UndoPlan gone = UndoPlanner.Plan(Job(), id => id == 501 ? "StructureCableStraightH" : null);

@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -165,7 +166,7 @@ internal sealed class HeldGasView
     internal HeldGasView(string gas, string? displayName, bool liquid, double amountMol, double? liquidL)
     {
         Gas = gas;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, null);
         State = liquid ? "liquid" : "gas";
         AmountMol = amountMol;
         LiquidL = liquidL;

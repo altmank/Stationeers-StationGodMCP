@@ -24,6 +24,10 @@ internal static class JobSnapshots
 
     private static readonly Queue<string> Order = new Queue<string>();
 
+    private static readonly Dictionary<string, List<string>> Undos = new Dictionary<string, List<string>>();
+
+    private static readonly Queue<string> UndoOrder = new Queue<string>();
+
     /// <summary>
     /// Records a started (or queued) job's snapshots under the job id its reply carries; a reply without one (busy,
     /// refused) records nothing. burnt: the burnt cables it removes (debris no coil lays), recorded as such so undo_job
@@ -32,7 +36,7 @@ internal static class JobSnapshots
     internal static object Record(object reply, string tool, IEnumerable<Structure> removed, Args args,
         IEnumerable<Structure>? burnt = null)
     {
-        string? jobId = JobIdOf(reply);
+        string? jobId = JobIdIn(reply);
         if (jobId == null)
         {
             return reply;
@@ -70,6 +74,36 @@ internal static class JobSnapshots
     }
 
     internal static RecordedJob? Of(string jobId) => ByJob.TryGetValue(jobId, out RecordedJob entry) ? entry : null;
+
+    /// <summary>
+    /// Records the jobs a real undo_job run started to undo a job (its removal, placement and piece runs), so a later
+    /// undo_job of the same job says it was already undone. The last KeptJobs undone jobs; in memory only.
+    /// </summary>
+    internal static void RecordUndo(string jobId, List<string> undoJobIds)
+    {
+        if (undoJobIds.Count == 0)
+        {
+            return;
+        }
+
+        if (!Undos.ContainsKey(jobId))
+        {
+            UndoOrder.Enqueue(jobId);
+        }
+
+        Undos[jobId] = undoJobIds;
+        while (Undos.Count > KeptJobs && UndoOrder.Count > 0)
+        {
+            Undos.Remove(UndoOrder.Dequeue());
+        }
+    }
+
+    /// <summary>The jobs an earlier real undo_job run of the job started; empty when there was none.</summary>
+    internal static List<string> UndoOf(string jobId) =>
+        Undos.TryGetValue(jobId, out List<string> ids) ? ids : new List<string>();
+
+    /// <summary>A job's id in a tool's reply; null when the reply started none (busy, refused, a dry run).</summary>
+    internal static string? JobIdOf(object? reply) => reply == null ? null : JobIdIn(reply);
 
     // The request's own source fields; each tool has already checked them.
     private static JobSource SourceOf(Args args) =>
@@ -133,7 +167,7 @@ internal static class JobSnapshots
     internal static JObject Wire(object reply) =>
         JObject.Parse(JsonConvert.SerializeObject(reply, ApiJson.Settings));
 
-    private static string? JobIdOf(object reply)
+    private static string? JobIdIn(object reply)
     {
         JToken? id = Wire(reply)["job_id"];
         return id != null && id.Type == JTokenType.String ? id.Value<string>() : null;

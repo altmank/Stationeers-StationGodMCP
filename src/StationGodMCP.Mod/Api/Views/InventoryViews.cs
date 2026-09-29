@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -69,7 +70,7 @@ internal sealed class PrefabTotalView
         PlaceAmounts amounts, List<HolderTotalView> topHolders)
     {
         PrefabName = prefabName;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
         Reagent = reagent;
         Items = items;
         Quantity = amounts.Quantity;

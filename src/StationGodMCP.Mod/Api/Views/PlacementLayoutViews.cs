@@ -727,13 +727,14 @@ internal sealed class ShowPreviewView
 internal sealed class UndoPlanView
 {
     internal UndoPlanView(List<ThingId> remove, List<ThingId> restore, List<string> diverged, List<string> notes,
-        bool ready)
+        bool ready, List<string>? undoneBy = null)
     {
         Remove = remove;
         Restore = restore;
         Diverged = diverged;
         Notes = notes;
         Ready = ready;
+        UndoneBy = undoneBy;
     }
 
     /// <summary>Things the job built, removed by the undo.</summary>
@@ -748,6 +749,12 @@ internal sealed class UndoPlanView
     public List<string> Notes { get; }
 
     public bool Ready { get; }
+
+    /// <summary>
+    /// The job was already undone: the jobs the earlier undo_job run started (not all refused); absent otherwise.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? UndoneBy { get; }
 }
 
 /// <summary>

@@ -224,7 +224,9 @@ true` makes the same checks, starts the removal and queues the placements behind
 applies, and materials are paid and refunded as by hand: every call takes the job's own `from_id`, so an undo runs on
 a dedicated server whenever the job did. `from_id` overrides it (a job that used the local player, or one whose
 record is gone); removing what a `free: true` placement built gives nothing back (`refund_to: none`), and `refund_to`
-overrides the removal's refund target. `plan.notes` says which applied.
+overrides the removal's refund target. `plan.notes` says which applied. A job already undone is refused: its dry run
+or real run says so in `plan.diverged` and lists the undo's own jobs in `plan.undone_by` (undo those, the last first,
+to have the job back); an earlier undo whose jobs were all refused does not count, and `plan.notes` mentions it.
 
 ## Removing pieces
 

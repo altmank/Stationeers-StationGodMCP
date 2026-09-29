@@ -19,7 +19,10 @@
   - The game's frame cursor does not look at small-grid devices, so a frame can go around a station battery (a player
     can do it too); the battery then fails `check_replaceable` (`support`). Documented.
 - **Names in messages.** A thing whose prefab has no English name (the game shows `<N:EN:StructureCrewUmbilicalDoor>`)
-  is named by its prefab name in every message.
+  is named by its prefab name in every message, in the game's own texts too ("Placement is blocked by
+  StructureCrewUmbilicalDoor.", which lost the name before), and in every `display_name` field.
+- **`undo_job` knows a job it already undid:** the plan says it was already undone and lists the undo's jobs in
+  `plan.undone_by`, instead of reporting the world as diverged.
 
 ## 1.4.4
 

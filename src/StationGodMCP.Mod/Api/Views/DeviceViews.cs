@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -97,7 +98,7 @@ internal sealed class GatewayView
         GatewayCounts counts)
     {
         GatewayId = gatewayId;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
         PrefabName = prefabName;
         Available = state.Available;
         Status = state.Status;
@@ -295,7 +296,7 @@ internal sealed class SlotFacts
         SlotFlags flags)
     {
         UnderlyingIndex = underlyingIndex;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, null);
         StringKey = stringKey;
         SlotClass = slotClass;
         Interactable = flags.Interactable;

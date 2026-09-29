@@ -1,6 +1,6 @@
 #nullable enable
 
-using System;
+using System.Text.RegularExpressions;
 
 namespace StationGodMCP.Pure;
 
@@ -11,10 +11,32 @@ namespace StationGodMCP.Pure;
 /// </summary>
 internal static class ThingName
 {
-    internal static string Shown(string? displayName, string prefabName) =>
-        string.IsNullOrEmpty(displayName) || IsPlaceholder(displayName!) ? prefabName : displayName!;
+    /// <summary>
+    /// The game's placeholder: "&lt;N:{language}:{key}&gt;", the key being what the language file lacks (a thing's
+    /// prefab name, a slot's key, a reagent's type).
+    /// </summary>
+    private static readonly Regex Placeholder = new Regex("<N:[^:<>]+:([^<>]+)>", RegexOptions.Compiled);
 
-    /// <summary>The game's placeholder for a name the language file does not have: "&lt;N:{language}:{key}&gt;".</summary>
-    internal static bool IsPlaceholder(string name) =>
-        name.StartsWith("<N:", StringComparison.Ordinal) && name.EndsWith(">", StringComparison.Ordinal);
+    private static readonly Regex WholePlaceholder = new Regex("^<N:[^:<>]+:[^<>]+>$", RegexOptions.Compiled);
+
+    internal static string Shown(string? displayName, string prefabName) =>
+        string.IsNullOrEmpty(displayName) || IsPlaceholder(displayName!) ? prefabName : Resolved(displayName!);
+
+    /// <summary>
+    /// A display_name field: the game's DisplayName, the prefab name where the whole name is the placeholder, and
+    /// every placeholder inside a longer name (a plant's "&lt;N:EN:...&gt; 3") replaced by its key; null stays null.
+    /// </summary>
+    internal static string? Displayed(string? displayName, string? prefabName) =>
+        displayName == null ? null
+        : IsPlaceholder(displayName) && !string.IsNullOrEmpty(prefabName) ? prefabName
+        : Resolved(displayName);
+
+    /// <summary>
+    /// A game text with every placeholder replaced by its key, so "Placement is blocked by &lt;N:EN:StructureX&gt;"
+    /// names StructureX. Runs before rich-text tags are stripped, which would take the placeholder for a tag.
+    /// </summary>
+    internal static string Resolved(string text) => Placeholder.Replace(text, "$1");
+
+    /// <summary>The whole name is the game's placeholder for a name the language file does not have.</summary>
+    internal static bool IsPlaceholder(string name) => WholePlaceholder.IsMatch(name);
 }

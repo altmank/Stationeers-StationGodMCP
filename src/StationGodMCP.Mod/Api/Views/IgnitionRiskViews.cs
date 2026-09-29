@@ -182,7 +182,7 @@ internal sealed class PrefabIgnitionView
     internal PrefabIgnitionView(string? prefabName, string? displayName, double? flashpointK, double? autoignitionK)
     {
         PrefabName = prefabName;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
         FlashpointK = flashpointK;
         AutoignitionK = autoignitionK;
     }

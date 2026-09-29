@@ -22,7 +22,8 @@ namespace StationGodMCP.Api;
 /// first); ready only when every one of them is. A real run makes the same checks, then starts the removal job and
 /// queues the placement jobs behind it (wait), each checked again against the world the jobs before it left. Every
 /// call takes the job's own from_id (UndoSource), or the caller's; removing what a free placement built gives nothing
-/// back.
+/// back. A real run is recorded (JobSnapshots.RecordUndo): undoing the same job again is refused as already undone, with
+/// the undo's own jobs named, unless every one of them was refused.
 /// </summary>
 internal static class UndoJobApi
 {
@@ -48,7 +49,8 @@ internal static class UndoJobApi
         RecordedJob? recorded = JobSnapshots.Of(jobId);
         string tool = job.Value<string>("tool") ?? recorded?.Tool ?? "unknown";
         JobFacts facts = new JobFacts(jobId, tool, job.Value<string>("status") ?? "unknown", Created(job),
-            Removed(job), recorded?.Removed ?? new Dictionary<long, ThingSnapshot>());
+            Removed(job), recorded?.Removed ?? new Dictionary<long, ThingSnapshot>(),
+            JobSnapshots.UndoOf(jobId).ConvertAll(StepOf));
         UndoPlan plan = UndoPlanner.Plan(facts, Standing);
         UndoSource source = UndoSource.Of(recorded?.Source ?? JobSource.Unknown, fromId, refundTo);
         plan.Notes.AddRange(source.Notes);
@@ -106,8 +108,27 @@ internal static class UndoJobApi
         object? placeJob = placeArguments != null ? PlaceStructureApi.Handle(RealRun(placeArguments)) : null;
         List<UndoPieceRunView> started = pieceRuns.ConvertAll(run =>
             new UndoPieceRunView(run.Tool, run.Arguments, PlaceTool(run.Tool, RealRun(run.Arguments))));
+        JobSnapshots.RecordUndo(jobId, StartedJobs(removeJob, placeJob, started));
         return new UndoJobView(jobId, tool, "scheduled", ViewOf(plan, true), removeArguments, placeArguments,
             removeJob, placeJob, started);
+    }
+
+    // The ids of the jobs an undo started: its removal, its placement and its piece runs.
+    private static List<string> StartedJobs(object? removeJob, object? placeJob, List<UndoPieceRunView> pieceRuns)
+    {
+        List<object?> replies = new List<object?> { removeJob, placeJob };
+        replies.AddRange(pieceRuns.ConvertAll(run => run.Reply));
+        List<string> ids = new List<string>();
+        foreach (object? reply in replies)
+        {
+            string? id = JobSnapshots.JobIdOf(reply);
+            if (id != null)
+            {
+                ids.Add(id);
+            }
+        }
+
+        return ids;
     }
 
     private static object PlaceTool(string tool, Args args) => tool switch
@@ -132,6 +153,20 @@ internal static class UndoJobApi
     // A tool's reply is ready when it says so; no reply (nothing to do there) holds nothing up.
     private static bool IsReady(object? reply) =>
         reply == null || JobSnapshots.Wire(reply).Value<bool?>("ready") == true;
+
+    // A job an earlier undo started, with its status now; unknown once it is no longer among the jobs kept.
+    private static UndoStep StepOf(string undoJobId)
+    {
+        try
+        {
+            return new UndoStep(undoJobId,
+                JobSnapshots.Wire(HeldTickJobs.Status(undoJobId)).Value<string>("status") ?? UndoStep.Unknown);
+        }
+        catch (ApiException)
+        {
+            return new UndoStep(undoJobId, UndoStep.Unknown);
+        }
+    }
 
     private static string? Standing(long id) =>
         GameLookup.TryFindThing(new ThingId(id), out Thing thing) && !thing.IsBeingDestroyed ? thing.PrefabName : null;
@@ -340,7 +375,8 @@ internal static class UndoJobApi
 
     private static UndoPlanView ViewOf(UndoPlan plan, bool ready) =>
         new UndoPlanView(plan.Remove.ConvertAll(id => new ThingId(id)),
-            plan.Restore.ConvertAll(snapshot => new ThingId(snapshot.Id)), plan.Diverged, plan.Notes, ready);
+            plan.Restore.ConvertAll(snapshot => new ThingId(snapshot.Id)), plan.Diverged, plan.Notes, ready,
+            plan.UndoneBy);
 
     private static IEnumerable<JToken> Array(JToken? token) =>
         token is JArray array ? array : (IEnumerable<JToken>)new JArray();

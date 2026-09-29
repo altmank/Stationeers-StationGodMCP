@@ -149,7 +149,7 @@ internal sealed class PlacementPrefabView
     {
         PrefabName = prefabName;
         PrefabHash = prefabHash;
-        DisplayName = displayName;
+        DisplayName = ThingName.Displayed(displayName, prefabName);
         BuildStates = buildStates;
     }
 

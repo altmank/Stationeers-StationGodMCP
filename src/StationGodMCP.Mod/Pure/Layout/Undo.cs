@@ -172,11 +172,33 @@ internal sealed class UndoRemovals
     }
 }
 
+/// <summary>A job a real undo_job run started to undo another job, and that job's status now.</summary>
+internal sealed class UndoStep
+{
+    /// <summary>The status of an undo step whose job is no longer among the jobs kept.</summary>
+    internal const string Unknown = "unknown";
+
+    internal UndoStep(string jobId, string status)
+    {
+        JobId = jobId;
+        Status = status;
+    }
+
+    internal string JobId { get; }
+
+    internal string Status { get; }
+
+    /// <summary>Refused before it changed anything (at the start of its queued run).</summary>
+    internal bool Refused => Status == "refused";
+
+    public override string ToString() => $"{JobId} ({Status})";
+}
+
 /// <summary>What a finished job did, as its log and the snapshots taken when it started tell it.</summary>
 internal sealed class JobFacts
 {
     internal JobFacts(string jobId, string tool, string status, List<(long Id, string? Prefab)> created,
-        List<long> removed, Dictionary<long, ThingSnapshot> snapshots)
+        List<long> removed, Dictionary<long, ThingSnapshot> snapshots, List<UndoStep>? undoneBy = null)
     {
         JobId = jobId;
         Tool = tool;
@@ -184,7 +206,11 @@ internal sealed class JobFacts
         Created = created;
         Removed = removed;
         Snapshots = snapshots;
+        UndoneBy = undoneBy ?? new List<UndoStep>();
     }
+
+    /// <summary>The jobs an earlier real undo_job run of this job started; empty when it was never undone.</summary>
+    internal List<UndoStep> UndoneBy { get; }
 
     internal string JobId { get; }
 
@@ -204,13 +230,18 @@ internal sealed class JobFacts
 /// <summary>The inverse of a job: what to remove, what to build again, and why it cannot be done when it cannot.</summary>
 internal sealed class UndoPlan
 {
-    internal UndoPlan(List<long> remove, List<ThingSnapshot> restore, List<string> diverged, List<string> notes)
+    internal UndoPlan(List<long> remove, List<ThingSnapshot> restore, List<string> diverged, List<string> notes,
+        List<string>? undoneBy = null)
     {
         Remove = remove;
         Restore = restore;
         Diverged = diverged;
         Notes = notes;
+        UndoneBy = undoneBy;
     }
+
+    /// <summary>The jobs of an earlier undo of this job that were not refused; null when it was not undone.</summary>
+    internal List<string>? UndoneBy { get; }
 
     internal List<long> Remove { get; }
 
@@ -259,7 +290,8 @@ internal sealed class UndoPlan
 /// Plans the inverse of a finished job: remove everything it built, then build again everything it removed, each as it
 /// stood (network pieces by their place tool). Refused (diverged) when something it built is gone or is no longer that
 /// prefab, when something it removed has no snapshot, stood off the grid's axes or is a network piece no coil or kit
-/// lays, or when the job had not finished. A burnt cable the job removed is never built again: a note says so and the
+/// lays, or when the job had not finished; and when the job was already undone (an earlier real undo_job run started
+/// jobs that were not all refused). A burnt cable the job removed is never built again: a note says so and the
 /// rest is undone. The job kinds that can be undone are the place and remove tools (runs and structures).
 /// </summary>
 internal static class UndoPlanner
@@ -283,6 +315,21 @@ internal static class UndoPlanner
             diverged.Add($"{job.JobId} is a {job.Tool} job; undo_job undoes place_* and remove_* jobs only " +
                          "(paste_blueprint has its own undo).");
             return new UndoPlan(new List<long>(), new List<ThingSnapshot>(), diverged, notes);
+        }
+
+        List<UndoStep> undo = job.UndoneBy.FindAll(step => !step.Refused);
+        if (undo.Count > 0)
+        {
+            diverged.Add($"{job.JobId} was already undone: undo_job started {string.Join(", ", undo)}. Nothing is " +
+                         "left to undo; undo those jobs, the last first, to have it back.");
+            return new UndoPlan(new List<long>(), new List<ThingSnapshot>(), diverged, notes,
+                undo.ConvertAll(step => step.JobId));
+        }
+
+        if (job.UndoneBy.Count > 0)
+        {
+            notes.Add($"An earlier undo of {job.JobId} was refused before it changed anything " +
+                      $"({string.Join(", ", job.UndoneBy)}).");
         }
 
         if (System.Array.IndexOf(Finished, job.Status) < 0)
