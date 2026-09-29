@@ -124,12 +124,22 @@ internal static class PrefabRegistrar
         ReflectionClone.ReplaceComponentReferences(clone, oldComponent, newComponent);
         UnityEngine.Object.DestroyImmediate(oldComponent);
 
+        newComponent.GridBounds = GridBoundsFor(source, newComponent);
         newComponent.PrefabName = StructurePrefabName;
         newComponent.PrefabHash = Animator.StringToHash(StructurePrefabName);
         clone.tag = "NotSpawnable";
         clone.SetActive(true);
         return newComponent;
     }
+
+    /// <summary>
+    /// The grid bounds the gateway registers with. GridBounds is not serialized, so Instantiate leaves the clone an
+    /// empty one (IsValid false), and the game fills a prefab's only in OnPrefabLoad, which ran before the clone
+    /// existed. The gateway has the Logic Memory's body, so it takes the source's bounds; should those not be cached
+    /// yet, they are worked out from the copied Bounds as Structure.CachePrefabBounds does.
+    /// </summary>
+    private static GridBounds GridBoundsFor(LogicMemory source, StationGodGateway gateway) =>
+        source.GridBounds != null && source.GridBounds.IsValid() ? source.GridBounds : new GridBounds(gateway);
 
     private static MultiConstructor CloneKit(ModBehaviour owner, MultiConstructor source, StationGodGateway structure)
     {

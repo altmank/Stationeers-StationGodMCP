@@ -164,10 +164,11 @@ internal abstract class HealthRequest
         // min_ratio is the older name of min_damage_ratio, still read.
         internal static Scan From(Args args)
         {
-            double minimum = args.OptionalDouble("min_damage_ratio") ?? args.OptionalDouble("min_ratio") ?? 0.0;
+            string name = args.Has("min_damage_ratio") ? "min_damage_ratio" : "min_ratio";
+            double minimum = args.OptionalDouble(name) ?? 0.0;
             if (minimum < 0.0 || minimum >= 1.0)
             {
-                throw ApiErrors.InvalidArgument("Argument 'min_damage_ratio' must be at least 0 and below 1.");
+                throw ApiErrors.InvalidArgument($"Argument '{name}' must be at least 0 and below 1.");
             }
 
             return new Scan(

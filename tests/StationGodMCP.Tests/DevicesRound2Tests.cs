@@ -195,7 +195,7 @@ public sealed class DevicesRound2Tests
     public void AFractionIsStillNoInteger()
     {
         Assert.Equal("Argument 'start_address' must be an integer.",
-            Assert.Single(Problems("read_memory", """{"reference_id":"939","start_address":2.5}""")));
+            Assert.Single(Problems("read_memory", """{"reference_id":"939","start_address":2.5,"count":1}""")));
     }
 
     [Fact]

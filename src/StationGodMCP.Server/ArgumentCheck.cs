@@ -7,12 +7,14 @@ namespace StationGodMCP.Server;
 /// Checks a tool call's arguments against the input schema tools/list publishes for the tool, before the call reaches
 /// the game: a property an object schema with additionalProperties false does not declare is refused (with the
 /// nearest declared name when one is close), and so is a value whose JSON type the schema does not allow, a string or
-/// number its enum does not list (strings compared as the mod compares them: trimmed, ignoring case), a key given
-/// twice in one object (JSON parsers keep the last one silently), and a number past a double's range (1e309). An
-/// integer may be written as any JSON number with no fraction (3.0, 1e2), as JSON Schema's integer allows; Normalised
-/// rewrites those as integers for the mod, which reads integer tokens only. Ranges and required arguments stay with the
-/// mod, which words them per tool. JSON null is an omitted property, as the mod reads it. The mod itself stays lenient
-/// for pipe clients (e.g. ids as JSON integers).
+/// number its enum does not list (strings compared as the mod compares them: trimmed, ignoring case), an array with
+/// fewer or more entries than minItems and maxItems allow, a tool's required argument left out, a key given twice in
+/// one object (JSON parsers keep the last one silently), and a number past a double's range (1e309). An integer may be
+/// written as any JSON number with no fraction (3.0, 1e2, 1e19), as JSON Schema's integer allows; Normalised rewrites
+/// those within a long's range as integers for the mod, which reads integer tokens only (one past it goes as given, and
+/// the mod refuses it with the argument's range). Numeric ranges stay with the mod, which words them per tool, and so
+/// do the required fields of an array's entries: a batch answers a bad entry by itself. JSON null is an omitted
+/// property, as the mod reads it. The mod itself stays lenient for pipe clients (e.g. ids as JSON integers).
 /// </summary>
 internal static class ArgumentCheck
 {
@@ -20,12 +22,32 @@ internal static class ArgumentCheck
     internal static IReadOnlyList<string> Problems(JsonElement schema, JsonElement arguments) =>
         arguments.ValueKind switch
         {
-            JsonValueKind.Null or JsonValueKind.Undefined => [],
+            JsonValueKind.Null or JsonValueKind.Undefined => Missing(schema, default),
             JsonValueKind.Object => Malformed(arguments, string.Empty) is { Count: > 0 } malformed
                 ? malformed
-                : Check(schema, arguments, string.Empty),
+                : [.. Missing(schema, arguments), .. Check(schema, arguments, string.Empty)],
             _ => ["The arguments must be a JSON object."]
         };
+
+    // The tool's required arguments that are absent or null (null is an omitted property).
+    private static List<string> Missing(JsonElement schema, JsonElement arguments)
+    {
+        if (schema.ValueKind != JsonValueKind.Object || !schema.TryGetProperty("required", out JsonElement required) ||
+            required.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return required.EnumerateArray()
+            .Select(name => name.GetString() ?? string.Empty)
+            .Where(name => !IsGiven(arguments, name))
+            .Select(name => $"Argument '{name}' is required{EnumWords(PropertySchema(schema, name), ": one of ")}.")
+            .ToList();
+    }
+
+    private static bool IsGiven(JsonElement arguments, string name) =>
+        arguments.ValueKind == JsonValueKind.Object && arguments.TryGetProperty(name, out JsonElement value) &&
+        value.ValueKind != JsonValueKind.Null;
 
     /// <summary>
     /// The arguments as the mod should get them: every number where the schema asks for an integer written as one
@@ -63,6 +85,11 @@ internal static class ArgumentCheck
     private static string Join(string path, string name) => path.Length == 0 ? name : $"{path}.{name}";
 
     private static bool IsFinite(JsonElement number) => number.TryGetDouble(out double value) && double.IsFinite(value);
+
+    // A JSON number with no fraction, however large: JSON Schema's integer.
+    private static bool IsWhole(JsonElement number) =>
+        number.TryGetInt64(out _) ||
+        (number.TryGetDouble(out double value) && double.IsFinite(value) && Math.Floor(value) == value);
 
     // A JSON number with no fraction, as the integer it is; null for a fraction or past a long's range.
     private static long? WholeNumber(JsonElement number)
@@ -147,12 +174,19 @@ internal static class ArgumentCheck
 
         if (!Allows(schema, value))
         {
-            return [$"Argument '{path}' must be {TypeWords(schema)}{QuoteHint(schema, value)}."];
+            // An enum's value of the wrong type is still best told by the list: quoting a number would not help.
+            return [EnumProblem(schema, value, path) ??
+                    $"Argument '{path}' must be {TypeWords(schema)}{QuoteHint(schema, value)}."];
         }
 
         if (EnumProblem(schema, value, path) is { } notListed)
         {
             return [notListed];
+        }
+
+        if (CountProblem(schema, value, path) is { } count)
+        {
+            return [count];
         }
 
         return value.ValueKind switch
@@ -187,6 +221,34 @@ internal static class ArgumentCheck
         JsonElement stringBranch = branches.FirstOrDefault(branch => TypeNames(branch).Contains("string"));
         return [$"Argument '{path}' must be {words}{QuoteHint(stringBranch, value)}."];
     }
+
+    // An array's entry count against minItems and maxItems, worded as the mod words it.
+    private static string? CountProblem(JsonElement schema, JsonElement value, string path)
+    {
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        int? minimum = Bound(schema, "minItems");
+        int? maximum = Bound(schema, "maxItems");
+        int count = value.GetArrayLength();
+        if ((minimum == null || count >= minimum) && (maximum == null || count <= maximum))
+        {
+            return null;
+        }
+
+        string range = (minimum, maximum) switch
+        {
+            ({ } low, { } high) => $"{low} to {high}",
+            ({ } low, null) => $"at least {low}",
+            _ => $"at most {maximum}"
+        };
+        return $"Argument '{path}' must be an array of {range} entries; it has {count}.";
+    }
+
+    private static int? Bound(JsonElement schema, string name) =>
+        schema.TryGetProperty(name, out JsonElement bound) && bound.TryGetInt32(out int value) ? value : null;
 
     private static List<string> CheckObject(JsonElement schema, JsonElement value, string path)
     {
@@ -281,7 +343,7 @@ internal static class ArgumentCheck
     private static bool IsOfType(string type, JsonElement value) => type switch
     {
         "string" => value.ValueKind == JsonValueKind.String,
-        "integer" => value.ValueKind == JsonValueKind.Number && WholeNumber(value).HasValue,
+        "integer" => value.ValueKind == JsonValueKind.Number && IsWhole(value),
         "number" => value.ValueKind == JsonValueKind.Number,
         "boolean" => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
         "object" => value.ValueKind == JsonValueKind.Object,
@@ -304,9 +366,7 @@ internal static class ArgumentCheck
             return null;
         }
 
-        string words = string.Join(", ", values.Select(allowed => allowed.ValueKind == JsonValueKind.String
-            ? allowed.GetString()
-            : allowed.GetRawText()));
+        string words = EnumWords(schema, string.Empty);
         string? nearest = value.ValueKind == JsonValueKind.String
             ? Nearest(value.GetString()!.Trim(), values.Where(allowed => allowed.ValueKind == JsonValueKind.String)
                 .Select(allowed => allowed.GetString()!))
@@ -314,6 +374,14 @@ internal static class ArgumentCheck
         string suggestion = nearest == null ? "." : $"; did you mean '{nearest}'?";
         return $"Argument '{path}' must be one of {words}{suggestion}";
     }
+
+    // The enum's values after a lead-in, or empty when the schema has no enum.
+    private static string EnumWords(JsonElement schema, string leadIn) =>
+        schema.ValueKind == JsonValueKind.Object && schema.TryGetProperty("enum", out JsonElement listed) &&
+        listed.ValueKind == JsonValueKind.Array
+            ? leadIn + string.Join(", ", listed.EnumerateArray().Select(allowed =>
+                allowed.ValueKind == JsonValueKind.String ? allowed.GetString() : allowed.GetRawText()))
+            : string.Empty;
 
     private static bool Matches(JsonElement allowed, JsonElement value) => (allowed.ValueKind, value.ValueKind) switch
     {
@@ -339,7 +407,8 @@ internal static class ArgumentCheck
     // Reference ids are decimal strings on the wire (they pass 2^53): a bare whole number where a string belongs is
     // almost always an id sent unquoted. A fraction is no id, and quoting it would not help.
     private static string QuoteHint(JsonElement schema, JsonElement value) =>
-        value.ValueKind == JsonValueKind.Number && WholeNumber(value).HasValue && TypeNames(schema).Contains("string")
+        value.ValueKind == JsonValueKind.Number && IsWhole(value) && TypeNames(schema).Contains("string") &&
+        EnumWords(schema, string.Empty).Length == 0
             ? $", e.g. \"{value.GetRawText()}\" in quotes"
             : string.Empty;
 }

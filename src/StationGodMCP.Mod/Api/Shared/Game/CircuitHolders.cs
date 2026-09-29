@@ -46,7 +46,7 @@ internal static class CircuitHolders
         }
 
         throw ApiErrors.Refused("not_ic_housing",
-            $"Device {scoped.ReferenceId} is {scoped.Thing.GetType().FullName}, which is not a circuit holder and has " +
+            $"Device {scoped.ReferenceId} ({scoped.PrefabName}) is not a circuit holder and has " +
             "none in its slots (an IC Housing, suit, Programmable Visor, a Console or Computer with a Lua board, a " +
             "tablet with a Lua cartridge).");
     }
@@ -65,8 +65,7 @@ internal static class CircuitHolders
         {
             throw ApiErrors.Refused("not_ic_housing", thing is ProgrammableChip
                 ? $"Chip {id} is not in a circuit holder."
-                : $"Thing {id} is {thing.GetType().FullName}, which is not a device in scope, a circuit holder or a " +
-                  "chip.");
+                : $"Thing {id} ({thing.PrefabName}) is not a device in scope, a circuit holder or a chip.");
         }
 
         ScopedTarget? container = ScopedContainer(scope, holderThing);

@@ -60,18 +60,27 @@ public sealed class SidecarArgumentTests
     {
         foreach (string tool in ToolNames())
         {
-            Assert.True(Problems(tool, """{"zz_not_an_argument":1}""").Count == 1, tool);
+            Assert.True(Problems(tool, """{"zz_not_an_argument":1}""").Count(problem =>
+                problem.StartsWith("Unknown argument 'zz_not_an_argument'", StringComparison.Ordinal)) == 1, tool);
         }
     }
 
     [Fact]
-    public void EveryToolTakesNoArgumentsAtTheTypeLevel()
+    public void EveryToolAsksNoArgumentsButItsRequiredOnes()
     {
         foreach (string tool in ToolNames())
         {
-            Assert.True(Problems(tool, "{}").Count == 0, tool);
+            string[] expected = Required(tool).Select(name => $"Argument '{name}' is required").ToArray();
+            string[] problems = Problems(tool, "{}").Select(problem => problem.Split(new[] { '.', ':' })[0]).ToArray();
+
+            Assert.True(expected.SequenceEqual(problems), tool);
         }
     }
+
+    private static IEnumerable<string> Required(string tool) =>
+        Program.InputSchemas[tool].TryGetProperty("required", out JsonElement required)
+            ? required.EnumerateArray().Select(name => name.GetString()!)
+            : Enumerable.Empty<string>();
 
     [Fact]
     public void AMistypedGuardFlagIsRefused()
