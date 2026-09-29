@@ -49,7 +49,7 @@ public sealed class SidecarArgumentTests
     [InlineData("upgrade_pipes", """{"network_id":"5","grade":"gas"}""", "grade")]
     [InlineData("clean_pipes", """{"network_id":"5","bogus_arg":1}""", "bogus_arg")]
     [InlineData("place_structure", """{"prefab":"StructureFrameIron","at":[1,2,3],"free":true,"bogus":1}""", "bogus")]
-    [InlineData("undo_job", """{"job_id":"place-9","from_id":"660"}""", "from_id")]
+    [InlineData("undo_job", """{"job_id":"place-9","free":true}""", "free")]
     public void EveryLiveTestCaseIsRefused(string tool, string arguments, string name)
     {
         Assert.StartsWith($"Unknown argument '{name}'", Assert.Single(Problems(tool, arguments)));

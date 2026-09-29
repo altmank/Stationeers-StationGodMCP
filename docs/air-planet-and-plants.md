@@ -34,6 +34,11 @@ change over the time between is the room's net heat flow in watts.
 
 `outer_frames` finds the frames that face the outside: a face counts as exposed when the cell across it is in no room
 and can hold air. A sealed space bigger than 1200 cells has no room, so frames facing into it count as outer too.
+`build_state` is the frame's build state index, from 0 (bare) up to its finished state, which differs by frame (a
+finished steel frame is 3); `blocks_air` says whether that state holds air.
+
+`water_sources` lists a new pipe network at once, even while the game is paused. A thing's own atmosphere made since
+the last atmospherics tick (a canister spawned while paused) shows from the next tick on.
 
 ## Moving gas
 
@@ -45,7 +50,7 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
   piece (the pad's shared atmosphere), a pipe or landing pad network id, or an atmosphere id from
   `atmosphere_contents`, or a room (below). A single world cell is refused. `from: "planet"` with `delete: true` and
   named `gases` takes those gases out of the planet's own air (the mix Terraforming Reloaded reads) and its clouds and
-  ice caps; it needs Terraforming Reloaded.
+  ice caps; it needs Terraforming Reloaded (`terraforming_mod_required`, after the arguments are checked).
 - `gases` names the gases (`Oxygen`, `Nitrogen`, `CarbonDioxide`, `LiquidOxygen`, `Steam`...); omit for all of them.
   `amount_mol` caps each; omit for all of it. `delete: true` instead of `to` destroys the gas.
 - **Joined sets:** the game keeps some atmospheres at one mix every tick, for example a Gas Tank Storage's canisters and
@@ -54,10 +59,17 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
 - **Burst check:** refused with `would_burst` when a side's settled pressure would exceed any member's rating. The
   receiving side is also refused when the move makes it worse by one of the game's matter rules: liquid over 2% of a
   gas pipe network's volume, gas or liquid freezing in a network, or the pressure once arriving liquid has boiled
-  (`total.after_boiling` in the reply shows that state). `force` skips every check.
+  (`total.after_boiling` in the reply shows that state). Into a room, liquid the room's air would lose is refused the
+  same way: a room's cells freeze any amount out of their air (ice per 50 mol in a cell, smaller amounts held out of
+  the air), so the move is refused when more would freeze than before, or when an arriving liquid would sit under its
+  minimum liquid pressure (6.3 kPa of gas for water) in a room without the heat to boil it all, where it keeps
+  evaporating and cooling the room until the rest freezes. `force` skips every check.
 - **Timing:** the game changes gas only on its atmospherics thread, so the move is queued (`status: queued`) and applied
   at the next atmospherics tick, about half a second later, never while paused. The reply is the prediction; call again
-  with only `transfer_id` for the outcome. `dry_run: true` returns the same prediction after the same checks and
+  with only `transfer_id` for the outcome: `queued` until it has been applied, then `applied` or `failed` (with
+  `error.code` `nothing_to_move` when the source held none of the gases by then, `atmosphere_not_found` when an
+  atmosphere was destroyed first, `move_failed` when the game's gas call threw). `transfer_not_found` means an id never
+  issued, or older than the last 64 outcomes. `dry_run: true` returns the same prediction after the same checks and
   queues nothing (`status: dry_run`, no `transfer_id`).
 - **Rooms:** `{"room_id": "<id>"}` (the `room_id` from `rooms`) or `{"room_of": "<reference id>"}` (the room that
   thing is in; the player's id gives the room you stand in) as `from` or `to`. The game keeps no room-wide
@@ -126,7 +138,8 @@ Host only.
   Indestructible things report `null`, never a false 0.
 - `condition` says it in one word: `broken`, `damaged`, `intact`, `indestructible` or `none`. `broken` is the game's own
   broken state (`is_broken`), and it wins over the numbers: the game heals a structure when it breaks it, so a
-  burnt-out vent reads 0 damage and 100 % health. The scan lists broken things whatever their numbers;
+  burnt-out vent reads 0 damage and 100 % health. A burst pipe (`pipe_burst` not `none`) is broken too: bursting does
+  not damage it, so it also reads 0 damage. The scan lists broken things whatever their numbers;
   `broken_only: true` lists only them. Structures also report `broken_build_state`, their Labeller name
   (`custom_name`) and the cable, pipe and chute networks they are on (`networks`). `remove_structure` with
   `allow_broken` removes them.

@@ -12,7 +12,7 @@ these tools need a gateway.
 | `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock. | `prefab_contains`, `name_contains`, `location`, `within_id`, `near_player_m`, `limit`, `offset` |
 | `item_totals` | Total quantity of each item type, split into on the ground, carried, stored and machine stock, with the five holders that hold the most. | as `find_items` |
 | `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, `made_by`, `made_since` |
-| `list_containers` | Every holder with at least one item in it, not carried, nearest first. | `prefab_contains`, `name_contains`, `near_player_m` |
+| `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. | `reference_id`, `depth` (default 3) |
 | `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
 | `move_item` | Move an item, or part of a stack, into a slot. | `reference_id`, `quantity`, `to_id`, `to_slot`, `merge`; or `moves: [...]` |
@@ -34,12 +34,16 @@ these tools need a gateway.
   rename it (`labelable`), whether the device tools take it (`is_device`) and whether `atmosphere_contents` has
   something for it; a structure also reports how it stands turned (`rotation`). Every result has `is_broken` and
   `condition` (`broken`, `damaged`, `intact`, `indestructible`, `none`); `broken: true` finds every wreck, such as
-  fire-burnt vents, which read 100 % health (see `thing_health`).
+  fire-burnt vents, which read 100 % health, and burst pipes, which read 0 damage (see `thing_health`).
 - `label` renames what the hand Labeller renames. The pipe-size in-line tanks (`StructureInLineTankGas1x1` and the
   rest, insulated too) are not among them: the game has no rename for them, and StationGod keeps no names of its own,
   so `label` refuses them with `not_labelable`. The big in-line tanks take a label. To name a small one, label a sign
   or a device beside it.
 - Results are sorted nearest first and paged (`limit`, `offset`).
+- `within_id` must name something that exists: a mistyped id answers `thing_not_found`, not an empty result.
+- `list_containers` lists only the outermost holder: a crate in the lander, or a box in a locker, is not listed on its
+  own, and its items count towards the lander or locker. Look inside with `container_contents` or
+  `find_items {within_id}`.
 
 ## Moving items
 
@@ -47,11 +51,16 @@ these tools need a gateway.
 other perishables are never loose in the air.
 
 - `to_id` is the thing holding the slot (a locker, a belt, a suit, a player); `to_slot` is its index, as
-  `container_contents` and `inspect_slots` give it, or `"auto"`: a matching stack first, else the first empty slot that
-  takes the item.
-- `quantity` takes that many off a stack; the rest stays. `merge` (default true) lets items join a matching stack.
+  `container_contents` gives it for any thing (`inspect_slots` only takes devices), or `"auto"`: a matching stack
+  first, else the first empty slot that takes the item.
+- Only slots you could click in the game are used. A hidden slot (a cable coil's internal slot, a vending machine's
+  store) is refused with `slot_refuses`: the game keeps it for itself, and a coil destroys whatever is in it when it is
+  used up. An item already in a hidden slot can still be moved out.
+- `quantity` takes that many off a stack; the rest stays. An item that is not a stack (a water packet, a canister)
+  moves whole and counts as 1, whatever it holds. `merge` (default true) lets items join a matching stack.
 - `moves` applies up to 64 moves in order, each with its own result.
-- Refusals name the reason: `slot_refuses` (the game's slot rules, with its message), `slot_occupied`, `stack_full`,
+- Refusals name the reason: `slot_refuses` (the game's slot rules, with its message; a crate or portable tank is
+  refused because the game only drags those into a slot), `slot_occupied`, `stack_full`,
   `no_free_slot`, `slot_locked`, `not_movable` (a structure) and others. A refused move changes nothing.
 
 Put 50 iron ingots into a locker's first free slot, `move_item`:
@@ -66,8 +75,10 @@ Put 50 iron ingots into a locker's first free slot, `move_item`:
   characters. Only things the Labeller can rename are accepted (portable things, every device, in-line tanks, trays,
   plants, IC chips, flags); pipes, cables, frames and ordinary items answer `not_labelable`. Up to 64 renames per call.
 - `paint` with no targets lists the colours. `color` is a name, an index, or `default` for the thing's own colour. Each
-  result carries `previous_color`, so a later call can put it back. Lights and other things whose colour is a state
-  cannot be painted (`has_color_state`), as with a spray can. Up to 256 things per call.
+  result carries `previous_color`, so a later call can put it back. A thing whose colour is a state set through the
+  `Color` logic type, such as the LED display, cannot be painted (`has_color_state`), as with a spray can; its
+  `previous_color` is the state colour it shows. Lights paint. A thing with no colour has `index` and `name` null.
+  Up to 256 things per call.
 - Both sync to other players and are saved with the world.
 
 ## Ingot Vault

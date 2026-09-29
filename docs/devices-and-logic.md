@@ -11,8 +11,9 @@ memory, but for any device in the world at once and without a chip.
   `find_things` and `looking_at` give them; every other tool takes them.
 - **Logic types** are given by name, as IC10 writes them (`Setting`, `On`, `Pressure`, `Color`), or by numeric id
   (0 to 65535).
-- **Scope:** every device tool reaches every device in the world. Omit `gateway_id`, or pass `world`. A StationGod
-  Gateway id narrows a call to that gateway's data networks (see below).
+- **Scope:** every device tool reaches every device in the world. Omit `gateway_id`, or pass `world` (an empty
+  `gateway_id` counts as omitted, and spaces around an id are ignored). A StationGod Gateway id narrows a call to that
+  gateway's data networks (see below).
 
 ## Tools
 
@@ -21,12 +22,12 @@ memory, but for any device in the world at once and without a chip.
 | `list_devices` | Every device in the world, or on one gateway's networks. | `name_contains`, `prefab_hash`, `gateway_id` |
 | `describe_device` | One device and every logic type it can read or write. | `reference_id` |
 | `read_logic` | Read one logic value. | `reference_id`, `logic_type` |
-| `write_logic` | Write one logic value. | `reference_id`, `logic_type`, `value` |
+| `write_logic` | Write one logic value; the reply reads it back at once (`current_value`). | `reference_id`, `logic_type`, `value` |
 | `read_logic_many` | Up to 256 reads in one call; each gets its own result or error. | `reads: [{reference_id, logic_type}]` |
 | `write_logic_many` | Up to 256 writes in order, in one call. | `writes: [{reference_id, logic_type, value}]` |
-| `read_memory` | Up to 512 consecutive values from a device with memory (a Logic Memory, an IC Housing's stack). | `reference_id`, `start_address`, `count` |
+| `read_memory` | Up to 512 consecutive values from a device with memory (an IC Housing's or suit's chip stack, a Logic Sorter, a satellite dish, a fabricator; a Logic Memory has only `Setting`). | `reference_id`, `start_address`, `count` |
 | `write_memory` | Up to 512 consecutive values into such a device. | `reference_id`, `start_address`, `values` |
-| `inspect_slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. | `reference_id`, `slot_index` |
+| `inspect_slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. Devices only: for a crate, the lander or a tool use `container_contents`. | `reference_id`, `slot_index` |
 | `network_snapshot` | Many devices and their logic values at one instant, in one game frame. | `reference_ids`, `prefab_hash`, `name_contains`, `logic_types`, `max_devices` |
 | `sample_logic` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `targets: [{reference_id, logic_type}]`, `duration_seconds` (default 5), `interval_seconds` (default 0.5) |
 | `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents. | `reference_id`, or `network_id` with `kind` |
@@ -36,6 +37,18 @@ memory, but for any device in the world at once and without a chip.
 | `run_console_command` | Any console command, with the lines it printed. | `command`, `max_output_lines` |
 | `read_console` | The latest console lines, including Unity errors and stack traces. | `lines` |
 | `mod_info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
+
+## Reading back what you wrote
+
+- `write_logic` returns `requested_value`, `previous_value` and `current_value`. `current_value` is read back at once
+  and can differ from the request: the device clamps it (`On` 7 reads 1), ignores it (a paint-only colour index on the
+  LED display), or moves toward it over time (a solar panel's angle). The write still succeeds; compare the two when
+  it matters.
+- In `read_logic_many`, `write_logic_many` and `sample_logic` every result has its `index`; a failed one also names
+  the `reference_id` and `logic_type` it asked for (null where the entry's own could not be read) and its `error`.
+- `read_memory` and `write_memory` check the whole range against the device's `stack_size` before touching it: an
+  address past the end is refused (`invalid_argument`) and nothing is written. An IC Housing or suit with no chip has
+  no memory to read (`no_programmable_chip`).
 
 ## Where you look (1.4.3+)
 
