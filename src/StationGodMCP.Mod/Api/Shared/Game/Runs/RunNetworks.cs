@@ -103,7 +103,8 @@ internal static class RunNetworks
         }
 
         Func<ForecastPort, PortPower?> joining = port => PortLoads.Of(DeviceOf(context, port), port.Index);
-        Func<ForecastPort, PortPower?> dormant = port => PortLoads.Dormant(DeviceOf(context, port), port.Index);
+        PassThroughChain chain = new PassThroughChain(Edited(after, context));
+        Func<ForecastPort, PortPower?> dormant = port => Dormant(context, chain, port);
         PowerAfter power = PowerAfter.Of(after, before, ratings, context.Gone, joining);
         // Switched on, a split network's parts are counted each from its own devices, not each with the whole
         // network's numbers: a removal that parts an off source from its consumer overloads nothing when it is on.
@@ -115,7 +116,7 @@ internal static class RunNetworks
                 $"The network would carry {power.FlowW:0} W (min of {power.PotentialW:0} W potential and " +
                 $"{power.RequiredW:0} W required) over a cable rated {power.LowestCableW:0} W; the game would burn " +
                 "a cable every power tick. Use a higher grade, or keep the networks apart.")
-            : new KindGuard(view, null, null, PowerAfter.WhenOnWarning(whenOn, OffDevices(after, dormant)));
+            : new KindGuard(view, null, null, PowerAfter.WhenOnWarning(whenOn, OffDevices(after, context, chain)));
     }
 
     internal const string WouldOverload = "would_overload";
@@ -123,16 +124,54 @@ internal static class RunNetworks
     private static Device? DeviceOf(RunNetworkContext context, ForecastPort port) =>
         context.Devices.TryGetValue(port.DeviceId, out Device device) ? device : null;
 
+    // The networks of the edit: a pass-through device's output network among them has its ports counted directly.
+    private static HashSet<long> Edited(ForecastNetwork after, RunNetworkContext context)
+    {
+        HashSet<long> edited = new HashSet<long>(after.NetworksBefore);
+        edited.UnionWith(context.Gone);
+        foreach (ForecastPort port in after.Ports)
+        {
+            if (port.NetworkBefore.HasValue)
+            {
+                edited.Add(port.NetworkBefore.Value);
+            }
+        }
+
+        return edited;
+    }
+
+    // What a port adds once the devices off now are switched on: its own device's (PortLoads.Dormant), plus, on a
+    // pass-through device's input, the devices off behind it (PassThroughChain), on or off the device itself.
+    private static PortPower? Dormant(RunNetworkContext context, PassThroughChain chain, ForecastPort port)
+    {
+        Device? device = DeviceOf(context, port);
+        PortPower? own = PortLoads.Dormant(device, port.Index);
+        LoadBehind behind = chain.Of(device, port.Index);
+        return behind.RequiredW <= 0.0
+            ? own
+            : new PortPower(own?.PotentialW ?? 0.0, (own?.RequiredW ?? 0.0) + behind.RequiredW, PowerSide.Input);
+    }
+
     // The devices off now with a power role on the network after the edit (PortLoads.Dormant answers only for those),
-    // which the game counts as nothing until switched on; a device off on a data port alone is not one.
-    private static List<long> OffDevices(ForecastNetwork after, Func<ForecastPort, PortPower?> dormant)
+    // which the game counts as nothing until switched on, and those off behind its pass-through devices; a device off
+    // on a data port alone is not one.
+    private static List<long> OffDevices(ForecastNetwork after, RunNetworkContext context, PassThroughChain chain)
     {
         List<long> off = new List<long>();
         foreach (ForecastPort port in after.Ports)
         {
-            if (dormant(port) != null && !off.Contains(port.DeviceId))
+            Device? device = DeviceOf(context, port);
+            if (PortLoads.Dormant(device, port.Index) != null && !off.Contains(port.DeviceId))
             {
                 off.Add(port.DeviceId);
+            }
+
+            foreach (long behind in chain.Of(device, port.Index).OffDevices)
+            {
+                if (!off.Contains(behind))
+                {
+                    off.Add(behind);
+                }
             }
         }
 
