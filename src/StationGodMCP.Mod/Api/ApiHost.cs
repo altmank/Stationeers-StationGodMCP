@@ -95,6 +95,9 @@ internal static class ApiHost
             ["trader_buy"] = static args => TraderBuyApi.Handle(args),
             ["trader_sell"] = static args => TraderSellApi.Handle(args),
             ["paste_blueprint"] = static args => PasteBlueprintApi.Handle(args),
+            ["vault_contents"] = static args => VaultContentsApi.Handle(args),
+            ["vault_deposit"] = static args => VaultDepositApi.Handle(args),
+            ["vault_withdraw"] = static args => VaultWithdrawApi.Handle(args),
             ["mod_info"] = static args => ModInfoApi.Handle(args)
         };
 

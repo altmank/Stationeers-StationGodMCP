@@ -298,6 +298,26 @@ internal static class GameMembers
     internal static readonly GameField LuaSnapshotErrorMessage = LuaSnapshotField("LastErrorMessage");
     internal static readonly GameField LuaSnapshotErrorTraceback = LuaSnapshotField("LastErrorTraceback");
 
+    // ---- IngotVault (vault_* tools): another mod, optional; its absence is not a game change ----
+    internal static readonly GameType VaultType = Optional("IngotVault.StructureIngotVault");
+    internal static readonly GameType RemoteVaultType = Optional("IngotVault.StructureRemoteVault");
+    internal static readonly GameField VaultAll = VaultField(VaultType, "AllVaults", PublicStatic);
+    internal static readonly GameField VaultSupportedReagents =
+        VaultField(VaultType, "SupportedReagents", PublicStatic);
+    internal static readonly GameField VaultOres =
+        VaultField(VaultType, "_storedOresAndIces", BindingFlags.Instance | BindingFlags.Public);
+    internal static readonly GameField VaultPendingVends =
+        VaultField(VaultType, "PendingVends", BindingFlags.Instance | BindingFlags.Public);
+    internal static readonly GameMethod VaultShowContents = VaultMethod(VaultType, "PreviousContentsShow",
+        BindingFlags.Instance | BindingFlags.Public);
+    internal static readonly GameMethod VaultIngotHashOf = VaultMethod(VaultType, "GetPrefabHashForReagent",
+        PublicStatic);
+    internal static readonly GameField RemoteVaultAll = VaultField(RemoteVaultType, "AllRemoteVaults", PublicStatic);
+    internal static readonly GameMethod RemoteVaultConnected = VaultMethod(RemoteVaultType, "FindConnectedVault",
+        BindingFlags.Instance | BindingFlags.Public);
+    internal static readonly GameMethod RemoteVaultConnectionError = VaultMethod(RemoteVaultType,
+        "GetConnectionError", BindingFlags.Instance | BindingFlags.Public);
+
     // ---- BlueprintMod (paste_blueprint): another mod, optional; its absence is not a game change ----
     internal static readonly GameType BlueprintCommands = Optional("BlueprintMod.BlueprintCommands");
     internal static readonly GameType BlueprintSerializer = Optional("BlueprintMod.BlueprintSerializer");
@@ -436,6 +456,13 @@ internal static class GameMembers
     private static GameField BlueprintField(GameType owner, string ownerName, string name) =>
         Register(new GameField($"BlueprintMod.{ownerName}.{name}",
             () => owner.OrNull?.GetField(name, BindingFlags.Instance | BindingFlags.Public), optional: true));
+
+    // A member of one of IngotVault's types; none of the methods named is overloaded.
+    private static GameField VaultField(GameType owner, string name, BindingFlags flags) =>
+        Register(new GameField($"{owner.Name}.{name}", () => owner.OrNull?.GetField(name, flags), optional: true));
+
+    private static GameMethod VaultMethod(GameType owner, string name, BindingFlags flags) =>
+        Register(new GameMethod($"{owner.Name}.{name}", () => owner.OrNull?.GetMethod(name, flags), optional: true));
 
     private static GameField PasteField(string name) =>
         BlueprintField(BlueprintPasteOperation, "BlueprintCommands.StaggeredPasteOperation", name);

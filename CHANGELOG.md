@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.4.0
+
+Ingot Vault tools (needs the Ingot Vault mod, Workshop 3749011679; without it they answer
+`ingot_vault_mod_required`).
+
+- **`vault_contents`:** what each vault stores, from the vault's own store and exact to 1e-6: ingots as grams of their
+  reagent (with the ingot a vend makes), ores and ices as counts; every Remote Vault and the vault it reaches.
+- **`vault_deposit`:** ingots, ores and ices go straight into a vault's store from wherever they are (a player at any
+  depth, a container, the ground), whole or part of a stack, with the vault's import bookkeeping (reagents times grams,
+  or the ore count), the item destroyed as the import destroys it. By ids (`items`, `reference_ids`) or a
+  `find_items`-style filter plus `kind` (ingot, ore, ice). The vault's own rule refuses anything else
+  (`not_vault_material`). Reports each stock line before, change and after.
+- **`vault_withdraw`:** an amount of one stored thing, taken off the store as the vault's vend takes it and made
+  straight into a holder's slots (default the local player, `to_slot` auto: matching stacks first, then empty slots,
+  never more than a full stack each). What does not fit is refused unless `allow_ground`.
+- Both write tools are dry runs until `dry_run: false, confirm: true`, need the vault on and powered, host only, and
+  take a Remote Vault id as the vault it reaches.
+- **`move_item`** refuses an Ingot Vault's or Remote Vault's display slots (index 2 and up; `vault_display_slot`),
+  and `to_slot: "auto"` skips them: an item put there was lost when the vault rebuilt its slots.
+
 ## 1.3.5
 
 Layout helpers found missing during a live relayout.

@@ -64,6 +64,11 @@ Put 50 iron ingots into a locker's first free slot, `move_item`:
   cannot be painted (`has_color_state`), as with a spray can. Up to 256 things per call.
 - Both sync to other players and are saved with the world.
 
+## Ingot Vault
+
+With the Ingot Vault mod, `vault_deposit` and `vault_withdraw` move ingots, ores and ices straight into and out of a
+vault's store, and `vault_contents` reads it exactly: see [ingot-vault.md](ingot-vault.md).
+
 ## Multiplayer
 
 `move_item` works on the host only (`not_host` on a client). `label` and `paint` use the game's own calls, which sync

@@ -10,7 +10,7 @@ internal static class Program
 {
     private const string ServerName = "StationGodMCP";
     // Reported in the initialize response. build.ps1 checks it matches StationGodMCP.Server.csproj and the mod.
-    private const string ServerVersion = "1.3.5";
+    private const string ServerVersion = "1.4.0";
     private const string ProtocolVersion = "2025-06-18";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -558,7 +558,10 @@ internal static class ToolDefinitions
         "feed_paths",
         "trader_buy",
         "trader_sell",
-        "paste_blueprint"
+        "paste_blueprint",
+        "vault_contents",
+        "vault_deposit",
+        "vault_withdraw"
     ];
 
     internal static readonly object[] All =
@@ -1302,6 +1305,84 @@ internal static class ToolDefinitions
                     status = new { type = "boolean", description = "true alone: progress of the last paste this tool started." },
                     undo = new { type = "boolean", description = "true alone: undo the last paste (BlueprintMod's bpundo)." }
                 },
+                additionalProperties = false
+            },
+            readOnly: false),
+        Tool(
+            "vault_contents",
+            "What each Ingot Vault (IngotVault Workshop mod 3749011679) stores, read from the vault's own store, exact to 1e-6 rather than the screen's one decimal: ingots as grams of reagent (kind ingot, reagent = the stored reagent, prefab_name = the ingot a vend makes), ores and ices as counts (kind ore). Returns {vaults: [{vault {reference_id, prefab_name, display_name}, position, on_off, powered, stock: [{kind, prefab_name, display_name, reagent, max_stack, quantity}], pending_vends (vends taken off the store and not yet made into the export slot)}], remote_vaults: [{remote, vault_id (the one vault on its data network, or null), connection (None, NoVaultDetected, MultipleVaultsDetected, VaultPoweredOff)}], count}. vault_id: one vault (a Remote Vault id reads the vault it reaches). find_items and item_totals list a vault's ingots only as machine stock of kind processing and do not see its ores; use this. Refusals: ingot_vault_mod_required (IngotVault not loaded), ingot_vault_changed (IngotVault no longer has a member these tools use, named), not_a_vault, vault_not_connected, thing_not_found. Read only. No gateway is needed.",
+            new
+            {
+                type = "object",
+                properties = new
+                {
+                    vault_id = new { type = "string", description = "One Ingot Vault or Remote Vault; default every vault." }
+                },
+                additionalProperties = false
+            },
+            readOnly: true),
+        Tool(
+            "vault_deposit",
+            "Put ingots, ores and ices straight into an Ingot Vault's store, as a move: taken from wherever they are (a player's inventory at any depth, a container, the ground) and added to the store with the vault's own import bookkeeping (IngotVault CollectResource: an ingot adds its reagents times its grams to the vault's reagent store, an ore or ice adds its count to the vault's ore store), then the item is destroyed as the import destroys it, or, for part of a stack, only that part is taken off it. No import slot, chute or door is used, so nothing waits in a queue or is ejected; the vault's totals, power use, screen, save and vault_contents agree at once. The vault's rule decides what it takes: ingots and ores (ices, slag and organics are ores) whose slot class fits its import slot; anything else is refused (not_vault_material). Three forms: items [{reference_id, quantity (optional: part of a stack; whole numbers for ores, grams for ingots)}] (up to 256), reference_ids [...] (whole items), or a filter over every item in the world: prefab_contains, name_contains, location (any, ground, player, stored), within_id (inside that holder at any depth, e.g. a backpack or the player), near_player_m, kind (any, ingot, ore (not ice), ice), limit (default 256, max 1000; nearest the player first); items the vault does not take are left out and counted as skipped. vault_id may be a Remote Vault: it deposits into the one vault on its data network. Dry run by default; dry_run false and confirm true to do it. Returns {dry_run, vault, via (the Remote Vault used, or null), matched (filter form: items the filter named), skipped, truncated, items: {results: [{index, ok, reference_id, prefab_name, display_name, kind, from {id, slot} (null on the ground), quantity, left_in_source}] or {index, ok: false, reference_id, prefab_name, error {code, message}}, count, success_count, error_count}, stock: [{kind, prefab_name, display_name, reagent, before, change, after}] (a real run reads after back from the vault)}. Per-item refusals: thing_not_found, not_vault_material, no_reagents (an ingot without reagents: the vault would destroy it and store nothing), in_vault_slot (in a vault's own import or export slot; let the vault finish), slot_locked, invalid_argument (more than the stack holds, a fraction of an ore, an item named twice). Whole-request refusals: vault_unpowered (the vault is off or unpowered: it neither imports nor vends then), confirm_required, ingot_vault_mod_required, ingot_vault_changed, not_a_vault, vault_not_connected, not_host. Host only. No gateway is needed.",
+            new
+            {
+                type = "object",
+                properties = new
+                {
+                    vault_id = new { type = "string", description = "The Ingot Vault, or a Remote Vault linked to one." },
+                    items = new
+                    {
+                        type = "array",
+                        minItems = 1,
+                        maxItems = 256,
+                        items = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                reference_id = new { type = "string" },
+                                quantity = new { type = "number", exclusiveMinimum = 0, description = "Part of the stack: a whole count for ores, grams for ingots. Default all of it." }
+                            },
+                            required = new[] { "reference_id" },
+                            additionalProperties = false
+                        },
+                        description = "Items by id, each whole or in part."
+                    },
+                    reference_ids = new { type = "array", minItems = 1, maxItems = 256, items = new { type = "string" }, description = "Whole items by id." },
+                    prefab_contains = new { type = "string", description = "Filter form: prefab name contains this (ignoring case)." },
+                    name_contains = new { type = "string", description = "Filter form: display name contains this (ignoring case)." },
+                    location = new { type = "string", @enum = new[] { "any", "ground", "player", "stored" }, description = "Filter form: where the item is. Default any." },
+                    within_id = new { type = "string", description = "Filter form: inside this holder at any depth (a backpack, a locker, a player)." },
+                    near_player_m = new { type = "number", exclusiveMinimum = 0, description = "Filter form: within this many metres of the local player." },
+                    kind = new { type = "string", @enum = new[] { "any", "ingot", "ore", "ice" }, description = "Filter form: ingot, ore (not ice), ice, or any the vault takes. Default any." },
+                    limit = new { type = "integer", minimum = 1, maximum = 1000, description = "Filter form: at most this many items, nearest first. Default 256." },
+                    dry_run = new { type = "boolean", description = "Default true: check and report only." },
+                    confirm = new { type = "boolean", description = "true with dry_run false to deposit." }
+                },
+                required = new[] { "vault_id" },
+                additionalProperties = false
+            },
+            readOnly: false),
+        Tool(
+            "vault_withdraw",
+            "Take an amount of one stored thing out of an Ingot Vault's store and make it straight into a holder's slots, as a move: the store goes down exactly as the vault's own vend takes it (an ingot's reagent set to what is left; an ore entry removed when 0.01 or less is left) and the same amount is made as items (the ingot the vault vends for that reagent, with its grams as quantity, or the ore's stack), never more per item than a full stack. No vend queue, export slot or door is used, so nothing lands in front of the vault. Name what to take with one of prefab_name (e.g. ItemIronIngot, ItemIronOre), prefab_hash, or reagent (ingots: Iron, Steel, ...); quantity (grams of ingot, a whole count of ore) must be at most what the vault holds. to_id: the holder (default the local player); to_slot: a slot index, or \"auto\" (default): on a player, first onto matching stacks anywhere in the inventory (belts, backpack, suit storage, a stack in a hand), then new stacks into empty slots that take the item (never into the player's own body slots unless named by index); on anything else its own slots. What does not fit is refused (no_room, nothing changed) unless allow_ground is true, which puts the rest on the ground a metre in front of the holder. vault_id may be a Remote Vault. Dry run by default; dry_run false and confirm true to do it. Returns {dry_run, vault, via, to, quantity, placed: [{where (merged, slot or ground), slot {id, slot} (null on the ground), quantity, reference_id (the stack; null in a dry run for a new one)}], stock: [{kind, prefab_name, display_name, reagent, before, change, after}] (a real run reads after back from the vault)}. If a game call fails part way, what was not made goes back into the store. Refusals: not_in_vault (lists what the vault holds), not_enough_stock, invalid_argument (a fraction of an ore, not exactly one of prefab_name/prefab_hash/reagent), prefab_missing, no_room, slot_not_found, slot_locked, slot_occupied, slot_refuses, no_slots, invalid_destination (a vault as the holder), vault_unpowered, confirm_required, ingot_vault_mod_required, ingot_vault_changed, not_a_vault, vault_not_connected, no_local_player, not_host. Host only. No gateway is needed.",
+            new
+            {
+                type = "object",
+                properties = new
+                {
+                    vault_id = new { type = "string", description = "The Ingot Vault, or a Remote Vault linked to one." },
+                    prefab_name = new { type = "string", description = "The item to take, as vault_contents names it (e.g. ItemIronIngot, ItemIronOre)." },
+                    prefab_hash = new { type = "integer", description = "The item to take, by prefab hash." },
+                    reagent = new { type = "string", description = "Ingots: the stored reagent (e.g. Iron, Steel)." },
+                    quantity = new { type = "number", exclusiveMinimum = 0, description = "Grams of ingot, or a whole count of ore." },
+                    to_id = new { type = "string", description = "The holder that gets the items; default the local player." },
+                    to_slot = new { oneOf = new object[] { new { type = "integer", minimum = 0 }, new { type = "string", @enum = new[] { "auto" } } }, description = "A slot index of to_id, or \"auto\" (default)." },
+                    allow_ground = new { type = "boolean", description = "Put what does not fit on the ground in front of the holder. Default false: refused instead." },
+                    dry_run = new { type = "boolean", description = "Default true: check and report only." },
+                    confirm = new { type = "boolean", description = "true with dry_run false to withdraw." }
+                },
+                required = new[] { "vault_id", "quantity" },
                 additionalProperties = false
             },
             readOnly: false)

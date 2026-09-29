@@ -321,6 +321,21 @@ internal static class MovePlanner
         return null;
     }
 
+    // An Ingot Vault or Remote Vault keeps slots past its import and export slots only to show its store (IngotVault's
+    // UpdateSlots adds and removes them); an item put there would be dropped with the slot.
+    internal static bool IsVaultDisplaySlot(Thing target, int index) =>
+        index >= VaultDisplaySlotsStart && (IngotVaults.IsVault(target) || IngotVaults.IsRemote(target));
+
+    private const int VaultDisplaySlotsStart = 2;
+
+    private static ApiException? VaultSlotRefusal(Thing target, int index)
+    {
+        return IsVaultDisplaySlot(target, index)
+            ? ApiErrors.Refused("vault_display_slot",
+                $"Slot {index} of {target.DisplayName} only shows the vault's store; use vault_deposit to store items.")
+            : null;
+    }
+
     // The thing whose slot holds this one, or null when it is not in a slot.
     private static Thing? HolderOf(Thing thing)
     {
@@ -372,6 +387,12 @@ internal static class MovePlanner
         if (slot == item.ParentSlot)
         {
             return ApiErrors.Refused("same_slot", $"{item.DisplayName} is already in that slot.");
+        }
+
+        ApiException? vaultSlot = VaultSlotRefusal(target, index);
+        if (vaultSlot != null)
+        {
+            return vaultSlot;
         }
 
         if (slot.IsLocked)
@@ -446,7 +467,10 @@ internal static class MovePlanner
         }
 
         mergeInto = null;
-        for (int index = 0; index < target.Slots.Count; index++)
+        int usable = IsVaultDisplaySlot(target, VaultDisplaySlotsStart)
+            ? System.Math.Min(VaultDisplaySlotsStart, target.Slots.Count)
+            : target.Slots.Count;
+        for (int index = 0; index < usable; index++)
         {
             Slot candidate = target.Slots[index];
             if (candidate != null && candidate.Get() == null && Slot.AllowMove(item, candidate))

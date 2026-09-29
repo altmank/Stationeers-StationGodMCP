@@ -131,7 +131,7 @@ internal static class Refunds
     }
 
     // The source's slots and every slot below them, then the rest of the player carrying it, each thing once.
-    private static List<Slot> InventorySlots(Thing source, Human? carrier)
+    internal static List<Slot> InventorySlots(Thing source, Human? carrier)
     {
         List<Slot> slots = new List<Slot>();
         HashSet<long> visited = new HashSet<long>();
@@ -169,7 +169,7 @@ internal static class Refunds
 
     // A metre in front of the player at its centre of mass, where the game spawns a player's items
     // (OnServer.SpawnDynamicThingMaxStack); a metre in front of the source when no player carries it.
-    private static Vector3 GroundBeside(Thing source, Human? body)
+    internal static Vector3 GroundBeside(Thing source, Human? body)
     {
         if (body != null && body.RigidBody != null)
         {

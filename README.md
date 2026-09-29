@@ -64,7 +64,7 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 
 ## Tools
 
-74 tools, in these areas. Each page lists its tools with what they take and give back.
+77 tools, in these areas. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |
@@ -77,6 +77,7 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 | Clean-up and refactoring | `clean_cables`, `clean_pipes`, `plan_removal`, `feed_paths` | [cleanup-and-refactor.md](docs/cleanup-and-refactor.md) |
 | Walls, frames and structures | `replace_walls`, `replace_frames`, `place_structure`, `remove_structure` | [walls-frames-structures.md](docs/walls-frames-structures.md) |
 | Blueprints | `paste_blueprint` | [blueprints.md](docs/blueprints.md) |
+| Ingot Vault (mod) | `vault_contents`, `vault_deposit`, `vault_withdraw` | [ingot-vault.md](docs/ingot-vault.md) |
 
 Every building tool works the same way: a **dry run** by default that changes nothing and lists every problem; a real
 run only with `dry_run: false` and `confirm: true`; the change made in one held game tick and checked afterwards;
@@ -123,7 +124,9 @@ cell positions in messages in metres.
 **Not yet tested in game:** the 1.3.2 landing pad atmospheres in `atmosphere_contents` and `move_gas`,
 `move_gas`'s receiving-side checks (liquid in a gas pipe, freezing, pressure after boiling), the 1.3.3 planet gas
 removal, the 1.3.4 rooms in `move_gas`, and the 1.3.5 layout helpers (rotation readouts, `place_structure`'s port
-preview, in-line tank and passive vent route ends, `reserve_cells` and `reserve_ports`, `move_gas` `dry_run`).
+preview, in-line tank and passive vent route ends, `reserve_cells` and `reserve_ports`, `move_gas` `dry_run`), and
+the 1.4.0 Ingot Vault tools (`vault_contents`, `vault_deposit`, `vault_withdraw`) and `move_item`'s refusal of a
+vault's display slots.
 
 ## Documentation
 

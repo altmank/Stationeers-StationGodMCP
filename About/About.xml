@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.3.5</Version>
+  <Version>1.4.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -18,6 +18,7 @@ StationGod MCP connects an AI agent such as Claude Code or Codex to your running
 [*][b]Cables, pipes and chutes:[/b] plan a route, lay it, remove it or reroute it. Every piece gets the right shape for its connections, runs follow frames rather than crossing open air, and a run that would join two networks, overload a cable, burst a pipe or push items the wrong way is refused or flagged.
 [*][b]Upgrades and clean-up:[/b] turn a cable network into heavy or super heavy cable, or a pipe network into insulated pipe, in place; replace junctions that have open ends, merge or split long straights, cut redundant loops and remove dead-end stubs.
 [*][b]Walls, frames and structures:[/b] swap walls, windows and frames for another kind without opening the room to the air, place any structure a kit builds, and remove structures as deconstruction does.
+[*][b]Ingot Vault:[/b] with the Ingot Vault mod installed, read a vault's store exactly and move ingots, ores and ices straight in and out of it.
 [*][b]Blueprints:[/b] with BlueprintMod installed, paste a blueprint at an exact spot and quarter turn, even on a dedicated server with no player, then check or undo it.
 [*][b]Console:[/b] run the game's console commands and read the console.
 [/list]
@@ -68,6 +69,10 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.4.0
+- New vault_contents, vault_deposit and vault_withdraw tools for the Ingot Vault mod: read a vault's store exactly, and move ingots, ores and ices straight into and out of it (from your inventory, a container or the ground, and back into your inventory or any holder's slots) with the vault's own bookkeeping, no chute, door or vend queue. Dry run by default. 77 tools now.
+- move_item no longer puts an item into an Ingot Vault's display slots, where it would be lost.
+
 v1.3.5
 - grid_survey, find_things, looking_at and connections report how a device stands turned (facing, up, Euler angles), in the form place_structure takes, so it can be placed again the same way or turned round.
 - place_structure's dry run shows where a device's ports would land before it is built.
