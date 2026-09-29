@@ -336,7 +336,7 @@ internal static class LintLayoutApi
 
                 findings.Add(new LintFinding(LintCodes.DeviceVisualOverlap,
                     $"{devices[a].DisplayName} ({devices[a].ReferenceId}) and {devices[b].DisplayName} " +
-                    $"({devices[b].ReferenceId}) run {depth:0.00} m into each other.", devices[a].ReferenceId,
+                    System.FormattableString.Invariant($"({devices[b].ReferenceId}) run {depth:0.00} m into each other."), devices[a].ReferenceId,
                     Bodies.V(devices[a].Position), devices[b].ReferenceId));
             }
         }

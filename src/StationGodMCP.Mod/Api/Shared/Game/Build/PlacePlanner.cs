@@ -45,6 +45,9 @@ internal sealed class PlannedPlacement
     /// <summary>How at was read, for the reply.</summary>
     internal ResolvedAt? ResolvedAt { get; set; }
 
+    /// <summary>above_floor_m's adjustment, for the reply; null without it.</summary>
+    internal string? AboveFloorHow { get; set; }
+
     /// <summary>A named facing as resolved: the axis and how it was read.</summary>
     internal string? ResolvedFacing { get; set; }
 
@@ -332,7 +335,7 @@ internal static class PlacePlanner
     // that height, then moved by what the footprint's bottom missed it by and aimed again.
     private static void AboveFloor(PlacePlan plan, PlannedPlacement placement, Structure cursor, double above)
     {
-        Metres given = placement.At!.Value;
+        Metres given = placement.ResolvedAt!.Point;
         double floor = AtResolver.FloorBelow(given, plan.Facts);
         double target = floor + above;
         placement.At = new Metres(given.X, target, given.Z);
@@ -344,10 +347,8 @@ internal static class PlacePlanner
             placement.At = new Metres(given.X, target + (target - bottom), given.Z);
         }
 
-        placement.ResolvedAt = new ResolvedAt(placement.At.Value,
-            placement.ResolvedAt!.How + string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                "; its bottom {0:0.##} m above the floor at y {1:0.##}", above, floor),
-            placement.ResolvedAt.FaceOutward);
+        placement.AboveFloorHow = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+            "; its bottom {0:0.##} m above the floor at y {1:0.##}", above, floor);
     }
 
     // orient: every turn the cursor can give the prefab, aimed and checked as a plain placement would be, scored
@@ -355,7 +356,16 @@ internal static class PlacePlanner
     // device whose flow a logic Mode reverses is scored both ways, and a Mode write is suggested when that wins.
     private static bool Orient(PlacePlan plan, Structure prefab, Structure cursor, PlannedPlacement placement)
     {
-        OrientIntent intent = Orienter.Read(placement.Args.Orient!);
+        OrientIntent intent;
+        try
+        {
+            intent = Orienter.Read(placement.Args.Orient!);
+        }
+        catch (ApiException refusal)
+        {
+            plan.Problem(refusal.Code, refusal.Message, placement.Index);
+            return false;
+        }
         System.Func<Vec3, GridStep, bool> roomAhead = Orienter.RoomAhead(plan.Facts);
         bool reversible = Orienter.ReversibleFlow(prefab) && (intent.FlowFrom != null || intent.FlowTo != null);
         List<OrientScore> scores = new List<OrientScore>();
@@ -367,15 +377,16 @@ internal static class PlacePlanner
             }
 
             SetTurn(placement, turn);
+            if (placement.Args.AboveFloorM.HasValue)
+            {
+                AboveFloor(plan, placement, cursor, placement.Args.AboveFloorM.Value);
+            }
+
             Vector3 position = Aim(placement, cursor, out string? refusal);
             LayoutPreview layout = PlacementLayout.Of(prefab, position, placement.Rotation, turn, plan.Facts,
                 plan.Arguments.AllowDoorKeepOut, new HashSet<long>());
-            GridStep front = turn.Forward;
-            GridStep back
- = prefab.PlacementType == PlacementSnap.Grid && prefab is SmallGrid
-                ? turn.Up.Opposite
-                : turn.Forward.Opposite;
-            OrientCandidate candidate = new OrientCandidate(turn, back, front, Bodies.V(position),
+            OrientCandidate candidate = new OrientCandidate(turn, PlacementLayout.MountOutward(prefab, turn).Opposite,
+                turn.Forward, Bodies.V(position),
                 Orienter.Ports(prefab, position, placement.Rotation, PortTypes), refusal, layout.Penalty,
                 Uprightness.Problem(turn, VisualUp.Of(prefab.PrefabName).LocalUp));
             scores.Add(OrientSearch.Score(candidate, intent, roomAhead));

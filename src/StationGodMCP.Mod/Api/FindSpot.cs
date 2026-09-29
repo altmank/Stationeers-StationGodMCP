@@ -58,7 +58,7 @@ internal static class FindSpotApi
         }
 
         SpotRequirements require = Requirements(args.OptionalObject("require"));
-        List<PlaneView> planes = Planes(args, facts);
+        List<PlaneView> planes = Planes(args, facts, out Room? room);
         int limit = args.OptionalInt("limit", 1, 20) ?? DefaultLimit;
         int maxChecks = args.OptionalInt("max_checks", 1, MaximumChecks) ?? DefaultChecks;
         GridStep? facing = args.Has("facing") ? Step(args.OptionalString("facing"), "facing") : (GridStep?)null;
@@ -66,6 +66,7 @@ internal static class FindSpotApi
         List<Candidate> passed = new List<Candidate>();
         HashSet<Vector3> seen = new HashSet<Vector3>();
         int filtered = 0;
+        int aimed = 0;
         foreach (PlaneView plane in planes)
         {
             CubeRotation turn = TurnFor(prefab, plane, facing);
@@ -74,9 +75,16 @@ internal static class FindSpotApi
             {
                 for (double v = System.Math.Floor((qv - radius) * 2.0) / 2.0; v <= qv + radius; v += 0.5)
                 {
-                    if (passed.Count + filtered >= MaximumCandidates)
+                    // Every aimed spot counts, duplicates and spots outside the room included, so the cap bounds
+                    // the frame's work.
+                    if (++aimed > MaximumCandidates)
                     {
                         break;
+                    }
+
+                    if (room != null && !plane.RoomOnSide(u, v, room, facts))
+                    {
+                        continue;
                     }
 
                     Candidate? candidate = Candidate.At(prefab, cursor, plane, turn, u, v, near, facts, require,
@@ -171,8 +179,9 @@ internal static class FindSpotApi
 
     // One plane (plane/side or looking) or the walls of a room (room_id): every face of a room cell toward a cell
     // outside the room that carries a wall or window, seen from inside.
-    private static List<PlaneView> Planes(Args args, GridFacts facts)
+    private static List<PlaneView> Planes(Args args, GridFacts facts, out Room? room)
     {
+        room = null;
         if (!args.Has("room_id"))
         {
             return new List<PlaneView> { PlaneView.Read(args, facts, out _) };
@@ -183,10 +192,11 @@ internal static class FindSpotApi
             throw ApiErrors.InvalidArgument("room_id must be a room id as rooms reports it.");
         }
 
-        Room room = StructureAirRecord.FindRoom(id.Value) ??
-                    throw ApiErrors.Refused("room_not_found", $"No room has id {id}.");
+        Room found = StructureAirRecord.FindRoom(id.Value) ??
+                     throw ApiErrors.Refused("room_not_found", $"No room has id {id}.");
+        room = found;
         HashSet<GridCell> cells = new HashSet<GridCell>();
-        foreach (WorldGrid grid in new List<WorldGrid>(room.Grids))
+        foreach (WorldGrid grid in new List<WorldGrid>(found.Grids))
         {
             cells.Add(Shared.Game.Upgrades.PieceShapes.Cell(grid.Value));
         }
@@ -295,11 +305,10 @@ internal static class FindSpotApi
             }
 
             MountRect? mount = cells.Count > 0
-                ? MountRect.Of(Box3.OfSmallCells(cells),
-                    prefab.PlacementType == PlacementSnap.Grid ? turn.Up : turn.Forward)
+                ? MountRect.Of(Box3.OfSmallCells(cells), PlacementLayout.MountOutward(prefab, turn))
                 : null;
             double bottom = cells.Count > 0 ? Box3.OfSmallCells(cells).Min.Y : position.y;
-            double floor = AtResolver.FloorBelow(new Metres(position.x, bottom + 0.01, position.z), facts);
+            double floor = AtResolver.FloorBelow(new Metres(position.x, bottom, position.z), facts);
             SpotGeometry geometry = new SpotGeometry(cells.Count, occupied, keepOut,
                 mount?.Faces().Count ?? 0, bottom - floor, FrontBlocked(cells, turn.Forward, require, facts));
             return new Candidate(plane, turn, rotation, position, cells, (Bodies.V(position) - near).Length,

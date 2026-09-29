@@ -98,7 +98,7 @@ internal static class SpotSearch
 
         if (require.MinBottomAboveFloorM.HasValue && geometry.BottomAboveFloorM < require.MinBottomAboveFloorM - 1e-6)
         {
-            failed.Add($"bottom {geometry.BottomAboveFloorM:0.##} m above the floor");
+            failed.Add(System.FormattableString.Invariant($"bottom {geometry.BottomAboveFloorM:0.##} m above the floor"));
         }
 
         if (geometry.BlockedFrontCells > 0)

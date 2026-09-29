@@ -146,7 +146,7 @@ internal static class Orienter
     internal static System.Func<Vec3, GridStep, bool> RoomAhead(GridFacts facts) =>
         (from, direction) =>
         {
-            Vec3 ahead = from + Vec3.Of(direction) * 1.0;
+            Vec3 ahead = from + Vec3.Of(direction) * 1.01;
             GridCell cell = SmallCellCode.LargeOf(new GridCell((int)System.Math.Round(ahead.X * 10.0),
                 (int)System.Math.Round(ahead.Y * 10.0), (int)System.Math.Round(ahead.Z * 10.0)));
             return facts.RoomAt(cell) != null;

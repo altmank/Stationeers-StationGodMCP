@@ -237,7 +237,7 @@ internal static class PlanRouteApi
 
         notes.Add(allow
             ? "allow_door_keepout: the route may pass through doorways (their face and the band either side)."
-            : $"Doors: the route keeps out of every door's face and {facts.Band.Metres} m either side of it inside " +
+            : System.FormattableString.Invariant($"Doors: the route keeps out of every door's face and {facts.Band.Metres} m either side of it inside ") +
               "the door's rectangle (jambs, top edge and threshold; not inside the floor slab); cells on a window " +
               $"cost {OpeningGuard.WindowPenalty} more (crosses_window when it still does).");
         return guard;

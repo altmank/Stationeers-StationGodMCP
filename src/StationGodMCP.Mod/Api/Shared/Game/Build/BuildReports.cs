@@ -93,10 +93,10 @@ internal static class BuildReports
         return new PlacementView(placement.Index, prefabView, spot,
             new PlacementLookView(placement.State, placement.Args.Label, color), Amounts(placement.Cost),
             placement.Ports, placement.Layout?.View, placement.Orient,
-            placement.ResolvedAt != null
-                ? new ResolvedPlacementView(new PointView(placement.ResolvedAt.Point.X, placement.ResolvedAt.Point.Y,
-                    placement.ResolvedAt.Point.Z), placement.ResolvedAt.How, placement.ResolvedFacing,
-                    placement.ResolvedFacingHow)
+            placement.ResolvedAt != null && placement.At.HasValue
+                ? new ResolvedPlacementView(new PointView(placement.At.Value.X, placement.At.Value.Y,
+                        placement.At.Value.Z), placement.ResolvedAt.How + (placement.AboveFloorHow ?? string.Empty),
+                    placement.ResolvedFacing, placement.ResolvedFacingHow)
                 : null);
     }
 

@@ -61,13 +61,17 @@ public sealed class RelativeAtTests
     public void AFaceSeenFromTheFrontHasTheViewersRightAndUp()
     {
         // A wall facing +z seen by a player looking -z: right is -x, up +y.
-        (GridStep right, GridStep up) = RelativeMath.FaceAxes(S("+z"), S("-z"));
+        (GridStep right, GridStep up) = RelativeMath.FaceAxes(S("+z"), S("-z"), S("-x"));
         Assert.Equal("-x", right.Name);
         Assert.Equal("+y", up.Name);
         // A floor seen by a player looking +z: up is +z (away), right +x.
-        (GridStep floorRight, GridStep floorUp) = RelativeMath.FaceAxes(S("+y"), S("+z"));
+        (GridStep floorRight, GridStep floorUp) = RelativeMath.FaceAxes(S("+y"), S("+z"), S("+x"));
         Assert.Equal("+x", floorRight.Name);
         Assert.Equal("+z", floorUp.Name);
+        // A ceiling looked up at by a player facing +z: right is still +x.
+        (GridStep ceilingRight, GridStep ceilingUp) = RelativeMath.FaceAxes(S("-y"), S("+z"), S("+x"));
+        Assert.Equal("+x", ceilingRight.Name);
+        Assert.Equal("+z", ceilingUp.Name);
     }
 
     [Fact]

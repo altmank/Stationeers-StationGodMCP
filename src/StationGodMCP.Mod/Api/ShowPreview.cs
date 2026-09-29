@@ -42,6 +42,11 @@ internal static class ShowPreviewApi
             throw ApiErrors.Refused("no_camera", "There is no player camera to draw for (a dedicated server has none).");
         }
 
+        if (!Previews.CanDraw)
+        {
+            throw ApiErrors.Refused("no_line_shader", "This build of the game has no built-in shader to draw lines with.");
+        }
+
         double seconds = args.OptionalPositiveDouble("seconds") ?? DefaultSeconds;
         if (seconds > MaximumSeconds)
         {

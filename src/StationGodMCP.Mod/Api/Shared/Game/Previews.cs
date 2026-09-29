@@ -24,6 +24,9 @@ internal static class Previews
 
     internal static int Count => Shown.Count;
 
+    /// <summary>Whether this build of the game has a shader to draw lines with.</summary>
+    internal static bool CanDraw => MaterialOf() != null;
+
     /// <summary>Draws a box until the given seconds have passed; false when no line material can be made.</summary>
     internal static bool Box(Box3 box, Color color, float seconds, string name)
     {

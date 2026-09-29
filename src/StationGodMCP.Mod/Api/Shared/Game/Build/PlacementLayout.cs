@@ -123,10 +123,15 @@ internal static class PlacementLayout
         return new LayoutPreview(view, conflicts, mount, small, render);
     }
 
-    // The plane behind it: behind its back for a mounted piece (placement face_mount), under its bottom otherwise.
+    /// <summary>
+    /// The way a piece stands out of the surface it rests on: its top for a grid-placed piece (it stands on a floor),
+    /// its front for a face-placed or mounted one (its back is on the face). Every placement tool reads it here.
+    /// </summary>
+    internal static GridStep MountOutward(Structure prefab, CubeRotation turn) =>
+        prefab.PlacementType == PlacementSnap.Grid ? turn.Up : turn.Forward;
+
     private static MountRect? MountOf(Structure prefab, List<GridCell> small, CubeRotation turn) =>
-        MountRect.Of(Box3.OfSmallCells(small),
-            prefab.PlacementType == PlacementSnap.FaceMount ? turn.Forward : turn.Up);
+        MountRect.Of(Box3.OfSmallCells(small), MountOutward(prefab, turn));
 
     private static SectionsView Sections(MountRect mount, GridFacts facts, List<LayoutConflict> conflicts)
     {
@@ -189,7 +194,7 @@ internal static class PlacementLayout
         {
             conflicts.Add(new LayoutConflict(ConflictCodes.InDoorKeepOut,
                 allow ? ConflictLevel.Warning : ConflictLevel.Problem,
-                $"{inKeepOut} of its cells stand in the keep-out of door {door} (its face and {facts.Band.Metres} m " +
+                System.FormattableString.Invariant($"{inKeepOut} of its cells stand in the keep-out of door {door} (its face and {facts.Band.Metres} m ") +
                 "either side, inside its rectangle)" +
                 (allow ? "; allowed (allow_door_keepout)." : "; move it, or pass allow_door_keepout."), door));
         }
@@ -249,7 +254,7 @@ internal static class PlacementLayout
             {
                 conflicts.Add(new LayoutConflict(ConflictCodes.VisualOverlap, ConflictLevel.Warning,
                     $"Its body and {thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId}, at {box}) run " +
-                    $"{depth:0.00} m into each other's footprint.", thing.ReferenceId));
+                    System.FormattableString.Invariant($"{depth:0.00} m into each other's footprint."), thing.ReferenceId));
             }
 
             if (thing is Device device)

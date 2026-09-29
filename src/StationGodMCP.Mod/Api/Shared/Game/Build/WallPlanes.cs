@@ -19,7 +19,7 @@ internal sealed class PlaneView
     {
         Plane = plane;
         Side = side;
-        (Right, Up) = RelativeMath.FaceAxes(side, side.IsVertical ? GridStep.All[4] : GridStep.All[2]);
+        (Right, Up) = RelativeMath.FaceAxes(side, GridStep.All[4], GridStep.All[0]);
     }
 
     internal FacePlane Plane { get; }
@@ -52,6 +52,10 @@ internal sealed class PlaneView
         point[Up.Axis] = (int)(System.Math.Floor(high / 2.0) * 20 + 10);
         return new GridCell(point[0], point[1], point[2]);
     }
+
+    /// <summary>Whether the 2 m cell just in front of the plane at (u, v), on the viewer's side, is in the room.</summary>
+    internal bool RoomOnSide(double u, double v, Room room, GridFacts facts) =>
+        facts.RoomAt(LargeAt(PointAt(u, v) + Vec3.Of(Side) * 1.01)) == room;
 
     /// <summary>A point's coordinates along the viewer's right and up axes.</summary>
     internal (double U, double V) Project(Vec3 point) => (point[Right.Axis], point[Up.Axis]);

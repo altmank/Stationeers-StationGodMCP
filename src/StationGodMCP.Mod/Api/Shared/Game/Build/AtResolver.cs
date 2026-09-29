@@ -122,7 +122,7 @@ internal static class AtResolver
         }
 
         ViewBasis basis = Look.Basis(out _) ?? throw NoCamera(name);
-        (GridStep right, GridStep up) = RelativeMath.FaceAxes(hit.Outward.Value, basis.LevelForward);
+        (GridStep right, GridStep up) = RelativeMath.FaceAxes(hit.Outward.Value, basis.LevelForward, basis.LevelRight);
         Vec3 point = hit.Point + Vec3.Of(right) * (spec.OptionalDouble("along_right_m") ?? 0.0) +
                      Vec3.Of(up) * (spec.OptionalDouble("along_up_m") ?? 0.0);
         point = point.With(hit.Plane.Value.Axis, hit.Plane.Value.Metres);
@@ -190,7 +190,8 @@ internal static class AtResolver
     /// </summary>
     internal static double FloorBelow(Metres point, GridFacts facts)
     {
-        double first = System.Math.Floor(point.Y / 2.0) * 2.0;
+        // A point up to half a small cell under a plane (a footprint's bottom on the floor) rests on that plane.
+        double first = System.Math.Floor((point.Y + MountRect.OnPlaneM) / 2.0) * 2.0;
         for (int step = 0; step < 5; step++)
         {
             double plane = first - step * 2.0;
@@ -282,7 +283,7 @@ internal static class AtResolver
         bool moves = (spec.OptionalDouble("right_m") ?? 0.0) != 0.0 || (spec.OptionalDouble("forward_m") ?? 0.0) != 0.0;
         if (basis.Ambiguous && moves)
         {
-            throw Ambiguous(name, $"you look {basis.YawDegrees:0} degrees round, near a diagonal between " +
+            throw Ambiguous(name, System.FormattableString.Invariant($"you look {basis.YawDegrees:0} degrees round, near a diagonal between ") +
                                   $"{basis.LevelForward.Name} and the next axis");
         }
 

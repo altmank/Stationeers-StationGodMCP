@@ -33,6 +33,7 @@ internal sealed class GridFacts
     private readonly Dictionary<GridCell, IReadOnlyList<FaceOpening>> _faces =
         new Dictionary<GridCell, IReadOnlyList<FaceOpening>>();
     private readonly Dictionary<GridCell, OpeningZone> _zones = new Dictionary<GridCell, OpeningZone>();
+    private readonly Dictionary<GridCell, List<Structure>> _faceStructures = new Dictionary<GridCell, List<Structure>>();
     private readonly Dictionary<long, HashSet<GridCell>> _doorPorts = new Dictionary<long, HashSet<GridCell>>();
     private readonly DoorBand _band = LayoutSettings.DoorBand;
 
@@ -72,10 +73,16 @@ internal sealed class GridFacts
         return structures;
     }
 
-    /// <summary>The face structures registered at a face point, each once.</summary>
+    /// <summary>The face structures registered at a face point, each once; cached for the request.</summary>
     internal List<Structure> FaceStructuresAt(GridCell point)
     {
+        if (_faceStructures.TryGetValue(point, out List<Structure> cached))
+        {
+            return cached;
+        }
+
         List<Structure> structures = new List<Structure>();
+        _faceStructures[point] = structures;
         foreach (Structure structure in new List<Structure>(_grid.GetFaceStructures(Grid(point))))
         {
             if (structure != null && !structure.IsBeingDestroyed && !structures.Contains(structure))

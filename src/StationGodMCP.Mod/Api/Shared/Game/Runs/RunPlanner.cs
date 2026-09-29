@@ -232,7 +232,7 @@ internal static class RunPlanner
         plan.Warnings.AddRange(layout.Warnings);
         GridFacts facts = new GridFacts(kind, mask, ignore);
         FindAir(plan, layout, facts);
-        FindOpenings(plan, layout, facts);
+        FindOpenings(plan, layout, facts, build.Shape);
         Dictionary<int, RunCatalogue> catalogues = new Dictionary<int, RunCatalogue>();
         List<OrientableCell> orientable = new List<OrientableCell>();
         long next = -1;
@@ -323,15 +323,23 @@ internal static class RunPlanner
             "build a frame under them.", plan.AirCells[0]));
     }
 
-    internal const string InDoorKeepOut = "in_door_keepout";
+    internal const string InDoorKeepOut = ConflictCodes.InDoorKeepOut;
 
-    internal const string CrossesWindow = "crosses_window";
+    internal const string CrossesWindow = ConflictCodes.CrossesWindow;
 
     // The run's new pieces in a door's keep-out (a problem, or a warning with allow_door_keepout) or on a window (a
-    // warning): one issue per door and per window.
-    private static void FindOpenings(RunPlan plan, RunLayout layout, GridFacts facts)
+    // warning): one issue per door and per window. A run's own tips (its ends and its branches' first cells) are where
+    // it must reach, as the planners release them: in a keep-out they warn instead, with the same code.
+    private static void FindOpenings(RunPlan plan, RunLayout layout, GridFacts facts, RunShape shape)
     {
+        HashSet<GridCell> tips = new HashSet<GridCell>();
+        foreach (RunTip tip in shape.Tips)
+        {
+            tips.Add(tip.Cell);
+        }
+
         Dictionary<long, List<GridCell>> doors = new Dictionary<long, List<GridCell>>();
+        Dictionary<long, List<GridCell>> tipDoors = new Dictionary<long, List<GridCell>>();
         Dictionary<long, List<GridCell>> windows = new Dictionary<long, List<GridCell>>();
         foreach (LayoutCell cell in layout.Cells)
         {
@@ -341,7 +349,9 @@ internal static class RunPlanner
             }
 
             OpeningZone zone = facts.Opening(cell.Cell);
-            Dictionary<long, List<GridCell>>? into = zone.IsDoor ? doors : zone.IsWindow ? windows : null;
+            Dictionary<long, List<GridCell>>? into = zone.IsDoor ? (tips.Contains(cell.Cell) ? tipDoors : doors)
+                : zone.IsWindow ? windows
+                : null;
             if (into == null)
             {
                 continue;
@@ -357,14 +367,22 @@ internal static class RunPlanner
         }
 
         bool allow = plan.Request.Options.AllowDoorKeepOut;
+        string band = facts.Band.Metres.ToString("0.#", CultureInfo.InvariantCulture);
         foreach (KeyValuePair<long, List<GridCell>> door in doors)
         {
             LayoutIssue issue = new LayoutIssue(InDoorKeepOut,
                 $"{door.Value.Count} new piece(s) stand in the keep-out of door {door.Key} (its face and " +
-                $"{facts.Band.Metres} m either side, inside its rectangle): {Listed(door.Value)}. " +
+                $"{band} m either side, inside its rectangle): {Listed(door.Value)}. " +
                 (allow ? "Allowed (allow_door_keepout)." : "Route around the doorway, or pass allow_door_keepout."),
                 door.Value[0], door.Key);
             (allow ? plan.Warnings : plan.Problems).Add(issue);
+        }
+
+        foreach (KeyValuePair<long, List<GridCell>> door in tipDoors)
+        {
+            plan.Warnings.Add(new LayoutIssue(InDoorKeepOut,
+                $"The run ends in the keep-out of door {door.Key} at {Listed(door.Value)}: its own end, so it is " +
+                "allowed; make sure the end is where it must be.", door.Value[0], door.Key));
         }
 
         foreach (KeyValuePair<long, List<GridCell>> window in windows)

@@ -111,7 +111,7 @@ internal static class RelativeMath
         yaw = yaw < 0 ? yaw + 360.0 : yaw;
         if (Math.Abs(yaw % 90.0 - 45.0) < ViewBasis.AmbiguousDegrees)
         {
-            ambiguous = $"the direction (heading {yaw:0} degrees) is near a diagonal between two axes";
+            ambiguous = System.FormattableString.Invariant($"the direction (heading {yaw:0} degrees) is near a diagonal between two axes");
             return null;
         }
 
@@ -120,15 +120,21 @@ internal static class RelativeMath
     }
 
     /// <summary>
-    /// On a face plane seen from the front, the in-plane right and up a viewer means: up is +y on a wall, the viewer's
-    /// level forward on a floor or ceiling; right is up cross the face's outward normal, so it runs to the viewer's
-    /// right when the viewer faces the face.
+    /// On a face plane seen from the front, the in-plane right and up a viewer means. On a wall up is +y and right is
+    /// up cross the way into the wall, so it runs to the viewer's right when the viewer faces the wall. On a floor or a
+    /// ceiling up is the viewer's level forward and right the viewer's level right (looking up at a ceiling the right
+    /// hand still points the same way).
     /// </summary>
-    internal static (GridStep Right, GridStep Up) FaceAxes(GridStep outward, GridStep viewerForward)
+    internal static (GridStep Right, GridStep Up) FaceAxes(GridStep outward, GridStep viewerForward,
+        GridStep viewerRight)
     {
-        GridStep up = outward.IsVertical ? viewerForward : GridStep.All[2];
-        Vec3 into = Vec3.Of(outward.Opposite);
-        Vec3 right = Vec3.Of(up).Cross(into);
+        if (outward.IsVertical)
+        {
+            return (viewerRight, viewerForward);
+        }
+
+        GridStep up = GridStep.All[2];
+        Vec3 right = Vec3.Of(up).Cross(Vec3.Of(outward.Opposite));
         return (ViewBasis.Nearest(right), up);
     }
 }
