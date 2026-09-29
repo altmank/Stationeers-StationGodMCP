@@ -229,7 +229,7 @@ internal sealed class ItemRecord
 /// <summary>
 /// find_items' and item_totals' filter: names, where the item is, what holds it, and how near. Also keeps machine stock
 /// (MachineStock) for location any or machine_stock; a WorldItems walk never yields that location, so callers that only
-/// collect items (trader_inventory's have, list_containers) never see stock.
+/// collect items (list_containers) never see stock.
 /// </summary>
 internal sealed class ItemFilter
 {

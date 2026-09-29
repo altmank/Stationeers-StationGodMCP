@@ -124,7 +124,7 @@ public sealed class TradersWireTests
                         new
                         {
                             name = "Iron", prefab_name = "ItemIronIngot", credits_each = 2f, wanted = 100, gas = false,
-                            conditions = new List<string?> { "Quantity 50" }, have = (double?)250.0,
+                            conditions = new List<string?> { "Quantity 50" }, have = 250,
                             sellable = (int?)null
                         }
                     },
@@ -145,7 +145,7 @@ public sealed class TradersWireTests
                 new List<TraderBuysView>
                 {
                     new TraderBuysView(new TradeItem("Iron", "ItemIronIngot", 2f, false), 100,
-                        new List<string?> { "Quantity 50" }, 250.0, null)
+                        new List<string?> { "Quantity 50" }, 250, null)
                 },
                 new List<TraderSellsView>
                 {

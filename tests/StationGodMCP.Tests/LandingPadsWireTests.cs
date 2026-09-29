@@ -46,7 +46,7 @@ public sealed class LandingPadsWireTests
                         new
                         {
                             contact_id = "900", name = "Trader", shuttle_type = "Small", pad_size = new[] { 3, 3 },
-                            fits = true, obstructed = false, can_land = false, reason = "Power"
+                            fits = true, can_land = false, reason = "Power"
                         }
                     }
                 }
@@ -62,7 +62,7 @@ public sealed class LandingPadsWireTests
             new List<ContactFitView>
             {
                 new ContactFitView(new ThingId(900), "Trader", "Small", new[] { 3, 3 },
-                    new PadVerdict(true, false, false, "Power"))
+                    new PadVerdict(true, false, "Power"))
             });
         WireCheck.SameAfterRenames(old, new LandingPadsView(new List<LandingPadView> { pad }), Renames);
     }

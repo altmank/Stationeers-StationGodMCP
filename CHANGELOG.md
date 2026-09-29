@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`trader_inventory` `have` is what the trader would take from you.** It counts the goods on the pad network's
+  vending machines and in the card holder's inventory that meet the trader's conditions, as `trader_sell` takes them
+  (a "Box of ..." line counts only the boxes whose contents it accepts), and gas lines now count the pad network's gas
+  in units. Before, it counted every item of the prefab in the world, conditions ignored. The pad is the one the
+  trader is called to, else every landing pad's network; new optional `credit_card_id` picks the card holder
+  (default you). `have` is now a whole number, never null.
+- **`landing_pads` drops `obstructed`.** It reported the game's `LandingPadCenter.IsObstructed`, which nothing in the
+  game calls, so it never decided a landing.
 - **Only what a player could build.** One placement rule, the game's own cursor checks, now guards every tool that
   creates a structure. `free: true` waives materials, never the rule.
   - `check_replaceable` (new): for up to 1024 things, could a player place each again exactly where it stands, with

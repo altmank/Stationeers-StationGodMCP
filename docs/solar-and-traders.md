@@ -12,7 +12,7 @@ out with the game's own geometry and checks. No gateway is needed.
 | `solar_aim` | The Horizontal and Vertical that point a solar panel straight at the sun. Read only. | `reference_id` |
 | `dish_aim` | The Horizontal and Vertical that point a satellite dish at a trader contact. Read only. | `dish_id`, `contact_id` |
 | `trader_contacts` | Every trader in the sky: type, shuttle, pad size it needs, direction, power needed to resolve and contact, time left; and every dish with where it points. | none |
-| `trader_inventory` | What each trader buys and sells, at what price and under what conditions, and how many of each item you have. | `contact_id` (omit for all) |
+| `trader_inventory` | What each trader buys and sells, at what price and under what conditions, and how many of each it would accept from what you hold. | `contact_id` (omit for all), `credit_card_id` |
 | `landing_pads` | Every landing pad, measured by the game's own checks, and which traders fit and can land now. | none |
 | `trader_buy` | Buy from the landed trader, as the trade window's Buy button does. | `reference_id`, `items: [{name or prefab_name, quantity}]`, `credit_card_id`, `dry_run` |
 | `trader_sell` | Sell to the landed trader, as the Sell button does. | as `trader_buy` |
@@ -51,14 +51,12 @@ angles again once it is powered does nothing: write another value first, then th
 ## Landing pads
 
 `landing_pads` measures each pad as the game does: the largest square it passes, whether its network has exactly one
-centre, the runway threshold for planes, and per trader whether it fits, whether something above the pad is in the
-way (the game itself does not check this), and whether it can land now with the game's own reason if not. The check
-moves the pad's landing point and puts it back, so a landing in progress is never affected.
+centre, the runway threshold for planes, and per trader whether it fits and whether it can land now with the game's
+own reason if not. The check moves the pad's landing point and puts it back, so a landing in progress is never
+affected.
 
 - Every 2 m cell of the landing square must be a pad tile or the centre. A Data And Power (or other connection)
   piece inside the square is not a tile and shrinks the largest square, so put connection pieces outside it.
-- `obstructed` is the game's own check, reported as it answers; the game never uses it, and it may count the pad's
-  own pieces, so treat it as advisory.
 
 ## Trading
 
@@ -86,7 +84,11 @@ moves the pad's landing point and puts it back, so a landing in progress is neve
   not the quantity asked; its `index` points at the line asked.
 - `trader_inventory` shows, for the landed trader, how many of each item it would take right now (`sellable`), the
   trade window's own count: what the pad network's vending machines and you hold. `trader_sell` counts the card
-  holder's inventory in place of yours, so the two agree when the card is yours. `have` counts every item of the line's prefab in the world (0 when none, null for
-  gas), without the trader's conditions: every "Box of ..." line counts all cardboard boxes. The game rolls a trader's inventory when the contact appears, so this works before
-  the trader is interrogated.
+  holder's inventory in place of yours, so the two agree when the card is yours.
+- `have` is, for every trader in the sky, how many it would accept from what you hold: the goods on the pad network's
+  vending machines and in the card holder's inventory that meet its conditions, counted as `trader_sell` takes them
+  (a "Box of ..." line counts only the boxes whose contents it accepts), or the pad network's gas in units when the
+  gas meets its conditions. The pad is the one the trader is called to; before that, every landing pad's network. The
+  card holder is `credit_card_id`'s holder, else you. The game rolls a trader's inventory when the contact appears, so
+  this works before the trader is interrogated.
 - Host only.

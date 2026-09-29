@@ -144,7 +144,6 @@ internal sealed class ContactFitView
         ShuttleType = shuttleType;
         PadSizeTiles = padSize;
         Fits = verdict.Fits;
-        Obstructed = verdict.Obstructed;
         CanLand = verdict.CanLand;
         Reason = verdict.Reason;
     }
@@ -160,8 +159,6 @@ internal sealed class ContactFitView
 
     public bool Fits { get; }
 
-    public bool Obstructed { get; }
-
     public bool CanLand { get; }
 
     /// <summary>The game's message; empty when it can land.</summary>
@@ -171,17 +168,14 @@ internal sealed class ContactFitView
 /// <summary>The game's checks of one contact against one pad.</summary>
 internal sealed class PadVerdict
 {
-    internal PadVerdict(bool fits, bool obstructed, bool canLand, string reason)
+    internal PadVerdict(bool fits, bool canLand, string reason)
     {
         Fits = fits;
-        Obstructed = obstructed;
         CanLand = canLand;
         Reason = reason;
     }
 
     internal bool Fits { get; }
-
-    internal bool Obstructed { get; }
 
     internal bool CanLand { get; }
 

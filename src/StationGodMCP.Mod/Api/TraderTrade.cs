@@ -310,7 +310,7 @@ internal static class TradeSession
     }
 
     // The card given, or the one the local player carries (Human.GetCreditCard), as the trade window picks it.
-    private static CreditCard RequireCard(ThingId? id)
+    internal static CreditCard RequireCard(ThingId? id)
     {
         if (id.HasValue)
         {

@@ -33,8 +33,8 @@ namespace StationGodMCP.Api;
 /// FormatterServices.GetUninitializedObject: the constructors register a new contact with the game, and this must not.
 /// Planes (TraderContact.RequiresThreshold) also need exactly one switched-on runway threshold on the pad's network
 /// (LandingPadNetwork.ValidApproachState). The game never compares the runway's length with RequiredRunwayLength,
-/// which only sizes the approach path, so neither is that done here. LandingPadCenter.IsObstructed looks up from each
-/// pad cell for a structure or a closed face; CanTraderLand does not call it, so it is reported apart.
+/// which only sizes the approach path, so neither is that done here. LandingPadCenter.IsObstructed is not reported:
+/// nothing in the game calls it, so it decides nothing.
 /// </summary>
 internal static class LandingPadsApi
 {
@@ -157,7 +157,7 @@ internal static class LandingPadProbe
         {
             Vector2 size = contact.RequiredPadSize();
             bool canLand = CanLand(center, contact, out string reason);
-            PadVerdict verdict = new PadVerdict(Fits(center, size), center.IsObstructed(contact), canLand, reason);
+            PadVerdict verdict = new PadVerdict(Fits(center, size), canLand, reason);
             string? name = contact.DataInstance != null ? contact.DataInstance.DisplayName : null;
             views.Add(new ContactFitView(new ThingId(contact.ReferenceId), name ?? contact.ContactName,
                 contact.ShuttleType.ToString(), Size(size), verdict));

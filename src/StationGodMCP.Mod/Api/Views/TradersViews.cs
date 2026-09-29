@@ -354,7 +354,7 @@ internal sealed class TraderStockView
 /// <summary>What the trader pays for.</summary>
 internal sealed class TraderBuysView
 {
-    internal TraderBuysView(TradeItem item, int wanted, List<string?> conditions, double? have, int? sellable)
+    internal TraderBuysView(TradeItem item, int wanted, List<string?> conditions, int have, int? sellable)
     {
         Name = item.Name;
         PrefabName = item.PrefabName;
@@ -379,10 +379,10 @@ internal sealed class TraderBuysView
     public List<string?> Conditions { get; }
 
     /// <summary>
-    /// How many of the line's prefab exist outside the trader as items (find_items' rules; machine stock not counted;
-    /// conditions not applied): 0 when none, null for a line with no item prefab (gas).
+    /// How many units the trader would accept from what you hold, its conditions applied: the goods on the pad
+    /// network's vending machines and in the card holder's inventory, or the pad network's gas in units (HeldGoods).
     /// </summary>
-    public double? Have { get; }
+    public int Have { get; }
 
     /// <summary>
     /// While the trader is landed, how many it would take now: on the pad network's vending machines and on the

@@ -312,7 +312,7 @@ internal sealed class SellStock
         return things;
     }
 
-    private static List<SellGood> Goods(BuyDataInstance entry, List<DynamicThing> things)
+    internal static List<SellGood> Goods(BuyDataInstance entry, List<DynamicThing> things)
     {
         List<SellGood> goods = new List<SellGood>(things.Count);
         foreach (DynamicThing thing in things)
@@ -328,7 +328,7 @@ internal sealed class SellStock
     }
 
     // TradeDataHelper.GetQuantityConditionValue: the moles one unit of a gas line is.
-    private static float MolesPerUnit(BuyDataInstance entry)
+    internal static float MolesPerUnit(BuyDataInstance entry)
     {
         foreach (ConditionData condition in entry.BuyData.Conditions)
         {

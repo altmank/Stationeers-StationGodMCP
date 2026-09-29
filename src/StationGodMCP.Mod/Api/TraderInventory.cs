@@ -1,12 +1,18 @@
 #nullable enable
 
-using System;
 using System.Collections.Generic;
 using Assets.Scripts;
+using Assets.Scripts.Atmospherics;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Electrical;
+using Assets.Scripts.Objects.Entities;
+using Assets.Scripts.Objects.Items;
+using Networks;
+using Objects.Electrical;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using Trading;
 
 namespace StationGodMCP.Api;
@@ -18,13 +24,11 @@ namespace StationGodMCP.Api;
 /// TraderDataInstance.BuyDataInstances and SellDataInstances from the trader's XML, its chances and world conditions,
 /// then applies the slot's bulk multiplier), so this shows it before the trader is interrogated. Price is the
 /// transaction's TransactionData.Value, credits per unit (the game's own debug line prints it as
-/// "EUR{Value} x {Required}"); a gas unit is the Moles its conditions name. For each item a trader buys, have is how
-/// many of its prefab exist in the world outside the trader as items (find_items' rules: anywhere, any holder; not
-/// machine stock, which no trader can take until it is ejected as ingots; 0 when none, null for gas; the trader's
-/// conditions are not applied, so every "Box of ..." line counts all CardboardBox items) and, while the trader
-/// is landed, how many it would take now (sellable: the trade window's own count, TradeDataHelper.GetSellItemQuantity:
-/// what the pad network's vending machines and the local player hold that meets its conditions, or the pad network's
-/// gas in units).
+/// "EUR{Value} x {Required}"); a gas unit is the Moles its conditions name. For each line a trader buys, have is how
+/// many units it would accept from what you hold (HeldGoods: what trader_sell would take, with the trader's own
+/// conditions applied, so a "Box of ..." line counts only the boxes whose contents it accepts) and, while the trader
+/// is landed, sellable is the trade window's own count (TradeDataHelper.GetSellItemQuantity: the pad network's vending
+/// machines and the local player, or the pad network's gas in units).
 /// </summary>
 internal static class TraderInventoryApi
 {
@@ -43,34 +47,23 @@ internal static class TraderInventoryApi
             contacts = new List<TraderContact> { found };
         }
 
-        Dictionary<string, double> have = HaveByPrefab();
+        ITradableInventory? holder = HeldGoods.Holder(args.OptionalThingId("credit_card_id"));
+        List<LandingPadNetwork> everyPad = HeldGoods.EveryPadNetwork();
         List<TraderStockView> views = new List<TraderStockView>(contacts.Count);
         foreach (TraderContact contact in contacts)
         {
             TraderDataInstance? data = contact.DataInstance;
             bool landed = TradeSession.IsLandedAt(contact, contact.ConnectedPad);
+            HeldGoods held = HeldGoods.For(contact, everyPad, holder);
             views.Add(new TraderStockView(Contacts.Identity(contact), contact.Contacted,
-                Buys(data, have, landed ? contact : null), Sells(data)));
+                Buys(data, held, landed ? contact : null), Sells(data)));
         }
 
         return new TraderInventoryView(views);
     }
 
-    private static Dictionary<string, double> HaveByPrefab()
-    {
-        Dictionary<string, double> have = new Dictionary<string, double>(StringComparer.Ordinal);
-        foreach (ItemRecord record in WorldItems.Collect(ItemFilter.Everything, PlayerOrigin.Current()))
-        {
-            string prefab = record.Item.PrefabName;
-            have[prefab] = (have.TryGetValue(prefab, out double count) ? count : 0.0) + record.Quantity;
-        }
-
-        return have;
-    }
-
     // landed is the contact when it is landed and trading, else null: the game's count reads its pad's network.
-    private static List<TraderBuysView> Buys(TraderDataInstance? data, Dictionary<string, double> have,
-        TraderContact? landed)
+    private static List<TraderBuysView> Buys(TraderDataInstance? data, HeldGoods held, TraderContact? landed)
     {
         List<TraderBuysView> buys = new List<TraderBuysView>();
         if (data == null)
@@ -92,12 +85,10 @@ internal static class TraderInventoryApi
 
             TradeItem item = new TradeItem(Text.Plain(buy.DisplayName), prefab, buy.BuyData.Value,
                 buy.IsGasTransaction());
-            // Counted by prefab: 0 when none exist, null only for a line with no item prefab (gas).
-            double? count = prefab == null ? null : have.TryGetValue(prefab, out double held) ? held : 0.0;
             int? sellable = landed != null
                 ? (int)GameMembers.TradeSellItemQuantity.Invoke(null, buy, landed)
                 : null;
-            buys.Add(new TraderBuysView(item, buy.Required, conditions, count, sellable));
+            buys.Add(new TraderBuysView(item, buy.Required, conditions, held.Units(buy), sellable));
         }
 
         return buys;
@@ -122,4 +113,125 @@ internal static class TraderInventoryApi
     }
 
     private static string? PrefabOf(Thing? prefab) => prefab != null ? prefab.PrefabName : null;
+}
+
+/// <summary>
+/// What trader_inventory's have counts: what trader_sell would take (SellStock), before the trader lands. The goods on
+/// the pad network's vending machines and in the card holder's inventory, and the pad network's gas, each only when
+/// the trader's conditions accept it (BuyDataInstance.BuyConditionsMet, as TradeDataHelper.HandleSellItem asks). The
+/// pad is the contact's own (ConnectedPad, set from the moment it is called to land); for a contact not called yet,
+/// every landing pad's network, since the pad it will land at is not known.
+/// </summary>
+internal sealed class HeldGoods
+{
+    private readonly List<DynamicThing> _things;
+    private readonly List<Atmosphere> _atmospheres;
+
+    private HeldGoods(List<DynamicThing> things, List<Atmosphere> atmospheres)
+    {
+        _things = things;
+        _atmospheres = atmospheres;
+    }
+
+    /// <summary>
+    /// Whose inventory counts: the given card's holder, as trader_sell takes goods from it, else the local player
+    /// (who carries the card the trade window uses). Null on a server with no local player: pads only.
+    /// </summary>
+    internal static ITradableInventory? Holder(ThingId? cardId)
+    {
+        if (cardId.HasValue)
+        {
+            CreditCard card = TradeSession.RequireCard(cardId);
+            SellCard.Require(card);
+            return SellCard.HolderOf(card);
+        }
+
+        Human human = Human.LocalHuman;
+        return human != null ? human : null;
+    }
+
+    internal static List<LandingPadNetwork> EveryPadNetwork()
+    {
+        List<LandingPadNetwork> networks = new List<LandingPadNetwork>();
+        foreach (Structure structure in GridController.AllStructuresPool.ToList())
+        {
+            if (structure is LandingPadCenter center && !center.IsCursor && !center.IsBeingDestroyed
+                && center.LandingPadNetwork != null && !networks.Contains(center.LandingPadNetwork))
+            {
+                networks.Add(center.LandingPadNetwork);
+            }
+        }
+
+        return networks;
+    }
+
+    internal static HeldGoods For(TraderContact contact, List<LandingPadNetwork> everyPad,
+        ITradableInventory? holder)
+    {
+        List<DynamicThing> things = new List<DynamicThing>();
+        List<Atmosphere> atmospheres = new List<Atmosphere>();
+        foreach (LandingPadNetwork network in PadsOf(contact, everyPad))
+        {
+            things.AddRange(network.GetNetworkInventory());
+            if (network.Atmosphere != null && !atmospheres.Contains(network.Atmosphere))
+            {
+                atmospheres.Add(network.Atmosphere);
+            }
+        }
+
+        if (holder != null)
+        {
+            things.AddRange(holder.GetContents());
+        }
+
+        return new HeldGoods(Counted(things), atmospheres);
+    }
+
+    /// <summary>Units the trader would accept of this line from what is held; a gas line in its units.</summary>
+    internal int Units(BuyDataInstance entry)
+    {
+        if (entry.BuyingItem != null)
+        {
+            return SellHoldings.Goods(SellStock.Goods(entry, _things));
+        }
+
+        List<double> accepted = new List<double>();
+        foreach (Atmosphere atmosphere in _atmospheres)
+        {
+            if (entry.BuyConditionsMet(atmosphere.GasMixture))
+            {
+                accepted.Add(atmosphere.GasMixture.GetTotalMoles().ToFloat());
+            }
+        }
+
+        return SellHoldings.Gas(accepted, SellStock.MolesPerUnit(entry));
+    }
+
+    private static List<LandingPadNetwork> PadsOf(TraderContact contact, List<LandingPadNetwork> everyPad)
+    {
+        ITraderDestination? pad = contact.ConnectedPad;
+        if (pad == null)
+        {
+            return everyPad;
+        }
+
+        return pad.LandingPadNetwork != null
+            ? new List<LandingPadNetwork> { pad.LandingPadNetwork }
+            : new List<LandingPadNetwork>();
+    }
+
+    // As GetSellItemQuantity counts: only enabled things not being destroyed.
+    private static List<DynamicThing> Counted(List<DynamicThing> things)
+    {
+        List<DynamicThing> counted = new List<DynamicThing>(things.Count);
+        foreach (DynamicThing thing in things)
+        {
+            if (thing != null && thing.enabled && !thing.IsBeingDestroyed)
+            {
+                counted.Add(thing);
+            }
+        }
+
+        return counted;
+    }
 }
