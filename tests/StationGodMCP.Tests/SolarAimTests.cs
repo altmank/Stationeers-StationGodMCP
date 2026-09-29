@@ -129,6 +129,40 @@ public sealed class AngleSearchTests
         Assert.Equal(expected.Calls, actual.Calls);
     }
 
+    // A panel whose two poses (H, V) and (H + 180, 180 - V) face the same way, as a real panel's do: the cells' facing
+    // from yaw H about up and tilt V - 90 from up, against a sun 20 degrees off the zenith toward H = 40.
+    private static float Twinned(float h, float v)
+    {
+        double yaw = h * Math.PI / 180.0, tilt = (v - 90.0) * Math.PI / 180.0;
+        double[] facing = { Math.Sin(tilt) * Math.Cos(yaw), Math.Cos(tilt), Math.Sin(tilt) * Math.Sin(yaw) };
+        double sunYaw = 40.0 * Math.PI / 180.0, sunTilt = 20.0 * Math.PI / 180.0;
+        double[] sun = { Math.Sin(sunTilt) * Math.Cos(sunYaw), Math.Cos(sunTilt), Math.Sin(sunTilt) * Math.Sin(sunYaw) };
+        return (float)(facing[0] * sun[0] + facing[1] * sun[1] + facing[2] * sun[2]);
+    }
+
+    [Theory]
+    [InlineData(30f, 100f, 40f, 110f)]
+    [InlineData(230f, 80f, 220f, 70f)]
+    [InlineData(200f, 60f, 220f, 70f)]
+    public void SolarNearestAnswersTheTwinNearerTheCurrentPose(float currentH, float currentV, float expectedH,
+        float expectedV)
+    {
+        AngleBest found = AngleSearch.SolarNearest(new Recorder(Twinned), currentH, currentV);
+        Assert.Equal(expectedH, found.Horizontal, 1);
+        Assert.Equal(expectedV, found.Vertical, 1);
+        Assert.True(SolarAlignment.OffDegrees(found.Score) < AngleSearch.TwinToleranceDeg);
+    }
+
+    [Fact]
+    public void SolarNearestNeverTakesAWorseTwin()
+    {
+        // The peak's twin (H + 180, 180 - V) scores far lower here, so the nearer current pose does not win.
+        AngleBest best = AngleSearch.SolarMaximum(new Recorder(Peak));
+        AngleBest found = AngleSearch.SolarNearest(new Recorder(Peak), best.Horizontal + 180f, 180f - best.Vertical);
+        Assert.Equal(best.Horizontal, found.Horizontal);
+        Assert.Equal(best.Vertical, found.Vertical);
+    }
+
     [Theory]
     [InlineData(0.99f)]
     [InlineData(1.02f)]

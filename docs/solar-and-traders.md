@@ -21,20 +21,29 @@ out with the game's own geometry and checks. No gateway is needed.
 
 `solar_aim` works from the panel's own pivots and the game's sun vector: no daylight sensor, no calibration. It returns
 `horizontal` and `vertical` in logic degrees, ready for `write_logic`, the angle still off when the sun is outside the
-panel's tilt range, and the panel's aim now. With the sun below the horizon it gives the pose closest to it. A flat
-panel reports `can_turn: false`. `operable: false` means the panel is not finished (or is broken): the game generates
+panel's tilt range, and the panel's aim now. Every pose has a twin that faces the same way (horizontal + 180,
+vertical 180 - vertical); when both reach the sun it answers the one nearer the panel's current aim, so a tracker that
+writes every answer never swings the panel round. With the sun below the horizon it gives the pose closest to the sun
+now: tilted toward where it set until midnight, toward where it will rise after. The game stops a turning panel
+within its rotation tolerance, up to about 0.4 degrees short of the written Horizontal. A flat panel reports
+`can_turn: false`. `operable: false` means the panel is not finished (or is broken): the game generates
 nothing from it at any angle. A missing id or a thing that is not a solar panel is refused with `not_solar_panel`.
 
 `dish_aim` tries angles on the dish's own model and puts it back within one frame, so nothing moves. It works on the
 Medium and the Small Satellite Dish (the Small one turns its pivots without an animator). Under 2 degrees of
-`error_deg` the contact gets the dish's whole signal. Refusals: `thing_not_found` (no dish with that id),
-`contact_not_found`, `dish_not_ready` (a dish model that cannot be posed). Write the result with `write_logic`:
+`error_deg` the contact gets the dish's whole signal. `finished`, `powered`, `on` and `can_rotate` (all three) say
+whether the dish turns now; `trader_contacts` gives the same per dish. Refusals: `thing_not_found` (no dish with that
+id), `contact_not_found`, `dish_not_ready` (a dish model that cannot be posed). Write the result with `write_logic`:
 
 ```json
 { "writes": [
   { "reference_id": "182200", "logic_type": "Horizontal", "value": 131.4 },
   { "reference_id": "182200", "logic_type": "Vertical", "value": 38.2 } ] }
 ```
+
+Power the dish and switch it on before writing. A dish that cannot rotate still stores the written angles as its
+target but never turns toward them, and the game ignores a write of the target it already holds, so writing the same
+angles again once it is powered does nothing: write another value first, then the aim. Panels turn without power.
 
 ## Landing pads
 

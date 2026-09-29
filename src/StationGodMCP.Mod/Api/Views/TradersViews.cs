@@ -104,7 +104,8 @@ internal sealed class ContactPower
 
 internal sealed class DishView
 {
-    internal DishView(ThingView dish, DishPose pose, int minPowerW, int maxPowerW, float fieldOfViewDeg)
+    internal DishView(ThingView dish, DishPose pose, DishReadiness readiness, int minPowerW, int maxPowerW,
+        float fieldOfViewDeg)
     {
         ReferenceId = dish.ReferenceId;
         DisplayName = dish.DisplayName;
@@ -113,6 +114,10 @@ internal sealed class DishView
         TransformUp = pose.TransformUp;
         Horizontal = pose.Horizontal;
         Vertical = pose.Vertical;
+        Finished = readiness.Finished;
+        Powered = readiness.Powered;
+        On = readiness.On;
+        CanRotate = readiness.CanRotate;
         MinPowerW = minPowerW;
         MaxPowerW = maxPowerW;
         FieldOfViewDeg = fieldOfViewDeg;
@@ -136,6 +141,15 @@ internal sealed class DishView
     public double Horizontal { get; }
 
     public double Vertical { get; }
+
+    public bool Finished { get; }
+
+    public bool Powered { get; }
+
+    public bool On { get; }
+
+    /// <summary>SatelliteDish.CanRotate: finished, powered and on; a dish that cannot never turns toward its target.</summary>
+    public bool CanRotate { get; }
 
     public int MinPowerW { get; }
 
@@ -164,14 +178,40 @@ internal sealed class DishPose
     internal double Vertical { get; }
 }
 
+/// <summary>
+/// Whether a dish turns now, as SatelliteDish.CanRotate decides it: switched on, powered and finished to its last build
+/// state. A dish that cannot still takes a written Horizontal or Vertical as its target but never moves toward it.
+/// </summary>
+internal sealed class DishReadiness
+{
+    internal DishReadiness(bool finished, bool powered, bool on)
+    {
+        Finished = finished;
+        Powered = powered;
+        On = on;
+    }
+
+    internal bool Finished { get; }
+
+    internal bool Powered { get; }
+
+    internal bool On { get; }
+
+    internal bool CanRotate => Finished && Powered && On;
+}
+
 /// <summary>dish_aim: the Horizontal and Vertical that point a dish at a contact.</summary>
 internal sealed class DishAimView
 {
-    internal DishAimView(ThingId dishId, ThingId contactId, DishAimResult aim, DishNowView current,
-        float stalePoseDeg, int samples)
+    internal DishAimView(ThingId dishId, ThingId contactId, DishReadiness readiness, DishAimResult aim,
+        DishNowView current, float stalePoseDeg, int samples)
     {
         DishId = dishId;
         ContactId = contactId;
+        Finished = readiness.Finished;
+        Powered = readiness.Powered;
+        On = readiness.On;
+        CanRotate = readiness.CanRotate;
         Horizontal = aim.Horizontal;
         Vertical = aim.Vertical;
         ErrorDeg = aim.ErrorDeg;
@@ -185,6 +225,18 @@ internal sealed class DishAimView
     public ThingId DishId { get; }
 
     public ThingId ContactId { get; }
+
+    public bool Finished { get; }
+
+    public bool Powered { get; }
+
+    public bool On { get; }
+
+    /// <summary>
+    /// SatelliteDish.CanRotate: finished, powered and on. Without it a write is stored as the target but the dish
+    /// never turns, and writing the same angles again once it can does not start the turn.
+    /// </summary>
+    public bool CanRotate { get; }
 
     /// <summary>Logic degrees to write to the dish's Horizontal.</summary>
     public double Horizontal { get; }
@@ -209,6 +261,7 @@ internal sealed class DishAimView
     /// </summary>
     public float StalePoseDeg { get; }
 
+    /// <summary>How many trial poses the search took.</summary>
     public int Samples { get; }
 }
 

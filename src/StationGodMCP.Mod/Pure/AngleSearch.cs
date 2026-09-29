@@ -44,9 +44,51 @@ internal static class AngleSearch
         search.Scan(0f, 358f, 2f, SolarVerticalMin, SolarVerticalMax, 2f);
         search.Scan(search.BestH - 2f, search.BestH + 2f, 0.2f, search.BestV - 2f, search.BestV + 2f, 0.2f);
         search.Scan(search.BestH - 0.2f, search.BestH + 0.2f, 0.02f, search.BestV - 0.2f, search.BestV + 0.2f, 0.02f);
-        float horizontal = ((search.BestH % FullTurn) + FullTurn) % FullTurn;
-        return new AngleBest(horizontal, search.BestV, search.Best);
+        return new AngleBest(WrapTurn(search.BestH), search.BestV, search.Best);
     }
+
+    /// <summary>
+    /// solar_aim with the panel's current pose: every Horizontal H and Vertical V has a twin, H + 180 and 180 - V, that
+    /// turns the cells the same way, so whenever the sun is high enough for both, the two score the same and
+    /// SolarMaximum's pick between them flips with rounding from one call to the next. This refines the twin of
+    /// SolarMaximum's answer the same way (+-2 in 0.2 steps, then +-0.2 in 0.02 steps) and, when it comes within
+    /// TwinToleranceDeg of the best off-sun angle, answers whichever of the two is the smaller turn from the current
+    /// pose (the larger of the horizontal and vertical turns, the horizontal wrapping), so a tracker writing every answer
+    /// never swings the panel round. A twin that is worse (the sun out of its tilt range) is never taken.
+    /// </summary>
+    internal static AngleBest SolarNearest(IAngleScore score, float currentHorizontal, float currentVertical)
+    {
+        AngleBest best = SolarMaximum(score);
+        AngleBest twin = SolarRefine(score, best.Horizontal + HalfTurn, HalfTurn - best.Vertical);
+        bool tied = SolarAlignment.OffDegrees(twin.Score) - SolarAlignment.OffDegrees(best.Score) <= TwinToleranceDeg;
+        return tied && TurnDegrees(twin, currentHorizontal, currentVertical) <
+            TurnDegrees(best, currentHorizontal, currentVertical)
+            ? twin
+            : best;
+    }
+
+    /// <summary>The largest off-sun difference, in degrees, at which solar_aim treats the twin pose as equally good.</summary>
+    internal const float TwinToleranceDeg = 0.1f;
+
+    // The two SolarMaximum refinements around a seed, the horizontal brought back into 0..360.
+    private static AngleBest SolarRefine(IAngleScore score, float seedHorizontal, float seedVertical)
+    {
+        GridMaximum search = new GridMaximum(score, SolarVerticalMin, SolarVerticalMax);
+        search.Scan(seedHorizontal - 2f, seedHorizontal + 2f, 0.2f, seedVertical - 2f, seedVertical + 2f, 0.2f);
+        search.Scan(search.BestH - 0.2f, search.BestH + 0.2f, 0.02f, search.BestV - 0.2f, search.BestV + 0.2f, 0.02f);
+        return new AngleBest(WrapTurn(search.BestH), search.BestV, search.Best);
+    }
+
+    // The larger of the two turns from the current pose to a pose; the horizontal the short way round.
+    private static float TurnDegrees(AngleBest pose, float currentHorizontal, float currentVertical)
+    {
+        float horizontal = Math.Abs(WrapTurn(pose.Horizontal - currentHorizontal));
+        return Math.Max(Math.Min(horizontal, FullTurn - horizontal), Math.Abs(pose.Vertical - currentVertical));
+    }
+
+    private static float WrapTurn(float degrees) => ((degrees % FullTurn) + FullTurn) % FullTurn;
+
+    private const float HalfTurn = 180f;
 
     internal const float SolarVerticalMin = 15f;
     internal const float SolarVerticalMax = 165f;

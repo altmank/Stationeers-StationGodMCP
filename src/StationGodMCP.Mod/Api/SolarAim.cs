@@ -26,8 +26,10 @@ namespace StationGodMCP.Api;
 ///     facing(H, V) = YawParent * Euler(0, 0, H) * A * Euler(V - 90, 0, 0) * B * forward
 /// where YawParent is the yaw pivot's parent's world rotation and A and B are the fixed rotations from the yaw pivot to
 /// the pitch pivot's parent and from the pitch pivot to the cells, all read from the live transforms of the first arm
-/// (SolarPanel._panelArms, through GameMembers). The best pair comes from AngleSearch.SolarMaximum. With the sun below
-/// the horizon the same search gives the pose closest to it, which leans the panel toward where it will rise.
+/// (SolarPanel._panelArms, through GameMembers). The best pair comes from AngleSearch.SolarNearest: of the two
+/// equivalent poses (H, V) and (H + 180, 180 - V), the one nearer the panel's current Horizontal and Vertical. With the
+/// sun below the horizon the same search gives the pose closest to the sun now: tilted toward where it set until
+/// midnight, toward where it will rise after.
 /// </summary>
 internal static class SolarAimApi
 {
@@ -53,7 +55,8 @@ internal static class SolarAimApi
             return new SolarFixedView(id, panel.PrefabName, operable, sunView, current);
         }
 
-        AngleBest best = AngleSearch.SolarMaximum(new PanelFacing(arm, sun));
+        AngleBest best = AngleSearch.SolarNearest(new PanelFacing(arm, sun), (float)current.Horizontal,
+            (float)current.Vertical);
         double offDegrees = SolarAlignment.OffDegrees(best.Score);
         return new SolarTurnView(id, panel.PrefabName, operable, sunView, current, best.Horizontal, best.Vertical,
             offDegrees, SolarAlignment.Alignment(offDegrees));

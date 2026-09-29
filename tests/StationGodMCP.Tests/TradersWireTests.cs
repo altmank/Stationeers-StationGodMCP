@@ -13,6 +13,8 @@ namespace StationGodMCP.Tests;
 /// </summary>
 public sealed class TradersWireTests
 {
+    private static readonly DishReadiness Ready = new DishReadiness(finished: true, powered: true, on: true);
+
     private static ContactIdentity Identity() =>
         new ContactIdentity(new ThingId(900), "TraderGas", "Gas Trader", "Small", new[] { 3, 3 });
 
@@ -50,7 +52,7 @@ public sealed class TradersWireTests
             new List<DishView>
             {
                 new DishView(new ThingView(new ThingId(910), "StructureSatelliteDish", "Dish"),
-                    new DishPose(new[] { 0f, 1f, 0f }, null, 90.0, 45.0), 50, 200, 360f)
+                    new DishPose(new[] { 0f, 1f, 0f }, null, 90.0, 45.0), Ready, 50, 200, 360f)
             });
         Dictionary<string, string> renames = new Dictionary<string, string>
         {
@@ -62,7 +64,26 @@ public sealed class TradersWireTests
             ["contacts[].pad_size"] = "pad_size_tiles",
             ["game_time"] = "game_time_s"
         };
-        WireCheck.SameAfterRenames(old, view, renames);
+        WireCheck.SameAfterRenames(old, view, renames, "dishes[].finished", "dishes[].powered", "dishes[].on",
+            "dishes[].can_rotate");
+    }
+
+    [Fact]
+    public void AnUnpoweredDishSaysItCannotRotate()
+    {
+        DishView view = new DishView(new ThingView(new ThingId(911), "StructureSatelliteDishSmall", "Dish"),
+            new DishPose(new[] { 0f, 1f, 0f }, null, 0.0, 0.0), new DishReadiness(finished: true, powered: false, on: true),
+            5, 50, 360f);
+        Assert.Contains("\"finished\":true,\"powered\":false,\"on\":true,\"can_rotate\":false,",
+            WireCheck.New(view));
+    }
+
+    [Fact]
+    public void AnUnfinishedDishCannotRotateEvenPoweredAndOn()
+    {
+        Assert.False(new DishReadiness(finished: false, powered: true, on: true).CanRotate);
+        Assert.False(new DishReadiness(finished: true, powered: true, on: false).CanRotate);
+        Assert.True(Ready.CanRotate);
     }
 
     [Fact]
@@ -78,10 +99,13 @@ public sealed class TradersWireTests
             },
             stale_pose_deg = 0f, samples = 250
         };
-        DishAimView view = new DishAimView(new ThingId(910), new ThingId(900),
+        DishAimView view = new DishAimView(new ThingId(910), new ThingId(900), Ready,
             new DishAimResult(123.4, 45.6, 0.01f, new[] { 0f, 1f, 0f }, new[] { 0f, 1f, 0f }),
             new DishNowView(90.0, 45.0, new[] { 1f, 0f, 0f }, 90f), 0f, 250);
-        WireCheck.Same(old, view);
+        WireCheck.SameAfterRenames(old, view, new Dictionary<string, string>(), "finished", "powered", "on",
+            "can_rotate");
+        Assert.Contains("\"contact_id\":\"900\",\"finished\":true,\"powered\":true,\"on\":true,\"can_rotate\":true,",
+            WireCheck.New(view));
     }
 
     [Fact]

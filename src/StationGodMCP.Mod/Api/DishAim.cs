@@ -101,7 +101,8 @@ internal static class DishAimApi
         DishNowView current = new DishNowView(dish.GetLogicValue(LogicType.Horizontal),
             dish.GetLogicValue(LogicType.Vertical), Contacts.Vector(forward),
             forward.sqrMagnitude > SetForwardSqr ? Vector3.Angle(forward, target) : null);
-        return new DishAimView(dishId, contactId, result, current, staleDeg, poser.Samples);
+        return new DishAimView(dishId, contactId, Contacts.Readiness(dish), result, current, staleDeg,
+            poser.Samples);
     }
 }
 

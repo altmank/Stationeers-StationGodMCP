@@ -61,14 +61,19 @@ internal static class TraderContactsApi
         float[]? up = model != null ? Contacts.Vector(model.up) : null;
         DishPose pose = new DishPose(Contacts.Vector(dish.DishForward), up, dish.GetLogicValue(LogicType.Horizontal),
             dish.GetLogicValue(LogicType.Vertical));
-        return new DishView(GameLookup.ViewOf(dish), pose, (int)GameMembers.DishMinWattage.GetValue(dish)!,
-            (int)GameMembers.DishMaxWattage.GetValue(dish)!, (float)GameMembers.DishFieldOfView.GetValue(dish)!);
+        return new DishView(GameLookup.ViewOf(dish), pose, Contacts.Readiness(dish),
+            (int)GameMembers.DishMinWattage.GetValue(dish)!, (int)GameMembers.DishMaxWattage.GetValue(dish)!,
+            (float)GameMembers.DishFieldOfView.GetValue(dish)!);
     }
 }
 
 /// <summary>The trader contacts, by id, and how the trader tools name one.</summary>
 internal static class Contacts
 {
+    /// <summary>Whether the dish turns now: SatelliteDish.CanRotate's three conditions, read one by one.</summary>
+    internal static DishReadiness Readiness(SatelliteDish dish) =>
+        new DishReadiness(dish.IsStructureCompleted, dish.Powered, dish.OnOff);
+
     /// <summary>Every contact in the sky, by reference id.</summary>
     internal static List<TraderContact> All()
     {
