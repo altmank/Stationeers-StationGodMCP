@@ -255,7 +255,8 @@ internal static class PlacePlanner
     internal static string FrameNote(Vector3 position, string refusal)
     {
         GridController world = GridController.World;
-        if (world == null || !refusal.StartsWith(RequiresFrame, System.StringComparison.Ordinal))
+        string? requires = RequiresFrame;
+        if (world == null || requires == null || !refusal.StartsWith(requires, System.StringComparison.Ordinal))
         {
             return string.Empty;
         }
@@ -631,7 +632,8 @@ internal static class PlacePlanner
         return null;
     }
 
-    private static string RequiresFrame => Text.Plain(GameStrings.PlacementRequiresFrame.DisplayString);
+    // The game's "requires a Frame below" refusal as the cursor check words it; null when the game has no text for it.
+    private static string? RequiresFrame => Text.Plain(GameStrings.PlacementRequiresFrame.DisplayString);
 
     // A surface on the face plane a point lies on, facing away: a structure on that face (a floor or wall plate) or a
     // frame filling the 2 m cell behind it.
