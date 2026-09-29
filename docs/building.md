@@ -190,7 +190,10 @@ inside frames where possible, `plan_cable_route`:
 - **Branches.** `branches: [{waypoints, attach}]` adds side runs joined to the run with a junction.
 - **Placement check.** The game's server checks nothing when a structure is built, so the tool checks as the
   placement cursor would: devices, chutes and other small things block (`cell_blocked`); a pipe blocks a cable only
-  along its own axis; frames and walls never block cables or pipes.
+  along its own axis; frames and walls never block cables or pipes. 1.4.5+ also each piece's own rule: no end
+  entering an umbilical the way it faces (cables, pipes, chutes); under a pipe-mounted device (an analyser, a pipe
+  heater) only a straight pipe along it, of its content (gas or liquid); no pipe into an in-line tank's or passive
+  vent's cell.
 - **Removal in the same job.** `remove_ids` removes pieces before building, so a device is never unpowered between its
   old cable and its new one. A burnt cable an overload left (`StructureCableStraightBurnt` and the like) may be named
   too, which frees its cell.

@@ -96,6 +96,9 @@ internal sealed class BuildCatalogue
         return issue == null ? structure : null;
     }
 
+    /// <summary>Whether some kit builds the prefab, so a player can place it at all.</summary>
+    internal bool KitBuilds(Structure prefab) => _kitBuilt.Contains(prefab.PrefabHash);
+
     internal Structure? CursorOf(Structure prefab) =>
         _cursors.TryGetValue(prefab.PrefabHash, out Structure cursor) && cursor != null ? cursor : null;
 
@@ -157,7 +160,16 @@ internal static class CursorCheck
     }
 
     /// <summary>Why the game would not build the prefab there; null when it would.</summary>
-    internal static string? Refusal(Structure cursor, Vector3 position, Quaternion rotation, HashSet<long> ignore)
+    internal static string? Refusal(Structure cursor, Vector3 position, Quaternion rotation, HashSet<long> ignore) =>
+        At(cursor, position, rotation, () => GameRefusal(cursor) ??
+                                             (cursor.StructureCollisionType == CollisionType.BlockGrid
+                                                 ? DynamicInside(cursor, ignore)
+                                                 : null));
+
+    /// <summary>
+    /// Runs a check with the cursor moved to the spot and turned, and puts it back in the same call (nothing is seen).
+    /// </summary>
+    internal static T At<T>(Structure cursor, Vector3 position, Quaternion rotation, Func<T> check)
     {
         Transform transform = cursor.ThingTransform;
         Vector3 oldPosition = transform.position;
@@ -169,22 +181,7 @@ internal static class CursorCheck
             transform.SetPositionAndRotation(position, rotation);
             cursor.Position = position;
             cursor.Rotation = rotation;
-            CanConstructInfo info = cursor.CanConstruct();
-            if (!info.CanConstruct)
-            {
-                return Text(info.ErrorMessage, "the cell or face is taken");
-            }
-
-            if (cursor.PlacementType == PlacementSnap.FaceMount)
-            {
-                CanMountResult mount = cursor.CanMountOnWall();
-                if (!mount)
-                {
-                    return Text(mount.ResultMessage(), "nothing to mount it on");
-                }
-            }
-
-            return cursor.StructureCollisionType == CollisionType.BlockGrid ? DynamicInside(cursor, ignore) : null;
+            return check();
         }
         finally
         {
@@ -192,6 +189,34 @@ internal static class CursorCheck
             cursor.Position = oldField;
             cursor.Rotation = oldFieldRotation;
         }
+    }
+
+    /// <summary>
+    /// The game's own verdict on the cursor where it stands (At): CanConstruct, then CanMountOnWall for a face-mounted
+    /// piece; null when both allow it. Loose things inside are not looked at.
+    /// </summary>
+    internal static string? GameRefusal(Structure cursor) => ConstructRefusal(cursor) ?? MountRefusal(cursor);
+
+    /// <summary>The cursor's CanConstruct where it stands (At): the class's own rules; null when it allows it.</summary>
+    internal static string? ConstructRefusal(Structure cursor)
+    {
+        CanConstructInfo info = cursor.CanConstruct();
+        return info.CanConstruct ? null : Text(info.ErrorMessage, "the cell or face is taken");
+    }
+
+    /// <summary>
+    /// The cursor's CanMountOnWall where it stands (At), which the cursor asks of every face-mounted piece; null when it
+    /// allows it or the piece is not face-mounted.
+    /// </summary>
+    internal static string? MountRefusal(Structure cursor)
+    {
+        if (cursor.PlacementType != PlacementSnap.FaceMount)
+        {
+            return null;
+        }
+
+        CanMountResult mount = cursor.CanMountOnWall();
+        return mount ? null : Text(mount.ResultMessage(), "nothing to mount it on");
     }
 
     /// <summary>
@@ -276,6 +301,6 @@ internal static class CursorCheck
         return null;
     }
 
-    private static string Text(string? message, string fallback) =>
+    internal static string Text(string? message, string fallback) =>
         string.IsNullOrEmpty(message) ? fallback : Shared.Text.Plain(message) ?? fallback;
 }

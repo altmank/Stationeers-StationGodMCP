@@ -615,7 +615,7 @@ internal sealed class LintFindingView
 
     public string Code { get; }
 
-    /// <summary>warning or info.</summary>
+    /// <summary>problem, warning or info.</summary>
     public string Level { get; }
 
     public string Message { get; }
@@ -631,13 +631,14 @@ internal sealed class LintFindingView
 /// <summary>lint_layout: what was checked, the counts per rule and the findings, warnings first.</summary>
 internal sealed class LintLayoutView
 {
-    internal LintLayoutView(string region, int cells, int pieces, int devices, int doors,
+    internal LintLayoutView(string region, int cells, int pieces, int devices, int structures, int doors,
         Dictionary<string, int> counts, List<LintFindingView> findings, int total)
     {
         Region = region;
         Cells = cells;
         Pieces = pieces;
         Devices = devices;
+        Structures = structures;
         Doors = doors;
         Counts = counts;
         Findings = findings;
@@ -653,6 +654,9 @@ internal sealed class LintLayoutView
     public int Pieces { get; }
 
     public int Devices { get; }
+
+    /// <summary>2 m structures (frames, plates, doors, large devices) checked by not_replaceable.</summary>
+    public int Structures { get; }
 
     public int Doors { get; }
 
@@ -810,4 +814,54 @@ internal sealed class UndoJobView
 
     /// <summary>The cable, pipe and chute pieces built again, one place tool call per tool and grade.</summary>
     public List<UndoPieceRunView> PieceRuns { get; }
+}
+
+/// <summary>check_replaceable's answer for one thing: could a player place it again where it stands.</summary>
+internal sealed class ReplaceableView
+{
+    internal ReplaceableView(ThingId referenceId, string? prefabName, PlacementVerdict verdict)
+    {
+        ReferenceId = referenceId;
+        PrefabName = prefabName;
+        switch (verdict)
+        {
+            case PlacementVerdict.Refused refused:
+                Replaceable = false;
+                Rule = refused.Rule;
+                Reason = refused.Reason;
+                break;
+            case PlacementVerdict.NotChecked notChecked:
+                Rule = notChecked.Rule;
+                Reason = notChecked.Reason;
+                break;
+            default:
+                Replaceable = true;
+                break;
+        }
+    }
+
+    public ThingId ReferenceId { get; }
+
+    /// <summary>Null when no thing has the id.</summary>
+    public string? PrefabName { get; }
+
+    /// <summary>true: a player could; false: the cursor would refuse it (rule, reason); null: not checked (reason).</summary>
+    public bool? Replaceable { get; }
+
+    /// <summary>support, mount, host, location, adjacent, collision, rotation, no_kit, off_grid; null when none applies.</summary>
+    public string? Rule { get; }
+
+    /// <summary>The game's text (or the rule's own words); null when replaceable.</summary>
+    public string? Reason { get; }
+}
+
+/// <summary>check_replaceable's reply: one result per id asked, in the order asked.</summary>
+internal sealed class CheckReplaceableView
+{
+    internal CheckReplaceableView(List<ReplaceableView> results)
+    {
+        Results = results;
+    }
+
+    public List<ReplaceableView> Results { get; }
 }

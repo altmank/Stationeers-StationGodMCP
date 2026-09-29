@@ -18,10 +18,13 @@ internal static class LintCodes
     internal const string PortCellForeignNetwork = "port_cell_foreign_network";
     internal const string RunAlongDoor = "run_along_door";
     internal const string RunCrossesWindow = "run_crosses_window";
+    internal const string NotReplaceable = "not_replaceable";
+    internal const string ReplaceableUnchecked = "replaceable_unchecked";
 
     /// <summary>Every rule with its level, in report order.</summary>
     internal static readonly (string Code, ConflictLevel Level)[] Rules =
     {
+        (NotReplaceable, ConflictLevel.Problem),
         (RunInDoorKeepOut, ConflictLevel.Warning),
         (PortIntoDoorway, ConflictLevel.Warning),
         (PortCellForeignNetwork, ConflictLevel.Warning),
@@ -31,7 +34,8 @@ internal static class LintCodes
         (MountedFacesOutOfRoom, ConflictLevel.Warning),
         (DeviceCrossesSeam, ConflictLevel.Warning),
         (RunAlongDoor, ConflictLevel.Info),
-        (ControlsNotOnWall, ConflictLevel.Info)
+        (ControlsNotOnWall, ConflictLevel.Info),
+        (ReplaceableUnchecked, ConflictLevel.Info)
     };
 
     internal static ConflictLevel LevelOf(string code)
@@ -74,7 +78,7 @@ internal sealed class LintFinding
     internal long? OtherId { get; }
 }
 
-/// <summary>Findings ordered for a reader (warnings before info, rules in LintCodes.Rules order) and counted.</summary>
+/// <summary>Findings ordered for a reader (problems, then warnings, then info, rules in LintCodes.Rules order) and counted.</summary>
 internal static class LintReport
 {
     internal static List<LintFinding> Ordered(List<LintFinding> findings)

@@ -9,6 +9,11 @@ the D.B.P.U. makes instead.
 
 BlueprintMod is optional: the mod finds it by name at run time. Without it the tool answers `mod_missing`.
 
+BlueprintMod spawns every piece without the game's placement checks, so a paste can leave a piece no player could
+place there again: a vent with nothing behind it pastes and works, and can never be rebuilt once it breaks. Run
+`check_replaceable` over the pasted pieces, or `lint_layout` over the area (`not_replaceable`); see
+[walls-frames-structures.md](walls-frames-structures.md#could-a-player-place-it-again-145).
+
 ## Three forms
 
 **Paste:**

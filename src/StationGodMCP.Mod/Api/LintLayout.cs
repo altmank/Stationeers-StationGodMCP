@@ -23,7 +23,8 @@ namespace StationGodMCP.Api;
 /// lint_layout: the layout rules over a room (room_id) or a box (min, max), from what stands there now: runs floating
 /// in air or across a window's face, runs and device ports in a door's keep-out, a device port whose cell holds a piece of its kind not joined to
 /// it (another network's), runs hugging a door's jambs, mounted devices crossing a wall seam or facing out of the room,
-/// devices whose bodies run into each other, and controls not on a wall. Read only.
+/// devices whose bodies run into each other, and controls not on a wall; and whether a player could place each thing
+/// again where it stands, its neighbours present (not_replaceable, PlayerPlacement.AsItStands). Read only.
 /// </summary>
 internal static class LintLayoutApi
 {
@@ -43,6 +44,12 @@ internal static class LintLayoutApi
         Dictionary<long, SmallGrid> pieces = new Dictionary<long, SmallGrid>();
         Dictionary<long, SmallGrid> devices = new Dictionary<long, SmallGrid>();
         Dictionary<long, Structure> doors = new Dictionary<long, Structure>();
+        Dictionary<long, Structure> structures = new Dictionary<long, Structure>();
+        foreach (GridCell cell in region)
+        {
+            AddLarge(structures, cell, facts);
+        }
+
         foreach (GridCell large in region)
         {
             for (int index = 0; index < SmallCellCode.PerCell; index++)
@@ -88,6 +95,7 @@ internal static class LintLayoutApi
         }
 
         Overlaps(deviceList, findings);
+        Replaceable(pieces.Values, deviceList, structures.Values, findings);
         List<LintFinding> ordered = LintReport.Ordered(findings);
         int limit = args.OptionalInt("limit", 1, MaximumLimit) ?? DefaultLimit;
         List<LintFindingView> views = new List<LintFindingView>();
@@ -96,7 +104,7 @@ internal static class LintLayoutApi
             views.Add(new LintFindingView(ordered[index]));
         }
 
-        return new LintLayoutView(described, region.Count, pieces.Count, devices.Count, doors.Count,
+        return new LintLayoutView(described, region.Count, pieces.Count, devices.Count, structures.Count, doors.Count,
             LintReport.Counts(findings), views, ordered.Count);
     }
 
@@ -354,6 +362,59 @@ internal static class LintLayoutApi
                     $"{devices[a].DisplayName} ({devices[a].ReferenceId}) and {devices[b].DisplayName} " +
                     $"({devices[b].ReferenceId}) {how}.", devices[a].ReferenceId, Bodies.V(devices[a].Position),
                     devices[b].ReferenceId));
+            }
+        }
+    }
+
+    // The 2 m structures of a cell: what fills it or registers in it (frames, large devices) and the plates on its faces.
+    private static void AddLarge(Dictionary<long, Structure> found, GridCell cell, GridFacts facts)
+    {
+        Cell? standing = GridController.World.GetCell(new Vector3(cell.X / 10f, cell.Y / 10f, cell.Z / 10f));
+        List<Structure> structures = standing?.AllStructures != null
+            ? new List<Structure>(standing.AllStructures)
+            : new List<Structure>();
+        foreach (GridStep face in GridStep.All)
+        {
+            structures.AddRange(facts.FaceStructures(cell, face));
+        }
+
+        foreach (Structure structure in structures)
+        {
+            if (structure != null && !structure.IsBeingDestroyed && !(structure is SmallGrid))
+            {
+                found[structure.ReferenceId] = structure;
+            }
+        }
+    }
+
+    // not_replaceable and replaceable_unchecked: could a player place each thing again where it stands, with its
+    // neighbours present (PlayerPlacement.AsItStands, check_replaceable's rule). A floating vent, a battery with no
+    // frame below, a pipe analyser on a corner, a thing no kit builds are refused; one with no placement cursor for its
+    // prefab is unchecked.
+    private static void Replaceable(IEnumerable<SmallGrid> pieces, IEnumerable<SmallGrid> devices,
+        IEnumerable<Structure> large, List<LintFinding> findings)
+    {
+        BuildCatalogue catalogue = BuildCatalogue.Load();
+        List<Structure> things = new List<Structure>(pieces);
+        things.AddRange(devices);
+        things.AddRange(large);
+        things.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
+        foreach (Structure thing in things)
+        {
+            string name = $"{thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId})";
+            switch (PlayerPlacement.AsItStands(thing, catalogue))
+            {
+                case PlacementVerdict.Refused refused:
+                    findings.Add(new LintFinding(LintCodes.NotReplaceable,
+                        $"{name}: a player could not place it again where it stands ({refused.Rule ?? "other"}): " +
+                        $"{refused.Reason}.",
+                        thing.ReferenceId, Bodies.V(thing.Position)));
+                    break;
+                case PlacementVerdict.NotChecked notChecked:
+                    findings.Add(new LintFinding(LintCodes.ReplaceableUnchecked,
+                        $"{name}: not checked: {notChecked.Reason.TrimEnd('.')}.", thing.ReferenceId,
+                        Bodies.V(thing.Position)));
+                    break;
             }
         }
     }

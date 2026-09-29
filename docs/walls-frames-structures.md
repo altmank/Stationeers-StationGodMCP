@@ -17,7 +17,8 @@ connections and guard against merging networks, which `place_structure` does not
 | `replace_frames` | Replace frames with another frame prefab, or finish unfinished frames, in place. | `room_id` or `reference_ids`, `to` (optional), `from_prefabs`, `skip_unmatched` |
 | `wall_map` | A text elevation of a wall (or floor) as seen from one side: seams, walls, windows, doors, devices, runs, free rectangles (1.4.3+). | `plane` + `around` + `side`, or `looking`; `radius_m`, `free_rects` |
 | `find_spot` | Ranked places for a prefab near a point on a wall or a room's walls, checked as the cursor checks them (1.4.3+). | `prefab`, `near`, `plane`/`looking`/`room_id`, `require` |
-| `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+). | `room_id` or `min`/`max`, `limit` |
+| `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+); things a player could not place again where they stand (1.4.5+). | `room_id` or `min`/`max`, `limit` |
+| `check_replaceable` | For each thing, could a player place it again exactly where it stands, with its neighbours present (1.4.5+). | `reference_ids` |
 | `show_preview` | Draw wire boxes in your game for a planned placement's footprint, body and ports, or any cells and boxes; timed, nothing built (1.4.3+). | as `place_structure`, or `cells`, `boxes`; `seconds`, `clear` |
 | `describe_prefab` | A prefab in its own frame: placement, allowed turns, footprint, ports, visual up (1.4.3+). | `prefab` |
 | `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]` |
@@ -64,6 +65,7 @@ id, cells and air (within 1 %). A room that appears because a finished frame clo
 | `would_open` | The old piece blocks air or gravity and the target does not. Making a leaky piece airtight is allowed (`seals`). |
 | `would_overstress` (walls) | The face's pressure difference is at or above what the new wall bears; the game would damage it until it breaks. Above its stress mark the piece is only flagged: `stressed` in its entry and the face's verdict. |
 | `cell_occupied` (frames) | Finishing a frame closes its cell, which would seal in whatever is there: a pipe, cable, device, player, creature or loose item. |
+| `cannot_place` (1.4.5+) | A player's placement cursor would refuse the new piece where the old one stands, once the old one is gone (the rule `check_replaceable` asks; the game's reason is in the message). Not checked where the game has no placement cursors (a dedicated server). |
 | `not_enough_materials` | One per missing item. |
 
 Kept with a reason: `already_at_target`, `special_piece`, `not_selected`, `indestructible`, `broken`,
@@ -121,7 +123,8 @@ Tool wear, welder fuel and battery charge are not charged.
   piece that requires one), an earlier placement puts there. When the reason is "requires a Frame below" and a frame fills the spot's own cell, `cannot_place`
   says so: such pieces stand in the free cell on top of a frame.
 - **Cost:** every build state's items up to the chosen state, from your inventory or `from_id`. `free: true` places
-  without materials, in creative worlds only (`not_creative` otherwise).
+  without materials, in creative worlds only (`not_creative` otherwise). It waives the materials, never the checks:
+  every placement is one a player's cursor would accept there.
 - **Refused per placement:** `invalid_prefab` (not loaded, not a structure, no kit builds it, a rocket part),
   `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason, or a cell inside a rocket; a
   broken structure in the way is named, with how to remove it),
@@ -176,12 +179,13 @@ other players see nothing.
 
 ### Checking a layout (1.4.3+)
 
-`lint_layout {room_id}` (or a box) reads what stands there and lists findings, warnings first, with `counts` per
-rule. A box takes the 2 m cells it overlaps; a side on a face plane takes nothing beyond it (a box up to y 222 stops
+`lint_layout {room_id}` (or a box) reads what stands there and lists findings, problems first, then warnings, with
+`counts` per rule. A box takes the 2 m cells it overlaps; a side on a face plane takes nothing beyond it (a box up to y 222 stops
 below that floor).
 
 | Rule | Level | Finds |
 | --- | --- | --- |
+| `not_replaceable` | problem | a piece, device or 2 m structure a player could not place again where it stands (1.4.5+; `check_replaceable` below) |
 | `run_in_door_keepout` | warning | a cable, pipe or chute piece in a door's keep-out |
 | `port_into_doorway` | warning | a device port that joins in a door's keep-out |
 | `port_cell_foreign_network` | warning | a port whose joining cell holds a piece that does not join it |
@@ -192,6 +196,33 @@ below that floor).
 | `device_crosses_seam` | warning | a mounted device whose mesh spans two wall sections by more than 0.1 m, though it is small enough (2.2 m or less each way) to fit one |
 | `run_along_door` | info | a cable, pipe or chute piece hugging a door's jamb (`pipe_along_door` before 1.4.4) |
 | `controls_not_on_wall` | info | a console, computer, display or switch not on a wall |
+| `replaceable_unchecked` | info | a thing `not_replaceable` could not ask about (no placement cursor for its prefab) |
+
+### Could a player place it again (1.4.5+)
+
+Everything StationGod builds must be something a player could build there: a vent that works but has nothing behind
+it can never be rebuilt once it breaks. `place_structure`, `place_cables`, `place_pipes`, `place_chutes`,
+`replace_walls`, `replace_frames` and `undo_job` all refuse what a player's placement cursor would refuse; `free`
+waives materials only. BlueprintMod's paste (`paste_blueprint`, `bppaste`) spawns pieces without any of these checks,
+so check what it placed:
+
+```json
+{ "reference_ids": ["171026", "171027"] }
+```
+
+`check_replaceable` puts the game's own placement cursor for each thing's prefab at its exact position and turn and
+asks it as a player's cursor would: the class's own rule (a frame below a battery, printer or machine; a frame one grid
+down for dishes, radiators, wind turbines, landing pads and stairs; the straight pipe or cable a pipe- or
+cable-mounted device sits on; terrain, outside, a rocket; no port straight onto another device's port), support
+behind every face-mounted piece, and collisions. The thing itself is treated as gone, every neighbour stays. It must
+also stand where the cursor snaps it, at a quarter turn the cursor gives its prefab. Each result is
+`{reference_id, prefab_name, replaceable, rule, reason}`: `replaceable` true, false (`rule` one of `support`, `mount`,
+`host`, `location`, `adjacent`, `collision`, `rotation`, `no_kit`, `off_grid`, or null for a reason the table does not
+know; `reason` the game's text) or null (not checked: no placement cursor for the prefab, not a structure, no such
+thing). Up to 1024 ids per call. `lint_layout`'s `not_replaceable` runs the same check over a room or box.
+
+Not seen: a device whose own check stops at itself before the port rule (vents, lights, consoles, APCs) is not checked
+for ports straight onto other devices' ports; loose things inside are ignored.
 
 ### Placing where you look (1.4.3+)
 

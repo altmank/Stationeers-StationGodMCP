@@ -6,6 +6,7 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
+using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
@@ -42,9 +43,10 @@ internal static class StructureSwapPlanner
             return plan;
         }
 
+        BuildCatalogue catalogue = BuildCatalogue.Load();
         foreach (Structure member in members)
         {
-            Classify(plan, targets, named, member);
+            Classify(plan, targets, catalogue, named, member);
         }
 
         if (plan.Unmatched.Count > 0 && !request.Arguments.SkipUnmatched)
@@ -135,8 +137,8 @@ internal static class StructureSwapPlanner
         }
     }
 
-    private static void Classify(StructureSwapPlan plan, StructureTargets targets, Structure? named,
-        Structure member)
+    private static void Classify(StructureSwapPlan plan, StructureTargets targets, BuildCatalogue catalogue,
+        Structure? named, Structure member)
     {
         StructureFamily family = plan.Request.Family;
         string? kept = KeptReason(plan.Request, member, out string message);
@@ -186,10 +188,26 @@ internal static class StructureSwapPlanner
                 $"{target.PrefabName} at its final state does not, so the swap would open it.", member);
         }
 
+        Placeable(plan, catalogue, member, target);
         AddMaterials(plan, swap);
         family.Assess(swap, plan);
         swap.AffectedCells = family.AffectedCells(swap);
         plan.Swaps.Add(swap);
+    }
+
+    // The player-placement rule (PlayerPlacement.Replacing): a player could place the new piece where the old one
+    // stands once it is gone. Without a placement cursor for the target it cannot be asked and is not refused.
+    private static void Placeable(StructureSwapPlan plan, BuildCatalogue catalogue, Structure member,
+        Structure target)
+    {
+        PlacementVerdict verdict = PlayerPlacement.Replacing(target, catalogue.CursorOf(target),
+            member.ThingTransformPosition, member.ThingTransformRotation, new[] { member });
+        if (verdict is PlacementVerdict.Refused refused)
+        {
+            plan.Problem("cannot_place",
+                $"{target.PrefabName} where {member.PrefabName} {member.ReferenceId} stands: a player could not " +
+                $"place it there ({refused.Reason}).", member);
+        }
     }
 
     private static string? KeptReason(StructureSwapRequest request, Structure member, out string message)

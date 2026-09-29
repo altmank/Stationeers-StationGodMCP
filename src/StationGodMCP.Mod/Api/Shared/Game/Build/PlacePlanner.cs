@@ -196,18 +196,9 @@ internal static class PlacePlanner
               FrameNote(placement.Position!.Value, placement.Rotation, refusal);
     }
 
-    private static string? Check(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation)
-    {
-        HashSet<long> none = new HashSet<long>();
-        string? refusal = CursorCheck.Refusal(cursor, position, rotation, none);
-        if (refusal != null || !(prefab is SmallGrid piece))
-        {
-            return refusal;
-        }
-
-        Grid3[] cells = CursorCheck.SmallCells(prefab, position, rotation);
-        return CursorCheck.RocketCell(cells) ?? CursorCheck.SlotTaken(piece, cells, none);
-    }
+    // The player-placement rule for a new placement (PlayerPlacement.Refusal); free waives materials, never this.
+    private static string? Check(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation) =>
+        PlayerPlacement.Refusal(prefab, cursor, position, rotation);
 
     // A broken structure still takes its cells and slots (the game only swaps its mesh), so a placement there is
     // refused like any other; say which one and how to clear it.
@@ -686,7 +677,7 @@ internal static class PlacePlanner
     // (SmallGrid.HasFrameBelow: batteries, mounted devices, most machines), its whole grid size (the CanConstruct of
     // LargeElectrical and LandingPadModular: dishes, landing pad parts; DispersalTower's HasFrameBelow shifted by
     // half), one and a half (Fabricator's HasFrameBelow shifted by a whole).
-    private static float SupportDepth(SmallGrid piece) => piece switch
+    internal static float SupportDepth(SmallGrid piece) => piece switch
     {
         LargeElectrical => piece.GridSize,
         global::Objects.Electrical.LandingPadModular => piece.GridSize,
@@ -723,7 +714,7 @@ internal static class PlacePlanner
 
     // The game's "requires a Frame below" refusal as the cursor check words it, whatever the reply appends to it;
     // never when the game has no text for it.
-    private static bool RequiresFrameRefusal(string refusal) => StartsWithText(refusal, RequiresFrame);
+    internal static bool RequiresFrameRefusal(string refusal) => StartsWithText(refusal, RequiresFrame);
 
     private static bool StartsWithText(string refusal, string? text) =>
         !string.IsNullOrEmpty(text) && refusal.StartsWith(text, System.StringComparison.Ordinal);

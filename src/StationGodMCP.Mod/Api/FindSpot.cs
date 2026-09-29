@@ -439,7 +439,7 @@ internal static class FindSpotApi
         /// <summary>The cursor check and the layout preview: why either rules the spot out; null when it passes.</summary>
         internal string? Check(Structure prefab, Structure cursor, GridFacts facts, SpotRequirements require)
         {
-            string? refusal = CursorCheck.Refusal(cursor, Position, Rotation, new HashSet<long>());
+            string? refusal = PlayerPlacement.Refusal(prefab, cursor, Position, Rotation);
             if (refusal != null)
             {
                 return "the game refuses it: " + refusal + PlacePlanner.FrameNote(Position, Rotation, refusal);

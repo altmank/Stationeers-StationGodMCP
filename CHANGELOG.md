@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- **Only what a player could build.** One placement rule, the game's own cursor checks, now guards every tool that
+  creates a structure. `free: true` waives materials, never the rule.
+  - `check_replaceable` (new): for up to 1024 things, could a player place each again exactly where it stands, with
+    its neighbours present; `replaceable` true/false/null with a `rule` (support, mount, host, location, adjacent,
+    collision, rotation, no_kit, off_grid) and the game's reason. For checking what BlueprintMod pasted, which skips
+    every placement check.
+  - `lint_layout`: `not_replaceable` (problem) and `replaceable_unchecked` (info) on every piece, device and 2 m
+    structure in the area; `structures` counts the 2 m ones.
+  - `replace_walls`, `replace_frames`: `cannot_place` when a player could not place the new piece where the old one
+    stands.
+  - `place_cables`, `place_pipes`, `place_chutes`: each piece's own rule too (no end entering an umbilical the way it
+    faces; only a straight pipe along a pipe-mounted device, of its content; no pipe into an in-line tank's cell),
+    as `cell_blocked`.
+
 ## 1.4.4
 
 Fixes from the first live test of 1.4.3.

@@ -9,6 +9,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Pipes;
+using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 
@@ -582,8 +583,8 @@ internal static class RunPlanner
             gone.Add(existing.ReferenceId);
         }
 
-        string? refusal = PlacementCheck.Refusal(choice.Prefab, PieceShapes.CentreOf(cell.Cell), choice.Rotation,
-            gone);
+        string? refusal = PlayerPlacement.PieceRefusal(choice.Prefab, PieceShapes.CentreOf(cell.Cell),
+            choice.Rotation, gone);
         // The layout already names a blocked cell (what stands there); the cursor's own refusal would say it again.
         if (refusal != null &&
             !plan.Problems.Exists(problem => problem.Code == "cell_blocked" && problem.Cell.Equals(cell.Cell)))
