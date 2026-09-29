@@ -8,12 +8,13 @@ namespace StationGodMCP.Api.Views;
 /// <summary>solar_aim: what every reply carries. A panel that turns adds its angles; one that cannot, a note.</summary>
 internal abstract class SolarAimView
 {
-    private protected SolarAimView(ThingId referenceId, string? prefabName, bool canTurn, SunView sun,
+    private protected SolarAimView(ThingId referenceId, string? prefabName, bool canTurn, bool operable, SunView sun,
         PanelAimView current)
     {
         ReferenceId = referenceId;
         PrefabName = prefabName;
         CanTurn = canTurn;
+        Operable = operable;
         Sun = sun;
         Current = current;
     }
@@ -27,6 +28,13 @@ internal abstract class SolarAimView
     [JsonProperty(Order = 3)]
     public bool CanTurn { get; }
 
+    /// <summary>
+    /// SolarPanel.IsOperable: finished (at its last build state) and not broken. The game generates nothing from a
+    /// panel that is not, at any angle.
+    /// </summary>
+    [JsonProperty(Order = 4)]
+    public bool Operable { get; }
+
     [JsonProperty(Order = 20)]
     public SunView Sun { get; }
 
@@ -37,8 +45,9 @@ internal abstract class SolarAimView
 /// <summary>A panel without yaw and pitch pivots (the Flat panel): Horizontal and Vertical do not move it.</summary>
 internal sealed class SolarFixedView : SolarAimView
 {
-    internal SolarFixedView(ThingId referenceId, string? prefabName, SunView sun, PanelAimView current)
-        : base(referenceId, prefabName, canTurn: false, sun, current)
+    internal SolarFixedView(ThingId referenceId, string? prefabName, bool operable, SunView sun,
+        PanelAimView current)
+        : base(referenceId, prefabName, canTurn: false, operable, sun, current)
     {
     }
 
@@ -49,9 +58,9 @@ internal sealed class SolarFixedView : SolarAimView
 /// <summary>A panel that turns: the angles that point it at the sun, and how close they get.</summary>
 internal sealed class SolarTurnView : SolarAimView
 {
-    internal SolarTurnView(ThingId referenceId, string? prefabName, SunView sun, PanelAimView current,
-        float horizontal, float vertical, double offSunDegrees, double alignment)
-        : base(referenceId, prefabName, canTurn: true, sun, current)
+    internal SolarTurnView(ThingId referenceId, string? prefabName, bool operable, SunView sun,
+        PanelAimView current, float horizontal, float vertical, double offSunDegrees, double alignment)
+        : base(referenceId, prefabName, canTurn: true, operable, sun, current)
     {
         Horizontal = horizontal;
         Vertical = vertical;
@@ -69,7 +78,10 @@ internal sealed class SolarTurnView : SolarAimView
     [JsonProperty(Order = 12)]
     public double OffSunDeg { get; }
 
-    /// <summary>1 - 2 sin(off / 2), floored at 0: the panel's Ratio at that pose before shading.</summary>
+    /// <summary>
+    /// 1 - 2 sin(off / 2), floored at 0: the panel's Ratio at that pose before shading. The facing alone: an inoperable
+    /// panel still generates nothing.
+    /// </summary>
     [JsonProperty(Order = 13)]
     public double AlignmentRatio { get; }
 }

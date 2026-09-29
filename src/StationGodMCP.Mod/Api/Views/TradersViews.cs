@@ -325,7 +325,10 @@ internal sealed class TraderBuysView
 
     public List<string?> Conditions { get; }
 
-    /// <summary>How many exist outside the trader as items (find_items' rules; machine stock not counted).</summary>
+    /// <summary>
+    /// How many of the line's prefab exist outside the trader as items (find_items' rules; machine stock not counted;
+    /// conditions not applied): 0 when none, null for a line with no item prefab (gas).
+    /// </summary>
     public double? Have { get; }
 
     /// <summary>

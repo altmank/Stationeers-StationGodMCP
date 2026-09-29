@@ -140,7 +140,7 @@ internal sealed class TradeItemRequest
             throw ApiErrors.InvalidArgument($"items[{index}] must be an object.");
         }
 
-        Args args = new Args(entry);
+        Args args = new Args(entry, $"items[{index}]");
         string? prefab = args.OptionalString("prefab_name");
         string? name = args.OptionalString("name");
         if (prefab == null && name == null)

@@ -72,6 +72,27 @@ public sealed class ArgsTests
         ApiException error = Assert.Throws<ApiException>(() => args.Reject("reference_id", "kind"));
         Assert.Contains("'kind'", error.Message);
     }
+
+    [Fact]
+    public void ANestedObjectsErrorsNameItsLine()
+    {
+        Args line = new Args(JObject.Parse("{\"name\": \"a\", \"quantity\": 0}"), "items[7]");
+        ApiException error = Assert.Throws<ApiException>(() => line.OptionalInt("quantity", 1, int.MaxValue));
+        Assert.Equal("Argument 'items[7].quantity' must be an integer from 1 to 2147483647.", error.Message);
+        Assert.Contains("'items[7].name'", Assert.Throws<ApiException>(() => line.OptionalBool("name")).Message);
+    }
+}
+
+public sealed class TextTests
+{
+    [Theory]
+    [InlineData("Gas Oxygen Equal 100%%", "Gas Oxygen Equal 100%")]
+    [InlineData("Gas Oxygen Equal 95%% 10mol", "Gas Oxygen Equal 95% 10mol")]
+    [InlineData("<color=red>Quantity 50</color>", "Quantity 50")]
+    public void ATraderConditionShowsOnePercentSign(string debugName, string shown)
+    {
+        Assert.Equal(shown, Text.Condition(debugName));
+    }
 }
 
 public sealed class PagingTests

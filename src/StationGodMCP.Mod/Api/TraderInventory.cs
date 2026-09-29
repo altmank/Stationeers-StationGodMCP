@@ -19,8 +19,9 @@ namespace StationGodMCP.Api;
 /// then applies the slot's bulk multiplier), so this shows it before the trader is interrogated. Price is the
 /// transaction's TransactionData.Value, credits per unit (the game's own debug line prints it as
 /// "EUR{Value} x {Required}"); a gas unit is the Moles its conditions name. For each item a trader buys, have is how
-/// many of it exist in the world outside the trader as items (find_items' rules: anywhere, any holder; not machine
-/// stock, which no trader can take until it is ejected as ingots) and, while the trader
+/// many of its prefab exist in the world outside the trader as items (find_items' rules: anywhere, any holder; not
+/// machine stock, which no trader can take until it is ejected as ingots; 0 when none, null for gas; the trader's
+/// conditions are not applied, so every "Box of ..." line counts all CardboardBox items) and, while the trader
 /// is landed, how many it would take now (sellable: the trade window's own count, TradeDataHelper.GetSellItemQuantity:
 /// what the pad network's vending machines and the local player hold that meets its conditions, or the pad network's
 /// gas in units).
@@ -85,13 +86,14 @@ internal static class TraderInventoryApi
             {
                 if (condition != null)
                 {
-                    conditions.Add(Text.Plain(condition.DebugName));
+                    conditions.Add(Text.Condition(condition.DebugName));
                 }
             }
 
             TradeItem item = new TradeItem(Text.Plain(buy.DisplayName), prefab, buy.BuyData.Value,
                 buy.IsGasTransaction());
-            double? count = prefab != null && have.TryGetValue(prefab, out double held) ? held : null;
+            // Counted by prefab: 0 when none exist, null only for a line with no item prefab (gas).
+            double? count = prefab == null ? null : have.TryGetValue(prefab, out double held) ? held : 0.0;
             int? sellable = landed != null
                 ? (int)GameMembers.TradeSellItemQuantity.Invoke(null, buy, landed)
                 : null;

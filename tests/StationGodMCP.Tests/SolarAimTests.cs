@@ -31,7 +31,17 @@ public sealed class SolarAimWireTests
             sun = OldSun,
             current = OldCurrent
         };
-        WireCheck.Same(old, new SolarFixedView(new ThingId(881), "StructureSolarPanelFlat", Sun, Current));
+        WireCheck.SameAfterRenames(old,
+            new SolarFixedView(new ThingId(881), "StructureSolarPanelFlat", operable: true, Sun, Current),
+            new Dictionary<string, string>(), "operable");
+    }
+
+    [Fact]
+    public void AnUnfinishedPanelSaysItIsNotOperable()
+    {
+        SolarTurnView view = new SolarTurnView(
+            new ThingId(1201), "StructureSolarPanelDual", operable: false, Sun, Current, 90f, 45f, 0.0, 1.0);
+        Assert.Contains("\"can_turn\":true,\"operable\":false,", WireCheck.New(view));
     }
 
     [Fact]
@@ -52,13 +62,13 @@ public sealed class SolarAimWireTests
             current = OldCurrent
         };
         SolarTurnView view = new SolarTurnView(
-            new ThingId(882), "StructureSolarPanel", Sun, Current, bestH, bestV, offDegrees, alignment);
+            new ThingId(882), "StructureSolarPanel", operable: true, Sun, Current, bestH, bestV, offDegrees, alignment);
         Dictionary<string, string> renames = new Dictionary<string, string>
         {
             ["off_sun_degrees"] = "off_sun_deg",
             ["alignment"] = "alignment_ratio"
         };
-        WireCheck.SameAfterRenames(old, view, renames);
+        WireCheck.SameAfterRenames(old, view, renames, "operable");
     }
 }
 

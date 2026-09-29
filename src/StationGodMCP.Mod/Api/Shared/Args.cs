@@ -14,16 +14,24 @@ namespace StationGodMCP.Api.Shared;
 internal sealed class Args
 {
     private readonly JObject _parameters;
+    private readonly string _path;
 
     internal Args(JObject? parameters)
+        : this(parameters, string.Empty)
+    {
+    }
+
+    /// <summary>A nested object's parameters; path (e.g. "items[3]") prefixes every name an error message gives.</summary>
+    internal Args(JObject? parameters, string path)
     {
         _parameters = parameters ?? new JObject();
+        _path = path;
     }
 
     internal bool Has(string name) => Token(name) != null;
 
     internal ThingId ThingId(string name) =>
-        OptionalThingId(name) ?? throw ApiErrors.InvalidArgument($"Argument '{name}' is required.");
+        OptionalThingId(name) ?? throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' is required.");
 
     internal ThingId? OptionalThingId(string name)
     {
@@ -35,7 +43,7 @@ internal sealed class Args
 
         if (!Shared.ThingId.TryRead(token, out ThingId id))
         {
-            throw ApiErrors.InvalidArgument($"Argument '{name}' must be a reference id as a decimal string.");
+            throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be a reference id as a decimal string.");
         }
 
         return id;
@@ -49,7 +57,7 @@ internal sealed class Args
         {
             if (!Shared.ThingId.TryRead(array[index], out ThingId id))
             {
-                throw ApiErrors.InvalidArgument($"{name}[{index}] must be a reference id as a decimal string.");
+                throw ApiErrors.InvalidArgument($"{Named(name)}[{index}] must be a reference id as a decimal string.");
             }
 
             ids.Add(id);
@@ -59,7 +67,7 @@ internal sealed class Args
     }
 
     internal string String(string name) =>
-        OptionalString(name) ?? throw ApiErrors.InvalidArgument($"Argument '{name}' is required.");
+        OptionalString(name) ?? throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' is required.");
 
     internal string? OptionalString(string name)
     {
@@ -71,7 +79,7 @@ internal sealed class Args
 
         if (token.Type != JTokenType.String)
         {
-            throw ApiErrors.InvalidArgument($"Argument '{name}' must be a string.");
+            throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be a string.");
         }
 
         return token.Value<string>();
@@ -87,7 +95,7 @@ internal sealed class Args
 
         if (token.Type != JTokenType.Boolean)
         {
-            throw ApiErrors.InvalidArgument($"Argument '{name}' must be true or false.");
+            throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be true or false.");
         }
 
         return token.Value<bool>();
@@ -106,7 +114,7 @@ internal sealed class Args
             !long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out long value) ||
             value < minimum || value > maximum)
         {
-            throw ApiErrors.InvalidArgument($"Argument '{name}' must be an integer from {minimum} to {maximum}.");
+            throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be an integer from {minimum} to {maximum}.");
         }
 
         return (int)value;
@@ -122,25 +130,25 @@ internal sealed class Args
 
         if ((token.Type != JTokenType.Integer && token.Type != JTokenType.Float) || !IsFinite(token.Value<double>()))
         {
-            throw ApiErrors.InvalidArgument($"Argument '{name}' must be a finite number.");
+            throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be a finite number.");
         }
 
         return token.Value<double>();
     }
 
     internal double Double(string name) =>
-        OptionalDouble(name) ?? throw ApiErrors.InvalidArgument($"Argument '{name}' must be a finite number.");
+        OptionalDouble(name) ?? throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be a finite number.");
 
     internal int Int(string name, int minimum, int maximum) =>
         OptionalInt(name, minimum, maximum) ??
-        throw ApiErrors.InvalidArgument($"Argument '{name}' must be an integer from {minimum} to {maximum}.");
+        throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be an integer from {minimum} to {maximum}.");
 
     internal double? OptionalPositiveDouble(string name)
     {
         double? value = OptionalDouble(name);
         if (value.HasValue && !(value.Value > 0.0))
         {
-            throw ApiErrors.InvalidArgument($"Argument '{name}' must be greater than 0.");
+            throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be greater than 0.");
         }
 
         return value;
@@ -151,7 +159,7 @@ internal sealed class Args
         JToken? token = Token(name);
         if (!(token is JArray array) || array.Count == 0 || array.Count > maximum)
         {
-            throw ApiErrors.InvalidArgument($"Argument '{name}' must be an array of 1 to {maximum} entries.");
+            throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be an array of 1 to {maximum} entries.");
         }
 
         return array;
@@ -165,7 +173,7 @@ internal sealed class Args
             return null;
         }
 
-        return token as JObject ?? throw ApiErrors.InvalidArgument($"Argument '{name}' must be an object.");
+        return token as JObject ?? throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' must be an object.");
     }
 
     /// <summary>Whether the argument is the given word (a string, compared ignoring case).</summary>
@@ -183,7 +191,7 @@ internal sealed class Args
         {
             if (Has(name))
             {
-                throw ApiErrors.InvalidArgument($"Argument '{name}' does not go with {form}.");
+                throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' does not go with {form}.");
             }
         }
     }
@@ -215,8 +223,11 @@ internal sealed class Args
     {
         JObject copy = (JObject)_parameters.DeepClone();
         copy[name] = value.DeepClone();
-        return new Args(copy);
+        return new Args(copy, _path);
     }
+
+    // The name as an error message gives it: with the nested object's path in front.
+    private string Named(string name) => _path.Length == 0 ? name : $"{_path}.{name}";
 
     private JToken? Token(string name)
     {

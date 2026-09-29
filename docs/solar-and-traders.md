@@ -22,10 +22,13 @@ out with the game's own geometry and checks. No gateway is needed.
 `solar_aim` works from the panel's own pivots and the game's sun vector: no daylight sensor, no calibration. It returns
 `horizontal` and `vertical` in logic degrees, ready for `write_logic`, the angle still off when the sun is outside the
 panel's tilt range, and the panel's aim now. With the sun below the horizon it gives the pose closest to it. A flat
-panel reports `can_turn: false`.
+panel reports `can_turn: false`. `operable: false` means the panel is not finished (or is broken): the game generates
+nothing from it at any angle. A missing id or a thing that is not a solar panel is refused with `not_solar_panel`.
 
-`dish_aim` tries angles on the dish's own model and puts it back within one frame, so nothing moves. Under 2 degrees
-of `error_deg` the contact gets the dish's whole signal. Write the result with `write_logic`:
+`dish_aim` tries angles on the dish's own model and puts it back within one frame, so nothing moves. It works on the
+Medium and the Small Satellite Dish (the Small one turns its pivots without an animator). Under 2 degrees of
+`error_deg` the contact gets the dish's whole signal. Refusals: `thing_not_found` (no dish with that id),
+`contact_not_found`, `dish_not_ready` (a dish model that cannot be posed). Write the result with `write_logic`:
 
 ```json
 { "writes": [
@@ -40,6 +43,11 @@ centre, the runway threshold for planes, and per trader whether it fits, whether
 way (the game itself does not check this), and whether it can land now with the game's own reason if not. The check
 moves the pad's landing point and puts it back, so a landing in progress is never affected.
 
+- Every 2 m cell of the landing square must be a pad tile or the centre. A Data And Power (or other connection)
+  piece inside the square is not a tile and shrinks the largest square, so put connection pieces outside it.
+- `obstructed` is the game's own check, reported as it answers; the game never uses it, and it may count the pad's
+  own pieces, so treat it as advisory.
+
 ## Trading
 
 - Only the trader that has landed and is ready at a pad trades (`not_landed` names the landed one).
@@ -52,6 +60,7 @@ moves the pad's landing point and puts it back, so a landing in progress is neve
 - Prices are the trader's, adjusted for respawn stress as the trade window shows them.
 - `dry_run: true` checks each line on its own against stock, card and free slots.
 - `trader_inventory` shows, for the landed trader, how many of each item it would take right now (`sellable`), the
-  same count `trader_sell` checks. The game rolls a trader's inventory when the contact appears, so this works before
+  same count `trader_sell` checks. `have` counts every item of the line's prefab in the world (0 when none, null for
+  gas), without the trader's conditions: every "Box of ..." line counts all cardboard boxes. The game rolls a trader's inventory when the contact appears, so this works before
   the trader is interrogated.
 - Host only.

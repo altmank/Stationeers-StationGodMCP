@@ -221,6 +221,7 @@ internal static class GameMembers
     internal static readonly GameField DishMinWattage = Field(typeof(SatelliteDish), "minWattage");
     internal static readonly GameField DishMaxWattage = Field(typeof(SatelliteDish), "maxWattage");
     internal static readonly GameField DishFieldOfView = Field(typeof(SatelliteDish), "dishFov");
+    internal static readonly GameField SmallDishHorizontalPivot = Field(typeof(SmallSatelliteDish), "_horizontalPivot");
 
     // ---- Structures (replace_walls: a prefab's face points before it is placed, as OnAssignedReference reads them) ----
     internal static readonly GameField StructureBlockingGrids = Field(typeof(Structure), "blockingGrids");

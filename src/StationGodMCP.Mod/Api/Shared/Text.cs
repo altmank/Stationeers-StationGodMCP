@@ -11,4 +11,10 @@ internal static class Text
 
     /// <summary>A display string without its Unity rich-text tags (colour, bold...), trimmed; null stays.</summary>
     internal static string? Plain(string? text) => text == null ? null : RichTextTag.Replace(text, string.Empty).Trim();
+
+    /// <summary>
+    /// A trader condition's DebugName as plain text. The game's GasCondition builds it with an interpolated string
+    /// ending in "{Percent}%%", which C# does not collapse, so a literal "%%" is shown as "%".
+    /// </summary>
+    internal static string? Condition(string? text) => Plain(text)?.Replace("%%", "%");
 }

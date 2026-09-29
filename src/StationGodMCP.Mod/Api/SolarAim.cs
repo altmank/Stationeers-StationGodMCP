@@ -45,16 +45,18 @@ internal static class SolarAimApi
             panel.GetLogicValue(LogicType.Horizontal),
             panel.GetLogicValue(LogicType.Vertical),
             panel.GenerationEfficiency);
+        // SolarPanel.IsOperable (protected): not broken and at its last build state.
+        bool operable = !panel.IsBroken && panel.CurrentBuildStateIndex == panel.BuildStates.Count - 1;
         SolarPanelArm? arm = FirstTurningArm(panel);
         if (arm == null)
         {
-            return new SolarFixedView(id, panel.PrefabName, sunView, current);
+            return new SolarFixedView(id, panel.PrefabName, operable, sunView, current);
         }
 
         AngleBest best = AngleSearch.SolarMaximum(new PanelFacing(arm, sun));
         double offDegrees = SolarAlignment.OffDegrees(best.Score);
-        return new SolarTurnView(id, panel.PrefabName, sunView, current, best.Horizontal, best.Vertical, offDegrees,
-            SolarAlignment.Alignment(offDegrees));
+        return new SolarTurnView(id, panel.PrefabName, operable, sunView, current, best.Horizontal, best.Vertical,
+            offDegrees, SolarAlignment.Alignment(offDegrees));
     }
 
     // The first arm whose yaw pivot, pitch pivot, cells and yaw parent all exist; null when the panel has none.
