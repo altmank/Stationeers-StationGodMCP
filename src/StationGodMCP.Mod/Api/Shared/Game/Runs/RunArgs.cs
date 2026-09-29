@@ -293,7 +293,7 @@ internal static class RunArgs
     /// </summary>
     internal static RunOptions Options(Args args, RunKind kind)
     {
-        HashSet<long> bridge = NetworkHandles.ResolveAllowances(args, "allow_bridge", 64, kind.Family);
+        HashSet<long> bridge = NetworkHandles.ResolveAllowances(args, "allow_bridge", 64, kind.Family, kind.Bridges);
         ThingId? joinTo = args.Has("join_to") ? NetworkHandles.Resolve(args, "join_to", kind.Family) : (ThingId?)null;
         if (joinTo.HasValue)
         {

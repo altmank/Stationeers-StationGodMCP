@@ -41,7 +41,7 @@ internal static class PortLoads
 
     private static PortPower InputOutput(ElectricalInputOutput io, Connection end)
     {
-        bool output = ReferenceEquals(end, io.OutputConnection);
+        bool output = IsOutput(io, end);
         double demand = io.OutputNetwork != null ? io.OutputNetwork.RequiredLoad : 0.0;
         switch (io)
         {
@@ -67,6 +67,21 @@ internal static class PortLoads
             default:
                 return output ? new PortPower(io.AvailablePower, 0.0) : new PortPower(0.0, demand);
         }
+    }
+
+    // The OpenEnds entry and the OutputConnection field are separate copies of one port (PortSides): compare the Unity
+    // components they share, never the Connection objects.
+    private static bool IsOutput(ElectricalInputOutput io, Connection end)
+    {
+        Connection? output = io.OutputConnection;
+        return PortSides.IsOutput(
+            output != null && end.Transform != null && output.Transform != null
+                ? end.Transform == output.Transform
+                : null,
+            output != null && end.Collider != null && output.Collider != null
+                ? end.Collider == output.Collider
+                : null,
+            (int)end.ConnectionRole);
     }
 
     private static PortPower Single(Device device)

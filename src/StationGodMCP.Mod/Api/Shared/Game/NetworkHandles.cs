@@ -48,9 +48,11 @@ internal static class NetworkHandles
     /// Several handles (allow_bridge): an object form is resolved to its network; a plain id is kept as given (it may
     /// name a network, or a device whose ports are meant to share a network), and one naming a piece of the family
     /// (or a device that is one of its members, a vent on a pipe) adds that piece's network too. A plain id naming
-    /// no thing and no network of the family is network_not_found; one naming another thing is invalid_argument.
+    /// no thing and no network of the family is network_not_found; one naming another thing, or a device with fewer
+    /// than two ports that bridges accepts (it has nothing to bridge: a locker), is invalid_argument.
     /// </summary>
-    internal static HashSet<long> ResolveAllowances(Args args, string name, int maximum, UpgradeFamily family)
+    internal static HashSet<long> ResolveAllowances(Args args, string name, int maximum, UpgradeFamily family,
+        System.Func<Connection, bool> bridges)
     {
         HashSet<long> ids = new HashSet<long>();
         if (!args.Has(name))
@@ -89,15 +91,36 @@ internal static class NetworkHandles
             {
                 ids.Add(Resolve(array[index], entry, family).Value);
             }
-            else if (!(thing is Device))
+            else if (!(thing is Device device))
             {
                 throw ApiErrors.InvalidArgument(
                     $"{entry}: {thing.DisplayName} ({thing.PrefabName}) is neither a {family.NetworkKind} piece, a " +
                     "device nor a network.");
             }
+            else if (BridgingPorts(device, bridges) < 2)
+            {
+                throw ApiErrors.InvalidArgument(
+                    $"{entry}: {device.DisplayName} ({device.PrefabName}) has no two {family.NetworkKind} ports that " +
+                    "could share a network, so it bridges nothing; name a network, a piece of one or " +
+                    "{reference_id, port}.");
+            }
         }
 
         return ids;
+    }
+
+    private static int BridgingPorts(Device device, System.Func<Connection, bool> bridges)
+    {
+        int count = 0;
+        foreach (Connection? end in device.OpenEnds ?? new List<Connection>())
+        {
+            if (end?.Transform != null && bridges(end))
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private static ThingId OfThing(Thing thing, string name, UpgradeFamily family)

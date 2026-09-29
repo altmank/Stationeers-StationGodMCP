@@ -14,7 +14,9 @@ internal enum JoinMode
     /// The default: the run's first and last cells join every open piece end and device port pointing at them, and
     /// the piece straight ahead of a run end that joins no device port and no piece (turned into a junction when it
     /// has no end there). A run end at a port, or on or at a piece, has reached it: the piece beyond is some other
-    /// network's (a route to a network ends on one of its pieces; the piece past it may be across a transformer).
+    /// network's (a route to a network ends on one of its pieces; the piece past it may be across a transformer). A
+    /// run end standing on an existing piece joins that piece and the ports pointing at it, but no other piece's open
+    /// end pointing into its cell from the side: that piece may be another network's.
     /// </summary>
     Ends,
 
@@ -276,7 +278,7 @@ internal static class RunLayoutPlanner
         {
             bool isEnd = shape.IsTip(run[index]);
             bool joins = !shape.IsFill(run[index]) && (mode == JoinMode.All || (mode == JoinMode.Ends && isEnd));
-            JoinAround(layout, around, layout.Cells[index], joins, inRun, content);
+            JoinAround(layout, around, layout.Cells[index], joins, mode == JoinMode.All, inRun, content);
         }
 
         if (mode != JoinMode.None)
@@ -303,14 +305,17 @@ internal static class RunLayoutPlanner
         return layout;
     }
 
-    // Every open piece end and device port pointing at the cell.
+    // Every open piece end and device port pointing at the cell; a run end standing on an existing piece (join mode
+    // Ends) has arrived at that piece and takes no other piece's open end.
     private static void JoinAround(RunLayout layout, RunSurroundings around, LayoutCell entry, bool join,
-        HashSet<GridCell> inRun, PipeContent? content)
+        bool everyCell, HashSet<GridCell> inRun, PipeContent? content)
     {
         if (!join)
         {
             return;
         }
+
+        bool joinsPieces = everyCell || entry.Existing == null;
 
         foreach (GridStep step in GridStep.All)
         {
@@ -321,7 +326,7 @@ internal static class RunLayoutPlanner
 
             GridCell next = step.From(entry.Cell);
             PieceModel? piece = around.PieceAt(next);
-            if (piece != null && !inRun.Contains(next) && piece != entry.Existing &&
+            if (joinsPieces && piece != null && !inRun.Contains(next) && piece != entry.Existing &&
                 EndSet.AtCell(piece, next).Contains(step.Opposite) && Compatible(piece, content))
             {
                 entry.Add(step);

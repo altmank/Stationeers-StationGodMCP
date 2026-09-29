@@ -26,9 +26,11 @@ internal static class JobSnapshots
 
     /// <summary>
     /// Records a started (or queued) job's snapshots under the job id its reply carries; a reply without one (busy,
-    /// refused) records nothing. Returns the reply unchanged.
+    /// refused) records nothing. burnt: the burnt cables it removes (debris no coil lays), recorded as such so undo_job
+    /// leaves them gone. Returns the reply unchanged.
     /// </summary>
-    internal static object Record(object reply, string tool, IEnumerable<Structure> removed, Args args)
+    internal static object Record(object reply, string tool, IEnumerable<Structure> removed, Args args,
+        IEnumerable<Structure>? burnt = null)
     {
         string? jobId = JobIdOf(reply);
         if (jobId == null)
@@ -42,6 +44,14 @@ internal static class JobSnapshots
             if (structure != null)
             {
                 snapshots[structure.ReferenceId] = Of(structure);
+            }
+        }
+
+        foreach (Structure structure in burnt ?? System.Array.Empty<Structure>())
+        {
+            if (structure != null)
+            {
+                snapshots[structure.ReferenceId] = BurntOf(structure);
             }
         }
 
@@ -74,6 +84,10 @@ internal static class JobSnapshots
             structure.CurrentBuildStateIndex,
             string.IsNullOrEmpty(structure.CustomName) ? null : structure.CustomName, PieceOf(structure));
     }
+
+    private static ThingSnapshot BurntOf(Structure structure) =>
+        new ThingSnapshot(structure.ReferenceId, structure.PrefabName, Bodies.V(structure.ThingTransformPosition), null,
+            structure.CurrentBuildStateIndex, null, null, burnt: true);
 
     private static readonly RunKind[] Kinds = { new CableRunKind(), new PipeRunKind(), new ChuteRunKind() };
 

@@ -67,7 +67,7 @@ internal sealed class NetworkPiece
 internal sealed class ThingSnapshot
 {
     internal ThingSnapshot(long id, string prefab, Vec3 position, CubeRotation? turn, int buildState, string? label,
-        NetworkPiece? piece = null)
+        NetworkPiece? piece = null, bool burnt = false)
     {
         Id = id;
         Prefab = prefab;
@@ -76,6 +76,7 @@ internal sealed class ThingSnapshot
         BuildState = buildState;
         Label = label;
         Piece = piece;
+        Burnt = burnt;
     }
 
     internal long Id { get; }
@@ -96,6 +97,12 @@ internal sealed class ThingSnapshot
     /// would_bridge, burst and gas guards), never by place_structure, which joins whatever its ends touch unchecked.
     /// </summary>
     internal NetworkPiece? Piece { get; }
+
+    /// <summary>
+    /// What an overload left of a cable (a burnt cable): no coil lays it, so it is never built again; undoing the job
+    /// leaves it gone and undoes the rest.
+    /// </summary>
+    internal bool Burnt { get; }
 }
 
 /// <summary>Network pieces one place tool builds again in one job: the tool, the grade, the snapshots.</summary>
@@ -202,8 +209,8 @@ internal sealed class UndoPlan
 /// Plans the inverse of a finished job: remove everything it built, then build again everything it removed, each as it
 /// stood (network pieces by their place tool). Refused (diverged) when something it built is gone or is no longer that
 /// prefab, when something it removed has no snapshot, stood off the grid's axes or is a network piece no coil or kit
-/// lays, or when the job had not finished. The job kinds that can be undone are
-/// the place and remove tools (runs and structures).
+/// lays, or when the job had not finished. A burnt cable the job removed is never built again: a note says so and the
+/// rest is undone. The job kinds that can be undone are the place and remove tools (runs and structures).
 /// </summary>
 internal static class UndoPlanner
 {
@@ -264,6 +271,11 @@ internal static class UndoPlanner
             {
                 diverged.Add($"{id} was removed with no snapshot of how it stood (the job ran before this mod " +
                              "version, or was not started by a place or remove tool).");
+            }
+            else if (snapshot.Burnt)
+            {
+                notes.Add($"{id} ({snapshot.Prefab}) was a burnt cable; burnt pieces are never built again, so it " +
+                          "stays gone.");
             }
             else if (snapshot.Turn == null)
             {

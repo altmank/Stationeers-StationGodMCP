@@ -180,7 +180,8 @@ inside frames where possible, `plan_cable_route`:
   `long_split`; `allow_split_long: false` refuses with `long_piece`).
 - **Joining.** `join: "ends"` (default) joins the run's first and last cells to open ends and device ports pointing at
   them, and a run end that joins nothing else to the piece straight ahead of it; a run end at a port, on an existing
-  piece or at a piece's open end has arrived and never joins the piece beyond (which may be across a transformer).
+  piece or at a piece's open end has arrived and never joins the piece beyond (which may be across a transformer);
+  one on an existing piece joins that piece, not another piece's open end pointing into its cell from the side.
   `none` joins nothing extra; `all` joins at every run cell. `extra_ends` adds ends to run cells.
 - **Branches.** `branches: [{waypoints, attach}]` adds side runs joined to the run with a junction.
 - **Placement check.** The game's server checks nothing when a structure is built, so the tool checks as the
@@ -203,6 +204,7 @@ back through `place_cables`, `place_pipes` and `place_chutes` (their `pieces` fo
 so `would_bridge`, `would_split` and the burst and gas guards apply; everything else comes back through
 `place_structure` (1.4.4+). It is refused, with `plan.diverged` saying why, when the world is no longer as the job
 left it: something it built is gone or another prefab now, or something it removed cannot be placed again exactly.
+A burnt cable the job removed is never built again; `plan.notes` says so and the rest is undone.
 The dry run shows the plan, every tool's arguments and their dry runs; `plan.ready` is true only when all of them
 are. Pass `allow_bridge` when rejoining networks is meant (a removal that split a network). `dry_run: false, confirm:
 true` makes the same checks, starts the removal and queues the placements behind it. Every guard of every tool

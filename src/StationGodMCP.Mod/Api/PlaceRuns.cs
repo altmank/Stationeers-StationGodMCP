@@ -179,7 +179,7 @@ internal static class RunApi
 
         return plan.Ready
             ? JobSnapshots.Record(RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null), wait),
-                request.Tool, Removed(plan), args)
+                request.Tool, Removed(plan), args, Burnt(plan))
             : RunReports.Of(plan, RunReports.Refused, null);
     }
 
@@ -205,5 +205,20 @@ internal static class RunApi
         }
 
         return removed;
+    }
+
+    // The burnt cables the run takes down: undo_job leaves them gone.
+    private static List<Structure> Burnt(RunPlan plan)
+    {
+        List<Structure> burnt = new List<Structure>();
+        foreach (PlannedRemoval removal in plan.Removals)
+        {
+            if (!removal.Assumed && removal.Debris)
+            {
+                burnt.Add(removal.Piece);
+            }
+        }
+
+        return burnt;
     }
 }
