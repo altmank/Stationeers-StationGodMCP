@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace StationGodMCP.Pure;
 
@@ -236,6 +237,34 @@ internal sealed class RemovalFacts
     internal string BreachWhere { get; set; } = string.Empty;
 }
 
+/// <summary>A pipe network's pressure before and after a removal takes volume off it, and the weakest pipe left.</summary>
+internal sealed class NetworkSqueeze
+{
+    internal NetworkSqueeze(long network, double beforeKpa, double afterKpa, double removedL, double leftL,
+        double? lowestKpa)
+    {
+        Network = network;
+        BeforeKpa = beforeKpa;
+        AfterKpa = afterKpa;
+        RemovedL = removedL;
+        LeftL = leftL;
+        LowestKpa = lowestKpa;
+    }
+
+    internal long Network { get; }
+
+    internal double BeforeKpa { get; }
+
+    internal double AfterKpa { get; }
+
+    internal double RemovedL { get; }
+
+    internal double LeftL { get; }
+
+    /// <summary>The lowest MaxPressure of the pipes left; null when none is rated.</summary>
+    internal double? LowestKpa { get; }
+}
+
 /// <summary>The allow flags of remove_structure.</summary>
 internal sealed class RemovalAllowance
 {
@@ -338,6 +367,37 @@ internal static class RemovalRule
 
         return high - low;
     }
+
+    /// <summary>
+    /// A pipe network a removal takes volume from while its gas stays: the forecast pressure of what is left against
+    /// the weakest pipe left. would_burst (the pipe tools' code, which they do not lift either) when it is over; null
+    /// otherwise.
+    /// </summary>
+    internal static GuardFinding? Squeeze(NetworkSqueeze squeeze)
+    {
+        if (!squeeze.LowestKpa.HasValue || squeeze.AfterKpa <= squeeze.LowestKpa.Value)
+        {
+            return null;
+        }
+
+        double share = 100.0 * (1.0 - squeeze.LowestKpa.Value / squeeze.AfterKpa);
+        return new GuardFinding("would_burst", GuardLevel.Refusal, string.Format(CultureInfo.InvariantCulture,
+            "removing it takes {0:0.#} L off pipe network {1} and the game keeps the gas in the {2:0.#} L left: " +
+            "{3:0.#} kPa now, {4:0.#} kPa after, over the weakest pipe left (rated {5:0.#} kPa), which would burst; " +
+            "take at least {6:0.#} % of its gas out first (move_gas)", squeeze.RemovedL, squeeze.Network,
+            squeeze.LeftL, squeeze.BeforeKpa, squeeze.AfterKpa, squeeze.LowestKpa.Value,
+            Math.Ceiling(share * 10.0) / 10.0));
+    }
+
+    /// <summary>
+    /// A refund holder (from_id) the request removes, or one held inside something it removes: the refund would be
+    /// destroyed with it.
+    /// </summary>
+    internal static string HolderRemoved(string holder, string? removedContainer) =>
+        (removedContainer == null
+            ? $"from_id {holder} is removed by this request"
+            : $"from_id {holder} is inside {removedContainer}, which this request removes") +
+        ", so the refund would be destroyed with it; pass another from_id, or refund_to ground or none.";
 
     internal static bool Refused(IEnumerable<GuardFinding> findings)
     {

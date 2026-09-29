@@ -63,12 +63,14 @@ internal static class BuildReports
     {
         List<RemovalView> removals = new List<RemovalView>(plan.Takedowns.Count);
         List<ItemAmount> all = new List<ItemAmount>();
+        bool refunds = plan.Arguments.RefundTo != RefundTo.None;
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
+            // refund_to none gives nothing back, so nothing is listed as given (structures-26).
+            List<ItemAmount> refund = refunds ? takedown.Refund : new List<ItemAmount>();
             removals.Add(new RemovalView(takedown.Index, GameLookup.ViewOf(takedown.Piece),
-                GameLookup.ViewOf(takedown.Position), takedown.BuildState, takedown.KindName,
-                Amounts(takedown.Refund)));
-            all.AddRange(takedown.Refund);
+                GameLookup.ViewOf(takedown.Position), takedown.BuildState, takedown.KindName, Amounts(refund)));
+            all.AddRange(refund);
         }
 
         return new RemoveReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings, RemoveNotes),
@@ -95,10 +97,23 @@ internal static class BuildReports
             placement.Ports, placement.Layout?.View, placement.Orient,
             placement.ResolvedAt != null && placement.At.HasValue
                 ? new ResolvedPlacementView(new PointView(placement.At.Value.X, placement.At.Value.Y,
-                        placement.At.Value.Z), placement.ResolvedAt.How + (placement.SetDownHow ?? string.Empty) +
-                    (placement.AboveFloorHow ?? string.Empty),
+                        placement.At.Value.Z), AtHow(placement) + (placement.AboveFloorHow ?? string.Empty),
                     placement.ResolvedFacing, placement.ResolvedFacingHow)
                 : null);
+    }
+
+    // How at was read. A point as given that was set down on the surface behind it reads as set down, not "as given;
+    // set down ..." (structures-28); a relative at keeps how it was read, then how it was set down.
+    private static string AtHow(PlannedPlacement placement)
+    {
+        string how = placement.ResolvedAt!.How;
+        string? setDown = placement.SetDownHow;
+        if (setDown == null)
+        {
+            return how;
+        }
+
+        return placement.Args.At is AtArg.Absolute ? setDown.TrimStart(';', ' ') : how + setDown;
     }
 
     internal static RotationView Euler(Quaternion rotation)

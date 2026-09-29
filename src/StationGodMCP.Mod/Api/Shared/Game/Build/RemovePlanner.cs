@@ -14,6 +14,7 @@ using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Structures;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -133,6 +134,9 @@ internal static class RemovePlanner
             Guard(plan, takedown, seen, breached, emptied, grid);
         }
 
+        Squeeze(plan, emptied);
+        HolderRemoved(plan, seen);
+
         foreach (RunKind kind in Kinds)
         {
             NetworkGuard(plan, kind);
@@ -197,12 +201,7 @@ internal static class RemovePlanner
         }
 
         Items(piece, facts.Items);
-        List<GridPoint> opened = Breach(piece, facts, removed);
-        if (facts.BreachKpa.HasValue && facts.BreachKpa.Value >= RemovalRule.BreachKpa && !breached.Claim(opened))
-        {
-            // Another piece of this request already reported the breach of these faces (plates back to back).
-            facts.BreachKpa = null;
-        }
+        Breach(piece, facts, removed, breached);
 
         foreach (GuardFinding finding in RemovalRule.Judge(facts, plan.Arguments.Allow))
         {
@@ -277,6 +276,102 @@ internal static class RemovePlanner
         facts.GasFate = GasFate.Lost;
         facts.GasWhere = $" in pipe network {network.ReferenceId}, whose last member this removal takes";
     }
+
+    // A pipe-network member that is not a pipe piece (an in-line tank, a passive vent) takes its volume with it while
+    // its network's gas stays: Pipe.OnDestroy hands the whole mixture to what is left
+    // (NetworkAtmosphereEvent.DivideNetworkAtmosphere), so the same gas fills less room (structures-23: 605 mol N2
+    // went from 5.5 MPa to 73.7 MPa in two pipes rated 60.8 MPa). Forecast per network the request shrinks that way,
+    // its pipe pieces removed alongside counted too, and refuse over the weakest pipe left as the pipe tools do
+    // (would_burst). A network the request empties is holds_gas's (NetworkGas); pipe pieces alone are the remove
+    // tool's own check (NetworkGuard).
+    private static void Squeeze(RemovePlan plan, HashSet<long> emptied)
+    {
+        Dictionary<long, List<PlannedTakedown>> byNetwork = new Dictionary<long, List<PlannedTakedown>>();
+        foreach (PlannedTakedown takedown in plan.Takedowns)
+        {
+            if (takedown.Piece is Pipe pipe && pipe.PipeNetwork != null)
+            {
+                long id = pipe.PipeNetwork.ReferenceId;
+                if (!byNetwork.TryGetValue(id, out List<PlannedTakedown> members))
+                {
+                    members = new List<PlannedTakedown>();
+                    byNetwork[id] = members;
+                }
+
+                members.Add(takedown);
+            }
+        }
+
+        foreach (KeyValuePair<long, List<PlannedTakedown>> entry in byNetwork)
+        {
+            PlannedTakedown? member = entry.Value.Find(takedown => takedown.Kind == null);
+            PipeNetwork network = ((Pipe)entry.Value[0].Piece).PipeNetwork;
+            if (member == null || emptied.Contains(entry.Key) || network.Atmosphere == null)
+            {
+                continue;
+            }
+
+            HashSet<long> gone = new HashSet<long>();
+            double removedL = 0.0;
+            foreach (PlannedTakedown takedown in entry.Value)
+            {
+                gone.Add(takedown.Piece.ReferenceId);
+                removedL += PipeFamily.VolumeOf(takedown.Piece);
+            }
+
+            double? lowest = null;
+            foreach (SmallGrid left in RunNetworks.PipeMembers(network))
+            {
+                if (left is Pipe pipe && !pipe.IsBeingDestroyed && !gone.Contains(pipe.ReferenceId))
+                {
+                    double rating = pipe.MaxPressure.ToDouble();
+                    lowest = lowest.HasValue ? System.Math.Min(lowest.Value, rating) : rating;
+                }
+            }
+
+            GasSnapshot before = GasSnapshot.Of(network.Atmosphere);
+            double leftL = before.VolumeL - removedL;
+            if (leftL <= 0.0)
+            {
+                continue;
+            }
+
+            GuardFinding? finding = RemovalRule.Squeeze(new NetworkSqueeze(entry.Key, before.PressureKpa(),
+                before.WithVolume(leftL).PressureKpa(), removedL, leftL, lowest));
+            if (finding != null)
+            {
+                plan.Add(finding, member.Index, member.Piece.ReferenceId);
+            }
+        }
+    }
+
+    // A from_id the request removes, or one inside something it removes (a stack in a locker it takes), would take the
+    // refund with it: Refunds.Deliver puts it into the holder, which the job then destroys (structures-22).
+    private static void HolderRemoved(RemovePlan plan, HashSet<long> removed)
+    {
+        if (plan.From == null || !plan.Arguments.From.HasValue)
+        {
+            return;
+        }
+
+        Thing? holder = plan.From;
+        while (holder != null)
+        {
+            if (removed.Contains(holder.ReferenceId))
+            {
+                long id = holder.ReferenceId;
+                PlannedTakedown? takedown = plan.Takedowns.Find(item => item.Piece.ReferenceId == id);
+                plan.Problems.Add(new BuildIssueView("refund_holder_removed",
+                    RemovalRule.HolderRemoved(Name(plan.From), holder == plan.From ? null : Name(holder)),
+                    takedown?.Index, new ThingId(plan.From.ReferenceId)));
+                return;
+            }
+
+            holder = holder is DynamicThing held ? held.ParentSlot?.Parent : null;
+        }
+    }
+
+    private static string Name(Thing thing) => $"{thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId})";
 
     // A device mounted on a face the piece holds, or standing on one, left with nothing to rest on once the request is
     // done (MountSupport): the faces a large piece holds (a wall's face; the six faces of a cell a frame fills), every
@@ -401,26 +496,25 @@ internal static class RemovePlanner
     // A piece that blocks air joins, when it goes, the cells on both sides of each face it holds, or each cell it
     // fills with its open neighbours, unless the face stays sealed (FaceSeal): something left on the face, or the
     // structure filling a cell beside it (a finished frame), blocks air. Every piece of the request counts as gone at
-    // once, so two plates back to back on one face breach when both go, and neither alone. Returns the faces it opens.
-    private static List<GridPoint> Breach(Structure piece, RemovalFacts facts, HashSet<long> removed)
+    // once, so two plates back to back on one face breach when both go, and neither alone. A face an earlier piece's
+    // breach already named is left out (BreachedFaces.Unnamed): that opening is reported once.
+    private static void Breach(Structure piece, RemovalFacts facts, HashSet<long> removed, BreachedFaces breached)
     {
-        List<GridPoint> opened = new List<GridPoint>();
         if (piece is SmallGrid || piece.CanAirPass)
         {
-            return opened;
+            return;
         }
 
         GridController grid = GridController.World;
-        List<GridPoint> sides = new List<GridPoint>();
+        Dictionary<GridPoint, List<GridPoint>> opened = new Dictionary<GridPoint, List<GridPoint>>();
         foreach (StructureSlot slot in StructureSlots.Live(piece))
         {
             if (FaceMath.TrySplitFace(slot.Point, out GridPoint a, out GridPoint b))
             {
                 if (!Sealed(grid, slot.Point, CellBlocker(grid, a), CellBlocker(grid, b), piece, removed))
                 {
-                    AddOnce(opened, slot.Point);
-                    AddOnce(sides, a);
-                    AddOnce(sides, b);
+                    Open(opened, slot.Point, a);
+                    Open(opened, slot.Point, b);
                 }
 
                 continue;
@@ -436,9 +530,18 @@ internal static class RemovePlanner
                 GridPoint neighbour = one.Equals(slot.Cell) ? two : one;
                 if (!Sealed(grid, face, null, CellBlocker(grid, neighbour), piece, removed))
                 {
-                    AddOnce(opened, face);
-                    AddOnce(sides, neighbour);
+                    Open(opened, face, neighbour);
                 }
+            }
+        }
+
+        List<GridPoint> unnamed = breached.Unnamed(opened.Keys);
+        List<GridPoint> sides = new List<GridPoint>();
+        foreach (GridPoint face in unnamed)
+        {
+            foreach (GridPoint side in opened[face])
+            {
+                AddOnce(sides, side);
             }
         }
 
@@ -455,14 +558,29 @@ internal static class RemovePlanner
         }
 
         facts.BreachKpa = RemovalRule.Spread(pressures);
-        if (facts.BreachKpa.HasValue)
+        if (!facts.BreachKpa.HasValue)
         {
-            facts.BreachWhere = string.Format(CultureInfo.InvariantCulture,
-                "{0:0.#} kPa in the cell at {1}, {2:0.#} kPa in the cell at {3}", pressures[high],
-                Describe(sides[high]), pressures[low], Describe(sides[low]));
+            return;
         }
 
-        return opened;
+        facts.BreachWhere = string.Format(CultureInfo.InvariantCulture,
+            "{0:0.#} kPa in the cell at {1}, {2:0.#} kPa in the cell at {3}", pressures[high],
+            Describe(sides[high]), pressures[low], Describe(sides[low]));
+        if (facts.BreachKpa.Value >= RemovalRule.BreachKpa)
+        {
+            breached.Claim(unnamed);
+        }
+    }
+
+    private static void Open(Dictionary<GridPoint, List<GridPoint>> opened, GridPoint face, GridPoint side)
+    {
+        if (!opened.TryGetValue(face, out List<GridPoint> sides))
+        {
+            sides = new List<GridPoint>();
+            opened[face] = sides;
+        }
+
+        AddOnce(sides, side);
     }
 
     private static bool Sealed(GridController grid, GridPoint face, AirBlocker? cellA, AirBlocker? cellB,

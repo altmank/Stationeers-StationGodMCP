@@ -33,6 +33,7 @@ internal static class FindSpotApi
     private const int MaximumChecks = 200;
     private const int MaximumCandidates = 4000;
     private const int MaximumBodyCells = 40000;
+    private const int MaximumReasons = 8;
 
     internal static FindSpotView Handle(Args args)
     {
@@ -86,6 +87,7 @@ internal static class FindSpotApi
         tries.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
         List<Candidate> passed = new List<Candidate>();
         HashSet<Vector3> seen = new HashSet<Vector3>();
+        SpotReasons reasons = new SpotReasons();
         int filtered = 0;
         for (int index = 0; index < tries.Count && index < MaximumCandidates; index++)
         {
@@ -102,6 +104,7 @@ internal static class FindSpotApi
             if (candidate.Failed.Count > 0)
             {
                 filtered++;
+                reasons.Add(candidate.Failed[0]);
                 continue;
             }
 
@@ -118,13 +121,15 @@ internal static class FindSpotApi
                 break;
             }
 
-            if (candidate.Check(prefab, cursor, facts, require))
+            string? rejection = candidate.Check(prefab, cursor, facts, require);
+            if (rejection == null)
             {
                 checkedSpots.Add(candidate);
             }
             else
             {
                 rejected++;
+                reasons.Add(rejection);
             }
         }
 
@@ -141,7 +146,8 @@ internal static class FindSpotApi
         }
 
         return new FindSpotView(prefab.PrefabName, planes.ConvertAll(plane => $"{plane.Plane} seen from {plane.Side.Name}"),
-            spots, passed.Count + filtered, filtered, checkedSpots.Count + rejected, rejected);
+            spots, passed.Count + filtered, filtered, checkedSpots.Count + rejected, rejected,
+            reasons.Top(MaximumReasons).ConvertAll(static reason => new SpotReasonView(reason.Reason, reason.Count)));
     }
 
     // The search window on the plane, a metre deep either side: where the things a spot could clash with stand.
@@ -254,7 +260,41 @@ internal static class FindSpotApi
             }
         }
 
+        if (args.Has("plane") || (args.OptionalBool("looking") ?? false))
+        {
+            PlaneView named = NamedPlane(args, facts, cells, id);
+            if (seen.Add((named.Plane.Axis, named.Plane.Coordinate, named.Side.Index)))
+            {
+                planes.Add(named);
+            }
+        }
+
         return planes;
+    }
+
+    // plane (or looking) with room_id: that plane too, e.g. the room's floor or ceiling (structures-25: it was ignored).
+    // Seen from side when given, else from the room's side of it; a plane no room cell touches is refused.
+    private static PlaneView NamedPlane(Args args, GridFacts facts, HashSet<GridCell> cells, ThingId room)
+    {
+        if (args.Has("side") || (args.OptionalBool("looking") ?? false))
+        {
+            return PlaneView.Read(args, facts, out _);
+        }
+
+        string text = args.OptionalString("plane")!;
+        FacePlane plane = PlaneView.ParsePlane(text);
+        GridStep plus = GridStep.All[plane.Axis * 2];
+        foreach (GridCell cell in cells)
+        {
+            int component = FacePlane.Component(cell, plane.Axis);
+            if (component - 10 == plane.Coordinate || component + 10 == plane.Coordinate)
+            {
+                return new PlaneView(plane, component > plane.Coordinate ? plus : plus.Opposite);
+            }
+        }
+
+        throw ApiErrors.InvalidArgument($"plane {text} does not touch room {room}: no cell of the room lies against " +
+                                        "it. Name a face plane of the room, or give side.");
     }
 
     // The turn a spot is tried in. A mounted piece faces out of the plane (or facing), its top up. A grid-placed piece
@@ -337,7 +377,8 @@ internal static class FindSpotApi
                 ? MountRect.Of(Box3.OfSmallCells(cells), PlacementLayout.MountOutward(prefab, turn), render)
                 : null;
             double bottom = cells.Count > 0 ? Box3.OfSmallCells(cells).Min.Y : position.y;
-            double floor = AtResolver.FloorBelow(new Metres(position.x, bottom, position.z), facts);
+            Metres foot = new Metres(position.x, bottom, position.z);
+            double floor = AtResolver.FloorBelow(foot, facts) ?? AtResolver.FirstPlaneBelow(foot);
             SpotGeometry geometry = new SpotGeometry(cells.Count, occupied, keepOut,
                 mount?.Faces().Count ?? 0, bottom - floor, FrontBlocked(cells, turn.Forward, require, facts),
                 Clashes(render, cells, bodies));
@@ -380,12 +421,13 @@ internal static class FindSpotApi
             return blocked;
         }
 
-        /// <summary>The cursor check and the layout preview; false when either rules the spot out.</summary>
-        internal bool Check(Structure prefab, Structure cursor, GridFacts facts, SpotRequirements require)
+        /// <summary>The cursor check and the layout preview: why either rules the spot out; null when it passes.</summary>
+        internal string? Check(Structure prefab, Structure cursor, GridFacts facts, SpotRequirements require)
         {
-            if (CursorCheck.Refusal(cursor, Position, Rotation, new HashSet<long>()) != null)
+            string? refusal = CursorCheck.Refusal(cursor, Position, Rotation, new HashSet<long>());
+            if (refusal != null)
             {
-                return false;
+                return "the game refuses it: " + refusal + PlacePlanner.FrameNote(Position, refusal);
             }
 
             LayoutPreview layout = PlacementLayout.Of(prefab, Position, Rotation, Turn, facts, !require.AvoidDoors,
@@ -398,17 +440,17 @@ internal static class FindSpotApi
                     (require.NoVisualOverlap && conflict.Code == ConflictCodes.VisualOverlap) ||
                     (require.OneSection && conflict.Code == ConflictCodes.CrossesSeam))
                 {
-                    return false;
+                    return $"{conflict.Code}: {conflict.Message}";
                 }
             }
 
             if (require.PortsReachable && layout.View.PortChecks != null &&
                 layout.View.PortChecks.Exists(port => port.Blocked != null && !port.Joins))
             {
-                return false;
+                return "a port's joining cell is blocked (ports_reachable)";
             }
 
-            return true;
+            return null;
         }
 
         internal SpotView View(Structure prefab)

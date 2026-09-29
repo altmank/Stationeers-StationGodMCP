@@ -70,6 +70,44 @@ internal sealed class SpotGeometry
 }
 
 /// <summary>
+/// Why find_spot ruled spots out, counted: each reason once per spot (the filter's first, or the check's), grouped with
+/// the numbers in it ignored ("2 cell(s) taken" and "3 cell(s) taken" are one reason), the first wording kept as the
+/// example. Most frequent first, then first seen.
+/// </summary>
+internal sealed class SpotReasons
+{
+    private readonly List<string> _keys = new List<string>();
+    private readonly Dictionary<string, (string Example, int Count)> _counts =
+        new Dictionary<string, (string, int)>();
+
+    internal void Add(string reason)
+    {
+        string key = System.Text.RegularExpressions.Regex.Replace(reason, @"-?\d+(\.\d+)?", "#");
+        if (_counts.TryGetValue(key, out (string Example, int Count) found))
+        {
+            _counts[key] = (found.Example, found.Count + 1);
+            return;
+        }
+
+        _keys.Add(key);
+        _counts[key] = (reason, 1);
+    }
+
+    internal List<(string Reason, int Count)> Top(int limit)
+    {
+        List<(string Reason, int Count, int Order)> all = new List<(string, int, int)>();
+        for (int index = 0; index < _keys.Count; index++)
+        {
+            (string example, int count) = _counts[_keys[index]];
+            all.Add((example, count, index));
+        }
+
+        all.Sort(static (a, b) => a.Count != b.Count ? b.Count.CompareTo(a.Count) : a.Order.CompareTo(b.Order));
+        return all.GetRange(0, Math.Min(limit, all.Count)).ConvertAll(static item => (item.Reason, item.Count));
+    }
+}
+
+/// <summary>
 /// find_spot's cheap filter and ranking. The filter runs on geometry only (SpotGeometry), so the costly cursor check and
 /// layout preview run only on spots that could pass; the rank orders passed spots by the layout preview's penalty, then
 /// distance from the point asked, then search order.

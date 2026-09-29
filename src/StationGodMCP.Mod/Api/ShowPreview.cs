@@ -37,6 +37,13 @@ internal static class ShowPreviewApi
             return new ShowPreviewView(0, Previews.Clear(), 0, null, new List<string> { "Cleared." });
         }
 
+        // The arguments first, then the world (structures-28: no_camera answered a bad seconds).
+        double seconds = args.OptionalPositiveDouble("seconds") ?? DefaultSeconds;
+        if (seconds > MaximumSeconds)
+        {
+            throw ApiErrors.InvalidArgument($"seconds is at most {MaximumSeconds}.");
+        }
+
         if (Look.Basis(out _) == null)
         {
             throw ApiErrors.Refused("no_camera", "There is no player camera to draw for (a dedicated server has none).");
@@ -45,12 +52,6 @@ internal static class ShowPreviewApi
         if (!Previews.CanDraw)
         {
             throw ApiErrors.Refused("no_line_shader", "This build of the game has no built-in shader to draw lines with.");
-        }
-
-        double seconds = args.OptionalPositiveDouble("seconds") ?? DefaultSeconds;
-        if (seconds > MaximumSeconds)
-        {
-            throw ApiErrors.InvalidArgument($"seconds is at most {MaximumSeconds}.");
         }
 
         int cleared = (args.OptionalBool("keep") ?? false) ? 0 : Previews.Clear();

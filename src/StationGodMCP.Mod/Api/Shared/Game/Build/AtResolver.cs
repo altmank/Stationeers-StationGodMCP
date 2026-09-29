@@ -186,13 +186,12 @@ internal static class AtResolver
 
     /// <summary>
     /// The face plane under a point: the first even metre at or below it, down to 10 m, with a floor structure on it or
-    /// a frame below it; the first even metre below when none.
+    /// a frame below it; null when there is none (structures-24: the plane below was taken as the floor silently).
     /// </summary>
-    internal static double FloorBelow(Metres point, GridFacts facts)
+    internal static double? FloorBelow(Metres point, GridFacts facts)
     {
-        // A point up to half a small cell under a plane (a footprint's bottom on the floor) rests on that plane.
-        double first = System.Math.Floor((point.Y + MountRect.OnPlaneM) / 2.0) * 2.0;
-        for (int step = 0; step < 5; step++)
+        double first = FirstPlaneBelow(point);
+        for (int step = 0; step < FloorSearchPlanes; step++)
         {
             double plane = first - step * 2.0;
             GridCell below = SmallCellCode.LargeOf(new GridCell((int)System.Math.Round(point.X * 10.0),
@@ -204,8 +203,18 @@ internal static class AtResolver
             }
         }
 
-        return first;
+        return null;
     }
+
+    /// <summary>How far down FloorBelow looks, in metres.</summary>
+    internal const double FloorSearchM = FloorSearchPlanes * 2.0;
+
+    private const int FloorSearchPlanes = 5;
+
+    /// <summary>The first even metre at or below a point: a point up to half a small cell under a plane (a footprint's
+    /// bottom on the floor) rests on that plane.</summary>
+    internal static double FirstPlaneBelow(Metres point) =>
+        System.Math.Floor((point.Y + MountRect.OnPlaneM) / 2.0) * 2.0;
 
     private readonly struct Hit
     {

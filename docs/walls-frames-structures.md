@@ -152,10 +152,11 @@ as pipe.
 
 `find_spot {prefab, near, plane | looking | room_id, require}` tries every 0.5 m spot within `radius_m` of `near`
 (nearest first over every plane, at most 4000; with `room_id` the planes are the room's walls, not its floor or
-ceiling: name one of those with `plane`),
+ceiling: name one of those with `plane` and it is searched too, seen from the room's side unless `side` says otherwise),
 filters them on geometry first (cells free, its mesh clear of every other thing's mesh with `no_visual_overlap`,
 `avoid_doors`, `one_section` by its mesh, `min_bottom_above_floor_m`, `front_clear_m`), then checks the nearest ones (at most `max_checks`) with the game's cursor and the layout preview
-(`no_visual_overlap`, `ports_reachable`), and returns the best with ready `place_arguments`.
+(`no_visual_overlap`, `ports_reachable`), and returns the best with ready `place_arguments`. `reasons` counts why the
+other spots were ruled out, most frequent first, so an empty answer says what stood in the way.
 
 ### Seeing it before building (1.4.3+)
 
@@ -196,8 +197,11 @@ below that floor).
   middle of a side of its footprint (`top`, `bottom`, `left`, `right`, `front`, `back`) instead of its origin.
 - `{"on_face_i_look_at": true, "along_right_m": 0.5, "along_up_m": 1}`: on the wall, floor or ceiling you look at,
   right and up as you see them.
-- `above_floor_m`: its bottom (the bottom of its mesh, what stands on the floor) that high above the floor below `at`;
-  `resolved.at_how` says where the bottom ended up, since the cursor snaps to 0.5 m.
+- `above_floor_m`: its bottom (the bottom of its mesh, what stands on the floor) that high above the floor below `at`
+  (a floor plate, or a frame under the plane, within 10 m; with none the placement is refused). The cursor snaps to
+  0.5 m, so the snap whose bottom lands nearest the height asked is used; `resolved.at_how` says where it ended up.
+- The player frame, `crosshair` and `on_face_i_look_at` need a player camera: a dedicated server answers `no_camera`,
+  so use frame `world` or `target` there.
 - `facing` also takes `toward_player`, `away_from_player`, `out_of_face` (the face you look at) and `into_room`.
 
 ### Placing by intent (1.4.3+)
@@ -265,12 +269,15 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 | `broken` | It is broken: fire, pressure or other damage wrecked it. The game cannot repair a broken structure, only deconstruct it, and that gives nothing back. | `allow_broken` |
 | `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. An in-line tank or passive vent that is the last of its pipe network (with the rest of the request) takes the network's gas with it: the game deletes it. | `allow_contents` |
 | `would_breach` | It blocks air, and removing it joins spaces whose pressures differ by 1 kPa or more, such as a pressurised room and the outside. | `allow_breach` |
+| `would_burst` | An in-line tank or passive vent that is not the last of its pipe network takes its volume away, and the game keeps the network's gas in what is left. The pressure of what is left would be over its weakest pipe, which would burst; the message gives the forecast and how much gas to take out first. | none |
+| `refund_holder_removed` | `from_id` is removed by the same request, or is inside something it removes: the refund would be destroyed with it. | another `from_id`, or `refund_to` |
 | `port_left_open` (warning) | A device end that joins a cable, pipe, chute or device now. | not needed |
 
 The breach check judges the whole request at once, by the game's own air rule: a face stays sealed while anything left
 on it blocks air, or while the structure filling a cell beside it does (a finished frame). So a wall plate on a
 finished frame's face never breaches, and two plates back to back on one face breach only when both are removed in the
-same request; that breach is reported once, on the first of them. `rocket` means part of a rocket: placed in one, a
+same request; that breach is reported once, on the first of them. A wall and the frame behind it removed together
+are one opening too, reported once. With `refund_to: "none"` the dry run lists no refund. `rocket` means part of a rocket: placed in one, a
 rocket-only piece, a fuselage or a launch mount.
 
 Cable, pipe and chute pieces are removed as the remove tools remove them, with their checks; `would_split` is only a

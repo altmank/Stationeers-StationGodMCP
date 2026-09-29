@@ -130,7 +130,8 @@ internal static class CursorAim
 
 /// <summary>
 /// The faces a remove_structure request's would_breach findings have named, so a face breached by several pieces of
-/// one request (two plates back to back) is reported once, by the first piece that opens it.
+/// one request (two plates back to back; a wall and the frame behind it) is reported once, by the first piece that
+/// opens it.
 /// </summary>
 internal sealed class BreachedFaces
 {
@@ -149,6 +150,26 @@ internal sealed class BreachedFaces
         }
 
         return fresh;
+    }
+
+    /// <summary>
+    /// The faces a piece's removal opens that no earlier breach named: only the spaces beside them are this piece's
+    /// breach (structures-27: a wall and the frame behind it both open the wall's face; once the wall reported the
+    /// room against the frame's cell, the frame reported the room again against a cell beside the frame). Name the
+    /// ones a reported breach used with Claim.
+    /// </summary>
+    internal List<GridPoint> Unnamed(IEnumerable<GridPoint> faces)
+    {
+        List<GridPoint> unnamed = new List<GridPoint>();
+        foreach (GridPoint face in faces)
+        {
+            if (!_named.Contains(face) && !unnamed.Contains(face))
+            {
+                unnamed.Add(face);
+            }
+        }
+
+        return unnamed;
     }
 }
 

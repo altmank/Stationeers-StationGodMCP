@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
+using Assets.Scripts.Localization2;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
@@ -184,7 +185,8 @@ internal static class PlacePlanner
         string? refusal = Check(placement.Prefab!, placement.Cursor!, placement.Position!.Value, placement.Rotation);
         return refusal == null
             ? null
-            : refusal + BrokenNote(placement.Prefab!, placement.Position!.Value, placement.Rotation);
+            : refusal + BrokenNote(placement.Prefab!, placement.Position!.Value, placement.Rotation) +
+              FrameNote(placement.Position!.Value, refusal);
     }
 
     private static string? Check(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation)
@@ -237,6 +239,27 @@ internal static class PlacePlanner
                "first with remove_structure allow_broken)";
     }
 
+    /// <summary>
+    /// The game's "requires a Frame below" (SmallGrid.HasFrameBelow: Battery, MountedSmallGrid, LargeElectrical,
+    /// radiators) also refuses a spot inside a frame: the cell the piece stands in must be clear (IsBlockedGrid) and the
+    /// cell under it hold a frame. When a frame fills the spot's own cell, say so and where the piece would stand;
+    /// empty otherwise.
+    /// </summary>
+    internal static string FrameNote(Vector3 position, string refusal)
+    {
+        GridController world = GridController.World;
+        if (world == null || refusal != Text.Plain(GameStrings.PlacementRequiresFrame.DisplayString))
+        {
+            return string.Empty;
+        }
+
+        Objects.Structures.Frame? frame = world.GetCell(position)?.Lookup[StructureElement.Center] as Objects.Structures.Frame;
+        return frame == null || frame.IsBeingDestroyed
+            ? string.Empty
+            : $" (the spot is inside {frame.DisplayName} ({frame.PrefabName} {frame.ReferenceId}); the game wants the " +
+              "cell it stands in free and a frame in the cell under it: set it on top of the frame, 2 m higher)";
+    }
+
     private static void AddBroken(List<Structure> found, params Structure?[] structures)
     {
         foreach (Structure? structure in structures)
@@ -272,6 +295,11 @@ internal static class PlacePlanner
             return;
         }
 
+        if (placement.Args.AboveFloorM.HasValue && !FloorFound(plan, placement))
+        {
+            return;
+        }
+
         if (placement.Args.Orient == null && !Turn(plan, prefab, placement))
         {
             return;
@@ -303,7 +331,8 @@ internal static class PlacePlanner
         if (refusal != null)
         {
             plan.Problem("cannot_place",
-                $"{prefab.PrefabName} at {Describe(position)}: {refusal}{BrokenNote(prefab, position, placement.Rotation)}.",
+                $"{prefab.PrefabName} at {Describe(position)}: {refusal}{BrokenNote(prefab, position, placement.Rotation)}" +
+                $"{FrameNote(position, refusal)}.",
                 index);
         }
 
@@ -345,20 +374,54 @@ internal static class PlacePlanner
         }
     }
 
+    // above_floor_m measures from the floor below at (AtResolver.FloorBelow); with none within reach the placement is
+    // refused rather than measured from an invented one (structures-24).
+    private static bool FloorFound(PlacePlan plan, PlannedPlacement placement)
+    {
+        Metres given = placement.ResolvedAt!.Point;
+        double? floor = AtResolver.FloorBelow(given, plan.Facts);
+        if (floor.HasValue)
+        {
+            placement.FloorY = floor.Value;
+            return true;
+        }
+
+        plan.Problem("cannot_place", string.Format(CultureInfo.InvariantCulture,
+            "above_floor_m: no floor below ({0:0.##}, {1:0.##}, {2:0.##}) within {3:0} m (no floor plate on a plane " +
+            "down to y {4:0}, and no frame under one); give at as a point instead.", given.X, given.Y, given.Z,
+            AtResolver.FloorSearchM,
+            AtResolver.FirstPlaneBelow(given) - AtResolver.FloorSearchM + 2.0), placement.Index);
+        return false;
+    }
+
     // above_floor_m: its bottom (the bottom of the box its meshes fill, what stands on the floor) that high over the
-    // floor below at (AtResolver.FloorBelow). Aimed once at that height, then moved by what the bottom missed it by and
-    // aimed again. The small cells' box is not the measure: a standing device's cells sit a quarter metre below its
-    // mesh, so aiming them at the floor lifts the device off it.
+    // floor below at (FloorFound). Aimed once at that height, then moved by what the bottom missed it by; the cursor
+    // snaps that to 0.5 m, so the snap below and above are tried too and the one whose bottom lands nearest the height
+    // asked is kept (structures-24: 1.3 m gave 1.0 m). The small cells' box is not the measure: a standing device's
+    // cells sit a quarter metre below its mesh, so aiming them at the floor lifts the device off it.
     private static void AboveFloor(PlacePlan plan, PlannedPlacement placement, Structure cursor, double above)
     {
         Metres given = placement.ResolvedAt!.Point;
-        double floor = AtResolver.FloorBelow(given, plan.Facts);
-        double target = floor + above;
-        placement.FloorY = floor;
+        double target = placement.FloorY!.Value + above;
         placement.At = new Metres(given.X, target, given.Z);
         Vector3 first = Aim(placement, cursor, plan.Facts, out _);
-        double bottom = Bodies.RenderBox(placement.Prefab!, first, placement.Rotation).Min.Y;
-        placement.At = new Metres(given.X, target + (target - bottom), given.Z);
+        double aim = target + (target - Bodies.RenderBox(placement.Prefab!, first, placement.Rotation).Min.Y);
+        double best = aim;
+        double bestMiss = double.MaxValue;
+        foreach (double nudge in new[] { 0.0, -0.5, 0.5 })
+        {
+            placement.At = new Metres(given.X, aim + nudge, given.Z);
+            Vector3 tried = Aim(placement, cursor, plan.Facts, out string? refusal);
+            double miss = System.Math.Abs(Bodies.RenderBox(placement.Prefab!, tried, placement.Rotation).Min.Y - target);
+            if (refusal == null && miss < bestMiss - 0.001)
+            {
+                best = aim + nudge;
+                bestMiss = miss;
+            }
+        }
+
+        placement.At = new Metres(given.X, best, given.Z);
+        placement.SetDownHow = null;
     }
 
     // above_floor_m in the reply: where its bottom ended up, which the cursor's 0.5 m snap may put off the height asked.

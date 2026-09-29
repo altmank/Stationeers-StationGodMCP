@@ -36,7 +36,9 @@ though it does not stand and undo finds nothing to remove. `standing` counts the
 pieces are placed only while the game runs: in a paused world a paste waits, whatever `expected_duration_s` said.
 
 **Undo:** `{ "undo": true }` runs BlueprintMod's `bpundo`: it cancels a running paste and removes what it placed, or
-removes the last finished paste. Its answer comes back as `message`.
+removes the last finished paste. Its answer comes back as `message`. BlueprintMod keeps one undo stack for the whole
+world (`bppaste`, the D.B.P.U. and every caller of this tool), so undo removes the newest paste of anyone, not
+necessarily the one `status` reports. In a shared world, check what stands before undoing.
 
 ## Good to know
 

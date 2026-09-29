@@ -552,7 +552,7 @@ internal sealed class SpotView
 internal sealed class FindSpotView
 {
     internal FindSpotView(string? prefabName, List<string> planes, List<SpotView> spots, int tried, int filtered,
-        int checkedCount, int rejected)
+        int checkedCount, int rejected, List<SpotReasonView>? reasons = null)
     {
         PrefabName = prefabName;
         Planes = planes;
@@ -561,6 +561,7 @@ internal sealed class FindSpotView
         Filtered = filtered;
         Checked = checkedCount;
         Rejected = rejected;
+        Reasons = reasons ?? new List<SpotReasonView>();
     }
 
     public string? PrefabName { get; }
@@ -580,6 +581,23 @@ internal sealed class FindSpotView
 
     /// <summary>Of those, ruled out (cursor refusal, a problem, visual overlap, a seam, an unreachable port).</summary>
     public int Rejected { get; }
+
+    /// <summary>Why spots were filtered or rejected, most frequent first (structures round 2: 0 spots, no reason).</summary>
+    public List<SpotReasonView> Reasons { get; }
+}
+
+/// <summary>One reason find_spot ruled spots out, as first worded, and how many spots it ruled out.</summary>
+internal sealed class SpotReasonView
+{
+    internal SpotReasonView(string reason, int count)
+    {
+        Reason = reason;
+        Count = count;
+    }
+
+    public string Reason { get; }
+
+    public int Count { get; }
 }
 
 /// <summary>One lint_layout finding.</summary>

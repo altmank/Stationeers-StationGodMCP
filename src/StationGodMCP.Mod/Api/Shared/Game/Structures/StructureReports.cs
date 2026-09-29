@@ -146,7 +146,8 @@ internal static class StructureReports
             }
 
             views.Add(new StructureMaterialView(item.PrefabName, item.DisplayName,
-                new StructureMaterialCounts(total.Cost, total.Refund, total.Charge, total.GiveBack,
+                new StructureMaterialCounts(total.Cost, total.Refund, total.Charge,
+                    plan.Request.Arguments.Refund ? total.GiveBack : 0,
                     stock?.Available ?? 0), stacks));
         }
 

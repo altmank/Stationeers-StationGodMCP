@@ -354,10 +354,27 @@ internal static class BuildArgs
         if (token is JObject item && (item["crosshair"] != null || item["relative_to"] != null ||
                                       item["on_face_i_look_at"] != null))
         {
+            RelativeWordsOf(new Args(item), name);
             return new AtArg.Relative(item);
         }
 
         return new AtArg.Absolute(PositionOf(token, name));
+    }
+
+    // A relative at's words, checked with the other arguments (structures-28: a bad from was a placement's problem
+    // while every other bad argument is a top-level invalid_argument); the rest is read against the world.
+    private static void RelativeWordsOf(Args at, string name)
+    {
+        if (RelativeMath.AnchorOf(at.OptionalString("from")) == null)
+        {
+            throw ApiErrors.InvalidArgument($"{name}.from must be origin, top, bottom, left, right, front or back.");
+        }
+
+        string? frame = at.OptionalString("frame")?.Trim().ToLowerInvariant();
+        if (frame != null && frame != "player" && frame != "world" && frame != "target")
+        {
+            throw ApiErrors.InvalidArgument($"{name}.frame must be player, world or target.");
+        }
     }
 
     // facing given as a word (toward_player, ...); null when it is an axis or absent.
