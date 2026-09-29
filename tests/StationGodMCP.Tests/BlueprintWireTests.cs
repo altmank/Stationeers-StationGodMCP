@@ -30,7 +30,8 @@ public sealed class BlueprintWireTests
         var expected = new
         {
             known = false, active = false, complete = (bool?)null, cancelled = (bool?)null, created = (int?)null,
-            failed = (int?)null, skipped = (int?)null, pasted = (int?)null, fingerprint = (string?)null,
+            failed = (int?)null, skipped = (int?)null, pasted = (int?)null, standing = (int?)null,
+            fingerprint = (string?)null,
             file = (string?)null, entries = (int?)null, other_active = true
         };
         WireCheck.Same(expected, BlueprintPasteStatusView.Unknown(otherActive: true));
@@ -42,11 +43,12 @@ public sealed class BlueprintWireTests
         var expected = new
         {
             known = true, active = false, complete = (bool?)true, cancelled = (bool?)false, created = (int?)52,
-            failed = (int?)0, skipped = (int?)1, pasted = (int?)52, fingerprint = (string?)"53@1.0,2.0,3.0r90",
+            failed = (int?)0, skipped = (int?)1, pasted = (int?)52, standing = (int?)50,
+            fingerprint = (string?)"53@1.0,2.0,3.0r90",
             file = (string?)File, entries = (int?)53, other_active = false
         };
         WireCheck.Same(expected, BlueprintPasteStatusView.Of(new BlueprintFileView(File, 53), false,
-            new BlueprintPasteCountsView(true, false, 52, 0, 1, 52, "53@1.0,2.0,3.0r90"), false));
+            new BlueprintPasteCountsView(true, false, 52, 0, 1, 52, 50, "53@1.0,2.0,3.0r90"), false));
     }
 
     [Fact]
@@ -55,7 +57,8 @@ public sealed class BlueprintWireTests
         var expected = new
         {
             known = true, active = false, complete = (bool?)null, cancelled = (bool?)null, created = (int?)null,
-            failed = (int?)null, skipped = (int?)null, pasted = (int?)null, fingerprint = (string?)null,
+            failed = (int?)null, skipped = (int?)null, pasted = (int?)null, standing = (int?)null,
+            fingerprint = (string?)null,
             file = (string?)File, entries = (int?)1, other_active = false
         };
         WireCheck.Same(expected, BlueprintPasteStatusView.Of(new BlueprintFileView(File, 1), false, null, false));

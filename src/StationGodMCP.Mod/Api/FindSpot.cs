@@ -64,48 +64,48 @@ internal static class FindSpotApi
         int maxChecks = args.OptionalInt("max_checks", 1, MaximumChecks) ?? DefaultChecks;
         GridStep? facing = args.Has("facing") ? Step(args.OptionalString("facing"), "facing") : (GridStep?)null;
 
+        // Every plane's spots within the radius that face into the room (room_id), nearest first across all planes;
+        // at most MaximumCandidates of them are aimed, which bounds the frame's work without starving a plane that
+        // happens to come later in the list.
+        List<(PlaneSpots Plane, double U, double V, double Distance)> tries =
+            new List<(PlaneSpots, double, double, double)>();
+        foreach (PlaneView plane in planes)
+        {
+            PlaneSpots search = new PlaneSpots(plane, TurnFor(prefab, plane, facing));
+            (double qu, double qv) = plane.Project(near);
+            foreach ((double u, double v, double distance) in SpotSearch.Within(qu, qv,
+                         near[plane.Plane.Axis] - plane.Plane.Metres, radius))
+            {
+                if (room == null || plane.RoomOnSide(u, v, room, facts))
+                {
+                    tries.Add((search, u, v, distance));
+                }
+            }
+        }
+
+        tries.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
         List<Candidate> passed = new List<Candidate>();
         HashSet<Vector3> seen = new HashSet<Vector3>();
         int filtered = 0;
-        int aimed = 0;
-        foreach (PlaneView plane in planes)
+        for (int index = 0; index < tries.Count && index < MaximumCandidates; index++)
         {
-            CubeRotation turn = TurnFor(prefab, plane, facing);
-            (double qu, double qv) = plane.Project(near);
-            List<NearBody> bodies = NearBodies.Around(Region(plane, qu, qv, radius), facts, new HashSet<long>(),
+            (PlaneSpots on, double u, double v, _) = tries[index];
+            on.Bodies ??= NearBodies.Around(Region(on.View, near, radius), facts, new HashSet<long>(),
                 NearKinds.AnyPiece, MaximumBodyCells);
-            for (double u = System.Math.Floor((qu - radius) * 2.0) / 2.0; u <= qu + radius; u += 0.5)
+            Candidate? candidate = Candidate.At(prefab, cursor, on.View, on.Turn, u, v, near, facts, require, seen,
+                on.Bodies);
+            if (candidate == null)
             {
-                for (double v = System.Math.Floor((qv - radius) * 2.0) / 2.0; v <= qv + radius; v += 0.5)
-                {
-                    // Every aimed spot counts, duplicates and spots outside the room included, so the cap bounds
-                    // the frame's work.
-                    if (++aimed > MaximumCandidates)
-                    {
-                        break;
-                    }
-
-                    if (room != null && !plane.RoomOnSide(u, v, room, facts))
-                    {
-                        continue;
-                    }
-
-                    Candidate? candidate = Candidate.At(prefab, cursor, plane, turn, u, v, near, facts, require,
-                        seen, bodies);
-                    if (candidate == null)
-                    {
-                        continue;
-                    }
-
-                    if (candidate.Failed.Count > 0)
-                    {
-                        filtered++;
-                        continue;
-                    }
-
-                    passed.Add(candidate);
-                }
+                continue;
             }
+
+            if (candidate.Failed.Count > 0)
+            {
+                filtered++;
+                continue;
+            }
+
+            passed.Add(candidate);
         }
 
         passed.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
@@ -145,10 +145,27 @@ internal static class FindSpotApi
     }
 
     // The search window on the plane, a metre deep either side: where the things a spot could clash with stand.
-    private static Box3 Region(PlaneView plane, double u, double v, double radius)
+    private static Box3 Region(PlaneView plane, Vec3 near, double radius)
     {
+        (double u, double v) = plane.Project(near);
         Vec3 depth = Vec3.Of(plane.Side);
         return new Box3(plane.PointAt(u - radius, v - radius) - depth, plane.PointAt(u + radius, v + radius) + depth);
+    }
+
+    // One plane of the search: the turn its spots are tried in, and the bodies near it once a spot there is aimed.
+    private sealed class PlaneSpots
+    {
+        internal PlaneSpots(PlaneView view, CubeRotation turn)
+        {
+            View = view;
+            Turn = turn;
+        }
+
+        internal PlaneView View { get; }
+
+        internal CubeRotation Turn { get; }
+
+        internal List<NearBody>? Bodies { get; set; }
     }
 
     private static Vec3 Near(Args args)

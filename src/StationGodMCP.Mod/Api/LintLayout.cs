@@ -6,6 +6,7 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
@@ -125,17 +126,22 @@ internal static class LintLayoutApi
             return cells;
         }
 
-        GridCell min = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("min")!, "min"));
-        GridCell max = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("max") ??
-                                                          throw ApiErrors.InvalidArgument("Pass max too."), "max"));
-        long count = SmallCellCode.CountIn(min, max);
+        Vec3 min = PointOf(args.Optional("min")!, "min");
+        Vec3 max = PointOf(args.Optional("max") ?? throw ApiErrors.InvalidArgument("Pass max too."), "max");
+        long count = LargeCells.CountInBox(min, max);
         if (count > MaximumCells)
         {
             throw ApiErrors.InvalidArgument($"The box holds {count} 2 m cells; at most {MaximumCells}.");
         }
 
-        described = $"box {PieceShapes.CentreOf(min)} to {PieceShapes.CentreOf(max)}";
-        return SmallCellCode.LargeCellsIn(min, max);
+        described = $"box {min} to {max}";
+        return LargeCells.InBox(min, max);
+    }
+
+    private static Vec3 PointOf(JToken token, string name)
+    {
+        Metres point = BuildArgs.PositionOf(token, name);
+        return new Vec3(point.X, point.Y, point.Z);
     }
 
     // floating_run and run_in_door_keepout, one finding per piece.

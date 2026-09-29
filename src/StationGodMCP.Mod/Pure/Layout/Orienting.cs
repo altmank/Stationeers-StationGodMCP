@@ -188,6 +188,12 @@ internal sealed class OrientPort
     /// <summary>The way a run leaves the port (the opposite of the end it needs toward the device).</summary>
     internal GridStep Outward { get; }
 
+    /// <summary>
+    /// Where a run leaving the port starts: the device's own small cell behind the joining cell. Targets are aimed at
+    /// from here, so a target standing in the joining cell lies straight ahead.
+    /// </summary>
+    internal Vec3 Origin => Cell - Vec3.Of(Outward) * 0.5;
+
     internal OrientPort Reversed() =>
         new OrientPort(Index, Type, Role, Flow == "in" ? "out" : Flow == "out" ? "in" : null, Cell, Outward);
 }
@@ -310,7 +316,7 @@ internal static class OrientSearch
                 continue;
             }
 
-            score += Miss(wanted.Toward, port.Cell, port.Outward, $"port {port.Index}", reasons, roomAhead);
+            score += Miss(wanted.Toward, port.Origin, port.Outward, $"port {port.Index}", reasons, roomAhead);
         }
 
         foreach (OrientPort port in ports)
@@ -318,7 +324,7 @@ internal static class OrientSearch
             OrientTarget? target = port.Flow == "in" ? intent.FlowFrom : port.Flow == "out" ? intent.FlowTo : null;
             if (target != null)
             {
-                score += Miss(target, port.Cell, port.Outward, $"port {port.Index} ({port.Flow})", reasons,
+                score += Miss(target, port.Origin, port.Outward, $"port {port.Index} ({port.Flow})", reasons,
                     roomAhead);
             }
         }

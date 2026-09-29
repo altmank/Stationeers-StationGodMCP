@@ -318,6 +318,11 @@ internal static class BuildArgs
             throw ApiErrors.InvalidArgument($"{prefix}orient chooses the turn: leave out rotation, facing, face and up.");
         }
 
+        if (orient != null)
+        {
+            MountWordOf(orient, prefix);
+        }
+
         NamedFacing? named = NamedFacingOf(item, prefix);
         double? above = item.OptionalDouble("above_floor_m");
         if (above.HasValue && (above.Value < 0 || above.Value > 20))
@@ -329,6 +334,18 @@ internal static class BuildArgs
             named != null ? RotationSpec.Default : RotationOf(item, prefix),
             StateOf(item.Optional("build_state"), prefix + "build_state"), Text(item, "label", prefix),
             ColorOf(item.Optional("color"), prefix + "color"), orient, named, above);
+    }
+
+    // orient.mount's shape, checked with the other arguments (the rest of orient is read against the world).
+    private static void MountWordOf(JObject orient, string prefix)
+    {
+        JToken? mount = orient["mount"];
+        string? word = mount?.Type == JTokenType.String ? mount.Value<string>()!.Trim().ToLowerInvariant() : null;
+        if (mount != null && (word == null ||
+                              !(word == "wall" || word == "floor" || word == "ceiling" || GridStep.TryParse(word, out _))))
+        {
+            throw ApiErrors.InvalidArgument($"{prefix}orient.mount must be wall, floor, ceiling or an axis (+x .. -z).");
+        }
     }
 
     /// <summary>at: a point ([x, y, z] or {x, y, z}), or an object the world resolves (AtArg.Relative).</summary>
@@ -361,22 +378,33 @@ internal static class BuildArgs
         return new NamedFacing(word, up);
     }
 
+    /// <summary>The farthest a position may lie from the world's origin on any axis, in metres.</summary>
+    internal const double MaximumCoordinateM = 100000.0;
+
     internal static Metres PositionOf(JToken token, string name)
     {
         if (token is JArray array && array.Count == 3 && Number(array[0], out double x) &&
             Number(array[1], out double y) && Number(array[2], out double z))
         {
-            return new Metres(x, y, z);
+            return InWorld(new Metres(x, y, z), name);
         }
 
         if (token is JObject item && item["x"] != null && Number(item["x"]!, out double ox) && item["y"] != null &&
             Number(item["y"]!, out double oy) && item["z"] != null && Number(item["z"]!, out double oz))
         {
-            return new Metres(ox, oy, oz);
+            return InWorld(new Metres(ox, oy, oz), name);
         }
 
         throw ApiErrors.InvalidArgument($"{name} must be a position: [x, y, z] or {{x, y, z}} in metres.");
     }
+
+    // A coordinate past MaximumCoordinateM is no place in a world; the game's floats lose the 0.5 m grid long before.
+    private static Metres InWorld(Metres point, string name) =>
+        System.Math.Abs(point.X) <= MaximumCoordinateM && System.Math.Abs(point.Y) <= MaximumCoordinateM &&
+        System.Math.Abs(point.Z) <= MaximumCoordinateM
+            ? point
+            : throw ApiErrors.InvalidArgument(
+                $"{name} lies more than {MaximumCoordinateM:0} m from the world's origin on an axis: {point}.");
 
     internal static RotationSpec RotationOf(Args item, string prefix)
     {

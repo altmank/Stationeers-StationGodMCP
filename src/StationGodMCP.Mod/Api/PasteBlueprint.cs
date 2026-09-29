@@ -6,6 +6,7 @@ using System.IO;
 using System.Reflection;
 using Assets.Scripts;
 using Assets.Scripts.Networking;
+using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using UnityEngine;
@@ -110,7 +111,20 @@ internal static class PasteBlueprintApi
             GameMembers.PasteFailed.GetValue(operation) is int failed ? failed : 0,
             GameMembers.PasteSkipped.GetValue(operation) is int skipped ? skipped : 0,
             GameMembers.PasteThings.GetValue(operation) is ICollection things ? things.Count : 0,
+            Standing(GameMembers.PasteThings.GetValue(operation) as ICollection),
             GameMembers.PasteFingerprint.GetValue(operation) as string);
+
+    // The pasted things that still exist and are not on their way out.
+    private static int Standing(ICollection? things)
+    {
+        int standing = 0;
+        foreach (object? item in things ?? Array.Empty<object>())
+        {
+            standing += item is Thing thing && thing != null && !thing.IsBeingDestroyed ? 1 : 0;
+        }
+
+        return standing;
+    }
 
     private static object? ActivePaste() => Call(GameMembers.BlueprintActivePaste, Array.Empty<object?>());
 

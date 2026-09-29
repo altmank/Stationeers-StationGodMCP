@@ -10,6 +10,7 @@ using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Pipes;
 using Assets.Scripts.Util;
 using StationGodMCP.Api.Shared.Game.Runs;
+using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
@@ -47,6 +48,12 @@ internal sealed class PlannedPlacement
 
     /// <summary>above_floor_m's adjustment, for the reply; null without it.</summary>
     internal string? AboveFloorHow { get; set; }
+
+    /// <summary>The floor above_floor_m measured from; null without it.</summary>
+    internal double? FloorY { get; set; }
+
+    /// <summary>How the point was set down on the surface behind it (the point as given was refused); null otherwise.</summary>
+    internal string? SetDownHow { get; set; }
 
     /// <summary>A named facing as resolved: the axis and how it was read.</summary>
     internal string? ResolvedFacing { get; set; }
@@ -112,8 +119,13 @@ internal sealed class PlacePlan
     internal void Problem(string code, string message, int? index = null) =>
         Problems.Add(new BuildIssueView(code, message, index));
 
-    internal void Warn(string code, string message, int? index = null) =>
-        Warnings.Add(new BuildIssueView(code, message, index));
+    internal void Warn(string code, string message, int? index = null)
+    {
+        if (!Warnings.Exists(warning => warning.Code == code && warning.Message == message && warning.Index == index))
+        {
+            Warnings.Add(new BuildIssueView(code, message, index));
+        }
+    }
 }
 
 /// <summary>
@@ -161,6 +173,7 @@ internal static class PlacePlanner
         }
 
         Overlaps(plan);
+        Clashes(plan);
         CountMaterials(plan);
         return plan;
     }
@@ -283,8 +296,9 @@ internal static class PlacePlanner
             AboveFloor(plan, placement, cursor, placement.Args.AboveFloorM.Value);
         }
 
-        Vector3 position = Aim(placement, cursor, out string? refusal);
+        Vector3 position = Aim(placement, cursor, plan.Facts, out string? refusal);
         placement.Position = position;
+        AboveFloorResult(placement, position);
         placement.Ports = PortPreview(prefab, position, placement.Rotation);
         if (refusal != null)
         {
@@ -331,24 +345,38 @@ internal static class PlacePlanner
         }
     }
 
-    // above_floor_m: the footprint's bottom that high over the floor below at (AtResolver.FloorBelow). Aimed once at
-    // that height, then moved by what the footprint's bottom missed it by and aimed again.
+    // above_floor_m: its bottom (the bottom of the box its meshes fill, what stands on the floor) that high over the
+    // floor below at (AtResolver.FloorBelow). Aimed once at that height, then moved by what the bottom missed it by and
+    // aimed again. The small cells' box is not the measure: a standing device's cells sit a quarter metre below its
+    // mesh, so aiming them at the floor lifts the device off it.
     private static void AboveFloor(PlacePlan plan, PlannedPlacement placement, Structure cursor, double above)
     {
         Metres given = placement.ResolvedAt!.Point;
         double floor = AtResolver.FloorBelow(given, plan.Facts);
         double target = floor + above;
+        placement.FloorY = floor;
         placement.At = new Metres(given.X, target, given.Z);
-        Vector3 first = Aim(placement, cursor, out _);
-        List<GridCell> cells = Bodies.SmallCells(placement.Prefab!, first, placement.Rotation);
-        if (cells.Count > 0)
+        Vector3 first = Aim(placement, cursor, plan.Facts, out _);
+        double bottom = Bodies.RenderBox(placement.Prefab!, first, placement.Rotation).Min.Y;
+        placement.At = new Metres(given.X, target + (target - bottom), given.Z);
+    }
+
+    // above_floor_m in the reply: where its bottom ended up, which the cursor's 0.5 m snap may put off the height asked.
+    private static void AboveFloorResult(PlannedPlacement placement, Vector3 position)
+    {
+        if (!placement.FloorY.HasValue || !placement.Args.AboveFloorM.HasValue)
         {
-            double bottom = Box3.OfSmallCells(cells).Min.Y;
-            placement.At = new Metres(given.X, target + (target - bottom), given.Z);
+            return;
         }
 
-        placement.AboveFloorHow = string.Format(System.Globalization.CultureInfo.InvariantCulture,
-            "; its bottom {0:0.##} m above the floor at y {1:0.##}", above, floor);
+        double floor = placement.FloorY.Value;
+        double above = Bodies.RenderBox(placement.Prefab!, position, placement.Rotation).Min.Y - floor;
+        double asked = placement.Args.AboveFloorM.Value;
+        placement.AboveFloorHow = string.Format(CultureInfo.InvariantCulture,
+            "; its bottom {0:0.##} m above the floor at y {1:0.##}", above, floor) +
+            (System.Math.Abs(above - asked) > 0.01
+                ? string.Format(CultureInfo.InvariantCulture, " ({0:0.##} m asked; the cursor snaps to 0.5 m)", asked)
+                : string.Empty);
     }
 
     // orient: every turn the cursor can give the prefab, aimed and checked as a plain placement would be, scored
@@ -382,7 +410,7 @@ internal static class PlacePlanner
                 AboveFloor(plan, placement, cursor, placement.Args.AboveFloorM.Value);
             }
 
-            Vector3 position = Aim(placement, cursor, out string? refusal);
+            Vector3 position = Aim(placement, cursor, plan.Facts, out string? refusal);
             LayoutPreview layout = PlacementLayout.Of(prefab, position, placement.Rotation, turn, plan.Facts,
                 plan.Arguments.AllowDoorKeepOut, new HashSet<long>());
             OrientCandidate candidate = new OrientCandidate(turn, PlacementLayout.MountOutward(prefab, turn).Opposite,
@@ -444,11 +472,14 @@ internal static class PlacePlanner
     // its ray lands on, which is a surface: a small-grid device aimed at a floor stands on the floor plane, a mounted one
     // on the face it mounts to. So when the point as given cannot be built, a small-grid device is tried again set down
     // on the surface behind it (CursorAim): along its down for a grid-placed device, along its back for a mounted one.
-    // A point as given that can be built is kept.
-    private static Vector3 Aim(PlannedPlacement placement, Structure cursor, out string? refusal)
+    // Only onto a surface that is there (a plate on that face, or a frame behind it): a ray through open air lands on
+    // nothing, and an occupied spot is not moved into the air below it. A point as given that can be built is kept; a
+    // set-down is named in SetDownHow.
+    private static Vector3 Aim(PlannedPlacement placement, Structure cursor, GridFacts facts, out string? refusal)
     {
         Structure prefab = placement.Prefab!;
         Metres at = placement.At!.Value;
+        placement.SetDownHow = null;
         Vector3 given = CursorCheck.Snap(cursor, new Vector3((float)at.X, (float)at.Y, (float)at.Z),
             placement.Rotation);
         refusal = Check(prefab, cursor, given, placement.Rotation);
@@ -465,15 +496,33 @@ internal static class PlacePlanner
             return given;
         }
 
+        if (!SurfaceThere(new Vec3(x, y, z), away.Value, facts))
+        {
+            refusal = $"{refusal}; nothing to set it down on behind it (no plate on the face at " +
+                      $"{Describe(new Vector3((float)x, (float)y, (float)z))} and no frame behind that face)";
+            return given;
+        }
+
         string? surfaceRefusal = Check(prefab, cursor, surface, placement.Rotation);
         if (surfaceRefusal == null)
         {
+            placement.SetDownHow = $"; set down on the surface behind it at {Describe(surface)} (as given at " +
+                                   $"{Describe(given)}: {refusal})";
             refusal = null;
             return surface;
         }
 
         refusal = $"{refusal}; set down on the surface at {Describe(surface)}: {surfaceRefusal}";
         return given;
+    }
+
+    // A surface on the face plane a point lies on, facing away: a structure on that face (a floor or wall plate) or a
+    // frame filling the 2 m cell behind it.
+    private static bool SurfaceThere(Vec3 onPlane, GridStep away, GridFacts facts)
+    {
+        GridCell behind = LargeCells.Containing(onPlane - Vec3.Of(away) * 1.0);
+        GridCell face = away.From(behind, SmallCellCode.Large / 2 / GridStep.CellSize);
+        return facts.FrameAt(behind) != null || facts.FaceStructuresAt(face).Exists(structure => !Openings.IsDoor(structure));
     }
 
     // Which way a small-grid device the cursor sets down on a surface points away from it: its up when grid-placed,
@@ -529,7 +578,9 @@ internal static class PlacePlanner
             return true;
         }
 
-        string message = $"{prefab.PrefabName} turns only about {axes} ({turn}) as the cursor turns it";
+        string message = axes == RotationAxis.None
+            ? $"{prefab.PrefabName}'s cursor does not turn it (it has no rotation axes), so it cannot stand as {turn}"
+            : $"{prefab.PrefabName}'s cursor turns it only about {axes}, which never gives {turn}";
         if (prefab is ISmartRotatable)
         {
             plan.Warn("unusual_rotation", message + "; kept, since the cursor's autoplace may turn it so.", index);
@@ -667,6 +718,60 @@ internal static class PlacePlanner
                 seen[key] = placement.Index;
             }
         }
+    }
+
+    // Placements of the run that the game would refuse once an earlier one stands (PlanClashes): a shared slot of a
+    // small cell, or a 2 m cell a frame fills and another piece registers in. Placements already refused are left out.
+    private static void Clashes(PlacePlan plan)
+    {
+        List<PlannedFootprint> footprints = new List<PlannedFootprint>();
+        foreach (PlannedPlacement placement in plan.Placements)
+        {
+            if (placement.Resolved && !plan.Problems.Exists(problem => problem.Index == placement.Index))
+            {
+                footprints.Add(FootprintOf(placement));
+            }
+        }
+
+        foreach (PlanClash clash in PlanClashes.Find(footprints))
+        {
+            plan.Problem("overlaps_placement", $"The game would refuse it once earlier pieces of this run stand: " +
+                                               $"{clash.Message}.", clash.Index);
+        }
+    }
+
+    private static PlannedFootprint FootprintOf(PlannedPlacement placement)
+    {
+        Structure prefab = placement.Prefab!;
+        Vector3 position = placement.Position!.Value;
+        Quaternion rotation = placement.Rotation;
+        if (prefab is SmallGrid piece)
+        {
+            return PlannedFootprint.Small(placement.Index, prefab.PrefabName,
+                Bodies.SmallCells(prefab, position, rotation), CursorCheck.SlotName(piece));
+        }
+
+        List<GridCell> cells = prefab.PlacementType == PlacementSnap.Grid
+            ? Bodies.LargeCells(prefab, position, rotation)
+            : new List<GridCell>();
+        if (prefab.PlacementType != PlacementSnap.Grid)
+        {
+            foreach (StructureSlot slot in StructureSlots.Predicted(prefab, position, rotation) ??
+                                           new List<StructureSlot>())
+            {
+                cells.Add(new GridCell(slot.Cell.X, slot.Cell.Y, slot.Cell.Z));
+            }
+        }
+
+        if (prefab is Wall)
+        {
+            // Wall.IsSideBlocked: a wall is refused when a frame fills the cell it faces into.
+            Vector3 front = position + rotation * Vector3.forward;
+            cells.Add(LargeCells.Containing(new Vec3(front.x, front.y, front.z)));
+        }
+
+        return PlannedFootprint.Large(placement.Index, prefab.PrefabName, cells,
+            prefab.StructureCollisionType == CollisionType.BlockGrid);
     }
 
     // The slot a placement takes, as the game's slots tell pieces apart: a face-placed piece takes one side of its

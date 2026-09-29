@@ -142,15 +142,14 @@ internal static class Orienter
         return ports;
     }
 
-    /// <summary>Whether the 2 m cell a metre out from a point along a direction is in a room.</summary>
+    /// <summary>
+    /// Whether the 2 m cell a little more than a metre out from a point along a direction is in a room: from a cell's
+    /// centre the next cell, from a point on a face plane the cell across it. The point ahead is read without rounding
+    /// (LargeCells.Containing): rounded to a decimetre, a step back from a cell centre lands on the face plane, which
+    /// belongs to the cell the point started in.
+    /// </summary>
     internal static System.Func<Vec3, GridStep, bool> RoomAhead(GridFacts facts) =>
-        (from, direction) =>
-        {
-            Vec3 ahead = from + Vec3.Of(direction) * 1.01;
-            GridCell cell = SmallCellCode.LargeOf(new GridCell((int)System.Math.Round(ahead.X * 10.0),
-                (int)System.Math.Round(ahead.Y * 10.0), (int)System.Math.Round(ahead.Z * 10.0)));
-            return facts.RoomAt(cell) != null;
-        };
+        (from, direction) => facts.RoomAt(LargeCells.Containing(from + Vec3.Of(direction) * 1.01)) != null;
 
     internal static OrientChoiceView ViewOf(OrientScore score) =>
         new OrientChoiceView(OrientationView.Of(score.Candidate.Turn),

@@ -82,16 +82,22 @@ internal sealed class AirSample
         return new AirSample(true, moles, energy);
     }
 
+    /// <summary>
+    /// The same air within the gas audit's tolerance (GasTolerance.Default): the atmospherics thread sums a room's cells
+    /// in doubles, and a sum read twice can differ in its last digits with nothing changed.
+    /// </summary>
     internal bool SameAs(AirSample other)
     {
-        if (Exists != other.Exists || EnergyJ != other.EnergyJ || Moles.Length != other.Moles.Length)
+        GasTolerance tolerance = GasTolerance.Default;
+        if (Exists != other.Exists || !tolerance.SameEnergy(EnergyJ, other.EnergyJ) ||
+            Moles.Length != other.Moles.Length)
         {
             return false;
         }
 
         for (int index = 0; index < Moles.Length; index++)
         {
-            if (Moles[index] != other.Moles[index])
+            if (!tolerance.SameMol(Moles[index], other.Moles[index]))
             {
                 return false;
             }
@@ -221,7 +227,7 @@ internal sealed class StructureAirRecord
         return null;
     }
 
-    /// <summary>Nothing ran while the tick was held: every recorded air must be exactly as it was.</summary>
+    /// <summary>Nothing ran while the tick was held: every recorded air must be as it was (AirSample.SameAs).</summary>
     internal void CheckHeld(List<UpgradeProblemView> problems)
     {
         AtmosphericsController air = AtmosphericsController.World;

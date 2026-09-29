@@ -40,10 +40,12 @@ internal static class StructureSlots
     }
 
     /// <summary>The slots the prefab would take where the old piece stands; null when unreadable.</summary>
-    internal static List<StructureSlot>? Predicted(Structure prefab, Structure old)
+    internal static List<StructureSlot>? Predicted(Structure prefab, Structure old) =>
+        Predicted(prefab, old.ThingTransformPosition, old.ThingTransformRotation);
+
+    /// <summary>The slots the prefab would take at a position and turn; null when unreadable.</summary>
+    internal static List<StructureSlot>? Predicted(Structure prefab, Vector3 position, Quaternion rotation)
     {
-        Vector3 position = old.ThingTransformPosition;
-        Quaternion rotation = old.ThingTransformRotation;
         List<StructureSlot> slots = new List<StructureSlot>();
         if (prefab.PlacementType == PlacementSnap.Grid)
         {

@@ -37,14 +37,15 @@ internal static class BlueprintFiles
     private const int DurationDecimals = 2;
 
     /// <summary>
-    /// An absolute path as given; otherwise a file in the Blueprints folder, with .blueprint added when the name does
-    /// not end in it. Null for a relative name when there is no folder.
+    /// An absolute path as given, with .blueprint added when it names no extension; otherwise a file in the Blueprints
+    /// folder, with .blueprint added when the name does not end in it. Null for a relative name when there is no
+    /// folder.
     /// </summary>
     internal static string? Resolve(string name, string? directory)
     {
         if (Path.IsPathRooted(name))
         {
-            return name;
+            return Path.HasExtension(name) ? name : name + Extension;
         }
 
         if (string.IsNullOrEmpty(directory))

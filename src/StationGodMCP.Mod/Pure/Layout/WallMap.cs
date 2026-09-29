@@ -207,6 +207,12 @@ internal static class PlaneCells
         return Box3.Around(new[] { centre - half, centre + half, centre - half + front, centre + half + front });
     }
 
+    /// <summary>
+    /// The centre (decimetres) of the 2 m section holding the small cell at a coordinate (metres) along the plane: a
+    /// small cell on a seam belongs to the section on its plus side, the grid's rule (SmallCellCode.LargeOf).
+    /// </summary>
+    internal static int FaceCentre(double metres) => (int)(Math.Floor(metres / 2.0 + 1e-6) * 20 + 10);
+
     /// <summary>Whether a mesh box covers a map character's cells by more than the clash tolerance (VisualClash).</summary>
     internal static bool Covers(Box3 render, Box3 cell) => VisualClash.Clashes(render, cell);
 }

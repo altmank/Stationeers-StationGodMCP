@@ -118,6 +118,31 @@ internal static class SpotSearch
         return failed;
     }
 
+    /// <summary>
+    /// The 0.5 m spots of a plane within radius of a point, nearest first: (u, v) on the plane around the point's
+    /// projection (qu, qv), depth the point's distance from the plane, and each spot's distance from the point. A
+    /// plane farther than the radius has none.
+    /// </summary>
+    internal static List<(double U, double V, double Distance)> Within(double qu, double qv, double depth,
+        double radius)
+    {
+        List<(double U, double V, double Distance)> spots = new List<(double, double, double)>();
+        for (double u = System.Math.Floor((qu - radius) * 2.0) / 2.0; u <= qu + radius; u += 0.5)
+        {
+            for (double v = System.Math.Floor((qv - radius) * 2.0) / 2.0; v <= qv + radius; v += 0.5)
+            {
+                double distance = System.Math.Sqrt((u - qu) * (u - qu) + (v - qv) * (v - qv) + depth * depth);
+                if (distance <= radius + 1e-9)
+                {
+                    spots.Add((u, v, distance));
+                }
+            }
+        }
+
+        spots.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
+        return spots;
+    }
+
     /// <summary>Indices of the scored spots, best first: penalty, then distance, then search order.</summary>
     internal static List<int> Rank(IReadOnlyList<(int Penalty, double Distance)> spots)
     {

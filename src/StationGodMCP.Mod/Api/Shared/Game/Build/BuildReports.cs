@@ -95,7 +95,8 @@ internal static class BuildReports
             placement.Ports, placement.Layout?.View, placement.Orient,
             placement.ResolvedAt != null && placement.At.HasValue
                 ? new ResolvedPlacementView(new PointView(placement.At.Value.X, placement.At.Value.Y,
-                        placement.At.Value.Z), placement.ResolvedAt.How + (placement.AboveFloorHow ?? string.Empty),
+                        placement.At.Value.Z), placement.ResolvedAt.How + (placement.SetDownHow ?? string.Empty) +
+                    (placement.AboveFloorHow ?? string.Empty),
                     placement.ResolvedFacing, placement.ResolvedFacingHow)
                 : null);
     }

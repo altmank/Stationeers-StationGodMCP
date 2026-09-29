@@ -227,6 +227,9 @@ internal sealed class RemovalFacts
 
     internal GasFate GasFate { get; set; }
 
+    /// <summary>Where the gas is when it is not inside the piece itself (the pipe network it is the last of); else empty.</summary>
+    internal string GasWhere { get; set; } = string.Empty;
+
     /// <summary>The largest pressure difference, in kPa, among the spaces removing it would join; null if none.</summary>
     internal double? BreachKpa { get; set; }
 
@@ -287,7 +290,8 @@ internal static class RemovalRule
 
         Refuse(findings, facts.GameRefusal != null && !(facts.Broken && allow.Broken), "game_refuses",
             $"the game refuses to deconstruct it: {facts.GameRefusal}");
-        Refuse(findings, facts.Mounted != null, "has_mounted", $"{facts.Mounted} is mounted on it; remove that first");
+        Refuse(findings, facts.Mounted != null, "has_mounted",
+            $"{facts.Mounted} is mounted on it or stands on it, with nothing else to rest on; remove that first");
         if (facts.Items.Count > 0)
         {
             findings.Add(Allowable(allow.Contents, "holds_items", "items_dropped",
@@ -301,7 +305,8 @@ internal static class RemovalRule
                 ? "the game lets it out into the cell where it stood"
                 : "the game deletes it with the device";
             findings.Add(Allowable(allow.Contents, "holds_gas", "gas_" + (facts.GasFate == GasFate.Released ?
-                    "released" : "lost"), $"it holds {facts.GasMoles:0.###} mol of gas or liquid", "allow_contents",
+                    "released" : "lost"), $"it holds {facts.GasMoles:0.###} mol of gas or liquid{facts.GasWhere}",
+                "allow_contents",
                 fate));
         }
 

@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Pure;
 
@@ -42,7 +43,10 @@ internal sealed class NearBody
 /// <summary>Which slots of a small cell NearBodies reads.</summary>
 internal enum NearKinds
 {
-    /// <summary>Devices and mounted things (a cell's Device and Other).</summary>
+    /// <summary>
+    /// Devices and mounted things (a cell's Device and Other), and a pipe-network member that is no pipe piece (a
+    /// passive vent, an in-line tank in the cell's Pipe slot).
+    /// </summary>
     Mounted,
 
     /// <summary>Those, and cables, pipes and chutes.</summary>
@@ -88,6 +92,11 @@ internal static class NearBodies
                         Add(found, cell.Pipe, ignore);
                         Add(found, cell.Cable, ignore);
                         Add(found, cell.Chute, ignore);
+                    }
+                    else if (!(cell.Pipe is Piping))
+                    {
+                        // A pipe-network member that is not a pipe piece (a passive vent, an in-line tank) is a body.
+                        Add(found, cell.Pipe, ignore);
                     }
                 }
             }

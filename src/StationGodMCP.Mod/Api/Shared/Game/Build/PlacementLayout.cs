@@ -199,7 +199,9 @@ internal static class PlacementLayout
                 (allow ? "; allowed (allow_door_keepout)." : "; move it, or pass allow_door_keepout."), door));
         }
 
-        if (window.HasValue)
+        // Once per window: the wall sections a mounted piece rests on may have named it already.
+        if (window.HasValue && !conflicts.Exists(conflict =>
+                conflict.Code == ConflictCodes.CrossesWindow && conflict.OtherId == window))
         {
             conflicts.Add(new LayoutConflict(ConflictCodes.CrossesWindow, ConflictLevel.Warning,
                 $"It stands on the face of window {window}.", window));

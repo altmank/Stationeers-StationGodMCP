@@ -17,7 +17,8 @@ BlueprintMod is optional: the mod finds it by name at run time. Without it the t
 { "name": "airlock-3x3", "anchor": [701, 200, 655], "rotation": 90 }
 ```
 
-- `name`: a file in BlueprintMod's Blueprints folder, with or without `.blueprint`, or an absolute path.
+- `name`: a file in BlueprintMod's Blueprints folder, or an absolute path; either with or without `.blueprint` (an
+  absolute path with another extension is taken as given).
 - `anchor` `[x, y, z]`: the world position in metres where the blueprint's reference point lands. That is the grid
   point BlueprintMod snapped the copying player to: x and z odd whole metres, y even. A paste lines up with the grid
   when the anchor is such a point.
@@ -28,8 +29,11 @@ The reply comes at once: `started`, `file`, `entries`, `anchor`, `rotation`, `co
 `expected_duration_s`. BlueprintMod then places the pieces over 2 to 30 seconds (0.15 s per entry).
 
 **Progress:** `{ "status": true }` reports the last paste this tool started: `active`, `complete`, `cancelled`,
-`created`, `failed`, `skipped`, `pasted`, and `other_active` when a paste this tool did not start is running. The counts
-stay readable after the paste ends.
+`created`, `failed`, `skipped`, `pasted`, `standing`, and `other_active` when a paste this tool did not start is
+running. The counts stay readable after the paste ends. `created` and `pasted` are BlueprintMod's own counts: a piece
+the game then refuses to register (its spot already taken, "Grid face may be open" in the log) still counts there,
+though it does not stand and undo finds nothing to remove. `standing` counts the pasted things that still exist. The
+pieces are placed only while the game runs: in a paused world a paste waits, whatever `expected_duration_s` said.
 
 **Undo:** `{ "undo": true }` runs BlueprintMod's `bpundo`: it cancels a running paste and removes what it placed, or
 removes the last finished paste. Its answer comes back as `message`.

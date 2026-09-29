@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
@@ -41,15 +42,17 @@ internal sealed class PlaneView
         return new GridCell(point[0], point[1], point[2]);
     }
 
-    /// <summary>The face point of the 2 m face holding the half-open cell [u, u + 0.5) x [v, v + 0.5) (right-up half).</summary>
+    /// <summary>
+    /// The face point of the 2 m face holding the small cell at (u, v): the face of the 2 m cell the small cell belongs
+    /// to, whichever way the viewer looks (PlaneCells.FaceCentre: a coordinate on a 2 m seam belongs to the section on
+    /// its plus side, as the grid gives a 2 m cell its first small cell on its minimum plane).
+    /// </summary>
     internal GridCell FaceAt(double u, double v)
     {
-        double along = Right.Dx + Right.Dy + Right.Dz > 0 ? u + 0.01 : u - 0.01;
-        double high = v + 0.01;
         int[] point = new int[3];
         point[Plane.Axis] = Plane.Coordinate;
-        point[Right.Axis] = (int)(System.Math.Floor(along / 2.0) * 20 + 10);
-        point[Up.Axis] = (int)(System.Math.Floor(high / 2.0) * 20 + 10);
+        point[Right.Axis] = PlaneCells.FaceCentre(u);
+        point[Up.Axis] = PlaneCells.FaceCentre(v);
         return new GridCell(point[0], point[1], point[2]);
     }
 
@@ -214,6 +217,12 @@ internal sealed class PlaneView
             if (device == null)
             {
                 device = Live(small.Other);
+            }
+
+            if (device == null && !(small.Pipe is Piping))
+            {
+                // A pipe-network member that is not a pipe piece (a passive vent, an in-line tank) is a thing here.
+                device = Live(small.Pipe);
             }
 
             if (device != null)

@@ -117,6 +117,12 @@ internal readonly struct GasTolerance
     internal bool Same(GasMix a, GasMix b) =>
         Close(a.TotalMol, b.TotalMol, AbsoluteMol) && Close(a.TotalEnergyJ, b.TotalEnergyJ, AbsoluteJ);
 
+    /// <summary>Two amounts of gas, in moles, within the tolerance.</summary>
+    internal bool SameMol(double a, double b) => Close(a, b, AbsoluteMol);
+
+    /// <summary>Two energies, in joules, within the tolerance.</summary>
+    internal bool SameEnergy(double a, double b) => Close(a, b, AbsoluteJ);
+
     internal bool Negligible(GasMix mix) => Close(mix.TotalMol, 0.0, AbsoluteMol) &&
                                            Close(mix.TotalEnergyJ, 0.0, AbsoluteJ);
 

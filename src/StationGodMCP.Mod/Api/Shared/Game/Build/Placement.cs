@@ -241,6 +241,17 @@ internal static class CursorCheck
         return null;
     }
 
+    /// <summary>The slot of a small cell a piece takes, as SlotOf reads it: cable, chute, pipe, device, rail or other.</summary>
+    internal static string SlotName(SmallGrid piece) => piece switch
+    {
+        Cable _ => "cable",
+        Chute _ => "chute",
+        Pipe _ => "pipe",
+        Device device when device.SmallCollisionType != SmallGridBlock.Covers => "device",
+        IRoboticArmRail _ => "rail",
+        _ => "other"
+    };
+
     private static SmallGrid? SlotOf(SmallCell cell, SmallGrid piece) => piece switch
     {
         Cable _ => cell.Cable,

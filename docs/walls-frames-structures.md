@@ -40,8 +40,9 @@ connections and guard against merging networks, which `place_structure` does not
 **What is supported.**
 
 - Walls: any wall or window prefab to any other with the same footprint: iron to composite or reinforced wall, wall to
-  window, window to wall. Only plain walls and windows are touched; shuttered windows, floors, ladder platforms and
-  crew umbilical doors are kept as `special_piece`.
+  window, window to wall. Only plain walls and windows are touched; shuttered windows, floors of their own classes,
+  ladder platforms and crew umbilical doors are kept as `special_piece`. A floor grating is a plain window to the
+  game, so it swaps like one (a grating to a plate seals the face).
 - Frames: iron to steel and back, and any frame to its own prefab, which finishes it. Rocket towers are never touched.
 - Scope: `reference_ids` (up to 4096) or `room_id`: for walls every wall on a face of the room's cells, for frames every
   frame next to the room. `from_prefabs` narrows either.
@@ -50,7 +51,8 @@ connections and guard against merging networks, which `place_structure` does not
 the game hand its place to the new piece. The new piece is built in the same place with the old one's owner and colour
 and raised at once to its final build state. Only when it holds every place the old one held, and blocks what the old
 one blocked, is the old piece removed. If not, the new piece is taken away, the old one gets its place back, and the run
-stops there. The next frame the mod checks every new piece and that the air around them is exactly as it was. After
+stops there. The next frame the mod checks every new piece and that the air around them is as it was (to within
+0.01 mol and 10 J, plus 0.001 % of the total, the rounding of the game's sums). After
 the game has run and re-evaluated its rooms, it checks that every room beside a swapped piece still exists with the same
 id, cells and air (within 1 %). A room that appears because a finished frame closed a space is listed in `new_rooms`.
 
@@ -60,7 +62,7 @@ id, cells and air (within 1 %). A room that appears because a finished frame clo
 | --- | --- |
 | `footprint_mismatch` | The new piece would not take exactly the old one's place. `skip_unmatched: true` leaves such pieces. |
 | `would_open` | The old piece blocks air or gravity and the target does not. Making a leaky piece airtight is allowed (`seals`). |
-| `would_overstress` (walls) | The face's pressure difference is at or above what the new wall bears; the game would damage it until it breaks. Above its stress mark only a `stressed` warning. |
+| `would_overstress` (walls) | The face's pressure difference is at or above what the new wall bears; the game would damage it until it breaks. Above its stress mark the piece is only flagged: `stressed` in its entry and the face's verdict. |
 | `cell_occupied` (frames) | Finishing a frame closes its cell, which would seal in whatever is there: a pipe, cable, device, player, creature or loose item. |
 | `not_enough_materials` | One per missing item. |
 
@@ -94,24 +96,33 @@ Tool wear, welder fuel and battery charge are not charged.
 - **Position:** `at` is any point in the cell, snapped as the placement cursor snaps it. A 2 m device snaps to its
   cell's centre. A 0.5 m-grid device (a battery, a valve, a transformer) that cannot be built at the point as given is
   set down on the surface behind it, as the cursor's ray lands on a surface: the floor plane below a standing device,
-  the face at the back of a mounted one. So a cell's centre works; a point as given that can be built is kept.
+  the face at the back of a mounted one. So a cell's centre works; a point as given that can be built is kept. Only a
+  surface that is there counts (a plate on that face, or a frame behind it): a spot that is taken is not moved into
+  the air below it, but refused. `resolved.at_how` says when a piece was set down, and why the point as given was not
+  buildable.
 - **Turn:** at most one of `rotation` (`[x, y, z]` degrees, multiples of 90), `facing` (`+x`, `-x`, `+y`, `-y`, `+z`,
   `-z`) with an optional `up`, or `face` for pieces placed on a cell face such as walls: `face: "+x"` puts the piece on
   the cell's +x face, looking into the cell. A grid piece may only turn about the axes its cursor turns it
-  (`invalid_rotation`). To re-place a device as it stands, copy the `rotation` that `grid_survey`, `find_things`,
+  (`invalid_rotation`); a piece the cursor turns itself as it autoplaces (cables, pipes and some devices, such as
+  lockers) is kept at any turn with an `unusual_rotation` warning. To re-place a device as it stands, copy the `rotation` that `grid_survey`, `find_things`,
   `looking_at` or `connections` report (`facing` and `up`, or `euler` as `rotation`); reverse `facing` to turn it round.
 - **Build state:** `finished` (default), `first` (as a kit leaves it, costing only the kit), or an index.
 - **Label and colour:** `label` as the Labeller writes it (not on the pipe-size in-line tanks, which the game
   cannot rename); `color` a name or index (`paint` lists them).
 - **Checks:** the game's own placement cursor for that prefab (blocked cells and faces, collisions, each class's own
   rules, support for face-mounted pieces), nothing loose and nobody inside a piece that fills its cell. The check runs
-  again just before each piece is built, so later placements see earlier ones.
+  again just before each piece is built, so later placements see earlier ones. The dry run sees only what stands now,
+  so it also checks the placements of one request against each other (`overlaps_placement`).
 - **Cost:** every build state's items up to the chosen state, from your inventory or `from_id`. `free: true` places
   without materials, in creative worlds only (`not_creative` otherwise).
 - **Refused per placement:** `invalid_prefab` (not loaded, not a structure, no kit builds it, a rocket part),
   `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason, or a cell inside a rocket; a
   broken structure in the way is named, with how to remove it),
-  `not_labelable`, `not_paintable`, `invalid_color`, `overlaps_placement` (two placements of the request in one slot).
+  `not_labelable`, `not_paintable`, `invalid_color`, `overlaps_placement` (two placements of the request in one slot,
+  or one the game would refuse once an earlier one stands: two small-grid pieces taking the same slot of a cell, such
+  as overlapping long pipes, or a frame and another piece in its 2 m cell, such as a wall facing into it, in either
+  order). The ports and port checks of a placement read only what stands now, not the earlier placements of the same
+  request.
 - **Rocket parts** are what the game places only in a rocket (strictly internal pieces), the fuselage and the launch
   mount. Batteries, tanks, pipes, valves, vents and other devices that may also be fitted in a rocket are placed as
   usual.
@@ -135,9 +146,13 @@ a capital or digit for each device (`things` lists them). A device's key covers 
 more than 0.1 m, not only the cells the game registers it in: a 3x3 console registers 1 x 1 m but its frame draws
 about 1.5 x 1.5 m, so it shows as 3 x 3 characters (1.4.4+). `top_left` is the world point of the first character's
 cell, on the plane. `sections` names each 2 m face and what stands on it. `free_rects: {w: 1, h: 1}` lists where a
-rectangle of free wall fits, within one section by default.
+rectangle of free wall fits, within one section by default. A small cell on a 2 m seam belongs to the section on its
+plus side, whichever side the map is seen from. A passive vent or in-line tank shows as a thing with its own key, not
+as pipe.
 
-`find_spot {prefab, near, plane | looking | room_id, require}` tries every 0.5 m spot within `radius_m` of `near`,
+`find_spot {prefab, near, plane | looking | room_id, require}` tries every 0.5 m spot within `radius_m` of `near`
+(nearest first over every plane, at most 4000; with `room_id` the planes are the room's walls, not its floor or
+ceiling: name one of those with `plane`),
 filters them on geometry first (cells free, its mesh clear of every other thing's mesh with `no_visual_overlap`,
 `avoid_doors`, `one_section` by its mesh, `min_bottom_above_floor_m`, `front_clear_m`), then checks the nearest ones (at most `max_checks`) with the game's cursor and the layout preview
 (`no_visual_overlap`, `ports_reachable`), and returns the best with ready `place_arguments`.
@@ -153,7 +168,8 @@ other players see nothing.
 ### Checking a layout (1.4.3+)
 
 `lint_layout {room_id}` (or a box) reads what stands there and lists findings, warnings first, with `counts` per
-rule:
+rule. A box takes the 2 m cells it overlaps; a side on a face plane takes nothing beyond it (a box up to y 222 stops
+below that floor).
 
 | Rule | Level | Finds |
 | --- | --- | --- |
@@ -180,7 +196,8 @@ rule:
   middle of a side of its footprint (`top`, `bottom`, `left`, `right`, `front`, `back`) instead of its origin.
 - `{"on_face_i_look_at": true, "along_right_m": 0.5, "along_up_m": 1}`: on the wall, floor or ceiling you look at,
   right and up as you see them.
-- `above_floor_m`: the footprint's bottom that high above the floor below `at`.
+- `above_floor_m`: its bottom (the bottom of its mesh, what stands on the floor) that high above the floor below `at`;
+  `resolved.at_how` says where the bottom ended up, since the cursor snaps to 0.5 m.
 - `facing` also takes `toward_player`, `away_from_player`, `out_of_face` (the face you look at) and `into_room`.
 
 ### Placing by intent (1.4.3+)
@@ -242,10 +259,11 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 
 | Code | Meaning | Override |
 | --- | --- | --- |
-| `not_a_structure` | An item: use `move_item`. | none |
-| `being_destroyed`, `indestructible`, `rocket`, `game_refuses`, `has_mounted` | The game would not deconstruct it, or a device is mounted on it. | none |
+| `not_a_structure` | An item or another movable thing: use `move_item`. | none |
+| `being_destroyed`, `indestructible`, `rocket`, `game_refuses` | The game would not deconstruct it. | none |
+| `has_mounted` | A device is mounted on it (a light, sensor, console or vent on a wall), or stands on it, and nothing else would hold that face: a plate on the same face, or a frame beside it. The game would leave the device hanging in the air. Remove the device in the same request, or first. | none |
 | `broken` | It is broken: fire, pressure or other damage wrecked it. The game cannot repair a broken structure, only deconstruct it, and that gives nothing back. | `allow_broken` |
-| `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. | `allow_contents` |
+| `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. An in-line tank or passive vent that is the last of its pipe network (with the rest of the request) takes the network's gas with it: the game deletes it. | `allow_contents` |
 | `would_breach` | It blocks air, and removing it joins spaces whose pressures differ by 1 kPa or more, such as a pressurised room and the outside. | `allow_breach` |
 | `port_left_open` (warning) | A device end that joins a cable, pipe, chute or device now. | not needed |
 
@@ -256,7 +274,8 @@ same request; that breach is reported once, on the first of them. `rocket` means
 rocket-only piece, a fuselage or a launch mount.
 
 Cable, pipe and chute pieces are removed as the remove tools remove them, with their checks; `would_split` is only a
-warning here, so read it.
+warning here, so read it. Those checks run with `remove_structure`'s own refund (`refund_to`, `from_id`), so they need
+no player on a dedicated server.
 
 ### Broken structures
 

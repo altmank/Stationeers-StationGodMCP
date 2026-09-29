@@ -6,7 +6,9 @@ using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Networking;
+using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
@@ -124,9 +126,11 @@ internal static class RemovePlanner
         }
 
         BreachedFaces breached = new BreachedFaces();
+        HashSet<long> emptied = new HashSet<long>();
+        GridFacts grid = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
-            Guard(plan, takedown, seen, breached);
+            Guard(plan, takedown, seen, breached, emptied, grid);
         }
 
         foreach (RunKind kind in Kinds)
@@ -152,9 +156,10 @@ internal static class RemovePlanner
         }
 
         string where = thing is DynamicThing { ParentSlot: { } } ? "carried or in a slot" : "loose";
+        string what = thing is Item ? "an item" : thing is DynamicThing ? "a movable thing" : "a thing";
         plan.Problems.Add(new BuildIssueView("not_a_structure",
-            $"{thing.DisplayName} ({thing.PrefabName}) is an item ({where}), not a structure; move_item moves items.",
-            index, id));
+            $"{thing.DisplayName} ({thing.PrefabName}) is {what} ({where}), not a structure; move_item moves items " +
+            "and movable things.", index, id));
         return null;
     }
 
@@ -172,7 +177,7 @@ internal static class RemovePlanner
     }
 
     private static void Guard(RemovePlan plan, PlannedTakedown takedown, HashSet<long> removed,
-        BreachedFaces breached)
+        BreachedFaces breached, HashSet<long> emptied, GridFacts grid)
     {
         Structure piece = takedown.Piece;
         RemovalFacts facts = new RemovalFacts
@@ -182,10 +187,15 @@ internal static class RemovePlanner
             Rocket = RocketParts.Of(piece).PartOfRocket,
             Broken = piece.IsBroken,
             GameRefusal = GameRefusal(piece),
-            Mounted = MountedOn(piece),
+            Mounted = MountedOn(piece) ?? Unsupported(piece, removed, grid),
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
         };
+        if (takedown.Kind == null && piece is Pipe member)
+        {
+            NetworkGas(member, removed, emptied, facts);
+        }
+
         Items(piece, facts.Items);
         List<GridPoint> opened = Breach(piece, facts, removed);
         if (facts.BreachKpa.HasValue && facts.BreachKpa.Value >= RemovalRule.BreachKpa && !breached.Claim(opened))
@@ -234,6 +244,137 @@ internal static class RemovePlanner
         }
 
         return null;
+    }
+
+    // A pipe-network member that is not a pipe piece (an in-line tank, a passive vent) holds its network's gas: the
+    // game's Pipe.OnDestroy divides that gas among the network's other members, and deletes it with the last one. So
+    // when the request removes every member of a network holding gas, the gas goes with them (holds_gas, reported once
+    // per network, on its first member in the request).
+    private static void NetworkGas(Pipe member, HashSet<long> removed, HashSet<long> emptied, RemovalFacts facts)
+    {
+        PipeNetwork? network = member.PipeNetwork;
+        if (network == null || network.Atmosphere == null || emptied.Contains(network.ReferenceId))
+        {
+            return;
+        }
+
+        foreach (SmallGrid other in RunNetworks.PipeMembers(network))
+        {
+            if (!other.IsBeingDestroyed && !removed.Contains(other.ReferenceId))
+            {
+                return;
+            }
+        }
+
+        double moles = GasSnapshot.Of(network.Atmosphere).TotalMol();
+        if (moles < RemovalRule.GasFloorMol)
+        {
+            return;
+        }
+
+        emptied.Add(network.ReferenceId);
+        facts.GasMoles += moles;
+        facts.GasFate = GasFate.Lost;
+        facts.GasWhere = $" in pipe network {network.ReferenceId}, whose last member this removal takes";
+    }
+
+    // A device mounted on a face the piece holds, or standing on one, left with nothing to rest on once the request is
+    // done (MountSupport): the faces a large piece holds (a wall's face; the six faces of a cell a frame fills), every
+    // small-grid thing near them that rests on a surface (mounted on a face, or a grid-placed device standing on one;
+    // cable, pipe and chute pieces run through cells and are left out), and for each face its back or bottom rests on
+    // (MountRect), what holds that face now. Things the request removes too are skipped.
+    private static string? Unsupported(Structure piece, HashSet<long> removed, GridFacts grid)
+    {
+        if (piece is SmallGrid)
+        {
+            return null;
+        }
+
+        List<Vec3> faces = new List<Vec3>();
+        foreach (StructureSlot slot in StructureSlots.Live(piece))
+        {
+            List<GridPoint> held = FaceMath.TrySplitFace(slot.Point, out _, out _)
+                ? new List<GridPoint> { slot.Point }
+                : FaceMath.FacesOf(slot.Cell);
+            foreach (GridPoint face in held)
+            {
+                faces.Add(new Vec3(face.X / 10.0, face.Y / 10.0, face.Z / 10.0));
+            }
+        }
+
+        if (faces.Count == 0)
+        {
+            return null;
+        }
+
+        GridController world = GridController.World;
+        foreach (NearBody body in NearBodies.Around(Box3.Around(faces), grid, removed, NearKinds.AnyPiece))
+        {
+            SmallGrid thing = body.Thing;
+            MountRect? mount = RestingOn(thing, body);
+            if (mount == null)
+            {
+                continue;
+            }
+
+            List<IReadOnlyCollection<long>> holders = new List<IReadOnlyCollection<long>>();
+            foreach (GridCell face in mount.Faces())
+            {
+                holders.Add(FaceHolders(world, new GridPoint(face.X, face.Y, face.Z)));
+            }
+
+            if (MountSupport.Loses(holders, piece.ReferenceId, removed))
+            {
+                return $"{thing.DisplayName} ({thing.PrefabName} {thing.ReferenceId})";
+            }
+        }
+
+        return null;
+    }
+
+    // The surface a small-grid thing rests on: mounted (its back) or a grid-placed device (its bottom); null for a
+    // network piece or a thing whose back or bottom is on no face plane.
+    private static MountRect? RestingOn(SmallGrid thing, NearBody body)
+    {
+        bool rests = thing.PlacementType == PlacementSnap.FaceMount ||
+                     (thing.PlacementType == PlacementSnap.Grid && !(thing is Piping) && !(thing is Cable) &&
+                      !(thing is Chute));
+        Quaternion rotation = thing.ThingTransformRotation;
+        CubeRotation? turn = CubeRotation.FromQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
+        if (!rests || turn == null || body.Cells.Count == 0)
+        {
+            return null;
+        }
+
+        return MountRect.Of(Box3.OfSmallCells(new List<GridCell>(body.Cells)),
+            PlacementLayout.MountOutward(thing, turn), body.Render);
+    }
+
+    // Everything holding a face: the structures registered on it and those filling the cells on either side.
+    private static List<long> FaceHolders(GridController grid, GridPoint face)
+    {
+        List<long> holders = new List<long>();
+        foreach (Structure structure in new List<Structure>(grid.GetFaceStructures(StructureSlots.GridOf(face))))
+        {
+            if (structure != null && !structure.IsBeingDestroyed && !(structure is SmallGrid))
+            {
+                holders.Add(structure.ReferenceId);
+            }
+        }
+
+        if (FaceMath.TrySplitFace(face, out GridPoint a, out GridPoint b))
+        {
+            foreach (GridPoint side in new[] { a, b })
+            {
+                AirBlocker? filler = CellBlocker(grid, side);
+                if (filler.HasValue)
+                {
+                    holders.Add(filler.Value.Id);
+                }
+            }
+        }
+
+        return holders;
     }
 
     private static void Items(Structure piece, List<string> items)
@@ -412,6 +553,10 @@ internal static class RemovePlanner
                         issue.Code, message + (plan.Arguments.Allow.Contents ? "" : " (allow_contents)"), index, id));
                     break;
                 case "cannot_remove" when index.HasValue && AlreadyRefused(plan, index.Value):
+                    break;
+                case "no_local_player":
+                    // remove_structure gives the refund itself (refund_to and from_id, read in Source); the remove
+                    // tool's planner runs here with its own refund off, so it needs no source.
                     break;
                 default:
                     plan.Problems.Add(new BuildIssueView(issue.Code, message, index, id));

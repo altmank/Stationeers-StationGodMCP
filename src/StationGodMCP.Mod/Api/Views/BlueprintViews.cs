@@ -55,7 +55,7 @@ internal sealed class BlueprintFileView
 internal sealed class BlueprintPasteCountsView
 {
     internal BlueprintPasteCountsView(bool complete, bool cancelled, int created, int failed, int skipped, int pasted,
-        string? fingerprint)
+        int standing, string? fingerprint)
     {
         Complete = complete;
         Cancelled = cancelled;
@@ -63,6 +63,7 @@ internal sealed class BlueprintPasteCountsView
         Failed = failed;
         Skipped = skipped;
         Pasted = pasted;
+        Standing = standing;
         Fingerprint = fingerprint;
     }
 
@@ -77,6 +78,8 @@ internal sealed class BlueprintPasteCountsView
     internal int Skipped { get; }
 
     internal int Pasted { get; }
+
+    internal int Standing { get; }
 
     internal string? Fingerprint { get; }
 }
@@ -98,6 +101,7 @@ internal sealed class BlueprintPasteStatusView
         Failed = counts?.Failed;
         Skipped = counts?.Skipped;
         Pasted = counts?.Pasted;
+        Standing = counts?.Standing;
         Fingerprint = counts?.Fingerprint;
         File = file?.Path;
         Entries = file?.Entries;
@@ -122,6 +126,12 @@ internal sealed class BlueprintPasteStatusView
 
     /// <summary>Things placed and kept for undo (StaggeredPasteOperation.PastedThings).</summary>
     public int? Pasted { get; }
+
+    /// <summary>
+    /// Of the pasted things, those that still exist: BlueprintMod counts a piece the game then refused to register (a
+    /// spot already taken, "Grid face may be open") as created and pasted, though it does not stand.
+    /// </summary>
+    public int? Standing { get; }
 
     public string? Fingerprint { get; }
 
