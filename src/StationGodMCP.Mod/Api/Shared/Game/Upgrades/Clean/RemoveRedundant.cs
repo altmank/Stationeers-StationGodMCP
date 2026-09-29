@@ -95,6 +95,11 @@ internal sealed class RemoveRedundant : ICleanOperation
             pass.Remove(piece, kits[id], CleanPass.Detail(Operation, live, pass.ConnectedEnds(live)));
         }
 
+        foreach (KeptPiece kept in result.Kept)
+        {
+            pass.KeepFor(pieces[kept.Id], kept.Reason, kept.Message);
+        }
+
         foreach (SmallGrid anchor in Anchors(pass, models, removed, pieces))
         {
             SimplifyJunctions.ShrinkIfOpenEnded(pass, anchor);

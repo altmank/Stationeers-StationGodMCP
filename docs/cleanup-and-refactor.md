@@ -72,7 +72,8 @@ one.
 - **Narrow the candidates** with `only_ids`, or `older_than_id` (only pieces built before that one).
 - **The report** (`redundant`) lists what goes and every candidate that stays with its `reason`: `device_port`,
   `keep_ids`, `blocked:...`, or `needed`, with the `devices` it still keeps connected to the root (`root`, default
-  every supplier on the network). A `needed` piece means those devices have no other feed yet.
+  every supplier on the network). A `needed` piece means those devices have no other feed yet. A candidate that stays
+  is in `kept_pieces` too, with the same reason, unless a later operation of the request changes it.
 
 ## Pricing a removal
 

@@ -28,6 +28,34 @@ internal sealed class KeptPiece
 
     /// <summary>For needed: how many kept pieces would be cut off with them.</summary>
     internal int Pieces { get; }
+
+    /// <summary>Why remove_redundant leaves it, as the clean tools' kept_pieces message says it.</summary>
+    internal string Message
+    {
+        get
+        {
+            string devices = string.Join(", ", Devices);
+            if (Reason == RedundantPieces.KeepIds)
+            {
+                return "remove_redundant: it is in keep_ids, so it never goes.";
+            }
+
+            if (Reason == RedundantPieces.DevicePort)
+            {
+                return $"remove_redundant: it joins a port of {devices}.";
+            }
+
+            if (Reason.StartsWith(RedundantPieces.BlockedPrefix, System.StringComparison.Ordinal))
+            {
+                string why = Reason.Substring(RedundantPieces.BlockedPrefix.Length);
+                return $"remove_redundant: it cannot be removed ({why}).";
+            }
+
+            return Devices.Count > 0
+                ? $"remove_redundant: removing it would cut {devices} off the root."
+                : $"remove_redundant: removing it would split the network ({Pieces} piece(s) cut off).";
+        }
+    }
 }
 
 internal sealed class RedundancyResult
@@ -59,6 +87,7 @@ internal static class RedundantPieces
     internal const string DevicePort = "device_port";
     internal const string KeepIds = "keep_ids";
     internal const string Needed = "needed";
+    internal const string BlockedPrefix = "blocked:";
 
     /// <param name="pieces">Every piece of the network(s), candidates or not.</param>
     /// <param name="links">Links among pieces and between pieces and devices, either direction.</param>
@@ -86,7 +115,7 @@ internal static class RedundantPieces
             }
             else if (blocked.TryGetValue(id, out string why))
             {
-                fixedReason[id] = "blocked:" + why;
+                fixedReason[id] = BlockedPrefix + why;
             }
         }
 

@@ -14,8 +14,10 @@ namespace StationGodMCP.Api;
 /// undo_job: the inverse of a finished place or remove job (UndoPlanner): remove_structure every thing it built, then
 /// build again every thing it removed, each as it stood (the snapshot taken when the job started: JobSnapshots): cable,
 /// pipe and chute pieces through place_cables, place_pipes and place_chutes (the pieces form, one call per tool and
-/// grade), so their would_bridge, burst and gas guards apply; everything else through place_structure. Refused when
-/// the world diverged from what the job left. Dry run by default: the plan, every tool's arguments and dry run (the
+/// grade), so their would_bridge, burst and gas guards apply; everything else through place_structure. The pieces the
+/// job built of a tool that also builds pieces again are removed by that tool's first piece run (remove_ids,
+/// UndoRemovals), so a network the job changed in its middle is taken apart and put back in one job; only the rest goes
+/// through remove_structure first. Refused when the world diverged from what the job left. Dry run by default: the plan, every tool's arguments and dry run (the
 /// piece runs checked as if the removal were done, assume_removed; place_structure only when nothing is removed
 /// first); ready only when every one of them is. A real run makes the same checks, then starts the removal job and
 /// queues the placement jobs behind it (wait), each checked again against the world the jobs before it left. Every
@@ -50,11 +52,20 @@ internal static class UndoJobApi
         UndoPlan plan = UndoPlanner.Plan(facts, Standing);
         UndoSource source = UndoSource.Of(recorded?.Source ?? JobSource.Unknown, fromId, refundTo);
         plan.Notes.AddRange(source.Notes);
-        JObject? removeArguments = plan.Remove.Count > 0 ? RemoveArguments(plan, source) : null;
+        List<PieceRestore> groups = plan.RestorePieces;
+        UndoRemovals removals = UndoRemovals.Of(plan.Remove, groups, JobSnapshots.PieceToolOf);
+        plan.Notes.AddRange(RemovalNotes(removals, groups, source));
+        JObject? removeArguments =
+            removals.Structures.Count > 0 ? RemoveArguments(removals.Structures, source) : null;
         List<ThingSnapshot> structures = plan.RestoreStructures;
         JObject? placeArguments = structures.Count > 0 ? PlaceArguments(structures, source) : null;
-        List<UndoPieceRunView> pieceRuns = plan.RestorePieces.ConvertAll(group =>
-            new UndoPieceRunView(group.Tool, PieceArguments(group, plan, args, source), null));
+        List<UndoPieceRunView> pieceRuns = new List<UndoPieceRunView>(groups.Count);
+        for (int index = 0; index < groups.Count; index++)
+        {
+            pieceRuns.Add(new UndoPieceRunView(groups[index].Tool,
+                PieceArguments(groups[index], removals.ByRun[index], plan, args, source), null));
+        }
+
         if (!plan.Ready)
         {
             return new UndoJobView(jobId, tool, dryRun ? "dry_run" : "refused", ViewOf(plan, false), removeArguments,
@@ -62,7 +73,7 @@ internal static class UndoJobApi
         }
 
         object? removal = removeArguments != null ? RemoveStructureApi.Handle(DryRun(removeArguments)) : null;
-        object? placement = placeArguments != null && removeArguments == null
+        object? placement = placeArguments != null && plan.Remove.Count == 0
             ? PlaceStructureApi.Handle(DryRun(placeArguments))
             : null;
         List<UndoPieceRunView> checkedRuns = pieceRuns.ConvertAll(run =>
@@ -206,15 +217,42 @@ internal static class UndoJobApi
         return arguments;
     }
 
-    private static JObject RemoveArguments(UndoPlan plan, UndoSource source)
+    private static JObject RemoveArguments(List<long> remove, UndoSource source) =>
+        WithSource(new JObject { ["reference_ids"] = Ids(remove) }, source, true);
+
+    private static JArray Ids(IEnumerable<long> ids)
     {
-        JArray ids = new JArray();
-        foreach (long id in plan.Remove)
+        JArray array = new JArray();
+        foreach (long id in ids)
         {
-            ids.Add(Text(id));
+            array.Add(Text(id));
         }
 
-        return WithSource(new JObject { ["reference_ids"] = ids }, source, true);
+        return array;
+    }
+
+    // Which run removes the job's pieces, and what refund_to means for them.
+    private static List<string> RemovalNotes(UndoRemovals removals, List<PieceRestore> groups, UndoSource source)
+    {
+        List<string> notes = new List<string>();
+        for (int index = 0; index < groups.Count; index++)
+        {
+            int count = removals.ByRun[index].Count;
+            if (count > 0)
+            {
+                notes.Add($"{count} piece(s) the job built are removed by {groups[index].Tool} itself (remove_ids), " +
+                          "in the job that builds the old pieces again: the network is never left cut between two " +
+                          "jobs, and that run's guards see it as it ends up.");
+            }
+        }
+
+        if (source.RefundTo == "ground" && removals.InRuns > 0)
+        {
+            notes.Add("refund_to ground applies to remove_structure only; the pieces a piece run removes give their " +
+                      "refund to the source, as that tool does.");
+        }
+
+        return notes;
     }
 
     private static JObject PlaceArguments(List<ThingSnapshot> restore, UndoSource source)
@@ -242,9 +280,11 @@ internal static class UndoJobApi
     }
 
     // The pieces form of one tool and grade: each piece's cells with the ends it had there (a long straight comes back
-    // as singles), checked as if what the undo removes were gone already (assume_removed: the small-grid things of the
-    // removal), with the caller's allow_bridge and the undo's source.
-    private static JObject PieceArguments(PieceRestore group, UndoPlan plan, Args args, UndoSource source)
+    // as singles), removing in the same job the pieces it takes down itself (remove_ids; refund_to none: refund false),
+    // checked as if what the other steps remove were gone already (assume_removed: the small-grid things of the rest of
+    // the removal), with the caller's allow_bridge and the undo's source.
+    private static JObject PieceArguments(PieceRestore group, List<long> own, UndoPlan plan, Args args,
+        UndoSource source)
     {
         JArray pieces = new JArray();
         foreach (ThingSnapshot snapshot in group.Pieces)
@@ -266,10 +306,19 @@ internal static class UndoJobApi
         }
 
         JObject arguments = WithSource(new JObject { ["pieces"] = pieces, ["grade"] = group.Grade }, source, false);
+        if (own.Count > 0)
+        {
+            arguments["remove_ids"] = Ids(own);
+            if (source.RefundTo == "none")
+            {
+                arguments["refund"] = false;
+            }
+        }
+
         JArray assumed = new JArray();
         foreach (long id in plan.Remove)
         {
-            if (GameLookup.TryFindThing(new ThingId(id), out Thing thing) && thing is SmallGrid)
+            if (!own.Contains(id) && GameLookup.TryFindThing(new ThingId(id), out Thing thing) && thing is SmallGrid)
             {
                 assumed.Add(Text(id));
             }

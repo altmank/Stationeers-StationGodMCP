@@ -92,11 +92,14 @@ internal sealed class PowerAfter
     /// on one that stays apart, brings its device's own estimate (joining). Without them a network of new pieces only
     /// would forecast 0 W however much its devices move. dormant: what each port adds on top once its device, off now,
     /// is switched on (PortLoads.Dormant), counted for every port of the network after, those of the networks pooled
-    /// too, whose numbers leave an off device out; null for the network as it is.
+    /// too, whose numbers leave an off device out; null for the network as it is. split: networks before that fall
+    /// into several parts; each part counts only its own ports (joining, as a port from outside would) instead of the
+    /// whole network's numbers, keeping that network's weakest cable; null counts every part whole (an upper bound).
     /// </summary>
     internal static PowerAfter Of(ForecastNetwork network, IReadOnlyDictionary<long, NetworkPower> before,
         IReadOnlyDictionary<long, double> newRatings, ICollection<long>? gone = null,
-        Func<ForecastPort, PortPower?>? joining = null, Func<ForecastPort, PortPower?>? dormant = null)
+        Func<ForecastPort, PortPower?>? joining = null, Func<ForecastPort, PortPower?>? dormant = null,
+        ICollection<long>? split = null)
     {
         double potential = 0.0;
         double required = 0.0;
@@ -109,8 +112,9 @@ internal sealed class PowerAfter
                 continue;
             }
 
-            potential += power.PotentialW;
-            required += power.RequiredW;
+            bool parted = split != null && split.Contains(id);
+            potential += parted ? 0.0 : power.PotentialW;
+            required += parted ? 0.0 : power.RequiredW;
             cable = Lowest(cable, power.LowestCableW);
             fuse = Lowest(fuse, power.LowestFuseW);
         }
@@ -126,7 +130,8 @@ internal sealed class PowerAfter
             }
 
             long? was = port.NetworkBefore;
-            if (was.HasValue && network.NetworksBefore.Contains(was.Value))
+            bool ownPart = was.HasValue && split != null && split.Contains(was.Value);
+            if (was.HasValue && network.NetworksBefore.Contains(was.Value) && !ownPart)
             {
                 continue;
             }

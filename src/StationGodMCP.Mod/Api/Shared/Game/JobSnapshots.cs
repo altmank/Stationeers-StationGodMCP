@@ -91,6 +91,18 @@ internal static class JobSnapshots
 
     private static readonly RunKind[] Kinds = { new CableRunKind(), new PipeRunKind(), new ChuteRunKind() };
 
+    /// <summary>The place tool whose piece the standing thing with that id is (undo_job's UndoRemovals); null otherwise.</summary>
+    internal static string? PieceToolOf(long id)
+    {
+        if (!GameLookup.TryFindThing(new ThingId(id), out Thing thing) || !(thing is SmallGrid piece))
+        {
+            return null;
+        }
+
+        RunKind? kind = System.Array.Find(Kinds, candidate => candidate.Family.IsPiece(piece));
+        return kind?.PlaceTool;
+    }
+
     // A cable, pipe or chute piece as its place tool builds it again: the tool, the grade name that lays it (null when
     // no coil or kit does) and its ends cell by cell; null for anything else.
     private static NetworkPiece? PieceOf(Structure structure)

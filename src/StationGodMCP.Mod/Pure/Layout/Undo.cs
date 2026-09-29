@@ -122,6 +122,56 @@ internal sealed class PieceRestore
     internal List<ThingSnapshot> Pieces { get; }
 }
 
+/// <summary>
+/// Who removes what an undo removes. A piece of a tool that also builds pieces again is removed by that tool's first
+/// piece run (its remove_ids), in the same job that builds the old pieces back: a job that changed a piece in the
+/// middle of a network (a tee added onto a trunk, a long straight crossed) is then undone in one step, so the network
+/// is never cut between two jobs (the rebuild would be a would_bridge of the two halves) and the run's guards see the
+/// networks as they end up. Everything else goes through remove_structure first.
+/// </summary>
+internal sealed class UndoRemovals
+{
+    private UndoRemovals(List<long> structures, List<List<long>> byRun)
+    {
+        Structures = structures;
+        ByRun = byRun;
+    }
+
+    /// <summary>What remove_structure removes before any placement.</summary>
+    internal List<long> Structures { get; }
+
+    /// <summary>For each piece run (UndoPlan.RestorePieces, same order): the pieces it removes itself.</summary>
+    internal List<List<long>> ByRun { get; }
+
+    /// <summary>How many pieces the piece runs remove themselves.</summary>
+    internal int InRuns
+    {
+        get
+        {
+            int count = 0;
+            ByRun.ForEach(ids => count += ids.Count);
+            return count;
+        }
+    }
+
+    /// <param name="remove">UndoPlan.Remove.</param>
+    /// <param name="runs">UndoPlan.RestorePieces.</param>
+    /// <param name="toolOf">The place tool whose piece the thing with that id is; null for anything else.</param>
+    internal static UndoRemovals Of(List<long> remove, List<PieceRestore> runs, System.Func<long, string?> toolOf)
+    {
+        List<List<long>> byRun = runs.ConvertAll(_ => new List<long>());
+        List<long> structures = new List<long>();
+        foreach (long id in remove)
+        {
+            string? tool = toolOf(id);
+            int run = tool == null ? -1 : runs.FindIndex(group => group.Tool == tool);
+            (run >= 0 ? byRun[run] : structures).Add(id);
+        }
+
+        return new UndoRemovals(structures, byRun);
+    }
+}
+
 /// <summary>What a finished job did, as its log and the snapshots taken when it started tell it.</summary>
 internal sealed class JobFacts
 {

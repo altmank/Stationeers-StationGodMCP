@@ -78,6 +78,7 @@ internal sealed class CleanPass
     private readonly HashSet<long> _claimed = new HashSet<long>();
     private readonly HashSet<long> _removed = new HashSet<long>();
     private readonly List<SmallGrid> _removedPieces = new List<SmallGrid>();
+    private readonly Dictionary<long, SkippedPiece> _keptBy = new Dictionary<long, SkippedPiece>();
 
     internal CleanPass(PlanContext context, List<SmallGrid> members)
     {
@@ -209,6 +210,13 @@ internal sealed class CleanPass
             new SwapPrice(0, PlanContext.RefundOf(old)), detail));
     }
 
+    /// <summary>
+    /// A piece an operation decided to leave without claiming it (a later operation may still change it): unless one
+    /// does, it is reported kept with this reason instead of what its ends say.
+    /// </summary>
+    internal void KeepFor(SmallGrid piece, string reason, string message) =>
+        _keptBy[piece.ReferenceId] = new SkippedPiece(piece, reason, message);
+
     /// <summary>A dead end left in place, reported with the reason it stays (null: no removal was asked for).</summary>
     internal void DeadEnd(SmallGrid piece, List<PieceEnd> connected, string? stoppedBy, string? stopDetail = null)
     {
@@ -222,6 +230,13 @@ internal sealed class CleanPass
     {
         foreach (SmallGrid piece in Open)
         {
+            if (_keptBy.TryGetValue(piece.ReferenceId, out SkippedPiece decided))
+            {
+                Claim(piece);
+                Plan.Kept.Add(decided);
+                continue;
+            }
+
             PieceModel live = LiveOf(piece);
             List<PieceEnd> connected = ConnectedEnds(live);
             EndUse use = EndCleanup.Of(live.Ends.Count, connected.Count);

@@ -80,7 +80,7 @@ internal static class PlanRouteApi
 
         GridFacts facts = new GridFacts(kind, mask, ignore);
         List<long> own = to?.Networks ?? new List<long>();
-        RouteRuleSet rules = Rules(args, starts, own, false);
+        RouteRuleSet rules = Rules(args, kind, starts, own, false);
         List<string> notes = Notes(rules, assumed);
         RouteReservation reserved = Reservation(args, starts, to, trunk, notes);
         OpeningGuard openings = Openings(args, facts, starts, to, notes);
@@ -122,7 +122,7 @@ internal static class PlanRouteApi
             }
             else if (RunArgs.Join(args) == JoinMode.All)
             {
-                RouteTree retry = Grow(args, starts, main, facts, Rules(args, starts, own, true), reserved,
+                RouteTree retry = Grow(args, starts, main, facts, Rules(args, kind, starts, own, true), reserved,
                     openings);
                 RunReportView? second = retry.Found ? DryRun(args, kind, grade, retry, removes, assumed) : null;
                 if (second != null && !HasWarning(second, RunPlanner.WouldLoop))
@@ -487,7 +487,8 @@ internal static class PlanRouteApi
         }
     }
 
-    private static RouteRuleSet Rules(Args args, List<RouteEndpoint> starts, List<long> target, bool avoidOwn)
+    private static RouteRuleSet Rules(Args args, RunKind kind, List<RouteEndpoint> starts, List<long> target,
+        bool avoidOwn)
     {
         string prefer = (args.OptionalString("prefer") ?? "none").Trim().ToLowerInvariant();
         RoutePreference preference = prefer switch
@@ -513,15 +514,36 @@ internal static class PlanRouteApi
         }
         else if (avoid != null)
         {
-            foreach (ThingId id in args.ThingIds("avoid_networks", 256))
-            {
-                avoidIds.Add(id.Value);
-            }
+            avoidIds = AvoidedNetworks(args, kind);
         }
 
         return new RouteRuleSet(preference, args.OptionalBool("inside_frames") ?? false,
             args.OptionalBool("avoid_room_interior") ?? false, args.OptionalBool("avoid_walkways") ?? false, avoidAll,
             own, avoidIds, avoidOwn, args.OptionalBool("frames_first") ?? true);
+    }
+
+    // avoid_networks as a list: network handles, each naming a network of the kind (network_not_found otherwise).
+    private static HashSet<long> AvoidedNetworks(Args args, RunKind kind)
+    {
+        HashSet<long> ids = new HashSet<long>();
+        JArray array = args.Array("avoid_networks", 256);
+        for (int index = 0; index < array.Count; index++)
+        {
+            string entry = $"avoid_networks[{index}]";
+            ThingId network = NetworkHandles.Resolve(array[index], entry, kind.Family);
+            try
+            {
+                kind.Family.NetworkMembers(network);
+            }
+            catch (ApiException missing) when (missing.Code == "network_not_found")
+            {
+                throw ApiErrors.Refused(missing.Code, $"{entry}: {network} names no {kind.Noun} network.");
+            }
+
+            ids.Add(network.Value);
+        }
+
+        return ids;
     }
 
     private static RouteRules SearchRules(Args args, GridCell from, GridCell to)

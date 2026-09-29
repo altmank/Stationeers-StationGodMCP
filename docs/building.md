@@ -137,7 +137,7 @@ route's own ends is released, and `notes` say how many cells were kept free. Wit
 | `prefer: "hidden"` | The least visible route: per cell inside a frame 1, on a frame's surface 3, on a wall's plane 5, in air 9. A hidden route up to three times as long beats one along a surface. |
 | `inside_frames: true` | Strict: only cells inside a frame or on its surface (beam tops and outer faces included). May give `no_route` where `prefer: hidden` would still find one. |
 | `avoid_walkways`, `avoid_room_interior` | Extra cost for room cells above the floor, or away from every face plane. |
-| `avoid_networks` | `true`: never beside another network of the kind; or a list of network ids. |
+| `avoid_networks` | `true`: never beside another network of the kind; or a list of network ids (network handles work too); an id naming no network is `network_not_found`. |
 | `min_bends`, `axis_order` | Fewer turns; `vertical_first` or `horizontal_first`. |
 | `margin_m` (default 6, max 32), `max_length` (default 400) | Search box around the ends; longest route. |
 
@@ -202,11 +202,16 @@ inside frames where possible, `plan_cable_route`:
 ## Undoing a job (1.4.3+)
 
 `undo_job {job_id}` undoes a finished `place_*`, `remove_*`, `place_structure` or `remove_structure` job among the
-last 16: it removes (with `remove_structure`) everything the job built and builds again everything it removed, as it
-stood when the job started (the mod takes a snapshot of each removed thing then). Cable, pipe and chute pieces come
+last 16: it removes everything the job built and builds again everything it removed, as it stood when the job started
+(the mod takes a snapshot of each removed thing then). Cable, pipe and chute pieces come
 back through `place_cables`, `place_pipes` and `place_chutes` (their `pieces` form, each piece with the ends it had),
 so `would_bridge`, `would_split` and the burst and gas guards apply; everything else comes back through
-`place_structure` (1.4.4+). It is refused, with `plan.diverged` saying why, when the world is no longer as the job
+`place_structure` (1.4.4+). The pieces the job built are removed by that same place tool call (its `remove_ids`), in
+the one job that builds the old pieces back, so undoing a tee added onto a trunk, or a run that crossed a long
+straight, never leaves the trunk cut between two jobs; only what no piece run builds again goes through
+`remove_structure` first (and `refund_to: ground` applies to that part only). Old pieces of several grades of one
+tool come back in several runs, and only the first removes: if it cannot rejoin the network alone, its dry run says
+`would_split` and the undo is refused. It is refused, with `plan.diverged` saying why, when the world is no longer as the job
 left it: something it built is gone or another prefab now, or something it removed cannot be placed again exactly.
 A burnt cable the job removed is never built again; `plan.notes` says so and the rest is undone.
 The dry run shows the plan, every tool's arguments and their dry runs; `plan.ready` is true only when all of them
@@ -233,7 +238,7 @@ Each refusal names what it found. An `allow_*` argument accepts that one case af
 | `would_bridge` | The run would join two or more networks, or two ports of one device (both sides of an APC or transformer, a battery's input and output, a pump's two sides, a device's chute output into its own input). Names the networks and the devices on each. | `allow_bridge`, naming every network of the merge, or the device |
 | `would_split` | A removal would split a network or leave a device port joined to nothing. Lists each resulting network with its devices (`components`), the devices that feed it (`root`: your `root`, else every supplier: an APC's, transformer's or battery's output, a generator, a solar panel) and `cut_off`, the devices no root reaches afterwards. | `allow_split` |
 | `would_overload` | A cable network after the edit would carry more than its weakest cable, so the game would burn a cable every power tick. Counted over the networks it keeps, a network the edit replaces whole (a reroute), and every device port it newly joins, from the device's own state (a battery's charge and free capacity, an APC's or transformer's supply and demand, a generator's rate, a consumer's use), with the game's own on/off and error checks: an output gives nothing while off or in error, a consumer in error still draws, a solar panel gives its rate on or off. | none: upgrade the cable or keep the networks apart |
-| `would_overload_when_on` (warning) | Safe as the devices stand, but the network would carry more than its weakest cable once its devices that are off now are switched on: the game counts an off device as nothing, so two full batteries joined while both are off would burn a cable the moment they go on. Counted as `would_overload` with every off device on the network after the edit as if on, those already on a network it keeps included; the message names the off devices. The job itself is safe while they stay off. | not needed: keep them off, upgrade the cable, or keep the networks apart |
+| `would_overload_when_on` (warning) | Safe as the devices stand, but the network would carry more than its weakest cable once its devices that are off now are switched on: the game counts an off device as nothing, so two full batteries joined while both are off would burn a cable the moment they go on. Counted as `would_overload` with every off device on the network after the edit as if on, those already on a network it keeps included; where the edit splits a network, each part counts only its own devices, so a removal that parts an off source from its consumer does not warn; the message names the off devices. The job itself is safe while they stay off. | not needed: keep them off, upgrade the cable, or keep the networks apart |
 | `would_burst` | A pipe network's pressure after the edit would exceed its weakest pipe. | none |
 | `holds_contents`, `contents_would_move` | A pipe removal would delete a network's gas or liquid, or divide it. | none: empty it first with `move_gas` |
 | `content_mismatch` | A pipe of the other content (gas and liquid never join). | none |

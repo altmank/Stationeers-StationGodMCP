@@ -223,6 +223,10 @@ internal static class RunForecastBuilder
         }
 
         context.Gone.UnionWith(result.Gone);
+        foreach (ForecastSplit split in result.Splits)
+        {
+            context.Split.Add(split.Network);
+        }
         foreach (KeyValuePair<Device, ForecastPort> port in forecastParts.Ports)
         {
             context.Devices[port.Key.ReferenceId] = port.Key;
