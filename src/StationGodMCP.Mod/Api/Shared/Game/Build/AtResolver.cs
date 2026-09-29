@@ -234,11 +234,15 @@ internal static class AtResolver
 
     private static Hit Crosshair(string name)
     {
+        if (!Look.HasCamera)
+        {
+            throw NoCamera(name);
+        }
+
         CursorManager cursor = CursorManager.Instance;
         if (cursor == null || !Look.Cast(cursor, ReachM, out RaycastHit hit))
         {
-            throw ApiErrors.Refused("no_crosshair_hit",
-                $"{name}: the look ray hits nothing within {ReachM} m (or there is no camera).");
+            throw ApiErrors.Refused("no_crosshair_hit", $"{name}: the look ray hits nothing within {ReachM} m.");
         }
 
         Vec3 point = Bodies.V(hit.point);

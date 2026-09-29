@@ -113,6 +113,10 @@ Tool wear, welder fuel and battery charge are not charged.
   rules, support for face-mounted pieces), nothing loose and nobody inside a piece that fills its cell. The check runs
   again just before each piece is built, so later placements see earlier ones. The dry run sees only what stands now,
   so it also checks the placements of one request against each other (`overlaps_placement`).
+  A piece that needs a frame below it (a station battery, a dish, landing pad parts) may stand on a frame an
+  earlier placement of the same request puts there: warning `supported_by_placement`, checked again once that
+  frame stands. When the reason is "requires a Frame below" and a frame fills the spot's own cell, `cannot_place`
+  says so: such pieces stand in the free cell on top of a frame.
 - **Cost:** every build state's items up to the chosen state, from your inventory or `from_id`. `free: true` places
   without materials, in creative worlds only (`not_creative` otherwise).
 - **Refused per placement:** `invalid_prefab` (not loaded, not a structure, no kit builds it, a rocket part),
@@ -152,7 +156,8 @@ as pipe.
 
 `find_spot {prefab, near, plane | looking | room_id, require}` tries every 0.5 m spot within `radius_m` of `near`
 (nearest first over every plane, at most 4000; with `room_id` the planes are the room's walls, not its floor or
-ceiling: name one of those with `plane` and it is searched too, seen from the room's side unless `side` says otherwise),
+ceiling: name one of those with `plane` and it is searched too, seen from the room's side unless `side` says otherwise;
+seen from the side away from the room, e.g. under its floor, its spots are those with the room behind them),
 filters them on geometry first (cells free, its mesh clear of every other thing's mesh with `no_visual_overlap`,
 `avoid_doors`, `one_section` by its mesh, `min_bottom_above_floor_m`, `front_clear_m`), then checks the nearest ones (at most `max_checks`) with the game's cursor and the layout preview
 (`no_visual_overlap`, `ports_reachable`), and returns the best with ready `place_arguments`. `reasons` counts why the

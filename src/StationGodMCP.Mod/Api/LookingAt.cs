@@ -176,6 +176,9 @@ internal static class Look
         return ViewBasis.Of(Bodies.V(ray.direction), Bodies.V(CameraController.CurrentCamera.transform.up));
     }
 
+    /// <summary>Whether there is a player camera to look through (a dedicated server has none).</summary>
+    internal static bool HasCamera => CameraController.Instance != null && CameraController.CurrentCamera != null;
+
     /// <summary>The look ray cast on the cursor's layers; false when it hits nothing within reach.</summary>
     internal static bool Cast(CursorManager cursor, double reach, out RaycastHit hit)
     {

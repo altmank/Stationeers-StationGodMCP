@@ -60,6 +60,10 @@ internal sealed class PlaneView
     internal bool RoomOnSide(double u, double v, Room room, GridFacts facts) =>
         facts.RoomAt(LargeAt(PointAt(u, v) + Vec3.Of(Side) * 1.01)) == room;
 
+    /// <summary>Whether the 2 m cell behind the plane at (u, v), away from the viewer, is in the room.</summary>
+    internal bool RoomBehind(double u, double v, Room room, GridFacts facts) =>
+        facts.RoomAt(LargeAt(PointAt(u, v) - Vec3.Of(Side) * 1.01)) == room;
+
     /// <summary>A point's coordinates along the viewer's right and up axes.</summary>
     internal (double U, double V) Project(Vec3 point) => (point[Right.Axis], point[Up.Axis]);
 
@@ -81,6 +85,12 @@ internal sealed class PlaneView
         around = null;
         if (args.OptionalBool("looking") ?? false)
         {
+            if (!Look.HasCamera)
+            {
+                throw ApiErrors.Refused("no_camera",
+                    "looking: there is no player camera to look from (a dedicated server has none).");
+            }
+
             CursorManager cursor = CursorManager.Instance;
             if (cursor == null || !Look.Cast(cursor, 20.0, out RaycastHit hit))
             {

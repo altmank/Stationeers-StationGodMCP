@@ -60,14 +60,16 @@ internal static class FindSpotApi
         }
 
         SpotRequirements require = Requirements(args.OptionalObject("require"));
-        List<PlaneView> planes = Planes(args, facts, out Room? room);
+        List<PlaneView> planes = Planes(args, facts, out Room? room, out PlaneView? named);
         int limit = args.OptionalInt("limit", 1, 20) ?? DefaultLimit;
         int maxChecks = args.OptionalInt("max_checks", 1, MaximumChecks) ?? DefaultChecks;
         GridStep? facing = args.Has("facing") ? Step(args.OptionalString("facing"), "facing") : (GridStep?)null;
 
         // Every plane's spots within the radius that face into the room (room_id), nearest first across all planes;
         // at most MaximumCandidates of them are aimed, which bounds the frame's work without starving a plane that
-        // happens to come later in the list.
+        // happens to come later in the list. The plane named with room_id is seen from side as asked: seen from the
+        // side away from the room (under its floor, over its ceiling), its spots are those with the room behind them
+        // (structures-30: that side searched nothing).
         List<(PlaneSpots Plane, double U, double V, double Distance)> tries =
             new List<(PlaneSpots, double, double, double)>();
         foreach (PlaneView plane in planes)
@@ -77,7 +79,8 @@ internal static class FindSpotApi
             foreach ((double u, double v, double distance) in SpotSearch.Within(qu, qv,
                          near[plane.Plane.Axis] - plane.Plane.Metres, radius))
             {
-                if (room == null || plane.RoomOnSide(u, v, room, facts))
+                if (room == null || plane.RoomOnSide(u, v, room, facts) ||
+                    (plane == named && plane.RoomBehind(u, v, room, facts)))
                 {
                     tries.Add((search, u, v, distance));
                 }
@@ -179,6 +182,12 @@ internal static class FindSpotApi
         JToken? near = args.Optional("near");
         if (near == null || (near.Type == JTokenType.String && near.Value<string>() == "crosshair"))
         {
+            if (!Look.HasCamera)
+            {
+                throw ApiErrors.Refused("no_camera",
+                    "near: there is no player camera to look from (a dedicated server has none); pass near.");
+            }
+
             CursorManager cursor = CursorManager.Instance;
             if (cursor == null || !Look.Cast(cursor, 20.0, out RaycastHit hit))
             {
@@ -212,9 +221,10 @@ internal static class FindSpotApi
 
     // One plane (plane/side or looking) or the walls of a room (room_id): every face of a room cell toward a cell
     // outside the room that carries a wall or window, seen from inside.
-    private static List<PlaneView> Planes(Args args, GridFacts facts, out Room? room)
+    private static List<PlaneView> Planes(Args args, GridFacts facts, out Room? room, out PlaneView? named)
     {
         room = null;
+        named = null;
         if (!args.Has("room_id"))
         {
             return new List<PlaneView> { PlaneView.Read(args, facts, out _) };
@@ -262,10 +272,15 @@ internal static class FindSpotApi
 
         if (args.Has("plane") || (args.OptionalBool("looking") ?? false))
         {
-            PlaneView named = NamedPlane(args, facts, cells, id);
-            if (seen.Add((named.Plane.Axis, named.Plane.Coordinate, named.Side.Index)))
+            PlaneView asked = NamedPlane(args, facts, cells, id);
+            named = planes.Find(plane => plane.Plane.Axis == asked.Plane.Axis &&
+                                         plane.Plane.Coordinate == asked.Plane.Coordinate &&
+                                         plane.Side.Index == asked.Side.Index);
+            if (named == null)
             {
-                planes.Add(named);
+                named = asked;
+                seen.Add((asked.Plane.Axis, asked.Plane.Coordinate, asked.Side.Index));
+                planes.Add(asked);
             }
         }
 
