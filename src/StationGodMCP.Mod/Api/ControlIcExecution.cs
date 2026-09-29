@@ -19,9 +19,9 @@ internal static class ControlIcExecutionApi
     {
         DeviceScope scope = Devices.Scope(args);
         IcTarget ic = Devices.RequireCircuitHolder(scope, args);
+        string action = ActionOf(args);
         ProgrammableChip chip = ic.RequireChip();
         ChipProgram program = ChipProgram.Of(chip);
-        string? action = args.OptionalString("action")?.Trim().ToLowerInvariant();
         double previousLine = chip.LineNumber;
         switch (action)
         {
@@ -40,14 +40,24 @@ internal static class ControlIcExecutionApi
                 program.Restart(ic, chip);
                 break;
             default:
-                throw ApiErrors.InvalidArgument("Argument 'action' must be pause, step, resume, or restart.");
+                throw BadAction();
         }
 
-        IcControlOutcome outcome = new IcControlOutcome(action!, IcExecutionController.IsPaused(ic.HolderId),
+        IcControlOutcome outcome = new IcControlOutcome(action, IcExecutionController.IsPaused(ic.HolderId),
             previousLine);
         return new IcControlView(IcRuntime.PlaceOf(scope, ic), outcome, IcRuntime.State(chip),
             program.Describe(ic, chip, 0));
     }
+
+    // The action, checked before the chip is looked for, so a bad argument is named as one on any holder.
+    private static string ActionOf(Args args)
+    {
+        string? action = args.OptionalString("action")?.Trim().ToLowerInvariant();
+        return action is "pause" or "resume" or "step" or "restart" ? action : throw BadAction();
+    }
+
+    private static ApiException BadAction() =>
+        ApiErrors.InvalidArgument("Argument 'action' must be pause, step, resume, or restart.");
 
     private static void Step(IcTarget ic, ProgrammableChip chip)
     {

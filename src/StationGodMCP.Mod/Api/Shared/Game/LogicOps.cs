@@ -54,7 +54,7 @@ internal static class LogicOps
             }
             else
             {
-                batch.Failed(index, error!);
+                batch.Failed(Failure(items[index], index, error!));
             }
         }
 
@@ -72,7 +72,7 @@ internal static class LogicOps
             }
             else
             {
-                batch.Failed(index, error!);
+                batch.Failed(Failure(items[index], index, error!));
             }
         }
 
@@ -120,6 +120,28 @@ internal static class LogicOps
         {
             error = refused;
             return false;
+        }
+    }
+
+    // A failed entry names the device and logic type it asked for, where they can be read from it.
+    private static LogicFailedItemView Failure(Args? item, int index, ApiException error)
+    {
+        ThingId? id = item != null && ThingId.TryRead(item.Optional("reference_id"), out ThingId read)
+            ? read
+            : (ThingId?)null;
+        return new LogicFailedItemView(index, id, item != null ? NamedType(item) : null, error);
+    }
+
+    private static LogicTypeView? NamedType(Args item)
+    {
+        try
+        {
+            return LogicTypes.ViewOf(LogicTypes.Parse(item.Optional("logic_type")));
+        }
+        catch (ApiException)
+        {
+            // The entry's logic_type is missing or not a logic type: its error already says so.
+            return null;
         }
     }
 

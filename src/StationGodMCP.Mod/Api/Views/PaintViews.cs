@@ -52,6 +52,14 @@ internal sealed class ThingColorView
     public string? Name { get; }
 
     public bool IsDefault { get; }
+
+    /// <summary>
+    /// A colour by its place in the game's colour list (negative: not in it). A swatch the list does not hold is no
+    /// colour: index and name null, since its name is an unlocalised placeholder ("&lt;A:EN:0&gt;"), and a thing's
+    /// own paint only when it has a paintable material and the swatch paints with it.
+    /// </summary>
+    internal static ThingColorView Of(int index, string? name, bool isPrefabColor) =>
+        index >= 0 ? new ThingColorView(index, name, isPrefabColor) : new ThingColorView(null, null, isPrefabColor);
 }
 
 /// <summary>A thing that was painted, with its colour before and after.</summary>

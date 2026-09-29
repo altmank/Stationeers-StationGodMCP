@@ -19,9 +19,9 @@ namespace StationGodMCP.Api;
 ///
 /// How the game paints (CODE): a spray can's ISprayer.DoSpray runs only when Thing.IsPaintable and not
 /// Thing.HasColorState (Thing.AttackWith), and after using up the paint calls OnServer.SetCustomColor(thing, index).
-/// That does nothing when thing.HasColorState (the colour is an animator state, e.g. a light), else calls
-/// Thing.SetCustomColor(index) and, on a client, sends a ThingColorMessage. This calls the same
-/// OnServer.SetCustomColor, with no paint used. Thing.SetCustomColor ignores an index that fails
+/// That does nothing when thing.HasColorState (the colour is a state the Color logic type sets, e.g. the LED display;
+/// the lights have none and paint), else calls Thing.SetCustomColor(index) and, on a client, sends a
+/// ThingColorMessage. This calls the same OnServer.SetCustomColor, with no paint used. Thing.SetCustomColor ignores an index that fails
 /// GameManager.IsValidColor, sets CustomColor and network flag 32, so clients see it. It is saved:
 /// Thing.InitialiseSaveData stores CustomColorIndex, or -1 when CustomColor.Normal == PaintableMaterial (the prefab's
 /// own colour). Thing.IsPaintable is PaintableMaterial != null or HasPaintableMaskMaterial (suits, gas masks,
@@ -93,7 +93,7 @@ internal static class PaintApi
             refusal = ApiErrors.ThingNotFound(id);
         }
 
-        ThingColorView? previous = thing != null ? ColorOf(thing) : null;
+        ThingColorView? previous = thing != null ? ColorOf(thing, swatches) : null;
         refusal ??= Painter.Paint(thing!, colorText!, swatches);
         if (refusal != null)
         {
@@ -101,16 +101,28 @@ internal static class PaintApi
             return;
         }
 
-        batch.Succeeded(new PaintedView(index, id, previous!, ColorOf(thing!)));
+        batch.Succeeded(new PaintedView(index, id, previous!, ColorOf(thing!, swatches)));
     }
 
-    internal static ThingColorView ColorOf(Thing thing)
+    /// <summary>
+    /// The colour a thing shows: for a thing whose colour is a state (Thing.HasColorState, e.g. the LED display) the
+    /// state the Color logic type reads and writes (Thing.ColorState, an index into the colour list), which is what it
+    /// shows; for any other thing its paint (Thing.CustomColor). CustomColor of a state-coloured thing is a paint it
+    /// does not show.
+    /// </summary>
+    internal static ThingColorView ColorOf(Thing thing, List<ColorSwatch> swatches)
     {
-        ColorSwatch swatch = thing.CustomColor;
+        ColorSwatch? swatch = thing.CustomColor;
         int index = GameManager.GetColorIndex(swatch);
+        if (thing.HasColorState)
+        {
+            index = thing.ColorState;
+            swatch = index >= 0 && index < swatches.Count ? swatches[index] : null;
+        }
+
         Material? normal = swatch != null ? swatch.Normal : null;
-        return new ThingColorView(index >= 0 ? index : (int?)null, swatch != null ? swatch.DisplayName : null,
-            normal == thing.PaintableMaterial);
+        return ThingColorView.Of(index, swatch != null ? swatch.DisplayName : null,
+            thing.PaintableMaterial != null && normal == thing.PaintableMaterial);
     }
 }
 

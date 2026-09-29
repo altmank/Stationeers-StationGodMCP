@@ -23,10 +23,10 @@ internal static class ResolveIcSelectorsApi
     {
         DeviceScope scope = Devices.Scope(args);
         IcTarget ic = Devices.RequireCircuitHolder(scope, args);
-        ProgrammableChip chip = ic.RequireChip();
         HashSet<long>? targets = args.Has("target_reference_ids")
             ? IdSet(args.ThingIds("target_reference_ids", MaximumTargets))
             : null;
+        ProgrammableChip chip = ic.RequireChip();
 
         List<PinTargetView> pins = new List<PinTargetView>();
         IList<ILogicable?> devices = ic.GetPins();

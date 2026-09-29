@@ -38,6 +38,9 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 - `control_ic_execution` `pause` holds the chip; `step` runs exactly one instruction and stays paused; `resume` lets it
   run. Pausing holds IC Housings and suits only: other holders report paused but keep running.
 - `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it.
+- A holder with no chip: `get_ic_status` answers only `has_chip: false`, the holder and its pins (no `housing`, power
+  or runtime fields); the other tools refuse with `no_programmable_chip`, `resolve_ic_selectors` too. Arguments are
+  checked before the chip, so a bad `action`, `source` or `target_reference_ids` is `invalid_argument` on any holder.
 
 Load a program and check it, `set_ic_source` then `get_ic_status`:
 
@@ -68,6 +71,12 @@ device. When the housing is on a data network, the device must be on that networ
 a pin's device there; `allow_off_network: true` stores it anyway. Every pin is checked before any is written, so a
 refused call changes nothing. A running chip uses the new devices from its next instruction; nothing is recompiled.
 Rocket IC Housings work too; suits and other worn holders are refused.
+
+Refusal codes: `not_ic_housing` (not an IC Housing, e.g. a suit), `device_not_found` (the housing or a pin's device is
+outside the scope), `thing_not_found` (nothing has a pin's id), `not_logic_device` (a pin's id is a frame, a pipe or
+another non-device), `logic_not_readable` (a device with no readable logic), `not_on_data_network` (off the housing's
+data network without `allow_off_network`), `invalid_argument` (a bad `pins` object, pin name or id, a pin listed
+twice, the housing itself).
 
 ## Multiplayer
 

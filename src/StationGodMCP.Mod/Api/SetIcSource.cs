@@ -18,8 +18,8 @@ internal static class SetIcSourceApi
     {
         DeviceScope scope = Devices.Scope(args);
         IcTarget ic = Devices.RequireCircuitHolder(scope, args);
-        ProgrammableChip chip = ic.RequireChip();
         string source = args.String("source");
+        ProgrammableChip chip = ic.RequireChip();
         ChipProgram program = ChipProgram.Of(chip);
         program.Write(ic, chip, source);
         return new IcSourceSetView(IcRuntime.PlaceOf(scope, ic), program.Describe(ic, chip, 0),

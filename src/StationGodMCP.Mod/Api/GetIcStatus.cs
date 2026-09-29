@@ -21,6 +21,9 @@ internal static class GetIcStatusApi
     {
         DeviceScope scope = Devices.Scope(args);
         IcTarget ic = Devices.RequireCircuitHolder(scope, args);
+        int stackStart = args.OptionalInt("stack_start", 0, int.MaxValue) ?? 0;
+        int stackCount = args.OptionalInt("stack_count", 0, DeviceMemory.MaximumValues) ?? DefaultStackCount;
+        int logLines = args.OptionalInt("log_lines", 0, LuaChips.MaximumLogLines) ?? LuaChips.DefaultLogLines;
         IcPlace place = IcRuntime.PlaceOf(scope, ic);
         ProgrammableChip? chip = ic.Chip();
         if (chip == null)
@@ -28,9 +31,6 @@ internal static class GetIcStatusApi
             return new IcNoChipView(place, IcPins.Describe(ic));
         }
 
-        int stackStart = args.OptionalInt("stack_start", 0, int.MaxValue) ?? 0;
-        int stackCount = args.OptionalInt("stack_count", 0, DeviceMemory.MaximumValues) ?? DefaultStackCount;
-        int logLines = args.OptionalInt("log_lines", 0, LuaChips.MaximumLogLines) ?? LuaChips.DefaultLogLines;
         IcRuntimeParts parts = new IcRuntimeParts(IcPins.Describe(ic),
             IcRuntime.Capture(chip, ic.HolderId, stackStart, stackCount));
         return new IcStatusView(place, ChipProgram.Of(chip).Describe(ic, chip, logLines), IcRuntime.State(chip),

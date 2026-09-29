@@ -26,7 +26,7 @@ internal static class WriteMemoryApi
 
         int start = DeviceMemory.StartAddress(args);
         List<double> values = DeviceMemory.Values(args);
-        DeviceMemory.RequireRange(start, values.Count);
+        DeviceMemory.RequireRange(device, start, values.Count);
         IMemoryReadable? readable = device.Thing as IMemoryReadable;
         List<double>? previous = readable != null ? DeviceMemory.Read(readable, start, values.Count) : null;
         for (int offset = 0; offset < values.Count; offset++)

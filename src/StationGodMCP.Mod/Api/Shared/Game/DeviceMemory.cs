@@ -6,6 +6,7 @@ using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -19,12 +20,24 @@ internal static class DeviceMemory
 
     internal static int StartAddress(Args args) => args.Int("start_address", 0, int.MaxValue);
 
-    /// <summary>Refuses a range that would run past the last address.</summary>
-    internal static void RequireRange(int startAddress, int count)
+    /// <summary>
+    /// Refuses a call the device's memory cannot answer, before any address is touched: a circuit holder (an IC
+    /// Housing, a suit) with no chip, whose ReadMemory and WriteMemory throw NullReferenceException, and a range past
+    /// the memory's last address (Pure/MemoryRange).
+    /// </summary>
+    internal static void RequireRange(ScopedTarget device, int startAddress, int count)
     {
-        if ((long)startAddress + count - 1L > int.MaxValue)
+        if (device.Thing is ICircuitHolder && IcTarget.FirstOccupant<ProgrammableChip>(device.Slots) == null)
         {
-            throw ApiErrors.InvalidArgument("The requested memory range exceeds the valid address space.");
+            throw ApiErrors.Refused("no_programmable_chip",
+                $"Device {device.ReferenceId} ({device.PrefabName}) keeps its memory on a programmable chip and has " +
+                "none installed.");
+        }
+
+        string? problem = MemoryRange.Problem(startAddress, count, StackSize(device));
+        if (problem != null)
+        {
+            throw ApiErrors.InvalidArgument(problem);
         }
     }
 
