@@ -488,10 +488,13 @@ internal sealed class PipeNetworkRecord : NetworkRecord
             return;
         }
 
-        if (_atmosphere.IsAwaitingEvent)
+        // A game event (AtmosphericEventInstance, e.g. a pump's or the console's) marks the atmosphere; a queued
+        // move_gas does not, so its queue is asked too.
+        if (_atmosphere.IsAwaitingEvent || GasMoves.Touches(_atmosphere))
         {
             plan.Problems.Add(new UpgradeProblemView("atmosphere_busy",
-                $"Pipe network {Id} has a gas change waiting for the next atmospherics tick; try again.", Id));
+                $"Pipe network {Id} has a gas change waiting for the next atmospherics tick (a game event or a "
+                + "queued move_gas); try again.", Id));
         }
 
         foreach (PlannedSwap swap in Swaps)

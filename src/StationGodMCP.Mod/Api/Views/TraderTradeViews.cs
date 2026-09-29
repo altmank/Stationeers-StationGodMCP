@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
@@ -16,8 +17,8 @@ internal sealed class TradeView
         Name = name;
         DryRun = dryRun;
         CreditCardId = creditCardId;
-        CreditsBefore = creditsBefore;
-        CreditsAfter = creditsAfter;
+        CreditsBefore = Credits.Round(creditsBefore);
+        CreditsAfter = Credits.Round(creditsAfter);
         Results = items.Results;
         Count = items.Count;
         SuccessCount = items.SuccessCount;
@@ -66,8 +67,8 @@ internal sealed class TradedView : BatchItemView
         Gas = line.Gas;
         Quantity = quantity;
         CreditsEach = line.CreditsEach;
-        CreditsSpent = buying ? credits : (float?)null;
-        CreditsEarned = buying ? (float?)null : credits;
+        CreditsSpent = buying ? Credits.Round(credits) : (float?)null;
+        CreditsEarned = buying ? (float?)null : Credits.Round(credits);
         StockAfter = buying ? limitAfter : (int?)null;
         WantedAfter = buying ? (int?)null : limitAfter;
     }
@@ -108,7 +109,7 @@ internal sealed class NotTradedView : BatchItemView
         Name = line?.Name;
         PrefabName = line?.PrefabName;
         Quantity = quantity;
-        Credits = credits;
+        Credits = StationGodMCP.Api.Views.Credits.Round(credits);
         Error = new ErrorView(error.Code, error.Message);
     }
 
@@ -123,6 +124,15 @@ internal sealed class NotTradedView : BatchItemView
     public float Credits { get; }
 
     public ErrorView Error { get; }
+}
+
+/// <summary>
+/// Credits as the reply gives them: to the cent. The game keeps CreditCard.Currency in a float, so a difference of
+/// two balances carries noise (0.999999762 for a 1-credit line).
+/// </summary>
+internal static class Credits
+{
+    internal static float Round(float credits) => (float)Math.Round(credits, 2, MidpointRounding.AwayFromZero);
 }
 
 /// <summary>What one trade line is: the trader's entry, its unit price to this player, and whether it is gas.</summary>

@@ -52,7 +52,7 @@ internal sealed class TransferLedger<TMove, TOutcome> where TMove : class where 
 {
     private readonly object _gate = new object();
     private readonly Queue<(long Id, TMove Move)> _pending = new Queue<(long Id, TMove Move)>();
-    private readonly HashSet<long> _applying = new HashSet<long>();
+    private readonly Dictionary<long, TMove> _applying = new Dictionary<long, TMove>();
     private readonly Dictionary<long, TOutcome> _outcomes = new Dictionary<long, TOutcome>();
     private readonly Queue<long> _outcomeOrder = new Queue<long>();
     private long _nextId;
@@ -91,7 +91,7 @@ internal sealed class TransferLedger<TMove, TOutcome> where TMove : class where 
             if (_pending.Count > 0)
             {
                 (id, move) = _pending.Dequeue();
-                _applying.Add(id);
+                _applying.Add(id, move);
                 return true;
             }
         }
@@ -115,6 +115,31 @@ internal sealed class TransferLedger<TMove, TOutcome> where TMove : class where 
         }
     }
 
+    /// <summary>Whether any transfer still waiting (queued, or being applied right now) matches.</summary>
+    internal bool AnyWaiting(Func<TMove, bool> matches)
+    {
+        lock (_gate)
+        {
+            foreach ((long Id, TMove Move) pending in _pending)
+            {
+                if (matches(pending.Move))
+                {
+                    return true;
+                }
+            }
+
+            foreach (TMove applying in _applying.Values)
+            {
+                if (matches(applying))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
     internal TransferState<TOutcome> Find(long id)
     {
         lock (_gate)
@@ -124,7 +149,7 @@ internal sealed class TransferLedger<TMove, TOutcome> where TMove : class where 
                 return new TransferState<TOutcome>.Done(outcome);
             }
 
-            if (_applying.Contains(id))
+            if (_applying.ContainsKey(id))
             {
                 return TransferState<TOutcome>.Waiting.Instance;
             }

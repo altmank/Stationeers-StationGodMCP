@@ -27,6 +27,13 @@ internal static class GasMoves
             $"{Ledger.MaximumPending} moves are already waiting for the next atmospherics tick " +
             "(is the game paused?).");
 
+    /// <summary>
+    /// Whether a move still waiting for the atmospherics tick takes gas from or gives gas to this atmosphere (either
+    /// side's set, joined members included). Such a move is not a game event, so Atmosphere.IsAwaitingEvent misses it.
+    /// </summary>
+    internal static bool Touches(Atmosphere atmosphere) =>
+        Ledger.AnyWaiting(move => move.Touches(atmosphere));
+
     // A move being applied reads as queued until its outcome is kept.
     internal static object Outcome(long id) =>
         Ledger.Find(id) switch
@@ -83,6 +90,9 @@ internal sealed class PendingGasMove
     internal long Id { get; }
 
     internal GasPlan Plan { get; }
+
+    internal bool Touches(Atmosphere atmosphere) =>
+        Plan.Source.All.Contains(atmosphere) || (Plan.Target != null && Plan.Target.All.Contains(atmosphere));
 
     // The sides are the sets found when the move was asked for; a join made or broken within that half second is not
     // seen. Before and after are read live here.

@@ -31,6 +31,19 @@ public sealed class TraderTradeViewTests
     }
 
     [Fact]
+    public void CreditsAreRoundedToTheCent()
+    {
+        // serial-5: the card's float balance made a 1-credit line read 0.999999762.
+        Assert.Contains("\"credits_earned\":1.0,", WireCheck.New(new TradedView(0, Oxite, buying: false, 1, 0.999999762f, 5)));
+        Assert.Contains("\"credits_spent\":10.0,", WireCheck.New(new TradedView(0, Oxite, buying: true, 4, 10.000001f, 5)));
+        Assert.Contains("\"credits\":1.2,",
+            WireCheck.New(new NotTradedView(0, Oxite, 1, 1.20000076f, ApiErrors.Refused("trade_failed", "no"))));
+        TradeView trade = new TradeView(new ThingId(5), "Trader", dryRun: false, new ThingId(9), 16.2000008f,
+            1.20000076f, new BatchBuilder(0).Build(), new List<DeliveredView>(), null);
+        Assert.Contains("\"credits_before\":16.2,\"credits_after\":1.2,", WireCheck.New(trade));
+    }
+
+    [Fact]
     public void TradeShape()
     {
         BatchBuilder batch = new BatchBuilder(1);

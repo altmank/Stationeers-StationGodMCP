@@ -45,7 +45,8 @@ internal static class TraderBuyApi
 /// (TraderCanvas.SellItem, TradeDataHelper.SellItem). The mirror of trader_buy: the trader must still want the item
 /// (BuyDataInstance.Required); the goods are taken from the pad network's vending machines and then the card holder's
 /// inventory (TradeDataHelper.HandleSellItem destroys whole stacks and trims the last); gas is taken from the pad
-/// network's atmosphere. The price is BuyData's GetCost per unit, times the respawn stress penalty.
+/// network's atmosphere. The price is BuyData's GetCost per unit, times the respawn stress penalty. The card must be
+/// held by a player or a vending machine (SellCard), and lines of one entry are sold together (SellRun).
 /// </summary>
 internal static class TraderSellApi
 {
@@ -74,6 +75,13 @@ internal abstract class TradeSide
     internal abstract bool Execute(TransactionDataInstance entry, CreditCard card, TraderContact contact, int amount,
         float cost, out GameString? error);
 
+    /// <summary>Refuses a card this side's game call cannot use.</summary>
+    internal abstract void RequireUsable(CreditCard card);
+
+    /// <summary>Checks and trades (or, for a dry run, prices) every line of the request.</summary>
+    internal abstract BatchResultView Lines(TradeRequest request, TraderContact contact, CreditCard card,
+        float stressPenalty);
+
     private sealed class Buy : TradeSide
     {
         internal override bool IsBuying => true;
@@ -92,6 +100,25 @@ internal abstract class TradeSide
             bool done = TradeDataHelper.BuyItem((SellDataInstance)entry, card, contact, amount, cost, out GameString e);
             error = e;
             return done;
+        }
+
+        // TradeDataHelper.HandleBuyItem skips a card holder that is not a tradable inventory.
+        internal override void RequireUsable(CreditCard card)
+        {
+        }
+
+        // Line by line: the game's buy makes the goods straight into their slots and charges at once, so each line
+        // sees what the lines before it did.
+        internal override BatchResultView Lines(TradeRequest request, TraderContact contact, CreditCard card,
+            float stressPenalty)
+        {
+            BatchBuilder batch = new BatchBuilder(request.Items.Count);
+            for (int index = 0; index < request.Items.Count; index++)
+            {
+                TradeLineRun.Run(batch, index, request, contact, card, stressPenalty);
+            }
+
+            return batch.Build();
         }
     }
 
@@ -114,6 +141,12 @@ internal abstract class TradeSide
             error = e;
             return done;
         }
+
+        internal override void RequireUsable(CreditCard card) => SellCard.Require(card);
+
+        internal override BatchResultView Lines(TradeRequest request, TraderContact contact, CreditCard card,
+            float stressPenalty) =>
+            SellRun.Run(request, contact, card, stressPenalty);
     }
 }
 
@@ -205,9 +238,10 @@ internal static class TradeSession
         TradeRequest request = TradeRequest.Parse(args);
         TraderContact contact = RequireTradingContact(request.Contact);
         CreditCard card = RequireCard(request.Card);
+        side.RequireUsable(card);
         float creditsBefore = card.Currency;
         DeliverySnapshot delivery = DeliverySnapshot.Take(contact, card);
-        BatchResultView results = TradeLines(request, side, contact, card);
+        BatchResultView results = side.Lines(request, contact, card, StressPenalty());
         List<DeliveredView> delivered = side.IsBuying && !request.DryRun
             ? delivery.Delivered()
             : new List<DeliveredView>();
@@ -291,19 +325,6 @@ internal static class TradeSession
         return carried!;
     }
 
-    private static BatchResultView TradeLines(TradeRequest request, TradeSide side, TraderContact contact,
-        CreditCard card)
-    {
-        BatchBuilder batch = new BatchBuilder(request.Items.Count);
-        float stressPenalty = StressPenalty();
-        for (int index = 0; index < request.Items.Count; index++)
-        {
-            TradeLineRun.Run(batch, index, request, side, contact, card, stressPenalty);
-        }
-
-        return batch.Build();
-    }
-
     // DifficultySetting.RespawnStressTradePenalty while the local player has respawn stress, else 1 (TradeItem).
     private static float StressPenalty()
     {
@@ -314,12 +335,16 @@ internal static class TradeSession
     }
 }
 
-/// <summary>One line of a trade: find the entry, check it, then trade it through the game or price it.</summary>
+/// <summary>
+/// One line of a purchase: find the entry, check it, then buy it through the game or price it. Finding an entry and
+/// its price serve trader_sell too (SellRun).
+/// </summary>
 internal static class TradeLineRun
 {
-    internal static void Run(BatchBuilder batch, int index, TradeRequest request, TradeSide side,
-        TraderContact contact, CreditCard card, float stressPenalty)
+    internal static void Run(BatchBuilder batch, int index, TradeRequest request, TraderContact contact,
+        CreditCard card, float stressPenalty)
     {
+        TradeSide side = TradeSide.Buying;
         TradeItemRequest item = request.Items[index];
         if (!TryFind(side, contact, item, out TransactionDataInstance? entry, out ApiException? refusal))
         {
@@ -329,7 +354,7 @@ internal static class TradeLineRun
 
         TradeLine line = LineOf(entry!, side, stressPenalty);
         float cost = item.Quantity * line.CreditsEach;
-        refusal = Precheck(side, entry!, item.Quantity, cost, card, contact);
+        refusal = Precheck(entry!, item.Quantity, cost, card, contact);
         if (refusal != null)
         {
             batch.Failed(new NotTradedView(index, line, 0, 0f, refusal));
@@ -367,7 +392,7 @@ internal static class TradeLineRun
     // By the entry's name as trader_inventory gives it first, prefab_name only to break a tie (a trader can sell two
     // entries of one prefab, e.g. two ItemGasCanisterEmpty); by prefab_name alone when no name is given. An entry that
     // is still ambiguous is refused, never picked.
-    private static bool TryFind(TradeSide side, TraderContact contact, TradeItemRequest item,
+    internal static bool TryFind(TradeSide side, TraderContact contact, TradeItemRequest item,
         out TransactionDataInstance? entry, out ApiException? refusal)
     {
         List<TransactionDataInstance> matches = Candidates(side.Entries(contact.DataInstance), item);
@@ -436,7 +461,7 @@ internal static class TradeLineRun
         return item.PrefabName != null ? $"'{item.Name}' ({item.PrefabName})" : $"'{item.Name}'";
     }
 
-    private static TradeLine LineOf(TransactionDataInstance entry, TradeSide side, float stressPenalty)
+    internal static TradeLine LineOf(TransactionDataInstance entry, TradeSide side, float stressPenalty)
     {
         Thing prefab = entry.GetItemPrefab();
         return new TradeLine(
@@ -444,25 +469,23 @@ internal static class TradeLineRun
             side.UnitPrice(entry, stressPenalty));
     }
 
-    // The checks the game makes first, so a refusal changes nothing: stock or wanted count, and the card's credits.
-    private static ApiException? Precheck(TradeSide side, TransactionDataInstance entry, int quantity, float cost,
-        CreditCard card, TraderContact contact)
+    // The checks the game makes first, so a refusal changes nothing: the stock, the card's credits and a free slot.
+    private static ApiException? Precheck(TransactionDataInstance entry, int quantity, float cost, CreditCard card,
+        TraderContact contact)
     {
-        int limit = side.Limit(entry);
+        int limit = TradeSide.Buying.Limit(entry);
         if (quantity > limit)
         {
-            return side.IsBuying
-                ? ApiErrors.Refused("insufficient_stock", $"The trader has {limit} in stock.")
-                : ApiErrors.Refused("not_wanted", $"The trader wants only {limit} more.");
+            return ApiErrors.Refused("insufficient_stock", $"The trader has {limit} in stock.");
         }
 
-        if (side.IsBuying && cost > card.Currency)
+        if (cost > card.Currency)
         {
             return ApiErrors.Refused(
                 "insufficient_credits", $"This costs {cost:0.00}; the card holds {card.Currency:0.00}.");
         }
 
-        return side.IsBuying ? RoomRefusal(entry, contact, card) : AvailableRefusal(entry, contact, quantity);
+        return RoomRefusal(entry, contact, card);
     }
 
     // TradeDataHelper.HandleBuyItem needs at least one empty tradable slot for an item (gas needs none).
@@ -475,18 +498,6 @@ internal static class TradeLineRun
 
         return ApiErrors.Refused(
             "no_room", "No vending machine on the pad's network, nor the card holder, has an empty tradable slot.");
-    }
-
-    // TradeDataHelper.GetSellItemQuantity: what the pad network's vending machines and the local player hold that
-    // meets the trader's conditions.
-    private static ApiException? AvailableRefusal(TransactionDataInstance entry, TraderContact contact, int quantity)
-    {
-        int available = (int)GameMembers.TradeSellItemQuantity.Invoke(null, entry, contact);
-        return quantity > available
-            ? ApiErrors.Refused(
-                "insufficient_available",
-                $"Only {available} that the trader accepts are on the pad's network and on you.")
-            : null;
     }
 }
 

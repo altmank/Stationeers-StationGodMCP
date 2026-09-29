@@ -15,6 +15,22 @@ public sealed class GasMoveLedgerTests
     private static TransferLedger<string, string> Ledger() => new TransferLedger<string, string>(2, 2);
 
     [Fact]
+    public void AnyWaitingSeesQueuedAndApplyingMovesButNotDoneOnes()
+    {
+        // serial-4: upgrade_pipes and clean_pipes ask whether a queued move touches their network.
+        TransferLedger<string, string> ledger = Ledger();
+        ledger.TryEnqueue(_ => "a");
+        ledger.TryEnqueue(_ => "b");
+        Assert.True(ledger.AnyWaiting(move => move == "b"));
+        Assert.True(ledger.TryBegin(out long first, out _));
+        Assert.True(ledger.AnyWaiting(move => move == "a"));
+        ledger.Complete(first, "done");
+        Assert.False(ledger.AnyWaiting(move => move == "a"));
+        Assert.True(ledger.AnyWaiting(move => move == "b"));
+        Assert.False(ledger.AnyWaiting(move => move == "c"));
+    }
+
+    [Fact]
     public void AMoveBeingAppliedIsStillWaiting()
     {
         TransferLedger<string, string> ledger = Ledger();

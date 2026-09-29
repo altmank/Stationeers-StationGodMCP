@@ -27,7 +27,8 @@ writes every answer never swings the panel round. With the sun below the horizon
 now: tilted toward where it set until midnight, toward where it will rise after. The game stops a turning panel
 within its rotation tolerance, up to about 0.4 degrees short of the written Horizontal. A flat panel reports
 `can_turn: false`. `operable: false` means the panel is not finished (or is broken): the game generates
-nothing from it at any angle. A missing id or a thing that is not a solar panel is refused with `not_solar_panel`.
+nothing from it at any angle. `sun.eclipse` is always false on a dedicated server: the game works out eclipses only in
+a game with a screen. A missing id or a thing that is not a solar panel is refused with `not_solar_panel`.
 
 `dish_aim` tries angles on the dish's own model and puts it back within one frame, so nothing moves. It works on the
 Medium and the Small Satellite Dish (the Small one turns its pivots without an animator). Under 2 degrees of
@@ -65,11 +66,20 @@ moves the pad's landing point and puts it back, so a landing in progress is neve
   network's atmosphere.
 - **Selling:** the goods come from the pad network's vending machines, then from the card holder's inventory; gas from
   the pad network's atmosphere. The trader must still want the item, and it must meet the trader's conditions (purity,
-  moles per unit, temperature).
-- Prices are the trader's, adjusted for respawn stress as the trade window shows them.
-- `dry_run: true` checks each line on its own against stock, card and free slots.
+  moles per unit, temperature). The card must be carried by a player or held by a vending machine; any other card is
+  refused with `card_not_usable`, because the game's sell reads the card holder's inventory and fails without one.
+- **Selling several lines:** the lines of one call add up. Each is checked against what the trader still wants and what
+  is available after the lines before it, in a dry run as in a real run, and the lines of one trader entry are sold
+  together. The game takes sold stacks out of their slots only at the end of the frame, so without this a second line
+  of iron ore sold the same ore again. Two entries that accept the same goods in one call: the second is refused with
+  `sell_separately` when the game would take goods already sold; sell it in a call of its own.
+- Prices are the trader's, adjusted for respawn stress as the trade window shows them. Credits in replies are rounded
+  to the cent.
+- `trader_buy`'s `dry_run: true` checks each line on its own against stock, card and free slots; it does not add lines
+  up.
 - `trader_inventory` shows, for the landed trader, how many of each item it would take right now (`sellable`), the
-  same count `trader_sell` checks. `have` counts every item of the line's prefab in the world (0 when none, null for
+  trade window's own count: what the pad network's vending machines and you hold. `trader_sell` counts the card
+  holder's inventory in place of yours, so the two agree when the card is yours. `have` counts every item of the line's prefab in the world (0 when none, null for
   gas), without the trader's conditions: every "Box of ..." line counts all cardboard boxes. The game rolls a trader's inventory when the contact appears, so this works before
   the trader is interrogated.
 - Host only.

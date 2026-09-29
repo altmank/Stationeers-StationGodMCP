@@ -106,6 +106,10 @@ internal sealed class SunView
 
     public bool AboveHorizon { get; }
 
+    /// <summary>
+    /// OrbitalSimulation.IsEclipse. Always false on a dedicated server: OrbitalSimulation.SetSunState returns at once
+    /// in batch mode, so the eclipse ratio is never worked out.
+    /// </summary>
     public bool Eclipse { get; }
 }
 

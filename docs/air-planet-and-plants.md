@@ -72,7 +72,8 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
   `error.code` `nothing_to_move` when the source held none of the gases by then, `atmosphere_not_found` when an
   atmosphere was destroyed first, `move_failed` when the game's gas call threw). `transfer_not_found` means an id never
   issued, or older than the last 64 outcomes. `dry_run: true` returns the same prediction after the same checks and
-  queues nothing (`status: dry_run`, no `transfer_id`).
+  queues nothing (`status: dry_run`, no `transfer_id`). While a move waits, `upgrade_pipes` and `clean_pipes` on a
+  network it takes from or gives to answer `atmosphere_busy`: wait for the tick and try again.
 - **Rooms:** `{"room_id": "<id>"}` (the `room_id` from `rooms`) or `{"room_of": "<reference id>"}` (the room that
   thing is in; the player's id gives the room you stand in, and an item in a slot is in its outermost holder's room) as `from` or `to`. The game keeps no room-wide
   atmosphere, only one per 2 m cell, so a room here is every cell of it that has air of its own; cells without are
