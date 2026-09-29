@@ -8,7 +8,9 @@ using Assets.Scripts.Networking;
 using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
+using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Runs;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using UnityEngine;
 
@@ -411,6 +413,8 @@ internal sealed class PlaceWork : BuildWork
 /// </summary>
 internal sealed class RemoveWork : BuildWork
 {
+    private static readonly PipeFamily Pipes = new PipeFamily();
+
     private readonly RemoveArguments _arguments;
     private readonly RemoveReportView _preflight;
     private readonly Dictionary<int, long> _removed = new Dictionary<int, long>();
@@ -460,7 +464,7 @@ internal sealed class RemoveWork : BuildWork
 
             if (takedown.Kind == null)
             {
-                RemoveOne(takedown, done, log);
+                RemoveOne(plan, takedown, done, log);
             }
         }
 
@@ -525,11 +529,18 @@ internal sealed class RemoveWork : BuildWork
         }
     }
 
-    private void RemoveOne(PlannedTakedown takedown, List<PlannedTakedown> done, BuildLog log)
+    private void RemoveOne(RemovePlan plan, PlannedTakedown takedown, List<PlannedTakedown> done, BuildLog log)
     {
         Structure piece = takedown.Piece;
         try
         {
+            // An in-line tank or passive vent of a network the job keeps whole leaves it first, as the pipe pieces
+            // removed with it did (RunBuilder.Remove): the network keeps its id and every mole in what is left.
+            if (piece is Pipe { PipeNetwork: { } network } member && plan.KeptWhole.Contains(network.ReferenceId))
+            {
+                Pipes.Leave(member, new List<SmallGrid>(), network);
+            }
+
             if (_arguments.Allow.Contents && piece.Slots != null)
             {
                 foreach (Slot slot in piece.Slots)

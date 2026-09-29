@@ -64,16 +64,23 @@ internal sealed class RunBuild
 
 /// <summary>
 /// Pieces to remove: by id, and the family's pieces standing in listed cells; and things assumed gone (assume_removed):
-/// checked and forecast as if already removed, but never removed by this run (another job removes them).
+/// checked and forecast as if already removed, but never removed by this run (another job removes them). Alongside:
+/// network members that are not pieces (an in-line tank, a passive vent) the same job removes another way
+/// (remove_structure): forecast as removed, never removed by this run, and not an assume_removed.
 /// </summary>
 internal sealed class RunRemoval
 {
-    internal RunRemoval(List<ThingId> ids, List<GridCell> cells, List<ThingId>? assumed = null)
+    internal RunRemoval(List<ThingId> ids, List<GridCell> cells, List<ThingId>? assumed = null,
+        List<ThingId>? alongside = null)
     {
         Ids = ids;
         Cells = cells;
         Assumed = assumed ?? new List<ThingId>();
+        Alongside = alongside ?? new List<ThingId>();
     }
+
+    /// <summary>Network members the same job removes itself; forecast as gone.</summary>
+    internal List<ThingId> Alongside { get; }
 
     internal static RunRemoval None => new RunRemoval(new List<ThingId>(), new List<GridCell>());
 

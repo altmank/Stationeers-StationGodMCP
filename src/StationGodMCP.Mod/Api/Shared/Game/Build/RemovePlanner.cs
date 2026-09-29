@@ -72,6 +72,13 @@ internal sealed class RemovePlan
     /// <summary>Who takes the refund with refund_to source; null otherwise.</summary>
     internal Thing? From { get; set; }
 
+    /// <summary>
+    /// Pipe networks that stay in one piece although the request removes an in-line tank or passive vent of theirs
+    /// and pipe pieces too: every removed member leaves the network before it goes (as the pipe tools remove a piece
+    /// that splits nothing), so the network keeps its id and all of its gas.
+    /// </summary>
+    internal HashSet<long> KeptWhole { get; } = new HashSet<long>();
+
     internal bool Ready => Problems.Count == 0;
 
     /// <summary>Whether any piece is a pipe network member or has a pipe end (PipeContact).</summary>
@@ -130,22 +137,24 @@ internal static class RemovePlanner
             }
         }
 
+        List<NetworkRun> runs = NetworkRuns(plan);
+        Dictionary<long, NetworkTakedown> gas = GasModel(plan);
         BreachedFaces breached = new BreachedFaces();
-        HashSet<long> emptied = new HashSet<long>();
         GridFacts grid = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
-            Guard(plan, takedown, seen, breached, emptied, grid);
+            Guard(plan, takedown, seen, breached, gas, grid);
         }
 
-        Squeeze(plan, emptied);
+        Squeeze(plan, gas);
         HolderRemoved(plan, seen);
 
-        foreach (RunKind kind in Kinds)
+        foreach (NetworkRun run in runs)
         {
-            NetworkGuard(plan, kind);
+            NetworkGuard(plan, run);
         }
 
+        NetworkPieces(plan);
         return plan;
     }
 
@@ -185,7 +194,7 @@ internal static class RemovePlanner
     }
 
     private static void Guard(RemovePlan plan, PlannedTakedown takedown, HashSet<long> removed,
-        BreachedFaces breached, HashSet<long> emptied, GridFacts grid)
+        BreachedFaces breached, Dictionary<long, NetworkTakedown> gas, GridFacts grid)
     {
         Structure piece = takedown.Piece;
         RemovalFacts facts = new RemovalFacts
@@ -199,9 +208,10 @@ internal static class RemovePlanner
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
         };
-        if (takedown.Kind == null && piece is Pipe member)
+        if (takedown.Kind == null && piece is Pipe { PipeNetwork: { } network } &&
+            gas.TryGetValue(network.ReferenceId, out NetworkTakedown taken) && taken.First == takedown)
         {
-            NetworkGas(member, removed, emptied, facts);
+            NetworkGas(taken, facts);
         }
 
         Items(piece, facts.Items);
@@ -249,102 +259,126 @@ internal static class RemovePlanner
         return null;
     }
 
-    // A pipe-network member that is not a pipe piece (an in-line tank, a passive vent) holds its network's gas: the
-    // game's Pipe.OnDestroy divides that gas among the network's other members, and deletes it with the last one. So
-    // when the request removes every member of a network holding gas, the gas goes with them (holds_gas, reported once
-    // per network, on its first member in the request).
-    private static void NetworkGas(Pipe member, HashSet<long> removed, HashSet<long> emptied, RemovalFacts facts)
+    // Each pipe network the request takes an in-line tank or passive vent from, as the job leaves it (PipeTakedown):
+    // its members, the game's links among them, the order the job removes them in (the pipe pieces as their remove
+    // tool's plan lists them, then the others in reference_ids order), and whether they leave it first (KeptWhole).
+    private static Dictionary<long, NetworkTakedown> GasModel(RemovePlan plan)
     {
-        PipeNetwork? network = member.PipeNetwork;
-        if (network == null || network.Atmosphere == null || emptied.Contains(network.ReferenceId))
-        {
-            return;
-        }
-
-        foreach (SmallGrid other in RunNetworks.PipeMembers(network))
-        {
-            if (!other.IsBeingDestroyed && !removed.Contains(other.ReferenceId))
-            {
-                return;
-            }
-        }
-
-        double moles = GasSnapshot.Of(network.Atmosphere).TotalMol();
-        if (moles < RemovalRule.GasFloorMol)
-        {
-            return;
-        }
-
-        emptied.Add(network.ReferenceId);
-        facts.GasMoles += moles;
-        facts.GasFate = GasFate.Lost;
-        facts.GasWhere = $" in pipe network {network.ReferenceId}, whose last member this removal takes";
-    }
-
-    // A pipe-network member that is not a pipe piece (an in-line tank, a passive vent) takes its volume with it while
-    // its network's gas stays: Pipe.OnDestroy hands the whole mixture to what is left
-    // (NetworkAtmosphereEvent.DivideNetworkAtmosphere), so the same gas fills less room (structures-23: 605 mol N2
-    // went from 5.5 MPa to 73.7 MPa in two pipes rated 60.8 MPa). Forecast per network the request shrinks that way,
-    // its pipe pieces removed alongside counted too, and refuse over the weakest pipe left as the pipe tools do
-    // (would_burst). A network the request empties is holds_gas's (NetworkGas); pipe pieces alone are the remove
-    // tool's own check (NetworkGuard).
-    private static void Squeeze(RemovePlan plan, HashSet<long> emptied)
-    {
-        Dictionary<long, List<PlannedTakedown>> byNetwork = new Dictionary<long, List<PlannedTakedown>>();
+        Dictionary<long, NetworkTakedown> model = new Dictionary<long, NetworkTakedown>();
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
-            if (takedown.Piece is Pipe pipe && pipe.PipeNetwork != null)
-            {
-                long id = pipe.PipeNetwork.ReferenceId;
-                if (!byNetwork.TryGetValue(id, out List<PlannedTakedown> members))
-                {
-                    members = new List<PlannedTakedown>();
-                    byNetwork[id] = members;
-                }
-
-                members.Add(takedown);
-            }
-        }
-
-        foreach (KeyValuePair<long, List<PlannedTakedown>> entry in byNetwork)
-        {
-            PlannedTakedown? member = entry.Value.Find(takedown => takedown.Kind == null);
-            PipeNetwork network = ((Pipe)entry.Value[0].Piece).PipeNetwork;
-            if (member == null || emptied.Contains(entry.Key) || network.Atmosphere == null)
+            if (takedown.Kind != null || !(takedown.Piece is Pipe { PipeNetwork: { } network }) ||
+                network.Atmosphere == null || model.ContainsKey(network.ReferenceId))
             {
                 continue;
-            }
-
-            HashSet<long> gone = new HashSet<long>();
-            double removedL = 0.0;
-            foreach (PlannedTakedown takedown in entry.Value)
-            {
-                gone.Add(takedown.Piece.ReferenceId);
-                removedL += PipeFamily.VolumeOf(takedown.Piece);
-            }
-
-            double? lowest = null;
-            foreach (SmallGrid left in RunNetworks.PipeMembers(network))
-            {
-                if (left is Pipe pipe && !pipe.IsBeingDestroyed && !gone.Contains(pipe.ReferenceId))
-                {
-                    double rating = pipe.MaxPressure.ToDouble();
-                    lowest = lowest.HasValue ? System.Math.Min(lowest.Value, rating) : rating;
-                }
             }
 
             GasSnapshot before = GasSnapshot.Of(network.Atmosphere);
-            double leftL = before.VolumeL - removedL;
-            if (leftL <= 0.0)
+            TakedownOutcome outcome = PipeTakedown.Run(Members(network, out Dictionary<long, SmallGrid> members),
+                LinkSurvey.GameLinks(members, new HashSet<long>(members.Keys), new List<long>()),
+                RemovalOrder(plan, network), plan.KeptWhole.Contains(network.ReferenceId), before.TotalMol());
+            model[network.ReferenceId] = new NetworkTakedown(network.ReferenceId, before, outcome, takedown);
+        }
+
+        return model;
+    }
+
+    private static List<TakedownMember> Members(PipeNetwork network, out Dictionary<long, SmallGrid> members)
+    {
+        members = new Dictionary<long, SmallGrid>();
+        List<TakedownMember> nodes = new List<TakedownMember>();
+        foreach (SmallGrid member in RunNetworks.PipeMembers(network))
+        {
+            members[member.ReferenceId] = member;
+            nodes.Add(new TakedownMember(member.ReferenceId, PipeFamily.VolumeOf(member),
+                member is Pipe pipe ? pipe.MaxPressure.ToDouble() : (double?)null));
+        }
+
+        return nodes;
+    }
+
+    // RemoveWork's order: each run plan's pieces as RunBuilder.Remove takes them, then the other structures.
+    private static List<long> RemovalOrder(RemovePlan plan, PipeNetwork network)
+    {
+        List<long> order = new List<long>();
+        foreach (RunPlan runPlan in plan.NetworkPlans)
+        {
+            foreach (PlannedRemoval removal in runPlan.Removals)
             {
-                continue;
+                if (!removal.Assumed && removal.Network != null && removal.Network.ReferenceId == network.ReferenceId)
+                {
+                    order.Add(removal.Piece.ReferenceId);
+                }
+            }
+        }
+
+        foreach (PlannedTakedown takedown in plan.Takedowns)
+        {
+            if (takedown.Kind == null && takedown.Piece is Pipe { PipeNetwork: { } its } && its == network)
+            {
+                order.Add(takedown.Piece.ReferenceId);
+            }
+        }
+
+        return order;
+    }
+
+    // The gas the job deletes from a network it takes an in-line tank or passive vent from, reported on the first of
+    // them in the request (holds_gas, allow_contents): all of it when the request removes every member (Pipe.OnDestroy
+    // of the last one divides it among nothing), or what a part of a split network holds when it loses its last
+    // member (the pipe pieces go first, so a tank the split leaves on its own goes with the gas it was given).
+    private static void NetworkGas(NetworkTakedown taken, RemovalFacts facts)
+    {
+        TakedownOutcome outcome = taken.Outcome;
+        if (outcome.LostMol < RemovalRule.GasFloorMol)
+        {
+            return;
+        }
+
+        facts.GasMoles += outcome.LostMol;
+        facts.GasFate = GasFate.Lost;
+        facts.GasWhere = outcome.Parts.Count == 0
+            ? $" in pipe network {taken.Network}, whose last member this removal takes"
+            : string.Format(CultureInfo.InvariantCulture,
+                " of the {0:0.###} mol in pipe network {1}: the job removes the pipe pieces first, which splits the " +
+                "network, and a part of it then loses its last member while it still holds gas",
+                outcome.MolesBefore, taken.Network);
+    }
+
+    // An in-line tank or passive vent takes its volume with it while its network's gas stays (Pipe.OnDestroy hands the
+    // whole mixture to what is left; structures-23: 605 mol N2 went from 5.5 MPa to 73.7 MPa in two pipes rated
+    // 60.8 MPa). Each network left gets the gas the model gives it (all of it for a network kept whole, a share by
+    // volume at each split of the job's order); over its weakest pipe the removal is refused as the pipe tools refuse
+    // it (would_burst), naming the network left furthest over its rating.
+    private static void Squeeze(RemovePlan plan, Dictionary<long, NetworkTakedown> gas)
+    {
+        foreach (NetworkTakedown taken in gas.Values)
+        {
+            double molesBefore = taken.Outcome.MolesBefore;
+            GuardFinding? worst = null;
+            double worstRatio = 0.0;
+            foreach (TakedownPart part in taken.Outcome.Parts)
+            {
+                if (part.VolumeL <= 0.0 || part.Moles <= 0.0 || molesBefore <= 0.0 || !part.LowestKpa.HasValue)
+                {
+                    continue;
+                }
+
+                double after = taken.Before.WithVolume(part.VolumeL * molesBefore / part.Moles).PressureKpa();
+                GuardFinding? finding = RemovalRule.Squeeze(new NetworkSqueeze(taken.Network,
+                    taken.Before.PressureKpa(), after, taken.Outcome.RemovedL, part.VolumeL, part.LowestKpa,
+                    taken.Outcome.Parts.Count));
+                double ratio = after / part.LowestKpa.Value;
+                if (finding != null && ratio > worstRatio)
+                {
+                    worst = finding;
+                    worstRatio = ratio;
+                }
             }
 
-            GuardFinding? finding = RemovalRule.Squeeze(new NetworkSqueeze(entry.Key, before.PressureKpa(),
-                before.WithVolume(leftL).PressureKpa(), removedL, leftL, lowest));
-            if (finding != null)
+            if (worst != null)
             {
-                plan.Add(finding, member.Index, member.Piece.ReferenceId);
+                plan.Add(worst, taken.First.Index, taken.First.Piece.ReferenceId);
             }
         }
     }
@@ -643,11 +677,62 @@ internal static class RemovePlanner
         }
     }
 
-    // The run tools' planner on this kind's pieces: its would_split warns here, contents refusals are lifted by
-    // allow_contents, anything else refuses (cannot_remove only where no guard above already refused the piece).
-    private static void NetworkGuard(RemovePlan plan, RunKind kind)
+    // The run tools' planner on each kind's pieces. A pipe network the request also takes an in-line tank or passive
+    // vent from is planned apart, with those members forecast as gone (RunRemoval.Alongside), so its split and contents
+    // checks see the network the whole job leaves, and one that stays whole is kept whole (KeptWhole). Its gas is the
+    // gas model's (GasModel), so that plan's would_burst and holds_contents are not reported again.
+    private static List<NetworkRun> NetworkRuns(RemovePlan plan)
     {
-        List<PlannedTakedown> pieces = plan.Takedowns.FindAll(takedown => takedown.Kind == kind);
+        HashSet<long> withMembers = new HashSet<long>();
+        foreach (PlannedTakedown takedown in plan.Takedowns)
+        {
+            if (takedown.Kind == null && takedown.Piece is Pipe { PipeNetwork: { } network })
+            {
+                withMembers.Add(network.ReferenceId);
+            }
+        }
+
+        List<NetworkRun> runs = new List<NetworkRun>();
+        foreach (RunKind kind in Kinds)
+        {
+            List<PlannedTakedown> pieces = plan.Takedowns.FindAll(takedown => takedown.Kind == kind);
+            List<PlannedTakedown> shared = pieces.FindAll(takedown =>
+                takedown.Piece is Pipe { PipeNetwork: { } network } && withMembers.Contains(network.ReferenceId));
+            pieces.RemoveAll(shared.Contains);
+            HashSet<long> sharedNetworks = new HashSet<long>();
+            shared.ForEach(takedown => sharedNetworks.Add(((Pipe)takedown.Piece).PipeNetwork.ReferenceId));
+            List<ThingId> alongside = plan.Takedowns
+                .FindAll(takedown => takedown.Kind == null && takedown.Piece is Pipe { PipeNetwork: { } network } &&
+                                     sharedNetworks.Contains(network.ReferenceId))
+                .ConvertAll(takedown => new ThingId(takedown.Piece.ReferenceId));
+            AddRun(plan, runs, kind, pieces, new List<ThingId>());
+            AddRun(plan, runs, kind, shared, alongside);
+        }
+
+        foreach (NetworkRun run in runs)
+        {
+            if (!run.GasByModel || run.Plan.Forecast == null)
+            {
+                continue;
+            }
+
+            HashSet<long> rebuilt = RunBuilder.Rebuilt(run.Plan.Forecast, run.Kind.Family);
+            foreach (long network in withMembers)
+            {
+                if (!rebuilt.Contains(network) && run.Plan.Removals.Exists(removal =>
+                        !removal.Assumed && removal.Network != null && removal.Network.ReferenceId == network))
+                {
+                    plan.KeptWhole.Add(network);
+                }
+            }
+        }
+
+        return runs;
+    }
+
+    private static void AddRun(RemovePlan plan, List<NetworkRun> runs, RunKind kind, List<PlannedTakedown> pieces,
+        List<ThingId> alongside)
+    {
         if (pieces.Count == 0)
         {
             return;
@@ -655,21 +740,33 @@ internal static class RemovePlanner
 
         List<ThingId> ids = pieces.ConvertAll(takedown => new ThingId(takedown.Piece.ReferenceId));
         RunRequest request = new RunRequest(kind, "remove_structure", null,
-            new RunRemoval(ids, new List<GridCell>()),
+            new RunRemoval(ids, new List<GridCell>(), null, alongside),
             new RunOptions(EditAllowance.Nothing, null, false, RunArgs.DefaultListLimit));
         RunPlan runPlan = RunPlanner.Plan(request);
         plan.NetworkPlans.Add(runPlan);
-        foreach (LayoutIssue issue in runPlan.Problems)
+        runs.Add(new NetworkRun(kind, pieces, runPlan, alongside.Count > 0));
+    }
+
+    // A run plan's findings: its would_split warns here, contents refusals are lifted by allow_contents, anything else
+    // refuses (cannot_remove only where no guard above already refused the piece).
+    private static void NetworkGuard(RemovePlan plan, NetworkRun run)
+    {
+        RunKind kind = run.Kind;
+        foreach (LayoutIssue issue in run.Plan.Problems)
         {
-            int? index = IndexOf(pieces, issue.Id);
+            int? index = IndexOf(run.Pieces, issue.Id);
             ThingId? id = issue.Id.HasValue ? new ThingId(issue.Id.Value) : (ThingId?)null;
             string message = $"{kind.RemoveTool}'s check: {issue.Message}";
             switch (issue.Code)
             {
+                case "would_burst" when run.GasByModel:
+                case UpgradeFamily.HoldsContents when run.GasByModel:
+                    // The gas model's would_burst and holds_gas cover these networks, in the job's own order.
+                    break;
                 case "would_split":
                     plan.Warnings.Add(new BuildIssueView("would_split", message, index, id));
                     break;
-                case "holds_contents":
+                case UpgradeFamily.HoldsContents:
                 case "contents_would_move":
                     (plan.Arguments.Allow.Contents ? plan.Warnings : plan.Problems).Add(new BuildIssueView(
                         issue.Code, message + (plan.Arguments.Allow.Contents ? "" : " (allow_contents)"), index, id));
@@ -686,15 +783,25 @@ internal static class RemovePlanner
             }
         }
 
-        foreach (LayoutIssue issue in runPlan.Warnings)
+        foreach (LayoutIssue issue in run.Plan.Warnings)
         {
             plan.Warnings.Add(new BuildIssueView(issue.Code, $"{kind.RemoveTool}'s check: {issue.Message}",
-                IndexOf(pieces, issue.Id), issue.Id.HasValue ? new ThingId(issue.Id.Value) : (ThingId?)null));
+                IndexOf(run.Pieces, issue.Id), issue.Id.HasValue ? new ThingId(issue.Id.Value) : (ThingId?)null));
         }
+    }
 
-        plan.Warnings.Add(new BuildIssueView("network_piece",
-            $"{pieces.Count} {kind.Noun} piece(s) are removed as {kind.RemoveTool} removes them (a network kept " +
-            $"whole keeps its id and contents); {kind.RemoveTool} also takes cells and waypoints."));
+    private static void NetworkPieces(RemovePlan plan)
+    {
+        foreach (RunKind kind in Kinds)
+        {
+            int count = plan.Takedowns.FindAll(takedown => takedown.Kind == kind).Count;
+            if (count > 0)
+            {
+                plan.Warnings.Add(new BuildIssueView("network_piece",
+                    $"{count} {kind.Noun} piece(s) are removed as {kind.RemoveTool} removes them (a network kept " +
+                    $"whole keeps its id and contents); {kind.RemoveTool} also takes cells and waypoints."));
+            }
+        }
     }
 
     private static int? IndexOf(List<PlannedTakedown> pieces, long? id)
@@ -747,4 +854,46 @@ internal static class RemovePlanner
     }
 
     private static string Describe(GridPoint cell) => PlacePlanner.Describe(StructureSlots.MetresOf(cell));
+}
+
+/// <summary>One run tool plan inside a remove_structure request, and whether the gas model owns its gas checks.</summary>
+internal sealed class NetworkRun
+{
+    internal NetworkRun(RunKind kind, List<PlannedTakedown> pieces, RunPlan plan, bool gasByModel)
+    {
+        Kind = kind;
+        Pieces = pieces;
+        Plan = plan;
+        GasByModel = gasByModel;
+    }
+
+    internal RunKind Kind { get; }
+
+    internal List<PlannedTakedown> Pieces { get; }
+
+    internal RunPlan Plan { get; }
+
+    /// <summary>It removes pipe pieces from networks the request also takes an in-line tank or passive vent from.</summary>
+    internal bool GasByModel { get; }
+}
+
+/// <summary>A pipe network the request takes an in-line tank or passive vent from: its gas now and as the job leaves it.</summary>
+internal sealed class NetworkTakedown
+{
+    internal NetworkTakedown(long network, GasSnapshot before, TakedownOutcome outcome, PlannedTakedown first)
+    {
+        Network = network;
+        Before = before;
+        Outcome = outcome;
+        First = first;
+    }
+
+    internal long Network { get; }
+
+    internal GasSnapshot Before { get; }
+
+    internal TakedownOutcome Outcome { get; }
+
+    /// <summary>The first of its members in the request that is not a pipe piece: where its findings are reported.</summary>
+    internal PlannedTakedown First { get; }
 }

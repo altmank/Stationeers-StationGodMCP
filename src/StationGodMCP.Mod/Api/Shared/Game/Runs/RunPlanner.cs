@@ -123,6 +123,7 @@ internal static class RunPlanner
         }
 
         ReadAssumed(plan, removal, seen);
+        ReadAlongside(plan, removal, seen);
         foreach (SmallGrid piece in pieces)
         {
             string? why = CannotRemove(kind, piece);
@@ -198,6 +199,24 @@ internal static class RunPlanner
                 $"{plan.AssumedPresent.Count} thing(s) in assume_removed still stand; this check treats them as " +
                 "gone. A real run is refused until they are removed (remove the " + kind.Noun + " pieces in the " +
                 "same job by passing them as remove_ids instead).", null, plan.AssumedPresent[0]));
+        }
+    }
+
+    // Members of the family that are not pieces, removed by the same job another way (remove_structure's in-line tanks
+    // and passive vents): the forecast sees their network without them, so its split and contents checks and the
+    // networks it rebuilds are those of the whole job. The run never removes them and gives nothing back for them.
+    private static void ReadAlongside(RunPlan plan, RunRemoval removal, HashSet<long> seen)
+    {
+        UpgradeFamily family = plan.Request.Kind.Family;
+        foreach (ThingId id in removal.Alongside)
+        {
+            if (GameLookup.TryFindThing(id, out Thing thing) && !thing.IsBeingDestroyed && thing is SmallGrid member &&
+                family.IsMember(member) && seen.Add(id.Value))
+            {
+                plan.Things[member.ReferenceId] = member;
+                plan.Removals.Add(new PlannedRemoval(member, PieceShapes.Live(member), family.NetworkOf(member),
+                    new List<ItemAmount>(), true));
+            }
         }
     }
 

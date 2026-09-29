@@ -243,11 +243,14 @@ internal sealed class RemovalFacts
     internal string BreachWhere { get; set; } = string.Empty;
 }
 
-/// <summary>A pipe network's pressure before and after a removal takes volume off it, and the weakest pipe left.</summary>
+/// <summary>
+/// A pipe network's pressure before and after a removal takes volume off it, and the weakest pipe left; when the
+/// removal splits it (Parts above 1), one of the networks left: its volume, its pressure and its weakest pipe.
+/// </summary>
 internal sealed class NetworkSqueeze
 {
     internal NetworkSqueeze(long network, double beforeKpa, double afterKpa, double removedL, double leftL,
-        double? lowestKpa)
+        double? lowestKpa, int parts = 1)
     {
         Network = network;
         BeforeKpa = beforeKpa;
@@ -255,7 +258,11 @@ internal sealed class NetworkSqueeze
         RemovedL = removedL;
         LeftL = leftL;
         LowestKpa = lowestKpa;
+        Parts = parts;
     }
+
+    /// <summary>How many networks the removal leaves; above 1, LeftL and AfterKpa are one of them.</summary>
+    internal int Parts { get; }
 
     internal long Network { get; }
 
@@ -387,11 +394,17 @@ internal static class RemovalRule
         }
 
         double share = 100.0 * (1.0 - squeeze.LowestKpa.Value / squeeze.AfterKpa);
+        string where = squeeze.Parts > 1
+            ? string.Format(CultureInfo.InvariantCulture,
+                "the game divides the gas among the {0} networks left, in the order this job removes the pieces, " +
+                "and the {1:0.#} L one gets", squeeze.Parts, squeeze.LeftL)
+            : string.Format(CultureInfo.InvariantCulture, "the game keeps the gas in the {0:0.#} L left",
+                squeeze.LeftL);
         return new GuardFinding("would_burst", GuardLevel.Refusal, string.Format(CultureInfo.InvariantCulture,
-            "removing it takes {0:0.#} L off pipe network {1} and the game keeps the gas in the {2:0.#} L left: " +
+            "removing it takes {0:0.#} L off pipe network {1} and {2}: " +
             "{3:0.#} kPa now, {4:0.#} kPa after, over the weakest pipe left (rated {5:0.#} kPa), which would burst; " +
             "take at least {6:0.#} % of its gas out first (move_gas)", squeeze.RemovedL, squeeze.Network,
-            squeeze.LeftL, squeeze.BeforeKpa, squeeze.AfterKpa, squeeze.LowestKpa.Value,
+            where, squeeze.BeforeKpa, squeeze.AfterKpa, squeeze.LowestKpa.Value,
             Math.Ceiling(share * 10.0) / 10.0));
     }
 

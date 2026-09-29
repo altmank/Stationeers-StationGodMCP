@@ -328,7 +328,7 @@ internal static class RunBuilder
 
     // Networks the forecast splits or empties: the game rebuilds those from the removed pieces' neighbours. A network
     // only a split long's singles carry on is emptied too, except a pipe network's, whose long the build swaps.
-    private static HashSet<long> Rebuilt(RunForecast forecast, UpgradeFamily family)
+    internal static HashSet<long> Rebuilt(RunForecast forecast, UpgradeFamily family)
     {
         HashSet<long> rebuilt = new HashSet<long>(forecast.Result.Gone);
         if (!(family is PipeFamily))
