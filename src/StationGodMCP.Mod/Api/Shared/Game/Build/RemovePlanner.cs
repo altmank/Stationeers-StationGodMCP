@@ -74,6 +74,10 @@ internal sealed class RemovePlan
 
     internal bool Ready => Problems.Count == 0;
 
+    /// <summary>Whether any piece is a pipe network member or has a pipe end (PipeContact).</summary>
+    internal bool TouchesPipes =>
+        Takedowns.Exists(static takedown => takedown.Kind?.Family is PipeFamily || PipeContact.Touches(takedown.Piece));
+
     internal void Add(GuardFinding finding, int index, long id)
     {
         BuildIssueView issue = new BuildIssueView(finding.Code, finding.Message, index, new ThingId(id));

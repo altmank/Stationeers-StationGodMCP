@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Networking;
+using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using StationGodMCP.Api.Shared.Game.Runs;
@@ -23,6 +24,12 @@ internal abstract class BuildWork
 
     internal abstract object Preflight { get; }
 
+    /// <summary>
+    /// Whether it places or removes anything that is part of a pipe network or has a pipe end (PipeContact): only such
+    /// a job can change pipe network contents, so only it is checked (JobGas) and held after a failed check (GasHold).
+    /// </summary>
+    internal abstract bool TouchesPipes { get; }
+
     /// <summary>The final check's report, or null (with the error) when it refuses.</summary>
     internal abstract object? FinalCheck(out ErrorView? refusal);
 
@@ -40,13 +47,43 @@ internal abstract class BuildWork
 
 /// <summary>
 /// Confirmed place_structure and remove_structure runs, on the shared runner (HeldTickJobs). Either can join or split
-/// pipe networks (an in-line tank, a passive vent, a pipe piece), so both have their contents checked (JobGas).
+/// pipe networks (an in-line tank, a passive vent, a pipe piece, a device on a pipe end); such a run has its contents
+/// checked (JobGas) and waits out a failed check (GasHold). A run that touches no pipe (a locker, a frame, a wall) is
+/// neither.
 /// </summary>
 internal static class BuildJobs
 {
     internal static object Start(string prefix, BuildWork work, bool wait) =>
         HeldTickJobs.Start(prefix, work.Tool, id => new BuildWaiting(id, work, Time.realtimeSinceStartup), wait,
-            work.Preflight, true);
+            work.Preflight, work.TouchesPipes);
+}
+
+/// <summary>What can change a pipe network: a pipe network member (a pipe piece, in-line tank, passive vent) or a thing
+/// with a gas or liquid pipe end (a device joins the network there, or two networks through itself).</summary>
+internal static class PipeContact
+{
+    private const NetworkType PipeEnds = NetworkType.Pipe | NetworkType.PipeLiquid;
+
+    internal static bool Touches(Structure thing)
+    {
+        if (thing is INetworkedPipe)
+        {
+            return true;
+        }
+
+        if (thing is SmallGrid grid && grid.OpenEnds != null)
+        {
+            foreach (Connection end in grid.OpenEnds)
+            {
+                if (end != null && (end.ConnectionType & PipeEnds) != NetworkType.None)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }
 
 /// <summary>Waiting for the game tick to stop; then the final check and the work, in one frame.</summary>
@@ -88,7 +125,7 @@ internal sealed class BuildWaiting : HeldTickJob
                 : JobStep.Next(this);
         }
 
-        JobGas gas = JobGas.Open(true);
+        JobGas gas = JobGas.Open(_work.TouchesPipes);
         object? finalCheck;
         ErrorView? refusal;
         try
@@ -173,15 +210,18 @@ internal sealed class PlaceWork : BuildWork
     private readonly Dictionary<int, Structure> _built = new Dictionary<int, Structure>();
     private PlacePlan? _plan;
 
-    internal PlaceWork(PlaceArguments arguments, PlaceReportView preflight)
+    internal PlaceWork(PlaceArguments arguments, PlaceReportView preflight, bool touchesPipes)
     {
         _arguments = arguments;
         _preflight = preflight;
+        TouchesPipes = touchesPipes;
     }
 
     internal override string Tool => "place_structure";
 
     internal override object Preflight => _preflight;
+
+    internal override bool TouchesPipes { get; }
 
     internal override object? FinalCheck(out ErrorView? refusal)
     {
@@ -376,15 +416,18 @@ internal sealed class RemoveWork : BuildWork
     private readonly Dictionary<int, long> _removed = new Dictionary<int, long>();
     private RemovePlan? _plan;
 
-    internal RemoveWork(RemoveArguments arguments, RemoveReportView preflight)
+    internal RemoveWork(RemoveArguments arguments, RemoveReportView preflight, bool touchesPipes)
     {
         _arguments = arguments;
         _preflight = preflight;
+        TouchesPipes = touchesPipes;
     }
 
     internal override string Tool => "remove_structure";
 
     internal override object Preflight => _preflight;
+
+    internal override bool TouchesPipes { get; }
 
     internal override object? FinalCheck(out ErrorView? refusal)
     {

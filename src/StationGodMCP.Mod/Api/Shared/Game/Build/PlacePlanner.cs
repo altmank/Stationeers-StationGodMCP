@@ -113,6 +113,10 @@ internal sealed class PlacePlan
 
     internal bool Ready => Problems.Count == 0;
 
+    /// <summary>Whether any placement is a pipe network member or has a pipe end (PipeContact).</summary>
+    internal bool TouchesPipes =>
+        Placements.Exists(static placement => placement.Prefab != null && PipeContact.Touches(placement.Prefab));
+
     /// <summary>The grid as the layout checks read it, for the whole run.</summary>
     internal GridFacts Facts { get; } =
         new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
