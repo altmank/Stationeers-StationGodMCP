@@ -22,7 +22,14 @@ Placement and layout tools: doors and windows everywhere.
   `max_distance_m`, default 10 m: point, normal, face, face plane, 2 m cell, small cell, support character, what was
   hit, the point in the target's frame), and for a structure `target.body` (render box, its offset from the origin,
   the small-grid footprint box) and `facing_me`.
+- **`place_structure` layout preview:** each placement's dry run has `layout`: `footprint` (the small cells the game
+  would register it in, the render and footprint boxes, the face plane it rests on and the rectangle it covers),
+  `sections` (the 2 m wall sections it spans, `crosses_seam`), `conflicts` (`visual_overlap`,
+  `crosses_section_seam`, `in_door_keepout`, `crosses_window`, `blocks_route_cells`, `front_blocked`,
+  `faces_out_of_room`, `not_upright`) and `port_checks` (what stands in each port's joining cell, whether it joins on
+  build and which network, flow direction, door keep-out). Warnings only, except the door keep-out.
 - **`grid_survey`** marks keep-out cells
+
  `x` and window cells `g` in `support`, names each face structure's `kind`
   (wall, window, door) and lists `doors` with their faces, plane, band and port cells.
 

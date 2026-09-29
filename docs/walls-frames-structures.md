@@ -113,6 +113,32 @@ Tool wear, welder fuel and battery charge are not charged.
 - **Walls back to back:** a face holds one wall per side, so two plates on one face, one facing into each cell, go
   in one request.
 
+### The layout preview (1.4.2+)
+
+Every placement's dry run carries `layout`, read from the game's own data for that prefab at that position and turn:
+
+- `footprint`: the small cells the game would register it in (its real footprint, from the prefab's grid bounds),
+  2 m cells for grid structures, `body` (`render_box`, the box its meshes fill, and `grid_box`, the footprint's box),
+  and `mount`: the face plane behind it (`z=668`) and the rectangle it covers there.
+- `sections`: the 2 m wall (or floor) sections that rectangle covers, with what stands on each, and `crosses_seam`.
+- `conflicts`, each `{code, level, message, reference_id}`; warnings also appear in the report's `warnings`:
+
+| Code | Level | Meaning |
+| --- | --- | --- |
+| `visual_overlap` | warning | Its render box runs more than 0.1 m into another thing's. Neighbours flush on one wall only touch; a thing sharing one of its cells (a device on a pipe) is skipped. |
+| `crosses_section_seam` | warning | It spans more than one 2 m section. |
+| `in_door_keepout` | problem | A cell in a door's keep-out; `allow_door_keepout` makes it a warning. |
+| `crosses_window` | warning | It stands on or rests against a window. |
+| `blocks_route_cells` | warning | It would take the joining cell of a free port of a device beside it. |
+| `front_blocked` | warning | Something stands right in front of a mounted piece, or its front faces into a frame. |
+| `faces_out_of_room` | warning | A mounted piece whose back is in a room and whose front is not. |
+| `not_upright` | warning (info for in-line tanks) | Its visual top does not point up. |
+
+- `port_checks`: each port with what stands in its joining cell now (`occupant`), whether that piece `joins` it on
+  build and `would_join_network`, why it is `blocked`, its `flow` (`in` or `out`) and whether its cell is in a door's
+  keep-out.
+
+
 ## Removing structures
 
 `remove_structure {reference_ids}` gives back what hand deconstruction does, every build state's items down to the

@@ -72,7 +72,23 @@ internal sealed class GridFacts
         return structures;
     }
 
+    /// <summary>The face structures registered at a face point, each once.</summary>
+    internal List<Structure> FaceStructuresAt(GridCell point)
+    {
+        List<Structure> structures = new List<Structure>();
+        foreach (Structure structure in new List<Structure>(_grid.GetFaceStructures(Grid(point))))
+        {
+            if (structure != null && !structure.IsBeingDestroyed && !structures.Contains(structure))
+            {
+                structures.Add(structure);
+            }
+        }
+
+        return structures;
+    }
+
     internal LargeCellFacts Large(GridCell large)
+
     {
         if (_large.TryGetValue(large, out LargeCellFacts facts))
         {

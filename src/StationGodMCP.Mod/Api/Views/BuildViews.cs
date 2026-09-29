@@ -64,8 +64,9 @@ internal sealed class OrientationView
 internal sealed class PlacementView
 {
     internal PlacementView(int index, PlacementPrefabView prefab, PlacementSpotView spot, PlacementLookView look,
-        List<UpgradeAmountView> cost, List<SurveyPortView>? ports = null)
+        List<UpgradeAmountView> cost, List<SurveyPortView>? ports = null, PlacementLayoutView? layout = null)
     {
+        Layout = layout;
         Ports = ports;
         Index = index;
         PrefabName = prefab.PrefabName;
@@ -119,7 +120,15 @@ internal sealed class PlacementView
 
     /// <summary>What it costs, per item; empty for a free placement.</summary>
     public List<UpgradeAmountView> Cost { get; }
+
+    /// <summary>
+    /// The layout preview: footprint (small cells, 2 m cells, body, mount), sections, conflicts and port_checks.
+    /// Left out when the placement did not resolve that far.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public PlacementLayoutView? Layout { get; }
 }
+
 
 internal sealed class PlacementPrefabView
 {

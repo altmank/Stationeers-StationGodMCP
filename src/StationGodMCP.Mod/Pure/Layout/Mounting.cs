@@ -1,0 +1,191 @@
+#nullable enable
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+
+namespace StationGodMCP.Pure;
+
+/// <summary>
+/// Where a piece sits against a surface: the face plane behind it (the plane its back or bottom rests on) and the
+/// rectangle its footprint covers on that plane, in the plane's two other axes (U the lower axis index, V the higher).
+/// </summary>
+internal sealed class MountRect
+{
+    /// <summary>How far a footprint's back face may lie from a face plane and still rest on it (half a small cell).</summary>
+    internal const double OnPlaneM = 0.3;
+
+    private const double Edge = 1e-6;
+
+    private MountRect(FacePlane plane, GridStep outward, double minU, double maxU, double minV, double maxV)
+    {
+        Plane = plane;
+        Outward = outward;
+        MinU = minU;
+        MaxU = maxU;
+        MinV = minV;
+        MaxV = maxV;
+    }
+
+    internal FacePlane Plane { get; }
+
+    /// <summary>The way the piece stands out of the plane: its front for a mounted piece, its top for a standing one.</summary>
+    internal GridStep Outward { get; }
+
+    internal int U => Plane.Axis == 0 ? 1 : 0;
+
+    internal int V => Plane.Axis == 2 ? 1 : 2;
+
+    internal double MinU { get; }
+
+    internal double MaxU { get; }
+
+    internal double MinV { get; }
+
+    internal double MaxV { get; }
+
+    /// <summary>
+    /// The rectangle a footprint box covers on the face plane behind it along -outward; null when its back face is not
+    /// within OnPlaneM of a face plane (it stands on nothing the grid knows).
+    /// </summary>
+    internal static MountRect? Of(Box3 footprint, GridStep outward)
+    {
+        int axis = outward.Axis;
+        double back = outward.Dx + outward.Dy + outward.Dz > 0 ? footprint.Min[axis] : footprint.Max[axis];
+        double plane = Math.Round(back / 2.0) * 2.0;
+        if (Math.Abs(back - plane) > OnPlaneM)
+        {
+            return null;
+        }
+
+        int u = axis == 0 ? 1 : 0;
+        int v = axis == 2 ? 1 : 2;
+        return new MountRect(FacePlane.Of(axis, (int)Math.Round(plane * 10.0)), outward, footprint.Min[u],
+            footprint.Max[u], footprint.Min[v], footprint.Max[v]);
+    }
+
+    /// <summary>
+    /// The 2 m faces of the plane the rectangle lies on (face points, decimetres), every one it covers by more than a
+    /// hair: edges that only touch a face do not count.
+    /// </summary>
+    internal List<GridCell> Faces()
+    {
+        List<GridCell> faces = new List<GridCell>();
+        foreach (int u in Centres(MinU, MaxU))
+        {
+            foreach (int v in Centres(MinV, MaxV))
+            {
+                int[] point = new int[3];
+                point[Plane.Axis] = Plane.Coordinate;
+                point[U] = u;
+                point[V] = v;
+                faces.Add(new GridCell(point[0], point[1], point[2]));
+            }
+        }
+
+        return faces;
+    }
+
+    /// <summary>More than one face: the piece spans a seam between wall sections.</summary>
+    internal bool CrossesSeam => Faces().Count > 1;
+
+    /// <summary>The face centres (decimetres, odd metres) whose 2 m span the interval overlaps by more than a hair.</summary>
+    internal static List<int> Centres(double min, double max)
+    {
+        List<int> centres = new List<int>();
+        int first = (int)Math.Floor((min + Edge - 1.0) / 2.0) * 2 + 1;
+        for (int centre = first; centre - 1.0 < max - Edge; centre += 2)
+        {
+            double overlap = Math.Min(max, centre + 1.0) - Math.Max(min, centre - 1.0);
+            if (overlap > Edge)
+            {
+                centres.Add(centre * 10);
+            }
+        }
+
+        return centres;
+    }
+
+    public override string ToString() =>
+        string.Format(CultureInfo.InvariantCulture, "{0} facing {1}: {2} {3:0.##}..{4:0.##}, {5} {6:0.##}..{7:0.##}",
+            Plane, Outward, "xyz"[U], MinU, MaxU, "xyz"[V], MinV, MaxV);
+}
+
+/// <summary>How serious a layout finding is: a warning to read, or a problem that refuses the run.</summary>
+internal enum ConflictLevel
+{
+    Info,
+    Warning,
+    Problem
+}
+
+/// <summary>One layout finding about a planned or standing piece: a code, how serious, what, and who else.</summary>
+internal sealed class LayoutConflict
+{
+    internal LayoutConflict(string code, ConflictLevel level, string message, long? otherId = null)
+    {
+        Code = code;
+        Level = level;
+        Message = message;
+        OtherId = otherId;
+    }
+
+    internal string Code { get; }
+
+    internal ConflictLevel Level { get; }
+
+    internal string Message { get; }
+
+    internal long? OtherId { get; }
+}
+
+/// <summary>The codes the layout checks report.</summary>
+internal static class ConflictCodes
+{
+    internal const string VisualOverlap = "visual_overlap";
+    internal const string CrossesSeam = "crosses_section_seam";
+    internal const string InDoorKeepOut = "in_door_keepout";
+    internal const string CrossesWindow = "crosses_window";
+    internal const string BlocksRouteCells = "blocks_route_cells";
+    internal const string FrontBlocked = "front_blocked";
+    internal const string FacesOutOfRoom = "faces_out_of_room";
+    internal const string NotUpright = "not_upright";
+
+    /// <summary>
+    /// visual_overlap's tolerance: render boxes of neighbours flush on one surface touch or overlap by a few
+    /// centimetres (a mesh's rim past its cell); only more than this is a real clash.
+    /// </summary>
+    internal const double OverlapToleranceM = 0.1;
+}
+
+/// <summary>Which way a port moves what flows through it, from its connection role's name.</summary>
+internal static class PortFlow
+{
+    /// <summary>"in" for inputs, "out" for outputs and waste, null for a role with no direction.</summary>
+    internal static string? Of(string role) =>
+        role.StartsWith("Input", StringComparison.Ordinal) ? "in"
+        : role.StartsWith("Output", StringComparison.Ordinal) || role == "Waste" ? "out"
+        : null;
+}
+
+/// <summary>Whether a piece stands the way players read it: up is up unless it lies on a floor or ceiling.</summary>
+internal static class Uprightness
+{
+    /// <summary>
+    /// Why a turn is not upright, or null. localUp is the prefab's own axis that looks like its top (+y for almost
+    /// everything; describe_prefab's visual_up): turned, it should point +y. A piece whose top is its local +y and whose
+    /// front faces up or down lies on a floor or ceiling and may turn freely about it.
+    /// </summary>
+    internal static string? Problem(CubeRotation turn, GridStep localUp)
+    {
+        (int x, int y, int z) = turn.Apply(localUp.Dx, localUp.Dy, localUp.Dz);
+        GridStep world = ViewBasis.Nearest(new Vec3(x, y, z));
+        if (world.Equals(GridStep.All[2]) || (turn.Forward.IsVertical && localUp.Equals(GridStep.All[2])))
+        {
+            return null;
+        }
+
+        return $"its top points {world.Name}, not +y";
+    }
+
+}

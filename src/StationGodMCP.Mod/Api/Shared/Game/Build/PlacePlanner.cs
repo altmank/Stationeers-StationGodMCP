@@ -49,7 +49,11 @@ internal sealed class PlannedPlacement
     /// <summary>Its cable, pipe and chute ports where it would stand; null for anything but a device-like thing.</summary>
     internal List<SurveyPortView>? Ports { get; set; }
 
+    /// <summary>The layout preview at the planned position and turn; null until resolved that far.</summary>
+    internal LayoutPreview? Layout { get; set; }
+
     /// <summary>Resolved far enough to be built: prefab, cursor, position, rotation and state.</summary>
+
     internal bool Resolved => Prefab != null && Cursor != null && Position.HasValue && State.HasValue;
 }
 
@@ -253,7 +257,7 @@ internal static class PlacePlanner
                 index);
         }
 
-        OpeningIssues(plan, placement, position);
+        Layout(plan, placement, position);
 
         Look(plan, swatches, placement);
         if (!plan.Arguments.Free && placement.State.HasValue)
@@ -380,52 +384,23 @@ internal static class PlacePlanner
             : null;
     }
 
-    // A small-grid piece whose cells stand in a door's keep-out (a problem, a warning with allow_door_keepout) or on a
-    // window's face (a warning). A door itself and face-placed pieces (walls) are not checked: they make the faces.
-    private static void OpeningIssues(PlacePlan plan, PlannedPlacement placement, Vector3 position)
+    // The layout preview (PlacementLayout): its view on the placement, its problems (in_door_keepout unless allowed)
+    // and warnings on the plan; info findings stay in the view only.
+    private static void Layout(PlacePlan plan, PlannedPlacement placement, Vector3 position)
     {
-        Structure prefab = placement.Prefab!;
-        if (!(prefab is SmallGrid) || Openings.IsDoor(prefab))
+        LayoutPreview layout = PlacementLayout.Of(placement.Prefab!, position, placement.Rotation, placement.Turn,
+            plan.Facts, plan.Arguments.AllowDoorKeepOut, new HashSet<long>());
+        placement.Layout = layout;
+        foreach (LayoutConflict conflict in layout.Conflicts)
         {
-            return;
-        }
-
-        GridFacts facts = plan.Facts;
-        long? door = null;
-        long? window = null;
-        int inKeepOut = 0;
-        foreach (Grid3 grid in CursorCheck.SmallCells(prefab, position, placement.Rotation))
-        {
-            OpeningZone zone = facts.Opening(PieceShapes.Cell(grid));
-            if (zone.IsDoor)
+            if (conflict.Level == ConflictLevel.Problem)
             {
-                door ??= zone.Id;
-                inKeepOut++;
+                plan.Problem(conflict.Code, conflict.Message, placement.Index);
             }
-            else if (zone.IsWindow)
+            else if (conflict.Level == ConflictLevel.Warning)
             {
-                window ??= zone.Id;
+                plan.Warn(conflict.Code, conflict.Message, placement.Index);
             }
-        }
-
-        int index = placement.Index;
-        if (door.HasValue)
-        {
-            string message = $"{prefab.PrefabName} takes {inKeepOut} cell(s) in the keep-out of door {door} (its " +
-                             $"face and {facts.Band.Metres} m either side, inside its rectangle)";
-            if (plan.Arguments.AllowDoorKeepOut)
-            {
-                plan.Warn(RunPlanner.InDoorKeepOut, message + "; allowed (allow_door_keepout).", index);
-            }
-            else
-            {
-                plan.Problem(RunPlanner.InDoorKeepOut, message + "; move it, or pass allow_door_keepout.", index);
-            }
-        }
-
-        if (window.HasValue)
-        {
-            plan.Warn(RunPlanner.CrossesWindow, $"{prefab.PrefabName} stands on the face of window {window}.", index);
         }
     }
 

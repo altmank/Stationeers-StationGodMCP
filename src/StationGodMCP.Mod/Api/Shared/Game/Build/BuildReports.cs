@@ -92,7 +92,8 @@ internal static class BuildReports
         ColorView? color = placement.ColorIndex >= 0 ? ColorOf(placement.ColorIndex) : null;
         return new PlacementView(placement.Index, prefabView, spot,
             new PlacementLookView(placement.State, placement.Args.Label, color), Amounts(placement.Cost),
-            placement.Ports);
+            placement.Ports, placement.Layout?.View);
+
     }
 
     internal static RotationView Euler(Quaternion rotation)
