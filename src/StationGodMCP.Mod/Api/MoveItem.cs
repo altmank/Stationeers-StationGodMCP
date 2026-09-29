@@ -9,9 +9,11 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
+using Objects.Electrical;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -41,6 +43,10 @@ namespace StationGodMCP.Api;
 /// (Stackable.OnUseItem), a new plant is made in the slot from the seed's Seed.PlantType (a plant's own prefab
 /// otherwise) and takes the used unit's genes (Plant.ApplySeedTraits). Moving the seed itself leaves a seed bag in the
 /// tray with no growth stages, whose Plant.RefreshVisualizers throws.
+///
+/// A grower's other slots follow its hand interactions too (Pure/GrowerSlotRule): its fertiliser slot takes one unit
+/// of fertiliser into an empty slot, nothing else (most growers take any plant entering any slot for their plant), and
+/// a plant growing in a plant slot is never taken out whole: a player only harvests or clears it.
 ///
 /// A game call that throws part way is read back: when the slot holds the result, the move is reported done with the
 /// game's error as a warning, never as an internal error, so a client does not repeat a move that happened.
@@ -286,8 +292,11 @@ internal static class MovePlanner
             return false;
         }
 
-        bool plants = item is Plant && GrowerSlots.IsPlantSlot(target!, slot!);
-        refusal = plants ? PlantingRefusal((Plant)item!, target!, slot!, quantity) : null;
+        GrowerSlotKind kind = GrowerSlots.KindOf(target!, slot!);
+        bool plants = item is Plant && kind == GrowerSlotKind.Plant;
+        refusal = plants
+            ? PlantingRefusal((Plant)item!, target!, slot!, quantity)
+            : FertilisingRefusal(item!, kind, slot!, quantity);
         if (refusal != null)
         {
             return false;
@@ -317,6 +326,28 @@ internal static class MovePlanner
         return GrowerSlots.PlantingPrefab(item) == null
             ? ApiErrors.Refused("slot_refuses", $"The game has no plant that {item.DisplayName} grows into.")
             : null;
+    }
+
+    // A fertiliser slot is filled as FertiliserInHand fills it: one unit of fertiliser, into an empty slot.
+    private static ApiException? FertilisingRefusal(DynamicThing item, GrowerSlotKind kind, Slot slot, int quantity)
+    {
+        switch (GrowerSlotRule.Into(kind, item is Fertiliser, slot.Get() != null, quantity))
+        {
+            case GrowerRefusal.NotFertiliser:
+                return ApiErrors.Refused("slot_refuses",
+                    $"{SlotAccess.Label(slot)} is a fertiliser slot, which a player fills only with fertiliser; the "
+                    + "game would take a seed or plant there for the grower's plant.");
+            case GrowerRefusal.Occupied:
+                return ApiErrors.Refused("slot_occupied",
+                    $"{SlotAccess.Label(slot)} already holds {slot.Get().DisplayName}; a fertiliser slot holds one "
+                    + "fertiliser, added only when it is empty.");
+            case GrowerRefusal.OneUnit:
+                return ApiErrors.InvalidArgument(
+                    $"{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {item.DisplayName} off the "
+                    + "stack, so pass quantity 1.");
+            default:
+                return null;
+        }
     }
 
     // What the item and the destination are, and how many items move; a refusal when either is unusable.
@@ -388,10 +419,25 @@ internal static class MovePlanner
         return item != null && item.ParentSlot != null ? item.ParentSlot.Parent : null;
     }
 
-    private static ApiException? SourceRefusal(DynamicThing item) =>
-        item.ParentSlot != null && item.ParentSlot.IsLocked
-            ? ApiErrors.Refused("slot_locked", $"{item.DisplayName} is in a locked slot.")
-            : null;
+    private static ApiException? SourceRefusal(DynamicThing item)
+    {
+        Slot? from = item.ParentSlot;
+        if (from == null)
+        {
+            return null;
+        }
+
+        if (from.IsLocked)
+        {
+            return ApiErrors.Refused("slot_locked", $"{item.DisplayName} is in a locked slot.");
+        }
+
+        return GrowerSlotRule.TakesOut(GrowerSlots.KindOf(from.Parent, from), item is Plant, item is Seed)
+            ? null
+            : ApiErrors.Refused("planted",
+                $"{item.DisplayName} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, "
+                + "only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.");
+    }
 
     // quantity counts a stack's items; anything else (a water packet, a canister) moves whole, as 1.
     private static ApiException? QuantityRefusal(ItemMove move, DynamicThing item, out int quantity)
@@ -508,7 +554,7 @@ internal static class MovePlanner
         {
             Slot candidate = target.Slots[index];
             if (candidate != null && candidate != item.ParentSlot && candidate.Get() != null &&
-                SlotAccess.AutoPicks(candidate) && !GrowerSlots.IsPlantSlot(target, candidate) &&
+                SlotAccess.AutoPicks(candidate) && GrowerSlotRule.AutoMerges(GrowerSlots.KindOf(target, candidate)) &&
                 MergeRefusal(move, item, candidate, quantity, out mergeInto) == null)
             {
                 slot = candidate;
@@ -523,7 +569,8 @@ internal static class MovePlanner
         for (int index = 0; index < usable; index++)
         {
             Slot candidate = target.Slots[index];
-            if (candidate != null && candidate.Get() == null && SlotAccess.AutoTakesNew(item, candidate))
+            if (candidate != null && candidate.Get() == null && SlotAccess.AutoTakesNew(item, candidate) &&
+                GrowerSlotRule.AutoTakes(GrowerSlots.KindOf(target, candidate), item is Fertiliser))
             {
                 slot = candidate;
                 return null;
@@ -663,24 +710,51 @@ internal sealed class MovePlan
             + "; read the slots before retrying.");
 }
 
-/// <summary>A grower's plant slots: hydroponics trays, stations, portable and automated hydroponics.</summary>
+/// <summary>
+/// A grower's plant and fertiliser slots: hydroponics trays, stations, portable and automated hydroponics.
+/// </summary>
 internal static class GrowerSlots
 {
-    // IGrower.PlantToFertiliserSlotMapping maps the planting interactable of a plant slot (Slot.Action) to that slot,
-    // and throws for any other interactable.
-    internal static bool IsPlantSlot(Thing target, Slot slot)
+    // IGrower.PlantToFertiliserSlotMapping maps the planting interactable of a plant slot (Slot.Action) to that slot
+    // and its fertiliser slot, and throws for any other interactable.
+    internal static GrowerSlotKind KindOf(Thing holder, Slot slot)
     {
-        if (!(target is IGrower grower))
+        if (!(holder is IGrower grower) || holder.Slots == null)
         {
-            return false;
+            return GrowerSlotKind.Other;
         }
 
+        foreach (Slot candidate in holder.Slots)
+        {
+            if (candidate == null || !TryMapping(grower, candidate, out PlantToFertiliserSlotMapping mapping))
+            {
+                continue;
+            }
+
+            if (mapping.PlantSlot == slot)
+            {
+                return GrowerSlotKind.Plant;
+            }
+
+            if (mapping.FertiliserSlot == slot)
+            {
+                return GrowerSlotKind.Fertiliser;
+            }
+        }
+
+        return GrowerSlotKind.Other;
+    }
+
+    private static bool TryMapping(IGrower grower, Slot slot, out PlantToFertiliserSlotMapping mapping)
+    {
         try
         {
-            return grower.PlantToFertiliserSlotMapping(slot.Action).PlantSlot == slot;
+            mapping = grower.PlantToFertiliserSlotMapping(slot.Action);
+            return true;
         }
         catch (Exception)
         {
+            mapping = default;
             return false;
         }
     }

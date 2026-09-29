@@ -42,7 +42,10 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    refund onto itself only: what does not fit on it goes on the ground in front of that holder, never into the
    holder's other slots. Never a hidden slot or a stack's own slot, such as a cable coil's: the game destroys what is
    in it with the coil.
-   `refunded` lists where each part went: `merged`, `slot` or `ground`.
+   `refunded` lists where each part went: `merged`, `slot` or `ground`. With `refund: false` nothing comes back, and
+   a dry run says so: every refund list is empty and every refund count 0. A swap (`replace_walls`,
+   `replace_frames`) still lists the old piece's refund, since it pays toward the new piece either way, but its `net`
+   never goes below 0.
 8. **Host only** (`not_host` on a client). Changes use the same calls as a player's own building, so other players,
    saves and ownership follow as for normal building. Players without the mod see ordinary cables and pipes.
 

@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -296,15 +297,18 @@ internal sealed class StructureFacePressure
     internal double FaceSumAfter { get; }
 }
 
-/// <summary>One item of one swap: cost (new piece to final), refund (old piece from its state), net.</summary>
+/// <summary>
+/// One item of one swap: cost (new piece to final), refund (old piece from its state, which pays toward the cost
+/// whether or not refund is on), net.
+/// </summary>
 internal sealed class StructureMaterialLineView
 {
-    internal StructureMaterialLineView(string? prefabName, int cost, int refund)
+    internal StructureMaterialLineView(string? prefabName, int cost, int refund, bool refundEnabled)
     {
         PrefabName = prefabName;
         Cost = cost;
         Refund = refund;
-        Net = cost - refund;
+        Net = RefundShown.Net(refundEnabled, cost, refund);
     }
 
     public string? PrefabName { get; }
@@ -313,7 +317,7 @@ internal sealed class StructureMaterialLineView
 
     public int Refund { get; }
 
-    /// <summary>Positive: taken from the source; negative: given back (with refund on).</summary>
+    /// <summary>Positive: taken from the source; negative: given back, only with refund on (0 with it off).</summary>
     public int Net { get; }
 }
 

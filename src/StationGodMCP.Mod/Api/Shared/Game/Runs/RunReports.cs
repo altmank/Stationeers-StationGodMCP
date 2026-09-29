@@ -78,7 +78,8 @@ internal static class RunReports
         foreach (PlannedRemoval removal in plan.Removals)
         {
             removals.Add(new RunRemovalView(GameLookup.ViewOf(removal.Piece), GameLookup.ViewOf(removal.Piece.Position),
-                removal.Network != null ? new ThingId(removal.Network.ReferenceId) : null, Amounts(removal.Refund),
+                removal.Network != null ? new ThingId(removal.Network.ReferenceId) : null,
+                Amounts(RefundShown.Items(plan.Request.Options.Refund, removal.Refund)),
                 removal.Assumed ? true : (bool?)null));
         }
 
@@ -96,7 +97,8 @@ internal static class RunReports
         };
         RunPieceView piece = planned != null
             ? new RunPieceView(planned.Choice.Prefab.PrefabName, Degrees(planned.Choice.Rotation), cell.Ends.Shape,
-                cell.Ends.Names(), planned.Cost, RefundCount(planned))
+                cell.Ends.Names(), planned.Cost,
+                RefundShown.Count(plan.Request.Options.Refund, RefundCount(planned)))
             : new RunPieceView(cell.Action == CellAction.Keep && cell.Existing != null ? NameOf(plan, cell.Existing.Id)
                 : null, null, cell.Ends.Shape, cell.Ends.Names(), 0, 0);
         RunExistingView? existing = null;

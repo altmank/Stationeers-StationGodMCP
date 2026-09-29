@@ -101,7 +101,7 @@ internal static class UpgradeReports
             IReferencable? network = family.NetworkOf(swap.Old);
             UpgradeTargetView target = new UpgradeTargetView(swap.First?.Prefab.PrefabName,
                 RotationOf(swap.First?.Rotation ?? swap.OldRotation), swap.KeepsRotation, swap.Cost);
-            UpgradeCleanView? ends = swap.Detail != null ? CleanViewOf(swap, swap.Detail) : null;
+            UpgradeCleanView? ends = swap.Detail != null ? CleanViewOf(plan, swap, swap.Detail) : null;
             pieces.Add(new UpgradePieceView(GameLookup.ViewOf(swap.Old), GameLookup.ViewOf(swap.Old.Position),
                 RotationOf(swap.OldRotation), target, network != null ? new ThingId(network.ReferenceId) : null, ends));
         }
@@ -109,7 +109,7 @@ internal static class UpgradeReports
         return pieces;
     }
 
-    private static UpgradeCleanView CleanViewOf(PlannedSwap swap, CleanDetail detail)
+    private static UpgradeCleanView CleanViewOf(UpgradePlan plan, PlannedSwap swap, CleanDetail detail)
     {
         List<ThingId>? merged = null;
         if (swap.Olds.Count > 1)
@@ -122,7 +122,7 @@ internal static class UpgradeReports
         }
 
         return new UpgradeCleanView(detail.Operation, detail.Ends, detail.ConnectedEnds, swap.Parts.Count,
-            new UpgradeCleanExtras(detail.Round, merged, RefundEach(swap)));
+            new UpgradeCleanExtras(detail.Round, merged, RefundEach(plan, swap)));
     }
 
     // Only a goal that finds dead ends reports them; the upgrade tools' replies keep their shape.
@@ -178,14 +178,15 @@ internal static class UpgradeReports
                 : first.Old;
             Structure target = first.First!.Prefab;
             UpgradeMappingCount count = new UpgradeMappingCount(first.Old.PrefabName, target.PrefabName,
-                counts[index], first.Cost, RefundEach(first));
+                counts[index], first.Cost, RefundEach(plan, first));
             mappings.Add(plan.Request.Family.Mapping(count, source, target));
         }
 
         return mappings;
     }
 
-    private static int RefundEach(PlannedSwap swap)
+    // What one swap gives back; 0 with refund off, when nothing comes back.
+    private static int RefundEach(UpgradePlan plan, PlannedSwap swap)
     {
         int total = 0;
         foreach (ItemAmount amount in swap.Refund)
@@ -193,7 +194,7 @@ internal static class UpgradeReports
             total += amount.Quantity;
         }
 
-        return total;
+        return RefundShown.Count(plan.Request.Refund, total);
     }
 
     private static List<UpgradeSkippedView> Skipped(List<SkippedPiece> pieces, int limit)

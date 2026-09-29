@@ -406,8 +406,8 @@ public sealed class StructureSwapWireTests
             new List<string> { "88" },
             new List<StructureMaterialLineView>
             {
-                new StructureMaterialLineView("ItemKitWall", 1, 0),
-                new StructureMaterialLineView("ItemIronSheets", 0, 2)
+                new StructureMaterialLineView("ItemKitWall", 1, 0, refundEnabled: true),
+                new StructureMaterialLineView("ItemIronSheets", 0, 2, refundEnabled: true)
             });
         StructureSwapLists lists = new StructureSwapLists(problems, new List<StructurePieceView> { piece },
             new List<StructureMappingView>

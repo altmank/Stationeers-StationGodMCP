@@ -95,7 +95,8 @@ internal static class StructureReports
         List<StructureMaterialLineView> lines = new List<StructureMaterialLineView>(swap.Materials.Count);
         foreach (MaterialLine line in swap.Materials)
         {
-            lines.Add(new StructureMaterialLineView(plan.Items[line.Item].PrefabName, line.Cost, line.Refund));
+            lines.Add(new StructureMaterialLineView(plan.Items[line.Item].PrefabName, line.Cost, line.Refund,
+                plan.Request.Arguments.Refund));
         }
 
         return lines;

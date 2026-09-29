@@ -63,12 +63,17 @@ other perishables are never loose in the air.
 - A seed or plant moved into a plant slot (a hydroponics tray, station or device) is planted as you plant it by hand:
   one is used off the stack and a new plant grows in the slot with its genes. `quantity` must be 1 (or the stack hold
   one); an occupied plant slot is refused.
+- A grower's fertiliser slot takes only fertiliser, one at a time into an empty slot, as you add it by hand. Anything
+  else is refused (`slot_refuses`): the game would take a seed or plant there for the tray's plant. `"auto"` never
+  puts anything else there.
+- A plant growing in a plant slot is never moved out (`planted`): by hand you only harvest its fruit or seeds, or
+  clear it. A seed bag left in a plant slot can be moved out.
 - If the game throws part way through a move but the slot holds the result, the move is reported done with the
   game's error in `warning`: do not repeat it.
 - `moves` applies up to 64 moves in order, each with its own result.
 - Refusals name the reason: `slot_refuses` (the game's slot rules, with its message; a crate or portable tank is
   refused because the game only drags those into a slot), `slot_occupied`, `stack_full`,
-  `no_free_slot`, `slot_locked`, `not_movable` (a structure) and others. A refused move changes nothing.
+  `no_free_slot`, `planted`, `slot_locked`, `not_movable` (a structure) and others. A refused move changes nothing.
 
 Put 50 iron ingots into a locker's first free slot, `move_item`:
 

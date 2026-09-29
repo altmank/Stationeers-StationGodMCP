@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -187,7 +188,7 @@ internal sealed class UpgradeResources
         From = from;
         Coils = coils;
         RefundEnabled = refundEnabled;
-        Refund = refund;
+        Refund = RefundShown.Items(refundEnabled, refund);
         Networks = networks;
     }
 
