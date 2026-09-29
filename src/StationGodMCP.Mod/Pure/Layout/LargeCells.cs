@@ -18,6 +18,12 @@ internal static class LargeCells
         new GridCell(Centre(point.X), Centre(point.Y), Centre(point.Z));
 
     /// <summary>
+    /// The 2 m cell the game looks in for the frame a piece stands on: depth metres below its origin, along its up
+    /// (SmallGrid.HasFrameBelow: half the piece's grid size; LargeElectrical and LandingPadModular: all of it).
+    /// </summary>
+    internal static GridCell Below(Vec3 origin, Vec3 up, double depth) => Containing(origin - up * depth);
+
+    /// <summary>
     /// The 2 m cells a box overlaps (corners in any order), y then z then x ascending. A side of the box lying on a face
     /// plane takes no cell beyond it, so a box up to y 222 stops at the cell below that floor; a box flat on an axis
     /// takes the cell its coordinate belongs to.

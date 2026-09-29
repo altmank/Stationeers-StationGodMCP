@@ -10,16 +10,18 @@ namespace StationGodMCP.Api.Views;
 /// <summary>
 /// A job's check of the pipe networks' contents (gas_check): every family of networks it changed, read before the job
 /// and again after, once every gas change the job queued had been applied. Ok when each family holds what it held
-/// (or lost it to the removal of its last pipe, which the planner holds back unless allowed) and no network without
-/// pipes is left holding gas. Gas a family lost in the game's merge is put back into its networks (recovered) and the
-/// empty networks left holding it are cleared; what could not be put back leaves the check failed, the job
-/// gas_lost, and further pipe jobs refused.
+/// (or lost it to the removal of its last pipe, which the planner holds back unless allowed; or lost what the job's
+/// plan deleted on purpose, planned_loss_mol) and no network without pipes is left holding gas. Gas a family lost in
+/// the game's merge is put back into its networks (recovered) and the empty networks left holding it are cleared; a
+/// refill that would take a network over its weakest pipe is not made (withheld). What could not be put back leaves
+/// the check failed, the job gas_lost, and further pipe jobs refused.
 /// </summary>
 internal sealed class GasCheckView
 {
     private GasCheckView(bool isChecked, bool ok, string summary, List<GasFamilyView> families,
         List<GasGhostView> ghosts, List<GasRefillView> recovered, List<ThingId> ghostsCleared,
-        List<GasGhostView> oldGhosts, List<GasOrphanView> orphans, List<GasOrphanView> oldOrphans)
+        List<GasGhostView> oldGhosts, List<GasOrphanView> orphans, List<GasOrphanView> oldOrphans,
+        List<GasWithheldView> withheld)
     {
         Checked = isChecked;
         Ok = ok;
@@ -31,6 +33,7 @@ internal sealed class GasCheckView
         OldGhosts = oldGhosts;
         Orphans = orphans;
         OldOrphans = oldOrphans;
+        Withheld = withheld;
     }
 
     /// <summary>False when the check could not be made (a save held the tick); nothing is known then.</summary>
@@ -47,6 +50,12 @@ internal sealed class GasCheckView
 
     /// <summary>Gas put back into a family's networks after the game's merge lost it.</summary>
     public List<GasRefillView> Recovered { get; }
+
+    /// <summary>
+    /// Gas a family lacks that was not put back, because it would take one of its networks over the rating of its
+    /// weakest pipe (1.4.4+): the family stays short and the check fails.
+    /// </summary>
+    public List<GasWithheldView> Withheld { get; }
 
     /// <summary>Networks without pipes the job left, emptied and dropped once their family was whole again.</summary>
     public List<ThingId> GhostsCleared { get; }
@@ -65,9 +74,10 @@ internal sealed class GasCheckView
     public List<GasOrphanView> OldOrphans { get; }
 
     internal static GasCheckView Of(GasAudit audit, List<GasRefill> recovered, List<long> ghostsCleared,
-        GasOrphans? orphans = null)
+        GasOrphans? orphans = null, List<GasRefillWithheld>? withheld = null)
     {
         orphans ??= GasOrphans.None;
+        withheld ??= new List<GasRefillWithheld>();
         List<GasFamilyView> families = new List<GasFamilyView>(audit.Families.Count);
         foreach (GasFamily family in audit.Families)
         {
@@ -93,9 +103,9 @@ internal sealed class GasCheckView
         }
 
         List<ThingId> cleared = ghostsCleared.ConvertAll(static id => new ThingId(id));
-        return new GasCheckView(true, audit.Ok && orphans.Ok, Summarise(audit, recovered, orphans), families, ghosts,
-            refills, cleared, oldGhosts, orphans.Left.ConvertAll(GasOrphanView.Of),
-            orphans.Old.ConvertAll(GasOrphanView.Of));
+        return new GasCheckView(true, audit.Ok && orphans.Ok, Summarise(audit, recovered, orphans, withheld), families,
+            ghosts, refills, cleared, oldGhosts, orphans.Left.ConvertAll(GasOrphanView.Of),
+            orphans.Old.ConvertAll(GasOrphanView.Of), withheld.ConvertAll(GasWithheldView.Of));
     }
 
     /// <summary>
@@ -113,12 +123,14 @@ internal sealed class GasCheckView
     internal static GasCheckView Unchecked(string reason) =>
         new GasCheckView(false, false, reason, new List<GasFamilyView>(), new List<GasGhostView>(),
             new List<GasRefillView>(), new List<ThingId>(), new List<GasGhostView>(), new List<GasOrphanView>(),
-            new List<GasOrphanView>());
+            new List<GasOrphanView>(), new List<GasWithheldView>());
 
-    private static string Summarise(GasAudit audit, List<GasRefill> recovered, GasOrphans orphans)
+    private static string Summarise(GasAudit audit, List<GasRefill> recovered, GasOrphans orphans,
+        List<GasRefillWithheld> withheld)
     {
         double kept = 0.0;
         double deleted = 0.0;
+        double planned = 0.0;
         double missing = 0.0;
         foreach (GasFamily family in audit.Families)
         {
@@ -129,6 +141,7 @@ internal sealed class GasCheckView
             else
             {
                 kept += family.GasAfter.TotalMol;
+                planned += family.PlannedLoss.TotalMol;
                 missing += family.MissingMol;
             }
         }
@@ -157,6 +170,18 @@ internal sealed class GasCheckView
             text += $" {Mol(put)} mol the game's merge had lost was put back.";
         }
 
+        foreach (GasRefillWithheld held in withheld)
+        {
+            text += $" {Mol(held.Lacking.TotalMol)} mol was not put back: it would take pipe network {held.Network} " +
+                    $"to {Kpa(held.PressureAfterKpa)} kPa, over its weakest pipe (rated {Kpa(held.RatingKpa)} kPa).";
+        }
+
+        if (planned > 0.0)
+        {
+            text += $" {Mol(planned)} mol went with the parts of split networks the job removed, as its plan said " +
+                    "(allow_contents).";
+        }
+
         if (deleted > 0.0)
         {
             text += $" {Mol(deleted)} mol went with the last pipes of networks the job removed.";
@@ -166,13 +191,15 @@ internal sealed class GasCheckView
     }
 
     private static string Mol(double moles) => moles.ToString("0.###", CultureInfo.InvariantCulture);
+
+    private static string Kpa(double kpa) => kpa.ToString("0.#", CultureInfo.InvariantCulture);
 }
 
 /// <summary>One family of networks: which networks it was before and is now, and what they held.</summary>
 internal sealed class GasFamilyView
 {
     private GasFamilyView(List<ThingId> networksBefore, List<ThingId> networksAfter, double molBefore,
-        double molAfter, double energyBeforeJ, double energyAfterJ, bool emptied, bool ok)
+        double molAfter, double energyBeforeJ, double energyAfterJ, double plannedLossMol, bool emptied, bool ok)
     {
         NetworksBefore = networksBefore;
         NetworksAfter = networksAfter;
@@ -180,7 +207,8 @@ internal sealed class GasFamilyView
         MolAfter = molAfter;
         EnergyBeforeJ = energyBeforeJ;
         EnergyAfterJ = energyAfterJ;
-        MissingMol = emptied ? 0.0 : molBefore - molAfter;
+        PlannedLossMol = plannedLossMol;
+        MissingMol = emptied ? 0.0 : molBefore - plannedLossMol - molAfter;
         Emptied = emptied;
         Ok = ok;
     }
@@ -197,7 +225,13 @@ internal sealed class GasFamilyView
 
     public double EnergyAfterJ { get; }
 
-    /// <summary>Before minus after; negative when gas appeared. Zero for an emptied family.</summary>
+    /// <summary>
+    /// What the job's plan deleted on purpose (remove_structure with allow_contents: a part of a split network that
+    /// lost its last member with its share), expected gone and not put back (1.4.4+).
+    /// </summary>
+    public double PlannedLossMol { get; }
+
+    /// <summary>Before, less the planned loss, minus after; negative when gas appeared. Zero for an emptied family.</summary>
     public double MissingMol { get; }
 
     /// <summary>Every pipe of the family was removed: its contents went with the last one, as the game deletes them.</summary>
@@ -207,7 +241,7 @@ internal sealed class GasFamilyView
 
     internal static GasFamilyView Of(GasFamily family) =>
         new GasFamilyView(Ids(family.Before), Ids(family.After), family.GasBefore.TotalMol, family.GasAfter.TotalMol,
-            family.GasBefore.TotalEnergyJ, family.GasAfter.TotalEnergyJ, family.Emptied,
+            family.GasBefore.TotalEnergyJ, family.GasAfter.TotalEnergyJ, family.PlannedLoss.TotalMol, family.Emptied,
             family.Emptied || family.Conserved);
 
     internal static List<ThingId> Ids(List<NetworkGas> networks) =>
@@ -281,6 +315,37 @@ internal sealed class GasOrphanView
     internal static GasOrphanView Of(NetworkGas network) =>
         new GasOrphanView(new ThingId(network.Id), network.Members.Count, network.Gas.TotalMol,
             network.Gas.TotalEnergyJ, network.VolumeL);
+}
+
+/// <summary>Gas a family lacks that was not put back: the network it would take over its weakest pipe, and how far.</summary>
+internal sealed class GasWithheldView
+{
+    private GasWithheldView(ThingId networkId, List<ThingId> familyNetworks, double mol, double pressureAfterKpa,
+        double ratingKpa)
+    {
+        NetworkId = networkId;
+        FamilyNetworks = familyNetworks;
+        Mol = mol;
+        PressureAfterKpa = pressureAfterKpa;
+        RatingKpa = ratingKpa;
+    }
+
+    public ThingId NetworkId { get; }
+
+    /// <summary>The family's live networks, which stay short by Mol.</summary>
+    public List<ThingId> FamilyNetworks { get; }
+
+    public double Mol { get; }
+
+    /// <summary>The pressure the refill would have left in NetworkId.</summary>
+    public double PressureAfterKpa { get; }
+
+    /// <summary>The lowest MaxPressure of its pipes.</summary>
+    public double RatingKpa { get; }
+
+    internal static GasWithheldView Of(GasRefillWithheld held) =>
+        new GasWithheldView(new ThingId(held.Network), GasFamilyView.Ids(held.Family.After), held.Lacking.TotalMol,
+            held.PressureAfterKpa, held.RatingKpa);
 }
 
 /// <summary>Gas put into a network to make its family whole.</summary>

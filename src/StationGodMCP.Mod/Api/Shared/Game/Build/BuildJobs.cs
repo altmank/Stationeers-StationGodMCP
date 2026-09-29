@@ -443,9 +443,12 @@ internal sealed class RemoveWork : BuildWork
 
     // Removals only split networks, and the game chains splits made in one frame itself (Pipe.OnDestroy divides from
     // the live atmosphere of a network still awaiting its share): the gas is applied and checked once, at the end.
+    // The gas the plan forecasts it deletes (allowed, or it would not have passed) is expected by the check, which
+    // would otherwise put it back into the parts left and could burst them (structures-34).
     internal override void Apply(BuildLog log, JobGas gas)
     {
         RemovePlan plan = _plan!;
+        gas.Expect(plan.GasLosses);
         List<PlannedTakedown> done = new List<PlannedTakedown>();
         foreach (RunPlan runPlan in plan.NetworkPlans)
         {

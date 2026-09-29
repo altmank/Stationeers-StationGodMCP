@@ -79,6 +79,12 @@ internal sealed class RemovePlan
     /// </summary>
     internal HashSet<long> KeptWhole { get; } = new HashSet<long>();
 
+    /// <summary>
+    /// The gas the gas model forecasts the job deletes from each network it takes an in-line tank or passive vent from
+    /// (TakedownOutcome.LostMol: holds_gas, lifted by allow_contents). The job's gas check expects it gone.
+    /// </summary>
+    internal List<PlannedGasLoss> GasLosses { get; } = new List<PlannedGasLoss>();
+
     internal bool Ready => Problems.Count == 0;
 
     /// <summary>Whether any piece is a pipe network member or has a pipe end (PipeContact).</summary>
@@ -139,6 +145,14 @@ internal static class RemovePlanner
 
         List<NetworkRun> runs = NetworkRuns(plan);
         Dictionary<long, NetworkTakedown> gas = GasModel(plan);
+        foreach (NetworkTakedown taken in gas.Values)
+        {
+            if (taken.Outcome.LostMol > 0.0)
+            {
+                plan.GasLosses.Add(PlannedGasLoss.Of(taken.Network, taken.Outcome.LostMol, taken.Outcome.MolesBefore));
+            }
+        }
+
         BreachedFaces breached = new BreachedFaces();
         GridFacts grid = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
         foreach (PlannedTakedown takedown in plan.Takedowns)

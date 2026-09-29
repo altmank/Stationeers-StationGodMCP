@@ -114,8 +114,9 @@ Tool wear, welder fuel and battery charge are not charged.
   again just before each piece is built, so later placements see earlier ones. The dry run sees only what stands now,
   so it also checks the placements of one request against each other (`overlaps_placement`).
   A piece that needs a frame below it (a station battery, a dish, landing pad parts) may stand on a frame an
-  earlier placement of the same request puts there: warning `supported_by_placement`, checked again once that
-  frame stands. When the reason is "requires a Frame below" and a frame fills the spot's own cell, `cannot_place`
+  earlier placement of the same request puts there (in the cell the game looks in for that piece: half its size
+  below a battery, its whole size below a dish or pad part), also when a point above that frame is set down onto
+  it: warning `supported_by_placement`, checked again once that frame stands. When the reason is "requires a Frame below" and a frame fills the spot's own cell, `cannot_place`
   says so: such pieces stand in the free cell on top of a frame.
 - **Cost:** every build state's items up to the chosen state, from your inventory or `from_id`. `free: true` places
   without materials, in creative worlds only (`not_creative` otherwise).
@@ -272,7 +273,7 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 | `being_destroyed`, `indestructible`, `rocket`, `game_refuses` | The game would not deconstruct it. | none |
 | `has_mounted` | A device is mounted on it (a light, sensor, console or vent on a wall), or stands on it, and nothing else would hold that face: a plate on the same face, or a frame beside it. The game would leave the device hanging in the air. Remove the device in the same request, or first. | none |
 | `broken` | It is broken: fire, pressure or other damage wrecked it. The game cannot repair a broken structure, only deconstruct it, and that gives nothing back. | `allow_broken` |
-| `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. An in-line tank or passive vent that is the last of its pipe network (with the rest of the request) takes the network's gas with it: the game deletes it. So does one left as the last of a part of a network the request splits, since the job removes pipe pieces first. | `allow_contents` |
+| `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. An in-line tank or passive vent that is the last of its pipe network (with the rest of the request) takes the network's gas with it: the game deletes it. So does one left as the last of a part of a network the request splits, since the job removes pipe pieces first. The job's gas check expects exactly that gas gone (`planned_loss_mol`) and does not put it back. | `allow_contents` |
 | `would_breach` | It blocks air, and removing it joins spaces whose pressures differ by 1 kPa or more, such as a pressurised room and the outside. | `allow_breach` |
 | `would_burst` | An in-line tank or passive vent that is not the last of its pipe network takes its volume away, and the game keeps the network's gas in what is left. The pressure of what is left would be over its weakest pipe, which would burst; the message gives the forecast and how much gas to take out first. Removed with pipe pieces of its network, the network the request leaves in one piece keeps all its gas and its id; where the request splits it, each part gets its share by volume at each split, in the job's order. | none |
 | `refund_holder_removed` | `from_id` is removed by the same request, or is inside something it removes: the refund would be destroyed with it. | another `from_id`, or `refund_to` |

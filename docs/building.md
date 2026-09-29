@@ -260,9 +260,10 @@ mole. Every job that can change pipe networks (`place_pipes`, `remove_pipes`, `u
 | Field | Meaning |
 | --- | --- |
 | `ok`, `summary` | Every family holds what it held, no network without pipes holds gas, and the job left no orphan. |
-| `families` | `networks_before`, `networks_after`, `mol_before`, `mol_after`, `energy_before_j`, `energy_after_j`, `missing_mol`; `emptied` when all its pipes were removed (the contents go with the last pipe, as in the game). |
+| `families` | `networks_before`, `networks_after`, `mol_before`, `mol_after`, `energy_before_j`, `energy_after_j`, `planned_loss_mol` (gas a `remove_structure` with `allow_contents` deletes as its dry run said: expected gone, not put back), `missing_mol` (beyond that); `emptied` when all its pipes were removed (the contents go with the last pipe, as in the game). |
 | `ghosts` | Networks without pipes left holding gas, with the devices still registered on them: where missing gas sits. |
 | `recovered`, `ghosts_cleared` | Gas the game's merge lost, put back into the family's networks by volume, and the pipeless networks emptied and dropped after. The job then ends `applied_with_differences`. |
+| `withheld` | Gas a family lacks that was **not** put back, because it would take one of its networks over its weakest pipe (`network_id`, `family_networks`, `mol`, `pressure_after_kpa`, `rating_kpa`): a burst would vent everything. The family stays short, so the job ends `gas_lost`. |
 | `old_ghosts` | Pipeless networks that already held the same gas before the job: not its doing, left as they are. |
 | `orphans` | Networks the game no longer lists that pipes still name (`network_id`, `pipes`, `mol`, `energy_j`, `volume_l`). Nothing simulates them and their gas counts where it sits, so a copy of gas the game already moved shows as gas that appeared. Any fails the check. |
 | `old_orphans` | Such networks that were there before the job: not its doing, left as they are. |

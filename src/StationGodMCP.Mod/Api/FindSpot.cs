@@ -442,7 +442,7 @@ internal static class FindSpotApi
             string? refusal = CursorCheck.Refusal(cursor, Position, Rotation, new HashSet<long>());
             if (refusal != null)
             {
-                return "the game refuses it: " + refusal + PlacePlanner.FrameNote(Position, refusal);
+                return "the game refuses it: " + refusal + PlacePlanner.FrameNote(Position, Rotation, refusal);
             }
 
             LayoutPreview layout = PlacementLayout.Of(prefab, Position, Rotation, Turn, facts, !require.AvoidDoors,

@@ -132,13 +132,14 @@ internal readonly struct GasTolerance
 
 /// <summary>
 /// One pipe network as read at one moment: its id, contents, volume, the ids of its member pipes and of the devices
-/// registered on it, and the small-grid cells its members fill. A network with no members is still listed by the game
-/// while its atmosphere awaits an event (ReferencableNetwork.RefreshNetwork skips deregistering it): that is a ghost.
+/// registered on it, the small-grid cells its members fill, and the rating of its weakest pipe. A network with no
+/// members is still listed by the game while its atmosphere awaits an event (ReferencableNetwork.RefreshNetwork skips
+/// deregistering it): that is a ghost.
 /// </summary>
 internal sealed class NetworkGas
 {
     internal NetworkGas(long id, GasMix gas, double volumeL, IReadOnlyList<long> members, IReadOnlyList<long> devices,
-        IReadOnlyList<GridCell>? cells = null)
+        IReadOnlyList<GridCell>? cells = null, double? ratingKpa = null)
     {
         Id = id;
         Gas = gas;
@@ -146,6 +147,7 @@ internal sealed class NetworkGas
         Members = members;
         Devices = devices;
         Cells = cells ?? Array.Empty<GridCell>();
+        RatingKpa = ratingKpa;
     }
 
     internal long Id { get; }
@@ -161,25 +163,54 @@ internal sealed class NetworkGas
     /// <summary>The cells its member pipes fill, as registered on the small grid.</summary>
     internal IReadOnlyList<GridCell> Cells { get; }
 
+    /// <summary>The lowest MaxPressure of its member pipes; null when none is rated (or it was not read).</summary>
+    internal double? RatingKpa { get; }
+
     internal bool Live => Members.Count > 0;
 }
 
 /// <summary>
+/// Gas a job deletes from one pipe network on purpose, as its plan forecast and the request allowed (remove_structure
+/// with allow_contents: a part of a split network that loses its last member while it still holds its share): a share
+/// of what the network held before the job. The gas check expects it gone and does not put it back.
+/// </summary>
+internal sealed class PlannedGasLoss
+{
+    internal PlannedGasLoss(long network, double share)
+    {
+        Network = network;
+        Share = Math.Max(0.0, Math.Min(1.0, share));
+    }
+
+    internal long Network { get; }
+
+    /// <summary>The part of the network's contents deleted, 0 to 1.</summary>
+    internal double Share { get; }
+
+    /// <summary>A forecast's moles as a share of the moles it was made from.</summary>
+    internal static PlannedGasLoss Of(long network, double lostMol, double molesBefore) =>
+        new PlannedGasLoss(network, molesBefore > 0.0 ? lostMol / molesBefore : 0.0);
+}
+
+/// <summary>
 /// Networks a job touched that belong together: every network before and after that shares a pipe or a pipe's cell,
-/// directly or through another. Its contents before (the networks live then) must equal its contents after (the
-/// networks live now), unless every one of its pipes was removed and nothing stands in their cells (Emptied: the
-/// game's removal of a network's last pipe deletes its contents, which the planner holds back unless allowed).
+/// directly or through another. Its contents before (the networks live then), less what the job's plan deletes on
+/// purpose (PlannedLoss), must equal its contents after (the networks live now), unless every one of its pipes was
+/// removed and nothing stands in their cells (Emptied: the game's removal of a network's last pipe deletes its
+/// contents, which the planner holds back unless allowed).
 /// </summary>
 internal sealed class GasFamily
 {
     internal GasFamily(List<NetworkGas> before, List<NetworkGas> after, GasMix gasBefore, GasMix gasAfter,
-        bool conserved)
+        GasMix plannedLoss, GasTolerance tolerance)
     {
         Before = before;
         After = after;
         GasBefore = gasBefore;
         GasAfter = gasAfter;
-        Conserved = conserved;
+        PlannedLoss = plannedLoss;
+        Expected = gasBefore.Minus(plannedLoss);
+        Conserved = tolerance.Same(Expected, gasAfter);
     }
 
     internal List<NetworkGas> Before { get; }
@@ -190,14 +221,24 @@ internal sealed class GasFamily
 
     internal GasMix GasAfter { get; }
 
+    /// <summary>What the job's plan deletes from its networks on purpose (PlannedGasLoss); empty for most jobs.</summary>
+    internal GasMix PlannedLoss { get; }
+
+    /// <summary>What it should hold after the job: its contents before less the planned loss.</summary>
+    internal GasMix Expected { get; }
+
     internal bool Emptied => After.Count == 0;
 
+    /// <summary>It holds what it was expected to hold (Expected), within the tolerance.</summary>
     internal bool Conserved { get; }
 
-    /// <summary>Contents before minus contents after: positive when gas went missing, negative when gas appeared.</summary>
-    internal double MissingMol => GasBefore.TotalMol - GasAfter.TotalMol;
+    /// <summary>
+    /// Expected contents minus contents after: positive when gas went missing beyond the planned loss, negative when
+    /// gas appeared.
+    /// </summary>
+    internal double MissingMol => Expected.TotalMol - GasAfter.TotalMol;
 
-    internal double MissingEnergyJ => GasBefore.TotalEnergyJ - GasAfter.TotalEnergyJ;
+    internal double MissingEnergyJ => Expected.TotalEnergyJ - GasAfter.TotalEnergyJ;
 
     internal bool Contains(long id) => IndexIn(Before, id) >= 0 || IndexIn(After, id) >= 0;
 
@@ -238,9 +279,10 @@ internal sealed class GasAudit
     /// before and a pipe of B fills after (a piece replaced in place, such as a long straight swapped for its singles,
     /// is a new pipe with a new id). Network ids are never followed: the game's merge keeps whichever network the
     /// joining piece met first (StructureNetwork.Merge), so the one that carries the contents on may be new.
+    /// A planned loss (PlannedGasLoss) takes its share of a network's contents before off what its family should hold.
     /// </summary>
     internal static GasAudit Of(IReadOnlyList<NetworkGas> before, IReadOnlyList<NetworkGas> after,
-        GasTolerance tolerance)
+        GasTolerance tolerance, IReadOnlyList<PlannedGasLoss>? planned = null)
     {
         Dictionary<long, NetworkGas> liveBefore = LiveById(before);
         Dictionary<long, NetworkGas> liveAfter = LiveById(after);
@@ -268,7 +310,8 @@ internal sealed class GasAudit
             }
         }
 
-        List<GasFamily> grouped = families.Group(liveBefore, liveAfter, tolerance, TypesOf(before, after));
+        List<GasFamily> grouped = families.Group(liveBefore, liveAfter, tolerance, TypesOf(before, after),
+            SharesOf(planned));
         List<NetworkGas> ghosts = new List<NetworkGas>();
         List<NetworkGas> oldGhosts = new List<NetworkGas>();
         Dictionary<long, NetworkGas> beforeById = AllById(before);
@@ -359,6 +402,20 @@ internal sealed class GasAudit
         return owners;
     }
 
+    // The planned share of each network, several losses of one network added (at most all of it).
+    private static Dictionary<long, double> SharesOf(IReadOnlyList<PlannedGasLoss>? planned)
+    {
+        Dictionary<long, double> shares = new Dictionary<long, double>();
+        foreach (PlannedGasLoss loss in planned ?? Array.Empty<PlannedGasLoss>())
+        {
+            shares[loss.Network] = shares.TryGetValue(loss.Network, out double share)
+                ? Math.Min(1.0, share + loss.Share)
+                : loss.Share;
+        }
+
+        return shares;
+    }
+
     private static int TypesOf(IReadOnlyList<NetworkGas> before, IReadOnlyList<NetworkGas> after) =>
         before.Count > 0 ? before[0].Gas.Types : after.Count > 0 ? after[0].Gas.Types : 0;
 
@@ -381,7 +438,7 @@ internal sealed class GasAudit
         }
 
         internal List<GasFamily> Group(Dictionary<long, NetworkGas> liveBefore, Dictionary<long, NetworkGas> liveAfter,
-            GasTolerance tolerance, int types)
+            GasTolerance tolerance, int types, Dictionary<long, double> plannedShares)
         {
             Dictionary<long, List<long>> members = new Dictionary<long, List<long>>();
             List<long> ids = new List<long>(_parent.Keys);
@@ -401,7 +458,7 @@ internal sealed class GasAudit
             List<GasFamily> families = new List<GasFamily>(members.Count);
             foreach (List<long> group in members.Values)
             {
-                families.Add(FamilyOf(group, liveBefore, liveAfter, tolerance, types));
+                families.Add(FamilyOf(group, liveBefore, liveAfter, tolerance, types, plannedShares));
             }
 
             families.Sort(static (a, b) => Lowest(a).CompareTo(Lowest(b)));
@@ -409,18 +466,25 @@ internal sealed class GasAudit
         }
 
         private static GasFamily FamilyOf(List<long> group, Dictionary<long, NetworkGas> liveBefore,
-            Dictionary<long, NetworkGas> liveAfter, GasTolerance tolerance, int types)
+            Dictionary<long, NetworkGas> liveAfter, GasTolerance tolerance, int types,
+            Dictionary<long, double> plannedShares)
         {
             List<NetworkGas> before = new List<NetworkGas>();
             List<NetworkGas> after = new List<NetworkGas>();
             GasMix gasBefore = GasMix.Empty(types);
             GasMix gasAfter = GasMix.Empty(types);
+            GasMix plannedLoss = GasMix.Empty(types);
             foreach (long id in group)
             {
                 if (liveBefore.TryGetValue(id, out NetworkGas then))
                 {
                     before.Add(then);
                     gasBefore = gasBefore.Plus(then.Gas);
+                    if (plannedShares.TryGetValue(id, out double share))
+                    {
+                        // The game's split divides a network's whole mixture by volume: a share of every gas goes.
+                        plannedLoss = plannedLoss.Plus(then.Gas.Scaled(share));
+                    }
                 }
 
                 if (liveAfter.TryGetValue(id, out NetworkGas now))
@@ -430,7 +494,7 @@ internal sealed class GasAudit
                 }
             }
 
-            return new GasFamily(before, after, gasBefore, gasAfter, tolerance.Same(gasBefore, gasAfter));
+            return new GasFamily(before, after, gasBefore, gasAfter, plannedLoss, tolerance);
         }
 
         private static long Lowest(GasFamily family)
@@ -508,15 +572,67 @@ internal sealed class GasRefill
 }
 
 /// <summary>
-/// How a family that lost gas is made whole: what it lacks, gas by gas (contents before minus contents after, each
-/// gas's positive part), goes into the family's live networks by volume, as the game's own split divides a
-/// network's contents (NetworkAtmosphereEvent.Apply). A family that gained gas, or has no live network, gets nothing.
+/// A family's refill held back: putting what it lacks back would take one of its networks over the rating of its
+/// weakest pipe, which would burst. The family stays short (the check fails, gas_lost) instead.
+/// </summary>
+internal sealed class GasRefillWithheld
+{
+    internal GasRefillWithheld(GasFamily family, GasMix lacking, long network, double pressureAfterKpa,
+        double ratingKpa)
+    {
+        Family = family;
+        Lacking = lacking;
+        Network = network;
+        PressureAfterKpa = pressureAfterKpa;
+        RatingKpa = ratingKpa;
+    }
+
+    internal GasFamily Family { get; }
+
+    /// <summary>What the family lacks, not put back.</summary>
+    internal GasMix Lacking { get; }
+
+    /// <summary>The network the refill would have taken furthest over its rating.</summary>
+    internal long Network { get; }
+
+    internal double PressureAfterKpa { get; }
+
+    internal double RatingKpa { get; }
+}
+
+/// <summary>The refills to make, and the families whose refill is held back (GasRefillWithheld).</summary>
+internal sealed class GasRefillPlan
+{
+    internal GasRefillPlan(List<GasRefill> refills, List<GasRefillWithheld> withheld)
+    {
+        Refills = refills;
+        Withheld = withheld;
+    }
+
+    internal List<GasRefill> Refills { get; }
+
+    internal List<GasRefillWithheld> Withheld { get; }
+}
+
+/// <summary>
+/// How a family that lost gas is made whole: what it lacks, gas by gas (expected contents minus contents after, each
+/// gas's positive part; a planned loss is not lacking), goes into the family's live networks by volume, as the game's
+/// own split divides a network's contents (NetworkAtmosphereEvent.Apply). A family that gained gas, or has no live
+/// network, gets nothing. A refill never takes a network over the rating of its weakest pipe: when any of the
+/// family's networks would end above it, the family gets nothing and stays short (withheld), since a burst pipe vents
+/// everything.
 /// </summary>
 internal static class GasRefills
 {
-    internal static List<GasRefill> For(GasAudit audit, GasTolerance tolerance)
+    /// <summary>
+    /// The refills, each network's pressure after its share judged by pressureAfterKpa (the network with the given
+    /// contents in its own volume). Networks without a rating are not judged.
+    /// </summary>
+    internal static GasRefillPlan Plan(GasAudit audit, GasTolerance tolerance,
+        Func<NetworkGas, GasMix, double> pressureAfterKpa)
     {
         List<GasRefill> refills = new List<GasRefill>();
+        List<GasRefillWithheld> withheld = new List<GasRefillWithheld>();
         foreach (GasFamily family in audit.Families)
         {
             if (family.Conserved || family.Emptied)
@@ -524,25 +640,72 @@ internal static class GasRefills
                 continue;
             }
 
-            GasMix lacking = family.GasBefore.Lacking(family.GasAfter);
+            GasMix lacking = family.Expected.Lacking(family.GasAfter);
             if (tolerance.Negligible(lacking))
             {
                 continue;
             }
 
-            double[] volumes = new double[family.After.Count];
-            for (int index = 0; index < volumes.Length; index++)
+            List<GasRefill> own = Spread(family, lacking);
+            GasRefillWithheld? over = Worst(family, lacking, own, pressureAfterKpa);
+            if (over != null)
             {
-                volumes[index] = family.After[index].VolumeL;
+                withheld.Add(over);
             }
-
-            double[] shares = GasShares.ByVolume(volumes);
-            for (int index = 0; index < shares.Length; index++)
+            else
             {
-                refills.Add(new GasRefill(family.After[index].Id, lacking.Scaled(shares[index])));
+                refills.AddRange(own);
             }
         }
 
+        return new GasRefillPlan(refills, withheld);
+    }
+
+    /// <summary>The refills of families whose networks carry no rating (every refill goes).</summary>
+    internal static List<GasRefill> For(GasAudit audit, GasTolerance tolerance) =>
+        Plan(audit, tolerance, static (_, _) => 0.0).Refills;
+
+    private static List<GasRefill> Spread(GasFamily family, GasMix lacking)
+    {
+        double[] volumes = new double[family.After.Count];
+        for (int index = 0; index < volumes.Length; index++)
+        {
+            volumes[index] = family.After[index].VolumeL;
+        }
+
+        double[] shares = GasShares.ByVolume(volumes);
+        List<GasRefill> refills = new List<GasRefill>(shares.Length);
+        for (int index = 0; index < shares.Length; index++)
+        {
+            refills.Add(new GasRefill(family.After[index].Id, lacking.Scaled(shares[index])));
+        }
+
         return refills;
+    }
+
+    // The network the refill takes furthest over its rating; null when every one stays at or under it.
+    private static GasRefillWithheld? Worst(GasFamily family, GasMix lacking, List<GasRefill> refills,
+        Func<NetworkGas, GasMix, double> pressureAfterKpa)
+    {
+        GasRefillWithheld? worst = null;
+        double worstRatio = 1.0;
+        for (int index = 0; index < refills.Count; index++)
+        {
+            NetworkGas network = family.After[index];
+            if (!network.RatingKpa.HasValue || network.RatingKpa.Value <= 0.0)
+            {
+                continue;
+            }
+
+            double after = pressureAfterKpa(network, network.Gas.Plus(refills[index].Gas));
+            double ratio = after / network.RatingKpa.Value;
+            if (ratio > worstRatio)
+            {
+                worst = new GasRefillWithheld(family, lacking, network.Id, after, network.RatingKpa.Value);
+                worstRatio = ratio;
+            }
+        }
+
+        return worst;
     }
 }

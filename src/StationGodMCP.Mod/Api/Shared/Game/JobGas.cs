@@ -42,9 +42,11 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </para>
 /// <para>
 /// Open reads every pipe network before the job; Close reads them again once everything is applied and compares each
-/// family of networks the job changed (GasAudit). A family short of gas gets what it lacks put back, and the pipeless
-/// networks left holding the lost copy are emptied and dropped; anything still wrong fails the check and holds further
-/// pipe jobs (GasHold).
+/// family of networks the job changed (GasAudit). Gas the job's plan deletes on purpose (Expect: remove_structure with
+/// allow_contents) is expected gone. A family short of gas gets what it lacks put back, unless that would take one of
+/// its networks over the rating of its weakest pipe (GasRefills: a burst vents everything), and the pipeless networks
+/// left holding the lost copy are emptied and dropped; anything still wrong fails the check and holds further pipe
+/// jobs (GasHold).
 /// </para>
 /// </summary>
 internal abstract class JobGas
@@ -59,6 +61,9 @@ internal abstract class JobGas
     /// <summary>Applies every queued gas change now, as the next tick would.</summary>
     internal abstract void Settle();
 
+    /// <summary>Gas the job's plan deletes on purpose: the check expects it gone and does not put it back.</summary>
+    internal abstract void Expect(IEnumerable<PlannedGasLoss> losses);
+
     /// <summary>The job's gas check; null for a job that is not tracked.</summary>
     internal abstract GasCheckView? Close(string jobId);
 
@@ -68,12 +73,17 @@ internal abstract class JobGas
         {
         }
 
+        internal override void Expect(IEnumerable<PlannedGasLoss> losses)
+        {
+        }
+
         internal override GasCheckView? Close(string jobId) => null;
     }
 
     private sealed class TrackedGas : JobGas
     {
         private readonly PipeGasReading _before;
+        private readonly List<PlannedGasLoss> _planned = new List<PlannedGasLoss>();
 
         internal TrackedGas(PipeGasReading before)
         {
@@ -88,6 +98,8 @@ internal abstract class JobGas
             }
         }
 
+        internal override void Expect(IEnumerable<PlannedGasLoss> losses) => _planned.AddRange(losses);
+
         internal override GasCheckView Close(string jobId)
         {
             if (!PipeGasQueue.CanRun())
@@ -98,25 +110,28 @@ internal abstract class JobGas
 
             GasTolerance tolerance = GasTolerance.Default;
             PipeGasReading after = PipeGasReading.Take();
-            GasAudit audit = GasAudit.Of(_before.Networks, after.Networks, tolerance);
+            GasAudit audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned);
             List<GasRefill> refills = new List<GasRefill>();
+            List<GasRefillWithheld> withheld = new List<GasRefillWithheld>();
             List<long> cleared = new List<long>();
             if (!audit.Ok)
             {
-                refills = GasRefills.For(audit, tolerance);
+                GasRefillPlan plan = GasRefills.Plan(audit, tolerance, PressureKpa);
+                refills = plan.Refills;
+                withheld = plan.Withheld;
                 after.Refill(refills);
                 after = PipeGasReading.Take();
-                audit = GasAudit.Of(_before.Networks, after.Networks, tolerance);
+                audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned);
                 if (audit.Families.TrueForAll(static family => family.Emptied || family.Conserved))
                 {
                     cleared = after.ClearGhosts(audit.Ghosts);
                     after = PipeGasReading.Take();
-                    audit = GasAudit.Of(_before.Networks, after.Networks, tolerance);
+                    audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned);
                 }
             }
 
             GasCheckView check = GasCheckView.Of(audit, refills, cleared,
-                GasOrphans.Of(_before.Orphans, after.Orphans));
+                GasOrphans.Of(_before.Orphans, after.Orphans), withheld);
             if (!check.Ok)
             {
                 GasHold.Set(jobId, check.Summary);
@@ -125,6 +140,10 @@ internal abstract class JobGas
 
             return check;
         }
+
+        // The pressure a network would hold with these contents in its volume (GasSnapshot: the game's own formula).
+        private static double PressureKpa(NetworkGas network, GasMix contents) =>
+            GasSnapshot.Of(contents, network.VolumeL).PressureKpa();
     }
 }
 
@@ -276,6 +295,7 @@ internal sealed class PipeGasReading
         networks.AddRange(OrphansBeside(networks));
         List<long[]> members = networks.ConvertAll(MembersOf);
         List<long[]> devices = networks.ConvertAll(DevicesOf);
+        List<double?> ratings = networks.ConvertAll(RatingOf);
         List<List<GridCell>> cells = networks.ConvertAll(CellsOf);
         List<(GasMix gas, double volumeL)> contents = AtmosphericsThread.Run(() =>
         {
@@ -288,7 +308,7 @@ internal sealed class PipeGasReading
         for (int index = 0; index < networks.Count; index++)
         {
             read.Add(new NetworkGas(networks[index].ReferenceId, contents[index].gas, contents[index].volumeL,
-                members[index], devices[index], cells[index]));
+                members[index], devices[index], cells[index], ratings[index]));
             if (index < listed)
             {
                 // Refills and ghost clearing only ever touch a network the game lists.
@@ -415,6 +435,25 @@ internal sealed class PipeGasReading
         }
 
         return cells;
+    }
+
+    // The lowest MaxPressure of its pipes (the one that bursts first); null when it has none.
+    private static double? RatingOf(PipeNetwork network)
+    {
+        double? lowest = null;
+        lock (network.StructureList)
+        {
+            foreach (INetworkedStructure member in network.StructureList)
+            {
+                if (member is Pipe pipe && pipe != null)
+                {
+                    double rating = pipe.MaxPressure.ToDouble();
+                    lowest = lowest.HasValue ? Math.Min(lowest.Value, rating) : rating;
+                }
+            }
+        }
+
+        return lowest;
     }
 
     private static long[] DevicesOf(PipeNetwork network)

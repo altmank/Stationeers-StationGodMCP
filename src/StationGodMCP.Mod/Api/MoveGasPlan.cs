@@ -58,6 +58,20 @@ internal sealed class GasSnapshot
         return new GasSnapshot(moles, energies, atmosphere.Volume.ToDouble(), atmosphere.Mode);
     }
 
+    /// <summary>A pipe network's contents as the gas check reads them (GasMix, in GasTypes.All order) in a volume.</summary>
+    internal static GasSnapshot Of(GasMix gas, double volumeL)
+    {
+        double[] moles = new double[gas.Types];
+        double[] energies = new double[gas.Types];
+        for (int index = 0; index < gas.Types; index++)
+        {
+            moles[index] = Math.Max(0.0, gas.MolesOf(index));
+            energies[index] = Math.Max(0.0, gas.EnergyOf(index));
+        }
+
+        return new GasSnapshot(moles, energies, volumeL, AtmosphereHelper.AtmosphereMode.Network);
+    }
+
     internal double MolesOf(int index) => _moles[index];
 
     /// <summary>

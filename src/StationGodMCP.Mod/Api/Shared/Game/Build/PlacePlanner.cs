@@ -193,7 +193,7 @@ internal static class PlacePlanner
         return refusal == null
             ? null
             : refusal + BrokenNote(placement.Prefab!, placement.Position!.Value, placement.Rotation) +
-              FrameNote(placement.Position!.Value, refusal);
+              FrameNote(placement.Position!.Value, placement.Rotation, refusal);
     }
 
     private static string? Check(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation)
@@ -250,18 +250,19 @@ internal static class PlacePlanner
     /// The game's "requires a Frame below" (SmallGrid.HasFrameBelow: Battery, MountedSmallGrid, LargeElectrical,
     /// radiators) also refuses a spot inside a frame: the cell the piece stands in must be clear (IsBlockedGrid) and the
     /// cell under it hold a frame. When a frame fills the spot's own cell, say so and where the piece would stand;
-    /// empty otherwise.
+    /// empty otherwise. The cell is read just above the piece's origin, as the game reads it (HasFrameBelow's
+    /// registered position, 0.01 m up): an origin on the frame's bottom plane stands in the frame, not below it.
     /// </summary>
-    internal static string FrameNote(Vector3 position, string refusal)
+    internal static string FrameNote(Vector3 position, Quaternion rotation, string refusal)
     {
         GridController world = GridController.World;
-        string? requires = RequiresFrame;
-        if (world == null || requires == null || !refusal.StartsWith(requires, System.StringComparison.Ordinal))
+        if (world == null || !RequiresFrameRefusal(refusal))
         {
             return string.Empty;
         }
 
-        Objects.Structures.Frame? frame = world.GetCell(position)?.Lookup[StructureElement.Center] as Objects.Structures.Frame;
+        Vector3 inside = position + rotation * Vector3.up * 0.01f;
+        Objects.Structures.Frame? frame = world.GetCell(inside)?.Lookup[StructureElement.Center] as Objects.Structures.Frame;
         return frame == null || frame.IsBeingDestroyed
             ? string.Empty
             : $" (the spot is inside {frame.DisplayName} ({frame.PrefabName} {frame.ReferenceId}); the game wants the " +
@@ -348,7 +349,7 @@ internal static class PlacePlanner
         {
             plan.Problem("cannot_place",
                 $"{prefab.PrefabName} at {Describe(position)}: {refusal}{BrokenNote(prefab, position, placement.Rotation)}" +
-                $"{FrameNote(position, refusal)}.",
+                $"{FrameNote(position, placement.Rotation, refusal)}.",
                 index);
         }
 
@@ -551,19 +552,25 @@ internal static class PlacePlanner
     // its ray lands on, which is a surface: a small-grid device aimed at a floor stands on the floor plane, a mounted one
     // on the face it mounts to. So when the point as given cannot be built, a small-grid device is tried again set down
     // on the surface behind it (CursorAim): along its down for a grid-placed device, along its back for a mounted one.
-    // Only onto a surface that is there (a plate on that face, or a frame behind it): a ray through open air lands on
-    // nothing, and an occupied spot is not moved into the air below it. A point as given that can be built is kept; a
-    // set-down is named in SetDownHow.
+    // Only onto a surface that is there (a plate on that face, or a frame behind it, standing or put there by an
+    // earlier placement of the request): a ray through open air lands on nothing, and an occupied spot is not moved
+    // into the air below it. A point as given that can be built is kept; a set-down is named in SetDownHow.
     private static Vector3 Aim(PlacePlan plan, PlannedPlacement placement, Structure cursor, out string? refusal)
     {
         GridFacts facts = plan.Facts;
         Structure prefab = placement.Prefab!;
         Metres at = placement.At!.Value;
         placement.SetDownHow = null;
+        placement.SupportedBy = null;
         Vector3 given = CursorCheck.Snap(cursor, new Vector3((float)at.X, (float)at.Y, (float)at.Z),
             placement.Rotation);
         refusal = Check(prefab, cursor, given, placement.Rotation);
-        placement.SupportedBy = refusal != null ? PlannedSupport(plan, placement, given, refusal) : null;
+        if (refusal == null)
+        {
+            return given;
+        }
+
+        placement.SupportedBy = PlannedSupport(plan, placement, given, refusal);
         if (placement.SupportedBy != null)
         {
             refusal = null;
@@ -571,7 +578,7 @@ internal static class PlacePlanner
         }
 
         GridStep? away = placement.Turn == null ? null : AwayFromSurface(prefab, placement.Turn);
-        if (refusal == null || !away.HasValue)
+        if (!away.HasValue)
         {
             return given;
         }
@@ -583,7 +590,8 @@ internal static class PlacePlanner
             return given;
         }
 
-        if (!SurfaceThere(new Vec3(x, y, z), away.Value, facts))
+        Vec3 onPlane = new Vec3(x, y, z);
+        if (!SurfaceThere(onPlane, away.Value, facts) && PlannedFrameBehind(plan, placement, onPlane, away.Value) == null)
         {
             refusal = $"{refusal}; nothing to set it down on behind it (no plate on the face at " +
                       $"{Describe(new Vector3((float)x, (float)y, (float)z))} and no frame behind that face)";
@@ -591,8 +599,12 @@ internal static class PlacePlanner
         }
 
         string? surfaceRefusal = Check(prefab, cursor, surface, placement.Rotation);
-        if (surfaceRefusal == null)
+        PlannedPlacement? planned = surfaceRefusal == null
+            ? null
+            : PlannedSupport(plan, placement, surface, surfaceRefusal);
+        if (surfaceRefusal == null || planned != null)
         {
+            placement.SupportedBy = planned;
             placement.SetDownHow = $"; set down on the surface behind it at {Describe(surface)} (as given at " +
                                    $"{Describe(given)}: {refusal})";
             refusal = null;
@@ -603,18 +615,43 @@ internal static class PlacePlanner
         return given;
     }
 
-    // "Requires a Frame below" (SmallGrid.HasFrameBelow: a structure that allows mounting in the cell half the piece's
-    // grid size below it) where an earlier placement of this request puts that structure: it does not stand during
-    // the preflight, so the job's own check before each placement (Recheck, once the earlier ones stand) decides.
+    // "Requires a Frame below" where an earlier placement of this request puts a structure that allows mounting (a
+    // frame) in the 2 m cell the game looks in (SupportDepth below the piece's origin): it does not stand during the
+    // preflight, so the job's own check before each placement (Recheck, once the earlier ones stand) decides.
     private static PlannedPlacement? PlannedSupport(PlacePlan plan, PlannedPlacement placement, Vector3 position,
         string refusal)
     {
-        if (refusal != RequiresFrame || !(placement.Prefab is SmallGrid piece))
+        if (!RequiresFrameRefusal(refusal) || !(placement.Prefab is SmallGrid piece))
         {
             return null;
         }
 
-        Grid3 cell = new WorldGrid(position - placement.Rotation * Vector3.up * (piece.GridSize / 2f));
+        Vector3 up = placement.Rotation * Vector3.up;
+        return PlannedFrameIn(plan, placement, LargeCells.Below(new Vec3(position.x, position.y, position.z),
+            new Vec3(up.x, up.y, up.z), SupportDepth(piece)));
+    }
+
+    // How far below its origin, along its up, the game looks for the frame a piece stands on: half its grid size
+    // (SmallGrid.HasFrameBelow: batteries, mounted devices, most machines), its whole grid size (the CanConstruct of
+    // LargeElectrical and LandingPadModular: dishes, landing pad parts; DispersalTower's HasFrameBelow shifted by
+    // half), one and a half (Fabricator's HasFrameBelow shifted by a whole).
+    private static float SupportDepth(SmallGrid piece) => piece switch
+    {
+        LargeElectrical => piece.GridSize,
+        global::Objects.Electrical.LandingPadModular => piece.GridSize,
+        DispersalTower => piece.GridSize,
+        Assets.Scripts.Objects.Electrical.Fabricator => piece.GridSize * 1.5f,
+        _ => piece.GridSize / 2f
+    };
+
+    // A frame an earlier placement of the request puts behind the face plane a point lies on (SurfaceThere's cell).
+    private static PlannedPlacement? PlannedFrameBehind(PlacePlan plan, PlannedPlacement placement, Vec3 onPlane,
+        GridStep away) =>
+        PlannedFrameIn(plan, placement, LargeCells.Containing(onPlane - Vec3.Of(away) * 1.0));
+
+    // The earlier placement of the request that puts a structure allowing mounting (a frame) in that 2 m cell.
+    private static PlannedPlacement? PlannedFrameIn(PlacePlan plan, PlannedPlacement placement, GridCell large)
+    {
         foreach (PlannedPlacement earlier in plan.Placements)
         {
             if (ReferenceEquals(earlier, placement))
@@ -623,13 +660,22 @@ internal static class PlacePlanner
             }
 
             if (earlier.Prefab != null && !(earlier.Prefab is SmallGrid) && earlier.Prefab.AllowMounting &&
-                earlier.Position.HasValue && ((Grid3)new WorldGrid(earlier.Position.Value)).Equals(cell))
+                earlier.Position is { } standing &&
+                LargeCells.Containing(new Vec3(standing.x, standing.y, standing.z)).Equals(large))
             {
                 return earlier;
             }
         }
 
         return null;
+    }
+
+    // The game's "requires a Frame below" refusal as the cursor check words it, whatever the reply appends to it;
+    // never when the game has no text for it.
+    private static bool RequiresFrameRefusal(string refusal)
+    {
+        string? requires = RequiresFrame;
+        return !string.IsNullOrEmpty(requires) && refusal.StartsWith(requires, System.StringComparison.Ordinal);
     }
 
     // The game's "requires a Frame below" refusal as the cursor check words it; null when the game has no text for it.
