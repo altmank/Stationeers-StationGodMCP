@@ -166,7 +166,7 @@ internal static class RunApi
         }
 
         RunPlan plan = RunPlanner.Plan(request);
-        string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
+        string? acknowledge = GasHoldArgs.Acknowledgement(args);
         if (dryRun)
         {
             GasHold.Preview(request.Kind.Family is PipeFamily, acknowledge);

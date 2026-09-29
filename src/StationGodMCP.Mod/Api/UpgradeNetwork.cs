@@ -165,7 +165,7 @@ internal static class UpgradeApi
 
         UpgradeRequest request = Parse(args, family, goal);
         UpgradePlan plan = UpgradePlanner.Plan(request);
-        string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
+        string? acknowledge = GasHoldArgs.Acknowledgement(args);
         if (dryRun)
         {
             GasHold.Preview(request.Family is PipeFamily, acknowledge);

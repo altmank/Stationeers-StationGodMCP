@@ -51,9 +51,19 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    makes new stacks in empty slots that take the item, a holder's own slots before those of the items in them. Never
    a hidden slot, a body slot (hands, suit, helmet: only the slots of worn and held items) or a stack's own slot, such
    as a cable coil's: the game destroys what is in it with the coil. What fits no target goes on the ground in front
-   of the holder. A target that cannot be used (no player, `from_id` not a stack) is skipped; when you named the list
-   yourself, the dry run warns `refund_target_skipped`. A container id that is not one is refused
-   (`refund_target_not_found`, `refund_target_not_container`).
+   of the holder. A target that cannot be used is skipped: `inventory` with no player, `source` with no `from_id` or one
+   that is not a stack, `storage` with no `from_id` (and no local player) or one with no slot a refund could go into
+   and stored in nothing that has one (a cable piece), either with a `from_id` that names no thing. When you named the
+   list yourself, the dry run warns `refund_target_skipped`, naming which case it is. A container id that is not one
+   is refused (`refund_target_not_found`, `refund_target_not_container`). `refund_holder_removed` refuses a `from_id`
+   the same request removes when `refund_to` gives into it (`source`, `storage`, the default): `remove_structure`, and
+   the remove tools and the place tools' `remove_ids` for a piece they take.
+
+   **No player, no `from_id`** (a dedicated server): a job needs one only when it takes materials (a cable, pipe or
+   chute run, an upgrade, a split, a replace that charges anything) or its `refund_to` is the single word `source`
+   (`no_local_player` otherwise). Everything else runs without one, the refund following the chain: a removal, a
+   clean that takes no coils (removing dead ends, merging straights), a replace that charges nothing; with nothing in the chain to
+   take it, the refund goes on the ground where the first piece stood.
 
    One word keeps its old meaning: `source` puts everything into `from_id`'s inventory (default the local player)
    and the player carrying it, the rest in front of it, as the tools did before; a `from_id` stack stored in a holder
@@ -254,7 +264,8 @@ to have the job back); an earlier undo whose jobs were all refused does not coun
 `remove_cables`, `remove_pipes` and `remove_chutes` take `reference_ids`, or the pieces in the cells of `waypoints` or
 `cells`. A network that only loses pieces keeps its id. `remove_cables` also removes burnt cables (by id or cell;
 they refund nothing). With `refund: false` nothing is given back; only `refund_to: "source"` needs a player or `from_id`
-(the default skips the inventory on a dedicated server and gives to the ground). `plan_removal` prices a removal without doing it; see
+(the default skips the inventory on a dedicated server and gives to the ground). A `from_id` among the pieces removed
+is refused (`refund_holder_removed`) when `refund_to` gives into it. `plan_removal` prices a removal without doing it; see
 [cleanup-and-refactor.md](cleanup-and-refactor.md#pricing-a-removal).
 
 ## Guards
@@ -317,10 +328,13 @@ loss:
   refusal names it). The hold is lifted as the run starts, and the run goes on as usual. A run queued with `wait`
   lifts it when it leaves the queue, if that job's loss still holds pipe jobs then.
 - The reply's `gas_hold` repeats the loss, so the acknowledgement is on record: `status` `acknowledged`, `lifted`
-  true, `held_by_job_id`, `loss` (`job_id`, `networks`, `missing_mol`, `summary`) and a `note`.
+  true, `held_by_job_id`, `loss` (`job_id`, `networks`, `missing_mol`, `summary`) and a `note`. Every poll of that
+  job with `job_id` repeats the same `gas_hold`, the finished job's record too, while the job is kept.
+- An empty `acknowledge_gas_lost` (`""`) is refused (`invalid_argument`), not read as left out.
 - Another job's id is refused with `gas_hold_mismatch`, naming the holding job and its loss. Nothing is lifted.
-- A dry run with or without `acknowledge_gas_lost` reports `gas_hold` (`applies`: whether the hold would refuse the
-  real run; the note says what acknowledging would lift) and lifts nothing.
+- A dry run reports `gas_hold` when a hold would apply to it or `acknowledge_gas_lost` was given (`applies`: whether
+  the hold would refuse the real run; the note says what acknowledging would lift) and lifts nothing. With no hold
+  that applies and no acknowledgement, a reply has no `gas_hold` key.
 - `undo_job` passes `acknowledge_gas_lost` on to every call it makes, and refuses a real run the hold would refuse in
   any of them before starting the first.
 - A later job that ends `gas_lost` holds pipe jobs again, under its own job id: each loss is acknowledged by itself.

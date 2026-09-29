@@ -289,8 +289,9 @@ internal static class RemovePlanner
     // Each pipe network the request takes anything from (an in-line tank, a passive vent, pipe pieces only), as the
     // job leaves it (PipeTakedown): its members, the game's links among them, the order the job removes them in (the
     // pipe pieces as their remove tool's plan lists them, then the others in reference_ids order), and whether they
-    // leave it first (KeptWhole). Its findings go on its first member in the request that is not a pipe piece, else
-    // on its first pipe piece.
+    // leave it first (KeptWhole). A network the request takes only in-line tanks or passive vents from, and leaves in
+    // one piece, is kept whole too: they leave it before they go, so it keeps its id, as with pipe pieces. Its findings
+    // go on its first member in the request that is not a pipe piece, else on its first pipe piece.
     private static Dictionary<long, NetworkTakedown> GasModel(RemovePlan plan)
     {
         Dictionary<long, NetworkTakedown> model = new Dictionary<long, NetworkTakedown>();
@@ -305,9 +306,19 @@ internal static class RemovePlanner
             }
 
             GasSnapshot before = GasSnapshot.Of(network.Atmosphere);
-            TakedownOutcome outcome = PipeTakedown.Run(Members(network, out Dictionary<long, SmallGrid> members),
-                LinkSurvey.GameLinks(members, new HashSet<long>(members.Keys), new List<long>()),
-                RemovalOrder(plan, network), plan.KeptWhole.Contains(network.ReferenceId), before.TotalMol());
+            List<TakedownMember> nodes = Members(network, out Dictionary<long, SmallGrid> members);
+            HashSet<Link> links = LinkSurvey.GameLinks(members, new HashSet<long>(members.Keys), new List<long>());
+            List<long> order = RemovalOrder(plan, network);
+            TakedownOutcome outcome = PipeTakedown.Run(nodes, links, order, plan.KeptWhole.Contains(network.ReferenceId),
+                before.TotalMol());
+            if (outcome.Parts.Count == 1 && !plan.KeptWhole.Contains(network.ReferenceId) &&
+                !plan.Takedowns.Exists(taken => taken.Kind != null && taken.Piece is Pipe { PipeNetwork: { } of } &&
+                                                of == network))
+            {
+                plan.KeptWhole.Add(network.ReferenceId);
+                outcome = PipeTakedown.Run(nodes, links, order, true, before.TotalMol());
+            }
+
             model[network.ReferenceId] = new NetworkTakedown(network.ReferenceId, before, outcome, takedown, members);
         }
 
@@ -998,7 +1009,8 @@ internal static class RemovePlanner
     {
         List<GuardFinding> findings = new List<GuardFinding>();
         Vector3? stood = plan.Takedowns.Count > 0 ? plan.Takedowns[0].Position : (Vector3?)null;
-        plan.Refunds = RefundReceivers.Resolve(plan.Arguments.RefundTo, plan.From, stood, findings);
+        plan.Refunds = RefundReceivers.Resolve(plan.Arguments.RefundTo, plan.From, plan.Arguments.From.HasValue, stood,
+            findings);
         foreach (GuardFinding finding in findings)
         {
             (finding.Level == GuardLevel.Refusal ? plan.Problems : plan.Warnings).Add(

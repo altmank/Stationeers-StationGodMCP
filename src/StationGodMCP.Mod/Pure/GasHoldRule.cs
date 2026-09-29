@@ -202,6 +202,16 @@ internal abstract class GasHoldVerdict
 /// </summary>
 internal static class GasHoldRule
 {
+    /// <summary>
+    /// Why an acknowledge_gas_lost as given is refused: an empty or blank id names no job and must not read as left
+    /// out. Null when it is left out or names something.
+    /// </summary>
+    internal static string? BlankRefusal(string? acknowledge) =>
+        acknowledge != null && string.IsNullOrWhiteSpace(acknowledge)
+            ? $"{GasHoldVerdict.AcknowledgeArgument} is empty; pass the id of the job whose gas check failed " +
+              "(run-N, upgrade-N, place-N, remove-N), or leave it out."
+            : null;
+
     internal static GasHoldVerdict Judge(GasLoss? hold, bool touchesPipes, string? acknowledge)
     {
         string? given = string.IsNullOrWhiteSpace(acknowledge) ? null : acknowledge!.Trim();

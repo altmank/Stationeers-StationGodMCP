@@ -36,8 +36,10 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 
 - `set_ic_source` compiles the program at once and restarts it at line 0. A paused chip stays paused; registers and the
   stack are kept (`sp` goes back to 0). A compile error sets `compilation_error`, `compile_error_line` (0-based) and
-  `compile_error_type`; `error_line` and `error_type` are the runtime error's. `error_code` is the game's error text
-  as plain text (the game colours it with rich-text tags; they are removed).
+  `compile_error_type`; `error_line` and `error_type` are the runtime error's. `error_line` is the game's own text, a
+  string such as `"0"`, while `compile_error_line` is an integer; both are kept as they are so existing readers do not
+  break. `error_code` is the game's error text as plain text (the game colours it with rich-text tags; they are
+  removed).
 - The chip stores its program as ASCII and runs what it stores: CRLF and lone CR line ends become LF (the chip splits
   lines on LF only, so a CR-only program would be one line) and each non-ASCII character `?`. The reply's `warnings`
   say so (`crlf_normalised`, `cr_normalised`, `non_ascii_replaced`).

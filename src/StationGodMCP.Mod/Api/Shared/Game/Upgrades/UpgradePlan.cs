@@ -384,17 +384,9 @@ internal static class UpgradePlanner
 
     private static void CountCoils(UpgradePlan plan, UpgradeRequest request)
     {
-        plan.From = Source(plan, request);
-        List<GuardFinding> findings = new List<GuardFinding>();
-        plan.Refunds = RefundReceivers.Resolve(request.RefundTo, plan.From, null, findings);
-        foreach (GuardFinding finding in findings.FindAll(static finding => finding.Level == GuardLevel.Refusal))
-        {
-            // A skipped target is named in the report's refund_plan; only a refusal stops the run.
-            plan.Problem(finding.Code, finding.Message);
-        }
-
         Dictionary<int, int> needed = new Dictionary<int, int>();
         List<Kit> kits = new List<Kit>();
+        int charge = 0;
         foreach (PlannedSwap swap in plan.Swaps)
         {
             if (!needed.ContainsKey(swap.Target.Item.PrefabHash))
@@ -404,8 +396,20 @@ internal static class UpgradePlanner
             }
 
             needed[swap.Target.Item.PrefabHash] += swap.Cost;
+            charge += swap.Cost;
         }
 
+        plan.From = Source(plan, request, RefundChainRule.NeedsPlayer(charge, request.RefundTo));
+        List<GuardFinding> findings = new List<GuardFinding>();
+        plan.Refunds = RefundReceivers.Resolve(request.RefundTo, plan.From, request.From.HasValue,
+            plan.Swaps.Count > 0 ? plan.Swaps[0].Old.ThingTransformPosition : (UnityEngine.Vector3?)null, findings);
+        foreach (GuardFinding finding in findings.FindAll(static finding => finding.Level == GuardLevel.Refusal))
+        {
+            // A skipped target is named in the report's refund_plan; only a refusal stops the run.
+            plan.Problem(finding.Code, finding.Message);
+        }
+
+        HolderRemoved(plan, request);
         foreach (Kit kit in kits)
         {
             ItemStock stock = plan.From != null ? ItemStock.In(plan.From, kit.Item) : ItemStock.Empty(kit.Item);
@@ -420,7 +424,23 @@ internal static class UpgradePlanner
         }
     }
 
-    private static Thing? Source(UpgradePlan plan, UpgradeRequest request)
+    // from_id is a piece a swap takes away while refund_to gives into it: the holder is gone before the refund.
+    private static void HolderRemoved(UpgradePlan plan, UpgradeRequest request)
+    {
+        Thing? from = plan.From;
+        if (from == null || !request.From.HasValue || !request.RefundTo.GivesBack ||
+            !RefundChainRule.AsksForHolder(request.RefundTo) || !plan.Swaps.Exists(swap => swap.Takes(from)))
+        {
+            return;
+        }
+
+        plan.Problem("refund_holder_removed", RemovalRule.HolderRemoved(
+            $"{Names.Of(from)} ({from.PrefabName} {from.ReferenceId})", null), from);
+    }
+
+    // from_id, else the local player; with neither, a job that takes no coils and whose refund_to is a chain goes on
+    // without one (the chain skips inventory, source and storage and ends on the ground where the first piece stood).
+    private static Thing? Source(UpgradePlan plan, UpgradeRequest request, bool needsPlayer)
     {
         if (request.From.HasValue)
         {
@@ -436,13 +456,13 @@ internal static class UpgradePlanner
         }
 
         Human human = Human.LocalHuman;
-        if (human == null)
+        if (human == null && needsPlayer)
         {
             plan.Problem("no_local_player",
-                "There is no local player to take coils from and give the refund to; pass from_id.");
-            return null;
+                "There is no local player to take coils from (or, with refund_to source, to give the refund to); " +
+                "pass from_id.");
         }
 
-        return human;
+        return human == null ? null : human;
     }
 }

@@ -612,6 +612,7 @@ internal static class RunPlanner
     {
         plan.From = Source(plan);
         Receivers(plan);
+        HolderRemoved(plan);
         Dictionary<int, int> needed = new Dictionary<int, int>();
         List<Kit> kits = new List<Kit>();
         foreach (PlannedCell cell in plan.Cells)
@@ -688,7 +689,7 @@ internal static class RunPlanner
     {
         List<GuardFinding> findings = new List<GuardFinding>();
         PlannedRemoval? first = plan.Removals.Find(static removal => !removal.Assumed);
-        plan.Refunds = RefundReceivers.Resolve(plan.Request.Options.RefundTo, plan.From,
+        plan.Refunds = RefundReceivers.Resolve(plan.Request.Options.RefundTo, plan.From, plan.Request.Options.From.HasValue,
             first != null ? first.Piece.ThingTransformPosition : (UnityEngine.Vector3?)null, findings);
         foreach (GuardFinding finding in findings)
         {
@@ -701,6 +702,22 @@ internal static class RunPlanner
                 plan.Warnings.Add(new LayoutIssue(finding.Code, finding.Message));
             }
         }
+    }
+
+    // from_id is a piece this request removes while refund_to asks to give into it (source, storage, the default):
+    // refused as remove_structure refuses it, since the holder is gone before the refund is delivered.
+    private static void HolderRemoved(RunPlan plan)
+    {
+        Thing? from = plan.From;
+        if (from == null || !plan.Request.Options.From.HasValue || !plan.Request.Options.RefundTo.GivesBack ||
+            !RefundChainRule.AsksForHolder(plan.Request.Options.RefundTo) ||
+            !plan.Removals.Exists(removal => !removal.Assumed && removal.Piece == from))
+        {
+            return;
+        }
+
+        plan.Problem("refund_holder_removed", RemovalRule.HolderRemoved(
+            $"{Names.Of(from)} ({from.PrefabName} {from.ReferenceId})", null), from.ReferenceId);
     }
 
     private static void Guard(RunPlan plan, RunForecast forecast)

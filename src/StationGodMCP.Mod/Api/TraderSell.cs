@@ -172,7 +172,7 @@ internal sealed class SellGroup
             return;
         }
 
-        string message = error != null ? error.DisplayString : "The game refused the trade.";
+        string message = (error != null ? Text.Plain(error.DisplayString) : null) ?? "The game refused the trade.";
         Failed(outcomes, ApiErrors.Refused("trade_failed", message));
     }
 

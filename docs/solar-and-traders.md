@@ -88,10 +88,15 @@ affected.
 - `trader_inventory` shows, for the landed trader, how many of each item it would take right now (`sellable`), the
   trade window's own count: what the pad network's vending machines and you hold. `trader_sell` counts the card
   holder's inventory in place of yours, so the two agree when the card is yours.
-- `have` is, for every trader in the sky, how many it would accept from what you hold: the goods on the pad network's
-  vending machines and in the card holder's inventory that meet its conditions, counted as `trader_sell` takes them
-  (a "Box of ..." line counts only the boxes whose contents it accepts), or the pad network's gas in units when the
-  gas meets its conditions. The pad is the one the trader is called to; before that, every landing pad's network. The
+- `have` is, for every trader in the sky, how many units of what you hold meet its conditions: the goods on the pad
+  network's vending machines and in the card holder's inventory, counted as `trader_sell` takes them (a "Box of ..."
+  line counts only the boxes whose contents it accepts), or the pad network's gas in units when the gas meets its
+  conditions. It is not capped by `wanted`, as the game's own `sellable` count is not: a trader that wants 0 more still
+  shows what would qualify. The pad is the one the trader is called to; before that, every landing pad's network. The
   card holder is `credit_card_id`'s holder, else you. The game rolls a trader's inventory when the contact appears, so
   this works before the trader is interrogated.
+- `credits_spent` (buy) and `credits_earned` (sell) are signed and agree between the dry and the real run: a line with a
+  negative price (a trader that pays you to take a gas, such as Bulk Pollutants) has a negative `credits_spent`.
+- `trade_failed` carries the game's own message without its rich-text colour tags. `no_credit_card` means neither
+  `credit_card_id` nor the local player's card is there to pay with (a dedicated server has no local player).
 - Host only.

@@ -333,7 +333,9 @@ internal static class TradeSession
         CreditCard? carried = human != null ? human.GetCreditCard() : null;
         if (carried == null)
         {
-            throw ApiErrors.Refused("no_credit_card", "The local player carries no credit card.");
+            throw ApiErrors.Refused("no_credit_card", human != null
+                ? "The local player carries no credit card; pass credit_card_id."
+                : "There is no local player to carry a credit card (a dedicated server); pass credit_card_id.");
         }
 
         return carried!;
@@ -468,14 +470,15 @@ internal static class TradeLineRun
         float creditsBefore = card.Currency;
         bool done = side.Execute(entry, card, contact, quantity, cost, out GameString? error);
         int traded = limitBefore - side.Limit(entry);
-        float credits = Math.Abs(card.Currency - creditsBefore);
+        // Signed as the dry run reports it: a negative-price line (the trader pays you to take it) spends less than 0.
+        float credits = side.IsBuying ? creditsBefore - card.Currency : card.Currency - creditsBefore;
         if (done)
         {
             batch.Succeeded(new TradedView(index, line, side.IsBuying, traded, credits, side.Limit(entry)));
             return;
         }
 
-        string message = error != null ? error.DisplayString : "The game refused the trade.";
+        string message = (error != null ? Text.Plain(error.DisplayString) : null) ?? "The game refused the trade.";
         batch.Failed(new NotTradedView(index, line, traded, credits, ApiErrors.Refused("trade_failed", message)));
     }
 

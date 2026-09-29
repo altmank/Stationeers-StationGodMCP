@@ -47,7 +47,7 @@ internal static class UndoJobApi
 
         long? fromId = args.OptionalThingId("from_id")?.Value;
         RefundRoute? refundTo = RefundArgs.RouteOf(args.Optional(RefundArgs.Argument));
-        string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
+        string? acknowledge = GasHoldArgs.Acknowledgement(args);
         JObject job = JobSnapshots.Wire(HeldTickJobs.Status(jobId));
         RecordedJob? recorded = JobSnapshots.Of(jobId);
         string tool = job.Value<string>("tool") ?? recorded?.Tool ?? "unknown";

@@ -26,7 +26,7 @@ internal static class PlaceStructureApi
                 return HeldTickJobs.Status(poll.JobId);
             case BuildForm<PlaceArguments>.Run run:
                 PlacePlan plan = PlacePlanner.Plan(run.Arguments);
-                string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
+                string? acknowledge = GasHoldArgs.Acknowledgement(args);
                 if (!run.Confirmed)
                 {
                     GasHold.Preview(plan.TouchesPipes, acknowledge);
@@ -62,7 +62,7 @@ internal static class RemoveStructureApi
                 return HeldTickJobs.Status(poll.JobId);
             case BuildForm<RemoveArguments>.Run run:
                 RemovePlan plan = RemovePlanner.Plan(run.Arguments);
-                string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
+                string? acknowledge = GasHoldArgs.Acknowledgement(args);
                 if (!run.Confirmed)
                 {
                     GasHold.Preview(plan.TouchesPipes, acknowledge);

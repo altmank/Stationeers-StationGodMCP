@@ -154,7 +154,9 @@ internal sealed class BuyLedger<TEntry> where TEntry : class
         int stock = stockBefore - (_bought.TryGetValue(entry, out int bought) ? bought : 0);
         if (quantity > stock)
         {
-            return new BuyVerdict.Refused("insufficient_stock", $"The trader has {stock} in stock{after}.");
+            // Only an earlier line that bought from this entry changed its stock.
+            return new BuyVerdict.Refused("insufficient_stock",
+                $"The trader has {stock} in stock{(bought > 0 ? " after the earlier lines of this call" : "")}.");
         }
 
         if (cost > _credits)

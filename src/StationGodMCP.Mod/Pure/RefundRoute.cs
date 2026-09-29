@@ -226,14 +226,23 @@ internal abstract class RefundRoute
     }
 }
 
+/// <summary>What from_id is for a refund: not passed (the local player stands in), passed but naming no thing, or found.</summary>
+internal enum RefundFrom
+{
+    Absent,
+    Missing,
+    Found
+}
+
 /// <summary>What the game offers a refund chain: who and what exists to take items.</summary>
 internal sealed class RefundReach
 {
-    internal RefundReach(bool player, bool sourceStack, bool storage)
+    internal RefundReach(bool player, bool sourceStack, bool storage, RefundFrom from = RefundFrom.Absent)
     {
         Player = player;
         SourceStack = sourceStack;
         Storage = storage;
+        From = from;
     }
 
     /// <summary>A player whose inventory takes items (from_id a player, else the local player).</summary>
@@ -242,8 +251,13 @@ internal sealed class RefundReach
     /// <summary>from_id is a stack (a coil, a sheet stack) that can be topped up.</summary>
     internal bool SourceStack { get; }
 
-    /// <summary>A holder whose slots store items (from_id, else the local player).</summary>
+    /// <summary>
+    /// A holder with a slot a refund could go into: from_id's own or those of the container it is stored in, else the
+    /// local player's.
+    /// </summary>
     internal bool Storage { get; }
+
+    internal RefundFrom From { get; }
 }
 
 /// <summary>Which of a chain's targets the game can use now, and why each other one is skipped.</summary>
@@ -263,10 +277,18 @@ internal static class RefundChainRule
             {
                 RefundTarget.InventoryName when !reach.Player =>
                     "inventory skipped: there is no player (a dedicated server; pass from_id of a player).",
-                RefundTarget.SourceName when !reach.SourceStack =>
-                    "source skipped: from_id is not a stack to top up.",
-                RefundTarget.StorageName when !reach.Storage =>
-                    "storage skipped: there is no from_id and no local player whose slots could take it.",
+                RefundTarget.SourceName when !reach.SourceStack => "source skipped: " + reach.From switch
+                {
+                    RefundFrom.Absent => "there is no from_id to top up.",
+                    RefundFrom.Missing => "from_id names no thing.",
+                    _ => "from_id is not a stack to top up."
+                },
+                RefundTarget.StorageName when !reach.Storage => "storage skipped: " + reach.From switch
+                {
+                    RefundFrom.Absent => "there is no from_id and no local player whose slots could take it.",
+                    RefundFrom.Missing => "from_id names no thing.",
+                    _ => "from_id has no slot a refund could go into, and is stored in nothing that has one."
+                },
                 _ => null
             };
             if (why != null)
@@ -281,6 +303,37 @@ internal static class RefundChainRule
 
         return usable;
     }
+
+    /// <summary>
+    /// Whether a refund along the route goes into from_id: the single word source, or a chain that names source or
+    /// storage (the default does). Checked against the targets asked for, before any is skipped.
+    /// </summary>
+    internal static bool AsksForHolder(RefundRoute route)
+    {
+        if (route.NeedsHolder)
+        {
+            return true;
+        }
+
+        if (route is RefundRoute.Chain chain)
+        {
+            foreach (RefundTarget target in chain.Targets)
+            {
+                if (target.Kind is RefundTarget.SourceName or RefundTarget.StorageName)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether a job with no from_id needs a local player: it takes materials (charge above zero), or its refund_to is
+    /// the single word source. A chain skips what is missing and ends on the ground.
+    /// </summary>
+    internal static bool NeedsPlayer(int charge, RefundRoute route) => charge > 0 || route.NeedsHolder;
 }
 
 /// <summary>One target's places for one item: matching stacks with room and empty slots that take it, by key.</summary>

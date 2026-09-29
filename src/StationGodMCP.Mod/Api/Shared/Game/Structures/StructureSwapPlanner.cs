@@ -261,15 +261,6 @@ internal static class StructureSwapPlanner
 
     private static void CountMaterials(StructureSwapPlan plan)
     {
-        plan.From = Source(plan);
-        List<GuardFinding> findings = new List<GuardFinding>();
-        plan.Refunds = RefundReceivers.Resolve(plan.Request.Arguments.RefundTo, plan.From, null, findings);
-        foreach (GuardFinding finding in findings.FindAll(static finding => finding.Level == GuardLevel.Refusal))
-        {
-            // A skipped target is named in the report's refund_plan; only a refusal stops the run.
-            plan.Problem(finding.Code, finding.Message);
-        }
-
         List<IReadOnlyList<MaterialLine>> lines = new List<IReadOnlyList<MaterialLine>>(plan.Swaps.Count);
         foreach (PlannedStructureSwap swap in plan.Swaps)
         {
@@ -277,6 +268,20 @@ internal static class StructureSwapPlanner
         }
 
         plan.Totals.AddRange(MaterialRule.Sum(lines));
+        int charge = 0;
+        plan.Totals.ForEach(total => charge += total.Charge);
+        RefundRoute route = plan.Request.Arguments.RefundTo;
+        plan.From = Source(plan, RefundChainRule.NeedsPlayer(charge, route));
+        List<GuardFinding> findings = new List<GuardFinding>();
+        plan.Refunds = RefundReceivers.Resolve(route, plan.From, plan.Request.Arguments.From.HasValue,
+            plan.Swaps.Count > 0 ? plan.Swaps[0].Old.ThingTransformPosition : (UnityEngine.Vector3?)null, findings);
+        foreach (GuardFinding finding in findings.FindAll(static finding => finding.Level == GuardLevel.Refusal))
+        {
+            // A skipped target is named in the report's refund_plan; only a refusal stops the run.
+            plan.Problem(finding.Code, finding.Message);
+        }
+
+        HolderRemoved(plan, route);
         foreach (MaterialTotal total in plan.Totals)
         {
             Item item = plan.Items[total.Item];
@@ -292,7 +297,24 @@ internal static class StructureSwapPlanner
         }
     }
 
-    private static Thing? Source(StructureSwapPlan plan)
+    // from_id is a structure the request swaps away while refund_to gives into it: the holder is gone before the
+    // refund.
+    private static void HolderRemoved(StructureSwapPlan plan, RefundRoute route)
+    {
+        Thing? from = plan.From;
+        if (from == null || !plan.Request.Arguments.From.HasValue || !route.GivesBack ||
+            !RefundChainRule.AsksForHolder(route) || !plan.Swaps.Exists(swap => swap.OldId == from.ReferenceId))
+        {
+            return;
+        }
+
+        plan.Problem("refund_holder_removed", RemovalRule.HolderRemoved(
+            $"{Names.Of(from)} ({from.PrefabName} {from.ReferenceId})", null), from);
+    }
+
+    // from_id, else the local player; with neither, a swap that charges nothing and whose refund_to is a chain goes on
+    // without one (the chain skips inventory, source and storage and ends on the ground where the first piece stood).
+    private static Thing? Source(StructureSwapPlan plan, bool needsPlayer)
     {
         ThingId? from = plan.Request.Arguments.From;
         if (from.HasValue)
@@ -308,13 +330,14 @@ internal static class StructureSwapPlanner
         }
 
         Human human = Human.LocalHuman;
-        if (human == null)
+        if (human == null && needsPlayer)
         {
-            plan.Problem("no_local_player", "There is no local player to take materials from; pass from_id.");
-            return null;
+            plan.Problem("no_local_player",
+                "There is no local player to take materials from (or, with refund_to source, to give the refund to); " +
+                "pass from_id.");
         }
 
-        return human;
+        return human == null ? null : human;
     }
 
     private static string Describe(List<StructureSlot>? slots)

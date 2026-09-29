@@ -30,6 +30,9 @@ internal static class HeldTickJobs
     private static readonly Dictionary<string, object> Finished = new Dictionary<string, object>();
     private static readonly Queue<string> FinishedOrder = new Queue<string>();
     private static readonly JobLine<QueuedJob> Waiting = new JobLine<QueuedJob>(MaximumWaiting);
+
+    // What the gas hold meant for each job that acknowledged a loss, so a poll's reply repeats its gas_hold.
+    private static readonly Dictionary<string, JobHold> Holds = new Dictionary<string, JobHold>();
     private static HeldTickJob? _active;
     private static bool _tickHeld;
     private static long _next;
@@ -58,9 +61,11 @@ internal static class HeldTickJobs
         bool tickTaken = IsSaving() || GameManager.GameTickPaused;
         if (_active == null && Waiting.Count == 0 && !tickTaken)
         {
-            object view = Launch(NextId(prefix), create).View();
+            string started = NextId(prefix);
+            object view = Launch(started, create).View();
             GasHold.Lift(hold);
             GasHoldReply.Record(hold, GasHoldStage.Started);
+            Keep(started, hold, GasHoldStage.Started);
             return view;
         }
 
@@ -88,6 +93,7 @@ internal static class HeldTickJobs
         }
 
         GasHoldReply.Record(hold, GasHoldStage.Queued);
+        Keep(id, hold, GasHoldStage.Queued);
         return new JobQueuedView(id, tool, Waiting.PositionOf(id) ?? 1, _active?.Id, preflight);
     }
 
@@ -107,6 +113,11 @@ internal static class HeldTickJobs
 
     internal static object Status(string id)
     {
+        if (Holds.TryGetValue(id, out JobHold kept))
+        {
+            GasHoldReply.Record(kept.Verdict, kept.Stage);
+        }
+
         if (_active != null && _active.Id == id)
         {
             return _active.View();
@@ -236,6 +247,7 @@ internal static class HeldTickJobs
         GasHoldVerdict hold = GasHold.Judge(queued.PipeNetworks, queued.Acknowledge);
         if (hold is GasHoldVerdict.Refusing refusing)
         {
+            Keep(id, hold, GasHoldStage.NotStarted);
             Remember(id, new JobDroppedView(id, queued.Tool, new ErrorView(refusing.Code, refusing.Message)));
             return;
         }
@@ -244,6 +256,7 @@ internal static class HeldTickJobs
         {
             Launch(id, queued.Create);
             GasHold.Lift(hold);
+            Keep(id, hold, GasHoldStage.Started);
         }
         catch (Exception exception)
         {
@@ -261,8 +274,35 @@ internal static class HeldTickJobs
         FinishedOrder.Enqueue(id);
         while (FinishedOrder.Count > KeptJobs)
         {
-            Finished.Remove(FinishedOrder.Dequeue());
+            string forgotten = FinishedOrder.Dequeue();
+            Finished.Remove(forgotten);
+            Holds.Remove(forgotten);
         }
+    }
+
+    private static void Keep(string id, GasHoldVerdict hold, GasHoldStage stage)
+    {
+        if (hold.Reportable)
+        {
+            Holds[id] = new JobHold(hold, stage);
+        }
+        else
+        {
+            Holds.Remove(id);
+        }
+    }
+
+    private sealed class JobHold
+    {
+        internal JobHold(GasHoldVerdict verdict, GasHoldStage stage)
+        {
+            Verdict = verdict;
+            Stage = stage;
+        }
+
+        internal GasHoldVerdict Verdict { get; }
+
+        internal GasHoldStage Stage { get; }
     }
 
     private sealed class QueuedJob

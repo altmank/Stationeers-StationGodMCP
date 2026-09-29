@@ -49,9 +49,10 @@ internal sealed class RefundReceivers
     /// <summary>
     /// The receivers of a route. A container a chain names must exist and have slots (refund_target_not_found or
     /// refund_target_not_container otherwise, as refusals); a target whose need is missing is skipped, with a
-    /// warning when the caller named the chain (the default skips quietly).
+    /// warning when the caller named the chain (the default skips quietly). fromNamed: whether the request passed
+    /// from_id (from is then null when it names no thing).
     /// </summary>
-    internal static RefundReceivers Resolve(RefundRoute route, Thing? from, Vector3? pieceGround,
+    internal static RefundReceivers Resolve(RefundRoute route, Thing? from, bool fromNamed, Vector3? pieceGround,
         List<GuardFinding> findings)
     {
         Human? player = from is Human human ? human : Human.LocalHuman;
@@ -60,7 +61,9 @@ internal sealed class RefundReceivers
         List<string> skipped = new List<string>();
         if (route is RefundRoute.Chain chain)
         {
-            RefundReach reach = new RefundReach(player != null, from is Stackable, from != null);
+            RefundFrom named = !fromNamed ? RefundFrom.Absent : from != null ? RefundFrom.Found : RefundFrom.Missing;
+            bool storage = from != null && Refunds.InventorySlots(from, Refunds.StoredIn(from)).Count > 0;
+            RefundReach reach = new RefundReach(player != null, from is Stackable, storage, named);
             usable = RefundChainRule.Usable(chain.Targets, reach, skipped);
             if (route != RefundRoute.Default)
             {
@@ -461,7 +464,7 @@ internal static class Refunds
         prefab is Stackable stackable && stackable.MaxQuantity > 0 ? stackable.MaxQuantity : 1;
 
     // The outermost holder of a thing stored in a slot (the locker a coil stack is in), or null.
-    private static Thing? StoredIn(Thing source) =>
+    internal static Thing? StoredIn(Thing source) =>
         source is DynamicThing item && item.ParentSlot != null && item.RootParent != null && item.RootParent != source
             ? item.RootParent
             : null;

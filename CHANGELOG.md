@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **A job that takes nothing needs no player (live test round 11).** On a dedicated server with no `from_id`, the
+  clean, upgrade and replace tools asked for one even when they took no coils or materials: `clean_cables`
+  `remove_dead_ends` and `merge_straights`, a `replace_walls` swap that charges nothing. Only a charge or `refund_to`
+  `"source"` needs one now; the refund follows the chain, the ground where the first piece stood at the end.
+- **Refund skips say why.** `storage` with a `from_id` that has no slots (a cable piece) is skipped with
+  `refund_target_skipped` as `source` is; the skip text tells no `from_id` from one that names no thing. A `from_id`
+  the same request removes is refused (`refund_holder_removed`) when `refund_to` gives into it on the remove, place,
+  clean, upgrade and replace tools too, as on `remove_structure`.
+- **A lone in-line tank keeps its network's id.** `remove_structure` of an in-line tank or passive vent that leaves
+  its network in one piece takes it out of the network first, as with pipe pieces, so the network keeps its id and
+  `will_burst` names the network that stays. `allow_burst` also lifts `would_burst` for pipe pieces alone; documented.
+- **`gas_hold` on every poll.** A run that acknowledged a gas loss repeats its `gas_hold` in every `job_id` poll, the
+  finished job's too. An empty `acknowledge_gas_lost` is refused (`invalid_argument`) instead of read as left out.
+- **Traders.** `trader_buy`'s real run reports `credits_spent` signed, as the dry run does (a negative-price line was
+  +1.0 real and -1.0 dry). A stock refusal says "after the earlier lines" only when an earlier line bought from that
+  entry. `trade_failed` drops the game's colour tags. `no_credit_card` says when there is no local player at all.
+  `have` is documented as not capped by `wanted`; `get_ic_status` documents `error_line` as a string.
+
 - **Choose where refunds go (`refund_to` on every tool that refunds).** The place tools with `remove_ids`, the remove,
   upgrade, clean and replace tools, `remove_structure`, `undo_job` and `plan_removal` take `refund_to`: a list of
   targets tried in turn per item until it fits, `inventory` (the player's), `source` (top up the `from_id` stack),
