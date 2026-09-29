@@ -256,7 +256,7 @@ internal sealed class CableNetworkRecord : NetworkRecord
         }
 
         return new CableNetworkReportView(new ThingId(network.ReferenceId),
-            new CableNetworkCounts(cables.Count, predict ? Swaps.Count : 0, network.FuseList.Count),
+            new CableNetworkCounts(cables.Count, Swaps.Count, network.FuseList.Count),
             new CableNetworkRatings(network.RequiredLoad, network.PotentialLoad, before, after, fuse),
             ViewsOf(network.DeviceList));
     }
@@ -467,7 +467,7 @@ internal sealed class PipeNetworkRecord : NetworkRecord
         GasSnapshot? snapshot = now.Atmosphere != null ? GasSnapshot.Of(now.Atmosphere) : null;
         PipeNetworkAir air = AirOf(snapshot, snapshot?.VolumeL ?? 0.0);
         return new PipeNetworkReportView(Id, now.NetworkContentType.ToString(),
-            new PipeNetworkCounts(MembersOf(now).Count, 0), air, air, null, ViewsOf(now.DeviceList));
+            new PipeNetworkCounts(MembersOf(now).Count, Swaps.Count), air, air, null, ViewsOf(now.DeviceList));
     }
 
     internal override void Verify(List<UpgradeProblemView> problems, Dictionary<long, List<SmallGrid>> replacements)

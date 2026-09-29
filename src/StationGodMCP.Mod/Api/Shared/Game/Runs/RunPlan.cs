@@ -284,8 +284,8 @@ internal sealed class RunPlan
 
     internal bool Ready => Problems.Count == 0;
 
-    /// <summary>The devices would_split measures cut-off devices against (the root, or every supplier found).</summary>
-    internal HashSet<long> Roots { get; } = new HashSet<long>();
+    /// <summary>What would_split measures cut-off devices against (the root, or every supplier port found).</summary>
+    internal NetworkRootSet Roots { get; set; } = NetworkRootSet.None;
 
     /// <summary>The tap join_trunk added (its cells), or null.</summary>
     internal NearMiss? Tap { get; set; }

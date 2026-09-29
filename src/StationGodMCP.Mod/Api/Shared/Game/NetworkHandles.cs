@@ -46,7 +46,8 @@ internal static class NetworkHandles
 
     /// <summary>
     /// Several handles (allow_bridge): an object form is resolved to its network; a plain id is kept as given (it may
-    /// name a device whose ports are meant to share a network).
+    /// name a network, or a device whose ports are meant to share a network), and one naming a piece of the family
+    /// (or a device that is one of its members, a vent on a pipe) adds that piece's network too.
     /// </summary>
     internal static HashSet<long> ResolveAllowances(Args args, string name, int maximum, UpgradeFamily family)
     {
@@ -62,9 +63,18 @@ internal static class NetworkHandles
             string entry = $"{name}[{index}]";
             NetworkHandle handle = NetworkHandle.Read(array[index], entry);
             // A bare id may name a device on purpose (allow_bridge names devices whose ports may share a network).
-            ids.Add(handle is NetworkHandle.ById
-                ? handle.Id.Value
-                : Resolve(array[index], entry, family).Value);
+            if (!(handle is NetworkHandle.ById))
+            {
+                ids.Add(Resolve(array[index], entry, family).Value);
+                continue;
+            }
+
+            ids.Add(handle.Id.Value);
+            if (GameLookup.TryFindThing(handle.Id, out Thing thing) && thing is SmallGrid piece &&
+                family.IsMember(piece))
+            {
+                ids.Add(Resolve(array[index], entry, family).Value);
+            }
         }
 
         return ids;

@@ -191,7 +191,7 @@ internal static class RunForecastBuilder
 
         forecastParts.Loops = RunLoops.Closing(links, forecastParts.NodeOf, forecastParts.GameBefore,
             planned.Keys);
-        AddPorts(plan, kind, things, modelled, after, edit, forecastParts, removed);
+        AddPorts(plan, kind, things, after, edit, forecastParts, removed);
         Forecast result = NetworkForecaster.Of(edit, out Dictionary<long, int> componentOf);
         RunForecast forecast = new RunForecast(result, componentOf, context)
         {
@@ -250,11 +250,11 @@ internal static class RunForecastBuilder
         }
     }
 
-    // Every port of the run's type of each device next to the edit or on a modelled network: the network it is on
-    // now (the game's IsConnected), and the node joined to it after (the model in its cell with an end facing it).
+    // Every port of the run's type of each device next to the edit or on a network the edit touches (modelled or
+    // joined whole, so networks_after lists every device a merged network holds): the network it is on now (the
+    // game's IsConnected), and the node joined to it after (the model in its cell with an end facing it).
     private static void AddPorts(RunPlan plan, RunKind kind, Dictionary<long, SmallGrid> things,
-        HashSet<long> modelled, Dictionary<long, PieceModel> after, NetworkEdit edit, RunForecast parts,
-        HashSet<long> removed)
+        Dictionary<long, PieceModel> after, NetworkEdit edit, RunForecast parts, HashSet<long> removed)
     {
         Dictionary<long, Device> devices = new Dictionary<long, Device>();
         foreach (SmallGrid thing in things.Values)
@@ -265,14 +265,11 @@ internal static class RunForecastBuilder
             }
         }
 
-        foreach (long network in modelled)
+        foreach (IReferencable network in new List<IReferencable>(parts.Context.NetworksBefore.Values))
         {
-            if (parts.Context.NetworksBefore.TryGetValue(network, out IReferencable found))
+            foreach (Device device in kind.DevicesOf(network))
             {
-                foreach (Device device in kind.DevicesOf(found))
-                {
-                    devices[device.ReferenceId] = device;
-                }
+                devices[device.ReferenceId] = device;
             }
         }
 

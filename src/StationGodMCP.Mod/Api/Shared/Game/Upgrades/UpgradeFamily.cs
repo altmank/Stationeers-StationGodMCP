@@ -60,6 +60,12 @@ internal abstract class UpgradeFamily
     internal abstract List<SmallGrid> NetworkMembers(ThingId networkId);
 
     /// <summary>
+    /// The devices on one network (its DeviceList), which NetworkMembers does not hold; network_not_found when there is
+    /// none.
+    /// </summary>
+    internal abstract List<Device> NetworkDevices(ThingId networkId);
+
+    /// <summary>
     /// Whether the family's pieces come from this kind of kit: a coil or pipe kit merges into the piece it is used on
     /// (MultiMergeConstructor), so a plain MultiConstructor listing such pieces is some other kit.
     /// </summary>
@@ -224,6 +230,13 @@ internal sealed class CableFamily : UpgradeFamily
         return NonNull(network.CableList);
     }
 
+    internal override List<Device> NetworkDevices(ThingId networkId)
+    {
+        CableNetwork network = Referencable.Find<CableNetwork>(networkId.Value) ??
+                               throw NetworkNotFound(NetworkKind, networkId);
+        return Runs.RunNetworks.Copy(network.DeviceList);
+    }
+
     internal override Grade? GradeOf(Structure structure) =>
         structure is Cable cable && cable.GetType() == typeof(Cable) &&
         CablePieces.IsCoilPiece(cable.BlockMergeWithOtherCables, cable.IsStraight, cable.StraightUnitLength)
@@ -340,6 +353,13 @@ internal sealed class PipeFamily : UpgradeFamily
         PipeNetwork network = Referencable.Find<PipeNetwork>(networkId.Value) ??
                               throw NetworkNotFound(NetworkKind, networkId);
         return NonNull(network.StructureList);
+    }
+
+    internal override List<Device> NetworkDevices(ThingId networkId)
+    {
+        PipeNetwork network = Referencable.Find<PipeNetwork>(networkId.Value) ??
+                              throw NetworkNotFound(NetworkKind, networkId);
+        return Runs.RunNetworks.Copy(network.DeviceList);
     }
 
     // Plain Piping and the long straights (PipingLong), so a kit that lists long pipes is found with them.

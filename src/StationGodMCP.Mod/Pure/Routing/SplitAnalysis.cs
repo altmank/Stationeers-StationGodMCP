@@ -50,13 +50,46 @@ internal sealed class SplitDetail
 }
 
 /// <summary>
+/// What would_split measures against: devices named as the root (every port of theirs counts), and supplier ports, a
+/// device with the network it feeds (an APC's or battery's output network, a generator's). A battery's input port is
+/// not a root of the network that charges it, though the battery feeds another network.
+/// </summary>
+internal sealed class NetworkRootSet
+{
+    private readonly HashSet<long> _named = new HashSet<long>();
+    private readonly HashSet<(long Device, long Network)> _feeds = new HashSet<(long Device, long Network)>();
+
+    internal static NetworkRootSet None => new NetworkRootSet();
+
+    internal static NetworkRootSet Named(params long[] devices)
+    {
+        NetworkRootSet roots = new NetworkRootSet();
+        roots._named.UnionWith(devices);
+        return roots;
+    }
+
+    /// <summary>Whether the caller named the root (a network with none on it is then not the named root's).</summary>
+    internal bool IsNamed => _named.Count > 0;
+
+    internal void AddFeed(long device, long network) => _feeds.Add((device, network));
+
+    /// <summary>Whether the port is a root's: its device was named, or it is on a network its device feeds.</summary>
+    internal bool Holds(ForecastPort port) => Holds(port.DeviceId, port.NetworkBefore);
+
+    internal bool Holds(long device, long? network) =>
+        _named.Contains(device) || (network.HasValue && _feeds.Contains((device, network.Value)));
+}
+
+/// <summary>
 /// Which devices a split cuts off from the network's root. A root is a device that feeds the network: the caller's
 /// root, or every supplier the game side finds (an APC's, transformer's or battery's output, a generator, a solar
-/// panel). A device is cut off when none of its ports on the network is on a part that holds a root after the edit.
+/// panel), each only on the network it feeds. A device is cut off when none of its ports on the network is on a part
+/// that holds a root after the edit; when a root's own port is cut and the network stays one piece, every device left
+/// on it is cut off.
 /// </summary>
 internal static class SplitAnalysis
 {
-    internal static List<SplitDetail> Of(Forecast forecast, ICollection<long> roots)
+    internal static List<SplitDetail> Of(Forecast forecast, NetworkRootSet roots)
     {
         List<SplitDetail> details = new List<SplitDetail>(forecast.Splits.Count + 1);
         foreach (ForecastSplit split in forecast.Splits)
@@ -72,7 +105,7 @@ internal static class SplitAnalysis
         return details;
     }
 
-    private static SplitDetail OfSplit(Forecast forecast, ForecastSplit split, ICollection<long> roots)
+    private static SplitDetail OfSplit(Forecast forecast, ForecastSplit split, NetworkRootSet roots)
     {
         List<SplitPart> parts = new List<SplitPart>(split.Parts.Count);
         HashSet<long> present = new HashSet<long>();
@@ -83,7 +116,7 @@ internal static class SplitAnalysis
             bool holdsRoot = false;
             foreach (ForecastPort port in network.Ports)
             {
-                if (roots.Contains(port.DeviceId))
+                if (roots.Holds(port.DeviceId, split.Network))
                 {
                     holdsRoot = true;
                     present.Add(port.DeviceId);
@@ -103,7 +136,7 @@ internal static class SplitAnalysis
 
         foreach (ForecastPort port in forecast.Cut)
         {
-            if (port.NetworkBefore == split.Network && roots.Contains(port.DeviceId))
+            if (port.NetworkBefore == split.Network && roots.Holds(port))
             {
                 present.Add(port.DeviceId);
             }
@@ -126,7 +159,7 @@ internal static class SplitAnalysis
             foreach (ForecastPort port in part.Ports)
             {
                 if (port.NetworkBefore == split.Network && !rooted.Contains(port.DeviceId) &&
-                    !roots.Contains(port.DeviceId))
+                    !roots.Holds(port.DeviceId, split.Network))
                 {
                     cut.Add(port.DeviceId);
                 }
@@ -136,7 +169,7 @@ internal static class SplitAnalysis
         foreach (ForecastPort port in forecast.Cut)
         {
             if (port.NetworkBefore == split.Network && !rooted.Contains(port.DeviceId) &&
-                !roots.Contains(port.DeviceId))
+                !roots.Holds(port.DeviceId, split.Network))
             {
                 cut.Add(port.DeviceId);
             }
@@ -146,8 +179,9 @@ internal static class SplitAnalysis
     }
 
     // Ports joined to nothing after the edit whose network does not split: every device among them is cut off, unless
-    // it is a root itself or keeps another port on a network.
-    private static SplitDetail OfCutPorts(Forecast forecast, ICollection<long> roots)
+    // it is a root itself or keeps another port on a network. A root port cut from a network that stays whole cuts off
+    // every device left on it that no other root feeds. The entry names the network when every cut port was on one.
+    private static SplitDetail OfCutPorts(Forecast forecast, NetworkRootSet roots)
     {
         HashSet<long> stillJoined = new HashSet<long>();
         foreach (ForecastNetwork network in forecast.Networks)
@@ -160,11 +194,22 @@ internal static class SplitAnalysis
 
         HashSet<long> cut = new HashSet<long>();
         HashSet<long> present = new HashSet<long>();
+        HashSet<long> unfed = new HashSet<long>();
+        HashSet<long> networks = new HashSet<long>();
         foreach (ForecastPort port in forecast.Cut)
         {
-            if (roots.Contains(port.DeviceId))
+            if (port.NetworkBefore.HasValue)
+            {
+                networks.Add(port.NetworkBefore.Value);
+            }
+
+            if (roots.Holds(port))
             {
                 present.Add(port.DeviceId);
+                if (port.NetworkBefore.HasValue && !forecast.Splits.Exists(split => split.Network == port.NetworkBefore))
+                {
+                    unfed.Add(port.NetworkBefore.Value);
+                }
             }
             else if (!stillJoined.Contains(port.DeviceId))
             {
@@ -172,11 +217,42 @@ internal static class SplitAnalysis
             }
         }
 
-        return new SplitDetail(null, new List<SplitPart>(), Sorted(present), Sorted(cut));
+        foreach (long network in unfed)
+        {
+            cut.UnionWith(LeftWithoutRoot(forecast, network, roots));
+        }
+
+        cut.ExceptWith(present);
+        long? only = networks.Count == 1 ? new List<long>(networks)[0] : (long?)null;
+        return new SplitDetail(only, new List<SplitPart>(), Sorted(present), Sorted(cut));
+    }
+
+    // The devices whose ports stay on what is left of the network when no port left on it is a root's.
+    private static List<long> LeftWithoutRoot(Forecast forecast, long network, NetworkRootSet roots)
+    {
+        List<long> devices = new List<long>();
+        foreach (ForecastNetwork after in forecast.Networks)
+        {
+            if (!after.NetworksBefore.Contains(network) ||
+                after.Ports.Exists(port => roots.Holds(port.DeviceId, network)))
+            {
+                continue;
+            }
+
+            foreach (ForecastPort port in after.Ports)
+            {
+                if (port.NetworkBefore == network)
+                {
+                    devices.Add(port.DeviceId);
+                }
+            }
+        }
+
+        return devices;
     }
 
     /// <summary>A one-line summary for a would_split message: each part's devices, and those cut off.</summary>
-    internal static string Describe(SplitDetail detail)
+    internal static string Describe(SplitDetail detail, bool rootNamed = false)
     {
         List<string> parts = new List<string>(detail.Parts.Count);
         foreach (SplitPart part in detail.Parts)
@@ -196,7 +272,9 @@ internal static class SplitAnalysis
 
         string layout = parts.Count > 0 ? $" Devices per part: {string.Join("; ", parts)}." : string.Empty;
         string cut = detail.CutOff == null
-            ? " No root is on it (pass root to name one)."
+            ? rootNamed
+                ? " The root named is not on it."
+                : " No root is on it (pass root to name one)."
             : detail.CutOff.Count == 0
                 ? " No device is cut off from the root."
                 : $" Cut off from the root: {string.Join(", ", detail.CutOff)}.";

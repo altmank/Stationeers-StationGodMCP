@@ -55,7 +55,7 @@ public sealed class SplitAnalysisTests
     public void DevicesSharingACutFeedAreAllCutOffFromTheRoot()
     {
         Forecast forecast = NetworkForecaster.Of(SharedFeed(2), out _);
-        SplitDetail detail = Assert.Single(SplitAnalysis.Of(forecast, new HashSet<long> { Apc }));
+        SplitDetail detail = Assert.Single(SplitAnalysis.Of(forecast, NetworkRootSet.Named(Apc)));
 
         Assert.Equal(Network, detail.Network);
         Assert.Equal(new[] { Apc }, detail.Roots);
@@ -70,8 +70,8 @@ public sealed class SplitAnalysisTests
     {
         Forecast forecast = NetworkForecaster.Of(SharedFeed(5), out _);
         Assert.Empty(forecast.Splits);
-        SplitDetail cut = Assert.Single(SplitAnalysis.Of(forecast, new HashSet<long> { Apc }));
-        Assert.Null(cut.Network);
+        SplitDetail cut = Assert.Single(SplitAnalysis.Of(forecast, NetworkRootSet.Named(Apc)));
+        Assert.Equal(Network, cut.Network);
         Assert.Equal(new[] { Light }, cut.CutOff);
     }
 
@@ -79,7 +79,7 @@ public sealed class SplitAnalysisTests
     public void WithoutARootNothingIsCalledCutOffButThePartsAreListed()
     {
         Forecast forecast = NetworkForecaster.Of(SharedFeed(2), out _);
-        SplitDetail detail = Assert.Single(SplitAnalysis.Of(forecast, new HashSet<long>()));
+        SplitDetail detail = Assert.Single(SplitAnalysis.Of(forecast, NetworkRootSet.None));
         Assert.Null(detail.CutOff);
         Assert.Empty(detail.Roots);
         Assert.All(detail.Parts, part => Assert.False(part.HoldsRoot));
@@ -91,7 +91,7 @@ public sealed class SplitAnalysisTests
     {
         Forecast forecast = NetworkForecaster.Of(SharedFeed(2), out _);
         LayoutIssue issue = Assert.Single(EditGuards.Check(forecast, EditAllowance.Nothing,
-            new HashSet<long> { Apc }), problem => problem.Code == EditGuards.WouldSplit);
+            NetworkRootSet.Named(Apc)), problem => problem.Code == EditGuards.WouldSplit);
         Assert.Contains($"Cut off from the root: {Bench}, {Computer}, {Light}.", issue.Message);
         Assert.Contains("(root)", issue.Message);
     }
@@ -101,7 +101,7 @@ public sealed class SplitAnalysisTests
     {
         // The root is the far end this time: the APC's side is what is cut off.
         Forecast forecast = NetworkForecaster.Of(SharedFeed(2), out _);
-        SplitDetail detail = Assert.Single(SplitAnalysis.Of(forecast, new HashSet<long> { Light }));
+        SplitDetail detail = Assert.Single(SplitAnalysis.Of(forecast, NetworkRootSet.Named(Light)));
         Assert.Equal(new[] { Apc }, detail.CutOff);
     }
 

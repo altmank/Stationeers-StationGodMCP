@@ -44,6 +44,7 @@ internal static class FeedPathsApi
 
         long network = NetworkOf(args, kind, root);
         List<SmallGrid> members = kind.Family.NetworkMembers(new ThingId(network));
+        members.AddRange(kind.Family.NetworkDevices(new ThingId(network)));
         if (members.Count > MaximumMembers)
         {
             throw ApiErrors.Refused("too_many_pieces", $"Network {network} has {members.Count} members.");

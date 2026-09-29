@@ -202,10 +202,13 @@ internal static class LoopCutting
             parent[Root(parent, chain.From)] = Root(parent, chain.To);
         }
 
+        // Root compresses paths as it goes, so the keys are copied first: Mono's Dictionary (the game's runtime) counts
+        // setting an existing key as a change and throws on the enumeration's next step (.NET does not, so a test here
+        // passes either way).
         int parts = 0;
-        foreach (KeyValuePair<long, long> node in parent)
+        foreach (long node in new List<long>(parent.Keys))
         {
-            parts += Root(parent, node.Key) == node.Key ? 1 : 0;
+            parts += Root(parent, node) == node ? 1 : 0;
         }
 
         return edges - parent.Count + parts;

@@ -38,6 +38,13 @@ internal sealed class ChuteFamily : UpgradeFamily
         return NonNull(network.StructureList);
     }
 
+    internal override List<Device> NetworkDevices(ThingId networkId)
+    {
+        ChuteNetwork network = Referencable.Find<ChuteNetwork>(networkId.Value) ??
+                               throw NetworkNotFound(NetworkKind, networkId);
+        return Runs.RunNetworks.Copy(network.DeviceList);
+    }
+
     internal override Grade? GradeOf(Structure structure) => IsRunPiece(structure) ? Chute : null;
 
     internal override Grade? RunGradeOf(SmallGrid piece) => IsRunPiece(piece) ? Chute : null;

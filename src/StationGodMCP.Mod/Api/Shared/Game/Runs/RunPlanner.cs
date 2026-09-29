@@ -70,11 +70,12 @@ internal static class RunPlanner
         ThingId? root = plan.Request.Options.Targets.Root;
         if (root.HasValue)
         {
-            plan.Roots.Add(root.Value.Value);
+            NetworkRoots.RequireOn(root.Value, plan.Request.Kind.Family, forecast.Context.NetworksBefore.Keys);
+            plan.Roots = NetworkRootSet.Named(root.Value.Value);
             return;
         }
 
-        plan.Roots.UnionWith(NetworkRoots.Suppliers(forecast.Context.NetworksBefore.Values));
+        plan.Roots = NetworkRoots.Feeds(forecast.Context.NetworksBefore.Values);
     }
 
     private static void ReadRemovals(RunPlan plan)
@@ -253,6 +254,14 @@ internal static class RunPlanner
             if (cell.Action == CellAction.Keep)
             {
                 plan.KeptCells.Add(cell);
+                continue;
+            }
+
+            // A long straight that would need a new end stays as it is (long_piece): no single replaces it, so the
+            // forecast does not read it as gone.
+            if (cell.Action == CellAction.Change && cell.Existing != null && cell.Existing.Cells.Count > 1)
+            {
+                plan.Unchosen.Add(cell);
                 continue;
             }
 
@@ -547,7 +556,9 @@ internal static class RunPlanner
 
         string? refusal = PlacementCheck.Refusal(choice.Prefab, PieceShapes.CentreOf(cell.Cell), choice.Rotation,
             gone);
-        if (refusal != null)
+        // The layout already names a blocked cell (what stands there); the cursor's own refusal would say it again.
+        if (refusal != null &&
+            !plan.Problems.Exists(problem => problem.Code == "cell_blocked" && problem.Cell.Equals(cell.Cell)))
         {
             plan.Problem("cell_blocked", $"Cell {cell.Cell}: {refusal}.", IdOf(existing), cell.Cell);
         }
@@ -601,6 +612,8 @@ internal static class RunPlanner
     private static Thing? Source(RunPlan plan)
     {
         ThingId? from = plan.Request.Options.From;
+        // A removal only gives back; a run takes coils (and gives back what it replaces).
+        string role = plan.Request.Build != null ? "to take coils from" : "to give the refund to";
         if (from.HasValue)
         {
             if (GameLookup.TryFindThing(from.Value, out Thing thing) && !thing.IsBeingDestroyed)
@@ -608,7 +621,7 @@ internal static class RunPlanner
                 return thing;
             }
 
-            plan.Problem(ApiErrors.ThingNotFoundCode, $"No thing with reference id {from.Value} to take coils from.",
+            plan.Problem(ApiErrors.ThingNotFoundCode, $"No thing with reference id {from.Value} {role}.",
                 from.Value.Value);
             return null;
         }
@@ -622,7 +635,7 @@ internal static class RunPlanner
         }
         else if (human == null)
         {
-            plan.Problem("no_local_player", "There is no local player to take coils from; pass from_id.");
+            plan.Problem("no_local_player", $"There is no local player {role}; pass from_id.");
         }
 
         return human;

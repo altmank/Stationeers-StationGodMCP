@@ -24,7 +24,7 @@ each on what the earlier ones leave:
 | Operation | What it does |
 | --- | --- |
 | `remove_dead_ends` | Removes stubs (a piece with one connected end) and isolated pieces, round after round, since removing a stub can make its neighbour one. Stops at a stub whose only connection is a device. |
-| `remove_loops` | Finds loops, pieces joined to the rest in more than one way, and breaks each by removing the shortest run of plain two-ended pieces whose ends stay joined without it. `keep_ids` spares every loop holding one of those pieces. |
+| `remove_loops` | Finds loops, pieces joined to the rest in more than one way, and breaks each by removing the shortest run of plain two-ended pieces whose ends stay joined without it (a ring hanging off one junction is one such run and goes whole). `keep_ids` spares every loop holding one of those pieces. |
 | `remove_redundant` | Removes every piece no device needs (below). |
 | `split_long_straights` | Each 3-, 5- or 10-long straight becomes single pieces in the same line, so later runs can join anywhere along it. Costs coils. |
 | `merge_straights` | Runs of single straights of one grade, colour and owner in one line become the fewest long straights that cover them. Gives coils back. Not together with `split_long_straights`. |

@@ -18,7 +18,9 @@ namespace StationGodMCP.Api;
 /// the world diverged from what the job left. Dry run by default: the plan, every tool's arguments and dry run (the
 /// piece runs checked as if the removal were done, assume_removed; place_structure only when nothing is removed
 /// first); ready only when every one of them is. A real run makes the same checks, then starts the removal job and
-/// queues the placement jobs behind it (wait), each checked again against the world the jobs before it left.
+/// queues the placement jobs behind it (wait), each checked again against the world the jobs before it left. Every
+/// call takes the job's own from_id (UndoSource), or the caller's; removing what a free placement built gives nothing
+/// back.
 /// </summary>
 internal static class UndoJobApi
 {
@@ -38,17 +40,21 @@ internal static class UndoJobApi
                 "A real run needs dry_run: false and confirm: true; nothing was changed.");
         }
 
+        long? fromId = args.OptionalThingId("from_id")?.Value;
+        string? refundTo = RefundTo(args);
         JObject job = JobSnapshots.Wire(HeldTickJobs.Status(jobId));
-        (string Tool, Dictionary<long, ThingSnapshot> Removed)? recorded = JobSnapshots.Of(jobId);
+        RecordedJob? recorded = JobSnapshots.Of(jobId);
         string tool = job.Value<string>("tool") ?? recorded?.Tool ?? "unknown";
         JobFacts facts = new JobFacts(jobId, tool, job.Value<string>("status") ?? "unknown", Created(job),
             Removed(job), recorded?.Removed ?? new Dictionary<long, ThingSnapshot>());
         UndoPlan plan = UndoPlanner.Plan(facts, Standing);
-        JObject? removeArguments = plan.Remove.Count > 0 ? RemoveArguments(plan) : null;
+        UndoSource source = UndoSource.Of(recorded?.Source ?? JobSource.Unknown, fromId, refundTo);
+        plan.Notes.AddRange(source.Notes);
+        JObject? removeArguments = plan.Remove.Count > 0 ? RemoveArguments(plan, source) : null;
         List<ThingSnapshot> structures = plan.RestoreStructures;
-        JObject? placeArguments = structures.Count > 0 ? PlaceArguments(structures) : null;
+        JObject? placeArguments = structures.Count > 0 ? PlaceArguments(structures, source) : null;
         List<UndoPieceRunView> pieceRuns = plan.RestorePieces.ConvertAll(group =>
-            new UndoPieceRunView(group.Tool, PieceArguments(group, plan, args), null));
+            new UndoPieceRunView(group.Tool, PieceArguments(group, plan, args, source), null));
         if (!plan.Ready)
         {
             return new UndoJobView(jobId, tool, dryRun ? "dry_run" : "refused", ViewOf(plan, false), removeArguments,
@@ -174,18 +180,44 @@ internal static class UndoJobApi
         return removed;
     }
 
-    private static JObject RemoveArguments(UndoPlan plan)
+    private static string? RefundTo(Args args)
+    {
+        string? refundTo = args.OptionalString("refund_to")?.Trim().ToLowerInvariant();
+        return refundTo == null || refundTo == "source" || refundTo == "ground" || refundTo == "none"
+            ? refundTo
+            : throw ApiErrors.InvalidArgument("refund_to must be source, ground or none.");
+    }
+
+    private static string Text(long id) => id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    // from_id on every call that has a source; refund_to on the removal.
+    private static JObject WithSource(JObject arguments, UndoSource source, bool removal)
+    {
+        if (source.FromId.HasValue)
+        {
+            arguments["from_id"] = Text(source.FromId.Value);
+        }
+
+        if (removal && source.RefundTo != null)
+        {
+            arguments["refund_to"] = source.RefundTo;
+        }
+
+        return arguments;
+    }
+
+    private static JObject RemoveArguments(UndoPlan plan, UndoSource source)
     {
         JArray ids = new JArray();
         foreach (long id in plan.Remove)
         {
-            ids.Add(id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            ids.Add(Text(id));
         }
 
-        return new JObject { ["reference_ids"] = ids };
+        return WithSource(new JObject { ["reference_ids"] = ids }, source, true);
     }
 
-    private static JObject PlaceArguments(List<ThingSnapshot> restore)
+    private static JObject PlaceArguments(List<ThingSnapshot> restore, UndoSource source)
     {
         JArray placements = new JArray();
         foreach (ThingSnapshot snapshot in restore)
@@ -206,13 +238,13 @@ internal static class UndoJobApi
             placements.Add(placement);
         }
 
-        return new JObject { ["placements"] = placements };
+        return WithSource(new JObject { ["placements"] = placements }, source, false);
     }
 
     // The pieces form of one tool and grade: each piece's cells with the ends it had there (a long straight comes back
     // as singles), checked as if what the undo removes were gone already (assume_removed: the small-grid things of the
-    // removal), with the caller's allow_bridge.
-    private static JObject PieceArguments(PieceRestore group, UndoPlan plan, Args args)
+    // removal), with the caller's allow_bridge and the undo's source.
+    private static JObject PieceArguments(PieceRestore group, UndoPlan plan, Args args, UndoSource source)
     {
         JArray pieces = new JArray();
         foreach (ThingSnapshot snapshot in group.Pieces)
@@ -233,13 +265,13 @@ internal static class UndoJobApi
             }
         }
 
-        JObject arguments = new JObject { ["pieces"] = pieces, ["grade"] = group.Grade };
+        JObject arguments = WithSource(new JObject { ["pieces"] = pieces, ["grade"] = group.Grade }, source, false);
         JArray assumed = new JArray();
         foreach (long id in plan.Remove)
         {
             if (GameLookup.TryFindThing(new ThingId(id), out Thing thing) && thing is SmallGrid)
             {
-                assumed.Add(id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                assumed.Add(Text(id));
             }
         }
 

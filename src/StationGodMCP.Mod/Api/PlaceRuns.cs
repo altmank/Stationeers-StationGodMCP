@@ -179,7 +179,7 @@ internal static class RunApi
 
         return plan.Ready
             ? JobSnapshots.Record(RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null), wait),
-                request.Tool, Removed(plan))
+                request.Tool, Removed(plan), args)
             : RunReports.Of(plan, RunReports.Refused, null);
     }
 

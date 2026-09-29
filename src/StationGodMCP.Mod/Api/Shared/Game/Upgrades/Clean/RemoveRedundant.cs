@@ -176,11 +176,6 @@ internal sealed class RemoveRedundant : ICleanOperation
 
     private HashSet<long> Roots(CleanPass pass, Dictionary<long, SmallGrid> pieces)
     {
-        if (_options.Root.HasValue)
-        {
-            return new HashSet<long> { _options.Root.Value };
-        }
-
         List<IReferencable> networks = new List<IReferencable>();
         foreach (SmallGrid piece in pieces.Values)
         {
@@ -189,6 +184,13 @@ internal sealed class RemoveRedundant : ICleanOperation
             {
                 networks.Add(network);
             }
+        }
+
+        if (_options.Root.HasValue)
+        {
+            NetworkRoots.RequireOn(new ThingId(_options.Root.Value), pass.Family,
+                networks.ConvertAll(static network => network.ReferenceId));
+            return new HashSet<long> { _options.Root.Value };
         }
 
         return NetworkRoots.Suppliers(networks);

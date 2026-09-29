@@ -118,7 +118,8 @@ there gets an end toward it, as at a device port; name the end with `port` when 
 **Keeping cells free.** `reserve_cells: [[x, y, z], ...]` and `reserve_ports: [{reference_id, port}]` are cells the
 search treats as blocked, a port's being the cell a piece joining it stands in. Reserve a device's other ports while
 routing to one of them, so this run cannot take the cell the next run needs. A reserved cell that is one of the
-route's own ends is released, and `notes` say how many cells were kept free.
+route's own ends is released, and `notes` say how many cells were kept free. Without them the dry run still warns
+`blocks_port` when a new piece takes a free port's cell without joining that port.
 
 **Rules.**
 
@@ -154,8 +155,9 @@ removes the old pieces, and the dry run's checks see the finished network. Other
 into `place_arguments.assume_removed`: remove them first with their own tool. `route.assumed_removed.in_the_way` lists
 the pieces the route needs gone; `route.removal_refund` prices them.
 
-**The result** has `found`, `route` (waypoints, length, bends, air cells, branches, visibility), `place_arguments`
-(ready for the place tool: add `dry_run: false` and `confirm: true` to build) and `dry_run`, the place tool's own report.
+**The result** has `found`, `route` (waypoints, length, bends, air cells, branches when there are several starts,
+visibility), `place_arguments` (ready for the place tool: add `dry_run: false` and `confirm: true` to build) and
+`dry_run`, the place tool's own report.
 
 Example, a drop from a device's power port to the nearest piece of the network that trunk piece `140977` is on, kept
 inside frames where possible, `plan_cable_route`:
@@ -198,7 +200,10 @@ left it: something it built is gone or another prefab now, or something it remov
 The dry run shows the plan, every tool's arguments and their dry runs; `plan.ready` is true only when all of them
 are. Pass `allow_bridge` when rejoining networks is meant (a removal that split a network). `dry_run: false, confirm:
 true` makes the same checks, starts the removal and queues the placements behind it. Every guard of every tool
-applies, and materials are paid and refunded as by hand.
+applies, and materials are paid and refunded as by hand: every call takes the job's own `from_id`, so an undo runs on
+a dedicated server whenever the job did. `from_id` overrides it (a job that used the local player, or one whose
+record is gone); removing what a `free: true` placement built gives nothing back (`refund_to: none`), and `refund_to`
+overrides the removal's refund target. `plan.notes` says which applied.
 
 ## Removing pieces
 

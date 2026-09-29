@@ -121,7 +121,7 @@ internal static class EditGuards
     /// The guards' problems. roots: the devices that feed the networks (SplitAnalysis); each would_split names every
     /// part's devices and those cut off from a root.
     /// </summary>
-    internal static List<LayoutIssue> Check(Forecast forecast, EditAllowance allow, ICollection<long>? roots = null)
+    internal static List<LayoutIssue> Check(Forecast forecast, EditAllowance allow, NetworkRootSet? roots = null)
     {
         List<LayoutIssue> problems = new List<LayoutIssue>();
         foreach (ForecastNetwork merge in forecast.Merges)
@@ -157,20 +157,25 @@ internal static class EditGuards
             return problems;
         }
 
-        List<SplitDetail> details = SplitAnalysis.Of(forecast, roots ?? new HashSet<long>());
+        List<SplitDetail> details = SplitAnalysis.Of(forecast, roots ?? NetworkRootSet.None);
         for (int index = 0; index < forecast.Splits.Count; index++)
         {
             ForecastSplit split = forecast.Splits[index];
             problems.Add(new LayoutIssue(WouldSplit,
                 $"Network {split.Network} would fall into {split.Parts.Count} networks." +
-                $"{SplitAnalysis.Describe(details[index])} Pass allow_split if that is meant.", null, split.Network));
+                $"{SplitAnalysis.Describe(details[index], roots?.IsNamed ?? false)} Pass allow_split if that is " +
+                "meant.", null, split.Network));
         }
 
+        List<long>? cutOff = forecast.Cut.Count > 0 ? details[details.Count - 1].CutOff : null;
+        string cutNote = cutOff != null && cutOff.Count > 0
+            ? $" Cut off from the root: {string.Join(", ", cutOff)}."
+            : string.Empty;
         foreach (ForecastPort port in forecast.Cut)
         {
             problems.Add(new LayoutIssue(WouldSplit,
                 $"Port {port.Index} of device {port.DeviceId} would lose its connection to network " +
-                $"{port.NetworkBefore}; pass allow_split if that is meant.", null, port.DeviceId));
+                $"{port.NetworkBefore}.{cutNote} Pass allow_split if that is meant.", null, port.DeviceId));
         }
 
         return problems;

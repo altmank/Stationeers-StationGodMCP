@@ -328,8 +328,9 @@ internal static class RunReports
                 cut.Add(PortView(plan, port, false));
             }
 
-            splits.Add(new RunSplitView(null, new List<int>(), cut, allowed,
-                DevicesOf(plan, details[details.Count - 1])));
+            SplitDetail cutDetail = details[details.Count - 1];
+            splits.Add(new RunSplitView(cutDetail.Network.HasValue ? new ThingId(cutDetail.Network.Value) : null,
+                new List<int>(), cut, allowed, DevicesOf(plan, cutDetail)));
         }
 
         return splits;

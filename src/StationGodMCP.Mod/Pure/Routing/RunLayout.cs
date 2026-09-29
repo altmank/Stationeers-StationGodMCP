@@ -12,7 +12,8 @@ internal enum JoinMode
 
     /// <summary>
     /// The default: the run's first and last cells join every open piece end and device port pointing at them, and
-    /// the piece straight ahead of a run end (turned into a junction when it has no end there).
+    /// the piece straight ahead of a run end that joins no device port (turned into a junction when it has no end
+    /// there). A run end at a port has reached it: the piece beyond is some other network's.
     /// </summary>
     Ends,
 
@@ -230,6 +231,9 @@ internal sealed class RunLayout
 /// </summary>
 internal static class RunLayoutPlanner
 {
+    /// <summary>Warning: a new piece takes a free device port's joining cell without joining the port.</summary>
+    internal const string BlocksPort = "blocks_port";
+
     internal static RunLayout Plan(IReadOnlyList<GridCell> run, RunSurroundings around, JoinMode mode,
         IReadOnlyList<ExtraEnd> extra, PipeContent? content) =>
         Plan(RunShape.Line(run), around, mode, extra, content);
@@ -336,12 +340,13 @@ internal static class RunLayoutPlanner
         }
     }
 
-    // A run end meets the piece straight ahead of it, which gains an end towards the run when it has none.
+    // A run end meets the piece straight ahead of it, which gains an end towards the run when it has none; a run end
+    // that joins a device port has reached where it goes and meets nothing beyond.
     private static void JoinAhead(RunLayout layout, RunSurroundings around, LayoutCell entry, GridCell behind,
         HashSet<GridCell> inRun, PipeContent? content, RunShape shape)
     {
         GridStep ahead = GridStep.Between(behind, entry.Cell)!.Value;
-        if (entry.Ends.Contains(ahead))
+        if (entry.Ends.Contains(ahead) || entry.Joins.Exists(static join => join.Kind == "port"))
         {
             return;
         }
@@ -470,6 +475,35 @@ internal static class RunLayoutPlanner
             layout.Warnings.Add(new LayoutIssue("open_end",
                 $"Cell {entry.Cell} ends the run with nothing to join; it gets a straight whose " +
                 $"{only.Opposite.Name} end stays open.", entry.Cell));
+        }
+
+        BlockedPorts(layout, around, entry);
+    }
+
+    // A new piece in a free port's joining cell with no end towards the port leaves that port unusable: nothing else
+    // can stand there to join it. plan_*_route reserve_ports keeps such a cell out of a route.
+    private static void BlockedPorts(RunLayout layout, RunSurroundings around, LayoutCell entry)
+    {
+        if (entry.Action != CellAction.Place)
+        {
+            return;
+        }
+
+        foreach (GridStep step in GridStep.All)
+        {
+            if (entry.Ends.Contains(step))
+            {
+                continue;
+            }
+
+            foreach (DevicePort port in around.PortsAt(entry.Cell, step))
+            {
+                layout.Warnings.Add(new LayoutIssue(BlocksPort,
+                    $"Cell {entry.Cell} is where a piece joining port {port.Index} of device {port.DeviceId} " +
+                    $"stands; the piece placed there has no end towards it ({step.Name}), so nothing can join that " +
+                    "port afterwards. Route around it (plan_*_route reserve_ports), or join it (extra_ends).",
+                    entry.Cell, port.DeviceId));
+            }
         }
     }
 

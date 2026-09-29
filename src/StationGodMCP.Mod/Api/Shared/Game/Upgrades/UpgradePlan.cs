@@ -411,14 +411,16 @@ internal static class UpgradePlanner
             }
 
             plan.Problems.Add(new UpgradeProblemView(ApiErrors.ThingNotFoundCode,
-                $"No thing with reference id {request.From.Value} to take coils from.", request.From.Value));
+                $"No thing with reference id {request.From.Value} to take coils from and give the refund to.",
+                request.From.Value));
             return null;
         }
 
         Human human = Human.LocalHuman;
         if (human == null)
         {
-            plan.Problem("no_local_player", "There is no local player to take coils from; pass from_id.");
+            plan.Problem("no_local_player",
+                "There is no local player to take coils from and give the refund to; pass from_id.");
             return null;
         }
 

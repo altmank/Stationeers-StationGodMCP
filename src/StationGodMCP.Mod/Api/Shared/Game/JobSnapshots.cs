@@ -12,15 +12,15 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// How the things a place or remove job will remove stood when the job was started, kept by the job's id for
-/// undo_job (the job logs name removed things by id only). The last KeptJobs jobs; in memory only.
+/// How the things a place or remove job will remove stood when the job was started, and where the job took its
+/// materials and put its refund (JobSource), kept by the job's id for undo_job (the job logs name removed things by id
+/// only, and a job's status does not echo its request). The last KeptJobs jobs; in memory only.
 /// </summary>
 internal static class JobSnapshots
 {
     private const int KeptJobs = 32;
 
-    private static readonly Dictionary<string, (string Tool, Dictionary<long, ThingSnapshot> Removed)> ByJob =
-        new Dictionary<string, (string, Dictionary<long, ThingSnapshot>)>();
+    private static readonly Dictionary<string, RecordedJob> ByJob = new Dictionary<string, RecordedJob>();
 
     private static readonly Queue<string> Order = new Queue<string>();
 
@@ -28,7 +28,7 @@ internal static class JobSnapshots
     /// Records a started (or queued) job's snapshots under the job id its reply carries; a reply without one (busy,
     /// refused) records nothing. Returns the reply unchanged.
     /// </summary>
-    internal static object Record(object reply, string tool, IEnumerable<Structure> removed)
+    internal static object Record(object reply, string tool, IEnumerable<Structure> removed, Args args)
     {
         string? jobId = JobIdOf(reply);
         if (jobId == null)
@@ -50,7 +50,7 @@ internal static class JobSnapshots
             Order.Enqueue(jobId);
         }
 
-        ByJob[jobId] = (tool, snapshots);
+        ByJob[jobId] = new RecordedJob(tool, snapshots, SourceOf(args));
         while (ByJob.Count > KeptJobs && Order.Count > 0)
         {
             ByJob.Remove(Order.Dequeue());
@@ -59,8 +59,12 @@ internal static class JobSnapshots
         return reply;
     }
 
-    internal static (string Tool, Dictionary<long, ThingSnapshot> Removed)? Of(string jobId) =>
-        ByJob.TryGetValue(jobId, out (string, Dictionary<long, ThingSnapshot>) entry) ? entry : null;
+    internal static RecordedJob? Of(string jobId) => ByJob.TryGetValue(jobId, out RecordedJob entry) ? entry : null;
+
+    // The request's own source fields; each tool has already checked them.
+    private static JobSource SourceOf(Args args) =>
+        new JobSource(args.OptionalThingId("from_id")?.Value, args.OptionalBool("free") ?? false,
+            args.OptionalString("refund_to")?.Trim().ToLowerInvariant(), args.OptionalBool("refund"));
 
     internal static ThingSnapshot Of(Structure structure)
     {
@@ -115,4 +119,21 @@ internal static class JobSnapshots
         JToken? id = Wire(reply)["job_id"];
         return id != null && id.Type == JTokenType.String ? id.Value<string>() : null;
     }
+}
+
+/// <summary>What JobSnapshots keeps of one job: the tool, the snapshots of what it removes, and its source.</summary>
+internal sealed class RecordedJob
+{
+    internal RecordedJob(string tool, Dictionary<long, ThingSnapshot> removed, JobSource source)
+    {
+        Tool = tool;
+        Removed = removed;
+        Source = source;
+    }
+
+    internal string Tool { get; }
+
+    internal Dictionary<long, ThingSnapshot> Removed { get; }
+
+    internal JobSource Source { get; }
 }

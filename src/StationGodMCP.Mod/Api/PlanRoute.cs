@@ -72,6 +72,12 @@ internal static class PlanRouteApi
         SmallGridBlock mask = kit.Pieces.Count > 0 && kit.Pieces[0] is SmallGrid first
             ? first.SmallCollisionType
             : SmallGridBlock.None;
+        if (segment == null)
+        {
+            RefuseBlockedPoints(args.Optional("from"), "from", kind, mask, ignore);
+            RefuseBlockedPoints(args.Optional("to"), "to", kind, mask, ignore);
+        }
+
         GridFacts facts = new GridFacts(kind, mask, ignore);
         List<long> own = to?.Networks ?? new List<long>();
         RouteRuleSet rules = Rules(args, starts, own, false);
@@ -126,10 +132,12 @@ internal static class PlanRouteApi
         VisibilityTally visibility = VisibilityTally.Of(NewCells(tree, facts), facts.Visibility);
         if (visibility.Air > 0)
         {
+            int maxLength = args.OptionalInt("max_length", 2, RunPath.MaximumCells) ?? DefaultMaxLength;
             notes.Add(supportedSearched
                 ? $"through_air: {visibility.Air} new cells float in air (on no frame and no wall plane); no route " +
-                  "over frames or along walls exists inside the search box. Raise margin_m to look wider, or build " +
-                  "a frame under the gap."
+                  $"over frames or along walls of at most max_length ({maxLength}) cells exists inside the search " +
+                  "box. Raise margin_m to look wider, raise max_length when the way round is longer, or build a " +
+                  "frame under the gap."
                 : $"through_air: {visibility.Air} new cells float in air; this route was found without frames_first.");
         }
 
@@ -440,6 +448,37 @@ internal static class PlanRouteApi
         }
 
         return networks;
+    }
+
+    // An {at} end in a cell no piece of the kit may take (a device or a locker stands there) could never be built: it is
+    // refused here rather than found as a route the place tool then refuses (cell_blocked).
+    private static void RefuseBlockedPoints(JToken? token, string name, RunKind kind, SmallGridBlock mask,
+        HashSet<long> ignore)
+    {
+        if (token is JArray array)
+        {
+            for (int index = 0; index < array.Count; index++)
+            {
+                RefuseBlockedPoints(array[index], $"{name}[{index}]", kind, mask, ignore);
+            }
+
+            return;
+        }
+
+        if (!(token is JObject item) || item["at"] == null)
+        {
+            return;
+        }
+
+        GridCell cell = RunArgs.CellOf(RunArgs.PositionOf(item["at"]!, $"{name}.at"));
+        string? blocked = PlacementCheck.CellBlocked(
+            Assets.Scripts.GridController.World.GetSmallCell(PieceShapes.Grid(cell)), mask, kind, ignore);
+        if (blocked != null)
+        {
+            throw ApiErrors.InvalidArgument(
+                $"{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with " +
+                "{reference_id, port}, or a free cell.");
+        }
     }
 
     private static RouteRuleSet Rules(Args args, List<RouteEndpoint> starts, List<long> target, bool avoidOwn)

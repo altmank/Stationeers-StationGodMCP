@@ -143,6 +143,9 @@ internal static class RunTaps
     }
 
     // Each network the run's new and changed pieces end up on after the edit (every network before it they join).
+    // The networks the run ends up on: those its networks after hold pieces of, and those a device port it takes
+    // over was on (a run that replaces removed pieces at a port joins what the port was joined to, though every piece
+    // of that network goes).
     private static HashSet<long> JoinedNetworks(RunPlan plan)
     {
         HashSet<long> networks = new HashSet<long>();
@@ -152,7 +155,15 @@ internal static class RunTaps
             if (forecast.NodeOf.TryGetValue(cell.ForecastId, out long node) &&
                 forecast.ComponentOf.TryGetValue(node, out int index))
             {
-                networks.UnionWith(forecast.Result.Networks[index].NetworksBefore);
+                ForecastNetwork after = forecast.Result.Networks[index];
+                networks.UnionWith(after.NetworksBefore);
+                foreach (ForecastPort port in after.Ports)
+                {
+                    if (port.NetworkBefore.HasValue)
+                    {
+                        networks.Add(port.NetworkBefore.Value);
+                    }
+                }
             }
         }
 
