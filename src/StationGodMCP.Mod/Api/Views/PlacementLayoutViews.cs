@@ -581,3 +581,69 @@ internal sealed class FindSpotView
     /// <summary>Of those, ruled out (cursor refusal, a problem, visual overlap, a seam, an unreachable port).</summary>
     public int Rejected { get; }
 }
+
+/// <summary>One lint_layout finding.</summary>
+internal sealed class LintFindingView
+{
+    internal LintFindingView(LintFinding finding)
+    {
+        Code = finding.Code;
+        Level = finding.Level.ToString().ToLowerInvariant();
+        Message = finding.Message;
+        ReferenceId = finding.ThingId.HasValue ? new ThingId(finding.ThingId.Value) : (ThingId?)null;
+        OtherId = finding.OtherId.HasValue ? new ThingId(finding.OtherId.Value) : (ThingId?)null;
+        At = PointView.Of(finding.At);
+    }
+
+    public string Code { get; }
+
+    /// <summary>warning or info.</summary>
+    public string Level { get; }
+
+    public string Message { get; }
+
+    public ThingId? ReferenceId { get; }
+
+    /// <summary>The other thing involved (the door, the other device, the foreign piece), when there is one.</summary>
+    public ThingId? OtherId { get; }
+
+    public PointView At { get; }
+}
+
+/// <summary>lint_layout: what was checked, the counts per rule and the findings, warnings first.</summary>
+internal sealed class LintLayoutView
+{
+    internal LintLayoutView(string region, int cells, int pieces, int devices, int doors,
+        Dictionary<string, int> counts, List<LintFindingView> findings, int total)
+    {
+        Region = region;
+        Cells = cells;
+        Pieces = pieces;
+        Devices = devices;
+        Doors = doors;
+        Counts = counts;
+        Findings = findings;
+        Total = total;
+        HasMore = findings.Count < total;
+    }
+
+    public string Region { get; }
+
+    /// <summary>2 m cells checked.</summary>
+    public int Cells { get; }
+
+    public int Pieces { get; }
+
+    public int Devices { get; }
+
+    public int Doors { get; }
+
+    /// <summary>Findings per rule code.</summary>
+    public Dictionary<string, int> Counts { get; }
+
+    public List<LintFindingView> Findings { get; }
+
+    public int Total { get; }
+
+    public bool HasMore { get; }
+}

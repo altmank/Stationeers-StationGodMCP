@@ -17,6 +17,7 @@ connections and guard against merging networks, which `place_structure` does not
 | `replace_frames` | Replace frames with another frame prefab, or finish unfinished frames, in place. | `room_id` or `reference_ids`, `to` (optional), `from_prefabs`, `skip_unmatched` |
 | `wall_map` | A text elevation of a wall (or floor) as seen from one side: seams, walls, windows, doors, devices, runs, free rectangles (1.4.3+). | `plane` + `around` + `side`, or `looking`; `radius_m`, `free_rects` |
 | `find_spot` | Ranked places for a prefab near a point on a wall or a room's walls, checked as the cursor checks them (1.4.3+). | `prefab`, `near`, `plane`/`looking`/`room_id`, `require` |
+| `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+). | `room_id` or `min`/`max`, `limit` |
 | `describe_prefab` | A prefab in its own frame: placement, allowed turns, footprint, ports, visual up (1.4.3+). | `prefab` |
 | `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]` |
 | `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `refund_to` |
@@ -136,6 +137,24 @@ a capital or digit for each device (`things` lists them). `sections` names each 
 filters them on geometry first (cells free, `avoid_doors`, `one_section`, `min_bottom_above_floor_m`,
 `front_clear_m`), then checks the nearest ones (at most `max_checks`) with the game's cursor and the layout preview
 (`no_visual_overlap`, `ports_reachable`), and returns the best with ready `place_arguments`.
+
+### Checking a layout (1.4.3+)
+
+`lint_layout {room_id}` (or a box) reads what stands there and lists findings, warnings first, with `counts` per
+rule:
+
+| Rule | Level | Finds |
+| --- | --- | --- |
+| `run_in_door_keepout` | warning | a cable, pipe or chute piece in a door's keep-out |
+| `port_into_doorway` | warning | a device port that joins in a door's keep-out |
+| `port_cell_foreign_network` | warning | a port whose joining cell holds a piece that does not join it |
+| `floating_run` | warning | a piece in air |
+| `run_crosses_window` | warning | a piece on a window's face |
+| `device_visual_overlap` | warning | two devices' bodies running more than 0.1 m into each other |
+| `mounted_faces_out_of_room` | warning | a mounted device facing out of the room behind it |
+| `device_crosses_seam` | warning | a mounted device spanning two wall sections |
+| `pipe_along_door` | info | a run hugging a door's jamb |
+| `controls_not_on_wall` | info | a console, computer, display or switch not on a wall |
 
 ### Placing where you look (1.4.3+)
 

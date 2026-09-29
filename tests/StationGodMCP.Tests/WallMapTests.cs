@@ -99,3 +99,46 @@ public sealed class WallMapTests
         Assert.Equal(new List<int> { 2, 3, 1, 0 }, SpotSearch.Rank(spots));
     }
 }
+
+/// <summary>lint_layout (1.4.3): rule levels, report order, counts, controls.</summary>
+public sealed class LintLayoutTests
+{
+    [Fact]
+    public void FindingsComeWarningsFirstInRuleOrder()
+    {
+        List<LintFinding> findings = new List<LintFinding>
+        {
+            new LintFinding(LintCodes.ControlsNotOnWall, "c", 1, Vec3.Zero),
+            new LintFinding(LintCodes.FloatingRun, "f", 2, Vec3.Zero),
+            new LintFinding(LintCodes.RunInDoorKeepOut, "d", 3, Vec3.Zero, 983),
+            new LintFinding(LintCodes.FloatingRun, "f2", 4, Vec3.Zero)
+        };
+        List<LintFinding> ordered = LintReport.Ordered(findings);
+        Assert.Equal(new List<string> { "d", "f", "f2", "c" }, ordered.ConvertAll(finding => finding.Message));
+        Assert.Equal(ConflictLevel.Info, ordered[3].Level);
+        Dictionary<string, int> counts = LintReport.Counts(findings);
+        Assert.Equal(2, counts[LintCodes.FloatingRun]);
+    }
+
+    [Fact]
+    public void EveryRuleHasALevel()
+    {
+        foreach ((string code, ConflictLevel level) in LintCodes.Rules)
+        {
+            Assert.Equal(level, LintCodes.LevelOf(code));
+        }
+
+        Assert.Throws<System.ArgumentException>(() => LintCodes.LevelOf("nope"));
+    }
+
+    [Theory]
+    [InlineData("StructureConsole3x3", true)]
+    [InlineData("StructureComputerUpright", true)]
+    [InlineData("StructureLogicSwitch", true)]
+    [InlineData("StructureGasSensor", false)]
+    [InlineData(null, false)]
+    public void ControlsAreKnownByName(string? prefab, bool has)
+    {
+        Assert.Equal(has, Controls.Has(prefab));
+    }
+}
