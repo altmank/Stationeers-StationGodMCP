@@ -187,5 +187,4 @@ internal static class Uprightness
 
         return $"its top points {world.Name}, not +y";
     }
-
 }

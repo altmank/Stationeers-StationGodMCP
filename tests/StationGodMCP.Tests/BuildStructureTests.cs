@@ -342,7 +342,7 @@ public sealed class BuildArgsTests
         Assert.False(run.Confirmed);
         PlacementArgs placement = run.Arguments.Placements.Single();
         Assert.Equal("StructureWallLight", Assert.IsType<PrefabRef.Named>(placement.Prefab).Name);
-        Assert.Equal(2.5, placement.At.Y);
+        Assert.Equal(2.5, Assert.IsType<AtArg.Absolute>(placement.At).Point.Y);
         Assert.Equal("-x", Assert.IsType<RotationSpec.Facing>(placement.Rotation).Forward.Name);
         Assert.IsType<BuildStatePick.Last>(placement.State);
         Assert.False(run.Arguments.Free);

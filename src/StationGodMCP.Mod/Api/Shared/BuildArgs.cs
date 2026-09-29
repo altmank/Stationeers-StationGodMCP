@@ -59,12 +59,63 @@ internal abstract class PrefabRef
     }
 }
 
+/// <summary>
+/// Where a placement goes as given: a point in metres, or a position the world resolves (the crosshair, an offset from
+/// a thing, the player or the crosshair, a spot on the face looked at).
+/// </summary>
+internal abstract class AtArg
+{
+    private AtArg()
+    {
+    }
+
+    internal sealed class Absolute : AtArg
+    {
+        internal Absolute(Metres point)
+        {
+            Point = point;
+        }
+
+        internal Metres Point { get; }
+    }
+
+    internal sealed class Relative : AtArg
+    {
+        internal Relative(JObject spec)
+        {
+            Spec = spec;
+        }
+
+        /// <summary>{crosshair}, {relative_to, frame, right_m, up_m, forward_m, from}, or {on_face_i_look_at, ...}.</summary>
+        internal JObject Spec { get; }
+    }
+}
+
+/// <summary>facing as a word the world resolves: toward_player, away_from_player, out_of_face, into_room.</summary>
+internal sealed class NamedFacing
+{
+    internal static readonly string[] Words = { "toward_player", "away_from_player", "out_of_face", "into_room" };
+
+    internal NamedFacing(string word, GridStep? up)
+    {
+        Word = word;
+        Up = up;
+    }
+
+    internal string Word { get; }
+
+    internal GridStep? Up { get; }
+}
+
 /// <summary>One placement of place_structure as parsed.</summary>
 internal sealed class PlacementArgs
 {
-    internal PlacementArgs(int index, PrefabRef prefab, Metres at, RotationSpec rotation, BuildStatePick state,
-        string? label, string? color, JObject? orient = null)
+    internal PlacementArgs(int index, PrefabRef prefab, AtArg at, RotationSpec rotation, BuildStatePick state,
+        string? label, string? color, JObject? orient = null, NamedFacing? namedFacing = null,
+        double? aboveFloorM = null)
     {
+        NamedFacing = namedFacing;
+        AboveFloorM = aboveFloorM;
         Orient = orient;
         Index = index;
         Prefab = prefab;
@@ -79,7 +130,13 @@ internal sealed class PlacementArgs
 
     internal PrefabRef Prefab { get; }
 
-    internal Metres At { get; }
+    internal AtArg At { get; }
+
+    /// <summary>facing as a word to resolve; null when facing is an axis or not given.</summary>
+    internal NamedFacing? NamedFacing { get; }
+
+    /// <summary>above_floor_m: its footprint's bottom this far above the floor below at.</summary>
+    internal double? AboveFloorM { get; }
 
     internal RotationSpec Rotation { get; }
 
@@ -191,14 +248,14 @@ internal static class BuildArgs
     internal const int MaximumRemovals = 256;
 
     private static readonly string[] PlacementFields =
-        { "prefab", "at", "rotation", "facing", "up", "face", "build_state", "label", "color", "orient" };
+        { "prefab", "at", "rotation", "facing", "up", "face", "build_state", "label", "color", "orient", "above_floor_m" };
 
     internal static BuildForm<PlaceArguments> ParsePlace(Args args)
     {
         if (args.Has("job_id"))
         {
             return Poll<PlaceArguments>(args, "placements", "from_id", "free", "prefab", "at", "rotation", "facing",
-                "up", "face", "build_state", "label", "color", "allow_door_keepout", "orient");
+                "up", "face", "build_state", "label", "color", "allow_door_keepout", "orient", "above_floor_m");
         }
 
         List<PlacementArgs> placements = new List<PlacementArgs>();
@@ -261,10 +318,47 @@ internal static class BuildArgs
             throw ApiErrors.InvalidArgument($"{prefix}orient chooses the turn: leave out rotation, facing, face and up.");
         }
 
-        return new PlacementArgs(index, prefab, PositionOf(at, prefix + "at"), RotationOf(item, prefix),
-            StateOf(item.Optional("build_state"), prefix + "build_state"), Text(item, "label", prefix),
-            ColorOf(item.Optional("color"), prefix + "color"), orient);
+        NamedFacing? named = NamedFacingOf(item, prefix);
+        double? above = item.OptionalDouble("above_floor_m");
+        if (above.HasValue && (above.Value < 0 || above.Value > 20))
+        {
+            throw ApiErrors.InvalidArgument($"{prefix}above_floor_m must be 0 to 20.");
+        }
 
+        return new PlacementArgs(index, prefab, AtOf(at, prefix + "at"),
+            named != null ? RotationSpec.Default : RotationOf(item, prefix),
+            StateOf(item.Optional("build_state"), prefix + "build_state"), Text(item, "label", prefix),
+            ColorOf(item.Optional("color"), prefix + "color"), orient, named, above);
+    }
+
+    /// <summary>at: a point ([x, y, z] or {x, y, z}), or an object the world resolves (AtArg.Relative).</summary>
+    internal static AtArg AtOf(JToken token, string name)
+    {
+        if (token is JObject item && (item["crosshair"] != null || item["relative_to"] != null ||
+                                      item["on_face_i_look_at"] != null))
+        {
+            return new AtArg.Relative(item);
+        }
+
+        return new AtArg.Absolute(PositionOf(token, name));
+    }
+
+    // facing given as a word (toward_player, ...); null when it is an axis or absent.
+    private static NamedFacing? NamedFacingOf(Args item, string prefix)
+    {
+        string? word = item.OptionalString("facing")?.Trim().ToLowerInvariant();
+        if (word == null || System.Array.IndexOf(NamedFacing.Words, word) < 0)
+        {
+            return null;
+        }
+
+        if (item.Has("rotation") || item.Has("face"))
+        {
+            throw ApiErrors.InvalidArgument($"Give at most one of {prefix}rotation, {prefix}facing and {prefix}face.");
+        }
+
+        GridStep? up = item.Has("up") ? Step(item.OptionalString("up"), prefix + "up") : (GridStep?)null;
+        return new NamedFacing(word, up);
     }
 
     internal static Metres PositionOf(JToken token, string name)

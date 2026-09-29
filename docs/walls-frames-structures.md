@@ -114,6 +114,21 @@ Tool wear, welder fuel and battery charge are not charged.
 - **Walls back to back:** a face holds one wall per side, so two plates on one face, one facing into each cell, go
   in one request.
 
+### Placing where you look (1.4.3+)
+
+`at` can be read against the world, and the reply's `resolved` says where it landed and how:
+
+- `{"crosshair": true}`: where your look ray hits (within 10 m), optionally moved by `right_m`, `up_m`, `forward_m`.
+- `{"relative_to": "player" | "crosshair" | "<id>" | {"reference_id": "<id>"}, "frame": "player" | "world" | "target",
+  "right_m": 1, "up_m": 0, "forward_m": 2, "from": "top"}`: an offset from you, the crosshair or a thing. The player
+  frame is level: its right and forward are the world axes nearest yours (`ambiguous_axis` when you look within 10
+  degrees of a diagonal). The target frame is the thing's own turn (the default for a thing); `from` starts at the
+  middle of a side of its footprint (`top`, `bottom`, `left`, `right`, `front`, `back`) instead of its origin.
+- `{"on_face_i_look_at": true, "along_right_m": 0.5, "along_up_m": 1}`: on the wall, floor or ceiling you look at,
+  right and up as you see them.
+- `above_floor_m`: the footprint's bottom that high above the floor below `at`.
+- `facing` also takes `toward_player`, `away_from_player`, `out_of_face` (the face you look at) and `into_room`.
+
 ### Placing by intent (1.4.3+)
 
 Instead of `rotation`, `facing`, `face` or `up`, give `orient` and let the tool pick the turn:

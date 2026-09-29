@@ -104,7 +104,6 @@ public sealed class PlacementPreviewTests
         Assert.Null(Uprightness.Problem(CubeRotation.FromFacing(S("+x"), S("+y"))!, tank.LocalUp));
         // A device lying on its side against a wall: facing +x, top +z.
         Assert.NotNull(Uprightness.Problem(CubeRotation.FromFacing(S("+x"), S("+z"))!, S("+y")));
-
     }
 
     [Fact]

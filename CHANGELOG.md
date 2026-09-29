@@ -32,6 +32,11 @@ Placement and layout tools: doors and windows everywhere.
   every turn the cursor allows, scores each with the layout preview and uses the best; the reply echoes the choice,
   its reasons and the next three. A turbo volume pump is also scored with its flow reversed (`mode_flip`: write
   `Mode` 1).
+- **Relative addressing:** `place_structure`'s `at` takes `{crosshair}`, `{relative_to: player|crosshair|id, frame
+  player|world|target, right_m, up_m, forward_m, from origin|top|bottom|left|right|front|back}` and
+  `{on_face_i_look_at, along_right_m, along_up_m}`; `facing` takes `toward_player`, `away_from_player`,
+  `out_of_face`, `into_room`; `above_floor_m` sets the footprint's height over the floor. The reply echoes
+  `resolved` (the point and facing, and how they were read); `ambiguous_axis` near a diagonal.
 - **New `describe_prefab`:** a prefab in its own frame: placement, allowed turns, small cells and boxes from its
   origin, ports (joining cell offset, outward direction, flow), `visual_up` (with its source; a small table of live
   facts, guesses marked) and a Mode that reverses its flow. 78 tools.

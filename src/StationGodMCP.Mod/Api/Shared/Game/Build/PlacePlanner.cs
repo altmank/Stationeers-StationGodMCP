@@ -39,6 +39,20 @@ internal sealed class PlannedPlacement
 
     internal Vector3? Position { get; set; }
 
+    /// <summary>at as resolved (a relative at read against the world, above_floor_m applied); null until read.</summary>
+    internal Metres? At { get; set; }
+
+    /// <summary>How at was read, for the reply.</summary>
+    internal ResolvedAt? ResolvedAt { get; set; }
+
+    /// <summary>A named facing as resolved: the axis and how it was read.</summary>
+    internal string? ResolvedFacing { get; set; }
+
+    internal string? ResolvedFacingHow { get; set; }
+
+    /// <summary>The turn asked for: the rotation as given, or a named facing resolved to an axis.</summary>
+    internal RotationSpec Spec { get; set; } = RotationSpec.Default;
+
     internal int? State { get; set; }
 
     /// <summary>The colour index to build it in; -1 for the prefab's own.</summary>
@@ -237,6 +251,11 @@ internal static class PlacePlanner
         }
 
         NetworkPieceNote(plan, prefab, index);
+        if (!ReadAt(plan, placement))
+        {
+            return;
+        }
+
         if (placement.Args.Orient == null && !Turn(plan, prefab, placement))
         {
             return;
@@ -256,6 +275,11 @@ internal static class PlacePlanner
             return;
         }
 
+        if (placement.Args.AboveFloorM.HasValue)
+        {
+            AboveFloor(plan, placement, cursor, placement.Args.AboveFloorM.Value);
+        }
+
         Vector3 position = Aim(placement, cursor, out string? refusal);
         placement.Position = position;
         placement.Ports = PortPreview(prefab, position, placement.Rotation);
@@ -273,6 +297,57 @@ internal static class PlacePlanner
         {
             placement.Cost.AddRange(BuildMaterials.Amounts(prefab, placement.State.Value, plan.Items));
         }
+    }
+
+    // at and a named facing read against the world (AtResolver); a refusal there is the placement's problem.
+    private static bool ReadAt(PlacePlan plan, PlannedPlacement placement)
+    {
+        string name = plan.Arguments.Placements.Count > 1 ? $"placements[{placement.Index}].at" : "at";
+        try
+        {
+            ResolvedAt at = AtResolver.Resolve(placement.Args.At, plan.Facts, name);
+            placement.ResolvedAt = at;
+            placement.At = at.Point;
+            placement.Spec = placement.Args.Rotation;
+            NamedFacing? named = placement.Args.NamedFacing;
+            if (named != null)
+            {
+                GridStep facing = AtResolver.Facing(named, at, plan.Facts, name.Replace(".at", ".facing"),
+                    out string how);
+                placement.Spec = new RotationSpec.Facing(facing, named.Up);
+                placement.ResolvedFacing = facing.Name;
+                placement.ResolvedFacingHow = how;
+            }
+
+            return true;
+        }
+        catch (ApiException refusal)
+        {
+            plan.Problem(refusal.Code, refusal.Message, placement.Index);
+            return false;
+        }
+    }
+
+    // above_floor_m: the footprint's bottom that high over the floor below at (AtResolver.FloorBelow). Aimed once at
+    // that height, then moved by what the footprint's bottom missed it by and aimed again.
+    private static void AboveFloor(PlacePlan plan, PlannedPlacement placement, Structure cursor, double above)
+    {
+        Metres given = placement.At!.Value;
+        double floor = AtResolver.FloorBelow(given, plan.Facts);
+        double target = floor + above;
+        placement.At = new Metres(given.X, target, given.Z);
+        Vector3 first = Aim(placement, cursor, out _);
+        List<GridCell> cells = Bodies.SmallCells(placement.Prefab!, first, placement.Rotation);
+        if (cells.Count > 0)
+        {
+            double bottom = Box3.OfSmallCells(cells).Min.Y;
+            placement.At = new Metres(given.X, target + (target - bottom), given.Z);
+        }
+
+        placement.ResolvedAt = new ResolvedAt(placement.At.Value,
+            placement.ResolvedAt!.How + string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "; its bottom {0:0.##} m above the floor at y {1:0.##}", above, floor),
+            placement.ResolvedAt.FaceOutward);
     }
 
     // orient: every turn the cursor can give the prefab, aimed and checked as a plain placement would be, scored
@@ -362,7 +437,7 @@ internal static class PlacePlanner
     private static Vector3 Aim(PlannedPlacement placement, Structure cursor, out string? refusal)
     {
         Structure prefab = placement.Prefab!;
-        Metres at = placement.Args.At;
+        Metres at = placement.At!.Value;
         Vector3 given = CursorCheck.Snap(cursor, new Vector3((float)at.X, (float)at.Y, (float)at.Z),
             placement.Rotation);
         refusal = Check(prefab, cursor, given, placement.Rotation);
@@ -413,14 +488,14 @@ internal static class PlacePlanner
     private static bool Turn(PlacePlan plan, Structure prefab, PlannedPlacement placement)
     {
         int index = placement.Index;
-        if (placement.Args.Rotation is RotationSpec.OnFace && prefab.PlacementType != PlacementSnap.Face)
+        if (placement.Spec is RotationSpec.OnFace && prefab.PlacementType != PlacementSnap.Face)
         {
             plan.Problem("invalid_rotation", $"{prefab.PrefabName} is not placed on a cell face; use facing or " +
                                              "rotation instead of face.", index);
             return false;
         }
 
-        CubeRotation? turn = placement.Args.Rotation.Resolve(out string? error);
+        CubeRotation? turn = placement.Spec.Resolve(out string? error);
         if (turn == null)
         {
             plan.Problem("invalid_rotation", error ?? "The rotation cannot be read.", index);

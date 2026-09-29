@@ -65,8 +65,9 @@ internal sealed class PlacementView
 {
     internal PlacementView(int index, PlacementPrefabView prefab, PlacementSpotView spot, PlacementLookView look,
         List<UpgradeAmountView> cost, List<SurveyPortView>? ports = null, PlacementLayoutView? layout = null,
-        OrientResultView? orient = null)
+        OrientResultView? orient = null, ResolvedPlacementView? resolved = null)
     {
+        Resolved = resolved;
         Orient = orient;
         Layout = layout;
         Ports = ports;
@@ -134,6 +135,12 @@ internal sealed class PlacementView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public OrientResultView? Orient { get; }
 
+    /// <summary>
+    /// resolved_at and resolved_facing: the point at was read as (and how: as given, the crosshair, an offset from a
+    /// thing or the player, a face; above_floor_m applied) and a named facing's axis.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ResolvedPlacementView? Resolved { get; }
 }
 
 internal sealed class PlacementPrefabView

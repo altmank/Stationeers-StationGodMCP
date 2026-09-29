@@ -1528,11 +1528,13 @@ internal static class ToolDefinitions
 
     private static object PlaceStructureSchema()
     {
-        object position = new { description = "[x, y, z] or {x, y, z} in metres: a point in the cell; snapped as the cursor snaps it." };
+        object position = new { description = "[x, y, z] or {x, y, z} in metres: a point in the cell; snapped as the cursor snaps it. 1.4.3+ also: {crosshair: true} (where the look ray hits, within 10 m; right_m/up_m/forward_m move it in the player frame), {relative_to: \"player\" | \"crosshair\" | a reference id | {reference_id}, frame: player (level: right and forward are the world axes nearest the player's own; ambiguous_axis within 10 degrees of a diagonal) | world | target (the thing's own turn; default for a thing), right_m, up_m, forward_m, from: origin | top | bottom | left | right | front | back (the middle of that side of the thing's footprint box, read in the frame)}, or {on_face_i_look_at: true, along_right_m, along_up_m} (on the 2 m face plane the look ray hits, right and up as you see them; on a floor, up is away from you). resolved in the reply says where it landed and how." };
         string[] axes = ["+x", "-x", "+y", "-y", "+z", "-z"];
+        string[] facings = ["+x", "-x", "+y", "-y", "+z", "-z", "toward_player", "away_from_player", "out_of_face", "into_room"];
         object prefab = new { oneOf = new object[] { new { type = "string" }, new { type = "integer" } }, description = "Prefab name (e.g. StructureWallLight, as find_things and looking_at report them) or prefab hash." };
         object rotation = new { type = "array", minItems = 3, maxItems = 3, items = new { type = "number" }, description = "[x, y, z] degrees, each a multiple of 90, Quaternion.Euler order (z, then x, then y). Give at most one of rotation, facing and face." };
-        object facing = new { type = "string", @enum = axes, description = "Where the piece's front points." };
+        object facing = new { type = "string", @enum = facings, description = "Where the piece's front points: an axis, or (1.4.3+) toward_player / away_from_player (the level axis toward you; ambiguous_axis near a diagonal), out_of_face (the outward normal of the face you look at), into_room (the one level side of at whose next 2 m cell is in a room and the other not)." };
+        object aboveFloor = new { type = "number", minimum = 0, maximum = 20, description = "1.4.3+: its footprint's bottom this many metres above the floor below at (the first plane down with a floor plate or a frame under it)." };
         object up = new { type = "string", @enum = axes, description = "Where its top points, with facing or face; default +y, or +z when facing is vertical." };
         object face = new { type = "string", @enum = axes, description = "For pieces placed on a cell face (walls): the face of the cell holding at that it sits on; it faces into the cell." };
         object buildState = new { oneOf = new object[] { new { type = "string", @enum = new[] { "finished", "first" } }, new { type = "integer", minimum = 0 } }, description = "finished (default), first (as a kit leaves it) or a state index." };
@@ -1566,7 +1568,7 @@ internal static class ToolDefinitions
                     items = new
                     {
                         type = "object",
-                        properties = new { prefab, at = position, rotation, facing, up, face, orient, build_state = buildState, label, color },
+                        properties = new { prefab, at = position, rotation, facing, up, face, orient, above_floor_m = aboveFloor, build_state = buildState, label, color },
                         required = new[] { "prefab", "at" },
                         additionalProperties = false
                     },
@@ -1579,6 +1581,7 @@ internal static class ToolDefinitions
                 up,
                 face,
                 orient,
+                above_floor_m = aboveFloor,
                 build_state = buildState,
                 label,
                 color,

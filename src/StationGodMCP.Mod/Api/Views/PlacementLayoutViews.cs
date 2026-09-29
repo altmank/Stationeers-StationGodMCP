@@ -377,3 +377,26 @@ internal sealed class DescribePrefabView
     /// <summary>The game has a placement cursor for it (origin snapped as placing snaps it).</summary>
     public bool HasCursor { get; }
 }
+
+/// <summary>A relative at or a named facing as the world resolved it, and how.</summary>
+internal sealed class ResolvedPlacementView
+{
+    internal ResolvedPlacementView(PointView at, string atHow, string? facing, string? facingHow)
+    {
+        At = at;
+        AtHow = atHow;
+        Facing = facing;
+        FacingHow = facingHow;
+    }
+
+    /// <summary>The point the placement is aimed at, before the cursor snaps it.</summary>
+    public PointView At { get; }
+
+    public string AtHow { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Facing { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? FacingHow { get; }
+}
