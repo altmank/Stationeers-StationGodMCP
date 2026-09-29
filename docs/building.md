@@ -35,16 +35,37 @@ This applies to every tool that changes the world: the run, upgrade and clean to
 6. **Materials** come from your inventory at any depth, or from `from_id` (a belt, a locker, any container), and cost
    what the game's own placement charges. Nothing is made for free (`not_enough_coils` for cables and pipes,
    `not_enough_kits` for chutes, `not_enough_materials` for structures).
-7. **Refunds** (`refund`, default true) are what deconstruction would give back. They go into the source's inventory:
-   first onto matching stacks (`from_id` itself when it is one, such as a coil stack, then anywhere in it: belts,
-   backpack, jetpack, suit and uniform storage, a stack in a hand), then as new stacks into empty slots that take the
-   item, a holder's own slots before those of the items in them, and only what nothing takes onto the ground a metre
-   in front of the outermost holder, at rest. A `from_id` stack stored in a holder (a coil in a locker) takes the
-   refund onto itself only: what does not fit on it goes on the ground in front of that holder, never into the
-   holder's other slots. Never a hidden slot or a stack's own slot, such as a cable coil's: the game destroys what is
-   in it with the coil.
-   `refunded` lists where each part went: `merged`, `slot` or `ground`. With `refund: false` nothing comes back, and
-   a dry run says so: every refund list is empty and every refund count 0. A swap (`replace_walls`,
+7. **Refunds** are what deconstruction would give back. Every tool that refunds (the place tools with `remove_ids`,
+   the remove, upgrade, clean and replace tools, `remove_structure`, `undo_job`, `plan_removal`) takes `refund_to`: a
+   list of targets tried in turn for each item until it fits.
+
+   | Target | Where |
+   | --- | --- |
+   | `inventory` | The player's inventory: `from_id` when it is a player, else the local player. Skipped on a dedicated server. |
+   | `source` | Tops up `from_id` when it is a stack, such as a coil. |
+   | `storage` | `from_id`'s slots and everything in them, then the other slots of the container it is stored in. |
+   | a reference id | Exactly that container and what is stored in it (as a string or a number). |
+   | `ground` | A metre in front of `from_id` or the player, at rest; where the first piece stood when there is neither. |
+
+   The default is `["inventory", "source", "storage", "ground"]`. Each target first tops up matching stacks, then
+   makes new stacks in empty slots that take the item, a holder's own slots before those of the items in them. Never
+   a hidden slot, a body slot (hands, suit, helmet: only the slots of worn and held items) or a stack's own slot, such
+   as a cable coil's: the game destroys what is in it with the coil. What fits no target goes on the ground in front
+   of the holder. A target that cannot be used (no player, `from_id` not a stack) is skipped; when you named the list
+   yourself, the dry run warns `refund_target_skipped`. A container id that is not one is refused
+   (`refund_target_not_found`, `refund_target_not_container`).
+
+   One word keeps its old meaning: `source` puts everything into `from_id`'s inventory (default the local player)
+   and the player carrying it, the rest in front of it, as the tools did before; a `from_id` stack stored in a holder
+   (a coil in a locker) then takes the refund onto itself only, never into the holder's other slots. `ground` puts it
+   on the ground (`remove_structure`: where each piece stood; the other tools: in front of the source). `none`, or
+   `refund: false`, gives nothing back. `inventory`, `storage` or an id alone are a list of one.
+
+   The dry run's `refund_plan` (in `materials` for the run tools, at the top for the swap tools and
+   `remove_structure`) lists each item's destinations: `target`, `where` (`merged`, `slot` or `ground`), `into` (the
+   stack or holder), `fallback: true` for what fit no target, the targets `skipped`, and `on_ground_as_fallback`. The
+   job's `refunded` (`refund_delivered`) lists where each part went and its `target`. With `refund: false` nothing
+   comes back, and a dry run says so: every refund list is empty and every refund count 0. A swap (`replace_walls`,
    `replace_frames`) still lists the old piece's refund, since it pays toward the new piece either way, but its `net`
    never goes below 0.
 8. **Host only** (`not_host` on a client). Changes use the same calls as a player's own building, so other players,
@@ -213,7 +234,7 @@ so `would_bridge`, `would_split` and the burst and gas guards apply; everything 
 `place_structure` (1.4.4+). The pieces the job built are removed by that same place tool call (its `remove_ids`), in
 the one job that builds the old pieces back, so undoing a tee added onto a trunk, or a run that crossed a long
 straight, never leaves the trunk cut between two jobs; only what no piece run builds again goes through
-`remove_structure` first (and `refund_to: ground` applies to that part only). Old pieces of several grades of one
+`remove_structure` first. Old pieces of several grades of one
 tool come back in several runs, and only the first removes: if it cannot rejoin the network alone, its dry run says
 `would_split` and the undo is refused. It is refused, with `plan.diverged` saying why, when the world is no longer as the job
 left it: something it built is gone or another prefab now, or something it removed cannot be placed again exactly.
@@ -224,7 +245,7 @@ true` makes the same checks, starts the removal and queues the placements behind
 applies, and materials are paid and refunded as by hand: every call takes the job's own `from_id`, so an undo runs on
 a dedicated server whenever the job did. `from_id` overrides it (a job that used the local player, or one whose
 record is gone); removing what a `free: true` placement built gives nothing back (`refund_to: none`), and `refund_to`
-overrides the removal's refund target. `plan.notes` says which applied. A job already undone is refused: its dry run
+(any form) is passed to every removal the undo makes. `plan.notes` says which applied. A job already undone is refused: its dry run
 or real run says so in `plan.diverged` and lists the undo's own jobs in `plan.undone_by` (undo those, the last first,
 to have the job back); an earlier undo whose jobs were all refused does not count, and `plan.notes` mentions it.
 
@@ -232,7 +253,8 @@ to have the job back); an earlier undo whose jobs were all refused does not coun
 
 `remove_cables`, `remove_pipes` and `remove_chutes` take `reference_ids`, or the pieces in the cells of `waypoints` or
 `cells`. A network that only loses pieces keeps its id. `remove_cables` also removes burnt cables (by id or cell;
-they refund nothing). With `refund: false` nothing is given back, so no player or `from_id` is needed. `plan_removal` prices a removal without doing it; see
+they refund nothing). With `refund: false` nothing is given back; only `refund_to: "source"` needs a player or `from_id`
+(the default skips the inventory on a dedicated server and gives to the ground). `plan_removal` prices a removal without doing it; see
 [cleanup-and-refactor.md](cleanup-and-refactor.md#pricing-a-removal).
 
 ## Guards

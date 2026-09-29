@@ -23,6 +23,21 @@ internal static class StructureReports
         "rooms once the game has re-evaluated them."
     };
 
+    // What the run gives back per item, as the swapper delivers it.
+    private static List<ItemAmount> GivenBack(StructureSwapPlan plan)
+    {
+        List<ItemAmount> items = new List<ItemAmount>();
+        foreach (MaterialTotal total in plan.Totals)
+        {
+            if (total.GiveBack > 0 && plan.Items.TryGetValue(total.Item, out Item item))
+            {
+                items.Add(new ItemAmount(item, total.GiveBack));
+            }
+        }
+
+        return items;
+    }
+
     internal static StructureSwapReportView Of(StructureSwapPlan plan, string status, string? jobId)
     {
         StructureSwapRequest request = plan.Request;
@@ -34,7 +49,7 @@ internal static class StructureReports
             Skipped(plan.Kept, limit), Skipped(plan.Unmatched, limit));
         StructureSwapResources resources = new StructureSwapResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Materials(plan), request.Arguments.Refund,
-            plan.Air?.RoomViews() ?? new List<StructureRoomView>());
+            plan.Air?.RoomViews() ?? new List<StructureRoomView>(), Refunds.Forecast(plan.Refunds, GivenBack(plan)));
         return new StructureSwapReportView(header, counts, lists, resources);
     }
 

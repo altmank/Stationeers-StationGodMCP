@@ -96,13 +96,13 @@ internal sealed class RunRemoval
 
 internal sealed class RunOptions
 {
-    internal RunOptions(EditAllowance allow, ThingId? from, bool refund, int listLimit, bool splitLong = true,
+    internal RunOptions(EditAllowance allow, ThingId? from, RefundRoute refundTo, int listLimit, bool splitLong = true,
         RunTargets? targets = null, bool allowDoorKeepOut = false)
     {
         AllowDoorKeepOut = allowDoorKeepOut;
         Allow = allow;
         From = from;
-        Refund = refund;
+        RefundTo = refundTo;
         ListLimit = listLimit;
         SplitLong = splitLong;
         Targets = targets ?? RunTargets.None;
@@ -112,7 +112,7 @@ internal sealed class RunOptions
     internal RunTargets Targets { get; }
 
     internal RunOptions WithTargets(RunTargets targets) =>
-        new RunOptions(Allow, From, Refund, ListLimit, SplitLong, targets, AllowDoorKeepOut);
+        new RunOptions(Allow, From, RefundTo, ListLimit, SplitLong, targets, AllowDoorKeepOut);
 
     /// <summary>allow_door_keepout: new pieces in a door's keep-out are a warning instead of a problem.</summary>
     internal bool AllowDoorKeepOut { get; }
@@ -128,7 +128,11 @@ internal sealed class RunOptions
     /// <summary>The thing coils are taken from and given back to; null for the local player.</summary>
     internal ThingId? From { get; }
 
-    internal bool Refund { get; }
+    /// <summary>Whether anything is given back (refund_to not none, refund not false).</summary>
+    internal bool Refund => RefundTo.GivesBack;
+
+    /// <summary>refund_to (with the refund flag): where the refund goes.</summary>
+    internal RefundRoute RefundTo { get; }
 
     internal int ListLimit { get; }
 }
@@ -290,6 +294,9 @@ internal sealed class RunPlan
     internal List<GridCell> AirCells { get; } = new List<GridCell>();
 
     internal Thing? From { get; set; }
+
+    /// <summary>Where the refund goes (refund_to resolved); null until the materials are counted.</summary>
+    internal RefundReceivers? Refunds { get; set; }
 
     internal List<ItemStock> Stocks { get; } = new List<ItemStock>();
 

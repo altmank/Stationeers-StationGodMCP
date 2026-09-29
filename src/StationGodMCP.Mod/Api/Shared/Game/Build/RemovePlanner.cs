@@ -69,8 +69,11 @@ internal sealed class RemovePlan
 
     internal List<BuildIssueView> Warnings { get; } = new List<BuildIssueView>();
 
-    /// <summary>Who takes the refund with refund_to source; null otherwise.</summary>
+    /// <summary>The source a refund uses (from_id, else the local player); null with refund_to ground or none.</summary>
     internal Thing? From { get; set; }
+
+    /// <summary>Where the refund goes (refund_to resolved); null until planned.</summary>
+    internal RefundReceivers? Refunds { get; set; }
 
     /// <summary>
     /// Pipe networks that stay in one piece although the request removes pipe pieces of theirs (and maybe an in-line
@@ -148,6 +151,8 @@ internal static class RemovePlanner
                 plan.Takedowns.Add(new PlannedTakedown(index, piece, kind, RefundOf(piece)));
             }
         }
+
+        Receivers(plan);
 
         List<NetworkRun> runs = NetworkRuns(plan);
         Dictionary<long, NetworkTakedown> gas = GasModel(plan);
@@ -505,24 +510,41 @@ internal static class RemovePlanner
     }
 
     // A from_id the request removes, or one inside something it removes (a stack in a locker it takes), would take the
-    // refund with it: Refunds.Deliver puts it into the holder, which the job then destroys (structures-22).
+    // refund with it: Refunds.Deliver puts it into the holder, which the job then destroys (structures-22). The same
+    // for a container refund_to names.
     private static void HolderRemoved(RemovePlan plan, HashSet<long> removed)
     {
-        if (plan.From == null || !plan.Arguments.From.HasValue)
+        if (plan.From != null && plan.Arguments.From.HasValue && UsesSource(plan))
         {
-            return;
+            Thing from = plan.From;
+            HolderRemoved(plan, from, removed,
+                holder => RemovalRule.HolderRemoved(Name(from), holder == from ? null : Name(holder)));
         }
 
-        Thing? holder = plan.From;
+        foreach (Thing container in plan.Refunds?.Containers ?? new List<Thing>())
+        {
+            HolderRemoved(plan, container, removed,
+                holder => RemovalRule.ContainerRemoved(Name(container), holder == container ? null : Name(holder)));
+        }
+    }
+
+    // Whether the refund goes into from_id at all: refund_to source, or a chain with source or storage.
+    private static bool UsesSource(RemovePlan plan) =>
+        plan.Arguments.RefundTo.NeedsHolder || (plan.Refunds?.Usable.Exists(static target =>
+            target.Kind == RefundTarget.SourceName || target.Kind == RefundTarget.StorageName) ?? false);
+
+    private static void HolderRemoved(RemovePlan plan, Thing receiver, HashSet<long> removed,
+        System.Func<Thing, string> message)
+    {
+        Thing? holder = receiver;
         while (holder != null)
         {
             if (removed.Contains(holder.ReferenceId))
             {
                 long id = holder.ReferenceId;
                 PlannedTakedown? takedown = plan.Takedowns.Find(item => item.Piece.ReferenceId == id);
-                plan.Problems.Add(new BuildIssueView("refund_holder_removed",
-                    RemovalRule.HolderRemoved(Name(plan.From), holder == plan.From ? null : Name(holder)),
-                    takedown?.Index, new ThingId(plan.From.ReferenceId)));
+                plan.Problems.Add(new BuildIssueView("refund_holder_removed", message(holder), takedown?.Index,
+                    new ThingId(receiver.ReferenceId)));
                 return;
             }
 
@@ -862,7 +884,7 @@ internal static class RemovePlanner
         List<ThingId> ids = pieces.ConvertAll(takedown => new ThingId(takedown.Piece.ReferenceId));
         RunRequest request = new RunRequest(kind, "remove_structure", null,
             new RunRemoval(ids, new List<GridCell>(), null, alongside),
-            new RunOptions(EditAllowance.Nothing, null, false, RunArgs.DefaultListLimit));
+            new RunOptions(EditAllowance.Nothing, null, RefundRoute.Nothing, RunArgs.DefaultListLimit));
         RunPlan runPlan = RunPlanner.Plan(request);
         plan.NetworkPlans.Add(runPlan);
         runs.Add(new NetworkRun(kind, pieces, runPlan, kind.Family is PipeFamily));
@@ -939,7 +961,8 @@ internal static class RemovePlanner
 
     private static void Source(RemovePlan plan)
     {
-        if (plan.Arguments.RefundTo != RefundTo.Source)
+        RefundRoute route = plan.Arguments.RefundTo;
+        if (!route.GivesBack || route == RefundRoute.WherePieceStood)
         {
             return;
         }
@@ -959,14 +982,28 @@ internal static class RemovePlanner
         }
 
         Human human = Human.LocalHuman;
-        if (human == null)
+        if (human == null && route.NeedsHolder)
         {
             plan.Problems.Add(new BuildIssueView("no_local_player",
                 "There is no local player to give the refund to; pass from_id, or refund_to ground or none."));
             return;
         }
 
+        // A chain on a dedicated server skips inventory and gives to what else it names (the ground at the least).
         plan.From = human;
+    }
+
+    // refund_to resolved: the containers it names checked, a target it cannot use now skipped.
+    private static void Receivers(RemovePlan plan)
+    {
+        List<GuardFinding> findings = new List<GuardFinding>();
+        Vector3? stood = plan.Takedowns.Count > 0 ? plan.Takedowns[0].Position : (Vector3?)null;
+        plan.Refunds = RefundReceivers.Resolve(plan.Arguments.RefundTo, plan.From, stood, findings);
+        foreach (GuardFinding finding in findings)
+        {
+            (finding.Level == GuardLevel.Refusal ? plan.Problems : plan.Warnings).Add(
+                new BuildIssueView(finding.Code, finding.Message));
+        }
     }
 
     private static void AddOnce(List<GridPoint> cells, GridPoint cell)

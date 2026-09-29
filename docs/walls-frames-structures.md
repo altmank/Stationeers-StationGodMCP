@@ -302,8 +302,11 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 ## Removing structures
 
 `remove_structure {reference_ids}` gives back what hand deconstruction does, every build state's items down to the
-kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), on the ground where each piece stood
-(`ground`), or not at all (`none`).
+kit, where `refund_to` says: by default `["inventory", "source", "storage", "ground"]` (your inventory, then
+`from_id` topped up when it is a stack, then `from_id`'s slots and its container's, then the ground in front of
+you), any list of those targets and container ids, or one word as before: `source` (into `from_id`'s inventory,
+default yours), `ground` (where each piece stood) or `none`. The dry run's `refund_plan` shows where each item would
+go; see [building.md](building.md#how-every-building-tool-works), item 7.
 
 | Code | Meaning | Override |
 | --- | --- | --- |
@@ -315,7 +318,7 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 | `contents_would_move` | An in-line tank or passive vent between pipes of a network that holds gas or liquid: removing it splits the network, and the game divides the contents among the networks left by volume (the message names each share). `remove_pipes` refuses the same split. | `allow_contents` |
 | `would_breach` | It blocks air, and removing it joins spaces whose pressures differ by 1 kPa or more, such as a pressurised room and the outside. | `allow_breach` |
 | `would_burst` | An in-line tank or passive vent that is not the last of its pipe network takes its volume away, and the game keeps the network's gas in what is left. The pressure of what is left would be over its weakest pipe, which would burst; the message gives the forecast and how much gas to take out first. Removed with pipe pieces of its network, the network the request leaves in one piece keeps all its gas and its id; where the request splits it, each part gets its share by volume at each split, in the job's order. | `allow_burst` |
-| `refund_holder_removed` | `from_id` is removed by the same request, or is inside something it removes: the refund would be destroyed with it. | another `from_id`, or `refund_to` |
+| `refund_holder_removed` | `from_id` (when `refund_to` uses it) or a container `refund_to` names is removed by the same request, or is inside something it removes: the refund would be destroyed with it. | another `from_id`, or `refund_to` |
 | `port_left_open` (warning) | A device end that joins a cable, pipe, chute or device now. | not needed |
 
 An allowed guard becomes a warning with its own code: `broken_removed`, `items_dropped`, `gas_released` (a tank's gas

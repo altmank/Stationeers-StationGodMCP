@@ -58,19 +58,19 @@ internal static class UpgradeSwap
         }
 
         UsedOf(plan, used, log);
-        if (plan.Request.Refund && plan.From != null)
+        if (plan.Request.Refund && plan.Refunds != null)
         {
-            DeliverRefund(plan.From, refund, log);
+            DeliverRefund(plan.Refunds, refund, log);
         }
 
         return log;
     }
 
-    private static void DeliverRefund(Thing from, List<ItemAmount> refund, UpgradeSwapLog log)
+    private static void DeliverRefund(RefundReceivers receivers, List<ItemAmount> refund, UpgradeSwapLog log)
     {
         try
         {
-            Refunds.Deliver(from, refund, log.Refunded);
+            Refunds.Deliver(receivers, refund, log.Refunded);
         }
         catch (Exception exception)
         {

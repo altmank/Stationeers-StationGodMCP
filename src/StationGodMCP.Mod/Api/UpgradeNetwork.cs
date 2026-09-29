@@ -145,7 +145,8 @@ internal static class UpgradeApi
         {
             args.Reject("job_id", "network_id", "reference_ids", "to", "operations", "keep_ids", "only_ids",
                 "older_than_id", "root", "wait", "dry_run",
-                "confirm", "from_id", "skip_unmatched", "refund", "limit", GasHoldVerdict.AcknowledgeArgument);
+                "confirm", "from_id", "skip_unmatched", "refund", "refund_to", "limit",
+                GasHoldVerdict.AcknowledgeArgument);
             return HeldTickJobs.Status(args.String("job_id").Trim());
         }
 
@@ -191,7 +192,7 @@ internal static class UpgradeApi
             : new PieceSelection.Pieces(args.ThingIds("reference_ids", UpgradePlanner.MaximumPieces));
         UpgradeOptions options = new UpgradeOptions(
             args.OptionalBool("skip_unmatched") ?? false,
-            args.OptionalBool("refund") ?? true,
+            RefundArgs.RouteWithFlag(args),
             args.OptionalInt("limit", 1, UpgradePlanner.MaximumPieces) ?? DefaultListLimit);
         return new UpgradeRequest(family, goal, selection, args.OptionalThingId("from_id"), options);
     }

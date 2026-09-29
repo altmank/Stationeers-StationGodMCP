@@ -335,12 +335,13 @@ internal sealed class RunRemovalView
 internal sealed class RunMaterialsView
 {
     internal RunMaterialsView(ThingView? from, List<UpgradeCoilView> needed, bool refundEnabled,
-        List<UpgradeAmountView> refund)
+        List<UpgradeAmountView> refund, RefundPlanView? refundPlan = null)
     {
         From = from;
         Needed = needed;
         RefundEnabled = refundEnabled;
         Refund = RefundShown.Items(refundEnabled, refund);
+        RefundPlan = refundEnabled ? refundPlan : null;
     }
 
     public ThingView? From { get; }
@@ -352,6 +353,10 @@ internal sealed class RunMaterialsView
 
     /// <summary>What comes back to the source; empty with refund off.</summary>
     public List<UpgradeAmountView> Refund { get; }
+
+    /// <summary>Where each refunded item goes (refund_to, target per part); absent with refund off.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RefundPlanView? RefundPlan { get; }
 }
 
 /// <summary>The networks part of the report.</summary>

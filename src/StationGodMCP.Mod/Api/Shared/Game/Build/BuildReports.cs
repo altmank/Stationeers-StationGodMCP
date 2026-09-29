@@ -5,6 +5,7 @@ using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Util;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -66,7 +67,7 @@ internal static class BuildReports
     {
         List<RemovalView> removals = new List<RemovalView>(plan.Takedowns.Count);
         List<ItemAmount> all = new List<ItemAmount>();
-        bool refunds = plan.Arguments.RefundTo != RefundTo.None;
+        bool refunds = plan.Arguments.RefundTo.GivesBack;
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
             // refund_to none gives nothing back, so nothing is listed as given (structures-26).
@@ -77,9 +78,27 @@ internal static class BuildReports
         }
 
         return new RemoveReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings, RemoveNotes),
-            removals, Amounts(all), plan.Arguments.RefundTo.ToString().ToLowerInvariant(),
+            removals, Amounts(all), RefundArgs.View(plan.Arguments.RefundTo),
             plan.From != null ? GameLookup.ViewOf(plan.From) : null,
-            plan.Bursts.ConvertAll(static burst => new BurstView(burst)));
+            plan.Bursts.ConvertAll(static burst => new BurstView(burst)), RemovalRefundPlan(plan, all));
+    }
+
+    // refund_to ground (the single word): every item on the ground where its piece stood; else as Deliver plans it.
+    private static RefundPlanView? RemovalRefundPlan(RemovePlan plan, List<ItemAmount> all)
+    {
+        if (plan.Arguments.RefundTo != RefundRoute.WherePieceStood)
+        {
+            return Refunds.Forecast(plan.Refunds, all);
+        }
+
+        List<RefundDestinationView> destinations = new List<RefundDestinationView>();
+        foreach (UpgradeAmountView amount in Amounts(all))
+        {
+            destinations.Add(new RefundDestinationView(amount.PrefabName, amount.Quantity, RefundTarget.GroundName,
+                Refunds.Ground, null, false));
+        }
+
+        return new RefundPlanView(RefundArgs.View(plan.Arguments.RefundTo), new List<string>(), destinations);
     }
 
     internal static PlacementView ViewOf(PlannedPlacement placement)

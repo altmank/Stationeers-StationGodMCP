@@ -56,9 +56,9 @@ internal static class StructureSwapper
             log.Used.Add(new UpgradeAmountView(plan.Items[item.Key].PrefabName, item.Value));
         }
 
-        if (plan.Request.Arguments.Refund && plan.From != null && refund.Count > 0)
+        if (plan.Request.Arguments.Refund && plan.Refunds != null && refund.Count > 0)
         {
-            DeliverRefund(plan.From, refund, log);
+            DeliverRefund(plan.Refunds, refund, log);
         }
 
         return log;
@@ -109,11 +109,11 @@ internal static class StructureSwapper
         }
     }
 
-    private static void DeliverRefund(Thing from, List<ItemAmount> refund, StructureSwapLogView log)
+    private static void DeliverRefund(RefundReceivers receivers, List<ItemAmount> refund, StructureSwapLogView log)
     {
         try
         {
-            Refunds.Deliver(from, refund, log.Refunded);
+            Refunds.Deliver(receivers, refund, log.Refunded);
         }
         catch (Exception exception)
         {

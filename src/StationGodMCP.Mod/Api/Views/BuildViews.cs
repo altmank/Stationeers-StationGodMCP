@@ -321,7 +321,7 @@ internal sealed class RemovalView
 internal sealed class RemoveReportView
 {
     internal RemoveReportView(BuildHeader header, List<RemovalView> removals, List<UpgradeAmountView> refund,
-        string refundTo, ThingView? from, List<BurstView>? willBurst = null)
+        object refundTo, ThingView? from, List<BurstView>? willBurst = null, RefundPlanView? refundPlan = null)
     {
         Tool = "remove_structure";
         Status = header.Status;
@@ -332,6 +332,7 @@ internal sealed class RemoveReportView
         Removals = removals;
         Refund = refund;
         RefundTo = refundTo;
+        RefundPlan = refundPlan;
         From = from;
         WillBurst = willBurst ?? new List<BurstView>();
         Notes = header.Notes;
@@ -354,8 +355,12 @@ internal sealed class RemoveReportView
     /// <summary>Everything the removals give back, per item.</summary>
     public List<UpgradeAmountView> Refund { get; }
 
-    /// <summary>source, ground or none.</summary>
-    public string RefundTo { get; }
+    /// <summary>source, ground or none (the single words), or the list of targets tried in turn.</summary>
+    public object RefundTo { get; }
+
+    /// <summary>Where each refunded item goes (target, merged/slot/ground); absent with refund_to none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RefundPlanView? RefundPlan { get; }
 
     public ThingView? From { get; }
 

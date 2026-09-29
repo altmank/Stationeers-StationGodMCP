@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Choose where refunds go (`refund_to` on every tool that refunds).** The place tools with `remove_ids`, the remove,
+  upgrade, clean and replace tools, `remove_structure`, `undo_job` and `plan_removal` take `refund_to`: a list of
+  targets tried in turn per item until it fits, `inventory` (the player's), `source` (top up the `from_id` stack),
+  `storage` (`from_id`'s slots, then its container's), a container's reference id, `ground`. The default is
+  `["inventory", "source", "storage", "ground"]`; what fits no target goes on the ground in front of the holder.
+  One word keeps its old meaning (`source`, `ground`, `none`; `refund: false` is `none`). Dry runs show `refund_plan`
+  with each item's destinations; the job's refunded entries name their `target`. On a dedicated server the default
+  skips the inventory, so a removal no longer needs `from_id` there.
 - **`trader_inventory` `have` is what the trader would take from you.** It counts the goods on the pad network's
   vending machines and in the card holder's inventory that meet the trader's conditions, as `trader_sell` takes them
   (a "Box of ..." line counts only the boxes whose contents it accepts), and gas lines now count the pad network's gas

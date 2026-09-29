@@ -183,7 +183,7 @@ internal static class RunReports
         }
 
         return new RunMaterialsView(plan.From != null ? GameLookup.ViewOf(plan.From) : null, needed,
-            plan.Request.Options.Refund, Amounts(refund));
+            plan.Request.Options.Refund, Amounts(refund), Refunds.Forecast(plan.Refunds, refund));
     }
 
     internal static List<UpgradeAmountView> Amounts(List<ItemAmount> amounts)

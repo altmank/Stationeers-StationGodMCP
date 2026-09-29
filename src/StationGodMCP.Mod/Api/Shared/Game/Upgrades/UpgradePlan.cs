@@ -52,7 +52,7 @@ internal sealed class UpgradeRequest
         Selection = selection;
         From = from;
         SkipUnmatched = options.SkipUnmatched;
-        Refund = options.Refund;
+        RefundTo = options.RefundTo;
         ListLimit = options.ListLimit;
     }
 
@@ -68,23 +68,27 @@ internal sealed class UpgradeRequest
 
     internal bool SkipUnmatched { get; }
 
-    internal bool Refund { get; }
+    /// <summary>Whether anything is given back (refund_to not none, refund not false).</summary>
+    internal bool Refund => RefundTo.GivesBack;
+
+    /// <summary>refund_to (with the refund flag): where the refund goes.</summary>
+    internal RefundRoute RefundTo { get; }
 
     internal int ListLimit { get; }
 }
 
 internal sealed class UpgradeOptions
 {
-    internal UpgradeOptions(bool skipUnmatched, bool refund, int listLimit)
+    internal UpgradeOptions(bool skipUnmatched, RefundRoute refundTo, int listLimit)
     {
         SkipUnmatched = skipUnmatched;
-        Refund = refund;
+        RefundTo = refundTo;
         ListLimit = listLimit;
     }
 
     internal bool SkipUnmatched { get; }
 
-    internal bool Refund { get; }
+    internal RefundRoute RefundTo { get; }
 
     internal int ListLimit { get; }
 }
@@ -261,6 +265,9 @@ internal sealed class UpgradePlan
 
     internal Thing? From { get; set; }
 
+    /// <summary>Where the refund goes (refund_to resolved); null until the coils are counted.</summary>
+    internal RefundReceivers? Refunds { get; set; }
+
     internal List<ItemStock> Stocks { get; } = new List<ItemStock>();
 
     internal LinkSurvey? Links { get; set; }
@@ -378,6 +385,14 @@ internal static class UpgradePlanner
     private static void CountCoils(UpgradePlan plan, UpgradeRequest request)
     {
         plan.From = Source(plan, request);
+        List<GuardFinding> findings = new List<GuardFinding>();
+        plan.Refunds = RefundReceivers.Resolve(request.RefundTo, plan.From, null, findings);
+        foreach (GuardFinding finding in findings.FindAll(static finding => finding.Level == GuardLevel.Refusal))
+        {
+            // A skipped target is named in the report's refund_plan; only a refusal stops the run.
+            plan.Problem(finding.Code, finding.Message);
+        }
+
         Dictionary<int, int> needed = new Dictionary<int, int>();
         List<Kit> kits = new List<Kit>();
         foreach (PlannedSwap swap in plan.Swaps)

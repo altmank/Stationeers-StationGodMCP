@@ -26,7 +26,7 @@ internal static class UpgradeReports
             Skipped(plan.Kept, request.ListLimit), Skipped(plan.Unmatched, request.ListLimit));
         UpgradeResources resources = new UpgradeResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Coils(plan), request.Refund, RefundTotals(plan),
-            Networks(plan));
+            Networks(plan), Refunds.Forecast(plan.Refunds, RefundItems(plan)));
         return new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(), DeadEnds(plan),
             Loops(plan), Redundant(plan));
     }
@@ -228,6 +228,13 @@ internal static class UpgradeReports
         }
 
         return coils;
+    }
+
+    private static List<ItemAmount> RefundItems(UpgradePlan plan)
+    {
+        List<ItemAmount> items = new List<ItemAmount>();
+        plan.Swaps.ForEach(swap => items.AddRange(swap.Refund));
+        return items;
     }
 
     private static List<UpgradeAmountView> RefundTotals(UpgradePlan plan)

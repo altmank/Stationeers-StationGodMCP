@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -76,7 +77,7 @@ internal sealed class StructureSwapArguments
         Scope = scope;
         FromPrefabs = fromPrefabs;
         From = from;
-        Refund = options.Refund;
+        RefundTo = options.RefundTo;
         SkipUnmatched = options.SkipUnmatched;
         Limit = options.Limit;
     }
@@ -92,7 +93,11 @@ internal sealed class StructureSwapArguments
     /// <summary>The thing materials come from and refunds go to; null for the local player.</summary>
     internal ThingId? From { get; }
 
-    internal bool Refund { get; }
+    /// <summary>Whether anything is given back (refund_to not none, refund not false).</summary>
+    internal bool Refund => RefundTo.GivesBack;
+
+    /// <summary>refund_to (with the refund flag): where the refund goes.</summary>
+    internal RefundRoute RefundTo { get; }
 
     internal bool SkipUnmatched { get; }
 
@@ -101,14 +106,14 @@ internal sealed class StructureSwapArguments
 
 internal sealed class StructureSwapOptions
 {
-    internal StructureSwapOptions(bool refund, bool skipUnmatched, int limit)
+    internal StructureSwapOptions(RefundRoute refundTo, bool skipUnmatched, int limit)
     {
-        Refund = refund;
+        RefundTo = refundTo;
         SkipUnmatched = skipUnmatched;
         Limit = limit;
     }
 
-    internal bool Refund { get; }
+    internal RefundRoute RefundTo { get; }
 
     internal bool SkipUnmatched { get; }
 
@@ -128,7 +133,7 @@ internal static class StructureSwapArgs
     private static readonly string[] RunArguments =
     {
         "to", "reference_ids", "room_id", "from_prefabs", "dry_run", "confirm", "from_id", "refund",
-        "skip_unmatched", "limit"
+        "refund_to", "skip_unmatched", "limit"
     };
 
     internal static StructureSwapForm Parse(Args args, bool targetRequired)
@@ -154,7 +159,7 @@ internal static class StructureSwapArgs
 
         StructureSwapArguments arguments = new StructureSwapArguments(Target(args, targetRequired), Scope(args),
             FromPrefabs(args), args.OptionalThingId("from_id"),
-            new StructureSwapOptions(args.OptionalBool("refund") ?? true, args.OptionalBool("skip_unmatched") ?? false,
+            new StructureSwapOptions(RefundArgs.RouteWithFlag(args), args.OptionalBool("skip_unmatched") ?? false,
                 args.OptionalInt("limit", 1, MaximumPieces) ?? DefaultLimit));
         return new StructureSwapForm.Run(arguments, !dryRun);
     }

@@ -172,21 +172,9 @@ internal sealed class PlaceArguments
     internal bool AllowDoorKeepOut { get; }
 }
 
-/// <summary>Where remove_structure gives back what deconstructing returns.</summary>
-internal enum RefundTo
-{
-    /// <summary>The source's inventory (from_id, default the local player): worn items collect, the rest at its feet.</summary>
-    Source,
-
-    /// <summary>On the ground where each removed piece stood.</summary>
-    Ground,
-
-    None
-}
-
 internal sealed class RemoveArguments
 {
-    internal RemoveArguments(List<ThingId> ids, RemovalAllowance allow, RefundTo refundTo, ThingId? from)
+    internal RemoveArguments(List<ThingId> ids, RemovalAllowance allow, RefundRoute refundTo, ThingId? from)
     {
         Ids = ids;
         Allow = allow;
@@ -198,7 +186,8 @@ internal sealed class RemoveArguments
 
     internal RemovalAllowance Allow { get; }
 
-    internal RefundTo RefundTo { get; }
+    /// <summary>refund_to: source, ground or none as before, or a chain of targets (the default).</summary>
+    internal RefundRoute RefundTo { get; }
 
     internal ThingId? From { get; }
 }
@@ -303,7 +292,7 @@ internal static class BuildArgs
         RemovalAllowance allow = new RemovalAllowance(args.OptionalBool("allow_contents") ?? false,
             args.OptionalBool("allow_breach") ?? false, args.OptionalBool("allow_broken") ?? false,
             args.OptionalBool("allow_burst") ?? false);
-        RefundTo refundTo = RefundToOf(args.OptionalString("refund_to"));
+        RefundRoute refundTo = RefundArgs.Route(args);
         bool confirmed = Confirmed(args);
         return new BuildForm<RemoveArguments>.Run(
             new RemoveArguments(ids, allow, refundTo, args.OptionalThingId("from_id")), confirmed);
@@ -546,14 +535,6 @@ internal static class BuildArgs
             ? token.Value<string>()
             : throw ApiErrors.InvalidArgument($"{prefix}{field} must be a string.");
     }
-
-    private static RefundTo RefundToOf(string? text) => (text ?? "source").Trim().ToLowerInvariant() switch
-    {
-        "source" => RefundTo.Source,
-        "ground" => RefundTo.Ground,
-        "none" => RefundTo.None,
-        _ => throw ApiErrors.InvalidArgument("refund_to must be source, ground or none.")
-    };
 
     private static BuildForm<T> Poll<T>(Args args, params string[] others)
     {

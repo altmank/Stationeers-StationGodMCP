@@ -35,6 +35,7 @@ internal sealed class StructureSwapReportView
         From = resources.From;
         Materials = resources.Materials;
         RefundEnabled = resources.RefundEnabled;
+        RefundPlan = resources.RefundPlan;
         Rooms = resources.Rooms;
         Notes = header.Notes;
     }
@@ -79,6 +80,10 @@ internal sealed class StructureSwapReportView
 
     public bool RefundEnabled { get; }
 
+    /// <summary>Where each refunded item goes (refund_to, target per part); absent with refund off.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RefundPlanView? RefundPlan { get; }
+
     /// <summary>Every room next to a piece to swap, as it is now.</summary>
     public List<StructureRoomView> Rooms { get; }
 
@@ -112,12 +117,13 @@ internal sealed class StructureSwapLists
 internal sealed class StructureSwapResources
 {
     internal StructureSwapResources(ThingView? from, List<StructureMaterialView> materials, bool refundEnabled,
-        List<StructureRoomView> rooms)
+        List<StructureRoomView> rooms, RefundPlanView? refundPlan = null)
     {
         From = from;
         Materials = materials;
         RefundEnabled = refundEnabled;
         Rooms = rooms;
+        RefundPlan = refundEnabled ? refundPlan : null;
     }
 
     internal ThingView? From { get; }
@@ -127,6 +133,8 @@ internal sealed class StructureSwapResources
     internal bool RefundEnabled { get; }
 
     internal List<StructureRoomView> Rooms { get; }
+
+    internal RefundPlanView? RefundPlan { get; }
 }
 
 /// <summary>One piece to swap: where it is, what replaces it, what it blocks before and after, what it costs.</summary>

@@ -46,7 +46,7 @@ internal static class UndoJobApi
         }
 
         long? fromId = args.OptionalThingId("from_id")?.Value;
-        string? refundTo = RefundTo(args);
+        RefundRoute? refundTo = RefundArgs.RouteOf(args.Optional(RefundArgs.Argument));
         string? acknowledge = args.OptionalString(GasHoldVerdict.AcknowledgeArgument);
         JObject job = JobSnapshots.Wire(HeldTickJobs.Status(jobId));
         RecordedJob? recorded = JobSnapshots.Of(jobId);
@@ -250,17 +250,9 @@ internal static class UndoJobApi
         return removed;
     }
 
-    private static string? RefundTo(Args args)
-    {
-        string? refundTo = args.OptionalString("refund_to")?.Trim().ToLowerInvariant();
-        return refundTo == null || refundTo == "source" || refundTo == "ground" || refundTo == "none"
-            ? refundTo
-            : throw ApiErrors.InvalidArgument("refund_to must be source, ground or none.");
-    }
-
     private static string Text(long id) => id.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-    // from_id on every call that has a source; refund_to on the removal.
+    // from_id on every call that has a source; refund_to on the removal (a piece run's is set in PieceArguments).
     private static JObject WithSource(JObject arguments, UndoSource source, bool removal)
     {
         if (source.FromId.HasValue)
@@ -270,7 +262,7 @@ internal static class UndoJobApi
 
         if (removal && source.RefundTo != null)
         {
-            arguments["refund_to"] = source.RefundTo;
+            arguments[RefundArgs.Argument] = RefundArgs.Wire(source.RefundTo);
         }
 
         return arguments;
@@ -305,10 +297,10 @@ internal static class UndoJobApi
             }
         }
 
-        if (source.RefundTo == "ground" && removals.InRuns > 0)
+        if (source.RefundTo == RefundRoute.WherePieceStood && removals.InRuns > 0)
         {
-            notes.Add("refund_to ground applies to remove_structure only; the pieces a piece run removes give their " +
-                      "refund to the source, as that tool does.");
+            notes.Add("refund_to ground: remove_structure puts each refund where its piece stood; the pieces a piece " +
+                      "run removes give theirs on the ground in front of the source, as that tool does.");
         }
 
         return notes;
@@ -339,7 +331,8 @@ internal static class UndoJobApi
     }
 
     // The pieces form of one tool and grade: each piece's cells with the ends it had there (a long straight comes back
-    // as singles), removing in the same job the pieces it takes down itself (remove_ids; refund_to none: refund false),
+    // as singles), removing in the same job the pieces it takes down itself (remove_ids; refund_to none: refund false;
+    // any other refund_to passed on),
     // checked as if what the other steps remove were gone already (assume_removed: the small-grid things of the rest of
     // the removal), with the caller's allow_bridge and the undo's source.
     private static JObject PieceArguments(PieceRestore group, List<long> own, UndoPlan plan, Args args,
@@ -368,10 +361,15 @@ internal static class UndoJobApi
         if (own.Count > 0)
         {
             arguments["remove_ids"] = Ids(own);
-            if (source.RefundTo == "none")
+            if (source.RefundTo is { GivesBack: false })
             {
-                arguments["refund"] = false;
+                arguments[RefundArgs.Flag] = false;
             }
+        }
+
+        if (source.RefundTo is { GivesBack: true })
+        {
+            arguments[RefundArgs.Argument] = RefundArgs.Wire(source.RefundTo);
         }
 
         JArray assumed = new JArray();

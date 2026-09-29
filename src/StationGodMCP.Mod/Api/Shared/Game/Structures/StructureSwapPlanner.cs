@@ -262,6 +262,14 @@ internal static class StructureSwapPlanner
     private static void CountMaterials(StructureSwapPlan plan)
     {
         plan.From = Source(plan);
+        List<GuardFinding> findings = new List<GuardFinding>();
+        plan.Refunds = RefundReceivers.Resolve(plan.Request.Arguments.RefundTo, plan.From, null, findings);
+        foreach (GuardFinding finding in findings.FindAll(static finding => finding.Level == GuardLevel.Refusal))
+        {
+            // A skipped target is named in the report's refund_plan; only a refusal stops the run.
+            plan.Problem(finding.Code, finding.Message);
+        }
+
         List<IReadOnlyList<MaterialLine>> lines = new List<IReadOnlyList<MaterialLine>>(plan.Swaps.Count);
         foreach (PlannedStructureSwap swap in plan.Swaps)
         {

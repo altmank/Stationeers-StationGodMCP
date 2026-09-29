@@ -140,11 +140,11 @@ internal static class RunBuilder
             }
         }
 
-        if (plan.Request.Options.Refund && plan.From != null && refund.Count > 0)
+        if (plan.Request.Options.Refund && plan.Refunds != null && refund.Count > 0)
         {
             try
             {
-                Refunds.Deliver(plan.From, refund, outcome.Log.Refunded);
+                Refunds.Deliver(plan.Refunds, refund, outcome.Log.Refunded);
             }
             catch (Exception exception)
             {

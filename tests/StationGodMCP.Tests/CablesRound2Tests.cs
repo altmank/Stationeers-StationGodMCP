@@ -164,7 +164,7 @@ public sealed class CablesRound2Tests
     [Fact]
     public void TheNotesNameTheCallersOverrides()
     {
-        UndoSource source = UndoSource.Of(new JobSource(363, false, null, null), 2383, "ground");
+        UndoSource source = UndoSource.Of(new JobSource(363, false, null, null), 2383, RefundRoute.WherePieceStood);
         Assert.Contains(source.Notes, note => note.StartsWith("from_id 2383") && note.Contains("the job's own, 363"));
         Assert.Contains(source.Notes, note => note.StartsWith("refund_to ground"));
     }

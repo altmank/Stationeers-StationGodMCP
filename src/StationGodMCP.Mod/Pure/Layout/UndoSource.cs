@@ -6,12 +6,12 @@ namespace StationGodMCP.Pure;
 
 /// <summary>
 /// Where a place or remove job took its materials and put its refund, as its request named them: from_id (null: the
-/// local player), free (place_structure without materials), refund_to (remove_structure: source, ground or none) and
+/// local player), free (place_structure without materials), refund_to (a single word or a chain of targets) and
 /// refund (the run tools' refund flag).
 /// </summary>
 internal sealed class JobSource
 {
-    internal JobSource(long? fromId, bool free, string? refundTo, bool? refund)
+    internal JobSource(long? fromId, bool free, RefundRoute? refundTo, bool? refund)
     {
         FromId = fromId;
         Free = free;
@@ -26,22 +26,22 @@ internal sealed class JobSource
 
     internal bool Free { get; }
 
-    internal string? RefundTo { get; }
+    internal RefundRoute? RefundTo { get; }
 
     internal bool? Refund { get; }
 
     /// <summary>Whether the job gave nothing back for what it took down (refund_to none, refund false).</summary>
-    internal bool RefundedNothing => RefundTo == "none" || Refund == false;
+    internal bool RefundedNothing => RefundTo is { GivesBack: false } || Refund == false;
 }
 
 /// <summary>
 /// The source undo_job's own calls use: from_id (the caller's, else the job's own, so an undo runs on a dedicated
-/// server whenever the job did), and the removal's refund_to (the caller's; else none when the job placed for free,
-/// since nothing was paid that could be given back; else the removal's default, the source).
+/// server whenever the job did), and the removals' refund_to (the caller's; else none when the job placed for free,
+/// since nothing was paid that could be given back; else each tool's default chain).
 /// </summary>
 internal sealed class UndoSource
 {
-    private UndoSource(long? fromId, string? refundTo, List<string> notes)
+    private UndoSource(long? fromId, RefundRoute? refundTo, List<string> notes)
     {
         FromId = fromId;
         RefundTo = refundTo;
@@ -51,12 +51,12 @@ internal sealed class UndoSource
     /// <summary>Every call's from_id; null leaves it out (the local player).</summary>
     internal long? FromId { get; }
 
-    /// <summary>The removal's refund_to; null leaves it out (source).</summary>
-    internal string? RefundTo { get; }
+    /// <summary>The removals' refund_to; null leaves it out (each tool's default chain).</summary>
+    internal RefundRoute? RefundTo { get; }
 
     internal List<string> Notes { get; }
 
-    internal static UndoSource Of(JobSource job, long? fromId, string? refundTo)
+    internal static UndoSource Of(JobSource job, long? fromId, RefundRoute? refundTo)
     {
         List<string> notes = new List<string>();
         long? from = fromId ?? job.FromId;
@@ -72,13 +72,13 @@ internal sealed class UndoSource
 
         if (refundTo != null)
         {
-            notes.Add($"refund_to {refundTo}: the caller's choice for the removal's refund.");
+            notes.Add($"refund_to {refundTo.Name}: the caller's choice for the removals' refund.");
         }
 
-        string? refund = refundTo;
+        RefundRoute? refund = refundTo;
         if (refund == null && job.Free)
         {
-            refund = "none";
+            refund = RefundRoute.Nothing;
             notes.Add("The job placed for free (free: true): removing what it built gives nothing back " +
                       "(refund_to none).");
         }

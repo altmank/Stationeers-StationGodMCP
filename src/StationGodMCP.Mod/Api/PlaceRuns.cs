@@ -145,7 +145,8 @@ internal static class RunApi
     private static object Status(Args args, params string[] others)
     {
         args.Reject("job_id", others);
-        args.Reject("job_id", "dry_run", "confirm", "from_id", "refund", "limit", GasHoldVerdict.AcknowledgeArgument);
+        args.Reject("job_id", "dry_run", "confirm", "from_id", "refund", "refund_to", "limit",
+            GasHoldVerdict.AcknowledgeArgument);
         return HeldTickJobs.Status(args.String("job_id").Trim());
     }
 

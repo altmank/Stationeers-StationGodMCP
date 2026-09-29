@@ -12,6 +12,7 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -579,17 +580,15 @@ internal sealed class RemoveWork : BuildWork
     {
         try
         {
-            switch (plan.Arguments.RefundTo)
+            if (plan.Arguments.RefundTo == RefundRoute.WherePieceStood)
             {
-                case RefundTo.Source when plan.From != null:
-                    List<ItemAmount> all = new List<ItemAmount>();
-                    done.ForEach(takedown => all.AddRange(takedown.Refund));
-                    Refunds.Deliver(plan.From, all, log.Refunded);
-                    break;
-                case RefundTo.Ground:
-                    done.ForEach(takedown =>
-                        Refunds.DeliverAt(takedown.Position, takedown.Refund, log.Refunded));
-                    break;
+                done.ForEach(takedown => Refunds.DeliverAt(takedown.Position, takedown.Refund, log.Refunded));
+            }
+            else if (plan.Refunds != null)
+            {
+                List<ItemAmount> all = new List<ItemAmount>();
+                done.ForEach(takedown => all.AddRange(takedown.Refund));
+                Refunds.Deliver(plan.Refunds, all, log.Refunded);
             }
         }
         catch (Exception exception)

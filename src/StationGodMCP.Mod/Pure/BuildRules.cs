@@ -666,6 +666,13 @@ internal static class RemovalRule
             : $"from_id {holder} is inside {removedContainer}, which this request removes") +
         ", so the refund would be destroyed with it; pass another from_id, or refund_to ground or none.";
 
+    /// <summary>A container refund_to names that the request removes, or that is inside something it removes.</summary>
+    internal static string ContainerRemoved(string container, string? removedContainer) =>
+        (removedContainer == null
+            ? $"refund_to container {container} is removed by this request"
+            : $"refund_to container {container} is inside {removedContainer}, which this request removes") +
+        ", so the refund would be destroyed with it; name another container in refund_to.";
+
     internal static bool Refused(IEnumerable<GuardFinding> findings)
     {
         foreach (GuardFinding finding in findings)

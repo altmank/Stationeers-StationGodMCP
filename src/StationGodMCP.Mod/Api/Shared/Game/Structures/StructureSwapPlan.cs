@@ -146,6 +146,9 @@ internal sealed class StructureSwapPlan
 
     internal Thing? From { get; set; }
 
+    /// <summary>Where the refund goes (refund_to resolved); null until the materials are counted.</summary>
+    internal RefundReceivers? Refunds { get; set; }
+
     /// <summary>Every item a swap costs or gives back, by PrefabHash.</summary>
     internal Dictionary<int, Item> Items { get; } = new Dictionary<int, Item>();
 

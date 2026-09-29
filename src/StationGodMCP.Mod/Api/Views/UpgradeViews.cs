@@ -41,6 +41,7 @@ internal sealed class UpgradeReportView
         Coils = resources.Coils;
         RefundEnabled = resources.RefundEnabled;
         Refund = resources.Refund;
+        RefundPlan = resources.RefundPlan;
         Networks = resources.Networks;
         Devices = connectivity?.Devices ?? new List<UpgradeDeviceView>();
         Connectivity = connectivity;
@@ -103,6 +104,10 @@ internal sealed class UpgradeReportView
     public bool RefundEnabled { get; }
 
     public List<UpgradeAmountView> Refund { get; }
+
+    /// <summary>Where each refunded item goes (refund_to, target per part); absent with refund off.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RefundPlanView? RefundPlan { get; }
 
     /// <summary>A CableNetworkReportView or PipeNetworkReportView per network a swapped piece is in.</summary>
     public List<object> Networks { get; }
@@ -183,13 +188,14 @@ internal sealed class UpgradeLists
 internal sealed class UpgradeResources
 {
     internal UpgradeResources(ThingView? from, List<UpgradeCoilView> coils, bool refundEnabled,
-        List<UpgradeAmountView> refund, List<object> networks)
+        List<UpgradeAmountView> refund, List<object> networks, RefundPlanView? refundPlan = null)
     {
         From = from;
         Coils = coils;
         RefundEnabled = refundEnabled;
         Refund = RefundShown.Items(refundEnabled, refund);
         Networks = networks;
+        RefundPlan = refundEnabled ? refundPlan : null;
     }
 
     internal ThingView? From { get; }
@@ -201,6 +207,8 @@ internal sealed class UpgradeResources
     internal List<UpgradeAmountView> Refund { get; }
 
     internal List<object> Networks { get; }
+
+    internal RefundPlanView? RefundPlan { get; }
 }
 
 /// <summary>One reason a run cannot start (or, after a run, one difference found).</summary>
@@ -1150,12 +1158,14 @@ internal sealed class UpgradeStopView
 /// <summary>An item given back: in the source's inventory (collected) or on the ground at the source.</summary>
 internal sealed class UpgradeRefundView
 {
-    internal UpgradeRefundView(ThingId referenceId, string? prefabName, int quantity, string where)
+    internal UpgradeRefundView(ThingId referenceId, string? prefabName, int quantity, string where,
+        string? target = null)
     {
         ReferenceId = referenceId;
         PrefabName = prefabName;
         Quantity = quantity;
         Where = where;
+        Target = target;
     }
 
     public ThingId ReferenceId { get; }
@@ -1164,8 +1174,12 @@ internal sealed class UpgradeRefundView
 
     public int Quantity { get; }
 
-    /// <summary>collected or ground.</summary>
+    /// <summary>merged (onto a stack), slot (a new item in an empty slot) or ground.</summary>
     public string Where { get; }
+
+    /// <summary>The refund_to target it went to: inventory, source, storage, container or ground.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Target { get; }
 }
 
 /// <summary>The checks after a swap: the game's links and networks compared with those recorded before it.</summary>

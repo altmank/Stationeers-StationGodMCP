@@ -169,9 +169,9 @@ public sealed class CablesLiveTestTests
     [Fact]
     public void TheCallersSourceOverridesTheJobs()
     {
-        UndoSource source = UndoSource.Of(new JobSource(462, true, null, null), 500, "ground");
+        UndoSource source = UndoSource.Of(new JobSource(462, true, null, null), 500, RefundRoute.WherePieceStood);
         Assert.Equal(500, source.FromId);
-        Assert.Equal("ground", source.RefundTo);
+        Assert.Same(RefundRoute.WherePieceStood, source.RefundTo);
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public sealed class CablesLiveTestTests
     {
         UndoSource source = UndoSource.Of(new JobSource(null, true, null, null), null, null);
         Assert.Null(source.FromId);
-        Assert.Equal("none", source.RefundTo);
+        Assert.Same(RefundRoute.Nothing, source.RefundTo);
     }
 
     [Fact]

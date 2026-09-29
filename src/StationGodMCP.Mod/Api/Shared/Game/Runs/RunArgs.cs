@@ -305,7 +305,7 @@ internal static class RunArgs
         RunTargets targets = new RunTargets(args.OptionalThingId("root"), joinTo,
             args.OptionalBool("join_trunk") ?? false);
         return new RunOptions(new EditAllowance(bridge, args.OptionalBool("allow_split") ?? false),
-            args.OptionalThingId("from_id"), args.OptionalBool("refund") ?? true,
+            args.OptionalThingId("from_id"), RefundArgs.RouteWithFlag(args),
             args.OptionalInt("limit", 1, RunPath.MaximumCells) ?? DefaultListLimit,
             args.OptionalBool("allow_split_long") ?? true, targets, args.OptionalBool("allow_door_keepout") ?? false);
     }

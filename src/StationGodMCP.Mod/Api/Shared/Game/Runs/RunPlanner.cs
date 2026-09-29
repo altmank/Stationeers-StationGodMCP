@@ -611,6 +611,7 @@ internal static class RunPlanner
     private static void CountMaterials(RunPlan plan)
     {
         plan.From = Source(plan);
+        Receivers(plan);
         Dictionary<int, int> needed = new Dictionary<int, int>();
         List<Kit> kits = new List<Kit>();
         foreach (PlannedCell cell in plan.Cells)
@@ -655,12 +656,19 @@ internal static class RunPlanner
             return null;
         }
 
-        if (!SourceRule.NeedsSource(plan.Request.Build != null, plan.Request.Options.Refund))
+        bool builds = plan.Request.Build != null;
+        if (!SourceRule.NeedsSource(builds, plan.Request.Options.Refund))
         {
             return null;
         }
 
         Human human = Human.LocalHuman;
+        if (human == null && !SourceRule.NeedsSource(builds, plan.Request.Options.RefundTo.NeedsHolder))
+        {
+            // A refund_to chain on a dedicated server skips inventory and gives to what else it names.
+            return null;
+        }
+
         if (human == null && SourceRule.NoLocalPlayer(plan.Request.Tool) == GuardLevel.Warning)
         {
             plan.Warnings.Add(new LayoutIssue("no_local_player", "There is no local player (a dedicated server); the " +
@@ -673,6 +681,26 @@ internal static class RunPlanner
         }
 
         return human;
+    }
+
+    // refund_to resolved against the source; the ground with no holder at all is where the first removed piece stood.
+    private static void Receivers(RunPlan plan)
+    {
+        List<GuardFinding> findings = new List<GuardFinding>();
+        PlannedRemoval? first = plan.Removals.Find(static removal => !removal.Assumed);
+        plan.Refunds = RefundReceivers.Resolve(plan.Request.Options.RefundTo, plan.From,
+            first != null ? first.Piece.ThingTransformPosition : (UnityEngine.Vector3?)null, findings);
+        foreach (GuardFinding finding in findings)
+        {
+            if (finding.Level == GuardLevel.Refusal)
+            {
+                plan.Problem(finding.Code, finding.Message);
+            }
+            else
+            {
+                plan.Warnings.Add(new LayoutIssue(finding.Code, finding.Message));
+            }
+        }
     }
 
     private static void Guard(RunPlan plan, RunForecast forecast)

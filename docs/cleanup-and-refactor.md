@@ -80,7 +80,9 @@ one.
 `plan_removal` is the dry run of `remove_cables`, `remove_pipes` or `remove_chutes` (`kind`: `cable` default, `pipe`,
 `chute`) under a read-only name. It takes `reference_ids`, `waypoints`, `cells`, or a whole `network_id`, and returns
 the refund (`materials.refund`), `would_split` and the networks before and after. It never changes anything. On a
-dedicated server with no `from_id`, `no_local_player` is only a warning here: the refund is still priced.
+dedicated server with no `from_id` and `refund_to: "source"`, `no_local_player` is only a warning here: the refund is
+still priced. `refund_to` and the dry run's `materials.refund_plan` work as in
+[building.md](building.md#how-every-building-tool-works).
 
 ## Which devices a split cuts off
 

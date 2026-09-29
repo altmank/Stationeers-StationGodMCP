@@ -418,11 +418,12 @@ public sealed class BuildArgsTests
         Assert.True(run.Arguments.Allow.Contents);
         Assert.False(run.Arguments.Allow.Breach);
         Assert.False(run.Arguments.Allow.Broken);
-        Assert.Equal(RefundTo.Ground, run.Arguments.RefundTo);
+        Assert.Same(RefundRoute.WherePieceStood, run.Arguments.RefundTo);
 
         BuildForm<RemoveArguments>.Run plain = Assert.IsType<BuildForm<RemoveArguments>.Run>(
             BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"10\"]}")));
-        Assert.Equal(RefundTo.Source, plain.Arguments.RefundTo);
+        // LU 2026-09-29: left out, refund_to is the chain inventory, source, storage, ground.
+        Assert.Same(RefundRoute.Default, plain.Arguments.RefundTo);
         Assert.False(plain.Arguments.Allow.Broken);
         BuildForm<RemoveArguments>.Run broken = Assert.IsType<BuildForm<RemoveArguments>.Run>(
             BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"157082\"],\"allow_broken\":true}")));
