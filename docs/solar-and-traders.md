@@ -75,13 +75,16 @@ affected.
   `sell_separately` when the game would take goods already sold; sell it in a call of its own.
 - Prices are the trader's, adjusted for respawn stress as the trade window shows them. Credits in replies are rounded
   to the cent.
-- `trader_buy`'s `dry_run: true` checks each line on its own against stock, card and free slots; it does not add lines
-  up.
+- **Buying several lines:** a `trader_buy` dry run adds the lines up as the real run meets them. Each line is checked,
+  in the game's order (stock, credits, a free slot), against what the lines before it would leave: the card's
+  credits, the trader's stock of that entry and the empty tradable slots on the pad network's vending machines and
+  the card holder. A stackable item fills slots up to its stack size, anything else takes one slot per unit, gas none.
+  So the dry run refuses the same lines the real run would (`insufficient_stock`, `insufficient_credits`, `no_room`);
+  a line that runs out of room part way is `trade_failed`, as in the real run, with the part it would buy.
 - In a dry run `credits_after` is the predicted balance (1.4.4+): `credits_before` less what the lines that pass would
-  spend, plus what they would earn. Buy lines are checked on their own, so it goes below 0 when they do not add up; the
-  real run then refuses the later line with `insufficient_credits`.
-- A refused line's `quantity` is how many were actually traded (0 when refused up front, and always 0 in a dry run),
-  not the quantity asked; its `index` points at the line asked.
+  spend, plus what they would earn. It never goes below 0.
+- A refused line's `quantity` is how many were actually traded (0 when refused up front), not the quantity asked; in a
+  dry run it is the part a line that runs out of room would buy. Its `index` points at the line asked.
 - `trader_inventory` shows, for the landed trader, how many of each item it would take right now (`sellable`), the
   trade window's own count: what the pad network's vending machines and you hold. `trader_sell` counts the card
   holder's inventory in place of yours, so the two agree when the card is yours.

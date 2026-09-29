@@ -12,9 +12,11 @@ using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using Newtonsoft.Json.Linq;
 using Objects.Electrical;
+using Objects.Items;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using TraderUI;
 using Trading;
 
@@ -108,10 +110,15 @@ internal abstract class TradeSide
         }
 
         // Line by line: the game's buy makes the goods straight into their slots and charges at once, so each line
-        // sees what the lines before it did.
+        // sees what the lines before it did. A dry run adds the lines up the same way (BuyDryRun).
         internal override BatchResultView Lines(TradeRequest request, TraderContact contact, CreditCard card,
             float stressPenalty)
         {
+            if (request.DryRun)
+            {
+                return BuyDryRun.Run(request, contact, card, stressPenalty);
+            }
+
             BatchBuilder batch = new BatchBuilder(request.Items.Count);
             for (int index = 0; index < request.Items.Count; index++)
             {
@@ -247,7 +254,7 @@ internal static class TradeSession
             : new List<DeliveredView>();
         Atmosphere? gas = contact.ConnectedPad.LandingPadNetwork?.Atmosphere;
         float creditsAfter = request.DryRun
-            ? TradeView.PredictedCredits(creditsBefore, results.Results)
+            ? TradeView.PredictedCredits(creditsBefore, results.Results, side.IsBuying)
             : card.Currency;
         return new TradeView(request.Contact, Text.Plain(contact.DataInstance.DisplayName), request.DryRun,
             new ThingId(card.ReferenceId), creditsBefore, creditsAfter, results, delivered,
@@ -343,8 +350,91 @@ internal static class TradeSession
 }
 
 /// <summary>
-/// One line of a purchase: find the entry, check it, then buy it through the game or price it. Finding an entry and
-/// its price serve trader_sell too (SellRun).
+/// trader_buy's dry run: every line priced and checked in order against what the lines before it would leave (the
+/// card's credits, the trader's stock, the empty tradable slots), so it reports the lines a real run would refuse.
+/// </summary>
+internal static class BuyDryRun
+{
+    internal static BatchResultView Run(TradeRequest request, TraderContact contact, CreditCard card,
+        float stressPenalty)
+    {
+        BuyLedger<TransactionDataInstance> ledger =
+            new BuyLedger<TransactionDataInstance>(card.Currency, DeliverySnapshot.Take(contact, card).EmptySlots());
+        BatchBuilder batch = new BatchBuilder(request.Items.Count);
+        for (int index = 0; index < request.Items.Count; index++)
+        {
+            TradeItemRequest item = request.Items[index];
+            if (!TradeLineRun.TryFind(TradeSide.Buying, contact, item, out TransactionDataInstance? entry,
+                    out ApiException? refusal))
+            {
+                batch.Failed(new NotTradedView(index, null, 0, 0f, refusal!));
+                continue;
+            }
+
+            TradeLine line = TradeLineRun.LineOf(entry!, TradeSide.Buying, stressPenalty);
+            BuyVerdict verdict = ledger.Take(entry!, TradeSide.Buying.Limit(entry!), item.Quantity,
+                item.Quantity * line.CreditsEach, RoomOf((SellDataInstance)entry!));
+            switch (verdict)
+            {
+                case BuyVerdict.Bought bought:
+                    batch.Succeeded(new TradedView(index, line, buying: true, bought.Quantity, bought.Credits,
+                        bought.StockAfter));
+                    break;
+                case BuyVerdict.Refused refused:
+                    batch.Failed(new NotTradedView(index, line, 0, 0f,
+                        ApiErrors.Refused(refused.Code, refused.Message)));
+                    break;
+                case BuyVerdict.Partial partial:
+                    batch.Failed(new NotTradedView(index, line, partial.Quantity, partial.Credits,
+                        ApiErrors.Refused("trade_failed", partial.Message)));
+                    break;
+            }
+        }
+
+        return batch.Build();
+    }
+
+    // HandleBuyGasMix when the entry sells no item; HandleBuyItem stacks only a Stackable or an Ingot, each unit made
+    // with the quantity its actions give it (floored), one slot per unit for anything else.
+    private static BuyRoom RoomOf(SellDataInstance entry)
+    {
+        if (entry.SellingItem == null)
+        {
+            return BuyRoom.Gas;
+        }
+
+        Thing prefab = entry.SellingItem.Prefab;
+        if (!(prefab is Stackable || prefab is Ingot) || !(prefab is IQuantity stack))
+        {
+            return BuyRoom.OnePerSlot;
+        }
+
+        return BuyRoom.Stacked(Math.Floor(MadeQuantity(entry, stack)), stack.GetMaxQuantity);
+    }
+
+    // The prefab's quantity after SellDataInstance.ExecuteActions: the trade's actions, then the item's own.
+    private static double MadeQuantity(SellDataInstance entry, IQuantity stack)
+    {
+        double quantity = stack.GetQuantity;
+        List<ActionData> actions = new List<ActionData>(entry.SellData.TradeActions);
+        actions.AddRange(entry.SellingItem.Actions);
+        foreach (ActionData action in actions)
+        {
+            quantity = action switch
+            {
+                QuantityAction set => Math.Min(set.Value, stack.GetMaxQuantity),
+                PercentAction percent when stack is Consumable consumable => percent.Value * consumable.MaxQuantity,
+                _ => quantity,
+            };
+        }
+
+        return quantity;
+    }
+}
+
+/// <summary>
+/// One line of a real purchase: find the entry, check it, then buy it through the game. Finding an entry and its
+/// price serve the dry run (BuyDryRun) and trader_sell (SellRun) too.
 /// </summary>
 internal static class TradeLineRun
 {
@@ -365,13 +455,6 @@ internal static class TradeLineRun
         if (refusal != null)
         {
             batch.Failed(new NotTradedView(index, line, 0, 0f, refusal));
-            return;
-        }
-
-        if (request.DryRun)
-        {
-            int after = side.Limit(entry!) - item.Quantity;
-            batch.Succeeded(new TradedView(index, line, side.IsBuying, item.Quantity, cost, after));
             return;
         }
 
@@ -558,18 +641,9 @@ internal sealed class DeliverySnapshot
         }
     }
 
-    internal bool HasEmptySlot()
-    {
-        for (int index = 0; index < _before.Count; index++)
-        {
-            if (_before[index] == null)
-            {
-                return true;
-            }
-        }
+    internal bool HasEmptySlot() => EmptySlots() > 0;
 
-        return false;
-    }
+    internal int EmptySlots() => _before.FindAll(thing => thing == null).Count;
 
     internal List<DeliveredView> Delivered()
     {

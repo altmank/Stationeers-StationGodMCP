@@ -194,6 +194,19 @@ public sealed class BuiltPartTests
         Assert.Equal("fill", RunShape.BuiltPart(null, At(9, 0, 0), false));
         Assert.Equal("joined", RunShape.BuiltPart(null, At(9, 0, 0), true));
     }
+
+    // The pieces form (undo_job's rebuilds) was logged under "run".
+    [Fact]
+    public void PiecesFormIsLoggedAsPieces()
+    {
+        RunShape pieces = RunShape.Pieces(new[] { At(0, 0, 0), At(4, 0, 0) }, out _)!;
+
+        Assert.Equal("pieces", RunShape.BuiltPart(pieces, At(4, 0, 0), false));
+        Assert.Equal("joined", RunShape.BuiltPart(pieces, At(0, 0, 0), true));
+        Assert.Equal("pieces", RunShape.BuiltPart(pieces.WithFills(new Dictionary<GridCell, EndSet>()), At(0, 0, 0),
+            false));
+        Assert.Equal("run", RunShape.BuiltPart(RunShape.Line(new[] { At(0, 0, 0) }), At(0, 0, 0), false));
+    }
 }
 
 /// <summary>The planners' resolved_networks for to's handle.</summary>

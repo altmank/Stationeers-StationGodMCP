@@ -49,6 +49,11 @@
   forecast pressure and rating, the pipes expected to burst, where each leaks (a room id or `outdoors`) and the gases
   and moles expected out. The job's gas check expects that release (`planned_release_mol`): it is never put back and
   never ends the job `gas_lost`.
+- **`trader_buy` dry runs add the lines up.** Each line is checked against the credits, stock and empty slots the
+  lines before it would leave, so the dry run refuses the lines the real run would (`insufficient_credits` and the
+  rest) and `credits_after` no longer goes below 0. A line that runs out of room part way shows the part it would buy.
+- **`created_by_part` `pieces`.** Pieces laid with the `pieces` form of `place_cables`, `place_pipes` and
+  `place_chutes` (and `undo_job`'s rebuilds) are listed under `pieces`, no longer under `run`.
 - **`undo_job` knows a job it already undid:** the plan says it was already undone and lists the undo's jobs in
   `plan.undone_by`, instead of reporting the world as diverged.
 

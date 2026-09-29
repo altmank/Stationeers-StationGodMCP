@@ -246,9 +246,13 @@ internal sealed class RunShape
 {
     private readonly HashSet<GridCell> _fills;
 
+    /// <summary>What the main cells are logged as: "run", or "pieces" for the pieces form.</summary>
+    private readonly string _mainPart;
+
     private RunShape(List<GridCell> cells, Dictionary<GridCell, EndSet> ends, List<RunTip> tips, List<RunLeg> legs,
-        List<GridCell> main, HashSet<GridCell> fills, List<RunBranch> branches)
+        List<GridCell> main, HashSet<GridCell> fills, List<RunBranch> branches, string mainPart = "run")
     {
+        _mainPart = mainPart;
         Cells = cells;
         Ends = ends;
         Tips = tips;
@@ -305,7 +309,7 @@ internal sealed class RunShape
 
         error = null;
         return new RunShape(new List<GridCell>(cells), ends, tips, new List<RunLeg>(), new List<GridCell>(cells),
-            new HashSet<GridCell>(), new List<RunBranch>());
+            new HashSet<GridCell>(), new List<RunBranch>(), "pieces");
     }
 
     /// <summary>A plain run with no branches.</summary>
@@ -410,18 +414,18 @@ internal sealed class RunShape
             added.Add(fill.Key);
         }
 
-        return new RunShape(cells, ends, Tips, Legs, Main, added, Branches);
+        return new RunShape(cells, ends, Tips, Legs, Main, added, Branches, _mainPart);
     }
 
     /// <summary>
-    /// Which part of the tree a cell belongs to: "run" for the main run, "branch N" for branch N (0-based), "fill" for
+    /// Which part of the tree a cell belongs to: "run" for the main run ("pieces" for the pieces form), "branch N" for branch N (0-based), "fill" for
     /// a split long straight's cell, null for a cell the shape does not hold.
     /// </summary>
     internal string? PartOf(GridCell cell)
     {
         if (Main.Contains(cell))
         {
-            return "run";
+            return _mainPart;
         }
 
         for (int index = 0; index < Branches.Count; index++)

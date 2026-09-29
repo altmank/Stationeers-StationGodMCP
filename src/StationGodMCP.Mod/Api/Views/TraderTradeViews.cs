@@ -57,17 +57,20 @@ internal sealed class TradeView
 
     /// <summary>
     /// A dry run's credits_after: the balance once every line that would go through has traded, less what they would
-    /// spend and plus what they would earn; refused lines change nothing.
+    /// spend and plus what they would earn; a line that would go through only in part (a purchase that runs out of
+    /// room) counts for its part, a refused line for nothing.
     /// </summary>
-    internal static float PredictedCredits(float creditsBefore, List<BatchItemView> results)
+    internal static float PredictedCredits(float creditsBefore, List<BatchItemView> results, bool buying)
     {
         float credits = creditsBefore;
         foreach (BatchItemView result in results)
         {
-            if (result is TradedView traded)
+            credits += result switch
             {
-                credits += (traded.CreditsEarned ?? 0f) - (traded.CreditsSpent ?? 0f);
-            }
+                TradedView traded => (traded.CreditsEarned ?? 0f) - (traded.CreditsSpent ?? 0f),
+                NotTradedView partial => buying ? -partial.Credits : partial.Credits,
+                _ => 0f,
+            };
         }
 
         return credits;

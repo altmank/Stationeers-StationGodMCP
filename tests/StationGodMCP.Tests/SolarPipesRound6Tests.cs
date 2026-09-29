@@ -88,10 +88,10 @@ public sealed class SolarPipesRound6Tests
         sell.Succeeded(new TradedView(1, coil, buying: false, 4, 1.6f, 4));
         sell.Succeeded(new TradedView(2, coil, buying: false, 4, 1.6f, 0));
         sell.Failed(new NotTradedView(3, coil, 0, 0f, ApiErrors.Refused("not_wanted", "no")));
-        Assert.Equal(4.8f, TradeView.PredictedCredits(0f, sell.Build().Results), 3);
+        Assert.Equal(4.8f, TradeView.PredictedCredits(0f, sell.Build().Results, buying: false), 3);
 
         BatchBuilder buy = new BatchBuilder(1);
         buy.Succeeded(new TradedView(0, coil, buying: true, 1, 3.75f, 9));
-        Assert.Equal(0.65f, TradeView.PredictedCredits(4.4f, buy.Build().Results), 3);
+        Assert.Equal(0.65f, TradeView.PredictedCredits(4.4f, buy.Build().Results, buying: true), 3);
     }
 }
