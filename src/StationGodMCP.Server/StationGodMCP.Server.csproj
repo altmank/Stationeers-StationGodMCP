@@ -11,4 +11,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StationGodMCP.Tests" />
+  </ItemGroup>
 </Project>

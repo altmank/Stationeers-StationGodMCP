@@ -12,6 +12,9 @@ internal static class Program
     // Reported in the initialize response. build.ps1 checks it matches StationGodMCP.Server.csproj and the mod.
     private const string ServerVersion = "1.4.4";
     private const string ProtocolVersion = "2025-06-18";
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(35);
+    private static readonly JsonElement NullId = JsonSerializer.SerializeToElement<object?>(null);
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -46,19 +49,47 @@ internal static class Program
         }
     }
 
-    private static async Task<string?> HandleMcpMessageAsync(string line, GameTransportSettings transport)
+    // Every tool's input schema as tools/list publishes it, by tool name: what ArgumentCheck holds arguments to.
+    internal static readonly Dictionary<string, JsonElement> InputSchemas = JsonSerializer
+        .SerializeToElement(ToolDefinitions.All, JsonOptions)
+        .EnumerateArray()
+        .ToDictionary(tool => tool.GetProperty("name").GetString()!, tool => tool.GetProperty("inputSchema").Clone());
+
+    internal static async Task<string?> HandleMcpMessageAsync(string line, GameTransportSettings transport)
+    {
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(line);
+        }
+        catch (JsonException exception)
+        {
+            return SerializeRpcError(RequestIds.Recover(line), -32700, $"Parse error: the line is not JSON ({exception.Message})");
+        }
+
+        using (document)
+        {
+            return await HandleRequestAsync(document.RootElement, transport);
+        }
+    }
+
+    private static async Task<string?> HandleRequestAsync(JsonElement root, GameTransportSettings transport)
     {
         object? requestId = null;
         try
         {
-            using JsonDocument document = JsonDocument.Parse(line);
-            JsonElement root = document.RootElement;
-            if (root.TryGetProperty("id", out JsonElement idElement))
+            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("id", out JsonElement idElement))
             {
                 requestId = idElement.Clone();
             }
 
-            string method = root.GetProperty("method").GetString() ?? string.Empty;
+            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("method", out JsonElement methodElement) ||
+                methodElement.ValueKind != JsonValueKind.String)
+            {
+                throw new McpException(-32600, "Invalid request: a JSON-RPC request is an object with a string method.");
+            }
+
+            string method = methodElement.GetString()!;
             if (method.StartsWith("notifications/", StringComparison.Ordinal))
             {
                 return null;
@@ -92,53 +123,48 @@ internal static class Program
         }
     }
 
+    // Every tool result, the game's and the sidecar's own refusals alike, has one shape (ToolReplies).
     private static async Task<object> CallToolAsync(JsonElement root, GameTransportSettings transport)
     {
-        JsonElement parameters = root.GetProperty("params");
-        string toolName = parameters.GetProperty("name").GetString() ?? string.Empty;
+        if (!root.TryGetProperty("params", out JsonElement parameters) || parameters.ValueKind != JsonValueKind.Object ||
+            !parameters.TryGetProperty("name", out JsonElement nameElement) || nameElement.ValueKind != JsonValueKind.String)
+        {
+            throw new McpException(-32602, "tools/call needs params with a string name.");
+        }
+
+        string toolName = nameElement.GetString()!;
         if (!ToolDefinitions.Names.Contains(toolName))
         {
             throw new McpException(-32602, $"Unknown StationGodMCP tool '{toolName}'.");
         }
 
-        JsonElement arguments = parameters.TryGetProperty("arguments", out JsonElement value)
+        JsonElement arguments = parameters.TryGetProperty("arguments", out JsonElement value) &&
+                                value.ValueKind != JsonValueKind.Null
             ? value.Clone()
             : JsonSerializer.SerializeToElement(new { });
 
-        GameResponse response;
+        IReadOnlyList<string> problems = ArgumentCheck.Problems(InputSchemas[toolName], arguments);
+        if (problems.Count > 0)
+        {
+            return ToolReplies.Failure(ToolFailure.Argument(string.Join(" ", problems)));
+        }
+
         try
         {
-            response = toolName == "sample_logic"
+            GameResponse response = toolName == "sample_logic"
                 ? await SampleLogicAsync(transport, arguments)
                 : await SendToGameAsync(transport, toolName, arguments);
+            return ToolReplies.Of(response.Ok ? response.Result : response.Error, isError: !response.Ok);
+        }
+        catch (ToolFailure failure)
+        {
+            return ToolReplies.Failure(failure);
         }
         catch (Exception exception)
         {
-            string failure = JsonSerializer.Serialize(new
-            {
-                error = new
-                {
-                    code = "game_unavailable",
-                    message = $"Could not reach the Stationeers mod through {transport.Description}: {exception.Message}"
-                }
-            }, JsonOptions);
-            return new
-            {
-                content = new[] { new { type = "text", text = failure } },
-                isError = true
-            };
+            return ToolReplies.Failure(ToolFailure.Unavailable(
+                $"Could not reach the Stationeers mod through {transport.Description}: {exception.Message}"));
         }
-
-        string text = response.Ok
-            ? response.Result.GetRawText()
-            : response.Error.GetRawText();
-
-        return new
-        {
-            content = new[] { new { type = "text", text } },
-            structuredContent = response.Ok ? response.Result : response.Error,
-            isError = !response.Ok
-        };
     }
 
     private static async Task<GameResponse> SendToGameAsync(GameTransportSettings transport, string method, JsonElement arguments)
@@ -160,16 +186,25 @@ internal static class Program
 
     private static async Task<string> SendThroughPipeAsync(string pipeName, string request)
     {
-        using CancellationTokenSource connectTimeout = new(TimeSpan.FromSeconds(3));
+        using CancellationTokenSource connectTimeout = new(ConnectTimeout);
         await using NamedPipeClientStream pipe = new(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
-        await pipe.ConnectAsync(connectTimeout.Token);
+        try
+        {
+            await pipe.ConnectAsync(connectTimeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            throw ToolFailure.Unavailable(
+                $"No StationGodMCP pipe '{pipeName}' answered within {ConnectTimeout.TotalSeconds:0} s: the game is not running, is not hosting a " +
+                "loaded save, does not have the StationGodMCP mod loaded, or uses another pipe name (the mod's [Pipe] Name or " +
+                "STATIONGODMCP_PIPE_NAME; the sidecar's --pipe), or another client held the pipe that long.");
+        }
 
-        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(35));
+        using CancellationTokenSource timeout = new(ReplyTimeout);
         using StreamReader reader = new(pipe, new UTF8Encoding(false), true, 4096, leaveOpen: true);
         using StreamWriter writer = CreateWriter(pipe);
         await writer.WriteLineAsync(request.AsMemory(), timeout.Token);
-
-        string? responseLine = await reader.ReadLineAsync(timeout.Token);
+        string? responseLine = await ReadReplyAsync(reader, timeout.Token, $"pipe '{pipeName}'");
         if (string.IsNullOrWhiteSpace(responseLine))
         {
             throw new IOException("The game closed the pipe without returning a response.");
@@ -182,10 +217,18 @@ internal static class Program
     {
         using TcpClient client = new();
         client.NoDelay = true;
-        using CancellationTokenSource connectTimeout = new(TimeSpan.FromSeconds(3));
-        await client.ConnectAsync(transport.Host!, transport.Port, connectTimeout.Token);
+        using CancellationTokenSource connectTimeout = new(ConnectTimeout);
+        try
+        {
+            await client.ConnectAsync(transport.Host!, transport.Port, connectTimeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            throw ToolFailure.Unavailable(
+                $"No StationGodMCP bridge at {transport.Host}:{transport.Port} answered within {ConnectTimeout.TotalSeconds:0} s.");
+        }
 
-        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(35));
+        using CancellationTokenSource timeout = new(ReplyTimeout);
         await using NetworkStream stream = client.GetStream();
         using StreamReader reader = new(stream, new UTF8Encoding(false), true, 4096, leaveOpen: true);
         using StreamWriter writer = CreateWriter(stream);
@@ -207,13 +250,28 @@ internal static class Program
         }
 
         await writer.WriteLineAsync(request.AsMemory(), timeout.Token);
-        string? responseLine = await reader.ReadLineAsync(timeout.Token);
+        string? responseLine = await ReadReplyAsync(reader, timeout.Token, transport.Description);
         if (string.IsNullOrWhiteSpace(responseLine))
         {
             throw new IOException("The remote StationGodMCP bridge closed the connection without returning a response.");
         }
 
         return responseLine;
+    }
+
+    // The request has gone out: a timeout here does not mean the game ignored it.
+    private static async Task<string?> ReadReplyAsync(StreamReader reader, CancellationToken timeout, string where)
+    {
+        try
+        {
+            return await reader.ReadLineAsync(timeout);
+        }
+        catch (OperationCanceledException)
+        {
+            throw ToolFailure.Unavailable(
+                $"The game took the request through {where} but sent no reply within {ReplyTimeout.TotalSeconds:0} s; " +
+                "it may still have run: read the state back before repeating a change.");
+        }
     }
 
     private static StreamWriter CreateWriter(Stream stream)
@@ -245,7 +303,7 @@ internal static class Program
         {
             if (gatewayElement.ValueKind != JsonValueKind.String)
             {
-                throw new McpException(-32602, "sample_logic gateway_id must be a string.");
+                throw ToolFailure.Argument("Argument 'gateway_id' must be a string.");
             }
 
             gatewayId = string.IsNullOrWhiteSpace(gatewayElement.GetString()) ? null : gatewayElement.GetString();
@@ -254,31 +312,32 @@ internal static class Program
         if (!arguments.TryGetProperty("targets", out JsonElement targetsElement) ||
             targetsElement.ValueKind != JsonValueKind.Array)
         {
-            throw new McpException(-32602, "sample_logic requires a targets array.");
+            throw ToolFailure.Argument("Argument 'targets' must be an array of 1 to 32 entries.");
         }
 
         JsonElement[] targets = targetsElement.EnumerateArray().Select(target => target.Clone()).ToArray();
         if (targets.Length == 0 || targets.Length > 32)
         {
-            throw new McpException(-32602, "sample_logic targets must contain between 1 and 32 entries.");
+            throw ToolFailure.Argument("Argument 'targets' must be an array of 1 to 32 entries.");
         }
 
         double durationSeconds = ReadOptionalNumber(arguments, "duration_seconds", 5d);
         double intervalSeconds = ReadOptionalNumber(arguments, "interval_seconds", 0.5d);
         if (durationSeconds < 0.1d || durationSeconds > 30d)
         {
-            throw new McpException(-32602, "duration_seconds must be between 0.1 and 30.");
+            throw ToolFailure.Argument("Argument 'duration_seconds' must be from 0.1 to 30.");
         }
 
         if (intervalSeconds < 0.05d || intervalSeconds > 5d)
         {
-            throw new McpException(-32602, "interval_seconds must be between 0.05 and 5.");
+            throw ToolFailure.Argument("Argument 'interval_seconds' must be from 0.05 to 5.");
         }
 
         int plannedSamples = (int)Math.Ceiling(durationSeconds / intervalSeconds) + 1;
         if (plannedSamples > 120)
         {
-            throw new McpException(-32602, "The requested duration and interval exceed the 120-sample limit.");
+            throw ToolFailure.Argument(string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                $"duration_seconds {durationSeconds} at interval_seconds {intervalSeconds} asks for {plannedSamples} samples (the first at 0 s included); at most 120."));
         }
 
         JsonElement readArguments = JsonSerializer.SerializeToElement(new
@@ -370,7 +429,7 @@ internal static class Program
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out double number) ||
             double.IsNaN(number) || double.IsInfinity(number))
         {
-            throw new McpException(-32602, $"{name} must be a finite number.");
+            throw ToolFailure.Argument($"Argument '{name}' must be a finite number.");
         }
 
         return number;
@@ -381,12 +440,13 @@ internal static class Program
         return JsonSerializer.Serialize(new { jsonrpc = "2.0", id, result }, JsonOptions);
     }
 
+    // An error reply always carries id, null when the request's id could not be read (JSON-RPC 2.0).
     private static string SerializeRpcError(object? id, int code, string message)
     {
         return JsonSerializer.Serialize(new
         {
             jsonrpc = "2.0",
-            id,
+            id = id ?? NullId,
             error = new { code, message }
         }, JsonOptions);
     }
@@ -446,7 +506,7 @@ internal static class Program
 
     private sealed record GameResponse(bool Ok, JsonElement Result, JsonElement Error);
 
-    private sealed record GameTransportSettings(string PipeName, string? Host, int Port, string? Secret)
+    internal sealed record GameTransportSettings(string PipeName, string? Host, int Port, string? Secret)
     {
         internal bool IsRemote => !string.IsNullOrWhiteSpace(Host);
         internal string Description => IsRemote ? $"TCP endpoint {Host}:{Port}" : $"pipe '{PipeName}'";

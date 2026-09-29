@@ -133,8 +133,9 @@ Fix: pipe jobs lost gas when one job merged pipe networks more than once.
   old_ghosts}`. A family short of gas gets what it lacks put back (`recovered`) and pipeless networks left holding a
   copy are emptied and dropped (`ghosts_cleared`). If anything is still missing the job ends `gas_lost`, not
   `applied`, and every later pipe job is refused (`gas_check_failed`) until the world is loaded again.
-- Removing a network's last pipes still deletes its contents as the game does (only with `allow_contents`); the
-  check reports that family as `emptied`, not as a loss.
+- Removing a network's last pipes with `remove_structure` still deletes its contents as the game does (only with
+  its `allow_contents`; `remove_pipes` has no such argument and refuses with `holds_contents`); the check reports
+  that family as `emptied`, not as a loss.
 
 ## 1.4.0
 
