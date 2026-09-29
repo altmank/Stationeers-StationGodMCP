@@ -86,8 +86,8 @@ internal static class DishAimApi
     private static DishAimView Aim(SatelliteDish dish, DishPoser poser, ThingId dishId, ThingId contactId)
     {
         Vector3 before = poser.Pointer.up;
-        float staleDeg = Vector3.Angle(before, poser.Pose(poser.OriginalHorizontal, poser.OriginalVertical));
-        if (Vector3.Angle(poser.Pose(0f, 0f), poser.Pose(0.5f, 1f)) < MinimumTravelDeg)
+        float staleDeg = DishPoser.AngleDeg(before, poser.Pose(poser.OriginalHorizontal, poser.OriginalVertical));
+        if (DishPoser.AngleDeg(poser.Pose(0f, 0f), poser.Pose(0.5f, 1f)) < MinimumTravelDeg)
         {
             throw ApiErrors.Refused("dish_not_ready", "The dish's model does not move when posed.");
         }
@@ -100,7 +100,7 @@ internal static class DishAimApi
         Vector3 forward = dish.DishForward;
         DishNowView current = new DishNowView(dish.GetLogicValue(LogicType.Horizontal),
             dish.GetLogicValue(LogicType.Vertical), Contacts.Vector(forward),
-            forward.sqrMagnitude > SetForwardSqr ? Vector3.Angle(forward, target) : null);
+            forward.sqrMagnitude > SetForwardSqr ? DishPoser.AngleDeg(forward, target) : null);
         return new DishAimView(dishId, contactId, Contacts.Readiness(dish), result, current, staleDeg,
             poser.Samples);
     }
@@ -135,7 +135,11 @@ internal abstract class DishPoser : Pure.IAngleScore
         return Pointer.up;
     }
 
-    public float Score(float horizontal, float vertical) => Vector3.Angle(Pose(horizontal, vertical), Target);
+    public float Score(float horizontal, float vertical) => AngleDeg(Pose(horizontal, vertical), Target);
+
+    /// <summary>Degrees between two directions in double (Pure.VectorAngle), so a miss under 0.03 is kept.</summary>
+    internal static float AngleDeg(Vector3 a, Vector3 b) =>
+        (float)Pure.VectorAngle.Degrees(a.x, a.y, a.z, b.x, b.y, b.z);
 
     /// <summary>Puts the model back as it was before the first pose.</summary>
     internal abstract void Restore();

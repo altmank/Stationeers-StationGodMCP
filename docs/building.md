@@ -33,7 +33,8 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    nothing. With `wait: true` it is queued instead (status `queued`, its own `job_id` and `position`; up to 8 wait) and
    starts when the slot is free, with every check run again on the world the earlier jobs left.
 6. **Materials** come from your inventory at any depth, or from `from_id` (a belt, a locker, any container), and cost
-   what the game's own placement charges. Nothing is made for free (`not_enough_coils`, `not_enough_materials`).
+   what the game's own placement charges. Nothing is made for free (`not_enough_coils` for cables and pipes,
+   `not_enough_kits` for chutes, `not_enough_materials` for structures).
 7. **Refunds** (`refund`, default true) are what deconstruction would give back. They go into the source's inventory:
    first onto matching stacks (`from_id` itself when it is one, such as a coil stack, then anywhere in it: belts,
    backpack, jetpack, suit and uniform storage, a stack in a hand), then as new stacks into empty slots that take the
@@ -273,9 +274,9 @@ mole. Every job that can change pipe networks (`place_pipes`, `remove_pipes`, `u
 
 The same tools with Kit (Chute), and the item flow checked.
 
-- **Pieces:** straights and corners (1 kit each) and, where three ends meet, a junction (2 kits). Chutes have no other
-  shape, so a cross is refused (`no_piece_for_ends`). Valves, splitters, overflows, bins, windows, inlets and outlets
-  are never placed.
+- **Pieces:** straights and corners (1 kit each) and, where three ends meet, a junction (2 kits); too few kits is
+  `not_enough_kits`. Chutes have no other shape, so a cross is refused (`no_piece_for_ends`). Valves, splitters,
+  overflows, bins, windows, inlets and outlets are never placed.
 - **Direction matters.** Items travel from a run's first cell to its last. Start at the source (a device's chute Output
   port, a chute bin, a line carrying items towards you) and end at the sink (a device's chute Input port).
   `plan_chute_route` refuses a `to` at an Output port or a `from` at an Input port (`invalid_argument`).

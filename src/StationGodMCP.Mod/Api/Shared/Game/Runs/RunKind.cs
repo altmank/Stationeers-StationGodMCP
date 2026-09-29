@@ -87,6 +87,9 @@ internal abstract class RunKind
     /// </summary>
     internal abstract LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context);
 
+    /// <summary>The problem code when the source holds too few of the kit or coil a run is built from.</summary>
+    internal virtual string ShortageCode => "not_enough_coils";
+
     /// <summary>A kind's own notes for the report.</summary>
     internal abstract List<string> Notes { get; }
 

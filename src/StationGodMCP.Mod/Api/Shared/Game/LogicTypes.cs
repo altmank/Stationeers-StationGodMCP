@@ -6,6 +6,7 @@ using System.Globalization;
 using Assets.Scripts.Objects.Motherboards;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -41,15 +42,12 @@ internal static class LogicTypes
             throw ApiErrors.InvalidArgument("Missing required argument 'logic_type'.");
         }
 
-        if (token.Type == JTokenType.Integer)
+        if (token.Type == JTokenType.Integer || token.Type == JTokenType.Float)
         {
-            long numeric = token.Value<long>();
-            if (numeric < ushort.MinValue || numeric > ushort.MaxValue)
-            {
-                throw ApiErrors.Refused("invalid_logic_type", "Numeric logic_type must be between 0 and 65535.");
-            }
-
-            return (LogicType)(ushort)numeric;
+            // The explicit double conversion also reads an integer past a long (a BigInteger); Value<long> throws.
+            return LogicTypeNumber.TryId((double)token, out ushort number)
+                ? (LogicType)number
+                : throw ApiErrors.Refused("invalid_logic_type", LogicTypeNumber.RangeMessage);
         }
 
         string? text = token.Type == JTokenType.String ? token.Value<string>() : token.ToString();

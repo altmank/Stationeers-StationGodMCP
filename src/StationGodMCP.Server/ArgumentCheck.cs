@@ -240,6 +240,7 @@ internal static class ArgumentCheck
 
         string range = (minimum, maximum) switch
         {
+            ({ } low, { } high) when low == high => $"exactly {low}",
             ({ } low, { } high) => $"{low} to {high}",
             ({ } low, null) => $"at least {low}",
             _ => $"at most {maximum}"

@@ -53,6 +53,16 @@ internal static class GrowerSlotRule
         return quantity != 1 ? GrowerRefusal.OneUnit : null;
     }
 
+    /// <summary>
+    /// Whether the grower's hand interaction alone decides a move into this slot, before the generic hidden-slot and
+    /// slot-class rules: a fertiliser slot (FertiliserInHand fills it, anything else is refused by <see cref="Into"/>)
+    /// and a plant slot given a seed or plant (PlantInHand plants it). HandlePlantInteraction never asks
+    /// Slot.IsInteractable or the slot class, and a planter's slots and a station's fertiliser slots are hidden in the
+    /// inventory window though a player fills them by hand. Anything else into a plant slot follows the generic rules.
+    /// </summary>
+    internal static bool HandDecides(GrowerSlotKind kind, bool isPlant) =>
+        kind == GrowerSlotKind.Fertiliser || (kind == GrowerSlotKind.Plant && isPlant);
+
     /// <summary>Whether "auto" may put a new stack of this item into this empty grower slot.</summary>
     internal static bool AutoTakes(GrowerSlotKind kind, bool isFertiliser) =>
         kind != GrowerSlotKind.Fertiliser || isFertiliser;

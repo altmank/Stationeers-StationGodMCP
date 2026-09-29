@@ -37,6 +37,9 @@ internal sealed class ChuteRunKind : RunKind
 
     internal override string? DefaultGrade => "chute";
 
+    // Chutes are built from Kit (Chute), not a coil.
+    internal override string ShortageCode => "not_enough_kits";
+
     internal override Grade? GradeOf(string name) => name == "chute" ? ChuteFamily.Chute : null;
 
     internal override string NameOf(Grade grade) => "chute";

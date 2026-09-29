@@ -630,7 +630,7 @@ internal static class RunPlanner
             plan.Stocks.Add(stock);
             if (plan.From != null && stock.Available < stock.Needed)
             {
-                plan.Problem("not_enough_coils",
+                plan.Problem(plan.Request.Kind.ShortageCode,
                     $"{stock.Needed} {kit.Item.DisplayName} needed, {stock.Available} held by " +
                     $"{plan.From.DisplayName}.", plan.From.ReferenceId);
             }

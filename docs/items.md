@@ -60,9 +60,11 @@ other perishables are never loose in the air.
   item out of a package or a vending store cannot be undone.
 - `quantity` takes that many off a stack; the rest stays. An item that is not a stack (a water packet, a canister)
   moves whole and counts as 1, whatever it holds. `merge` (default true) lets items join a matching stack.
-- A seed or plant moved into a plant slot (a hydroponics tray, station or device) is planted as you plant it by hand:
-  one is used off the stack and a new plant grows in the slot with its genes. `quantity` must be 1 (or the stack hold
-  one); an occupied plant slot is refused.
+- A grower's plant and fertiliser slots follow what you do by hand instead, hidden or not: a planter's slots and a
+  hydroponics station's fertiliser slots are hidden in the inventory window, but you plant and fertilise them by hand.
+- A seed or plant moved into a plant slot (a hydroponics tray, planter, station or device) is planted as you plant it
+  by hand: one is used off the stack and a new plant grows in the slot with its genes. `quantity` must be 1 (or the
+  stack hold one); an occupied plant slot is refused.
 - A grower's fertiliser slot takes only fertiliser, one at a time into an empty slot, as you add it by hand. Anything
   else is refused (`slot_refuses`): the game would take a seed or plant there for the tray's plant. `"auto"` never
   puts anything else there.

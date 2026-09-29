@@ -280,7 +280,8 @@ internal static class RunArgs
         string? name = (args.OptionalString("grade") ?? kind.DefaultGrade)?.Trim().ToLowerInvariant();
         if (name == null)
         {
-            throw ApiErrors.InvalidArgument($"grade is required: {string.Join(", ", kind.GradeNames)}.");
+            throw ApiErrors.InvalidArgument(
+                $"Argument 'grade' is required: one of {string.Join(", ", kind.GradeNames)}.");
         }
 
         return kind.GradeOf(name) ??

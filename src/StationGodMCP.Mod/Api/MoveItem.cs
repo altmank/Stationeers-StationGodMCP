@@ -44,7 +44,9 @@ namespace StationGodMCP.Api;
 /// otherwise) and takes the used unit's genes (Plant.ApplySeedTraits). Moving the seed itself leaves a seed bag in the
 /// tray with no growth stages, whose Plant.RefreshVisualizers throws.
 ///
-/// A grower's other slots follow its hand interactions too (Pure/GrowerSlotRule): its fertiliser slot takes one unit
+/// A grower's plant and fertiliser slots are judged by its hand interactions (Pure/GrowerSlotRule), which never ask
+/// whether the slot is interactable: a planter's slots and a station's fertiliser slots are hidden in the inventory
+/// window, yet a player plants and fertilises them by hand. Its fertiliser slot takes one unit
 /// of fertiliser into an empty slot, nothing else (most growers take any plant entering any slot for their plant), and
 /// a plant growing in a plant slot is never taken out whole: a player only harvests or clears it.
 ///
@@ -498,6 +500,12 @@ internal static class MovePlanner
             return ApiErrors.Refused("slot_locked", $"Slot {index} of {target.DisplayName} is locked.");
         }
 
+        if (GrowerSlotRule.HandDecides(GrowerSlots.KindOf(target, slot), item is Plant))
+        {
+            // PlantingRefusal / FertilisingRefusal judge it, as the hand interaction does, hidden slot or not.
+            return null;
+        }
+
         if (!SlotAccess.Reaches(slot))
         {
             return ApiErrors.Refused("slot_refuses", SlotAccess.HiddenReason(slot));
@@ -520,8 +528,15 @@ internal static class MovePlanner
         out Stackable? mergeInto)
     {
         mergeInto = null;
+        if (!move.Merge)
+        {
+            return ApiErrors.Refused("slot_occupied",
+                $"{SlotAccess.Label(slot)} holds {slot.Get().DisplayName}, and merge is false, so {item.DisplayName} "
+                + "does not join it.");
+        }
+
         Stackable? occupant = slot.Get() as Stackable;
-        if (!move.Merge || occupant == null || !(item is Stackable stack) || !Slot.CanMerge(item, slot))
+        if (occupant == null || !(item is Stackable stack) || !Slot.CanMerge(item, slot))
         {
             return ApiErrors.Refused("slot_occupied",
                 $"{SlotAccess.Label(slot)} holds {slot.Get().DisplayName}, which {item.DisplayName} cannot join.");
@@ -569,8 +584,7 @@ internal static class MovePlanner
         for (int index = 0; index < usable; index++)
         {
             Slot candidate = target.Slots[index];
-            if (candidate != null && candidate.Get() == null && SlotAccess.AutoTakesNew(item, candidate) &&
-                GrowerSlotRule.AutoTakes(GrowerSlots.KindOf(target, candidate), item is Fertiliser))
+            if (candidate != null && candidate.Get() == null && AutoTakesNew(item, target, candidate))
             {
                 slot = candidate;
                 return null;
@@ -579,6 +593,15 @@ internal static class MovePlanner
 
         slot = null;
         return ApiErrors.Refused("no_free_slot", $"{target.DisplayName} has no slot that takes {item.DisplayName}.");
+    }
+
+    // A grower slot its hand interaction fills is taken by the grower rules, hidden or not; any other by the game's
+    // quick-move rules.
+    private static bool AutoTakesNew(DynamicThing item, Thing target, Slot candidate)
+    {
+        GrowerSlotKind kind = GrowerSlots.KindOf(target, candidate);
+        return (GrowerSlotRule.HandDecides(kind, item is Plant) || SlotAccess.AutoTakesNew(item, candidate))
+            && GrowerSlotRule.AutoTakes(kind, item is Fertiliser);
     }
 }
 

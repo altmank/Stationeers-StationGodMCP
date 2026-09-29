@@ -54,7 +54,8 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 - `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it.
 - A holder with no chip: `get_ic_status` answers only `has_chip: false`, the holder and its pins (no `housing`, power
   or runtime fields); the other tools refuse with `no_programmable_chip`, `resolve_ic_selectors` too. Arguments are
-  checked before the chip, so a bad `action`, `source` or `target_reference_ids` is `invalid_argument` on any holder.
+  checked before the chip, so a bad `action` or `source`, or a malformed id in `target_reference_ids`, is
+  `invalid_argument` on any holder; an unknown or repeated id is looked up only after the holder and its chip.
 
 Load a program and check it, `set_ic_source` then `get_ic_status`:
 

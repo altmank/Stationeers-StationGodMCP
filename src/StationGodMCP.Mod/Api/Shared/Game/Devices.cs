@@ -53,16 +53,20 @@ internal static class Devices
         Find(scope, id.Value) ?? throw NotFound(scope, id);
 
     // A thing that exists but has no logic (a crate, a lander, a tool) is named as such, not as out of sight, and so is
-    // a logic item (a labeller, a tablet) that no player wears or holds: it is not in Device.AllDevices.
+    // a logic item (a labeller, a tablet) that no player wears or holds, and a structure with logic that is not a
+    // Device (a landing pad centre): neither is in Device.AllDevices.
     private static ApiException NotFound(DeviceScope scope, ThingId id) =>
         Thing.Find(id.Value) switch
         {
             Thing thing when thing != null && !(thing is ILogicable) => ApiErrors.Refused("device_not_found",
                 $"{thing.DisplayName} ({id}) is not a device: it has no logic. container_contents shows the slots of "
                 + "any thing."),
-            Thing thing when thing != null && !(thing is Device) => ApiErrors.Refused("device_not_found",
-                $"{thing.DisplayName} ({id}) is an item, not a device: the device tools reach a logic item only "
+            Item item when item != null => ApiErrors.Refused("device_not_found",
+                $"{item.DisplayName} ({id}) is an item, not a device: the device tools reach a logic item only "
                 + "while a player wears or holds it. container_contents shows the slots of any thing."),
+            Thing thing when thing != null && !(thing is Device) => ApiErrors.Refused("device_not_found",
+                $"{thing.DisplayName} ({id}) is not a device: it has logic of its own but is not in the game's device "
+                + "list, so the device tools do not reach it (list_devices shows what they reach)."),
             _ => ApiErrors.Refused("device_not_found",
                 $"Device {id} is not visible {scope.Where} and is not worn or held by a player."),
         };
