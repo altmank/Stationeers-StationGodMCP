@@ -103,9 +103,10 @@ internal static class RoomsApi
 
     internal static string IdOf(Room room) => room.RoomId.ToString(CultureInfo.InvariantCulture);
 
-    // The cell of the thing's centre (WorldGrid(Thing)), which also places a carried item or a standing player.
+    // The cell of the centre (WorldGrid(Thing)) of the thing, or of its outermost holder when it is in a slot (a seed
+    // in a tray sits on the cell boundary below the tray's cell; a carried item is where its player stands).
     private static Room? RoomOf(Thing? thing, RoomController rooms) =>
-        thing == null ? null : rooms.GetRoom(new WorldGrid(thing).Value);
+        thing == null ? null : rooms.GetRoom(new WorldGrid(HolderChain.PlaceOf(thing)).Value);
 
     // Device.AllDevices holds every registered device structure; each is placed by its own registered cell.
     private static Dictionary<long, List<ThingView>> DevicesByRoom(RoomController rooms)

@@ -55,9 +55,16 @@ other perishables are never loose in the air.
   first, else the first empty slot that takes the item.
 - Only slots you could click in the game are used. A hidden slot (a cable coil's internal slot, a vending machine's
   store) is refused with `slot_refuses`: the game keeps it for itself, and a coil destroys whatever is in it when it is
-  used up. An item already in a hidden slot can still be moved out.
+  used up. An item already in a hidden slot can still be moved out, to rescue one put there by mistake. The same
+  goes for a package's items and a vending machine's store, and nothing goes back into a hidden slot, so taking an
+  item out of a package or a vending store cannot be undone.
 - `quantity` takes that many off a stack; the rest stays. An item that is not a stack (a water packet, a canister)
   moves whole and counts as 1, whatever it holds. `merge` (default true) lets items join a matching stack.
+- A seed or plant moved into a plant slot (a hydroponics tray, station or device) is planted as you plant it by hand:
+  one is used off the stack and a new plant grows in the slot with its genes. `quantity` must be 1 (or the stack hold
+  one); an occupied plant slot is refused.
+- If the game throws part way through a move but the slot holds the result, the move is reported done with the
+  game's error in `warning`: do not repeat it.
 - `moves` applies up to 64 moves in order, each with its own result.
 - Refusals name the reason: `slot_refuses` (the game's slot rules, with its message; a crate or portable tank is
   refused because the game only drags those into a slot), `slot_occupied`, `stack_full`,

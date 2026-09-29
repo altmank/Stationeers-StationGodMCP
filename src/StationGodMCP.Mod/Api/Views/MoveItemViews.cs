@@ -22,7 +22,7 @@ internal sealed class SlotRefView
 internal sealed class ItemMovedView : BatchItemView
 {
     internal ItemMovedView(int index, ThingId referenceId, SlotRefView? from, SlotRefView to, int quantityMoved,
-        ThingId? mergedInto, ThingId destinationReferenceId) : base(index, ok: true)
+        ThingId? mergedInto, ThingId destinationReferenceId, string? warning = null) : base(index, ok: true)
     {
         ReferenceId = referenceId;
         From = from;
@@ -30,6 +30,7 @@ internal sealed class ItemMovedView : BatchItemView
         QuantityMoved = quantityMoved;
         MergedInto = mergedInto;
         DestinationReferenceId = destinationReferenceId;
+        Warning = warning;
     }
 
     public ThingId ReferenceId { get; }
@@ -46,6 +47,11 @@ internal sealed class ItemMovedView : BatchItemView
 
     /// <summary>The stack now in the destination slot: the item, the new stack a split made, or MergedInto.</summary>
     public ThingId DestinationReferenceId { get; }
+
+    /// <summary>
+    /// Null, or the game's error when one of its calls threw part way but the slot holds the result: the move is done.
+    /// </summary>
+    public string? Warning { get; }
 }
 
 /// <summary>One move that was refused; nothing was changed for it.</summary>

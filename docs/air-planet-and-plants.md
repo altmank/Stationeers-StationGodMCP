@@ -59,11 +59,13 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
 - **Burst check:** refused with `would_burst` when a side's settled pressure would exceed any member's rating. The
   receiving side is also refused when the move makes it worse by one of the game's matter rules: liquid over 2% of a
   gas pipe network's volume, gas or liquid freezing in a network, or the pressure once arriving liquid has boiled
-  (`total.after_boiling` in the reply shows that state). Into a room, liquid the room's air would lose is refused the
+  (`total.after_boiling` in the reply shows that state; it is null unless every liquid that can boil would boil
+  away, so a liquid that stays liquid, or whose boiling would cool it to its freezing point first, leaves it null). Into a room, liquid the room's air would lose is refused the
   same way: a room's cells freeze any amount out of their air (ice per 50 mol in a cell, smaller amounts held out of
   the air), so the move is refused when more would freeze than before, or when an arriving liquid would sit under its
   minimum liquid pressure (6.3 kPa of gas for water) in a room without the heat to boil it all, where it keeps
-  evaporating and cooling the room until the rest freezes. `force` skips every check.
+  evaporating and cooling the room until the rest freezes. Boiling that would cool the room under the liquid's
+  freezing point counts as not having the heat. `force` skips every check.
 - **Timing:** the game changes gas only on its atmospherics thread, so the move is queued (`status: queued`) and applied
   at the next atmospherics tick, about half a second later, never while paused. The reply is the prediction; call again
   with only `transfer_id` for the outcome: `queued` until it has been applied, then `applied` or `failed` (with
@@ -72,7 +74,7 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
   issued, or older than the last 64 outcomes. `dry_run: true` returns the same prediction after the same checks and
   queues nothing (`status: dry_run`, no `transfer_id`).
 - **Rooms:** `{"room_id": "<id>"}` (the `room_id` from `rooms`) or `{"room_of": "<reference id>"}` (the room that
-  thing is in; the player's id gives the room you stand in) as `from` or `to`. The game keeps no room-wide
+  thing is in; the player's id gives the room you stand in, and an item in a slot is in its outermost holder's room) as `from` or `to`. The game keeps no room-wide
   atmosphere, only one per 2 m cell, so a room here is every cell of it that has air of its own; cells without are
   left out, and a room with none is refused `no_atmosphere`. From a room, `gases` is required, so its breathable air
   is never emptied by leaving `gases` out. Each named gas is taken from every cell in proportion to what the cell

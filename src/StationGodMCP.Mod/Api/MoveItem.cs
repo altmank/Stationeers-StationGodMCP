@@ -1,10 +1,13 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Assets.Scripts;
+using Assets.Scripts.Genetics;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
+using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
@@ -32,6 +35,15 @@ namespace StationGodMCP.Api;
 /// an item may be taken out of a hidden slot (that is how one put there by mistake is rescued). A part of a stack
 /// cannot join another stack: the game has no call that merges part of one without first making a new stack in an
 /// empty slot.
+///
+/// Planting (CODE, HydroponicsUtils.PlantInHand, as a player plants from the hand): a seed or plant into a grower's
+/// plant slot (IGrower.PlantToFertiliserSlotMapping) is not moved there. One unit is used off the stack
+/// (Stackable.OnUseItem), a new plant is made in the slot from the seed's Seed.PlantType (a plant's own prefab
+/// otherwise) and takes the used unit's genes (Plant.ApplySeedTraits). Moving the seed itself leaves a seed bag in the
+/// tray with no growth stages, whose Plant.RefreshVisualizers throws.
+///
+/// A game call that throws part way is read back: when the slot holds the result, the move is reported done with the
+/// game's error as a warning, never as an internal error, so a client does not repeat a move that happened.
 /// </summary>
 internal static class MoveItemApi
 {
@@ -274,8 +286,37 @@ internal static class MovePlanner
             return false;
         }
 
-        plan = new MovePlan(item!, target!, slot!, quantity, mergeInto);
+        bool plants = item is Plant && GrowerSlots.IsPlantSlot(target!, slot!);
+        refusal = plants ? PlantingRefusal((Plant)item!, target!, slot!, quantity) : null;
+        if (refusal != null)
+        {
+            return false;
+        }
+
+        plan = new MovePlan(item!, target!, slot!, quantity, mergeInto, plants);
         return true;
+    }
+
+    // A plant slot holds one plant, grown from one unit of the stack, as a player plants from the hand.
+    private static ApiException? PlantingRefusal(Plant item, Thing target, Slot slot, int quantity)
+    {
+        if (slot.Get() != null)
+        {
+            return ApiErrors.Refused("slot_occupied",
+                $"{SlotAccess.Label(slot)} already has {slot.Get().DisplayName} planted; a plant slot holds one "
+                + "plant.");
+        }
+
+        if (quantity != 1)
+        {
+            return ApiErrors.InvalidArgument(
+                $"Slot {slot.SlotIndex} of {target.DisplayName} is a plant slot: planting takes one {item.DisplayName} "
+                + "off the stack, as a player plants, so pass quantity 1.");
+        }
+
+        return GrowerSlots.PlantingPrefab(item) == null
+            ? ApiErrors.Refused("slot_refuses", $"The game has no plant that {item.DisplayName} grows into.")
+            : null;
     }
 
     // What the item and the destination are, and how many items move; a refusal when either is unusable.
@@ -467,7 +508,8 @@ internal static class MovePlanner
         {
             Slot candidate = target.Slots[index];
             if (candidate != null && candidate != item.ParentSlot && candidate.Get() != null &&
-                SlotAccess.AutoPicks(candidate) && MergeRefusal(move, item, candidate, quantity, out mergeInto) == null)
+                SlotAccess.AutoPicks(candidate) && !GrowerSlots.IsPlantSlot(target, candidate) &&
+                MergeRefusal(move, item, candidate, quantity, out mergeInto) == null)
             {
                 slot = candidate;
                 return null;
@@ -496,13 +538,14 @@ internal static class MovePlanner
 /// <summary>A checked move, applied with the game's calls and read back.</summary>
 internal sealed class MovePlan
 {
-    internal MovePlan(DynamicThing item, Thing target, Slot slot, int quantity, Stackable? mergeInto)
+    internal MovePlan(DynamicThing item, Thing target, Slot slot, int quantity, Stackable? mergeInto, bool plants)
     {
         Item = item;
         Target = target;
         Slot = slot;
         Quantity = quantity;
         MergeInto = mergeInto;
+        Plants = plants;
     }
 
     internal DynamicThing Item { get; }
@@ -515,6 +558,9 @@ internal sealed class MovePlan
 
     internal Stackable? MergeInto { get; }
 
+    /// <summary>Whether the slot is a grower's plant slot, so one unit is planted instead of moved.</summary>
+    internal bool Plants { get; }
+
     internal ItemMovedView Apply(int index)
     {
         SlotRefView? from = Item.ParentSlot == null
@@ -522,10 +568,37 @@ internal sealed class MovePlan
             : new SlotRefView(new ThingId(Item.ParentSlot.Parent.ReferenceId), Item.ParentSlot.SlotIndex);
         SlotRefView to = new SlotRefView(new ThingId(Target.ReferenceId), Slot.SlotIndex);
         ThingId itemId = new ThingId(Item.ReferenceId);
-        DynamicThing landed = MergeInto != null ? Merge(MergeInto) : IsSplit() ? Split() : MoveWhole();
         ThingId? merged = MergeInto != null ? new ThingId(MergeInto.ReferenceId) : (ThingId?)null;
-        return new ItemMovedView(index, itemId, from, to, Quantity, merged, new ThingId(landed.ReferenceId));
+        int mergedBefore = MergeInto != null ? MergeInto.Quantity : 0;
+        try
+        {
+            DynamicThing landed = Perform();
+            return new ItemMovedView(index, itemId, from, to, Quantity, merged, new ThingId(landed.ReferenceId));
+        }
+        catch (Exception thrown) when (!(thrown is ApiException))
+        {
+            DynamicThing? landed = LandedAfter(mergedBefore);
+            if (landed == null)
+            {
+                throw Failed(thrown);
+            }
+
+            int moved = MergeInto != null
+                ? MergeInto.Quantity - mergedBefore
+                : landed is Stackable stack ? stack.Quantity : 1;
+            return new ItemMovedView(index, itemId, from, to, moved, merged, new ThingId(landed.ReferenceId),
+                $"The game threw during the move ({thrown.GetType().Name}: {thrown.Message}), but the slot holds "
+                + "the result, so the move is done; check it with container_contents.");
+        }
     }
+
+    private DynamicThing Perform() =>
+        MergeInto != null ? Merge(MergeInto) : Plants ? PlantOne() : IsSplit() ? Split() : MoveWhole();
+
+    // What the move left in the slot after a game call threw: the stack it joined once that grew; otherwise whatever
+    // is in the slot, which was empty before (only a merge goes into an occupied slot).
+    private DynamicThing? LandedAfter(int mergedBefore) =>
+        MergeInto != null ? (MergeInto.Quantity > mergedBefore ? MergeInto : null) : Slot.Get();
 
     private bool IsSplit() => Item is Stackable stack && Quantity < stack.Quantity;
 
@@ -548,6 +621,33 @@ internal sealed class MovePlan
         return made;
     }
 
+    // HydroponicsUtils.PlantInHand: the genes of the unit used, one unit off the stack, a new plant made in the slot.
+    // The genes go on in finally, so a plant the game made before throwing still gets them.
+    private DynamicThing PlantOne()
+    {
+        Plant seed = (Plant)Item;
+        GeneCollection genes = GeneCollection.Copy(seed.Genes);
+        Thing prefab = GrowerSlots.PlantingPrefab(seed)!;
+        if (!seed.OnUseItem(1f, Target))
+        {
+            throw Failed();
+        }
+
+        try
+        {
+            OnServer.Create<Plant>(prefab, Slot);
+        }
+        finally
+        {
+            if (Slot.Get() is Plant grown)
+            {
+                grown.ApplySeedTraits(genes);
+            }
+        }
+
+        return Slot.Get() is Plant planted ? planted : throw Failed();
+    }
+
     private DynamicThing Merge(Stackable into)
     {
         int before = into.Quantity;
@@ -555,9 +655,36 @@ internal sealed class MovePlan
         return into.Quantity == before + Quantity ? into : throw Failed();
     }
 
-    private ApiException Failed() =>
+    private ApiException Failed(Exception? thrown = null) =>
         ApiErrors.Refused(
             "move_failed",
-            $"The game did not put {Item.DisplayName} into slot {Slot.SlotIndex} of {Target.DisplayName}; "
-            + "read the slots before retrying.");
+            $"The game did not put {Item.DisplayName} into slot {Slot.SlotIndex} of {Target.DisplayName}"
+            + (thrown == null ? "" : $" (it threw {thrown.GetType().Name}: {thrown.Message})")
+            + "; read the slots before retrying.");
+}
+
+/// <summary>A grower's plant slots: hydroponics trays, stations, portable and automated hydroponics.</summary>
+internal static class GrowerSlots
+{
+    // IGrower.PlantToFertiliserSlotMapping maps the planting interactable of a plant slot (Slot.Action) to that slot,
+    // and throws for any other interactable.
+    internal static bool IsPlantSlot(Thing target, Slot slot)
+    {
+        if (!(target is IGrower grower))
+        {
+            return false;
+        }
+
+        try
+        {
+            return grower.PlantToFertiliserSlotMapping(slot.Action).PlantSlot == slot;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>What planting it grows: a seed's Seed.PlantType, a plant's own prefab; null when unresolved.</summary>
+    internal static Thing? PlantingPrefab(Plant item) => item is Seed seed ? seed.PlantType : item.SourcePrefab;
 }

@@ -96,6 +96,23 @@ public sealed class GasMoveLedgerTests
     }
 
     [Fact]
+    public void BoilingThatCoolsUnderTheFreezingPointDoesNotFinish()
+    {
+        // The live case (air-11): 0.5 mol water into a 0.9 kPa room would settle at 265.1 K once boiled, above its
+        // boiling point at that pressure but under water's 273.15 K freezing point: the rest freezes first.
+        Assert.False(LiquidBoiling.BoilsAway(265.079, 250.0, 273.15));
+        Assert.False(LiquidBoiling.BoilsAway(270.917, 250.0, 273.15));
+        Assert.True(LiquidBoiling.BoilsAway(300.0, 250.0, 273.15));
+    }
+
+    [Fact]
+    public void BoilingThatCoolsUnderTheBoilingPointDoesNotFinish()
+    {
+        Assert.False(LiquidBoiling.BoilsAway(290.0, 373.0, 273.15));
+        Assert.True(LiquidBoiling.BoilsAway(373.0, 373.0, 273.15));
+    }
+
+    [Fact]
     public void GasAloneIntoAThinRoomIsFine()
     {
         RoomAirAfter air = new RoomAirAfter(1.78, 285.6, 0.0, 0.0, false);

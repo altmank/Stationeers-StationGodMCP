@@ -52,14 +52,20 @@ internal static class Devices
     internal static ScopedTarget Require(DeviceScope scope, ThingId id) =>
         Find(scope, id.Value) ?? throw NotFound(scope, id);
 
-    // A thing that exists but has no logic (a crate, a lander, a tool) is named as such, not as out of sight.
+    // A thing that exists but has no logic (a crate, a lander, a tool) is named as such, not as out of sight, and so is
+    // a logic item (a labeller, a tablet) that no player wears or holds: it is not in Device.AllDevices.
     private static ApiException NotFound(DeviceScope scope, ThingId id) =>
-        Thing.Find(id.Value) is Thing thing && thing != null && !(thing is ILogicable)
-            ? ApiErrors.Refused("device_not_found",
+        Thing.Find(id.Value) switch
+        {
+            Thing thing when thing != null && !(thing is ILogicable) => ApiErrors.Refused("device_not_found",
                 $"{thing.DisplayName} ({id}) is not a device: it has no logic. container_contents shows the slots of "
-                + "any thing.")
-            : ApiErrors.Refused("device_not_found",
-                $"Device {id} is not visible {scope.Where} and is not worn or held by a player.");
+                + "any thing."),
+            Thing thing when thing != null && !(thing is Device) => ApiErrors.Refused("device_not_found",
+                $"{thing.DisplayName} ({id}) is an item, not a device: the device tools reach a logic item only "
+                + "while a player wears or holds it. container_contents shows the slots of any thing."),
+            _ => ApiErrors.Refused("device_not_found",
+                $"Device {id} is not visible {scope.Where} and is not worn or held by a player."),
+        };
 
     /// <summary>The scoped target Require would return, or null when the scope does not reach that id.</summary>
     internal static ScopedTarget? Find(DeviceScope scope, long referenceId)

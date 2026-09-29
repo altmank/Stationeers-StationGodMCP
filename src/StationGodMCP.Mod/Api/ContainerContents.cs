@@ -5,6 +5,7 @@ using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using UnityEngine;
 
 namespace StationGodMCP.Api;
 
@@ -22,8 +23,9 @@ internal static class ContainerContentsApi
         PlayerOrigin origin = PlayerOrigin.Current();
         Thing thing = args.IsWord("reference_id", "player") ? PlayerOrigin.RequireHuman() : Require(args);
         int depth = args.OptionalInt("depth", 1, MaximumDepth) ?? DefaultDepth;
-        return new ContainerContentsView(GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position),
-            origin.DistanceTo(thing.Position), SlotsOf(thing, depth));
+        Vector3 position = HolderChain.PlaceOf(thing).Position;
+        return new ContainerContentsView(GameLookup.ViewOf(thing), GameLookup.ViewOf(position),
+            origin.DistanceTo(position), SlotsOf(thing, depth));
     }
 
     private static Thing Require(Args args)

@@ -18,8 +18,21 @@ public sealed class MoveItemViewTests
         Assert.Equal(
             "{\"index\":0,\"ok\":true,\"reference_id\":\"110045\",\"from\":{\"id\":\"57267\",\"slot\":2},"
             + "\"to\":{\"id\":\"273\",\"slot\":3},\"quantity_moved\":100,\"merged_into\":null,"
-            + "\"destination_reference_id\":\"110045\"}",
+            + "\"destination_reference_id\":\"110045\",\"warning\":null}",
             WireCheck.New(moved));
+    }
+
+    [Fact]
+    public void MoveTheGameThrewDuringIsReportedDoneWithAWarning()
+    {
+        ItemMovedView planted = new ItemMovedView(
+            0, new ThingId(145), new SlotRefView(new ThingId(143), 4), new SlotRefView(new ThingId(2503), 0),
+            1, null, new ThingId(2516), "The game threw during the move");
+        Assert.Equal(
+            "{\"index\":0,\"ok\":true,\"reference_id\":\"145\",\"from\":{\"id\":\"143\",\"slot\":4},"
+            + "\"to\":{\"id\":\"2503\",\"slot\":0},\"quantity_moved\":1,\"merged_into\":null,"
+            + "\"destination_reference_id\":\"2516\",\"warning\":\"The game threw during the move\"}",
+            WireCheck.New(planted));
     }
 
     [Fact]

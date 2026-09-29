@@ -59,8 +59,7 @@ internal static class FindThingsApi
     }
 
     // Where a thing is for distances: a thing in a slot is where its outermost holder is, as find_items measures.
-    private static Vector3 PositionOf(Thing thing) =>
-        thing is DynamicThing dynamic ? HolderChain.RootOf(dynamic).Position : thing.Position;
+    private static Vector3 PositionOf(Thing thing) => HolderChain.PlaceOf(thing).Position;
 
     private static FoundThingView ViewOf(Thing thing, PlayerOrigin origin)
     {

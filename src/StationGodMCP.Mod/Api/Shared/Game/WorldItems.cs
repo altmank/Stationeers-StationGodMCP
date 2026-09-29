@@ -117,6 +117,12 @@ internal sealed class HolderChain
         return new HolderChain(holder, path, carrier);
     }
 
+    /// <summary>
+    /// The thing that places this one in the world: a thing in a slot keeps no position of its own (a stored item reads
+    /// the world origin), so its outermost holder; anything else itself.
+    /// </summary>
+    internal static Thing PlaceOf(Thing thing) => thing is DynamicThing item ? RootOf(item) : thing;
+
     /// <summary>The outermost holder alone, as Of finds it, without building the chain.</summary>
     internal static Thing RootOf(DynamicThing thing)
     {
