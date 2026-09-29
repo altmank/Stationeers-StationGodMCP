@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.4.2
+
+Broken structures: find them, and remove them as the game does.
+
+- **What broken means.** When a structure with a broken model (a vent, a pipe, many devices) reaches full damage, the
+  game does not destroy it: it swaps in the broken model and heals the damage, so the wreck reads 0 damage and 100 %
+  health, still takes its place, and cannot be repaired; the game only lets it be
+  deconstructed, and that gives nothing back.
+- **`remove_structure` `allow_broken`.** Removes broken structures as the game's deconstruction of a broken thing does:
+  no refund, and the game's own deconstruct refusal is not asked (the game does not ask it there). Every other guard
+  still applies (items or gas inside, a mounted device, a breach, network splits, the gas check). Without the flag a
+  broken piece is refused as before, and the refusal now says to pass `allow_broken` instead of "repair it first",
+  which the game cannot do.
+- **`find_things`:** every thing reports `is_broken` and `condition` (`broken`, `damaged`, `intact`,
+  `indestructible`, `none`); the new `broken` filter finds every wreck (`broken: true`) or leaves them out.
+- **`thing_health`:** the scan now lists broken things (it missed them, since they read 0 damage), broken first;
+  `broken_only: true` lists only them. Each thing reports `condition`, and structures `broken_build_state`,
+  `custom_name` and the networks they are on (`networks`).
+- `place_structure` onto the place of a broken structure stays refused (`cannot_place`), and the refusal now names the
+  broken structure and how to remove it. `replace_walls` / `replace_frames` no longer say "repair it first" for one.
+
 ## 1.4.1
 
 Fix: pipe jobs lost gas when one job merged pipe networks more than once.

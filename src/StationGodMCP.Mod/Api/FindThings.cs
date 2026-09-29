@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -17,7 +18,9 @@ namespace StationGodMCP.Api;
 /// things, structures and devices, players and animals. Walks OcclusionManager.AllThings (every registered thing,
 /// cursors excluded), skipping things being destroyed and organs. A name matches on the name the game shows (the
 /// Labeller's name when there is one) and on the prefab's own name under a label (Labels). Nearest first, paged; only
-/// the page is described in full. Read only.
+/// the page is described in full. Every thing reports is_broken and condition from the game's own broken state
+/// (Pure/HealthCondition: a broken structure reads 100 % health, so the numbers cannot tell), and broken filters on it.
+/// Read only.
 /// </summary>
 internal static class FindThingsApi
 {
@@ -76,11 +79,21 @@ internal static class FindThingsApi
             origin.DistanceTo(position),
             thing is Device device && Devices.IsInAllDevices(device),
             AtmosphereContentsApi.HoldsAtmosphere(thing),
-            thing is Structure ? Orientations.Of(thing) : null);
+            thing is Structure ? Orientations.Of(thing) : null,
+            thing.IsBroken,
+            ConditionOf(thing));
+    }
+
+    private static string ConditionOf(Thing thing)
+    {
+        IndestructableDamageState damage = thing.DamageState;
+        bool measurable = damage != null && !damage.Indestructable && damage.MaxDamage > 0f;
+        return HealthCondition.Of(thing.IsBroken, damage != null, damage != null && damage.Indestructable,
+            measurable ? damage!.TotalRatio : (double?)null);
     }
 }
 
-/// <summary>find_things' filter: names, kind, class, labelled or not, holding an atmosphere, how near.</summary>
+/// <summary>find_things' filter: names, kind, class, labelled or not, broken or not, holding an atmosphere, how near.</summary>
 internal sealed class ThingFilter
 {
     private const string AnyKind = "any";
@@ -89,8 +102,9 @@ internal sealed class ThingFilter
     private readonly Dictionary<Type, bool> _typeMatches = new Dictionary<Type, bool>();
 
     private ThingFilter(string? nameContains, string? prefabContains, string kind, string? runtimeType,
-        bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM)
+        bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM, bool? broken)
     {
+        Broken = broken;
         NameContains = nameContains;
         PrefabContains = prefabContains;
         Kind = kind;
@@ -116,6 +130,9 @@ internal sealed class ThingFilter
 
     internal double? NearPlayerM { get; }
 
+    /// <summary>true: only things in the game's broken state (Thing.IsBroken); false: only things not broken.</summary>
+    internal bool? Broken { get; }
+
     internal static ThingFilter Parse(Args args)
     {
         string kind = args.OptionalString("kind") ?? AnyKind;
@@ -128,7 +145,8 @@ internal sealed class ThingFilter
         string? runtimeType = args.OptionalString("runtime_type");
         return new ThingFilter(args.OptionalString("name_contains"), args.OptionalString("prefab_contains"), kind,
             string.IsNullOrEmpty(runtimeType) ? null : runtimeType, args.OptionalBool("labelled_only") ?? false,
-            args.OptionalBool("has_atmosphere"), args.OptionalPositiveDouble("near_player_m"));
+            args.OptionalBool("has_atmosphere"), args.OptionalPositiveDouble("near_player_m"),
+            args.OptionalBool("broken"));
     }
 
     // Cheapest tests first: the label flag, the prefab name, the kind, the class, then the display name, which reads
@@ -137,6 +155,7 @@ internal sealed class ThingFilter
         (!LabelledOnly || !string.IsNullOrEmpty(thing.CustomName)) &&
         ItemFilter.Contains(thing.PrefabName, PrefabContains) &&
         (Kind == AnyKind || ThingKinds.Of(thing) == Kind) &&
+        (!Broken.HasValue || thing.IsBroken == Broken.Value) &&
         (RuntimeType == null || IsOfType(thing.GetType())) &&
         (string.IsNullOrEmpty(NameContains) || Labels.NameContains(thing, NameContains!)) &&
         (!HasAtmosphere.HasValue || AtmosphereContentsApi.HoldsAtmosphere(thing) == HasAtmosphere.Value);

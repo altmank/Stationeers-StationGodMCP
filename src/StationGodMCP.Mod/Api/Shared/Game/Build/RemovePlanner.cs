@@ -80,7 +80,8 @@ internal sealed class RemovePlan
 
 /// <summary>
 /// remove_structure's whole preflight; nothing here changes the game. Each id must be a structure. The guards
-/// (RemovalRule) read the game: being destroyed, indestructible, rocket, broken, the game's own CanDeconstruct, a
+/// (RemovalRule) read the game: being destroyed, indestructible, rocket, broken (allow_broken: nothing given back), the
+/// game's own CanDeconstruct (not asked for a broken piece taken with allow_broken, as the game does not), a
 /// mounted device, items in its slots, gas inside, and for a piece that blocks air the pressures of the spaces its
 /// removal would join (the cells on both sides of each face it holds, or the open neighbours of each cell it fills,
 /// sampled as the game's atmospherics sample them). A device whose port joins something warns that the end will be
@@ -118,7 +119,7 @@ internal static class RemovePlanner
             if (piece != null)
             {
                 RunKind? kind = KindOf(piece);
-                plan.Takedowns.Add(new PlannedTakedown(index, piece, kind, BuildMaterials.RefundOf(piece)));
+                plan.Takedowns.Add(new PlannedTakedown(index, piece, kind, RefundOf(piece)));
             }
         }
 
@@ -179,7 +180,7 @@ internal static class RemovePlanner
             BeingDestroyed = piece.IsBeingDestroyed,
             Indestructible = piece.Indestructable,
             Rocket = RocketParts.Of(piece).PartOfRocket,
-            Broken = piece.CurrentBuildStateIndex < 0,
+            Broken = piece.IsBroken,
             GameRefusal = GameRefusal(piece),
             Mounted = MountedOn(piece),
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
@@ -203,6 +204,13 @@ internal static class RemovePlanner
             OpenPorts(plan, takedown, device, removed);
         }
     }
+
+    // What removing it gives back. A broken piece gives nothing: the game deconstructs one (Structure.AttackWith, the
+    // BrokenBuildStates branch) with StructureDestroyed(destroyedFromDamage: true), which skips the kit refund
+    // (BuildStates[0].Tool.Deconstruct); its build state below 0 would give nothing by MaterialRule anyway, and a piece
+    // at full damage not yet swapped to its broken state (still at 0 or above) is on its way there.
+    private static List<ItemAmount> RefundOf(Structure piece) =>
+        piece.IsBroken ? new List<ItemAmount>() : BuildMaterials.RefundOf(piece);
 
     private static string? GameRefusal(Structure piece)
     {

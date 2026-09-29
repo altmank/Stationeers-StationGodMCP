@@ -30,9 +30,10 @@ internal static class BuildReports
 
     private static readonly List<string> RemoveNotes = new List<string>
     {
-        "Gives back what deconstructing by hand does: every build state's items down to the kit.",
-        "Refused: indestructible, rocket, broken, the game's own refusal, a mounted device; unless allowed: items " +
-        "or gas inside (allow_contents), a removal joining spaces whose pressures differ by 1 kPa or more " +
+        "Gives back what deconstructing by hand does: every build state's items down to the kit; a broken piece " +
+        "gives nothing, as the game's deconstruction of a broken thing gives nothing.",
+        "Refused: indestructible, rocket, the game's own refusal, a mounted device; unless allowed: broken " +
+        "(allow_broken), items or gas inside (allow_contents), a removal joining spaces whose pressures differ by 1 kPa or more " +
         "(allow_breach). The breach check judges the whole request at once: a face stays sealed while anything " +
         "left on it, or a finished frame beside it, blocks air.",
         "Cable, pipe and chute pieces are removed as remove_cables, remove_pipes and remove_chutes remove them; " +

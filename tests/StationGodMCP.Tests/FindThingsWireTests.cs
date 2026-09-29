@@ -24,7 +24,7 @@ public sealed class FindThingsWireTests
                     runtime_type = "DynamicGasCanister", labelable = true, location = "ground",
                     carried_by = (string?)null, held_in = new object[0],
                     position = new { x = 701.0, y = 202.0, z = 680.0 }, distance_m = (double?)1.4, is_device = false,
-                    has_atmosphere = true
+                    has_atmosphere = true, is_broken = false, condition = "intact"
                 },
                 new
                 {
@@ -32,7 +32,8 @@ public sealed class FindThingsWireTests
                     custom_name = (string?)null, game_name = "Pipe (Straight)", kind = "structure",
                     runtime_type = "Pipe", labelable = false, location = "built", carried_by = (string?)null,
                     held_in = new object[0], position = new { x = 703.0, y = 202.0, z = 681.0 },
-                    distance_m = (double?)2.3, is_device = false, has_atmosphere = false
+                    distance_m = (double?)2.3, is_device = false, has_atmosphere = false, is_broken = true,
+                    condition = "broken"
                 }
             },
             count = 2, total = 7, offset = 0, limit = 2, has_more = true, scanned = 48210,
@@ -48,7 +49,7 @@ public sealed class FindThingsWireTests
                 new List<HeldInView>(), new PositionView(701.0, 202.0, 680.0), 1.4, false, true),
             new FoundThingView(new ThingView(new ThingId(86457), "StructurePipeStraight", "Pipe (Straight)"), null,
                 "Pipe (Straight)", "structure", "Pipe", false, FoundThingView.Built, null, new List<HeldInView>(),
-                new PositionView(703.0, 202.0, 681.0), 2.3, false, false)
+                new PositionView(703.0, 202.0, 681.0), 2.3, false, false, null, true, "broken")
         };
         FindThingsView view = new FindThingsView(Slice<FoundThingView>.Page(things, PageFor(0, 2), 7), 48210,
             new LocalPlayerView(new ThingId(151), "xceled", new PositionView(700.9, 202.0, 679.5)));
@@ -77,7 +78,7 @@ public sealed class FindThingsWireTests
                         }
                     },
                     position = new { x = 1.0, y = 2.0, z = 3.0 }, distance_m = (double?)null, is_device = false,
-                    has_atmosphere = true
+                    has_atmosphere = true, is_broken = false, condition = "damaged"
                 }
             },
             count = 1, total = 1, offset = 0, limit = 100, has_more = false, scanned = 10,
@@ -91,7 +92,7 @@ public sealed class FindThingsWireTests
                 {
                     new HeldInView(new ThingView(new ThingId(151), "Character", "xceled"), 0, "Hand")
                 },
-                new PositionView(1.0, 2.0, 3.0), null, false, true)
+                new PositionView(1.0, 2.0, 3.0), null, false, true, null, false, "damaged")
         };
         WireCheck.Same(expected,
             new FindThingsView(Slice<FoundThingView>.Page(things, PageFor(0, 100), 1), 10, null));

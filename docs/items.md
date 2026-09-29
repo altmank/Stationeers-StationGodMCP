@@ -11,7 +11,7 @@ these tools need a gateway.
 | --- | --- | --- |
 | `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock. | `prefab_contains`, `name_contains`, `location`, `within_id`, `near_player_m`, `limit`, `offset` |
 | `item_totals` | Total quantity of each item type, split into on the ground, carried, stored and machine stock, with the five holders that hold the most. | as `find_items` |
-| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `has_atmosphere`, `near_player_m` |
+| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m` |
 | `list_containers` | Every holder with at least one item in it, not carried, nearest first. | `prefab_contains`, `name_contains`, `near_player_m` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. | `reference_id`, `depth` (default 3) |
 | `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
@@ -28,7 +28,9 @@ these tools need a gateway.
   `runtime_type: "DynamicGasCanister"` finds every portable tank whatever its prefab or label; `has_atmosphere: true`
   every thing that holds gas; `labelled_only: true` every label in the world. Each result says whether the Labeller can
   rename it (`labelable`), whether the device tools take it (`is_device`) and whether `atmosphere_contents` has
-  something for it; a structure also reports how it stands turned (`rotation`).
+  something for it; a structure also reports how it stands turned (`rotation`). Every result has `is_broken` and
+  `condition` (`broken`, `damaged`, `intact`, `indestructible`, `none`); `broken: true` finds every wreck, such as
+  fire-burnt vents, which read 100 % health (see `thing_health`).
 - `label` renames what the hand Labeller renames. The pipe-size in-line tanks (`StructureInLineTankGas1x1` and the
   rest, insulated too) are not among them: the game has no rename for them, and StationGod keeps no names of its own,
   so `label` refuses them with `not_labelable`. The big in-line tanks take a label. To name a small one, label a sign

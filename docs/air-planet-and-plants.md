@@ -24,7 +24,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | `reagents` | What a furnace, centrifuge, mixer or microwave holds, reagent by reagent (logic only gives the total). | `reference_id` |
 | `player_vitals` | Your hunger and thirst: stores, capacities, drain rates and time until empty, awake and asleep. | none |
 | `ignition_risk` | Whether anything you carry would catch fire in the air around you, by the game's fire rule. | `include_prefabs` |
-| `thing_health` | The damage of any thing, or every damaged thing in the world, worst first. | `reference_id`, `reference_ids`, or none; `structures_only`, `min_damage_ratio` |
+| `thing_health` | The damage of any thing, or every damaged or broken thing in the world, broken first, then worst first. | `reference_id`, `reference_ids`, or none; `structures_only`, `broken_only`, `min_damage_ratio` |
 
 ## Rooms
 
@@ -122,3 +122,9 @@ Host only.
 - `thing_health` reads the game's damage state, which no logic type exposes. `damage_ratio` 0 is like new, 1 destroyed;
   `health_percent` matches the solar panel tooltip. A solar panel generates (1 - `damage_ratio`) of its full output.
   Indestructible things report `null`, never a false 0.
+- `condition` says it in one word: `broken`, `damaged`, `intact`, `indestructible` or `none`. `broken` is the game's own
+  broken state (`is_broken`), and it wins over the numbers: the game heals a structure when it breaks it, so a
+  burnt-out vent reads 0 damage and 100 % health. The scan lists broken things whatever their numbers;
+  `broken_only: true` lists only them. Structures also report `broken_build_state`, their Labeller name
+  (`custom_name`) and the cable, pipe and chute networks they are on (`networks`). `remove_structure` with
+  `allow_broken` removes them.

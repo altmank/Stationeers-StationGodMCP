@@ -208,6 +208,10 @@ internal sealed class RemovalFacts
 
     internal bool Rocket { get; set; }
 
+    /// <summary>
+    /// The game's broken state (Structure.IsBroken: damage at its maximum, or a build state below 0, the broken mesh
+    /// the game swaps in and then heals, so health reads 100 %).
+    /// </summary>
     internal bool Broken { get; set; }
 
     /// <summary>The game's own refusal to deconstruct it (Structure.CanDeconstruct); null when it allows it.</summary>
@@ -232,23 +236,28 @@ internal sealed class RemovalFacts
 /// <summary>The allow flags of remove_structure.</summary>
 internal sealed class RemovalAllowance
 {
-    internal RemovalAllowance(bool contents, bool breach)
+    internal RemovalAllowance(bool contents, bool breach, bool broken = false)
     {
         Contents = contents;
         Breach = breach;
+        Broken = broken;
     }
 
     internal bool Contents { get; }
 
     internal bool Breach { get; }
+
+    /// <summary>allow_broken: remove a broken piece as the game deconstructs one, which gives nothing back.</summary>
+    internal bool Broken { get; }
 }
 
 /// <summary>
 /// remove_structure's minimal safeguards, each naming its reason. Refused outright: being destroyed, indestructible,
-/// rocket, broken (a damaged state), the game's own refusal, a mounted device. Refused unless allowed: items in its
-/// slots or gas inside (allow_contents: items drop where it stood, as a hand deconstruction does; a tank releases its
-/// gas there, other devices lose it), and joining spaces whose pressures differ by at least BreachKpa
-/// (allow_breach). Allowed ones become warnings.
+/// rocket, the game's own refusal, a mounted device. Refused unless allowed: broken (allow_broken: the game cannot
+/// repair a broken structure, only deconstruct it, and that gives nothing back; the game does not ask CanDeconstruct
+/// on that path, so its refusal is not asked either), items in its slots or gas inside (allow_contents: items drop
+/// where it stood, as a hand deconstruction does; a tank releases its gas there, other devices lose it), and joining
+/// spaces whose pressures differ by at least BreachKpa (allow_breach). Allowed ones become warnings.
 /// </summary>
 internal static class RemovalRule
 {
@@ -257,14 +266,26 @@ internal static class RemovalRule
 
     internal const double GasFloorMol = 0.001;
 
+    internal const string BrokenWhat =
+        "it is broken (the game's broken state, left by fire, pressure or other damage; the game cannot repair it, " +
+        "only deconstruct it)";
+
+    internal const string BrokenConsequence =
+        "it goes as the game deconstructs a broken thing, which gives nothing back";
+
     internal static List<GuardFinding> Judge(RemovalFacts facts, RemovalAllowance allow)
     {
         List<GuardFinding> findings = new List<GuardFinding>();
         Refuse(findings, facts.BeingDestroyed, "being_destroyed", "it is already being destroyed");
         Refuse(findings, facts.Indestructible, "indestructible", "it is indestructible");
         Refuse(findings, facts.Rocket, "rocket", "it is part of a rocket");
-        Refuse(findings, facts.Broken, "broken", "it is damaged (a broken build state); repair it first");
-        Refuse(findings, facts.GameRefusal != null, "game_refuses",
+        if (facts.Broken)
+        {
+            findings.Add(Allowable(allow.Broken, "broken", "broken_removed", BrokenWhat, "allow_broken",
+                BrokenConsequence));
+        }
+
+        Refuse(findings, facts.GameRefusal != null && !(facts.Broken && allow.Broken), "game_refuses",
             $"the game refuses to deconstruct it: {facts.GameRefusal}");
         Refuse(findings, facts.Mounted != null, "has_mounted", $"{facts.Mounted} is mounted on it; remove that first");
         if (facts.Items.Count > 0)

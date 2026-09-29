@@ -50,8 +50,11 @@ internal sealed class FoundThingView
 
     internal FoundThingView(ThingView thing, string? customName, string gameName, string kind, string runtimeType,
         bool labelable, string location, string? carriedBy, List<HeldInView> heldIn, PositionView position,
-        double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null)
+        double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null, bool isBroken = false,
+        string condition = "intact")
     {
+        IsBroken = isBroken;
+        Condition = condition;
         Rotation = rotation;
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
@@ -109,6 +112,15 @@ internal sealed class FoundThingView
 
     /// <summary>atmosphere_contents has something to report for it.</summary>
     public bool HasAtmosphere { get; }
+
+    /// <summary>
+    /// The game's broken state (Thing.IsBroken; a structure also below build state 0). A broken structure reads 100 %
+    /// health, so this, not thing_health's numbers, says it is wrecked; remove_structure takes it with allow_broken.
+    /// </summary>
+    public bool IsBroken { get; }
+
+    /// <summary>broken, damaged, intact, indestructible or none (no damage state); thing_health has the numbers.</summary>
+    public string Condition { get; }
 
     /// <summary>
     /// How it stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it can be

@@ -213,6 +213,7 @@ public sealed class RemovalRuleTests
 {
     private static readonly RemovalAllowance None = new RemovalAllowance(false, false);
     private static readonly RemovalAllowance All = new RemovalAllowance(true, true);
+    private static readonly RemovalAllowance Broken = new RemovalAllowance(false, false, broken: true);
 
     [Fact]
     public void APlainPieceHasNoFindings()
@@ -233,6 +234,51 @@ public sealed class RemovalRuleTests
             findings.Select(finding => finding.Code));
         Assert.All(findings, finding => Assert.Equal(GuardLevel.Refusal, finding.Level));
         Assert.True(RemovalRule.Refused(findings));
+    }
+
+    [Fact]
+    public void BrokenRefusesUnlessAllowedAndTheRefusalNamesTheFlag()
+    {
+        GuardFinding refused = RemovalRule.Judge(new RemovalFacts { Broken = true }, All).Single();
+        Assert.Equal("broken", refused.Code);
+        Assert.Equal(GuardLevel.Refusal, refused.Level);
+        Assert.Contains("pass allow_broken", refused.Message);
+        Assert.Contains("gives nothing back", refused.Message);
+        Assert.DoesNotContain("repair it first", refused.Message);
+
+        GuardFinding allowed = RemovalRule.Judge(new RemovalFacts { Broken = true }, Broken).Single();
+        Assert.Equal("broken_removed", allowed.Code);
+        Assert.Equal(GuardLevel.Warning, allowed.Level);
+    }
+
+    [Fact]
+    public void AllowBrokenSkipsTheGameRefusalOnlyForABrokenPiece()
+    {
+        // The game's deconstruction of a broken thing never asks CanDeconstruct (Structure.AttackWith).
+        RemovalFacts broken = new RemovalFacts { Broken = true, GameRefusal = "a device is attached" };
+        Assert.False(RemovalRule.Refused(RemovalRule.Judge(broken, Broken)));
+
+        RemovalFacts whole = new RemovalFacts { GameRefusal = "a device is attached" };
+        Assert.Equal("game_refuses", RemovalRule.Judge(whole, Broken).Single().Code);
+    }
+
+    [Fact]
+    public void AllowBrokenKeepsEveryOtherGuard()
+    {
+        RemovalFacts facts = new RemovalFacts
+        {
+            Broken = true, Mounted = "Pipe Analyzer (1)", GasMoles = 3, GasFate = GasFate.Lost, BreachKpa = 50,
+            BreachWhere = "w"
+        };
+        facts.Items.Add("ItemIronIngot x5 (9)");
+        List<GuardFinding> findings = RemovalRule.Judge(facts, Broken);
+        Assert.Equal(new[] { "broken_removed", "has_mounted", "holds_items", "holds_gas", "would_breach" },
+            findings.Select(finding => finding.Code));
+        Assert.True(RemovalRule.Refused(findings));
+
+        RemovalFacts rocket = new RemovalFacts { Broken = true, Rocket = true, Indestructible = true };
+        Assert.Equal(new[] { "indestructible", "rocket", "broken_removed" },
+            RemovalRule.Judge(rocket, Broken).Select(finding => finding.Code));
     }
 
     [Fact]
@@ -371,11 +417,19 @@ public sealed class BuildArgsTests
         Assert.Equal(new long[] { 10, 11 }, run.Arguments.Ids.Select(id => id.Value));
         Assert.True(run.Arguments.Allow.Contents);
         Assert.False(run.Arguments.Allow.Breach);
+        Assert.False(run.Arguments.Allow.Broken);
         Assert.Equal(RefundTo.Ground, run.Arguments.RefundTo);
 
         BuildForm<RemoveArguments>.Run plain = Assert.IsType<BuildForm<RemoveArguments>.Run>(
             BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"10\"]}")));
         Assert.Equal(RefundTo.Source, plain.Arguments.RefundTo);
+        Assert.False(plain.Arguments.Allow.Broken);
+        BuildForm<RemoveArguments>.Run broken = Assert.IsType<BuildForm<RemoveArguments>.Run>(
+            BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"157082\"],\"allow_broken\":true}")));
+        Assert.True(broken.Arguments.Allow.Broken);
+        Assert.False(broken.Arguments.Allow.Contents);
+        Assert.Equal(ApiErrors.InvalidArgumentCode,
+            CodeOf(() => BuildArgs.ParseRemove(Of("{\"job_id\":\"remove-3\",\"allow_broken\":true}"))));
         Assert.Equal(ApiErrors.InvalidArgumentCode,
             CodeOf(() => BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"10\"],\"refund_to\":\"bin\"}"))));
         Assert.Equal(ApiErrors.InvalidArgumentCode, CodeOf(() => BuildArgs.ParseRemove(Of("{}"))));

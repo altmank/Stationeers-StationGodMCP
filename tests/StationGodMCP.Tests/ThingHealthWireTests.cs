@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -15,6 +16,9 @@ public sealed class ThingHealthWireTests
     {
         ["ratio"] = "damage_ratio"
     };
+
+    // 1.4.2: the label, the one-word condition and the broken build state; networks only when read.
+    private static readonly string[] Added = { "custom_name", "condition", "broken_build_state" };
 
     private static object OldRecord(bool destructible) => new
     {
@@ -58,12 +62,42 @@ public sealed class ThingHealthWireTests
         new PositionView(1.5, 2.0, -3.5),
         12.3);
 
+    [Fact]
+    public void ABrokenVentSaysBrokenBesideItsHealedNumbers()
+    {
+        HealthView vent = new HealthView(
+            new ThingView(new ThingId(157082), "StructureActiveVent", "Active Vent"),
+            "structure",
+            "ActiveVent",
+            new DamageReading("destructible", "ThingDamageState", 100f, 0.0, 0.0, 100,
+                new DamagePartsView(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)),
+            new HealthFlags(null, true, false, null, HealthCondition.Broken, true),
+            new PositionView(1.0, 2.0, 3.0),
+            4.5,
+            "Vent 3",
+            new List<NetworkRefView> { new NetworkRefView("pipe", new ThingId(900)) });
+        JObject wire = JObject.Parse(WireCheck.New(vent));
+        Assert.Equal("broken", (string?)wire["condition"]);
+        Assert.True((bool)wire["is_broken"]!);
+        Assert.True((bool)wire["broken_build_state"]!);
+        Assert.Equal(100, (int)wire["health_percent"]!);
+        Assert.Equal("Vent 3", (string?)wire["custom_name"]);
+        Assert.Equal("pipe", (string?)wire["networks"]![0]!["kind"]);
+        Assert.Equal("900", (string?)wire["networks"]![0]!["id"]);
+    }
+
+    [Fact]
+    public void NetworksAreLeftOutWhenNotRead()
+    {
+        Assert.Null(JObject.Parse(WireCheck.New(NewRecord(true)))["networks"]);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public void OneThingSameWire(bool destructible)
     {
-        WireCheck.SameAfterRenames(OldRecord(destructible), NewRecord(destructible), RecordRenames);
+        WireCheck.SameAfterRenames(OldRecord(destructible), NewRecord(destructible), RecordRenames, Added);
     }
 
     [Fact]
@@ -93,7 +127,8 @@ public sealed class ThingHealthWireTests
         batch.Succeeded(new HealthItemView(0, NewRecord(true)));
         batch.Failed(1, ApiErrors.ThingNotFound(new ThingId(9)));
         Dictionary<string, string> renames = new Dictionary<string, string> { ["results[].ratio"] = "damage_ratio" };
-        WireCheck.SameAfterRenames(old, batch.Build(), renames);
+        WireCheck.SameAfterRenames(old, batch.Build(), renames, "results[].custom_name", "results[].condition",
+            "results[].broken_build_state");
     }
 
     [Fact]
@@ -126,6 +161,7 @@ public sealed class ThingHealthWireTests
             ["total_matches"] = "total",
             ["min_ratio"] = "min_damage_ratio"
         };
-        WireCheck.SameAfterRenames(old, view, renames);
+        WireCheck.SameAfterRenames(old, view, renames, "things[].custom_name", "things[].condition",
+            "things[].broken_build_state");
     }
 }

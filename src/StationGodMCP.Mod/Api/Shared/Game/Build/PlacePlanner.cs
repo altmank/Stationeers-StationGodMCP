@@ -136,8 +136,13 @@ internal static class PlacePlanner
     }
 
     /// <summary>The cursor check again for one resolved placement, as things stand now (the job's step before it).</summary>
-    internal static string? Recheck(PlannedPlacement placement) =>
-        Check(placement.Prefab!, placement.Cursor!, placement.Position!.Value, placement.Rotation);
+    internal static string? Recheck(PlannedPlacement placement)
+    {
+        string? refusal = Check(placement.Prefab!, placement.Cursor!, placement.Position!.Value, placement.Rotation);
+        return refusal == null
+            ? null
+            : refusal + BrokenNote(placement.Prefab!, placement.Position!.Value, placement.Rotation);
+    }
 
     private static string? Check(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation)
     {
@@ -150,6 +155,54 @@ internal static class PlacePlanner
 
         Grid3[] cells = CursorCheck.SmallCells(prefab, position, rotation);
         return CursorCheck.RocketCell(cells) ?? CursorCheck.SlotTaken(piece, cells, none);
+    }
+
+    // A broken structure still takes its cells and slots (the game only swaps its mesh), so a placement there is
+    // refused like any other; say which one and how to clear it.
+    private static string BrokenNote(Structure prefab, Vector3 position, Quaternion rotation)
+    {
+        GridController world = GridController.World;
+        if (world == null)
+        {
+            return string.Empty;
+        }
+
+        List<Structure> near = new List<Structure>();
+        foreach (Grid3 grid in CursorCheck.SmallCells(prefab, position, rotation))
+        {
+            SmallCell? cell = world.GetSmallCell(grid);
+            if (cell != null)
+            {
+                AddBroken(near, cell.Chute, cell.Pipe, cell.Device, cell.Cable, cell.Other, cell.Rail as Structure);
+            }
+        }
+
+        Cell? large = world.GetCell(position);
+        if (large?.AllStructures != null)
+        {
+            AddBroken(near, large.AllStructures.ToArray());
+        }
+
+        if (near.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        List<string> names = near.ConvertAll(broken =>
+            $"{broken.DisplayName} ({broken.PrefabName} {broken.ReferenceId})");
+        return $" (broken there: {string.Join(", ", names)}; a broken structure still takes its place; remove it " +
+               "first with remove_structure allow_broken)";
+    }
+
+    private static void AddBroken(List<Structure> found, params Structure?[] structures)
+    {
+        foreach (Structure? structure in structures)
+        {
+            if (structure != null && structure.IsBroken && !structure.IsBeingDestroyed && !found.Contains(structure))
+            {
+                found.Add(structure);
+            }
+        }
     }
 
     private static void Resolve(PlacePlan plan, BuildCatalogue catalogue, List<ColorSwatch> swatches,
@@ -190,7 +243,9 @@ internal static class PlacePlanner
         placement.Ports = PortPreview(prefab, position, placement.Rotation);
         if (refusal != null)
         {
-            plan.Problem("cannot_place", $"{prefab.PrefabName} at {Describe(position)}: {refusal}.", index);
+            plan.Problem("cannot_place",
+                $"{prefab.PrefabName} at {Describe(position)}: {refusal}{BrokenNote(prefab, position, placement.Rotation)}.",
+                index);
         }
 
         Look(plan, swatches, placement);

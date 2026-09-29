@@ -127,8 +127,9 @@ cell positions in messages in metres.
 removal, the 1.3.4 rooms in `move_gas`, and the 1.3.5 layout helpers (rotation readouts, `place_structure`'s port
 preview, in-line tank and passive vent route ends, `reserve_cells` and `reserve_ports`, `move_gas` `dry_run`), and
 the 1.4.0 Ingot Vault tools (`vault_contents`, `vault_deposit`, `vault_withdraw`) and `move_item`'s refusal of a
-vault's display slots, and the 1.4.1 gas check of pipe jobs (`gas_check`, `gas_lost`, the queued gas applied after
-every piece).
+vault's display slots, the 1.4.1 gas check of pipe jobs (`gas_check`, `gas_lost`, the queued gas applied after
+every piece), and the 1.4.2 broken structures (`remove_structure` `allow_broken`, `find_things` `broken`,
+`thing_health` `broken_only` and `condition`).
 
 ## Documentation
 

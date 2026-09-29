@@ -1,7 +1,9 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -9,11 +11,13 @@ namespace StationGodMCP.Api.Views;
 internal sealed class HealthView
 {
     internal HealthView(ThingView thing, string kind, string type, DamageReading damage, HealthFlags flags,
-        PositionView position, double? distanceM)
+        PositionView position, double? distanceM, string? customName = null, List<NetworkRefView>? networks = null)
     {
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
         DisplayName = thing.DisplayName;
+        CustomName = customName;
+        Condition = flags.Condition;
         Kind = kind;
         Type = type;
         DamageState = damage.State;
@@ -25,10 +29,12 @@ internal sealed class HealthView
         Band = flags.Band;
         Damage = damage.Parts;
         IsBroken = flags.IsBroken;
+        BrokenBuildState = flags.BrokenBuildState;
         BeingDestroyed = flags.BeingDestroyed;
         PipeBurst = flags.PipeBurst;
         Position = position;
         DistanceM = distanceM;
+        Networks = networks;
     }
 
     public ThingId ReferenceId { get; }
@@ -36,6 +42,15 @@ internal sealed class HealthView
     public string? PrefabName { get; }
 
     public string? DisplayName { get; }
+
+    /// <summary>The Labeller's name, null when it has none.</summary>
+    public string? CustomName { get; }
+
+    /// <summary>
+    /// broken (the game's broken state, whatever the numbers say), damaged, intact, indestructible or none
+    /// (Pure/HealthCondition).
+    /// </summary>
+    public string Condition { get; }
 
     /// <summary>structure, item or other.</summary>
     public string Kind { get; }
@@ -64,6 +79,12 @@ internal sealed class HealthView
 
     public bool IsBroken { get; }
 
+    /// <summary>
+    /// Structures only: it stands in its broken build state (build state below 0), the broken mesh the game swaps in
+    /// and then heals, so its damage reads 0; null for things that are not structures.
+    /// </summary>
+    public bool? BrokenBuildState { get; }
+
     public bool BeingDestroyed { get; }
 
     /// <summary>Pipes only: none, pressure, liquid or solid.</summary>
@@ -72,6 +93,10 @@ internal sealed class HealthView
     public PositionView Position { get; }
 
     public double? DistanceM { get; }
+
+    /// <summary>Structures only: the cable, pipe and chute networks it is part of or its ends join; left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<NetworkRefView>? Networks { get; }
 }
 
 /// <summary>A thing's damage numbers, for HealthView.</summary>
@@ -107,13 +132,20 @@ internal sealed class DamageReading
 /// <summary>The state flags beside the damage, for HealthView.</summary>
 internal sealed class HealthFlags
 {
-    internal HealthFlags(string? band, bool isBroken, bool beingDestroyed, string? pipeBurst)
+    internal HealthFlags(string? band, bool isBroken, bool beingDestroyed, string? pipeBurst,
+        string condition = HealthCondition.Intact, bool? brokenBuildState = null)
     {
         Band = band;
         IsBroken = isBroken;
         BeingDestroyed = beingDestroyed;
         PipeBurst = pipeBurst;
+        Condition = condition;
+        BrokenBuildState = brokenBuildState;
     }
+
+    internal string Condition { get; }
+
+    internal bool? BrokenBuildState { get; }
 
     internal string? Band { get; }
 
@@ -176,6 +208,10 @@ internal sealed class HealthItemView : BatchItemView
 
     public string? DisplayName => _health.DisplayName;
 
+    public string? CustomName => _health.CustomName;
+
+    public string Condition => _health.Condition;
+
     public string Kind => _health.Kind;
 
     public string Type => _health.Type;
@@ -198,6 +234,8 @@ internal sealed class HealthItemView : BatchItemView
 
     public bool IsBroken => _health.IsBroken;
 
+    public bool? BrokenBuildState => _health.BrokenBuildState;
+
     public bool BeingDestroyed => _health.BeingDestroyed;
 
     public string? PipeBurst => _health.PipeBurst;
@@ -205,6 +243,9 @@ internal sealed class HealthItemView : BatchItemView
     public PositionView Position => _health.Position;
 
     public double? DistanceM => _health.DistanceM;
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<NetworkRefView>? Networks => _health.Networks;
 }
 
 /// <summary>thing_health's scan: the damaged things of the world, worst first, one page of them.</summary>
@@ -230,11 +271,12 @@ internal sealed class HealthScanView
 
     public int Count { get; }
 
-    /// <summary>Damaged things matching the filters, on every page.</summary>
+    /// <summary>Damaged or broken things matching the filters, on every page.</summary>
     public int Total { get; }
 
     public int Structures { get; }
 
+    /// <summary>Things in the game's broken state among the matches (counted before paging).</summary>
     public int Broken { get; }
 
     public int Scanned { get; }

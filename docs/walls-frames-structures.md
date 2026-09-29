@@ -16,7 +16,7 @@ connections and guard against merging networks, which `place_structure` does not
 | `replace_walls` | Replace walls and windows with another wall or window prefab, in place. | `room_id` or `reference_ids`, `to` (required), `from_prefabs`, `skip_unmatched` |
 | `replace_frames` | Replace frames with another frame prefab, or finish unfinished frames, in place. | `room_id` or `reference_ids`, `to` (optional), `from_prefabs`, `skip_unmatched` |
 | `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face`, `build_state`, `label`, `color`; or `placements: [...]` |
-| `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `refund_to` |
+| `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `refund_to` |
 
 ## Replacing walls and frames
 
@@ -104,7 +104,8 @@ Tool wear, welder fuel and battery charge are not charged.
 - **Cost:** every build state's items up to the chosen state, from your inventory or `from_id`. `free: true` places
   without materials, in creative worlds only (`not_creative` otherwise).
 - **Refused per placement:** `invalid_prefab` (not loaded, not a structure, no kit builds it, a rocket part),
-  `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason, or a cell inside a rocket),
+  `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason, or a cell inside a rocket; a
+  broken structure in the way is named, with how to remove it),
   `not_labelable`, `not_paintable`, `invalid_color`, `overlaps_placement` (two placements of the request in one slot).
 - **Rocket parts** are what the game places only in a rocket (strictly internal pieces), the fuselage and the launch
   mount. Batteries, tanks, pipes, valves, vents and other devices that may also be fitted in a rocket are placed as
@@ -122,7 +123,7 @@ kit: into your inventory (`refund_to: "source"`, the default, or `from_id`'s), o
 | --- | --- | --- |
 | `not_a_structure` | An item: use `move_item`. | none |
 | `being_destroyed`, `indestructible`, `rocket`, `game_refuses`, `has_mounted` | The game would not deconstruct it, or a device is mounted on it. | none |
-| `broken` | A damaged build state; repair it first. | none |
+| `broken` | It is broken: fire, pressure or other damage wrecked it. The game cannot repair a broken structure, only deconstruct it, and that gives nothing back. | `allow_broken` |
 | `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. | `allow_contents` |
 | `would_breach` | It blocks air, and removing it joins spaces whose pressures differ by 1 kPa or more, such as a pressurised room and the outside. | `allow_breach` |
 | `port_left_open` (warning) | A device end that joins a cable, pipe, chute or device now. | not needed |
@@ -135,3 +136,16 @@ rocket-only piece, a fuselage or a launch mount.
 
 Cable, pipe and chute pieces are removed as the remove tools remove them, with their checks; `would_split` is only a
 warning here, so read it.
+
+### Broken structures
+
+A structure that reaches full damage and has a broken model (a burnt-out vent, a burst pipe) is not destroyed: the
+game swaps in the broken model and heals the damage, so it reads 0 damage and 100 % health while it is a wreck. It
+still takes its place, so nothing can be built there. `find_things {broken: true}` and `thing_health {broken_only:
+true}` list them; both report `is_broken` and `condition: "broken"`.
+
+`remove_structure {reference_ids, allow_broken: true}` removes them as the game's own deconstruction of a broken thing
+does: nothing is given back (the game skips the kit refund for a broken thing), and the game's own deconstruct refusal
+is not asked, since the game does not ask it for a broken thing either. Every other check still applies: items or gas
+inside, a mounted device, a breach, and for pipe and cable pieces the network checks and the gas check. Placing a
+structure where a broken one stands stays refused (`cannot_place` names the broken one); remove it first.

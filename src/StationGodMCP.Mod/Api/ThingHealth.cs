@@ -13,6 +13,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -25,12 +26,16 @@ namespace StationGodMCP.Api;
 /// Toxic + Radiation + Hydration + Starvation + Decay, 0, MaxDamage) (Stun is not counted) and TotalRatio is Total /
 /// MaxDamage: 0 like new, 1 destroyed. A thing marked Indestructable gets the base class, whose Total is always 0 and
 /// which refuses all damage: that is damage_state "indestructible" with no total, ratio or health, never a fake 0.
-/// Thing.IsBroken is Total >= MaxDamage, and a Structure is also broken below build state 0. A SolarPanel's tooltip
+/// Thing.IsBroken is Total >= MaxDamage, and a Structure is also broken below build state 0. When a structure with a
+/// broken mesh reaches MaxDamage, ThingDamageState.Destroy sets its build state below 0 (GetBrokenState), calls
+/// OnStructureBroken and HealAll, so a broken structure reads 0 damage and 100 % health: condition "broken" and
+/// is_broken are the signal, never the numbers (Pure/HealthCondition). A SolarPanel's tooltip
 /// shows Health = RoundToInt(100 - TotalRatio * 100) coloured by SolarPanel.DamageColor, and it generates
 /// PowerGenerated * GenerationEfficiency * (1 - TotalRatio). A Pipe also has IsBurst (PipeBurst).
 ///
 /// Three forms: reference_id, one thing; reference_ids, up to 256, a result per id; neither, a scan of every damaged
-/// thing registered in OcclusionManager.AllThings, worst first and paged. The scan leaves out things being destroyed,
+/// thing registered in OcclusionManager.AllThings, broken first, then worst first, paged; broken things are listed
+/// whatever their (healed) numbers say, and broken_only lists only them. The scan leaves out things being destroyed,
 /// indestructible damage states, entities (see player_vitals) and organs.
 /// </summary>
 internal static class ThingHealthApi
@@ -82,7 +87,7 @@ internal abstract class HealthRequest
 {
     private static readonly string[] ScanOnly =
     {
-        "min_damage_ratio", "min_ratio", "structures_only", "near_player_m", "offset", "limit"
+        "min_damage_ratio", "min_ratio", "structures_only", "broken_only", "near_player_m", "offset", "limit"
     };
 
     private HealthRequest()
@@ -134,10 +139,12 @@ internal abstract class HealthRequest
         internal const int DefaultLimit = 200;
         internal const int MaximumLimit = 500;
 
-        private Scan(double minDamageRatio, bool structuresOnly, double? nearPlayerM, PageRequest page)
+        private Scan(double minDamageRatio, bool structuresOnly, bool brokenOnly, double? nearPlayerM,
+            PageRequest page)
         {
             MinDamageRatio = minDamageRatio;
             StructuresOnly = structuresOnly;
+            BrokenOnly = brokenOnly;
             NearPlayerM = nearPlayerM;
             Page = page;
         }
@@ -145,6 +152,9 @@ internal abstract class HealthRequest
         internal double MinDamageRatio { get; }
 
         internal bool StructuresOnly { get; }
+
+        /// <summary>Only things in the game's broken state.</summary>
+        internal bool BrokenOnly { get; }
 
         internal double? NearPlayerM { get; }
 
@@ -162,6 +172,7 @@ internal abstract class HealthRequest
             return new Scan(
                 minimum,
                 args.OptionalBool("structures_only") ?? false,
+                args.OptionalBool("broken_only") ?? false,
                 args.OptionalPositiveDouble("near_player_m"),
                 PageRequest.From(args, DefaultLimit, MaximumLimit));
         }
@@ -177,14 +188,19 @@ internal static class HealthReader
     internal static HealthView Read(Thing thing, PlayerOrigin origin)
     {
         IndestructableDamageState damage = thing.DamageState;
+        DamageReading reading = ReadDamage(damage);
+        bool broken = thing.IsBroken;
         HealthFlags flags = new HealthFlags(
             thing is SolarPanel panel && damage != null && !damage.Indestructable ? panel.DamageColor : null,
-            thing.IsBroken,
+            broken,
             thing.IsBeingDestroyed,
-            thing is Pipe pipe ? PipeBurstName(pipe.IsBurst) : null);
+            thing is Pipe pipe ? PipeBurstName(pipe.IsBurst) : null,
+            HealthCondition.Of(broken, damage != null, damage != null && damage.Indestructable, reading.DamageRatio),
+            thing is Structure structure ? structure.CurrentBuildStateIndex < 0 : (bool?)null);
         return new HealthView(
-            GameLookup.ViewOf(thing), KindOf(thing), thing.GetType().Name, ReadDamage(damage), flags,
-            GameLookup.ViewOf(thing.Position), origin.DistanceTo(thing.Position));
+            GameLookup.ViewOf(thing), KindOf(thing), thing.GetType().Name, reading, flags,
+            GameLookup.ViewOf(thing.Position), origin.DistanceTo(thing.Position), Labels.CustomNameOf(thing),
+            thing is Structure ? EndsReader.NetworksOf(thing) : null);
     }
 
     private static string KindOf(Thing thing) => thing is Structure ? "structure" : thing is Item ? "item" : "other";
@@ -279,8 +295,15 @@ internal static class HealthScanner
         }
 
         IndestructableDamageState damage = thing.DamageState;
-        if (damage == null || damage.Indestructable || !(damage.MaxDamage > 0f) ||
-            !(damage.TotalRatio > scan.MinDamageRatio))
+        if (damage != null && damage.Indestructable)
+        {
+            return null;
+        }
+
+        bool broken = thing.IsBroken;
+        bool measurable = damage != null && damage.MaxDamage > 0f;
+        float ratio = measurable ? damage!.TotalRatio : 0f;
+        if (!HealthCondition.ScanKeeps(broken, measurable, ratio, scan.MinDamageRatio, scan.BrokenOnly))
         {
             return null;
         }
@@ -291,7 +314,7 @@ internal static class HealthScanner
             return null;
         }
 
-        return new HealthRow(thing, damage.TotalRatio, damage.Total);
+        return new HealthRow(thing, (float)HealthCondition.RankRatio(broken, ratio), measurable ? damage!.Total : 0f);
     }
 
     private static bool IsOrgan(Thing thing) =>

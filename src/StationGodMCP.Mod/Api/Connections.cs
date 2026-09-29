@@ -145,6 +145,43 @@ internal static class EndsReader
 
     private static string? NonEmpty(string? text) => string.IsNullOrEmpty(text) ? null : text;
 
+    /// <summary>
+    /// The networks a thing is part of (a cable, pipe or chute piece) or its ends join, each once, as connections
+    /// reports them; empty for a thing that is not on the small grid.
+    /// </summary>
+    internal static List<NetworkRefView> NetworksOf(Thing thing)
+    {
+        List<NetworkRefView> found = new List<NetworkRefView>();
+        if (!(thing is SmallGrid grid))
+        {
+            return found;
+        }
+
+        AddNetwork(found, OwnNetwork(grid));
+        if (grid.OpenEnds == null)
+        {
+            return found;
+        }
+
+        foreach (Connection end in grid.OpenEnds)
+        {
+            if (end != null)
+            {
+                AddNetwork(found, EndNetwork(grid, end, AttachedAt(grid, end)));
+            }
+        }
+
+        return found;
+    }
+
+    private static void AddNetwork(List<NetworkRefView> found, NetworkRefView? network)
+    {
+        if (network != null && !found.Exists(known => known.Kind == network.Kind && known.Id.Equals(network.Id)))
+        {
+            found.Add(network);
+        }
+    }
+
     // Each occupant of the end's two small-grid cells that the game's own IsConnected links to it, not the owner.
     internal static List<Thing> AttachedAt(SmallGrid owner, Connection end)
     {
