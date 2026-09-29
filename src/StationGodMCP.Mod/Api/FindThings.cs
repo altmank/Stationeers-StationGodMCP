@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
 using UnityEngine;
 
@@ -81,7 +82,8 @@ internal static class FindThingsApi
             AtmosphereContentsApi.HoldsAtmosphere(thing),
             thing is Structure ? Orientations.Of(thing) : null,
             thing.IsBroken,
-            ConditionOf(thing));
+            ConditionOf(thing),
+            Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null);
     }
 
     private static string ConditionOf(Thing thing)
@@ -102,8 +104,9 @@ internal sealed class ThingFilter
     private readonly Dictionary<Type, bool> _typeMatches = new Dictionary<Type, bool>();
 
     private ThingFilter(string? nameContains, string? prefabContains, string kind, string? runtimeType,
-        bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM, bool? broken)
+        bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM, bool? broken, PrintFilter made)
     {
+        Made = made;
         Broken = broken;
         NameContains = nameContains;
         PrefabContains = prefabContains;
@@ -133,6 +136,9 @@ internal sealed class ThingFilter
     /// <summary>true: only things in the game's broken state (Thing.IsBroken); false: only things not broken.</summary>
     internal bool? Broken { get; }
 
+    /// <summary>made_by and made_since: only items the print log has, from that maker, since that game time.</summary>
+    internal PrintFilter Made { get; }
+
     internal static ThingFilter Parse(Args args)
     {
         string kind = args.OptionalString("kind") ?? AnyKind;
@@ -146,7 +152,35 @@ internal sealed class ThingFilter
         return new ThingFilter(args.OptionalString("name_contains"), args.OptionalString("prefab_contains"), kind,
             string.IsNullOrEmpty(runtimeType) ? null : runtimeType, args.OptionalBool("labelled_only") ?? false,
             args.OptionalBool("has_atmosphere"), args.OptionalPositiveDouble("near_player_m"),
-            args.OptionalBool("broken"));
+            args.OptionalBool("broken"), MadeOf(args));
+    }
+
+    // made_by: a maker's reference id, or text in its prefab or shown name; made_since: a game time (game_clock's
+    // game_time_s), or a negative number of seconds before now.
+    private static PrintFilter MadeOf(Args args)
+    {
+        JToken? by = args.Optional("made_by");
+        long? makerId = null;
+        string? makerText = null;
+        if (by != null)
+        {
+            if (ThingId.TryRead(by, out ThingId id))
+            {
+                makerId = id.Value;
+            }
+            else
+            {
+                makerText = args.OptionalString("made_by");
+            }
+        }
+
+        double? since = args.OptionalDouble("made_since");
+        if (since.HasValue && since.Value < 0)
+        {
+            since = GameManager.GameTime + since.Value;
+        }
+
+        return new PrintFilter(makerId, makerText, since);
     }
 
     // Cheapest tests first: the label flag, the prefab name, the kind, the class, then the display name, which reads
@@ -156,6 +190,7 @@ internal sealed class ThingFilter
         ItemFilter.Contains(thing.PrefabName, PrefabContains) &&
         (Kind == AnyKind || ThingKinds.Of(thing) == Kind) &&
         (!Broken.HasValue || thing.IsBroken == Broken.Value) &&
+        (!Made.IsActive || Made.Keeps(Prints.Log.Of(thing.ReferenceId))) &&
         (RuntimeType == null || IsOfType(thing.GetType())) &&
         (string.IsNullOrEmpty(NameContains) || Labels.NameContains(thing, NameContains!)) &&
         (!HasAtmosphere.HasValue || AtmosphereContentsApi.HoldsAtmosphere(thing) == HasAtmosphere.Value);

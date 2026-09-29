@@ -1,5 +1,7 @@
 #nullable enable
 
+using System.Collections.Generic;
+using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
@@ -29,8 +31,8 @@ internal static class PlaceStructureApi
                 }
 
                 PlaceReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
-                return BuildJobs.Start("place", new PlaceWork(run.Arguments, preflight),
-                    args.OptionalBool("wait") ?? false);
+                return JobSnapshots.Record(BuildJobs.Start("place", new PlaceWork(run.Arguments, preflight),
+                    args.OptionalBool("wait") ?? false), "place_structure", new List<Structure>());
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or placements.");
         }
@@ -57,8 +59,9 @@ internal static class RemoveStructureApi
                 }
 
                 RemoveReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
-                return BuildJobs.Start("remove", new RemoveWork(run.Arguments, preflight),
-                    args.OptionalBool("wait") ?? false);
+                return JobSnapshots.Record(BuildJobs.Start("remove", new RemoveWork(run.Arguments, preflight),
+                    args.OptionalBool("wait") ?? false), "remove_structure",
+                    plan.Takedowns.ConvertAll(takedown => takedown.Piece));
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or reference_ids.");
         }

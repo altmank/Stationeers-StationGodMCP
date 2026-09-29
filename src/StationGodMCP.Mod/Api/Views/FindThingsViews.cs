@@ -51,8 +51,9 @@ internal sealed class FoundThingView
     internal FoundThingView(ThingView thing, string? customName, string gameName, string kind, string runtimeType,
         bool labelable, string location, string? carriedBy, List<HeldInView> heldIn, PositionView position,
         double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null, bool isBroken = false,
-        string condition = "intact")
+        string condition = "intact", PrintView? made = null)
     {
+        Made = made;
         IsBroken = isBroken;
         Condition = condition;
         Rotation = rotation;
@@ -72,6 +73,10 @@ internal sealed class FoundThingView
         IsDevice = isDevice;
         HasAtmosphere = hasAtmosphere;
     }
+
+    /// <summary>Where it was printed, when the print log has it (1.4.3+); left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public PrintView? Made { get; }
 
     public ThingId ReferenceId { get; }
 

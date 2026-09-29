@@ -11,7 +11,7 @@ these tools need a gateway.
 | --- | --- | --- |
 | `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock. | `prefab_contains`, `name_contains`, `location`, `within_id`, `near_player_m`, `limit`, `offset` |
 | `item_totals` | Total quantity of each item type, split into on the ground, carried, stored and machine stock, with the five holders that hold the most. | as `find_items` |
-| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m` |
+| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, `made_by`, `made_since` |
 | `list_containers` | Every holder with at least one item in it, not carried, nearest first. | `prefab_contains`, `name_contains`, `near_player_m` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. | `reference_id`, `depth` (default 3) |
 | `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
@@ -25,6 +25,10 @@ these tools need a gateway.
   fabricator count as the ingots it would eject (`location: machine_stock`). Stock cannot be moved with `move_item`:
   open the fabricator to eject it.
 - `find_things` finds what `find_items` does not: a tank labelled `T1` is found by `T1` and by `Portable Liquid Tank`.
+- Print provenance (1.4.3+): every item a fabricator, printer or other machine makes is recorded as it is made, and a
+  stack split off a printed one keeps the record. `find_things` reports `made {maker_id, maker_prefab, maker_name,
+  game_time_s, quantity, split_from}` and filters with `made_by` (a maker's id, or text in its name) and `made_since`
+  (a game time, or negative seconds before now). The record lives in memory since the game started.
   `runtime_type: "DynamicGasCanister"` finds every portable tank whatever its prefab or label; `has_atmosphere: true`
   every thing that holds gas; `labelled_only: true` every label in the world. Each result says whether the Labeller can
   rename it (`labelable`), whether the device tools take it (`is_device`) and whether `atmosphere_contents` has

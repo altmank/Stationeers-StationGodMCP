@@ -422,6 +422,12 @@ internal static class GameMembers
         Target("SuitBase.Execute", () => AccessTools.Method(typeof(SuitBase), nameof(SuitBase.Execute)));
     internal static readonly GameMethod PatchAdvancedSuitExecute =
         Target("AdvancedSuit.Execute", () => AccessTools.Method(typeof(AdvancedSuit), nameof(AdvancedSuit.Execute)));
+    internal static readonly GameMethod PatchItemManufactured =
+        Target("DynamicThing.ItemManufactured",
+            () => AccessTools.Method(typeof(DynamicThing), nameof(DynamicThing.ItemManufactured)));
+    internal static readonly GameMethod PatchOnSplitStack =
+        Target("Stackable.OnSplitStack",
+            () => AccessTools.Method(typeof(Assets.Scripts.Objects.Items.Stackable), "OnSplitStack"));
     internal static readonly GameMethod PatchHandleMainThreadEvents =
         Target("AtmosphericsController.HandleMainThreadEvents",
             () => AccessTools.Method(typeof(AtmosphericsController),

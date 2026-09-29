@@ -178,8 +178,32 @@ internal static class RunApi
         }
 
         return plan.Ready
-            ? RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null),
-                args.OptionalBool("wait") ?? false)
+            ? JobSnapshots.Record(RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null),
+                args.OptionalBool("wait") ?? false), request.Tool, Removed(plan))
             : RunReports.Of(plan, RunReports.Refused, null);
+    }
+
+    // What the run takes down: its removals (not the assumed ones) and every piece it changes (a change builds a new
+    // piece in the old one's place), for undo_job.
+    private static List<Structure> Removed(RunPlan plan)
+    {
+        List<Structure> removed = new List<Structure>();
+        foreach (PlannedRemoval removal in plan.Removals)
+        {
+            if (!removal.Assumed)
+            {
+                removed.Add(removal.Piece);
+            }
+        }
+
+        foreach (PlannedCell cell in plan.Cells)
+        {
+            if (cell.Existing != null)
+            {
+                removed.Add(cell.Existing);
+            }
+        }
+
+        return removed;
     }
 }

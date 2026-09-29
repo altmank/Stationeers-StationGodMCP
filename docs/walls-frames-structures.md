@@ -18,6 +18,7 @@ connections and guard against merging networks, which `place_structure` does not
 | `wall_map` | A text elevation of a wall (or floor) as seen from one side: seams, walls, windows, doors, devices, runs, free rectangles (1.4.3+). | `plane` + `around` + `side`, or `looking`; `radius_m`, `free_rects` |
 | `find_spot` | Ranked places for a prefab near a point on a wall or a room's walls, checked as the cursor checks them (1.4.3+). | `prefab`, `near`, `plane`/`looking`/`room_id`, `require` |
 | `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+). | `room_id` or `min`/`max`, `limit` |
+| `show_preview` | Draw wire boxes in your game for a planned placement's footprint, body and ports, or any cells and boxes; timed, nothing built (1.4.3+). | as `place_structure`, or `cells`, `boxes`; `seconds`, `clear` |
 | `describe_prefab` | A prefab in its own frame: placement, allowed turns, footprint, ports, visual up (1.4.3+). | `prefab` |
 | `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]` |
 | `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `refund_to` |
@@ -137,6 +138,14 @@ a capital or digit for each device (`things` lists them). `sections` names each 
 filters them on geometry first (cells free, `avoid_doors`, `one_section`, `min_bottom_above_floor_m`,
 `front_clear_m`), then checks the nearest ones (at most `max_checks`) with the game's cursor and the layout preview
 (`no_visual_overlap`, `ports_reachable`), and returns the best with ready `place_arguments`.
+
+### Seeing it before building (1.4.3+)
+
+`show_preview` takes the same placement fields as `place_structure` and draws, on your screen only, each
+placement's footprint (green, red with a problem), its render box (white) and its port cells (cyan, red when
+blocked), for `seconds` (default 30). `cells` (yellow 0.5 m cubes, e.g. a planned route) and `boxes` can be drawn
+too; a new call replaces the last (`keep: true` adds), `clear: true` removes them. Nothing in the world changes and
+other players see nothing.
 
 ### Checking a layout (1.4.3+)
 

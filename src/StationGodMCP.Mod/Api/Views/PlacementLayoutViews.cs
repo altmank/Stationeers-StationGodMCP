@@ -647,3 +647,122 @@ internal sealed class LintLayoutView
 
     public bool HasMore { get; }
 }
+
+/// <summary>An item's print record: the maker, the game time it was made, the quantity, and the stack it split off.</summary>
+internal sealed class PrintView
+{
+    internal PrintView(PrintRecord record)
+    {
+        MakerId = record.MakerId != 0 ? new ThingId(record.MakerId) : (ThingId?)null;
+        MakerPrefab = record.MakerPrefab;
+        MakerName = record.MakerName;
+        GameTimeS = System.Math.Round(record.GameTime, 1);
+        Quantity = record.Quantity;
+        SplitFrom = record.SplitFrom.HasValue ? new ThingId(record.SplitFrom.Value) : (ThingId?)null;
+    }
+
+    public ThingId? MakerId { get; }
+
+    public string? MakerPrefab { get; }
+
+    public string? MakerName { get; }
+
+    /// <summary>game_clock's game_time_s when it was made.</summary>
+    public double GameTimeS { get; }
+
+    public int Quantity { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ThingId? SplitFrom { get; }
+}
+
+/// <summary>show_preview: how many boxes it drew, how many earlier ones it cleared, for how long, and the dry run.</summary>
+internal sealed class ShowPreviewView
+{
+    internal ShowPreviewView(int shown, int cleared, double seconds, PlaceReportView? dryRun, List<string> notes)
+    {
+        Shown = shown;
+        Cleared = cleared;
+        Seconds = seconds;
+        DryRun = dryRun;
+        Notes = notes;
+    }
+
+    public int Shown { get; }
+
+    public int Cleared { get; }
+
+    public double Seconds { get; }
+
+    /// <summary>place_structure's own dry run of the placements drawn; left out without placements.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public PlaceReportView? DryRun { get; }
+
+    public List<string> Notes { get; }
+}
+
+/// <summary>undo_job's plan: what it removes, what it builds again, why it cannot, notes.</summary>
+internal sealed class UndoPlanView
+{
+    internal UndoPlanView(List<ThingId> remove, List<ThingId> restore, List<string> diverged, List<string> notes,
+        bool ready)
+    {
+        Remove = remove;
+        Restore = restore;
+        Diverged = diverged;
+        Notes = notes;
+        Ready = ready;
+    }
+
+    /// <summary>Things the job built, removed by the undo.</summary>
+    public List<ThingId> Remove { get; }
+
+    /// <summary>Things the job removed (their old ids), built again as they stood.</summary>
+    public List<ThingId> Restore { get; }
+
+    /// <summary>Why the world is no longer as the job left it; the undo is refused while any is listed.</summary>
+    public List<string> Diverged { get; }
+
+    public List<string> Notes { get; }
+
+    public bool Ready { get; }
+}
+
+/// <summary>undo_job: status (dry_run, refused, scheduled), the plan, both tools' arguments and their replies.</summary>
+internal sealed class UndoJobView
+{
+    internal UndoJobView(string jobId, string tool, string status, UndoPlanView plan,
+        Newtonsoft.Json.Linq.JObject? removeArguments, Newtonsoft.Json.Linq.JObject? placeArguments, object? removal,
+        object? placement)
+    {
+        JobId = jobId;
+        Tool = tool;
+        Status = status;
+        Plan = plan;
+        RemoveArguments = removeArguments;
+        PlaceArguments = placeArguments;
+        Removal = removal;
+        Placement = placement;
+    }
+
+    /// <summary>The job undone.</summary>
+    public string JobId { get; }
+
+    public string Tool { get; }
+
+    public string Status { get; }
+
+    public UndoPlanView Plan { get; }
+
+    /// <summary>remove_structure's arguments for what the job built.</summary>
+    public Newtonsoft.Json.Linq.JObject? RemoveArguments { get; }
+
+    /// <summary>place_structure's arguments for what the job removed.</summary>
+    public Newtonsoft.Json.Linq.JObject? PlaceArguments { get; }
+
+    /// <summary>The dry run: remove_structure's dry run; a real run: its job (poll with remove_structure job_id).</summary>
+    public object? Removal { get; }
+
+    /// <summary>A real run: place_structure's queued job (poll with place_structure job_id).</summary>
+    public object? Placement { get; }
+}

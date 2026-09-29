@@ -89,6 +89,8 @@ internal static class ApiHost
             ["wall_map"] = static args => WallMapApi.Handle(args),
             ["find_spot"] = static args => FindSpotApi.Handle(args),
             ["lint_layout"] = static args => LintLayoutApi.Handle(args),
+            ["show_preview"] = static args => ShowPreviewApi.Handle(args),
+            ["undo_job"] = static args => UndoJobApi.Handle(args),
 
             ["remove_structure"] = static args => RemoveStructureApi.Handle(args),
             ["grid_survey"] = static args => GridSurveyApi.Handle(args),

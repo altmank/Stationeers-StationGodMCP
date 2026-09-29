@@ -48,7 +48,12 @@ Placement and layout tools: doors and windows everywhere.
 - **New `lint_layout`:** a room or box against the layout rules: `run_in_door_keepout`, `port_into_doorway`,
   `port_cell_foreign_network`, `floating_run`, `run_crosses_window`, `device_visual_overlap`,
   `mounted_faces_out_of_room`, `device_crosses_seam` (warnings), `pipe_along_door`, `controls_not_on_wall` (info).
-  81 tools.
+- **New `undo_job`:** undoes a finished place or remove job: removes what it built and builds again what it removed,
+  as it stood (a snapshot is taken when each job starts); refused when the world diverged. Dry run by default.
+- **Print provenance:** items a machine makes are recorded as they are made (split stacks keep the record);
+  `find_things` reports `made` and filters with `made_by` and `made_since`.
+- **New `show_preview`:** timed wire boxes in your game for a placement's footprint, body and ports, or any cells and
+  boxes; never the game's construction cursor, nothing built. 83 tools.
 - **`grid_survey`** marks keep-out cells `x` and window cells `g` in `support`, names each face structure's `kind`
   (wall, window, door) and lists `doors` with their faces, plane, band and port cells.
 

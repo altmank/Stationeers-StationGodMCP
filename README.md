@@ -64,7 +64,7 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 
 ## Tools
 
-81 tools, in these areas. Each page lists its tools with what they take and give back.
+83 tools, in these areas. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |
@@ -75,7 +75,7 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 | Solar, dishes and traders | `solar_aim`, `dish_aim`, `landing_pads`, `trader_contacts`, `trader_inventory`, `trader_buy`, `trader_sell` | [solar-and-traders.md](docs/solar-and-traders.md) |
 | Cables, pipes and chutes | `grid_survey`, `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`, `place_cables`, `place_pipes`, `place_chutes`, `remove_cables`, `remove_pipes`, `remove_chutes`, `upgrade_cables`, `upgrade_pipes` | [building.md](docs/building.md) |
 | Clean-up and refactoring | `clean_cables`, `clean_pipes`, `plan_removal`, `feed_paths` | [cleanup-and-refactor.md](docs/cleanup-and-refactor.md) |
-| Walls, frames and structures | `replace_walls`, `replace_frames`, `describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `place_structure`, `remove_structure` | [walls-frames-structures.md](docs/walls-frames-structures.md) |
+| Walls, frames and structures | `replace_walls`, `replace_frames`, `describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `show_preview`, `place_structure`, `remove_structure`, `undo_job` | [walls-frames-structures.md](docs/walls-frames-structures.md) |
 | Blueprints | `paste_blueprint` | [blueprints.md](docs/blueprints.md) |
 | Ingot Vault (mod) | `vault_contents`, `vault_deposit`, `vault_withdraw` | [ingot-vault.md](docs/ingot-vault.md) |
 
@@ -129,7 +129,9 @@ preview, in-line tank and passive vent route ends, `reserve_cells` and `reserve_
 the 1.4.0 Ingot Vault tools (`vault_contents`, `vault_deposit`, `vault_withdraw`) and `move_item`'s refusal of a
 vault's display slots, the 1.4.1 gas check of pipe jobs (`gas_check`, `gas_lost`, the queued gas applied after
 every piece), and the 1.4.2 broken structures (`remove_structure` `allow_broken`, `find_things` `broken`,
-`thing_health` `broken_only` and `condition`).
+`thing_health` `broken_only` and `condition`), and the 1.4.3 placement and layout tools (door keep-out and windows in
+the planners and place tools, `looking_at` v2, the `place_structure` layout preview, `orient`, relative `at`,
+`describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `undo_job`, print provenance, `show_preview`).
 
 ## Documentation
 

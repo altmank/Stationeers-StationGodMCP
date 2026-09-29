@@ -53,6 +53,7 @@ junction) and `fill`.
 | `plan_cable_route`, `plan_pipe_route`, `plan_chute_route` | Find a route under rules and return it with the place tool's own dry run. Read only. |
 | `place_cables`, `place_pipes`, `place_chutes` | Lay a run, with branches, or one piece. |
 | `remove_cables`, `remove_pipes`, `remove_chutes` | Remove pieces as wire cutters, a wrench or deconstruction would. |
+| `undo_job` | Undo a finished place or remove job: remove what it built, build again what it removed (1.4.3+). |
 | `upgrade_cables` | Normal cable to heavy (default) or super heavy, piece for piece, in place. |
 | `upgrade_pipes` | Normal gas and liquid pipe to insulated pipe of the same content, in place. |
 | `connections` | A piece's or device's ends, or a network's members and load; see [devices-and-logic.md](devices-and-logic.md#connections-and-networks). |
@@ -181,6 +182,16 @@ inside frames where possible, `plan_cable_route`:
 - **Tap check.** A run end left open next to, or one free cell short of, another network's piece warns `not_joined`.
   `join_to` names the network the run must end up on; `join_trunk: true` adds the missing tap (warning `tap_added`).
   The planners set `join_to` themselves when `to` names a network, piece or port.
+
+## Undoing a job (1.4.3+)
+
+`undo_job {job_id}` undoes a finished `place_*`, `remove_*`, `place_structure` or `remove_structure` job among the
+last 16: it removes (with `remove_structure`) everything the job built and builds again (with `place_structure`)
+everything it removed, as it stood when the job started (the mod takes a snapshot of each removed thing then). It is
+refused, with `plan.diverged` saying why, when the world is no longer as the job left it: something it built is gone
+or another prefab now, or something it removed cannot be placed again exactly. The dry run shows the plan, both
+tools' arguments and the removal's own dry run; `dry_run: false, confirm: true` starts the removal and queues the
+placements behind it. Every guard of both tools applies, and materials are paid and refunded as by hand.
 
 ## Removing pieces
 
