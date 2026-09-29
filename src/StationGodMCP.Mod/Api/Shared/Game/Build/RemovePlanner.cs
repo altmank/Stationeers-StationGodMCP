@@ -806,7 +806,8 @@ internal static class RemovePlanner
                     // The gas model's would_burst and holds_gas cover these networks, in the job's own order.
                     break;
                 case "would_split":
-                    plan.Warnings.Add(new BuildIssueView("would_split", message, index, id));
+                    plan.Warnings.Add(new BuildIssueView("would_split",
+                        $"{kind.RemoveTool}'s check: {RemovalRule.SplitWarning(issue.Message)}", index, id));
                     break;
                 case UpgradeFamily.HoldsContents:
                 case "contents_would_move":

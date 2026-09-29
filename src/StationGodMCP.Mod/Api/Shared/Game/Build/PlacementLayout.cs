@@ -62,7 +62,8 @@ internal sealed class LayoutPreview
 /// turn: the small cells it would be registered in (GridBounds, as the game's cursor reads them), its render box
 /// (Thing.Bounds), the face plane it rests on and the 2 m wall sections it spans there, and the conflicts with what
 /// stands around it now: visual_overlap (render boxes run into each other by more than 0.1 m, VisualClash; neighbours
-/// flush on a wall only touch), crosses_section_seam (its render box's rectangle spans more than one 2 m section),
+/// flush on a wall only touch), crosses_section_seam (its render box's rectangle spans more than one 2 m section though
+/// it is small enough to fit one: MountRect.CrossesAvoidableSeam),
 /// in_door_keepout, crosses_window, blocks_route_cells (it would stand in the cell a free port of a device beside it
 /// needs), front_blocked, faces_out_of_room, not_upright; and each port checked
 /// against its joining cell (what stands there, whether it joins on build, which network). Read only.
@@ -167,7 +168,7 @@ internal static class PlacementLayout
         }
 
         bool crosses = faces.Count > 1;
-        if (crosses && seamMatters)
+        if (crosses && seamMatters && mount.FitsOneSection)
         {
             conflicts.Add(new LayoutConflict(ConflictCodes.CrossesSeam, ConflictLevel.Warning,
                 $"It spans {faces.Count} wall sections on {mount.Plane} ({mount}): it crosses the seam between " +

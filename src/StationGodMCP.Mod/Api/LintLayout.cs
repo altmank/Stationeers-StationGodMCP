@@ -253,7 +253,7 @@ internal static class LintLayoutApi
         bool mounted = device.PlacementType == PlacementSnap.FaceMount;
         MountRect? mount = MountRect.Of(Box3.OfSmallCells(cells), mounted ? turn.Forward : turn.Up,
             Bodies.RenderBox(device));
-        if (mounted && mount != null && mount.CrossesSeam)
+        if (mounted && mount != null && mount.CrossesAvoidableSeam)
         {
             findings.Add(new LintFinding(LintCodes.DeviceCrossesSeam,
                 $"{device.DisplayName} ({device.PrefabName} {device.ReferenceId}) spans {mount.Faces().Count} wall " +

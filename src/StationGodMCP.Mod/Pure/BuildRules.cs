@@ -340,6 +340,24 @@ internal static class RemovalRule
         return trimmed.TrimEnd('.') + "; allow_contents is set, so it is removed anyway.";
     }
 
+    /// <summary>
+    /// A remove tool's would_split as remove_structure warns it: the remove tool's advice names arguments
+    /// remove_structure does not take (allow_split, root), so it is dropped and the warning says the split goes ahead.
+    /// </summary>
+    internal static string SplitWarning(string message)
+    {
+        string trimmed = message.TrimEnd();
+        const string advice = " Pass allow_split if that is meant.";
+        if (trimmed.EndsWith(advice, StringComparison.Ordinal))
+        {
+            trimmed = trimmed.Substring(0, trimmed.Length - advice.Length);
+        }
+
+        return trimmed.Replace(" (pass root to name one).", ".").TrimEnd('.') +
+               "; remove_structure only warns of a split and removes it anyway (plan_removal or remove_pipes with " +
+               "root name the devices a root still reaches).";
+    }
+
     internal const string BrokenWhat =
         "it is broken (the game's broken state, left by fire, pressure or other damage, a burst pipe or a burnt " +
         "cable; the game cannot repair it, only deconstruct it)";

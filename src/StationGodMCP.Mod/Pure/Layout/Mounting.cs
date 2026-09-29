@@ -93,6 +93,21 @@ internal sealed class MountRect
     internal bool CrossesSeam => Faces().Count > 1;
 
     /// <summary>
+    /// The widest rectangle side that still fits one 2 m section: centred on it, it reaches past each seam by at most
+    /// ConflictCodes.OverlapToleranceM, which Faces does not count.
+    /// </summary>
+    internal const double OneSectionM = 2.0 + 2.0 * ConflictCodes.OverlapToleranceM;
+
+    /// <summary>Whether some shift puts the rectangle on one section: neither side is wider than OneSectionM.</summary>
+    internal bool FitsOneSection => MaxU - MinU <= OneSectionM + Edge && MaxV - MinV <= OneSectionM + Edge;
+
+    /// <summary>
+    /// It spans a seam that shifting it would avoid: crosses_section_seam and device_crosses_seam. A piece wider than a
+    /// section (a medium dish, a landing pad part) crosses a seam wherever it stands, so there is nothing to fix.
+    /// </summary>
+    internal bool CrossesAvoidableSeam => CrossesSeam && FitsOneSection;
+
+    /// <summary>
     /// The face centres (decimetres, odd metres) whose 2 m span the interval overlaps by more than
     /// ConflictCodes.OverlapToleranceM; an interval that overlaps none by that much (a small piece on a seam) is on the
     /// face it overlaps most.

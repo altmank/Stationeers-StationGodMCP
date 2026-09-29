@@ -54,6 +54,24 @@ internal sealed class TradeView
 
     /// <summary>The pad network's atmosphere, where bought gas goes and sold gas comes from; null without.</summary>
     public ThingId? GasAtmosphereId { get; }
+
+    /// <summary>
+    /// A dry run's credits_after: the balance once every line that would go through has traded, less what they would
+    /// spend and plus what they would earn; refused lines change nothing.
+    /// </summary>
+    internal static float PredictedCredits(float creditsBefore, List<BatchItemView> results)
+    {
+        float credits = creditsBefore;
+        foreach (BatchItemView result in results)
+        {
+            if (result is TradedView traded)
+            {
+                credits += (traded.CreditsEarned ?? 0f) - (traded.CreditsSpent ?? 0f);
+            }
+        }
+
+        return credits;
+    }
 }
 
 /// <summary>One line of a trade that went through (or, for a dry run, would).</summary>

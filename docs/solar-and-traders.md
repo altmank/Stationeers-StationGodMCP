@@ -79,6 +79,11 @@ moves the pad's landing point and puts it back, so a landing in progress is neve
   to the cent.
 - `trader_buy`'s `dry_run: true` checks each line on its own against stock, card and free slots; it does not add lines
   up.
+- In a dry run `credits_after` is the predicted balance (1.4.4+): `credits_before` less what the lines that pass would
+  spend, plus what they would earn. Buy lines are checked on their own, so it goes below 0 when they do not add up; the
+  real run then refuses the later line with `insufficient_credits`.
+- A refused line's `quantity` is how many were actually traded (0 when refused up front, and always 0 in a dry run),
+  not the quantity asked; its `index` points at the line asked.
 - `trader_inventory` shows, for the landed trader, how many of each item it would take right now (`sellable`), the
   trade window's own count: what the pad network's vending machines and you hold. `trader_sell` counts the card
   holder's inventory in place of yours, so the two agree when the card is yours. `have` counts every item of the line's prefab in the world (0 when none, null for

@@ -246,8 +246,11 @@ internal static class TradeSession
             ? delivery.Delivered()
             : new List<DeliveredView>();
         Atmosphere? gas = contact.ConnectedPad.LandingPadNetwork?.Atmosphere;
+        float creditsAfter = request.DryRun
+            ? TradeView.PredictedCredits(creditsBefore, results.Results)
+            : card.Currency;
         return new TradeView(request.Contact, Text.Plain(contact.DataInstance.DisplayName), request.DryRun,
-            new ThingId(card.ReferenceId), creditsBefore, card.Currency, results, delivered,
+            new ThingId(card.ReferenceId), creditsBefore, creditsAfter, results, delivered,
             gas == null ? (ThingId?)null : new ThingId(gas.ReferenceId));
     }
 

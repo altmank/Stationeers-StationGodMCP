@@ -189,7 +189,7 @@ below that floor).
 | `run_crosses_window` | warning | a piece on a window's face |
 | `device_visual_overlap` | warning | two devices whose mesh boxes run more than 0.1 m into each other, or one inside the other |
 | `mounted_faces_out_of_room` | warning | a mounted device facing out of the room behind it |
-| `device_crosses_seam` | warning | a mounted device whose mesh spans two wall sections by more than 0.1 m |
+| `device_crosses_seam` | warning | a mounted device whose mesh spans two wall sections by more than 0.1 m, though it is small enough (2.2 m or less each way) to fit one |
 | `run_along_door` | info | a cable, pipe or chute piece hugging a door's jamb (`pipe_along_door` before 1.4.4) |
 | `controls_not_on_wall` | info | a console, computer, display or switch not on a wall |
 
@@ -251,7 +251,7 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 | Code | Level | Meaning |
 | --- | --- | --- |
 | `visual_overlap` | warning | Its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (1.4.4+). A small device under a console's overhang clashes even where their small cells do not; neighbours flush on one wall only touch, or overlap by a rim, and do not; a thing sharing one of its cells (a device on a pipe) is skipped. |
-| `crosses_section_seam` | warning | Its mesh spans more than one 2 m section by more than 0.1 m. Not given for cable, pipe and chute pieces, in-line tanks and passive vents, which rest on no section. |
+| `crosses_section_seam` | warning | Its mesh spans more than one 2 m section by more than 0.1 m, though it could fit one (neither side wider than 2.2 m), so shifting it fixes it. Not given for cable, pipe and chute pieces, in-line tanks and passive vents, which rest on no section, nor for a piece wider than a section (a medium dish, a landing pad part), which crosses a seam wherever it stands; `sections.crosses_seam` still reports the span. |
 | `in_door_keepout` | problem | A cell in a door's keep-out; `allow_door_keepout` makes it a warning. |
 | `crosses_window` | warning | It stands on or rests against a window. |
 | `blocks_route_cells` | warning | It would take the joining cell of a free port of a device beside it. |
@@ -295,7 +295,8 @@ are one opening too, reported once. With `refund_to: "none"` the dry run lists n
 rocket-only piece, a fuselage or a launch mount.
 
 Cable, pipe and chute pieces are removed as the remove tools remove them, with their checks (a pipe network's `holds_contents` and `would_burst` come from the same model of what the job leaves as above, as `holds_gas` and `would_burst`, pipe pieces alone too); `would_split` is only a
-warning here, so read it. Those checks run with `remove_structure`'s own refund (`refund_to`, `from_id`), so they need
+warning here, so read it (it does not ask for `allow_split` or `root`, which `remove_structure` does not take; price
+the split against a root with `plan_removal`). Those checks run with `remove_structure`'s own refund (`refund_to`, `from_id`), so they need
 no player on a dedicated server.
 
 ### Broken structures
