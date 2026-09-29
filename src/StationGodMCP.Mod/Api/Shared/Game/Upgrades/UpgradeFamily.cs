@@ -398,6 +398,19 @@ internal sealed class PipeFamily : UpgradeFamily
         }
     }
 
+    /// <summary>
+    /// Merges one pipe network into another as the game does when a placed pipe joins both (Pipe.OnRegistered:
+    /// StructureNetwork.Merge): AtmosphericsNetwork.Merge queues the old network's gas to be added to the new one's and
+    /// moves its members over (JobGas.Settle applies the gas).
+    /// </summary>
+    internal static void Merge(IReferencable into, IReferencable from)
+    {
+        if (into is PipeNetwork target && from is PipeNetwork source && target != source)
+        {
+            target.Merge(source);
+        }
+    }
+
     // AtmosphericsNetwork.Remove takes the pipe's volume off the network's Atmosphere and leaves the gas where it is.
     // Its DeviceRegister entries move to the replacement as for cables.
     internal override void Leave(SmallGrid old, List<SmallGrid> replacements, IReferencable network)

@@ -36,16 +36,26 @@ internal sealed class RunOutcome
 /// Pipe.OnRegistered join and merge the networks around it). Each cell's coils are taken before it is built; the
 /// first failure stops the build and the log says where. After each piece the gas its merges queued is applied
 /// (JobGas.Settle), so no merge copies a network whose gas is still on its way.
+/// A split long straight that is the last pipe of its network (Forecast.Carried) is not removed first: the game's
+/// removal of a network's last pipe deletes its contents. It is swapped in the build instead, as split_long_straights
+/// swaps one: its singles are built over it first, their network is merged into its network as the game merges two
+/// networks a piece joins (AtmosphericsNetwork.Merge: their gas is added), then it leaves and is destroyed, so the
+/// network keeps its id and its contents.
 /// </summary>
 internal static class RunBuilder
 {
+    /// <summary>A removal the build swaps for its singles instead of the removal step taking it away.</summary>
+    internal static bool SwappedInBuild(RunPlan plan, PlannedRemoval removal) =>
+        removal.Split && !removal.Assumed && removal.Network != null && plan.Request.Kind.Family is PipeFamily &&
+        plan.Forecast != null && plan.Forecast.Result.Carried.Contains(removal.Network.ReferenceId);
+
     internal static void Remove(RunPlan plan, RunOutcome outcome)
     {
         UpgradeFamily family = plan.Request.Kind.Family;
-        HashSet<long> rebuilt = Rebuilt(plan.Forecast!);
+        HashSet<long> rebuilt = Rebuilt(plan.Forecast!, family);
         foreach (PlannedRemoval removal in plan.Removals)
         {
-            if (removal.Assumed)
+            if (removal.Assumed || SwappedInBuild(plan, removal))
             {
                 continue;
             }
@@ -84,14 +94,26 @@ internal static class RunBuilder
         List<ItemAmount> refund = new List<ItemAmount>();
         foreach (PlannedRemoval removal in plan.Removals)
         {
-            if (!removal.Assumed)
+            // A swapped long's refund is added once its swap is done (SwapSplit).
+            if (!removal.Assumed && !SwappedInBuild(plan, removal))
             {
                 refund.AddRange(removal.Refund);
             }
         }
 
+        HashSet<SmallGrid> swapped = new HashSet<SmallGrid>();
+        foreach (PlannedRemoval removal in plan.Removals)
+        {
+            if (outcome.Log.StoppedAt == null && SwappedInBuild(plan, removal))
+            {
+                swapped.Add(removal.Piece);
+                SwapSplit(plan, removal, stocks, used, refund, outcome, gas);
+            }
+        }
+
         List<PlannedCell> ordered = plan.Cells.FindAll(static cell => cell.IsChange);
-        ordered.AddRange(plan.Cells.FindAll(static cell => !cell.IsChange));
+        ordered.AddRange(plan.Cells.FindAll(cell =>
+            !cell.IsChange && (cell.SplitFrom == null || !swapped.Contains(cell.SplitFrom))));
         foreach (PlannedCell cell in ordered)
         {
             if (outcome.Log.StoppedAt != null)
@@ -125,8 +147,60 @@ internal static class RunBuilder
         }
     }
 
-    private static void BuildOne(RunPlan plan, PlannedCell cell, Dictionary<int, ItemStock> stocks,
+    // The long straight's singles are built over it (each overwriting its slot in that cell), then their network is
+    // merged into its network and it leaves and is destroyed: the gas moves with the game's own merge, never through
+    // a network with no pipe. A failure leaves the long standing (the log says where).
+    private static void SwapSplit(RunPlan plan, PlannedRemoval removal, Dictionary<int, ItemStock> stocks,
         Dictionary<int, int> used, List<ItemAmount> refund, RunOutcome outcome, JobGas gas)
+    {
+        SmallGrid old = removal.Piece;
+        List<SmallGrid> singles = new List<SmallGrid>();
+        foreach (PlannedCell cell in plan.Cells.FindAll(cell => !cell.IsChange && cell.SplitFrom == old))
+        {
+            SmallGrid? built = BuildOne(plan, cell, stocks, used, refund, outcome, gas, old);
+            if (built == null)
+            {
+                return;
+            }
+
+            singles.Add(built);
+        }
+
+        try
+        {
+            // The singles' network goes into the long's, which keeps its id as split_long_straights keeps it (the gas
+            // check follows contents by network id once the long is gone).
+            UpgradeFamily family = plan.Request.Kind.Family;
+            IReferencable? kept = family.NetworkOf(old);
+            IReferencable? theirs = singles.Count > 0 ? family.NetworkOf(singles[0]) : null;
+            if (kept != null && theirs != null && kept != theirs)
+            {
+                PipeFamily.Merge(kept, theirs);
+                gas.Settle();
+            }
+
+            IReferencable? own = family.NetworkOf(old);
+            if (own != null)
+            {
+                family.Leave(old, singles, own);
+            }
+
+            OnServer.Destroy(old);
+            outcome.Replaced.Add(old);
+            outcome.Log.Removed.Add(new ThingId(old.ReferenceId));
+            refund.AddRange(removal.Refund);
+        }
+        catch (Exception exception)
+        {
+            // A network's Merge, Remove or OnServer.Destroy failing: the build stops with the long still standing.
+            StationGodMod.LogWarning($"run split of {old.ReferenceId} failed: {exception}");
+            outcome.Log.StoppedAt = new ErrorView("build_failed",
+                $"Replacing {old.PrefabName} {old.ReferenceId} by its singles failed: {exception.Message}");
+        }
+    }
+
+    private static SmallGrid? BuildOne(RunPlan plan, PlannedCell cell, Dictionary<int, ItemStock> stocks,
+        Dictionary<int, int> used, List<ItemAmount> refund, RunOutcome outcome, JobGas gas, SmallGrid? over = null)
     {
         try
         {
@@ -144,11 +218,11 @@ internal static class RunBuilder
                     outcome.Log.StoppedAt = new ErrorView("coils_short",
                         $"Only {taken} of {cell.Cost} {cell.Kit.Item.DisplayName} could be taken for cell " +
                         $"{cell.Cell}; the build stopped before it (what was taken is given back).");
-                    return;
+                    return null;
                 }
             }
 
-            SmallGrid built = cell.IsChange ? Change(plan, cell) : Place(plan, cell);
+            SmallGrid built = cell.IsChange ? Change(plan, cell) : Place(plan, cell, over);
             outcome.Built[cell.ForecastId] = built;
             // The gas this piece's merges queued lands before the next piece can merge the survivor away (JobGas).
             gas.Settle();
@@ -165,22 +239,32 @@ internal static class RunBuilder
             {
                 outcome.Log.Placed.Add(GameLookup.ViewOf(built));
             }
+
+            return built;
         }
         catch (Exception exception)
         {
             // Thing.Create, a network's Add or Remove, or OnServer.Destroy failing: the build stops at this cell.
             StationGodMod.LogWarning($"run build at {cell.Cell} failed: {exception}");
             outcome.Log.StoppedAt = new ErrorView("build_failed", $"Cell {cell.Cell}: {exception.Message}");
+            return null;
         }
     }
 
-    private static SmallGrid Place(RunPlan plan, PlannedCell cell)
+    // A new piece as a coil places it; over a piece still standing there (a split long straight's cell), built into
+    // its slot as the kit's merge builds one, taking its owner and colour.
+    private static SmallGrid Place(RunPlan plan, PlannedCell cell, SmallGrid? over)
     {
         GridController world = GridController.World;
         ulong owner = cell.Look?.Owner ?? (plan.From is Human human ? human.OwnerClientId : 0UL);
-        CreateStructureInstance instance = new CreateStructureInstance(cell.Choice.Prefab,
-            world.WorldToLocal(PieceShapes.CentreOf(cell.Cell)), cell.Choice.Rotation, owner,
-            cell.Look?.Colour ?? -1);
+        CreateStructureInstance instance = over != null
+            ? new CreateStructureInstance(cell.Choice.Prefab, over)
+            {
+                LocalGrid = world.WorldToLocal(PieceShapes.CentreOf(cell.Cell)),
+                LocalRotation = cell.Choice.Rotation
+            }
+            : new CreateStructureInstance(cell.Choice.Prefab, world.WorldToLocal(PieceShapes.CentreOf(cell.Cell)),
+                cell.Choice.Rotation, owner, cell.Look?.Colour ?? -1);
         SmallGrid built = Spawn(instance, cell);
         RequireInPlace(plan, cell, built);
         return built;
@@ -236,10 +320,16 @@ internal static class RunBuilder
         }
     }
 
-    // Networks the forecast splits or empties: the game rebuilds those from the removed pieces' neighbours.
-    private static HashSet<long> Rebuilt(RunForecast forecast)
+    // Networks the forecast splits or empties: the game rebuilds those from the removed pieces' neighbours. A network
+    // only a split long's singles carry on is emptied too, except a pipe network's, whose long the build swaps.
+    private static HashSet<long> Rebuilt(RunForecast forecast, UpgradeFamily family)
     {
         HashSet<long> rebuilt = new HashSet<long>(forecast.Result.Gone);
+        if (!(family is PipeFamily))
+        {
+            rebuilt.UnionWith(forecast.Result.Carried);
+        }
+
         foreach (ForecastSplit split in forecast.Result.Splits)
         {
             rebuilt.Add(split.Network);

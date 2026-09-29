@@ -255,16 +255,19 @@ internal static class RunTaps
         return "nowhere";
     }
 
-    // A piece of the kind standing in the cell that the run does not join (of the target network when one is named).
+    // A piece of the kind standing in the cell that the run does not join (of the target network when one is named)
+    // and could join: a pipe of other content never joins the run (content_mismatch), so no tap to it is offered.
     private static Func<GridCell, long?> PieceOf(RunPlan plan, HashSet<long> joined, long? only)
     {
         HashSet<long> ignored = plan.IgnoredIds();
         RunKind kind = plan.Request.Kind;
         UpgradeFamily family = kind.Family;
+        PipeContent? content = plan.Request.Build != null ? kind.ContentOf(plan.Request.Build.Grade) : null;
         return cell =>
         {
             SmallGrid? piece = PieceIn(kind, cell);
-            if (piece == null || ignored.Contains(piece.ReferenceId))
+            if (piece == null || ignored.Contains(piece.ReferenceId) ||
+                !PipeContent.Join(family.ContentOf(piece), content))
             {
                 return null;
             }

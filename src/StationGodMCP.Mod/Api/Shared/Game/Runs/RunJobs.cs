@@ -140,7 +140,7 @@ internal sealed class RunAwaitingRemovals : ActiveRun
         List<SmallGrid> removed = new List<SmallGrid>();
         foreach (PlannedRemoval removal in _plan.Removals)
         {
-            if (!removal.Assumed)
+            if (!removal.Assumed && !RunBuilder.SwappedInBuild(_plan, removal))
             {
                 removed.Add(removal.Piece);
             }

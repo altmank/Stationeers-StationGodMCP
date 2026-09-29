@@ -74,7 +74,16 @@ internal static class NetworkHandles
             if (!GameLookup.TryFindThing(handle.Id, out Thing thing))
             {
                 // Not a thing: it must be a network of the family (network_not_found otherwise).
-                family.NetworkMembers(handle.Id);
+                try
+                {
+                    family.NetworkMembers(handle.Id);
+                }
+                catch (ApiException missing) when (missing.Code == "network_not_found")
+                {
+                    throw ApiErrors.Refused(missing.Code,
+                        $"{entry}: {handle.Id} names no thing and no {family.NetworkKind} network. A piece's id " +
+                        "changes when an edit replaces it (a split, a junction); read it again (connections).");
+                }
             }
             else if (thing is SmallGrid piece && family.IsMember(piece))
             {

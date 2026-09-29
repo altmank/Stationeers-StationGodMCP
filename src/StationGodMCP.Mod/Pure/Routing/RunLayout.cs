@@ -297,7 +297,7 @@ internal static class RunLayoutPlanner
 
         foreach (LayoutCell entry in new List<LayoutCell>(layout.Cells))
         {
-            Finish(layout, around, entry);
+            Finish(layout, around, entry, content);
         }
 
         return layout;
@@ -451,9 +451,18 @@ internal static class RunLayoutPlanner
         entry.Add(towards);
     }
 
-    // Changed pieces must be changeable; a single end becomes a straight with its far end open.
-    private static void Finish(RunLayout layout, RunSurroundings around, LayoutCell entry)
+    internal const string NothingToJoin = "nothing_to_join";
+
+    // Changed pieces must be changeable; a single end becomes a straight with its far end open; a new piece with no
+    // end at all (a one-cell run that joins nothing) has no direction for one.
+    private static void Finish(RunLayout layout, RunSurroundings around, LayoutCell entry, PipeContent? content)
     {
+        if (entry.Ends.IsEmpty && entry.Existing == null)
+        {
+            Unjoined(layout, around, entry, content);
+            return;
+        }
+
         if (entry.Action == CellAction.Change && entry.Existing != null)
         {
             if (entry.Existing.Cells.Count > 1)
@@ -481,6 +490,29 @@ internal static class RunLayoutPlanner
         }
 
         BlockedPorts(layout, around, entry);
+    }
+
+    // A one-cell run with nothing to join: a pipe end of other content pointing at it is why (content_mismatch);
+    // otherwise nothing gives the piece a direction (nothing_to_join), where the piece form names its ends.
+    private static void Unjoined(RunLayout layout, RunSurroundings around, LayoutCell entry, PipeContent? content)
+    {
+        foreach (GridStep step in GridStep.All)
+        {
+            GridCell next = step.From(entry.Cell);
+            PieceModel? piece = around.PieceAt(next);
+            if (piece != null && !Compatible(piece, content) && EndSet.AtCell(piece, next).Contains(step.Opposite))
+            {
+                layout.Problems.Add(new LayoutIssue("content_mismatch",
+                    $"Cell {entry.Cell} is next to a pipe of other content ({piece.Id}, towards {step.Name}); the " +
+                    "run cannot join it, and a one-cell run with nothing else to join has no direction.", entry.Cell,
+                    piece.Id));
+                return;
+            }
+        }
+
+        layout.Problems.Add(new LayoutIssue(NothingToJoin,
+            $"Cell {entry.Cell} is a one-cell run that joins nothing, so it has no direction for a piece. Name its " +
+            "ends with piece {at, ends}, or lay a run of two or more cells.", entry.Cell));
     }
 
     // An end cell of a long straight: the piece goes on into its next cell, so a single end there is not open.
@@ -529,7 +561,5 @@ internal static class RunLayoutPlanner
         }
     }
 
-    private static bool Compatible(PieceModel piece, PipeContent? content) =>
-        content == null || piece.Content == null ||
-        (piece.Content.Accepts(content) && content.Accepts(piece.Content));
+    private static bool Compatible(PieceModel piece, PipeContent? content) => PipeContent.Join(piece.Content, content);
 }

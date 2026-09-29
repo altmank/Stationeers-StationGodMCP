@@ -189,7 +189,8 @@ inside frames where possible, `plan_cable_route`:
 - **Removal in the same job.** `remove_ids` removes pieces before building, so a device is never unpowered between its
   old cable and its new one. A burnt cable an overload left (`StructureCableStraightBurnt` and the like) may be named
   too, which frees its cell.
-- **Tap check.** A run end left open next to, or one free cell short of, another network's piece warns `not_joined`.
+- **Tap check.** A run end left open next to, or one free cell short of, another network's piece it could join (never
+  a pipe of other content) warns `not_joined`.
   `join_to` names the network the run must end up on; `join_trunk: true` adds the missing tap (warning `tap_added`).
   The planners set `join_to` themselves when `to` names a network, piece or port.
 
@@ -230,6 +231,7 @@ Each refusal names what it found. An `allow_*` argument accepts that one case af
 | `holds_contents`, `contents_would_move` | A pipe removal would delete a network's gas or liquid, or divide it. | none: empty it first with `move_gas` |
 | `content_mismatch` | A pipe of the other content (gas and liquid never join). | none |
 | `cell_blocked`, `cannot_change`, `no_piece_for_ends`, `link_lost` | A cell is taken; a piece cannot be changed (a fuse or meter mounted, indestructible, rocket); no piece has those ends; a piece would lose a link. | none |
+| `nothing_to_join` | A one-cell run joins nothing, so its piece has no direction. | name its ends with `piece` |
 | `assumed_present` | A real run while something in `assume_removed` still stands. | remove it first |
 | `would_loop` (warning) | The run joins something already joined another way: a second path. Keep it only if the redundancy is meant. | not needed |
 | `in_door_keepout` | A new piece in a door's keep-out (1.4.3+). | `allow_door_keepout` |
@@ -241,7 +243,8 @@ Each refusal names what it found. An `allow_*` argument accepts that one case af
 The same tools and arguments with `grade` required. The contents always stay in the network's own atmosphere: placing
 pipe adds volume (pressure falls); a removed pipe leaves the network before it goes, so its volume leaves and its gas
 stays (pressure rises, refused above the weakest pipe). The last pipes of a network that still holds gas or liquid are
-never removed. `would_bridge` lists each network's gases, pressure and temperature, so you can see whether they may mix.
+never removed. A long straight the run splits to join it keeps its network and contents even when it is the network's
+only pipe: its singles are built over it and take the network on. `would_bridge` lists each network's gases, pressure and temperature, so you can see whether they may mix.
 
 **Contents are checked.** The game moves gas between merged or split pipe networks at the next game tick, not at
 once; a job applies those changes after every piece it builds, so a run that joins several networks keeps every
@@ -269,6 +272,7 @@ The same tools with Kit (Chute), and the item flow checked.
   are never placed.
 - **Direction matters.** Items travel from a run's first cell to its last. Start at the source (a device's chute Output
   port, a chute bin, a line carrying items towards you) and end at the sink (a device's chute Input port).
+  `plan_chute_route` refuses a `to` at an Output port or a `from` at an Input port (`invalid_argument`).
   `connections` and `grid_survey` list each port's role.
 - A junction takes items in through two inputs and lets them out through its output, so it merges flows; it cannot
   split one. The tool turns it to face downstream.

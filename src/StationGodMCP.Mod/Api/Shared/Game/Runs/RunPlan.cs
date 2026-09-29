@@ -162,9 +162,10 @@ internal sealed class RunTargets
 internal sealed class PlannedCell
 {
     internal PlannedCell(LayoutCell layout, Kit kit, RunChoice choice, PieceModel model, SwapPrice price,
-        SmallGrid? existing, PieceLook? look = null)
+        SmallGrid? existing, SmallGrid? splitFrom = null)
     {
-        Look = look;
+        SplitFrom = splitFrom;
+        Look = splitFrom != null ? PieceLook.Of(splitFrom) : null;
         Layout = layout;
         Kit = kit;
         Choice = choice;
@@ -194,6 +195,9 @@ internal sealed class PlannedCell
 
     internal bool IsChange => Existing != null;
 
+    /// <summary>The long straight this new piece is a single of (split in the same job); null otherwise.</summary>
+    internal SmallGrid? SplitFrom { get; }
+
     /// <summary>The owner and colour a new piece takes over (a split long straight's); null for the player's.</summary>
     internal PieceLook? Look { get; }
 }
@@ -217,12 +221,13 @@ internal sealed class PieceLook
 
 /// <summary>
 /// A piece to remove, its model now, its network and what deconstructing it gives back. Assumed: a piece the edit is
-/// checked as if already gone (assume_removed); the run never removes it and its refund is not counted.
+/// checked as if already gone (assume_removed); the run never removes it and its refund is not counted. Split: a long
+/// straight the run splits into singles (its cells are laid again as new pieces, PlannedCell.SplitFrom).
 /// </summary>
 internal sealed class PlannedRemoval
 {
     internal PlannedRemoval(SmallGrid piece, PieceModel live, IReferencable? network, List<ItemAmount> refund,
-        bool assumed = false, bool debris = false)
+        bool assumed = false, bool debris = false, bool split = false)
     {
         Piece = piece;
         Live = live;
@@ -230,9 +235,12 @@ internal sealed class PlannedRemoval
         Refund = refund;
         Assumed = assumed;
         Debris = debris;
+        Split = split;
     }
 
     internal bool Assumed { get; }
+
+    internal bool Split { get; }
 
     /// <summary>What is left of a destroyed piece (a burnt cable, RunKind.IsDebris): no refund, no undo.</summary>
     internal bool Debris { get; }

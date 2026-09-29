@@ -76,6 +76,10 @@ internal sealed class PipeContent
 
     /// <summary>Pipe.IsContentMatch: the same content, or this pipe takes any.</summary>
     internal bool Accepts(PipeContent other) => other.Kind == Kind || TakesAny;
+
+    /// <summary>Whether two pieces may join: either carries no content, or each accepts the other.</summary>
+    internal static bool Join(PipeContent? a, PipeContent? b) =>
+        a == null || b == null || (a.Accepts(b) && b.Accepts(a));
 }
 
 /// <summary>A thing on the small grid as connectivity sees it: its id, the cells it occupies and its ends.</summary>

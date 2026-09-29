@@ -268,7 +268,9 @@ internal static class RunPlanner
 
             // A long straight that would need a new end stays as it is (long_piece): no single replaces it, so the
             // forecast does not read it as gone.
-            if (cell.Action == CellAction.Change && cell.Existing != null && cell.Existing.Cells.Count > 1)
+            // Likewise a cell with no end at all (the layout named it: nothing_to_join or content_mismatch).
+            if ((cell.Action == CellAction.Change && cell.Existing != null && cell.Existing.Cells.Count > 1) ||
+                cell.Ends.IsEmpty)
             {
                 plan.Unchosen.Add(cell);
                 continue;
@@ -296,13 +298,11 @@ internal static class RunPlanner
             List<RunChoice> turns = catalogue.Orientations(cell.Ends);
             if (turns.Count > 1)
             {
-                orientable.Add(new OrientableCell(cell, catalogue, turns, existing, id,
-                    splitFrom != null ? PieceLook.Of(splitFrom) : null));
+                orientable.Add(new OrientableCell(cell, catalogue, turns, existing, id, splitFrom));
                 continue;
             }
 
-            Choose(plan, cell, catalogue, turns.Count == 1 ? turns[0] : null, existing, id, ignore,
-                splitFrom != null ? PieceLook.Of(splitFrom) : null);
+            Choose(plan, cell, catalogue, turns.Count == 1 ? turns[0] : null, existing, id, ignore, splitFrom);
         }
 
         if (orientable.Count == 0)
@@ -314,7 +314,7 @@ internal static class RunPlanner
         foreach (OrientableCell cell in orientable)
         {
             Choose(plan, cell.Layout, cell.Catalogue, picked[cell.Layout.Cell], cell.Existing, cell.Id, ignore,
-                cell.Look);
+                cell.SplitFrom);
         }
     }
 
@@ -475,7 +475,7 @@ internal static class RunPlanner
             removed.Add(piece.ReferenceId);
             PieceModel live = PieceShapes.Live(piece);
             plan.Removals.Add(new PlannedRemoval(piece, live, kind.Family.NetworkOf(piece),
-                BuildMaterials.RefundOf(piece)));
+                BuildMaterials.RefundOf(piece), split: true));
             foreach (GridCell cell in live.Cells)
             {
                 split[cell] = piece;
@@ -544,7 +544,7 @@ internal static class RunPlanner
     }
 
     private static void Choose(RunPlan plan, LayoutCell cell, RunCatalogue catalogue, RunChoice? choice,
-        SmallGrid? existing, long id, HashSet<long> ignore, PieceLook? look = null)
+        SmallGrid? existing, long id, HashSet<long> ignore, SmallGrid? splitFrom = null)
     {
         PieceModel? model = choice != null ? RunCatalogue.Verified(choice, cell.Cell, cell.Ends, id) : null;
         if (choice == null || model == null)
@@ -583,7 +583,7 @@ internal static class RunPlanner
             ? PlanContext.Priced(new List<OldPiece> { new OldPiece(existing, PieceShapes.Live(existing)) },
                 catalogue.Kit, new List<Twin> { twin })
             : new SwapPrice(Kit.CostOf(choice.Prefab), new List<ItemAmount>());
-        plan.Cells.Add(new PlannedCell(cell, catalogue.Kit, choice, model, price, existing, look));
+        plan.Cells.Add(new PlannedCell(cell, catalogue.Kit, choice, model, price, existing, splitFrom));
     }
 
     private static long? IdOf(SmallGrid? piece) => piece != null ? piece.ReferenceId : (long?)null;

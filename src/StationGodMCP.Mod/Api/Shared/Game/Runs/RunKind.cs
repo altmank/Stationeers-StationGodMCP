@@ -124,9 +124,9 @@ internal abstract class RunKind
 internal sealed class OrientableCell
 {
     internal OrientableCell(LayoutCell layout, RunCatalogue catalogue, List<RunChoice> options, SmallGrid? existing,
-        long id, PieceLook? look)
+        long id, SmallGrid? splitFrom)
     {
-        Look = look;
+        SplitFrom = splitFrom;
         Layout = layout;
         Catalogue = catalogue;
         Options = options;
@@ -145,8 +145,8 @@ internal sealed class OrientableCell
     /// <summary>The id the piece goes by in the forecast: the old piece's, or a negative number for a new one.</summary>
     internal long Id { get; }
 
-    /// <summary>The owner and colour a new piece takes over (a split long straight's); null for the player's.</summary>
-    internal PieceLook? Look { get; }
+    /// <summary>The long straight a new piece is a single of (PlannedCell.SplitFrom); null otherwise.</summary>
+    internal SmallGrid? SplitFrom { get; }
 }
 
 /// <summary>The kind's guard numbers for one network after an edit, and its refusal if any.</summary>

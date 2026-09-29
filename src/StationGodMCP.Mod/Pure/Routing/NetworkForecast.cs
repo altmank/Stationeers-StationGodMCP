@@ -32,9 +32,11 @@ internal sealed class ForecastPort
 /// <summary>
 /// An edit to one family's networks as a graph after the edit. A network the edit takes nothing from stays whole, so
 /// it is one node (its own id); a network the edit takes pieces from is modelled piece by piece, each remaining piece
-/// a node under that network, so a split shows. New pieces are nodes of no network. Links join nodes; device ports
-/// hang on the node they are joined to after the edit, and a device never joins its own ports (an APC's input and
-/// output stay two networks unless the cables join them).
+/// a node under that network, so a split shows. New pieces are nodes of no network; a new piece that takes over a
+/// removed piece's cells (a split long straight's singles) is still new, but carries that piece's network on: the
+/// network is held where its successors are, and is not gone while they stand. Links join nodes; device ports hang on
+/// the node they are joined to after the edit, and a device never joins its own ports (an APC's input and output stay
+/// two networks unless the cables join them).
 /// </summary>
 internal sealed class NetworkEdit
 {
@@ -49,6 +51,9 @@ internal sealed class NetworkEdit
     /// <summary>Removed pieces by id, with the network each was in.</summary>
     internal Dictionary<long, long> Removed { get; } = new Dictionary<long, long>();
 
+    /// <summary>New pieces that carry a removed piece's network on (AddSuccessor), with that network.</summary>
+    internal Dictionary<long, long> Successors { get; } = new Dictionary<long, long>();
+
     internal void AddNetwork(long network)
     {
         WholeNetworks.Add(network);
@@ -56,6 +61,13 @@ internal sealed class NetworkEdit
     }
 
     internal void AddPiece(long piece, long? network) => Nodes[piece] = network;
+
+    /// <summary>A new piece standing where a removed piece of the network stood (a split long's single).</summary>
+    internal void AddSuccessor(long piece, long network)
+    {
+        Nodes[piece] = null;
+        Successors[piece] = network;
+    }
 
     internal void Link(long a, long b) => Links.Add(new KeyValuePair<long, long>(a, b));
 
@@ -129,8 +141,14 @@ internal sealed class Forecast
     /// <summary>Ports joined to a network before the edit and to nothing after it.</summary>
     internal List<ForecastPort> Cut { get; } = new List<ForecastPort>();
 
-    /// <summary>Networks before the edit with every piece removed.</summary>
+    /// <summary>Networks before the edit with every piece removed and no new piece carrying them on.</summary>
     internal List<long> Gone { get; } = new List<long>();
+
+    /// <summary>
+    /// Networks before the edit with every piece removed that new pieces carry on (NetworkEdit.AddSuccessor): the
+    /// network lives on in them, so what it holds must be handed over to them.
+    /// </summary>
+    internal List<long> Carried { get; } = new List<long>();
 
     /// <summary>
     /// Whether the port is one of a device bridge's: the edit puts it on one network with another port of its device
@@ -184,13 +202,15 @@ internal static class NetworkForecaster
             componentOf[node] = index;
             ForecastNetwork network = forecast.Networks[index];
             long? before = edit.Nodes[node];
+            if (!before.HasValue)
+            {
+                network.NewPieces.Add(node);
+                before = edit.Successors.TryGetValue(node, out long carried) ? carried : (long?)null;
+            }
+
             if (before.HasValue && !network.NetworksBefore.Contains(before.Value))
             {
                 network.NetworksBefore.Add(before.Value);
-            }
-            else if (!before.HasValue)
-            {
-                network.NewPieces.Add(node);
             }
         }
 
@@ -208,20 +228,34 @@ internal static class NetworkForecaster
         return forecast;
     }
 
+    // Each modelled network's remaining pieces and the new pieces carrying it on, by the parts they fall into: more
+    // than one part is a split, none is gone, successors only is carried.
     private static void Splits(NetworkEdit edit, Forecast forecast, Dictionary<long, int> componentOf)
     {
         Dictionary<long, List<int>> parts = new Dictionary<long, List<int>>();
+        HashSet<long> kept = new HashSet<long>();
         foreach (KeyValuePair<long, long?> node in edit.Nodes)
         {
-            if (!node.Value.HasValue || edit.WholeNetworks.Contains(node.Key))
+            if (edit.WholeNetworks.Contains(node.Key))
             {
                 continue;
             }
 
-            if (!parts.TryGetValue(node.Value.Value, out List<int> list))
+            long network;
+            if (node.Value.HasValue)
+            {
+                network = node.Value.Value;
+                kept.Add(network);
+            }
+            else if (!edit.Successors.TryGetValue(node.Key, out network))
+            {
+                continue;
+            }
+
+            if (!parts.TryGetValue(network, out List<int> list))
             {
                 list = new List<int>();
-                parts[node.Value.Value] = list;
+                parts[network] = list;
             }
 
             int part = componentOf[node.Key];
@@ -243,16 +277,28 @@ internal static class NetworkForecaster
         }
 
         HashSet<long> gone = new HashSet<long>();
+        HashSet<long> carriedOn = new HashSet<long>();
         foreach (KeyValuePair<long, long> removed in edit.Removed)
         {
-            if (!parts.ContainsKey(removed.Value) && !edit.WholeNetworks.Contains(removed.Value))
+            if (edit.WholeNetworks.Contains(removed.Value))
+            {
+                continue;
+            }
+
+            if (!parts.ContainsKey(removed.Value))
             {
                 gone.Add(removed.Value);
+            }
+            else if (!kept.Contains(removed.Value))
+            {
+                carriedOn.Add(removed.Value);
             }
         }
 
         forecast.Gone.AddRange(gone);
         forecast.Gone.Sort();
+        forecast.Carried.AddRange(carriedOn);
+        forecast.Carried.Sort();
     }
 
     private static void Ports(NetworkEdit edit, Forecast forecast, Dictionary<long, int> componentOf)

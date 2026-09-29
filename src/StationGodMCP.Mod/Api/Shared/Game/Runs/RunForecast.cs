@@ -153,7 +153,17 @@ internal static class RunForecastBuilder
         {
             if (!cell.IsChange)
             {
-                edit.AddPiece(cell.ForecastId, null);
+                // A split long straight's single carries the long's network on (it is not gone while they stand).
+                IReferencable? carried = cell.SplitFrom != null ? family.NetworkOf(cell.SplitFrom) : null;
+                if (carried != null)
+                {
+                    edit.AddSuccessor(cell.ForecastId, carried.ReferenceId);
+                }
+                else
+                {
+                    edit.AddPiece(cell.ForecastId, null);
+                }
+
                 forecastParts.NodeOf[cell.ForecastId] = cell.ForecastId;
                 context.NewPieces[cell.ForecastId] = cell.Choice.Prefab;
             }

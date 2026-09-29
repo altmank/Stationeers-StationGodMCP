@@ -33,6 +33,15 @@ internal static class ChuteRoles
     internal static bool LetsOut(int role) => role == Output || role == Output2;
 
     internal static bool IsDirected(int role) => TakesIn(role) || LetsOut(role);
+
+    /// <summary>
+    /// Why a route running with the items cannot end at a device port of this role (target) or start at it: a port
+    /// that pushes items out is only ever a start, one that takes items in only an end. Null when it may.
+    /// </summary>
+    internal static string? WrongWay(int role, bool target) =>
+        target && LetsOut(role) ? "pushes items out"
+        : !target && TakesIn(role) ? "takes items in"
+        : null;
 }
 
 /// <summary>One end of a piece: the piece's id and the end's index among its model's ends.</summary>

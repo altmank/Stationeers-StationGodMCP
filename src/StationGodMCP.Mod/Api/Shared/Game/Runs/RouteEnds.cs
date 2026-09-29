@@ -123,7 +123,7 @@ internal static class RouteEnds
 
         if (thing is Device device)
         {
-            return OfDevice(kind, device, fields.OptionalInt("port", 0, 64), type, name, ignore);
+            return OfDevice(kind, device, fields.OptionalInt("port", 0, 64), type, name, ignore, target);
         }
 
         if (thing is SmallGrid member && kind.Family.IsMember(member))
@@ -282,8 +282,10 @@ internal static class RouteEnds
         return new RouteEndpoint(ends, new List<long> { network.Value });
     }
 
+    // A chute route runs with the items: it may not end at a port that pushes items out, nor start at one that takes
+    // them in (the place tool's flow_conflict, refused up front).
     private static RouteEndpoint OfDevice(RunKind kind, Device device, int? port, int type, string name,
-        HashSet<long> ignore)
+        HashSet<long> ignore, bool target)
     {
         List<int> candidates = new List<int>();
         if (device.OpenEnds != null)
@@ -313,7 +315,17 @@ internal static class RouteEnds
                 "(connections or grid_survey lists them).");
         }
 
-        Connection chosen = device.OpenEnds![port ?? candidates[0]];
+        int chosenPort = port ?? candidates[0];
+        Connection chosen = device.OpenEnds![chosenPort];
+        string? wrongWay = kind is ChuteRunKind ? ChuteRoles.WrongWay((int)chosen.ConnectionRole, target) : null;
+        if (wrongWay != null)
+        {
+            throw ApiErrors.InvalidArgument(
+                $"{name}: port {chosenPort} of {device.PrefabName} {device.ReferenceId} {wrongWay}; a chute route " +
+                $"runs with the items, so it {(target ? "ends at an input port" : "starts at an output port")} " +
+                $"(its chute ports: [{string.Join(", ", candidates)}]; connections lists their roles).");
+        }
+
         GridCell cell = PieceShapes.Cell(chosen.GetLocalGrid());
         GridStep? into = GridStep.Between(cell, PieceShapes.Cell(chosen.GetFacingGrid()));
         SmallCell? small = GridController.World.GetSmallCell(chosen.GetLocalGrid());
