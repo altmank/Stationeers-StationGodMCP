@@ -176,9 +176,10 @@ internal static class WithdrawStock
 
 /// <summary>
 /// The slots a withdrawal can use in its holder: matching stacks with room, and empty slots that take the item
-/// (Slot.AllowMove). to_slot auto on a player: every slot the player carries at any depth (belts, backpack, suit), new
-/// stacks never into the player's own body slots, a stack already in a hand topped up (as Refunds does); on anything
-/// else its own slots. An index names one slot.
+/// (Slot.AllowMove), never a hidden slot (SlotAccess: not interactable, such as a cable coil's). to_slot auto on a
+/// player: every slot the player carries at any depth (belts, backpack, suit), new stacks never into the player's own
+/// body slots, a stack already in a hand topped up (as Refunds does); on anything else its own slots. An index names
+/// one slot.
 /// </summary>
 internal sealed class Delivery
 {
@@ -244,21 +245,28 @@ internal sealed class Delivery
             throw ApiErrors.Refused("slot_locked", $"Slot {index} of {Holder.DisplayName} is locked.");
         }
 
+        if (!SlotAccess.Reaches(slot))
+        {
+            throw ApiErrors.Refused("slot_refuses", SlotAccess.HiddenReason(slot));
+        }
+
         Offer(slot, prefab, bodySlots: true);
         if (Stacks.Count == 0 && Empty.Count == 0)
         {
             DynamicThing? occupant = slot.Get();
             throw occupant != null
                 ? ApiErrors.Refused("slot_occupied",
-                    $"{slot.DisplayName} holds {occupant.DisplayName}, which {prefab.DisplayName} cannot join.")
-                : ApiErrors.Refused("slot_refuses", $"{slot.DisplayName} does not take {prefab.DisplayName}.");
+                    $"{SlotAccess.Label(slot)} holds {occupant.DisplayName}, which {prefab.DisplayName} cannot join.")
+                : ApiErrors.Refused("slot_refuses",
+                    $"{SlotAccess.Label(slot)} does not take {prefab.DisplayName}: {SlotAccess.WhyRefused(prefab, slot)}.");
         }
     }
 
-    // bodySlots: whether a new stack may go into the player's own body slots (only when named by index).
+    // bodySlots: whether a new stack may go into the player's own body slots (only when named by index, which is
+    // also the only case where a slot the game's quick moves skip may be used).
     private void Offer(Slot slot, Item prefab, bool bodySlots)
     {
-        if (slot == null || slot.IsLocked)
+        if (slot == null || slot.IsLocked || !SlotAccess.Reaches(slot))
         {
             return;
         }
@@ -266,7 +274,8 @@ internal sealed class Delivery
         DynamicThing? occupant = slot.Get();
         if (occupant == null)
         {
-            if ((bodySlots || slot.Parent != Body) && Slot.AllowMove(prefab, slot))
+            if (bodySlots ? SlotAccess.TakesNew(prefab, slot)
+                    : slot.Parent != Body && SlotAccess.AutoTakesNew(prefab, slot))
             {
                 Empty.Add(slot);
             }

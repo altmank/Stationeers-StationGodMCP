@@ -81,7 +81,7 @@ internal static class FindThingsApi
             thing is Device device && Devices.IsInAllDevices(device),
             AtmosphereContentsApi.HoldsAtmosphere(thing),
             thing is Structure ? Orientations.Of(thing) : null,
-            thing.IsBroken,
+            Wrecks.IsBroken(thing),
             ConditionOf(thing),
             Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null);
     }
@@ -90,7 +90,7 @@ internal static class FindThingsApi
     {
         IndestructableDamageState damage = thing.DamageState;
         bool measurable = damage != null && !damage.Indestructable && damage.MaxDamage > 0f;
-        return HealthCondition.Of(thing.IsBroken, damage != null, damage != null && damage.Indestructable,
+        return HealthCondition.Of(Wrecks.IsBroken(thing), damage != null, damage != null && damage.Indestructable,
             measurable ? damage!.TotalRatio : (double?)null);
     }
 }
@@ -133,7 +133,10 @@ internal sealed class ThingFilter
 
     internal double? NearPlayerM { get; }
 
-    /// <summary>true: only things in the game's broken state (Thing.IsBroken); false: only things not broken.</summary>
+    /// <summary>
+    /// true: only things in the game's broken state (Wrecks: Thing.IsBroken or a burst pipe); false: only things not
+    /// broken.
+    /// </summary>
     internal bool? Broken { get; }
 
     /// <summary>made_by and made_since: only items the print log has, from that maker, since that game time.</summary>
@@ -189,7 +192,7 @@ internal sealed class ThingFilter
         (!LabelledOnly || !string.IsNullOrEmpty(thing.CustomName)) &&
         ItemFilter.Contains(thing.PrefabName, PrefabContains) &&
         (Kind == AnyKind || ThingKinds.Of(thing) == Kind) &&
-        (!Broken.HasValue || thing.IsBroken == Broken.Value) &&
+        (!Broken.HasValue || Wrecks.IsBroken(thing) == Broken.Value) &&
         (!Made.IsActive || Made.Keeps(Prints.Log.Of(thing.ReferenceId))) &&
         (RuntimeType == null || IsOfType(thing.GetType())) &&
         (string.IsNullOrEmpty(NameContains) || Labels.NameContains(thing, NameContains!)) &&

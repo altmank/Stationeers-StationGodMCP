@@ -119,8 +119,9 @@ internal sealed class FoundThingView
     public bool HasAtmosphere { get; }
 
     /// <summary>
-    /// The game's broken state (Thing.IsBroken; a structure also below build state 0). A broken structure reads 100 %
-    /// health, so this, not thing_health's numbers, says it is wrecked; remove_structure takes it with allow_broken.
+    /// The game's broken state (Thing.IsBroken; a structure also below build state 0), or a burst pipe (Pipe.IsBurst).
+    /// Neither shows in the damage numbers, so this, not thing_health's numbers, says it is wrecked; remove_structure
+    /// takes a broken structure with allow_broken.
     /// </summary>
     public bool IsBroken { get; }
 

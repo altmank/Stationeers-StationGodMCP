@@ -31,7 +31,8 @@ namespace StationGodMCP.Api;
 /// OnStructureBroken and HealAll, so a broken structure reads 0 damage and 100 % health: condition "broken" and
 /// is_broken are the signal, never the numbers (Pure/HealthCondition). A SolarPanel's tooltip
 /// shows Health = RoundToInt(100 - TotalRatio * 100) coloured by SolarPanel.DamageColor, and it generates
-/// PowerGenerated * GenerationEfficiency * (1 - TotalRatio). A Pipe also has IsBurst (PipeBurst).
+/// PowerGenerated * GenerationEfficiency * (1 - TotalRatio). A Pipe also has IsBurst (PipeBurst), which the game keeps
+/// apart from DamageState: a burst pipe reads 0 damage, so it is reported broken (Wrecks) like a broken structure.
 ///
 /// Three forms: reference_id, one thing; reference_ids, up to 256, a result per id; neither, a scan of every damaged
 /// thing registered in OcclusionManager.AllThings, broken first, then worst first, paged; broken things are listed
@@ -189,7 +190,7 @@ internal static class HealthReader
     {
         IndestructableDamageState damage = thing.DamageState;
         DamageReading reading = ReadDamage(damage);
-        bool broken = thing.IsBroken;
+        bool broken = Wrecks.IsBroken(thing);
         HealthFlags flags = new HealthFlags(
             thing is SolarPanel panel && damage != null && !damage.Indestructable ? panel.DamageColor : null,
             broken,
@@ -264,7 +265,7 @@ internal static class HealthScanner
 
             rows.Add(row);
             structures += row.Thing is Structure ? 1 : 0;
-            broken += row.Thing.IsBroken ? 1 : 0;
+            broken += Wrecks.IsBroken(row.Thing) ? 1 : 0;
         }
 
         rows.Sort(static (a, b) => HealthRow.WorstFirst(a, b));
@@ -300,7 +301,7 @@ internal static class HealthScanner
             return null;
         }
 
-        bool broken = thing.IsBroken;
+        bool broken = Wrecks.IsBroken(thing);
         bool measurable = damage != null && damage.MaxDamage > 0f;
         float ratio = measurable ? damage!.TotalRatio : 0f;
         if (!HealthCondition.ScanKeeps(broken, measurable, ratio, scan.MinDamageRatio, scan.BrokenOnly))

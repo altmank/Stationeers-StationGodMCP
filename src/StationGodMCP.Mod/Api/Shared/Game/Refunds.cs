@@ -13,13 +13,17 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// Gives back what deconstructing pieces would, into the source's inventory and never through the player's body. For
-/// each item (RefundPlacement): first onto matching stacks already held anywhere in the inventory tree (Stackable
-/// .AddQuantity, as OnServer.CreateOrStack tops up a stack), then as new stacks made straight into empty slots that
-/// accept the item (OnServer.Create into a slot, as a fabricator's output is made; Slot.AllowMove decides), then, for
-/// what is left, on the ground a metre in front of the holder, at rest. The tree: the source's own slots and everything
-/// in them, then, when the source is carried by a player (a worn belt), the rest of that player's. A player's own body
-/// slots (hands, suit, helmet, back...) never get a new item, only the slots of worn and held items; a stack already
-/// in a hand is topped up.
+/// each item (RefundPlacement): first onto matching stacks (Stackable.AddQuantity, as OnServer.CreateOrStack tops up
+/// a stack): the source itself when it is such a stack, then any held in the inventory tree; then as new stacks made
+/// straight into empty slots that accept the item (OnServer.Create into a slot, as a fabricator's output is made;
+/// Slot.AllowMove decides, on a slot the game's quick moves would use: SlotAccess.AutoTakesNew), then, for what is
+/// left, on the ground a metre in front of the outermost holder, at rest. The tree, level by level (a holder's own
+/// slots before the slots of the items in them): the source's own slots and everything in them, then, when the source
+/// is carried by a player (a worn belt), the rest of that player's, or, when it is stored (a coil stack in a locker),
+/// the rest of its outermost holder's. A player's own body slots (hands, suit, helmet, back...) never get a new item,
+/// only the slots of worn and held items; a stack already in a hand is topped up. Hidden slots (not interactable) and
+/// a stack's own slot (a cable coil's), and whatever is in them, are left out: the game destroys their contents with
+/// the holder.
 /// </summary>
 internal static class Refunds
 {
@@ -76,21 +80,24 @@ internal static class Refunds
         List<Stackable> stacks = new List<Stackable>();
         List<int> rooms = new List<int>();
         List<Slot> empty = new List<Slot>();
-        foreach (Slot slot in InventorySlots(source, body))
+        if (source is Stackable own)
+        {
+            OfferStack(own, prefab, stacks, rooms);
+        }
+
+        foreach (Slot slot in InventorySlots(source, body ?? StoredIn(source)))
         {
             DynamicThing? occupant = slot.Get();
             if (occupant == null)
             {
-                if (slot.Parent != body && Slot.AllowMove(prefab, slot))
+                if (slot.Parent != body && SlotAccess.AutoTakesNew(prefab, slot))
                 {
                     empty.Add(slot);
                 }
             }
-            else if (!slot.IsLocked && !occupant.IsBeingDestroyed && occupant is Stackable stack &&
-                     prefab is Stackable kind && stack.CanStack(kind) && stack.MaxQuantity > stack.Quantity)
+            else if (!slot.IsLocked && occupant is Stackable stack && stack != source)
             {
-                stacks.Add(stack);
-                rooms.Add(stack.MaxQuantity - stack.Quantity);
+                OfferStack(stack, prefab, stacks, rooms);
             }
         }
 
@@ -130,45 +137,71 @@ internal static class Refunds
         }
     }
 
-    // The source's slots and every slot below them, then the rest of the player carrying it, each thing once.
-    internal static List<Slot> InventorySlots(Thing source, Human? carrier)
+    // A matching stack with room, as a place to top up.
+    private static void OfferStack(Stackable stack, Item prefab, List<Stackable> stacks, List<int> rooms)
+    {
+        if (!stack.IsBeingDestroyed && prefab is Stackable kind && stack.CanStack(kind) &&
+            stack.MaxQuantity > stack.Quantity)
+        {
+            stacks.Add(stack);
+            rooms.Add(stack.MaxQuantity - stack.Quantity);
+        }
+    }
+
+    // The outermost holder of a thing stored in a slot (the locker a coil stack is in), or null.
+    private static Thing? StoredIn(Thing source) =>
+        source is DynamicThing item && item.ParentSlot != null && item.RootParent != null && item.RootParent != source
+            ? item.RootParent
+            : null;
+
+    // The source's slots and every slot below them, then the rest of the holder carrying or storing it, each thing
+    // once and level by level, so a holder's own empty slots come before those of the items in them; hidden slots,
+    // stacks' own slots and what is in them are left out (SlotAccess.Reaches).
+    internal static List<Slot> InventorySlots(Thing source, Thing? holder)
     {
         List<Slot> slots = new List<Slot>();
         HashSet<long> visited = new HashSet<long>();
-        Collect(source, slots, visited, 0);
-        if (carrier != null)
+        Collect(source, slots, visited);
+        if (holder != null)
         {
-            Collect(carrier, slots, visited, 0);
+            Collect(holder, slots, visited);
         }
 
         return slots;
     }
 
-    private static void Collect(Thing thing, List<Slot> slots, HashSet<long> visited, int depth)
+    private static void Collect(Thing root, List<Slot> slots, HashSet<long> visited)
     {
-        if (depth > MaximumDepth || !visited.Add(thing.ReferenceId) || thing.Slots == null)
+        Queue<(Thing Thing, int Depth)> pending = new Queue<(Thing Thing, int Depth)>();
+        pending.Enqueue((root, 0));
+        while (pending.Count > 0)
         {
-            return;
-        }
-
-        foreach (Slot slot in thing.Slots)
-        {
-            if (slot == null)
+            (Thing thing, int depth) = pending.Dequeue();
+            if (depth > MaximumDepth || !visited.Add(thing.ReferenceId) || thing.Slots == null)
             {
                 continue;
             }
 
-            slots.Add(slot);
-            DynamicThing? occupant = slot.Get();
-            if (occupant != null && !occupant.IsBeingDestroyed)
+            foreach (Slot slot in thing.Slots)
             {
-                Collect(occupant, slots, visited, depth + 1);
+                if (slot == null || !SlotAccess.Reaches(slot))
+                {
+                    continue;
+                }
+
+                slots.Add(slot);
+                DynamicThing? occupant = slot.Get();
+                if (occupant != null && !occupant.IsBeingDestroyed)
+                {
+                    pending.Enqueue((occupant, depth + 1));
+                }
             }
         }
     }
 
     // A metre in front of the player at its centre of mass, where the game spawns a player's items
-    // (OnServer.SpawnDynamicThingMaxStack); a metre in front of the source when no player carries it.
+    // (OnServer.SpawnDynamicThingMaxStack); else a metre in front of the source, or of its outermost holder when it is
+    // stored in a slot (a thing in a slot keeps no position of its own and reads the world origin).
     internal static Vector3 GroundBeside(Thing source, Human? body)
     {
         if (body != null && body.RigidBody != null)
@@ -176,7 +209,8 @@ internal static class Refunds
             return body.RigidBody.worldCenterOfMass + body.EntityForward * GroundDistance;
         }
 
-        return source.Position + source.ThingTransform.forward * GroundDistance;
+        Thing anchor = StoredIn(source) ?? source;
+        return anchor.Position + anchor.ThingTransform.forward * GroundDistance;
     }
 
     private static Item MakeAt(Item prefab, int quantity, Vector3 position)

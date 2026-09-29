@@ -7,7 +7,8 @@ namespace StationGodMCP.Pure;
 /// number: when damage reaches its maximum on a structure that has a broken mesh, ThingDamageState.Destroy swaps in
 /// the broken build state (a build state index below 0) and heals the damage (HealAll), so a broken structure reads 0
 /// damage and 100 % health. Structure.IsBroken (damage at its maximum, or a build state below 0) is the only honest
-/// signal, so broken wins over every number.
+/// signal, so broken wins over every number. A burst pipe (Pipe.IsBurst) is broken too: bursting leaves its damage
+/// alone.
 /// </summary>
 internal static class HealthCondition
 {
@@ -18,7 +19,15 @@ internal static class HealthCondition
     internal const string None = "none";
 
     /// <summary>
-    /// broken (the game's broken state), none (no damage state), indestructible, damaged (any damage), else intact.
+    /// Whether a thing counts as broken: the game's broken state, or a burst pipe (Pipe.IsBurst), which the game keeps
+    /// apart from damage: a burst pipe reads 0 damage and is not Thing.IsBroken, yet it holds nothing and refunds
+    /// nothing.
+    /// </summary>
+    internal static bool IsWreck(bool gameBroken, bool pipeBurst) => gameBroken || pipeBurst;
+
+    /// <summary>
+    /// broken (the game's broken state, or a burst pipe), none (no damage state), indestructible, damaged (any
+    /// damage), else intact.
     /// </summary>
     internal static string Of(bool isBroken, bool hasDamageState, bool indestructible, double? damageRatio)
     {

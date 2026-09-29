@@ -23,11 +23,15 @@ namespace StationGodMCP.Api;
 /// straight into the slot (OnServer.Create into a slot). A whole stack joins a matching one with OnServer.Merge, i.e.
 /// Stackable.Merge (Ore carries QuantitySmelted, Plant its genes).
 ///
-/// The checks are the game's: Slot.AllowMove (the slot is not locked, is empty, its class is None or the item's
-/// SlotType, the item's Thing.CanEnter allows it, and it is not a draggable) for an empty slot; Slot.CanMerge
-/// (Stackable.CanStack: same prefab) for an occupied one, and room for the whole stack under Stackable.MaxQuantity.
-/// A locked source slot is refused, as Slot.AllowSwap does. A part of a stack cannot join another stack: the game has
-/// no call that merges part of one without first making a new stack in an empty slot.
+/// The checks are the game's: the slot must be one a player can reach (Pure/SlotReach: Slot.IsInteractable, as
+/// Thing.HandleSwitch asks; a hidden slot, such as a cable coil's, destroys what is put there with its holder);
+/// Slot.AllowMove (the slot is not locked, is empty, its class is None or the item's SlotType, the item's
+/// Thing.CanEnter allows it, and it is not a draggable) for an empty slot; Slot.CanMerge (Stackable.CanStack: same
+/// prefab) for an occupied one, and room for the whole stack under Stackable.MaxQuantity. "auto" also skips a slot
+/// that is not Slot.IsSwappable, as the game's quick moves do. A locked source slot is refused, as Slot.AllowSwap does;
+/// an item may be taken out of a hidden slot (that is how one put there by mistake is rescued). A part of a stack
+/// cannot join another stack: the game has no call that merges part of one without first making a new stack in an
+/// empty slot.
 /// </summary>
 internal static class MoveItemApi
 {
@@ -348,13 +352,20 @@ internal static class MovePlanner
             ? ApiErrors.Refused("slot_locked", $"{item.DisplayName} is in a locked slot.")
             : null;
 
+    // quantity counts a stack's items; anything else (a water packet, a canister) moves whole, as 1.
     private static ApiException? QuantityRefusal(ItemMove move, DynamicThing item, out int quantity)
     {
         int whole = item is Stackable stack ? stack.Quantity : 1;
         quantity = move.Quantity ?? whole;
-        return quantity > whole
+        if (quantity <= whole)
+        {
+            return null;
+        }
+
+        return item is Stackable
             ? ApiErrors.InvalidArgument($"{item.DisplayName} has {whole}; cannot take {quantity}.")
-            : null;
+            : ApiErrors.InvalidArgument(
+                $"{item.DisplayName} is not a stack: it moves whole, so quantity can only be 1 (or left out).");
     }
 
     private static ApiException? ChooseSlot(ItemMove move, DynamicThing item, Thing target, int quantity,
@@ -400,25 +411,22 @@ internal static class MovePlanner
             return ApiErrors.Refused("slot_locked", $"Slot {index} of {target.DisplayName} is locked.");
         }
 
+        if (!SlotAccess.Reaches(slot))
+        {
+            return ApiErrors.Refused("slot_refuses", SlotAccess.HiddenReason(slot));
+        }
+
         return slot.Get() != null
             ? MergeRefusal(move, item, slot, quantity, out mergeInto)
             : EnterRefusal(item, slot);
     }
 
-    // Slot.AllowMove, with the game's own reason when Thing.CanEnter says no.
-    private static ApiException? EnterRefusal(DynamicThing item, Slot slot)
-    {
-        if (Slot.AllowMove(item, slot))
-        {
-            return null;
-        }
-
-        CanEnterResult enter = item.CanEnter(slot);
-        string why = !enter.Result && !string.IsNullOrEmpty(enter.Reason)
-            ? enter.Reason
-            : $"it takes {slot.Type} items and this is {item.SlotType}";
-        return ApiErrors.Refused("slot_refuses", $"{slot.DisplayName} does not take {item.DisplayName}: {why}.");
-    }
+    // Slot.AllowMove, with the reason it refused (the game's own when Thing.CanEnter says no).
+    private static ApiException? EnterRefusal(DynamicThing item, Slot slot) =>
+        Slot.AllowMove(item, slot)
+            ? null
+            : ApiErrors.Refused("slot_refuses",
+                $"{SlotAccess.Label(slot)} does not take {item.DisplayName}: {SlotAccess.WhyRefused(item, slot)}.");
 
     // Slot.CanMerge, for the whole stack only, and only when all of it fits under Stackable.MaxQuantity.
     private static ApiException? MergeRefusal(ItemMove move, DynamicThing item, Slot slot, int quantity,
@@ -428,8 +436,8 @@ internal static class MovePlanner
         Stackable? occupant = slot.Get() as Stackable;
         if (!move.Merge || occupant == null || !(item is Stackable stack) || !Slot.CanMerge(item, slot))
         {
-            return ApiErrors.Refused(
-                "slot_occupied", $"{slot.DisplayName} holds {slot.Get().DisplayName}, which this cannot join.");
+            return ApiErrors.Refused("slot_occupied",
+                $"{SlotAccess.Label(slot)} holds {slot.Get().DisplayName}, which {item.DisplayName} cannot join.");
         }
 
         if (quantity < stack.Quantity)
@@ -459,7 +467,7 @@ internal static class MovePlanner
         {
             Slot candidate = target.Slots[index];
             if (candidate != null && candidate != item.ParentSlot && candidate.Get() != null &&
-                MergeRefusal(move, item, candidate, quantity, out mergeInto) == null)
+                SlotAccess.AutoPicks(candidate) && MergeRefusal(move, item, candidate, quantity, out mergeInto) == null)
             {
                 slot = candidate;
                 return null;
@@ -473,7 +481,7 @@ internal static class MovePlanner
         for (int index = 0; index < usable; index++)
         {
             Slot candidate = target.Slots[index];
-            if (candidate != null && candidate.Get() == null && Slot.AllowMove(item, candidate))
+            if (candidate != null && candidate.Get() == null && SlotAccess.AutoTakesNew(item, candidate))
             {
                 slot = candidate;
                 return null;

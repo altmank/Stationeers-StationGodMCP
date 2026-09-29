@@ -261,7 +261,20 @@ internal sealed class ItemFilter
         }
 
         return new ItemFilter(args.OptionalString("prefab_contains"), args.OptionalString("name_contains"), location,
-            args.OptionalThingId("within_id"), args.OptionalPositiveDouble("near_player_m"));
+            RequireHolder(args.OptionalThingId("within_id")), args.OptionalPositiveDouble("near_player_m"));
+    }
+
+    // A within_id that names nothing is refused, as container_contents refuses it, so a mistyped id never reads as an
+    // empty holder.
+    private static ThingId? RequireHolder(ThingId? withinId)
+    {
+        if (withinId.HasValue &&
+            (!GameLookup.TryFindThing(withinId.Value, out Thing holder) || holder.IsBeingDestroyed))
+        {
+            throw ApiErrors.ThingNotFound(withinId.Value);
+        }
+
+        return withinId;
     }
 
     internal static ItemFilter StoredOnly() => new ItemFilter(null, null, "stored", null, null);
