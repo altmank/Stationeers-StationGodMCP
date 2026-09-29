@@ -24,6 +24,12 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// GenerationRate on or off, another generator the PowerGeneration it reads while on, and any other device takes
 /// UsedPower while on and built, in error or not (Device.GetUsedPower asks only OnOff and IsStructureCompleted).
 /// <para>
+/// Only a port that moves power in the device's power role answers (Pure/PortSides.PowerOf): a Data-only port (a
+/// station battery's port 0, a landing pad piece's data port) answers null, as does a port of an input/output device
+/// that is neither its InputConnection nor its OutputConnection. Each answer names its side, so the forecast counts a
+/// device side once per network however many of its ports are on it.
+/// </para>
+/// <para>
 /// switchedOn: the same numbers for the device as if it were on (Error is kept as it is): what a device that is off
 /// now brings once it is switched on (the would_overload_when_on warning). A number that follows a charge is taken at
 /// the game's ceiling there instead (Pure/SwitchedOnLoads): a battery's output and input PowerMaximum each, an APC's
@@ -40,17 +46,32 @@ internal static class PortLoads
             return null;
         }
 
+        Connection end = device.OpenEnds[index];
+        if (end == null)
+        {
+            return null;
+        }
+
+        ElectricalInputOutput? io = device as ElectricalInputOutput;
+        PowerSide? side = PortSides.PowerOf((int)end.ConnectionType, io != null,
+            io != null && IsSide(end, io.OutputConnection, PortSides.IsOutput),
+            io != null && IsSide(end, io.InputConnection, PortSides.IsInput));
+        if (side == null)
+        {
+            return null;
+        }
+
         bool on = switchedOn || device.OnOff;
         bool error = device.Error == 1;
-        Connection end = device.OpenEnds[index];
-        return device is ElectricalInputOutput io
-            ? InputOutput(io, end, on, error, switchedOn)
+        return io != null
+            ? InputOutput(io, side.Value == PowerSide.Output, on, error, switchedOn)
             : Single(device, on);
     }
 
     /// <summary>
     /// What a port of a device that is off now adds once it is switched on: its switched-on numbers less what it
-    /// brings now; null for a device that is on (it brings nothing more) or a port that is not there.
+    /// brings now; null for a device that is on (it brings nothing more), a port that is not there, or one with no
+    /// power role (a data port).
     /// </summary>
     internal static PortPower? Dormant(Device? device, int index)
     {
@@ -63,89 +84,73 @@ internal static class PortLoads
         PortPower? on = Of(device, index, true);
         return now == null || on == null
             ? null
-            : new PortPower(Math.Max(0.0, on.PotentialW - now.PotentialW), Math.Max(0.0, on.RequiredW - now.RequiredW));
+            : new PortPower(Math.Max(0.0, on.PotentialW - now.PotentialW), Math.Max(0.0, on.RequiredW - now.RequiredW),
+                on.Side);
     }
 
-    private static PortPower InputOutput(ElectricalInputOutput io, Connection end, bool on, bool error, bool ceiling)
-    {
-        bool output = IsOutput(io, end);
-        if (output && (!on || error))
-        {
-            return new PortPower(0.0, 0.0);
-        }
+    // An input/output device supplies only on its output and draws only on its input.
+    private static PortPower InputOutput(ElectricalInputOutput io, bool output, bool on, bool error, bool ceiling) =>
+        output
+            ? new PortPower(on && !error ? Supply(io, ceiling) : 0.0, 0.0, PowerSide.Output)
+            : new PortPower(0.0, Demand(io, on, error, ceiling), PowerSide.Input);
 
+    // What the output gives while on and not in error.
+    private static double Supply(ElectricalInputOutput io, bool ceiling) =>
+        io switch
+        {
+            Battery battery => ceiling
+                ? SwitchedOnLoads.BatteryOutput(battery.PowerMaximum)
+                : Math.Max(battery.PowerStored, 0f),
+            AreaPowerControl apc => ceiling
+                ? SwitchedOnLoads.ApcOutput(io.InputNetwork?.PotentialLoad ?? 0f,
+                    apc.Battery != null ? apc.Battery.PowerMaximum : (double?)null)
+                : apc.AvailablePower,
+            Transformer transformer => Math.Min(transformer.Setting, io.InputNetwork?.PotentialLoad ?? 0f),
+            PowerTransmitter when ceiling => SwitchedOnLoads.TransmitterOutput(io.InputNetwork?.PotentialLoad ?? 0f,
+                PowerTransmitter.MaxPowerTransmission),
+            _ => io.AvailablePower
+        };
+
+    // What the input takes, with each class's own on/off and error checks.
+    private static double Demand(ElectricalInputOutput io, bool on, bool error, bool ceiling)
+    {
         double demand = io.OutputNetwork != null ? io.OutputNetwork.RequiredLoad : 0.0;
         switch (io)
         {
             case Battery battery:
-                if (output)
-                {
-                    return new PortPower(ceiling
-                        ? SwitchedOnLoads.BatteryOutput(battery.PowerMaximum)
-                        : Math.Max(battery.PowerStored, 0f), 0.0);
-                }
-
-                return new PortPower(0.0,
-                    !on || error ? 0.0 :
+                return !on || error ? 0.0 :
                     ceiling ? SwitchedOnLoads.BatteryInput(battery.PowerMaximum) :
-                    Math.Max(0.0, battery.PowerMaximum - battery.PowerStored));
+                    Math.Max(0.0, battery.PowerMaximum - battery.PowerStored);
             case AreaPowerControl apc:
-                if (output)
-                {
-                    return new PortPower(ceiling
-                        ? SwitchedOnLoads.ApcOutput(io.InputNetwork?.PotentialLoad ?? 0f,
-                            apc.Battery != null ? apc.Battery.PowerMaximum : (double?)null)
-                        : apc.AvailablePower, 0.0);
-                }
-
                 double charge = apc.Battery != null && !apc.Battery.IsCharged
                     ? Math.Min(apc.BatteryChargeRate, apc.Battery.PowerDelta)
                     : 0.0;
-                return new PortPower(0.0,
-                    (on && io.OutputNetwork != null ? Math.Max(demand, apc.UsedPower) : 0.0) + charge);
+                return (on && io.OutputNetwork != null ? Math.Max(demand, apc.UsedPower) : 0.0) + charge;
             case Transformer transformer:
-                if (output)
-                {
-                    return new PortPower(Math.Min(transformer.Setting, io.InputNetwork?.PotentialLoad ?? 0f), 0.0);
-                }
-
-                return new PortPower(0.0,
-                    !on || io.OutputNetwork == null ? 0.0 :
+                return !on || io.OutputNetwork == null ? 0.0 :
                     error ? Math.Max(0f, transformer.UsedPower) :
-                    Math.Min(transformer.Setting, demand) + transformer.UsedPower);
+                    Math.Min(transformer.Setting, demand) + transformer.UsedPower;
             case PowerTransmitter when ceiling:
-                return output
-                    ? new PortPower(SwitchedOnLoads.TransmitterOutput(io.InputNetwork?.PotentialLoad ?? 0f,
-                        PowerTransmitter.MaxPowerTransmission), 0.0)
-                    : new PortPower(0.0, error ? Math.Max(0f, io.UsedPower) :
-                        SwitchedOnLoads.TransmitterInput(PowerTransmitter.MaxPowerTransmission));
+                return error ? Math.Max(0f, io.UsedPower) :
+                    SwitchedOnLoads.TransmitterInput(PowerTransmitter.MaxPowerTransmission);
             default:
-                return output
-                    ? new PortPower(io.AvailablePower, 0.0)
-                    : new PortPower(0.0, !on ? 0.0 : error ? Math.Max(0f, io.UsedPower) : demand);
+                return !on ? 0.0 : error ? Math.Max(0f, io.UsedPower) : demand;
         }
     }
 
-    // The OpenEnds entry and the OutputConnection field are separate copies of one port (PortSides): compare the Unity
-    // components they share, never the Connection objects.
-    private static bool IsOutput(ElectricalInputOutput io, Connection end)
-    {
-        Connection? output = io.OutputConnection;
-        return PortSides.IsOutput(
-            output != null && end.Transform != null && output.Transform != null
-                ? end.Transform == output.Transform
-                : null,
-            output != null && end.Collider != null && output.Collider != null
-                ? end.Collider == output.Collider
-                : null,
+    // The OpenEnds entry and the InputConnection / OutputConnection fields are separate copies of one port
+    // (PortSides): compare the Unity components they share, never the Connection objects.
+    private static bool IsSide(Connection end, Connection? side, Func<bool?, bool?, int, bool> test) =>
+        side != null && test(
+            end.Transform != null && side.Transform != null ? end.Transform == side.Transform : null,
+            end.Collider != null && side.Collider != null ? end.Collider == side.Collider : null,
             (int)end.ConnectionRole);
-    }
 
     private static PortPower Single(Device device, bool on)
     {
         if (device is SolarPanel solar)
         {
-            return new PortPower(solar.GenerationRate, 0.0);
+            return new PortPower(solar.GenerationRate, 0.0, PowerSide.Device);
         }
 
         if (NetworkRoots.IsGenerator(device))
@@ -153,9 +158,10 @@ internal static class PortLoads
             return new PortPower(
                 on && device.CanLogicRead(LogicType.PowerGeneration)
                     ? Math.Max(0.0, device.GetLogicValue(LogicType.PowerGeneration))
-                    : 0.0, 0.0);
+                    : 0.0, 0.0, PowerSide.Device);
         }
 
-        return new PortPower(0.0, on && device.IsStructureCompleted ? Math.Max(0f, device.UsedPower) : 0.0);
+        return new PortPower(0.0, on && device.IsStructureCompleted ? Math.Max(0f, device.UsedPower) : 0.0,
+            PowerSide.Device);
     }
 }

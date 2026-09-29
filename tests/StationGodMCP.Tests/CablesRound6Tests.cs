@@ -24,12 +24,13 @@ public sealed class CablesRound6Tests
         network.NewPieces.Add(Piece);
         Dictionary<ForecastPort, PortPower> dormant = new Dictionary<ForecastPort, PortPower>
         {
-            [output] = new PortPower(SwitchedOnLoads.BatteryOutput(StationBattery), 0.0),
-            [input] = new PortPower(0.0, SwitchedOnLoads.BatteryInput(StationBattery)),
+            [output] = new PortPower(SwitchedOnLoads.BatteryOutput(StationBattery), 0.0, PowerSide.Output),
+            [input] = new PortPower(0.0, SwitchedOnLoads.BatteryInput(StationBattery), PowerSide.Input),
         };
         return PowerAfter.Of(network, new Dictionary<long, NetworkPower>(),
             new Dictionary<long, double> { [Piece] = NormalCable }, new HashSet<long>(),
-            static _ => new PortPower(0.0, 0.0), port => dormant.TryGetValue(port, out PortPower found) ? found : null);
+            static _ => new PortPower(0.0, 0.0, PowerSide.Device),
+            port => dormant.TryGetValue(port, out PortPower found) ? found : null);
     }
 
     // r6 note: two nearly full batteries forecast 12200 W in one call and 5550 W in the next; switched-on loads are
@@ -53,8 +54,8 @@ public sealed class CablesRound6Tests
         network.NewPieces.Add(Piece);
         PowerAfter whenOn = PowerAfter.Of(network,
             new Dictionary<long, NetworkPower>(), new Dictionary<long, double> { [Piece] = NormalCable },
-            new HashSet<long>(), static _ => new PortPower(1200.0, 0.0),
-            static _ => new PortPower(0.0, SwitchedOnLoads.BatteryInput(StationBattery)));
+            new HashSet<long>(), static _ => new PortPower(1200.0, 0.0, PowerSide.Device),
+            static _ => new PortPower(0.0, SwitchedOnLoads.BatteryInput(StationBattery), PowerSide.Device));
 
         Assert.False(whenOn.Overloads);
         Assert.Equal(1200.0, whenOn.FlowW);

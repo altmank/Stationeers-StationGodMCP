@@ -103,11 +103,11 @@ internal static class RunNetworks
         }
 
         Func<ForecastPort, PortPower?> joining = port => PortLoads.Of(DeviceOf(context, port), port.Index);
+        Func<ForecastPort, PortPower?> dormant = port => PortLoads.Dormant(DeviceOf(context, port), port.Index);
         PowerAfter power = PowerAfter.Of(after, before, ratings, context.Gone, joining);
         // Switched on, a split network's parts are counted each from its own devices, not each with the whole
         // network's numbers: a removal that parts an off source from its consumer overloads nothing when it is on.
-        PowerAfter whenOn = PowerAfter.Of(after, before, ratings, context.Gone, joining,
-            port => PortLoads.Dormant(DeviceOf(context, port), port.Index), context.Split);
+        PowerAfter whenOn = PowerAfter.Of(after, before, ratings, context.Gone, joining, dormant, context.Split);
         RunPowerAfterView view = new RunPowerAfterView(power.PotentialW, power.RequiredW, power.FlowW,
             power.LowestCableW, power.LowestFuseW, power.Overloads);
         return power.Overloads
@@ -115,35 +115,28 @@ internal static class RunNetworks
                 $"The network would carry {power.FlowW:0} W (min of {power.PotentialW:0} W potential and " +
                 $"{power.RequiredW:0} W required) over a cable rated {power.LowestCableW:0} W; the game would burn " +
                 "a cable every power tick. Use a higher grade, or keep the networks apart.")
-            : new KindGuard(view, null, null, whenOn.Overloads ? WhenOnWarning(after, context, whenOn) : null);
+            : new KindGuard(view, null, null, PowerAfter.WhenOnWarning(whenOn, OffDevices(after, dormant)));
     }
 
     internal const string WouldOverload = "would_overload";
 
-    /// <summary>Warning: the edit is safe as the devices stand, but switching on the ones that are off would burn a cable.</summary>
-    internal const string WouldOverloadWhenOn = "would_overload_when_on";
-
     private static Device? DeviceOf(RunNetworkContext context, ForecastPort port) =>
         context.Devices.TryGetValue(port.DeviceId, out Device device) ? device : null;
 
-    // The devices that are off now on the network after the edit, which the game counts as nothing until switched on.
-    private static LayoutIssue WhenOnWarning(ForecastNetwork after, RunNetworkContext context, PowerAfter whenOn)
+    // The devices off now with a power role on the network after the edit (PortLoads.Dormant answers only for those),
+    // which the game counts as nothing until switched on; a device off on a data port alone is not one.
+    private static List<long> OffDevices(ForecastNetwork after, Func<ForecastPort, PortPower?> dormant)
     {
-        SortedSet<long> off = new SortedSet<long>();
+        List<long> off = new List<long>();
         foreach (ForecastPort port in after.Ports)
         {
-            if (DeviceOf(context, port) is { OnOff: false })
+            if (dormant(port) != null && !off.Contains(port.DeviceId))
             {
                 off.Add(port.DeviceId);
             }
         }
 
-        return new LayoutIssue(WouldOverloadWhenOn,
-            $"Safe as the devices stand, but once the devices now off ({string.Join(", ", off)}) are switched on the " +
-            $"network would carry {whenOn.FlowW:0} W (min of {whenOn.PotentialW:0} W potential and " +
-            $"{whenOn.RequiredW:0} W required) over a cable rated {whenOn.LowestCableW:0} W, and the game would " +
-            "burn a cable at once. Keep them off, use a higher grade, or keep the networks apart.", null,
-            off.Count > 0 ? off.Min : (long?)null);
+        return off;
     }
 
     internal static KindGuard PipeGuard(ForecastNetwork after, RunNetworkContext context)

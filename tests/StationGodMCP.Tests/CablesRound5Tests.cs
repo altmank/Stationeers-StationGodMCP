@@ -78,12 +78,12 @@ public sealed class CablesRound5Tests
         };
         Dictionary<ForecastPort, PortPower> now = new Dictionary<ForecastPort, PortPower>
         {
-            [output] = new PortPower(0.0, 0.0),
-            [input] = new PortPower(0.0, 7900.0)
+            [output] = new PortPower(0.0, 0.0, PowerSide.Output),
+            [input] = new PortPower(0.0, 7900.0, PowerSide.Input)
         };
         Dictionary<ForecastPort, PortPower> dormant = new Dictionary<ForecastPort, PortPower>
         {
-            [output] = new PortPower(3548350.0, 0.0)
+            [output] = new PortPower(3548350.0, 0.0, PowerSide.Output)
         };
         HashSet<long> split = new HashSet<long> { 7 };
 
@@ -110,12 +110,12 @@ public sealed class CablesRound5Tests
         };
         Dictionary<ForecastPort, PortPower> now = new Dictionary<ForecastPort, PortPower>
         {
-            [output] = new PortPower(0.0, 0.0),
-            [input] = new PortPower(0.0, 7900.0)
+            [output] = new PortPower(0.0, 0.0, PowerSide.Output),
+            [input] = new PortPower(0.0, 7900.0, PowerSide.Input)
         };
         Dictionary<ForecastPort, PortPower> dormant = new Dictionary<ForecastPort, PortPower>
         {
-            [output] = new PortPower(3548350.0, 0.0)
+            [output] = new PortPower(3548350.0, 0.0, PowerSide.Output)
         };
 
         PowerAfter part = WhenOn(Part(output, input), before, now, dormant, new HashSet<long> { 7 });

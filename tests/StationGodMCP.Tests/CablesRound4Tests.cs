@@ -28,14 +28,14 @@ public sealed class CablesRound4Tests
         ForecastPort input = new ForecastPort(11, 0, true, null, -1);
         Dictionary<ForecastPort, PortPower> switchedOn = new Dictionary<ForecastPort, PortPower>
         {
-            [output] = new PortPower(3593900.0, 0.0),
-            [input] = new PortPower(0.0, 6100.0)
+            [output] = new PortPower(3593900.0, 0.0, PowerSide.Output),
+            [input] = new PortPower(0.0, 6100.0, PowerSide.Input)
         };
         Dictionary<long, double> normal = new Dictionary<long, double> { [-1] = 5000.0 };
         PowerAfter now = PowerAfter.Of(NewOnly(output, input), new Dictionary<long, NetworkPower>(), normal,
-            new HashSet<long>(), static _ => new PortPower(0.0, 0.0));
+            new HashSet<long>(), static _ => new PortPower(0.0, 0.0, PowerSide.Device));
         PowerAfter whenOn = PowerAfter.Of(NewOnly(output, input), new Dictionary<long, NetworkPower>(), normal,
-            new HashSet<long>(), static _ => new PortPower(0.0, 0.0),
+            new HashSet<long>(), static _ => new PortPower(0.0, 0.0, PowerSide.Device),
             port => switchedOn.TryGetValue(port, out PortPower found) ? found : null);
         Assert.False(now.Overloads);
         Assert.Equal(6100.0, whenOn.FlowW);
@@ -57,7 +57,7 @@ public sealed class CablesRound4Tests
             [7] = new NetworkPower(20000.0, 4000.0, 5000.0, null)
         };
         PowerAfter whenOn = PowerAfter.Of(after, before, new Dictionary<long, double> { [-1] = 5000.0 }, null,
-            null, port => port.DeviceId == 20 ? new PortPower(0.0, 2000.0) : null);
+            null, port => port.DeviceId == 20 ? new PortPower(0.0, 2000.0, PowerSide.Device) : null);
         Assert.Equal(6000.0, whenOn.RequiredW);
         Assert.True(whenOn.Overloads);
     }

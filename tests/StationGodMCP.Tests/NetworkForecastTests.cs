@@ -224,8 +224,8 @@ public sealed class PowerAfterTests
         ForecastPort input = new ForecastPort(11, 0, true, null, -1);
         Dictionary<ForecastPort, PortPower> own = new Dictionary<ForecastPort, PortPower>
         {
-            [output] = new PortPower(3600000.0, 0.0),
-            [input] = new PortPower(0.0, 3600000.0)
+            [output] = new PortPower(3600000.0, 0.0, PowerSide.Output),
+            [input] = new PortPower(0.0, 3600000.0, PowerSide.Input)
         };
         PowerAfter power = PowerAfter.Of(NewOnly(output, input), new Dictionary<long, NetworkPower>(),
             new Dictionary<long, double> { [-1] = 5000.0 }, new HashSet<long>(),
@@ -245,7 +245,7 @@ public sealed class PowerAfterTests
         ForecastPort sink = new ForecastPort(21, 0, true, 7, -1);
         PowerAfter power = PowerAfter.Of(NewOnly(source, sink), before,
             new Dictionary<long, double> { [-1] = 5000.0 }, new HashSet<long> { 7 },
-            _ => new PortPower(1e9, 1e9));
+            _ => new PortPower(1e9, 1e9, PowerSide.Device));
         Assert.Equal(6000.0, power.PotentialW);
         Assert.Equal(2830000.0, power.RequiredW);
         Assert.True(power.Overloads);
@@ -261,7 +261,7 @@ public sealed class PowerAfterTests
         ForecastNetwork after = Merged(1);
         after.Ports.Add(new ForecastPort(30, 0, true, 1, 1));
         PowerAfter power = PowerAfter.Of(after, before, new Dictionary<long, double> { [-1] = 5000.0 },
-            new HashSet<long>(), _ => new PortPower(1e9, 1e9));
+            new HashSet<long>(), _ => new PortPower(1e9, 1e9, PowerSide.Device));
         Assert.Equal(4000.0, power.FlowW);
         Assert.False(power.Overloads);
     }

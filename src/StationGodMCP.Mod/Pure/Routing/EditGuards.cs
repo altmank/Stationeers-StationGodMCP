@@ -43,18 +43,25 @@ internal sealed class NetworkPower
     internal double? LowestFuseW { get; }
 }
 
-/// <summary>What one device port supplies to and draws from its network (PowerTick's per-device numbers).</summary>
+/// <summary>
+/// What one device port supplies to and draws from its network (PowerTick's per-device numbers), and the side of the
+/// device it moves them on: PowerTick asks each device once per network, so two ports of one side on one network
+/// count once.
+/// </summary>
 internal sealed class PortPower
 {
-    internal PortPower(double potentialW, double requiredW)
+    internal PortPower(double potentialW, double requiredW, PowerSide side)
     {
         PotentialW = potentialW;
         RequiredW = requiredW;
+        Side = side;
     }
 
     internal double PotentialW { get; }
 
     internal double RequiredW { get; }
+
+    internal PowerSide Side { get; }
 }
 
 /// <summary>A network after an edit as power sees it: the supply and demand it pools and its weakest cable.</summary>
@@ -95,6 +102,9 @@ internal sealed class PowerAfter
     /// too, whose numbers leave an off device out; null for the network as it is. split: networks before that fall
     /// into several parts; each part counts only its own ports (joining, as a port from outside would) instead of the
     /// whole network's numbers, keeping that network's weakest cable; null counts every part whole (an upper bound).
+    /// A port with no power role (joining null: a data port) brings nothing; a device side is counted once however
+    /// many of its ports are on the network, and not at all when the pooled numbers already hold it (PowerTick asks
+    /// each device once per network).
     /// </summary>
     internal static PowerAfter Of(ForecastNetwork network, IReadOnlyDictionary<long, NetworkPower> before,
         IReadOnlyDictionary<long, double> newRatings, ICollection<long>? gone = null,
@@ -120,10 +130,13 @@ internal sealed class PowerAfter
         }
 
         HashSet<long> pooledGone = new HashSet<long>();
+        HashSet<(long, PowerSide)> counted = new HashSet<(long, PowerSide)>();
+        HashSet<(long, PowerSide)> woken = new HashSet<(long, PowerSide)>();
+        List<ForecastPort> outside = new List<ForecastPort>();
         foreach (ForecastPort port in network.Ports)
         {
             PortPower? extra = dormant?.Invoke(port);
-            if (extra != null)
+            if (extra != null && woken.Add((port.DeviceId, extra.Side)))
             {
                 potential += extra.PotentialW;
                 required += extra.RequiredW;
@@ -133,6 +146,7 @@ internal sealed class PowerAfter
             bool ownPart = was.HasValue && split != null && split.Contains(was.Value);
             if (was.HasValue && network.NetworksBefore.Contains(was.Value) && !ownPart)
             {
+                Held(port, joining, counted);
                 continue;
             }
 
@@ -144,11 +158,17 @@ internal sealed class PowerAfter
                     required += old.RequiredW;
                 }
 
+                Held(port, joining, counted);
                 continue;
             }
 
+            outside.Add(port);
+        }
+
+        foreach (ForecastPort port in outside)
+        {
             PortPower? own = joining?.Invoke(port);
-            if (own != null)
+            if (own != null && counted.Add((port.DeviceId, own.Side)))
             {
                 potential += own.PotentialW;
                 required += own.RequiredW;
@@ -166,8 +186,42 @@ internal sealed class PowerAfter
         return new PowerAfter(potential, required, cable, fuse);
     }
 
+    // A port the pooled numbers already hold: its device side is in them, so no other port brings it again.
+    private static void Held(ForecastPort port, Func<ForecastPort, PortPower?>? joining,
+        HashSet<(long, PowerSide)> counted)
+    {
+        PortPower? held = joining?.Invoke(port);
+        if (held != null)
+        {
+            counted.Add((port.DeviceId, held.Side));
+        }
+    }
+
     private static double? Lowest(double? a, double? b) =>
         !a.HasValue ? b : !b.HasValue ? a : System.Math.Min(a.Value, b.Value);
+
+    internal const string WouldOverloadWhenOn = "would_overload_when_on";
+
+    /// <summary>
+    /// The would_overload_when_on warning: the edit is safe as the devices stand, but switching on the ones now off
+    /// would burn a cable. offDevices: the devices off now with a power role on the network after (a device off on a
+    /// data port alone brings nothing when switched on). Null when nothing overloads or no device is off: with every
+    /// device on there is nothing to switch on, so no warning can name what would cause it.
+    /// </summary>
+    internal static LayoutIssue? WhenOnWarning(PowerAfter whenOn, IReadOnlyCollection<long> offDevices)
+    {
+        if (!whenOn.Overloads || offDevices.Count == 0)
+        {
+            return null;
+        }
+
+        SortedSet<long> off = new SortedSet<long>(offDevices);
+        return new LayoutIssue(WouldOverloadWhenOn,
+            $"Safe as the devices stand, but once the devices now off ({string.Join(", ", off)}) are switched on the " +
+            $"network would carry {whenOn.FlowW:0} W (min of {whenOn.PotentialW:0} W potential and " +
+            $"{whenOn.RequiredW:0} W required) over a cable rated {whenOn.LowestCableW:0} W, and the game would " +
+            "burn a cable at once. Keep them off, use a higher grade, or keep the networks apart.", null, off.Min);
+    }
 }
 
 /// <summary>
