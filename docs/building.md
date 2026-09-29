@@ -26,7 +26,7 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    | `applied_with_differences` | Done, but the check found something other than planned; the job lists it. |
    | `applied_unchecked` | Done, but the check afterwards could not run; the job says why. Look before relying on it. |
    | `stopped` | A piece failed part way. The job lists what was done and where it stopped; nothing after that was done. For upgrades, running the same call again resumes. |
-   | `gas_lost` | Pipe network contents went missing and could not be put back; `gas_check` says how much and where. Every later pipe job is refused (`gas_check_failed`) until the world is loaded again. |
+   | `gas_lost` | Pipe network contents went missing and could not be put back; `gas_check` says how much and where. Every later pipe job is refused (`gas_check_failed`), and so is a `place_structure` / `remove_structure` run that places or removes anything with a pipe; other structure runs and dry runs are not. Only loading a save (or going back to the menu) lifts it. |
    | `refused` | The checks in the held tick failed; nothing changed. |
 
 5. **One job at a time.** A real run that finds another job running answers `busy` with `running_job_id` and changes
