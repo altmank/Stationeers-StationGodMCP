@@ -790,9 +790,10 @@ internal sealed class UpgradeMountedView
 internal sealed class CableNetworkReportView
 {
     internal CableNetworkReportView(ThingId networkId, CableNetworkCounts counts, CableNetworkRatings ratings,
-        List<ThingView> devices)
+        List<ThingView> devices, ThingId? renumberedFrom = null)
     {
         NetworkId = networkId;
+        RenumberedFrom = renumberedFrom;
         CableCount = counts.Cables;
         SwapCount = counts.Swaps;
         FuseCount = counts.Fuses;
@@ -806,6 +807,12 @@ internal sealed class CableNetworkReportView
     }
 
     public ThingId NetworkId { get; }
+
+    /// <summary>
+    /// After a run only: the id the network had before, when the game renumbered it (a network part of the swap
+    /// built merged the old one into its own); null when it kept its id.
+    /// </summary>
+    public ThingId? RenumberedFrom { get; }
 
     public int CableCount { get; }
 
@@ -876,9 +883,11 @@ internal sealed class CableNetworkRatings
 internal sealed class PipeNetworkReportView
 {
     internal PipeNetworkReportView(ThingId networkId, string content, PipeNetworkCounts counts,
-        PipeNetworkAir before, PipeNetworkAir after, double? lowestMaxPressureKpaAfter, List<ThingView> devices)
+        PipeNetworkAir before, PipeNetworkAir after, double? lowestMaxPressureKpaAfter, List<ThingView> devices,
+        ThingId? renumberedFrom = null)
     {
         NetworkId = networkId;
+        RenumberedFrom = renumberedFrom;
         Content = content;
         MemberCount = counts.Members;
         SwapCount = counts.Swaps;
@@ -894,6 +903,12 @@ internal sealed class PipeNetworkReportView
     }
 
     public ThingId NetworkId { get; }
+
+    /// <summary>
+    /// After a run only: the id the network had before, when the game renumbered it (a network part of the swap
+    /// built merged the old one into its own); null when it kept its id.
+    /// </summary>
+    public ThingId? RenumberedFrom { get; }
 
     public string Content { get; }
 

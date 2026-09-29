@@ -19,7 +19,7 @@ internal sealed class GasCheckView
 {
     private GasCheckView(bool isChecked, bool ok, string summary, List<GasFamilyView> families,
         List<GasGhostView> ghosts, List<GasRefillView> recovered, List<ThingId> ghostsCleared,
-        List<GasGhostView> oldGhosts)
+        List<GasGhostView> oldGhosts, List<GasOrphanView> orphans, List<GasOrphanView> oldOrphans)
     {
         Checked = isChecked;
         Ok = ok;
@@ -29,6 +29,8 @@ internal sealed class GasCheckView
         Recovered = recovered;
         GhostsCleared = ghostsCleared;
         OldGhosts = oldGhosts;
+        Orphans = orphans;
+        OldOrphans = oldOrphans;
     }
 
     /// <summary>False when the check could not be made (a save held the tick); nothing is known then.</summary>
@@ -52,8 +54,20 @@ internal sealed class GasCheckView
     /// <summary>Networks without pipes that held the same gas before the job: not the job's doing, left as they are.</summary>
     public List<GasGhostView> OldGhosts { get; }
 
-    internal static GasCheckView Of(GasAudit audit, List<GasRefill> recovered, List<long> ghostsCleared)
+    /// <summary>
+    /// Networks the game no longer lists that pipes still name, left by the job (1.4.4+): nothing simulates them and
+    /// their gas is counted where it sits, so a copy the game's merge already gave the survivor shows as gas that
+    /// appeared. Any fails the check.
+    /// </summary>
+    public List<GasOrphanView> Orphans { get; }
+
+    /// <summary>Such networks that were there before the job: not its doing, left as they are.</summary>
+    public List<GasOrphanView> OldOrphans { get; }
+
+    internal static GasCheckView Of(GasAudit audit, List<GasRefill> recovered, List<long> ghostsCleared,
+        GasOrphans? orphans = null)
     {
+        orphans ??= GasOrphans.None;
         List<GasFamilyView> families = new List<GasFamilyView>(audit.Families.Count);
         foreach (GasFamily family in audit.Families)
         {
@@ -79,8 +93,9 @@ internal sealed class GasCheckView
         }
 
         List<ThingId> cleared = ghostsCleared.ConvertAll(static id => new ThingId(id));
-        return new GasCheckView(true, audit.Ok, Summarise(audit, recovered), families, ghosts, refills, cleared,
-            oldGhosts);
+        return new GasCheckView(true, audit.Ok && orphans.Ok, Summarise(audit, recovered, orphans), families, ghosts,
+            refills, cleared, oldGhosts, orphans.Left.ConvertAll(GasOrphanView.Of),
+            orphans.Old.ConvertAll(GasOrphanView.Of));
     }
 
     /// <summary>
@@ -97,9 +112,10 @@ internal sealed class GasCheckView
 
     internal static GasCheckView Unchecked(string reason) =>
         new GasCheckView(false, false, reason, new List<GasFamilyView>(), new List<GasGhostView>(),
-            new List<GasRefillView>(), new List<ThingId>(), new List<GasGhostView>());
+            new List<GasRefillView>(), new List<ThingId>(), new List<GasGhostView>(), new List<GasOrphanView>(),
+            new List<GasOrphanView>());
 
-    private static string Summarise(GasAudit audit, List<GasRefill> recovered)
+    private static string Summarise(GasAudit audit, List<GasRefill> recovered, GasOrphans orphans)
     {
         double kept = 0.0;
         double deleted = 0.0;
@@ -119,13 +135,22 @@ internal sealed class GasCheckView
 
         double put = 0.0;
         recovered.ForEach(refill => put += refill.Gas.TotalMol);
-        string text = audit.Ok
+        double orphaned = 0.0;
+        orphans.Left.ForEach(orphan => orphaned += orphan.Gas.TotalMol);
+        string orphanText = orphans.Ok
+            ? string.Empty
+            : $"; {orphans.Left.Count} network(s) the game no longer lists still hold pipes and {Mol(orphaned)} mol " +
+              "(orphans: nothing simulates them)";
+        string text = audit.Ok && orphans.Ok
             ? $"Contents kept: {audit.Families.Count} network famil{(audit.Families.Count == 1 ? "y" : "ies")} " +
               $"changed, {Mol(kept)} mol in them now."
+            : audit.Ok
+            ? $"GAS CHECK FAILED{orphanText}. Further pipe jobs are refused until the world is loaded again."
             : (missing >= 0.0
                   ? $"GAS LOST: {Mol(missing)} mol missing from the networks the job changed"
                   : $"GAS CHECK FAILED: {Mol(-missing)} mol more in the networks the job changed than before") +
               (audit.Ghosts.Count > 0 ? $"; {audit.Ghosts.Count} network(s) without pipes hold gas (ghosts)" : "") +
+              orphanText +
               ". Further pipe jobs are refused until the world is loaded again.";
         if (put > 0.0)
         {
@@ -228,6 +253,34 @@ internal sealed class GasGhostView
         return new GasGhostView(new ThingId(network.Id), network.Gas.TotalMol, network.Gas.TotalEnergyJ, devices,
             family != null ? GasFamilyView.Ids(family.After) : null);
     }
+}
+
+/// <summary>A network the game no longer lists that pipes still name (an orphan), with what it holds.</summary>
+internal sealed class GasOrphanView
+{
+    private GasOrphanView(ThingId networkId, int pipes, double mol, double energyJ, double volumeL)
+    {
+        NetworkId = networkId;
+        Pipes = pipes;
+        Mol = mol;
+        EnergyJ = energyJ;
+        VolumeL = volumeL;
+    }
+
+    public ThingId NetworkId { get; }
+
+    /// <summary>How many pipes still name it.</summary>
+    public int Pipes { get; }
+
+    public double Mol { get; }
+
+    public double EnergyJ { get; }
+
+    public double VolumeL { get; }
+
+    internal static GasOrphanView Of(NetworkGas network) =>
+        new GasOrphanView(new ThingId(network.Id), network.Members.Count, network.Gas.TotalMol,
+            network.Gas.TotalEnergyJ, network.VolumeL);
 }
 
 /// <summary>Gas put into a network to make its family whole.</summary>

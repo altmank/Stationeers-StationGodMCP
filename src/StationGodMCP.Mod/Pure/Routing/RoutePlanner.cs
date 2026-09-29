@@ -98,11 +98,49 @@ internal sealed class RouteEnd
 
     internal double ChangeCost { get; }
 
-    /// <summary>The extra cost of the route touching this end through the direction (seen from the end's cell).</summary>
+    /// <summary>
+    /// The extra cost of the route touching this end through the direction (seen from the end's cell); infinite when
+    /// the end may not be changed (Leaving).
+    /// </summary>
     internal double CostOf(GridStep step) => Free.Contains(step) ? 0.0 : ChangeCost;
 
     /// <summary>An empty cell: every direction is free.</summary>
     internal static RouteEnd Open(GridCell cell) => new RouteEnd(cell, EndSet.FromMask(0x3F), 0.0);
+
+    /// <summary>A start the route may leave only through the free directions: a chute piece, which a junction cannot
+    /// feed from (items only merge into a line there).</summary>
+    internal static RouteEnd Leaving(GridCell cell, EndSet free) => new RouteEnd(cell, free, double.PositiveInfinity);
+
+    /// <summary>
+    /// The directions of the piece's ends at the cell that nothing is connected to. With leavingOnly (a chute start),
+    /// only those items can leave through: not an Input end (ChuteRoles.TakesIn), which takes items into the piece.
+    /// </summary>
+    internal static EndSet OpenAt(PieceModel piece, GridCell cell, IReadOnlyList<PieceEnd> connected,
+        bool leavingOnly)
+    {
+        EndSet open = EndSet.None;
+        foreach (PieceEnd end in piece.Ends)
+        {
+            GridStep? step = end.Facing.Equals(cell) ? GridStep.Between(cell, end.Local) : null;
+            if (!step.HasValue || (leavingOnly && ChuteRoles.TakesIn(end.Role)))
+            {
+                continue;
+            }
+
+            bool joined = false;
+            foreach (PieceEnd other in connected)
+            {
+                joined |= other.Local.Equals(end.Local);
+            }
+
+            if (!joined)
+            {
+                open = open.With(step.Value);
+            }
+        }
+
+        return open;
+    }
 }
 
 /// <summary>A route found, or why none was.</summary>
@@ -228,7 +266,13 @@ internal static class RoutePlanner
                 double cost = spent + enter + TurnCost(state, step, rules) + OrderCost(state, step, rules);
                 if (state.Heading < 0)
                 {
-                    cost += start.CostOf(step);
+                    double leave = start.CostOf(step);
+                    if (double.IsPositiveInfinity(leave))
+                    {
+                        continue;
+                    }
+
+                    cost += leave;
                 }
 
                 if (isGoal)

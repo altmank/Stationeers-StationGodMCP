@@ -100,3 +100,15 @@ internal static class EndChoice
         return null;
     }
 }
+
+/// <summary>
+/// The two cells of a thing's end: the one inside the thing and the one beyond it, where a piece joining that end
+/// stands. An end's transform sits on the thing's face, so which of Connection.GetLocalGrid and GetFacingGrid falls
+/// inside depends on the prefab (a pipe's ends and a 1x2 in-line tank's: local beyond, facing inside); the cell the
+/// thing occupies decides. Local counts as beyond when neither or both lie inside.
+/// </summary>
+internal static class EndCells
+{
+    internal static (GridCell Inside, GridCell Beyond) Of(PieceModel thing, GridCell local, GridCell facing) =>
+        thing.Occupies(local) && !thing.Occupies(facing) ? (local, facing) : (facing, local);
+}

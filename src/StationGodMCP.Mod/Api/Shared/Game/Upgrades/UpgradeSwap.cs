@@ -202,10 +202,16 @@ internal sealed class PieceSwap
     // overwriting the old pieces' slots in its cells; then the parts join the network, then each old piece leaves and
     // is destroyed. A removal builds nothing: its piece leaves the network (a pipe's contents stay in it) and is
     // destroyed.
+    // The network the parts join is read once they stand, never before: a part that registers with no connected
+    // neighbour gets a network of its own (Pipe.OnRegistered, Cable.OnRegistered), and the next part linking it to the
+    // old network merges the old one INTO that new one (StructureNetwork.Merge keeps the first of its list), so the
+    // old network is deregistered and its members, the old piece among them, are on the new one. Joining the parts to
+    // the network read before put them back into the deregistered one, which no tick simulates and which kept its own
+    // copy of the gas (live test 2026-09-29, pipes-1). The planned order avoids that merge where it can: a split's
+    // singles are built from a connected end (LongStraights.FromConnectedEnd).
     private void Swap()
     {
         GridController world = GridController.World;
-        IReferencable? network = _family.NetworkOf(_swap.Old);
         foreach (Twin part in _swap.Parts)
         {
             CreateStructureInstance instance = new CreateStructureInstance(part.Prefab, _swap.Old)
@@ -223,6 +229,7 @@ internal sealed class PieceSwap
             RequireInPlace(part, built);
         }
 
+        IReferencable? network = _family.NetworkOf(_swap.Old);
         if (network != null)
         {
             foreach (SmallGrid replacement in Replacements)

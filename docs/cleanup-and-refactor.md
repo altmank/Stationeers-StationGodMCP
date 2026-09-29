@@ -41,7 +41,11 @@ What always holds:
   pieces. Such dead ends are listed in `dead_end_pieces` with `stopped_by`.
 - Pipes: the contents stay in the network. A removed pipe takes only its volume, so the pressure rises; the run is
   refused if it would exceed the weakest remaining pipe. The last pipes of a network still holding gas or liquid are
-  never removed (`stopped_by: holds_contents`).
+  never removed (`stopped_by: holds_contents`). This holds per network, not per stub: a gas line with two open ends
+  keeps every stub, since trimming it round by round would end in emptying it.
+- Pipes: a split long straight's singles are built from its connected tip, so they join the network as it stands. If
+  the game still renumbers a network during a run, the verification follows the survivor and its entry names the old
+  id in `renumbered_from`.
 - Each listed piece shows its `operation`, its `ends` and `connected_ends`, and its `cost` and refund.
 
 Tidy a network, `clean_cables`:
@@ -62,6 +66,9 @@ one.
 
 - **Never removed:** a piece joined to a device port, `keep_ids` (for example a new run's `created_ids`), anything
   `remove_dead_ends` would keep.
+- **Pipes:** an in-line tank or passive vent is part of the network and stays joined, so the pipes that join it stay.
+  The last pipes of a network still holding gas or liquid stay too (`blocked:holds_contents`), counting what earlier
+  operations of the same request remove; a network without devices is therefore left whole while it holds contents.
 - **Narrow the candidates** with `only_ids`, or `older_than_id` (only pieces built before that one).
 - **The report** (`redundant`) lists what goes and every candidate that stays with its `reason`: `device_port`,
   `keep_ids`, `blocked:...`, or `needed`, with the `devices` it still keeps connected to the root (`root`, default

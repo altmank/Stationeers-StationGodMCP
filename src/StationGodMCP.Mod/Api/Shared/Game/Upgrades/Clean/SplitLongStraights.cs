@@ -39,8 +39,9 @@ internal sealed class SplitLongStraights : ICleanOperation
             return;
         }
 
+        List<PieceEnd> connected = pass.ConnectedEnds(live);
         List<Twin> parts = new List<Twin>(singles.Count);
-        foreach (PieceModel single in singles)
+        foreach (PieceModel single in LongStraights.FromConnectedEnd(singles, connected))
         {
             Twin? part = pass.PlacedTwins.FindAt(piece.PrefabHash, PieceShapes.CentreOf(single.Cells[0]),
                 piece.ThingTransformRotation, single, kit);
@@ -56,6 +57,6 @@ internal sealed class SplitLongStraights : ICleanOperation
         }
 
         pass.Replace(new List<SmallGrid> { piece }, kit, parts,
-            CleanPass.Detail(Operation, live, pass.ConnectedEnds(live)));
+            CleanPass.Detail(Operation, live, connected));
     }
 }

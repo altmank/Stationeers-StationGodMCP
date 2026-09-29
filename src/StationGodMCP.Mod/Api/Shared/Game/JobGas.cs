@@ -8,6 +8,7 @@ using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Networks;
+using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Networks;
 using StationGodMCP.Api.Views;
@@ -113,7 +114,8 @@ internal abstract class JobGas
                 }
             }
 
-            GasCheckView check = GasCheckView.Of(audit, refills, cleared);
+            GasCheckView check = GasCheckView.Of(audit, refills, cleared,
+                GasOrphans.Of(_before.Orphans, after.Orphans));
             if (!check.Ok)
             {
                 GasHold.Set(jobId, check.Summary);
@@ -237,19 +239,26 @@ internal static class AtmosphericsThread
 
 /// <summary>
 /// Every pipe network as it stands: members and devices read on the main thread, contents (with every queued change
-/// applied first) on a pool thread, where the Mole getters give the live values.
+/// applied first) on a pool thread, where the Mole getters give the live values. Besides the networks the game lists,
+/// every network a pipe still names that the game no longer lists (an orphan, GasOrphans) is read too, so its gas
+/// counts where it sits.
 /// </summary>
 internal sealed class PipeGasReading
 {
     private readonly Dictionary<long, PipeNetwork> _byId;
 
-    private PipeGasReading(List<NetworkGas> networks, Dictionary<long, PipeNetwork> byId)
+    private PipeGasReading(List<NetworkGas> networks, List<NetworkGas> orphans, Dictionary<long, PipeNetwork> byId)
     {
         Networks = networks;
+        Orphans = orphans;
         _byId = byId;
     }
 
+    /// <summary>Every network read: the listed ones, then the orphans.</summary>
     internal List<NetworkGas> Networks { get; }
+
+    /// <summary>The networks pipes name that the game no longer lists.</summary>
+    internal List<NetworkGas> Orphans { get; }
 
     internal static PipeGasReading Take()
     {
@@ -262,6 +271,8 @@ internal sealed class PipeGasReading
             }
         }
 
+        int listed = networks.Count;
+        networks.AddRange(OrphansBeside(networks));
         List<long[]> members = networks.ConvertAll(MembersOf);
         List<long[]> devices = networks.ConvertAll(DevicesOf);
         List<(GasMix gas, double volumeL)> contents = AtmosphericsThread.Run(() =>
@@ -271,15 +282,37 @@ internal sealed class PipeGasReading
         });
 
         List<NetworkGas> read = new List<NetworkGas>(networks.Count);
-        Dictionary<long, PipeNetwork> byId = new Dictionary<long, PipeNetwork>(networks.Count);
+        Dictionary<long, PipeNetwork> byId = new Dictionary<long, PipeNetwork>(listed);
         for (int index = 0; index < networks.Count; index++)
         {
             read.Add(new NetworkGas(networks[index].ReferenceId, contents[index].gas, contents[index].volumeL,
                 members[index], devices[index]));
-            byId[networks[index].ReferenceId] = networks[index];
+            if (index < listed)
+            {
+                // Refills and ghost clearing only ever touch a network the game lists.
+                byId[networks[index].ReferenceId] = networks[index];
+            }
         }
 
-        return new PipeGasReading(read, byId);
+        return new PipeGasReading(read, read.GetRange(listed, read.Count - listed), byId);
+    }
+
+    // Every network a live pipe names that is not among the listed ones (AtmosphericsManager.AtmosphericThings holds
+    // every registered pipe: Pipe.OnRegistered adds it, OnDeregistered takes it off). Main thread.
+    private static List<PipeNetwork> OrphansBeside(List<PipeNetwork> listed)
+    {
+        HashSet<PipeNetwork> known = new HashSet<PipeNetwork>(listed);
+        List<PipeNetwork> orphans = new List<PipeNetwork>();
+        foreach (Thing thing in AtmosphericsManager.AtmosphericThings.Active())
+        {
+            if (thing is Pipe pipe && pipe != null && !pipe.IsBeingDestroyed && pipe.PipeNetwork != null &&
+                known.Add(pipe.PipeNetwork))
+            {
+                orphans.Add(pipe.PipeNetwork);
+            }
+        }
+
+        return orphans;
     }
 
     /// <summary>Puts each refill into its network's atmosphere, on a pool thread.</summary>

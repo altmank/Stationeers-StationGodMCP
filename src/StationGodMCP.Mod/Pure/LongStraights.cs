@@ -44,6 +44,39 @@ internal static class LongStraights
         return parts;
     }
 
+    /// <summary>
+    /// The singles in the order to build them: from the tip whose end is connected, so each single registers next to
+    /// a piece already on the network and joins it (the game gives a single with no connected neighbour a network of
+    /// its own, and the single that later links the two merges the old network away). Along the line as Split gives
+    /// them when the first tip is connected or neither is; reversed when only the last one is.
+    /// </summary>
+    internal static List<PieceModel> FromConnectedEnd(List<PieceModel> singles, IReadOnlyList<PieceEnd> connected)
+    {
+        if (singles.Count < 2 || TipConnected(singles[0], connected) ||
+            !TipConnected(singles[singles.Count - 1], connected))
+        {
+            return singles;
+        }
+
+        List<PieceModel> reversed = new List<PieceModel>(singles);
+        reversed.Reverse();
+        return reversed;
+    }
+
+    // A connected end of the long piece faces back into this single's cell (its tip).
+    private static bool TipConnected(PieceModel single, IReadOnlyList<PieceEnd> connected)
+    {
+        foreach (PieceEnd end in connected)
+        {
+            if (single.Occupies(end.Facing))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // The cells sorted along their one changing axis, evenly spaced; null when they are not such a line.
     private static List<GridCell>? Line(IReadOnlyList<GridCell> cells)
     {

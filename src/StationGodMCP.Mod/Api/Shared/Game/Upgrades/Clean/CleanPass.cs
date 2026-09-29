@@ -77,6 +77,7 @@ internal sealed class CleanPass
     private readonly Dictionary<long, PieceModel> _live = new Dictionary<long, PieceModel>();
     private readonly HashSet<long> _claimed = new HashSet<long>();
     private readonly HashSet<long> _removed = new HashSet<long>();
+    private readonly List<SmallGrid> _removedPieces = new List<SmallGrid>();
 
     internal CleanPass(PlanContext context, List<SmallGrid> members)
     {
@@ -113,6 +114,9 @@ internal sealed class CleanPass
     internal bool IsSelected(long id) => _live.ContainsKey(id);
 
     internal bool IsRemoved(long id) => _removed.Contains(id);
+
+    /// <summary>Every piece an earlier operation removes, for the check that no removal empties a network.</summary>
+    internal List<SmallGrid> RemovedPieces => new List<SmallGrid>(_removedPieces);
 
     internal PieceModel LiveOf(SmallGrid piece) => _live[piece.ReferenceId];
 
@@ -200,6 +204,7 @@ internal sealed class CleanPass
         List<OldPiece> pieces = new List<OldPiece> { new OldPiece(old, LiveOf(old)) };
         Claim(old);
         _removed.Add(old.ReferenceId);
+        _removedPieces.Add(old);
         Plan.Swaps.Add(new PlannedSwap(pieces, kit, new List<Twin>(),
             new SwapPrice(0, PlanContext.RefundOf(old)), detail));
     }

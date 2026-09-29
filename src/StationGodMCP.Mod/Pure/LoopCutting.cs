@@ -309,10 +309,11 @@ internal static class LoopCutting
 
             walkedInner.Add(start);
             walkedInner.UnionWith(interior);
-            // One piece breaks a ring: its first removable piece stands for the whole ring as one chain.
+            // One piece breaks a ring: its first removable piece stands for the whole ring as one chain, which still
+            // lists every piece of the ring for the report.
             int first = interior.FindIndex(id => candidates.Contains(id) && !blocked.ContainsKey(id));
             chains.Add(first >= 0
-                ? new Chain(start, start, new List<long> { interior[first] }, true)
+                ? new Chain(start, start, new List<long> { interior[first] }, true, interior)
                 : new Chain(start, start, interior, false));
         }
 
@@ -358,6 +359,7 @@ internal static class LoopCutting
             pieces.Add(chain.From);
             pieces.Add(chain.To);
             pieces.UnionWith(chain.Interior);
+            pieces.UnionWith(chain.Ring);
         }
 
         List<long> sorted = new List<long>(pieces);
@@ -378,12 +380,13 @@ internal static class LoopCutting
 
     private sealed class Chain
     {
-        internal Chain(long from, long to, List<long> interior, bool removable)
+        internal Chain(long from, long to, List<long> interior, bool removable, List<long>? ring = null)
         {
             From = from;
             To = to;
             Interior = interior;
             Removable = removable;
+            Ring = ring ?? new List<long>();
             MinimumId = interior.Count > 0 ? Min(interior) : long.MaxValue;
         }
 
@@ -392,6 +395,9 @@ internal static class LoopCutting
         internal long To { get; }
 
         internal List<long> Interior { get; }
+
+        /// <summary>For a ring standing as one chain: every piece of the ring (Interior holds the one to cut).</summary>
+        internal List<long> Ring { get; }
 
         /// <summary>Every piece inside is a candidate and not blocked.</summary>
         internal bool Removable { get; }

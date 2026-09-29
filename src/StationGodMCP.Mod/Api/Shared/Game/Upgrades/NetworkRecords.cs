@@ -19,11 +19,12 @@ namespace StationGodMCP.Api.Shared.Game.Upgrades;
 /// </summary>
 internal abstract class NetworkRecord
 {
-    protected NetworkRecord(ThingId id, List<PlannedSwap> swaps, List<Device> devices)
+    protected NetworkRecord(ThingId id, List<PlannedSwap> swaps, List<Device> devices, List<SmallGrid> members)
     {
         Id = id;
         Swaps = swaps;
         DevicesBefore = IdsOf(devices);
+        Staying = members.FindAll(member => !IsSwapped(member, out _));
     }
 
     internal ThingId Id { get; }
@@ -31,6 +32,48 @@ internal abstract class NetworkRecord
     internal List<PlannedSwap> Swaps { get; }
 
     protected HashSet<long> DevicesBefore { get; }
+
+    /// <summary>The members no swap takes, as recorded before the swap.</summary>
+    private List<SmallGrid> Staying { get; }
+
+    /// <summary>
+    /// The network now: the recorded one while the game still lists it; once it no longer does, the network the swap's
+    /// replacements and the members it left in place are on, when the game lists that one (a part that registered
+    /// with no connected neighbour got a network of its own, and the part linking it to the old one merged the old
+    /// one into it: the game renumbered the network). Null when neither is found.
+    /// </summary>
+    protected IReferencable? Survivor(Func<long, IReferencable?> find, Func<SmallGrid, IReferencable?> networkOf,
+        Dictionary<long, List<SmallGrid>> replacements)
+    {
+        IReferencable? now = find(Id.Value);
+        if (now != null)
+        {
+            return now;
+        }
+
+        List<SmallGrid> standing = new List<SmallGrid>(Staying);
+        foreach (PlannedSwap swap in Swaps)
+        {
+            if (replacements.TryGetValue(swap.GroupId, out List<SmallGrid> built))
+            {
+                standing.AddRange(built);
+            }
+        }
+
+        foreach (SmallGrid member in standing)
+        {
+            IReferencable? network = member != null && !member.IsBeingDestroyed ? networkOf(member) : null;
+            if (network != null && ReferenceEquals(find(network.ReferenceId), network))
+            {
+                return network;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>The recorded id when the network now has another; null when it kept its id.</summary>
+    protected ThingId? RenumberedFrom(IReferencable now) => now.ReferenceId != Id.Value ? Id : null;
 
     /// <summary>
     /// How many more members the network holds after the swap: a split adds its singles less the long piece, a merge
@@ -192,7 +235,7 @@ internal abstract class NetworkRecord
                 if (replacement != null && networkOf(replacement) != now)
                 {
                     problems.Add(new UpgradeProblemView("network_changed",
-                        $"A replacement of {swap.GroupId} is not in network {Id}.",
+                        $"A replacement of {swap.GroupId} is not in network {now.ReferenceId}.",
                         new ThingId(replacement.ReferenceId)));
                 }
             }
@@ -221,8 +264,11 @@ internal sealed class CableNetworkRecord : NetworkRecord
     private readonly CableNetwork _network;
     private readonly int _cablesBefore;
 
+    private CableNetwork? _now;
+
     internal CableNetworkRecord(CableNetwork network, List<PlannedSwap> swaps)
-        : base(new ThingId(network.ReferenceId), swaps, network.DeviceList)
+        : base(new ThingId(network.ReferenceId), swaps, network.DeviceList,
+            Copy(network.CableList).ConvertAll(static cable => (SmallGrid)cable))
     {
         _network = network;
         _cablesBefore = Copy(network.CableList).Count;
@@ -258,7 +304,7 @@ internal sealed class CableNetworkRecord : NetworkRecord
         return new CableNetworkReportView(new ThingId(network.ReferenceId),
             new CableNetworkCounts(cables.Count, Swaps.Count, network.FuseList.Count),
             new CableNetworkRatings(network.RequiredLoad, network.PotentialLoad, before, after, fuse),
-            ViewsOf(network.DeviceList));
+            ViewsOf(network.DeviceList), predict ? null : RenumberedFrom(network));
     }
 
     private static double RatingOf(Structure prefab) => prefab is Cable cable ? cable.MaxVoltage : 0.0;
@@ -282,18 +328,21 @@ internal sealed class CableNetworkRecord : NetworkRecord
 
     internal override object? ReportNow()
     {
-        CableNetwork? now = Referencable.Find<CableNetwork>(Id.Value);
+        CableNetwork? now = _now ?? Referencable.Find<CableNetwork>(Id.Value);
         return now != null ? ReportOf(now, false) : null;
     }
 
     internal override void Verify(List<UpgradeProblemView> problems, Dictionary<long, List<SmallGrid>> replacements)
     {
-        CableNetwork? now = Referencable.Find<CableNetwork>(Id.Value);
+        CableNetwork? now = Survivor(static id => Referencable.Find<CableNetwork>(id),
+            static piece => piece is Cable cable ? cable.CableNetwork : null, replacements) as CableNetwork;
         if (now == null)
         {
             Missing(problems, _cablesBefore);
             return;
         }
+
+        _now = now;
 
         VerifyMembers(problems, now.DeviceList, replacements,
             static piece => piece is Cable cable ? cable.CableNetwork : null, now);
@@ -319,8 +368,10 @@ internal sealed class PipeNetworkRecord : NetworkRecord
     private readonly double _volumeAfter;
     private readonly int _membersBefore;
 
+    private PipeNetwork? _now;
+
     internal PipeNetworkRecord(PipeNetwork network, List<PlannedSwap> swaps)
-        : base(new ThingId(network.ReferenceId), swaps, network.DeviceList)
+        : base(new ThingId(network.ReferenceId), swaps, network.DeviceList, MembersOf(network))
     {
         _network = network;
         _membersBefore = MembersOf(network).Count;
@@ -458,7 +509,7 @@ internal sealed class PipeNetworkRecord : NetworkRecord
 
     internal override object? ReportNow()
     {
-        PipeNetwork? now = Referencable.Find<PipeNetwork>(Id.Value);
+        PipeNetwork? now = _now ?? Referencable.Find<PipeNetwork>(Id.Value);
         if (now == null)
         {
             return null;
@@ -466,18 +517,22 @@ internal sealed class PipeNetworkRecord : NetworkRecord
 
         GasSnapshot? snapshot = now.Atmosphere != null ? GasSnapshot.Of(now.Atmosphere) : null;
         PipeNetworkAir air = AirOf(snapshot, snapshot?.VolumeL ?? 0.0);
-        return new PipeNetworkReportView(Id, now.NetworkContentType.ToString(),
-            new PipeNetworkCounts(MembersOf(now).Count, Swaps.Count), air, air, null, ViewsOf(now.DeviceList));
+        return new PipeNetworkReportView(new ThingId(now.ReferenceId), now.NetworkContentType.ToString(),
+            new PipeNetworkCounts(MembersOf(now).Count, Swaps.Count), air, air, null, ViewsOf(now.DeviceList),
+            RenumberedFrom(now));
     }
 
     internal override void Verify(List<UpgradeProblemView> problems, Dictionary<long, List<SmallGrid>> replacements)
     {
-        PipeNetwork? now = Referencable.Find<PipeNetwork>(Id.Value);
+        PipeNetwork? now = Survivor(static id => Referencable.Find<PipeNetwork>(id),
+            static piece => piece is Pipe pipe ? pipe.PipeNetwork : null, replacements) as PipeNetwork;
         if (now == null)
         {
             Missing(problems, _membersBefore);
             return;
         }
+
+        _now = now;
 
         VerifyMembers(problems, now.DeviceList, replacements,
             static piece => piece is Pipe pipe ? pipe.PipeNetwork : null, now);
@@ -485,9 +540,12 @@ internal sealed class PipeNetworkRecord : NetworkRecord
         VerifyContents(problems, now);
     }
 
+    // A renumbered network holds the old one's contents in its own Atmosphere (the game's merge moved them there):
+    // the same moles, energy and predicted volume, in another object.
     private void VerifyContents(List<UpgradeProblemView> problems, PipeNetwork now)
     {
-        if (!ReferenceEquals(now.Atmosphere, _atmosphere) || _before == null)
+        if (_before == null || now.Atmosphere == null ||
+            (ReferenceEquals(now, _network) && !ReferenceEquals(now.Atmosphere, _atmosphere)))
         {
             problems.Add(new UpgradeProblemView("atmosphere_replaced",
                 $"Pipe network {Id} has a different atmosphere than before the swap.", Id));

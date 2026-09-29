@@ -136,7 +136,9 @@ internal static class RunNetworks
 
         if (parts.Count == 0)
         {
-            return new KindGuard(new RunPipeAfterView(AirOf(null), lowest, false), null, null);
+            // A network made of new pieces only: empty, in the new pieces' volume.
+            PipeNetworkAir empty = new PipeNetworkAir(0.0, 0.0, 0.0, Math.Max(0.0, volumeChange), 0.0);
+            return new KindGuard(new RunPipeAfterView(empty, lowest, false), null, null);
         }
 
         GasSnapshot pooled = GasSnapshot.Pool(parts.ToArray());

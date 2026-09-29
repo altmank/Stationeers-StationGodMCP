@@ -207,9 +207,16 @@ internal static class ChuteFlow
             Ports(graph, byCell, variables, forest, blame, edited, joined);
         }
 
+        List<GridCell> reversed = new List<GridCell>();
+        long reversedPiece = 0;
         foreach (RunLeg leg in graph.Legs)
         {
-            Leg(leg, byCell, variables, forest, conflicts);
+            Leg(leg, byCell, variables, forest, reversed, ref reversedPiece);
+        }
+
+        if (reversed.Count > 0)
+        {
+            conflicts.Add(Reversed(reversed, reversedPiece));
         }
 
         Dictionary<PieceEndRef, FlowDirection> directions = new Dictionary<PieceEndRef, FlowDirection>();
@@ -358,8 +365,20 @@ internal static class ChuteFlow
         }
     }
 
+    // One flow_reversed for the whole run, naming the cells where items would move against it (once per cell).
+    private static FlowConflict Reversed(List<GridCell> cells, long piece)
+    {
+        const int Shown = 6;
+        List<string> named = cells.GetRange(0, Math.Min(Shown, cells.Count)).ConvertAll(static cell => cell.ToString());
+        string more = cells.Count > Shown ? $" and {cells.Count - Shown} more" : string.Empty;
+        return new FlowConflict(FlowConflict.Reversed,
+            "The run carries items from its first cell to its last, but at " +
+            $"{string.Join(", ", named)}{more} they would move the other way: what the run joins fixes the flow " +
+            "against it. Reverse the run (from the source to the sink) or join other ends.", piece, cells[0]);
+    }
+
     private static void Leg(RunLeg leg, Dictionary<GridCell, List<PieceModel>> byCell, Variables variables,
-        ParityForest forest, List<FlowConflict> conflicts)
+        ParityForest forest, List<GridCell> reversed, ref long reversedPiece)
     {
         if (!byCell.TryGetValue(leg.Cell, out List<PieceModel> there))
         {
@@ -377,12 +396,15 @@ internal static class ChuteFlow
                     continue;
                 }
 
-                if (!forest.Fix(variables.Of(new PieceEndRef(piece.Id, index)), FlowDirection.Out))
+                if (!forest.Fix(variables.Of(new PieceEndRef(piece.Id, index)), FlowDirection.Out) &&
+                    !reversed.Contains(leg.Cell))
                 {
-                    conflicts.Add(new FlowConflict(FlowConflict.Reversed,
-                        $"The run carries items from its first cell to its last, but at {leg.Cell} they would move " +
-                        $"the other way ({leg.Toward.Opposite.Name}): what the run joins fixes the flow against it. " +
-                        "Reverse the run (from the source to the sink) or join other ends.", piece.Id, leg.Cell));
+                    if (reversed.Count == 0)
+                    {
+                        reversedPiece = piece.Id;
+                    }
+
+                    reversed.Add(leg.Cell);
                 }
             }
         }

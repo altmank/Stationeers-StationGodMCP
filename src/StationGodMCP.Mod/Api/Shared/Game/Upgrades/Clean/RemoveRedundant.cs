@@ -33,8 +33,11 @@ internal sealed class RedundancyOptions
 
 /// <summary>
 /// remove_redundant: every selected piece that no device needs is removed (RedundantPieces): the network is read
-/// whole (every piece of each selected piece's network) with the devices on it, and a candidate goes when every
-/// remaining piece stays joined to the rest without it, oldest first. Candidates are the selected pieces, narrowed by
+/// whole (every piece of each selected piece's network, and its members that are not pieces: an in-line tank or a
+/// passive vent is part of the network and stays joined to it) with the devices on it, and a candidate goes when every
+/// remaining piece stays joined to the rest without it, oldest first. For pipes, removals that would take the last
+/// pipes of a network still holding gas or liquid are held back (holds_contents: the game's removal of a network's
+/// last pipe deletes its contents), as remove_dead_ends holds them. Candidates are the selected pieces, narrowed by
 /// only_ids and older_than_id; keep_ids never go, nor a piece joined to a device port, one with a device mounted, an
 /// indestructible or rocket piece, or one no coil or kit places. This finds what remove_loops cannot: a second path
 /// that meets the first at a device's port piece (an old and a new feed), since devices never join a network and
@@ -55,6 +58,8 @@ internal sealed class RemoveRedundant : ICleanOperation
     }
 
     public string Name => CleanOperationSet.RemoveRedundant;
+
+    private const int MaximumPasses = 4;
 
     public void Plan(CleanPass pass)
     {
@@ -79,8 +84,8 @@ internal sealed class RemoveRedundant : ICleanOperation
         Dictionary<long, string> blocked = new Dictionary<long, string>();
         List<long> candidates = Candidates(pass, kits, blocked);
         HashSet<long> roots = Roots(pass, pieces);
-        RedundancyResult result = RedundantPieces.Find(pieces.Keys, links, new HashSet<long>(devices.Keys),
-            candidates, _keep, blocked, roots);
+        RedundancyResult result = Hold(pass, pieces, blocked, () => RedundantPieces.Find(pieces.Keys, links,
+            new HashSet<long>(devices.Keys), candidates, _keep, blocked, roots));
 
         HashSet<long> removed = new HashSet<long>(result.Removed);
         foreach (long id in result.Removed)
@@ -104,8 +109,40 @@ internal sealed class RemoveRedundant : ICleanOperation
         pass.Plan.Redundancy = new RedundancyRecord(result, named, new List<long>(roots), candidates.Count);
     }
 
-    // Every piece of each network a selected piece is on (the connectivity check needs the whole network), less
-    // what an earlier operation removes.
+    // Finds, then holds back every removal that, with what earlier operations remove, would empty a network that
+    // still holds contents (UpgradeFamily.RemovalHolds), and finds again without them.
+    private static RedundancyResult Hold(CleanPass pass, Dictionary<long, SmallGrid> pieces,
+        Dictionary<long, string> blocked, System.Func<RedundancyResult> find)
+    {
+        RedundancyResult result = find();
+        for (int attempt = 1; attempt < MaximumPasses; attempt++)
+        {
+            List<SmallGrid> removed = pass.RemovedPieces;
+            removed.AddRange(result.Removed.ConvertAll(id => pieces[id]));
+            bool held = false;
+            foreach (KeyValuePair<long, string> hold in pass.Family.RemovalHolds(removed))
+            {
+                if (pieces.ContainsKey(hold.Key) && !pass.IsRemoved(hold.Key))
+                {
+                    blocked[hold.Key] = UpgradeFamily.HoldsContents;
+                    held = true;
+                }
+            }
+
+            if (!held)
+            {
+                break;
+            }
+
+            result = find();
+        }
+
+        return result;
+    }
+
+    // Every piece of each network a selected piece is on (the connectivity check needs the whole network), with the
+    // network's members that are not pieces (never candidates, but part of the network), less what an earlier
+    // operation removes.
     private static Dictionary<long, SmallGrid> WholeNetworks(CleanPass pass)
     {
         Dictionary<long, SmallGrid> pieces = new Dictionary<long, SmallGrid>();
@@ -117,7 +154,7 @@ internal sealed class RemoveRedundant : ICleanOperation
             {
                 foreach (SmallGrid member in pass.Family.NetworkMembers(new ThingId(network.ReferenceId)))
                 {
-                    if (pass.Family.IsPiece(member) && !member.IsBeingDestroyed)
+                    if (pass.Family.IsMember(member) && !member.IsBeingDestroyed)
                     {
                         pieces[member.ReferenceId] = member;
                     }

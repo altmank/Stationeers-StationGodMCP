@@ -98,7 +98,7 @@ internal static class RouteEnds
             SmallCell? small = GridController.World.GetSmallCell(PieceShapes.Grid(cell));
             SmallGrid? piece = small != null ? kind.SlotOf(small) : null;
             return piece != null && !piece.IsBeingDestroyed && !ignore.Contains(piece.ReferenceId)
-                ? OfCells(kind, piece, new List<GridCell> { cell })
+                ? OfCells(kind, piece, new List<GridCell> { cell }, LeavesOnlyOpen(kind, target), name)
                 : new RouteEndpoint(RouteEnd.Open(cell), new List<long>());
         }
 
@@ -118,7 +118,7 @@ internal static class RouteEnds
                     $"{name}.at, or make it the target (to), where the route may join any of its cells.");
             }
 
-            return OfCells(kind, own, model.Cells);
+            return OfCells(kind, own, model.Cells, LeavesOnlyOpen(kind, target), name);
         }
 
         if (thing is Device device)
@@ -156,9 +156,10 @@ internal static class RouteEnds
                 $"{name}: {thing.DisplayName} ({thing.ReferenceId}) has no end {port} (connections lists its ends).");
         }
 
-        return thing is Device
-            ? PieceShapes.Cell(end.GetLocalGrid())
-            : PieceShapes.Cell(end.GetFacingGrid());
+        GridCell local = PieceShapes.Cell(end.GetLocalGrid());
+        return thing is Device || !(thing is SmallGrid grid)
+            ? local
+            : EndCells.Of(PieceShapes.Live(grid), local, PieceShapes.Cell(end.GetFacingGrid())).Beyond;
     }
 
     // A cable, pipe or chute thing that is neither a piece the route tools lay nor a device (an in-line tank, a passive
@@ -200,14 +201,14 @@ internal static class RouteEnds
         }
 
         Connection picked = ends[chosen.Value];
-        GridCell own = PieceShapes.Cell(picked.GetLocalGrid());
-        GridCell cell = PieceShapes.Cell(picked.GetFacingGrid());
+        (GridCell own, GridCell cell) = EndCells.Of(model, PieceShapes.Cell(picked.GetLocalGrid()),
+            PieceShapes.Cell(picked.GetFacingGrid()));
         GridStep? into = GridStep.Between(cell, own);
         IReferencable? network = kind.Family.NetworkOf(member);
         List<long> networks = network != null ? new List<long> { network.ReferenceId } : new List<long>();
         SmallCell? small = GridController.World.GetSmallCell(PieceShapes.Grid(cell));
         SmallGrid? piece = small != null ? kind.SlotOf(small) : null;
-        if (piece != null && !piece.IsBeingDestroyed && !ignore.Contains(piece.ReferenceId))
+        if (piece != null && piece != member && !piece.IsBeingDestroyed && !ignore.Contains(piece.ReferenceId))
         {
             RouteEndpoint joined = OfCells(kind, piece, new List<GridCell> { cell });
             List<long> both = new List<long>(joined.Networks);
@@ -218,8 +219,14 @@ internal static class RouteEnds
         return new RouteEndpoint(RouteEnd.Open(cell), networks, into);
     }
 
-    // Each cell of the piece: leaving through an open end there is free, any other way makes a junction.
-    private static RouteEndpoint OfCells(RunKind kind, SmallGrid piece, IReadOnlyList<GridCell> cells)
+    // A chute route starts where items leave the piece: through an open end, never a junction (a chute junction only
+    // merges a line into another, so a route fed from one runs backwards: flow_conflict, flow_reversed).
+    private static bool LeavesOnlyOpen(RunKind kind, bool target) => !target && kind is ChuteRunKind;
+
+    // Each cell of the piece: leaving through an open end there is free, any other way makes a junction (for a chute
+    // start: leaving only through an open end items can leave by).
+    private static RouteEndpoint OfCells(RunKind kind, SmallGrid piece, IReadOnlyList<GridCell> cells,
+        bool leavingOnly = false, string name = "from")
     {
         PieceModel model = PieceShapes.Live(piece);
         List<PieceModel> around = new List<PieceModel>();
@@ -232,16 +239,16 @@ internal static class RouteEnds
         List<RouteEnd> ends = new List<RouteEnd>(cells.Count);
         foreach (GridCell cell in cells)
         {
-            EndSet open = EndSet.None;
-            foreach (GridStep step in EndSet.AtCell(model, cell).Steps())
+            EndSet open = RouteEnd.OpenAt(model, cell, connected, leavingOnly);
+            if (leavingOnly && open.Count == 0)
             {
-                if (!connected.Exists(end => end.Local.Equals(step.From(cell))))
-                {
-                    open = open.With(step);
-                }
+                throw ApiErrors.InvalidArgument(
+                    $"{name}: {piece.PrefabName} {piece.ReferenceId} has no open end items can leave it by at {cell}; " +
+                    "a route from it would need a junction there, which only works where a route merges into a line " +
+                    "(to). Start from a chute with an open output end, or from a device's output port.");
             }
 
-            ends.Add(new RouteEnd(cell, open, JunctionCost));
+            ends.Add(leavingOnly ? RouteEnd.Leaving(cell, open) : new RouteEnd(cell, open, JunctionCost));
         }
 
         IReferencable? network = kind.Family.NetworkOf(piece);
