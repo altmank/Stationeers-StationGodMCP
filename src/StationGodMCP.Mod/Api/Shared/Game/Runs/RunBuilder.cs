@@ -40,7 +40,7 @@ internal sealed class RunOutcome
 /// removal of a network's last pipe deletes its contents. It is swapped in the build instead, as split_long_straights
 /// swaps one: its singles are built over it first, their network is merged into its network as the game merges two
 /// networks a piece joins (AtmosphericsNetwork.Merge: their gas is added), then it leaves and is destroyed, so the
-/// network keeps its id and its contents.
+/// network keeps its id and its contents; the run's new pieces are then built outward from the singles.
 /// </summary>
 internal static class RunBuilder
 {
@@ -111,9 +111,15 @@ internal static class RunBuilder
             }
         }
 
+        // The new pieces grow outward from a swapped long's singles, so each joins the long's network and none stands
+        // alone first to take the long's network over in a merge (GrowthOrder).
         List<PlannedCell> ordered = plan.Cells.FindAll(static cell => cell.IsChange);
-        ordered.AddRange(plan.Cells.FindAll(cell =>
-            !cell.IsChange && (cell.SplitFrom == null || !swapped.Contains(cell.SplitFrom))));
+        List<PieceModel> singles = plan.Cells
+            .FindAll(cell => cell.SplitFrom != null && swapped.Contains(cell.SplitFrom))
+            .ConvertAll(static cell => cell.Model);
+        ordered.AddRange(GrowthOrder.From(singles,
+            plan.Cells.FindAll(cell => !cell.IsChange && (cell.SplitFrom == null || !swapped.Contains(cell.SplitFrom))),
+            static cell => cell.Model));
         foreach (PlannedCell cell in ordered)
         {
             if (outcome.Log.StoppedAt != null)
@@ -168,8 +174,8 @@ internal static class RunBuilder
 
         try
         {
-            // The singles' network goes into the long's, which keeps its id as split_long_straights keeps it (the gas
-            // check follows contents by network id once the long is gone).
+            // The singles' network goes into the long's, which keeps its id as split_long_straights keeps it (the
+            // forecast's networks_after names it).
             UpgradeFamily family = plan.Request.Kind.Family;
             IReferencable? kept = family.NetworkOf(old);
             IReferencable? theirs = singles.Count > 0 ? family.NetworkOf(singles[0]) : null;

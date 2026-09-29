@@ -132,18 +132,20 @@ internal readonly struct GasTolerance
 
 /// <summary>
 /// One pipe network as read at one moment: its id, contents, volume, the ids of its member pipes and of the devices
-/// registered on it. A network with no members is still listed by the game while its atmosphere awaits an event
-/// (ReferencableNetwork.RefreshNetwork skips deregistering it): that is a ghost.
+/// registered on it, and the small-grid cells its members fill. A network with no members is still listed by the game
+/// while its atmosphere awaits an event (ReferencableNetwork.RefreshNetwork skips deregistering it): that is a ghost.
 /// </summary>
 internal sealed class NetworkGas
 {
-    internal NetworkGas(long id, GasMix gas, double volumeL, IReadOnlyList<long> members, IReadOnlyList<long> devices)
+    internal NetworkGas(long id, GasMix gas, double volumeL, IReadOnlyList<long> members, IReadOnlyList<long> devices,
+        IReadOnlyList<GridCell>? cells = null)
     {
         Id = id;
         Gas = gas;
         VolumeL = volumeL;
         Members = members;
         Devices = devices;
+        Cells = cells ?? Array.Empty<GridCell>();
     }
 
     internal long Id { get; }
@@ -156,14 +158,17 @@ internal sealed class NetworkGas
 
     internal IReadOnlyList<long> Devices { get; }
 
+    /// <summary>The cells its member pipes fill, as registered on the small grid.</summary>
+    internal IReadOnlyList<GridCell> Cells { get; }
+
     internal bool Live => Members.Count > 0;
 }
 
 /// <summary>
-/// Networks a job touched that belong together: every network before and after that shares a pipe, directly or
-/// through another. Its contents before (the networks live then) must equal its contents after (the networks live
-/// now), unless every one of its pipes was removed (Emptied: the game's removal of a network's last pipe deletes
-/// its contents, which the planner holds back unless allowed).
+/// Networks a job touched that belong together: every network before and after that shares a pipe or a pipe's cell,
+/// directly or through another. Its contents before (the networks live then) must equal its contents after (the
+/// networks live now), unless every one of its pipes was removed and nothing stands in their cells (Emptied: the
+/// game's removal of a network's last pipe deletes its contents, which the planner holds back unless allowed).
 /// </summary>
 internal sealed class GasFamily
 {
@@ -228,16 +233,21 @@ internal sealed class GasAudit
 
     /// <summary>
     /// Compares the two readings. A network is changed when it is gone, new, holds other contents or other pipes;
-    /// unchanged networks are left out. Changed networks are joined into families by their pipes: a pipe in network
-    /// A before and network B after puts A and B in one family.
+    /// unchanged networks are left out. Changed networks are joined into families by what physically stands: a pipe
+    /// in network A before and network B after puts A and B in one family, and so does a cell a pipe of A filled
+    /// before and a pipe of B fills after (a piece replaced in place, such as a long straight swapped for its singles,
+    /// is a new pipe with a new id). Network ids are never followed: the game's merge keeps whichever network the
+    /// joining piece met first (StructureNetwork.Merge), so the one that carries the contents on may be new.
     /// </summary>
     internal static GasAudit Of(IReadOnlyList<NetworkGas> before, IReadOnlyList<NetworkGas> after,
         GasTolerance tolerance)
     {
         Dictionary<long, NetworkGas> liveBefore = LiveById(before);
         Dictionary<long, NetworkGas> liveAfter = LiveById(after);
-        Dictionary<long, long> pipeBefore = PipeOwners(liveBefore);
-        Dictionary<long, long> pipeAfter = PipeOwners(liveAfter);
+        Dictionary<long, long> pipeBefore = Owners(liveBefore, static network => network.Members);
+        Dictionary<long, long> pipeAfter = Owners(liveAfter, static network => network.Members);
+        Dictionary<GridCell, long> cellBefore = Owners(liveBefore, static network => network.Cells);
+        Dictionary<GridCell, long> cellAfter = Owners(liveAfter, static network => network.Cells);
 
         FamilyBuilder families = new FamilyBuilder();
         foreach (NetworkGas network in liveBefore.Values)
@@ -245,6 +255,7 @@ internal sealed class GasAudit
             if (Changed(network, liveAfter, pipeAfter, tolerance))
             {
                 families.Join(network.Id, network.Members, pipeAfter);
+                families.Join(network.Id, network.Cells, cellAfter);
             }
         }
 
@@ -253,6 +264,7 @@ internal sealed class GasAudit
             if (!liveBefore.ContainsKey(network.Id))
             {
                 families.Join(network.Id, network.Members, pipeBefore);
+                families.Join(network.Id, network.Cells, cellBefore);
             }
         }
 
@@ -330,14 +342,17 @@ internal sealed class GasAudit
         return byId;
     }
 
-    private static Dictionary<long, long> PipeOwners(Dictionary<long, NetworkGas> networks)
+    // Which network holds each pipe (or cell).
+    private static Dictionary<TKey, long> Owners<TKey>(Dictionary<long, NetworkGas> networks,
+        Func<NetworkGas, IReadOnlyList<TKey>> keysOf)
+        where TKey : notnull
     {
-        Dictionary<long, long> owners = new Dictionary<long, long>();
+        Dictionary<TKey, long> owners = new Dictionary<TKey, long>();
         foreach (NetworkGas network in networks.Values)
         {
-            foreach (long pipe in network.Members)
+            foreach (TKey key in keysOf(network))
             {
-                owners[pipe] = network.Id;
+                owners[key] = network.Id;
             }
         }
 
@@ -352,12 +367,13 @@ internal sealed class GasAudit
     {
         private readonly Dictionary<long, long> _parent = new Dictionary<long, long>();
 
-        internal void Join(long network, IReadOnlyList<long> members, Dictionary<long, long> otherSide)
+        internal void Join<TKey>(long network, IReadOnlyList<TKey> keys, Dictionary<TKey, long> otherSide)
+            where TKey : notnull
         {
             Root(network);
-            foreach (long pipe in members)
+            foreach (TKey key in keys)
             {
-                if (otherSide.TryGetValue(pipe, out long other))
+                if (otherSide.TryGetValue(key, out long other))
                 {
                     Union(network, other);
                 }

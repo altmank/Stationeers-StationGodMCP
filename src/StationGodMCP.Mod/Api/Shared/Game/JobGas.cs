@@ -11,6 +11,7 @@ using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Networks;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
@@ -238,7 +239,7 @@ internal static class AtmosphericsThread
 }
 
 /// <summary>
-/// Every pipe network as it stands: members and devices read on the main thread, contents (with every queued change
+/// Every pipe network as it stands: members, their cells and devices read on the main thread, contents (with every queued change
 /// applied first) on a pool thread, where the Mole getters give the live values. Besides the networks the game lists,
 /// every network a pipe still names that the game no longer lists (an orphan, GasOrphans) is read too, so its gas
 /// counts where it sits.
@@ -275,6 +276,7 @@ internal sealed class PipeGasReading
         networks.AddRange(OrphansBeside(networks));
         List<long[]> members = networks.ConvertAll(MembersOf);
         List<long[]> devices = networks.ConvertAll(DevicesOf);
+        List<List<GridCell>> cells = networks.ConvertAll(CellsOf);
         List<(GasMix gas, double volumeL)> contents = AtmosphericsThread.Run(() =>
         {
             PipeGasQueue.ApplyAll();
@@ -286,7 +288,7 @@ internal sealed class PipeGasReading
         for (int index = 0; index < networks.Count; index++)
         {
             read.Add(new NetworkGas(networks[index].ReferenceId, contents[index].gas, contents[index].volumeL,
-                members[index], devices[index]));
+                members[index], devices[index], cells[index]));
             if (index < listed)
             {
                 // Refills and ghost clearing only ever touch a network the game lists.
@@ -389,6 +391,30 @@ internal sealed class PipeGasReading
 
             return ids.ToArray();
         }
+    }
+
+    // The cells the members fill as registered (GasAudit links a replaced pipe to what stands in its cells now).
+    private static List<GridCell> CellsOf(PipeNetwork network)
+    {
+        List<SmallGrid> pieces = new List<SmallGrid>();
+        lock (network.StructureList)
+        {
+            foreach (INetworkedStructure member in network.StructureList)
+            {
+                if (member is SmallGrid piece && piece != null)
+                {
+                    pieces.Add(piece);
+                }
+            }
+        }
+
+        List<GridCell> cells = new List<GridCell>(pieces.Count);
+        foreach (SmallGrid piece in pieces)
+        {
+            cells.AddRange(PieceShapes.RegisteredCells(piece));
+        }
+
+        return cells;
     }
 
     private static long[] DevicesOf(PipeNetwork network)

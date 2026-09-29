@@ -27,7 +27,7 @@ internal static class PieceShapes
 
     internal static PieceModel Live(SmallGrid thing)
     {
-        List<GridCell> cells = CellsOf(thing.GridBounds, thing.RegisteredPosition, thing.RegisteredRotation);
+        List<GridCell> cells = RegisteredCells(thing);
         List<PieceEnd> ends = new List<PieceEnd>(thing.OpenEnds?.Count ?? 0);
         if (thing.OpenEnds != null)
         {
@@ -43,6 +43,10 @@ internal static class PieceShapes
 
         return new PieceModel(thing.ReferenceId, cells, ends, ContentOf(thing));
     }
+
+    /// <summary>The cells a placed thing fills, as registered.</summary>
+    internal static List<GridCell> RegisteredCells(SmallGrid thing) =>
+        CellsOf(thing.GridBounds, thing.RegisteredPosition, thing.RegisteredRotation);
 
     /// <summary>Whether Placed can model the prefab: its ends and its grid bounds can be read.</summary>
     internal static bool CanModel(Structure prefab) =>
