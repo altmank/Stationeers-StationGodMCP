@@ -17,7 +17,13 @@ Placement and layout tools: doors and windows everywhere.
 - **Windows** (glass, composite, padded and shuttered windows, window shutters; not floor gratings): a run across a
   window's face costs the planners extra and warns `crosses_window`; so does a device standing on one. Never a
   refusal.
-- **`grid_survey`** marks keep-out cells `x` and window cells `g` in `support`, names each face structure's `kind`
+- **`looking_at` v2:** `view` (eye, forward/right/up, yaw and pitch, the world axes nearest your level forward and
+  right, `ambiguous` near a diagonal, third person and seated), `hit` (the surface the look ray meets up to
+  `max_distance_m`, default 10 m: point, normal, face, face plane, 2 m cell, small cell, support character, what was
+  hit, the point in the target's frame), and for a structure `target.body` (render box, its offset from the origin,
+  the small-grid footprint box) and `facing_me`.
+- **`grid_survey`** marks keep-out cells
+ `x` and window cells `g` in `support`, names each face structure's `kind`
   (wall, window, door) and lists `doors` with their faces, plane, band and port cells.
 
 ## 1.4.2

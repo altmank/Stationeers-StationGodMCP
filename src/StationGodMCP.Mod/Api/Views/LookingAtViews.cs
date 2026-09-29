@@ -9,11 +9,13 @@ namespace StationGodMCP.Api.Views;
 internal sealed class LookingAtView
 {
     internal LookingAtView(LocalPlayerView? player, LookingAtTargetView? target,
-        LookingAtInteractableView? interactable)
+        LookingAtInteractableView? interactable, LookView? view = null, LookHitView? hit = null)
     {
         Player = player;
         Target = target;
         Interactable = interactable;
+        View = view;
+        Hit = hit;
     }
 
     public LocalPlayerView? Player { get; }
@@ -21,6 +23,14 @@ internal sealed class LookingAtView
     public LookingAtTargetView? Target { get; }
 
     public LookingAtInteractableView? Interactable { get; }
+
+    /// <summary>The camera: eye, basis, heading, pitch and the snapped axes. Left out without a camera.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public LookView? View { get; }
+
+    /// <summary>The first surface along the look ray within max_distance_m and the grid there; left out on none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public LookHitView? Hit { get; }
 }
 
 /// <summary>The thing under the crosshair, with what the other tools can do with it.</summary>
@@ -28,8 +38,10 @@ internal sealed class LookingAtTargetView
 {
     internal LookingAtTargetView(ThingView thing, string? customName, string kind, string runtimeType,
         PositionView position, double? distanceM, bool isDevice, bool hasAtmosphere, HeldInView? parent,
-        OrientationView? rotation = null)
+        OrientationView? rotation = null, BodyView? body = null, bool? facingMe = null)
     {
+        Body = body;
+        FacingMe = facingMe;
         Rotation = rotation;
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
@@ -77,7 +89,16 @@ internal sealed class LookingAtTargetView
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public OrientationView? Rotation { get; }
+
+    /// <summary>Structures: its visual box, that box's offset from the origin, and its small-grid footprint.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public BodyView? Body { get; }
+
+    /// <summary>Structures: its front points toward the camera.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? FacingMe { get; }
 }
+
 
 /// <summary>The button, switch, port or slot under the crosshair.</summary>
 internal sealed class LookingAtInteractableView

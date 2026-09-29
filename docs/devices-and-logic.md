@@ -31,13 +31,31 @@ memory, but for any device in the world at once and without a chip.
 | `sample_logic` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `targets: [{reference_id, logic_type}]`, `duration_seconds` (default 5), `interval_seconds` (default 0.5) |
 | `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents. | `reference_id`, or `network_id` with `kind` |
 | `list_gateways` | The scopes device tools accept: `world` and every StationGod Gateway. | none |
-| `looking_at` | What your crosshair is on, and the button, switch, port or slot under it. | none |
+| `looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.2+), the surface the look ray hits and the grid there, and the target's body. | `max_distance_m` |
 | `game_clock` | Game time, paused or not, time of day, days past. | none |
 | `run_console_command` | Any console command, with the lines it printed. | `command`, `max_output_lines` |
 | `read_console` | The latest console lines, including Unity errors and stack traces. | `lines` |
 | `mod_info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
 
+## Where you look (1.4.2+)
+
+`looking_at` also answers the words a player uses: "on this wall", "to my right", "a metre up".
+
+- `view`: the camera's `eye`, its `forward`, `right` and `up`, `yaw_deg` (0 along `+z`, 90 along `+x`), `pitch_deg`,
+  and `axes`: the world axes nearest your **level** forward, right and up (and back, left, down), so "forward" runs
+  along the floor whether you look up or down; `look` is the axis of the look itself. `ambiguous` is true within 10
+  degrees of a diagonal, where forward and right could be either axis. Third person and seats are handled as the
+  game's own cursor handles them.
+- `hit`: the first surface on the look ray up to `max_distance_m` (default 10 m, beyond the game's 3 m reach): the
+  point, its normal and `face` axis, the `face_plane` it lies on (`z=668`), the 2 m cell on your side, the small cell a
+  mounted piece would stand in, that cell's `support` character (as `grid_survey`: `x` a door's keep-out, `g` a
+  window), what was hit, and the point in the target's own frame (`local_on_target`).
+- `target.body` for a structure: `render_box` (the box its meshes fill), `centre_offset` from its origin, and
+  `grid_box`, the box of the small cells the game registers it in, its real footprint. `facing_me` says whether its
+  front points at you.
+
 ## Examples
+
 
 Examples show a tool's name and the arguments the agent passes.
 

@@ -72,6 +72,8 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 v1.4.3
 - Doors keep their doorway: the route planners never run cables, pipes or chutes through a door's face or the band either side of it (setting [Layout] DoorKeepOutBand, default 0.5 m), and the place tools refuse new pieces there (in_door_keepout) unless allowed. Force-field doors, airlocks and hatches count. A door's face no longer holds routes up like a wall.
 - Runs and devices across a window's face get a crosses_window warning; grid_survey marks door keep-out and window cells and lists doors.
+- looking_at tells where you look from and which way (the world axes of your forward and right), the surface your look ray hits even past 3 m and the grid there, and a structure's real size and footprint.
+
 
 v1.4.2
 - remove_structure removes broken structures (a vent burnt out by fire, a burst pipe) with allow_broken, as the game's own deconstruction of a broken thing does: nothing is given back. Every other check still applies. Without the flag the refusal now says how to override it instead of "repair it first", which the game cannot do.
