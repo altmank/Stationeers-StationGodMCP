@@ -19,8 +19,8 @@ namespace StationGodMCP.Api.Shared.Game;
 /// Slot.AllowMove decides, on a slot the game's quick moves would use: SlotAccess.AutoTakesNew), then, for what is
 /// left, on the ground a metre in front of the outermost holder, at rest. The tree, level by level (a holder's own
 /// slots before the slots of the items in them): the source's own slots and everything in them, then, when the source
-/// is carried by a player (a worn belt), the rest of that player's, or, when it is stored (a coil stack in a locker),
-/// the rest of its outermost holder's. A player's own body slots (hands, suit, helmet, back...) never get a new item,
+/// is carried by a player (a worn belt), the rest of that player's (a source stored in a locker does not use the
+/// locker's other slots). A player's own body slots (hands, suit, helmet, back...) never get a new item,
 /// only the slots of worn and held items; a stack already in a hand is topped up. Hidden slots (not interactable) and
 /// a stack's own slot (a cable coil's), and whatever is in them, are left out: the game destroys their contents with
 /// the holder.
@@ -85,7 +85,7 @@ internal static class Refunds
             OfferStack(own, prefab, stacks, rooms);
         }
 
-        foreach (Slot slot in InventorySlots(source, body ?? StoredIn(source)))
+        foreach (Slot slot in InventorySlots(source, body))
         {
             DynamicThing? occupant = slot.Get();
             if (occupant == null)
@@ -154,7 +154,7 @@ internal static class Refunds
             ? item.RootParent
             : null;
 
-    // The source's slots and every slot below them, then the rest of the holder carrying or storing it, each thing
+    // The source's slots and every slot below them, then the rest of the holder carrying it, each thing
     // once and level by level, so a holder's own empty slots come before those of the items in them; hidden slots,
     // stacks' own slots and what is in them are left out (SlotAccess.Reaches).
     internal static List<Slot> InventorySlots(Thing source, Thing? holder)

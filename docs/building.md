@@ -38,8 +38,8 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    first onto matching stacks (`from_id` itself when it is one, such as a coil stack, then anywhere in it: belts,
    backpack, jetpack, suit and uniform storage, a stack in a hand), then as new stacks into empty slots that take the
    item, a holder's own slots before those of the items in them, and only what nothing takes onto the ground a metre
-   in front of the outermost holder, at rest. A `from_id` stored in a locker also uses the rest of that locker. Never a
-   hidden slot or a stack's own slot, such as a cable coil's: the game destroys what is in it with the coil.
+   in front of the outermost holder, at rest. Never a hidden slot or a stack's own slot, such as a cable coil's: the
+   game destroys what is in it with the coil.
    `refunded` lists where each part went: `merged`, `slot` or `ground`.
 8. **Host only** (`not_host` on a client). Changes use the same calls as a player's own building, so other players,
    saves and ownership follow as for normal building. Players without the mod see ordinary cables and pipes.
