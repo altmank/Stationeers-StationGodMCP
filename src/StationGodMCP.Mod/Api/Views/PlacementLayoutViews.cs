@@ -400,3 +400,184 @@ internal sealed class ResolvedPlacementView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? FacingHow { get; }
 }
+
+/// <summary>A device or mounted thing on a wall map, by its key.</summary>
+internal sealed class WallThingView
+{
+    internal WallThingView(string key, ThingView thing, PositionView position)
+    {
+        Key = key;
+        ReferenceId = thing.ReferenceId;
+        PrefabName = thing.PrefabName;
+        DisplayName = thing.DisplayName;
+        Position = position;
+    }
+
+    public string Key { get; }
+
+    public ThingId ReferenceId { get; }
+
+    public string? PrefabName { get; }
+
+    public string? DisplayName { get; }
+
+    public PositionView Position { get; }
+}
+
+/// <summary>One 2 m face of a wall map: its centre, what it shows and the structure there.</summary>
+internal sealed class WallSectionView
+{
+    internal WallSectionView(PointView face, string look, ThingView? structure)
+    {
+        Face = face;
+        Look = look;
+        ReferenceId = structure?.ReferenceId;
+        PrefabName = structure?.PrefabName;
+    }
+
+    public PointView Face { get; }
+
+    /// <summary>wall, window, door, frame or open.</summary>
+    public string Look { get; }
+
+    public ThingId? ReferenceId { get; }
+
+    public string? PrefabName { get; }
+}
+
+/// <summary>A rectangle of free wall: its top-left row and column on the map, centre and size in small cells.</summary>
+internal sealed class FreeRectView
+{
+    internal FreeRectView(int row, int column, PointView centre, int cellsWide, int cellsHigh)
+    {
+        Row = row;
+        Column = column;
+        Centre = centre;
+        CellsWide = cellsWide;
+        CellsHigh = cellsHigh;
+    }
+
+    public int Row { get; }
+
+    public int Column { get; }
+
+    /// <summary>The rectangle's centre on the plane, metres.</summary>
+    public PointView Centre { get; }
+
+    public int CellsWide { get; }
+
+    public int CellsHigh { get; }
+}
+
+/// <summary>wall_map: the plane, the side it is seen from, the text rows and what they show.</summary>
+internal sealed class WallMapView
+{
+    internal WallMapView(string plane, string side, string right, string up, List<string> rows, PointView topLeft,
+        List<WallSectionView> sections, List<WallThingView> things, List<FreeRectView>? freeRects, string legend)
+    {
+        Plane = plane;
+        Side = side;
+        Right = right;
+        Up = up;
+        Rows = rows;
+        TopLeft = topLeft;
+        Sections = sections;
+        Things = things;
+        FreeRects = freeRects;
+        Legend = legend;
+    }
+
+    public string Plane { get; }
+
+    /// <summary>The side it is seen from (the viewer stands on this side).</summary>
+    public string Side { get; }
+
+    /// <summary>The world axis a column step runs along (left to right as seen).</summary>
+    public string Right { get; }
+
+    /// <summary>The world axis up a row runs along (+y on a wall).</summary>
+    public string Up { get; }
+
+    /// <summary>The ruler row (seams) then one row per 0.5 m, top first.</summary>
+    public List<string> Rows { get; }
+
+    /// <summary>The coordinates of the first map row's first cell along right and up (x: right, y: up; z unused).</summary>
+    public PointView TopLeft { get; }
+
+    public List<WallSectionView> Sections { get; }
+
+    public List<WallThingView> Things { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<FreeRectView>? FreeRects { get; }
+
+    public string Legend { get; }
+}
+
+/// <summary>One spot find_spot offers: where, turned how, how far, its layout findings and ready arguments.</summary>
+internal sealed class SpotView
+{
+    internal SpotView(PointView position, OrientationView orientation, double distanceM, int penalty, string plane,
+        List<ConflictView> conflicts, Newtonsoft.Json.Linq.JObject placeArguments)
+    {
+        Position = position;
+        Orientation = orientation;
+        DistanceM = distanceM;
+        Penalty = penalty;
+        Plane = plane;
+        Conflicts = conflicts;
+        PlaceArguments = placeArguments;
+    }
+
+    /// <summary>Where it would stand, snapped as the cursor snaps it.</summary>
+    public PointView Position { get; }
+
+    public OrientationView Orientation { get; }
+
+    /// <summary>From the point asked (near).</summary>
+    public double DistanceM { get; }
+
+    /// <summary>The layout preview's conflicts weighed (warning 10, info 1); lower is better.</summary>
+    public int Penalty { get; }
+
+    public string Plane { get; }
+
+    public List<ConflictView> Conflicts { get; }
+
+    /// <summary>place_structure's arguments for it (a dry run by default).</summary>
+    public Newtonsoft.Json.Linq.JObject PlaceArguments { get; }
+}
+
+/// <summary>find_spot: the spots best first, and how many were tried, filtered and checked.</summary>
+internal sealed class FindSpotView
+{
+    internal FindSpotView(string? prefabName, List<string> planes, List<SpotView> spots, int tried, int filtered,
+        int checkedCount, int rejected)
+    {
+        PrefabName = prefabName;
+        Planes = planes;
+        Spots = spots;
+        Tried = tried;
+        Filtered = filtered;
+        Checked = checkedCount;
+        Rejected = rejected;
+    }
+
+    public string? PrefabName { get; }
+
+    public List<string> Planes { get; }
+
+    public List<SpotView> Spots { get; }
+
+    /// <summary>Spots aimed (distinct snapped positions).</summary>
+    public int Tried { get; }
+
+    /// <summary>Ruled out on geometry alone (taken cells, door keep-out, sections, height, front).</summary>
+    public int Filtered { get; }
+
+    /// <summary>Checked with the game's cursor and the layout preview (at most max_checks).</summary>
+    public int Checked { get; }
+
+    /// <summary>Of those, ruled out (cursor refusal, a problem, visual overlap, a seam, an unreachable port).</summary>
+    public int Rejected { get; }
+}

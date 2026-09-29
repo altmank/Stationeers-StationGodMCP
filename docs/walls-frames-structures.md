@@ -15,6 +15,8 @@ connections and guard against merging networks, which `place_structure` does not
 | --- | --- | --- |
 | `replace_walls` | Replace walls and windows with another wall or window prefab, in place. | `room_id` or `reference_ids`, `to` (required), `from_prefabs`, `skip_unmatched` |
 | `replace_frames` | Replace frames with another frame prefab, or finish unfinished frames, in place. | `room_id` or `reference_ids`, `to` (optional), `from_prefabs`, `skip_unmatched` |
+| `wall_map` | A text elevation of a wall (or floor) as seen from one side: seams, walls, windows, doors, devices, runs, free rectangles (1.4.3+). | `plane` + `around` + `side`, or `looking`; `radius_m`, `free_rects` |
+| `find_spot` | Ranked places for a prefab near a point on a wall or a room's walls, checked as the cursor checks them (1.4.3+). | `prefab`, `near`, `plane`/`looking`/`room_id`, `require` |
 | `describe_prefab` | A prefab in its own frame: placement, allowed turns, footprint, ports, visual up (1.4.3+). | `prefab` |
 | `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]` |
 | `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `refund_to` |
@@ -113,6 +115,27 @@ Tool wear, welder fuel and battery charge are not charged.
   usual.
 - **Walls back to back:** a face holds one wall per side, so two plates on one face, one facing into each cell, go
   in one request.
+
+### Seeing a wall and finding a spot (1.4.3+)
+
+`wall_map {looking: true}` (or `{plane: "z=668", around: [719, 201, 668], side: "+z"}`) draws the wall as you see
+it from that side, 0.5 m per character, a ruler line marking the 2 m seams:
+
+```
+|   |  
+WWWWWWW
+WpAAWWW
+WWAAWWW
+```
+
+`W` wall, `G` window, `D` door, `F` frame with no plate, `.` open, `x` a door's keep-out, `c`/`p`/`b`/`h` runs, and
+a capital or digit for each device (`things` lists them). `sections` names each 2 m face and what stands on it.
+`free_rects: {w: 1, h: 1}` lists where a rectangle of free wall fits, within one section by default.
+
+`find_spot {prefab, near, plane | looking | room_id, require}` tries every 0.5 m spot within `radius_m` of `near`,
+filters them on geometry first (cells free, `avoid_doors`, `one_section`, `min_bottom_above_floor_m`,
+`front_clear_m`), then checks the nearest ones (at most `max_checks`) with the game's cursor and the layout preview
+(`no_visual_overlap`, `ports_reachable`), and returns the best with ready `place_arguments`.
 
 ### Placing where you look (1.4.3+)
 

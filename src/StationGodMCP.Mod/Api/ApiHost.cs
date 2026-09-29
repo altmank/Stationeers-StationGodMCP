@@ -86,6 +86,8 @@ internal static class ApiHost
             ["remove_chutes"] = static args => RemoveChutesApi.Handle(args),
             ["place_structure"] = static args => PlaceStructureApi.Handle(args),
             ["describe_prefab"] = static args => DescribePrefabApi.Handle(args),
+            ["wall_map"] = static args => WallMapApi.Handle(args),
+            ["find_spot"] = static args => FindSpotApi.Handle(args),
 
             ["remove_structure"] = static args => RemoveStructureApi.Handle(args),
             ["grid_survey"] = static args => GridSurveyApi.Handle(args),

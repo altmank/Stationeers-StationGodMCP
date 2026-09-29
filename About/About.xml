@@ -75,6 +75,7 @@ v1.4.3
 - place_structure's dry run previews the layout: the device's real footprint and the wall sections it spans, what it would overlap or block (other devices, ports, doorways, windows, the space in front of it), whether it faces into the room and stands upright, and for each port what it would connect to.
 - place_structure can choose the turn itself (orient: mount, upright, controls toward the room or you, ports and flow toward targets), and suggests a turbo volume pump's Mode flip. New describe_prefab tool shows a prefab's footprint, ports and allowed turns before placing.
 - place_structure understands "where I look" and "a metre to my right": at the crosshair, relative to you, the crosshair or a thing (from its top, side...), on the face you look at, a height above the floor, and facings toward you, out of the face or into the room.
+- New wall_map draws a wall as you see it (seams, walls, windows, doors, devices, runs) and finds free rectangles; new find_spot ranks places for a device near you that fit one wall section, stay clear of doors and overlap nothing. 80 tools.
 - looking_at tells where you look from and which way (the world axes of your forward and right), the surface your look ray hits even past 3 m and the grid there, and a structure's real size and footprint.
 
 v1.4.2

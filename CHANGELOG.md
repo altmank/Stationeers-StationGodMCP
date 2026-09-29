@@ -39,7 +39,12 @@ Placement and layout tools: doors and windows everywhere.
   `resolved` (the point and facing, and how they were read); `ambiguous_axis` near a diagonal.
 - **New `describe_prefab`:** a prefab in its own frame: placement, allowed turns, small cells and boxes from its
   origin, ports (joining cell offset, outward direction, flow), `visual_up` (with its source; a small table of live
-  facts, guesses marked) and a Mode that reverses its flow. 78 tools.
+  facts, guesses marked) and a Mode that reverses its flow.
+- **New `wall_map`:** a text elevation of a wall plane as seen from one side (seams, W/G/D/F faces, devices by key,
+  runs, door keep-out), its sections and things, and `free_rects` for a w x h rectangle.
+- **New `find_spot`:** ranked spots for a prefab on a plane or a room's walls near a point: geometric filters first
+  (`one_section`, `min_bottom_above_floor_m`, `avoid_doors`, `front_clear_m`), then capped cursor checks and the
+  layout preview (`no_visual_overlap`, `ports_reachable`), each with ready `place_arguments`. 80 tools.
 - **`grid_survey`** marks keep-out cells `x` and window cells `g` in `support`, names each face structure's `kind`
   (wall, window, door) and lists `doors` with their faces, plane, band and port cells.
 
