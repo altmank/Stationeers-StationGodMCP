@@ -16,4 +16,30 @@ internal static class LogicTypeNumber
         id = fits ? (ushort)value : (ushort)0;
         return fits;
     }
+
+    /// <summary>
+    /// Text written as a number ("65536", "-1", "1e19", "12.5") that is no ushort id: it gets RangeMessage, not the
+    /// unknown-name message. A name never starts with a digit, a sign or a point; checked by characters, so a
+    /// runtime's double overflow rules do not matter.
+    /// </summary>
+    internal static bool IsNumberText(string? text)
+    {
+        string trimmed = text?.Trim() ?? string.Empty;
+        if (trimmed.Length == 0 || !(char.IsDigit(trimmed[0]) || NumberSigns.IndexOf(trimmed[0]) >= 0))
+        {
+            return false;
+        }
+
+        foreach (char c in trimmed)
+        {
+            if (!char.IsDigit(c) && NumberSigns.IndexOf(c) < 0 && c != 'e' && c != 'E')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private const string NumberSigns = "+-.";
 }

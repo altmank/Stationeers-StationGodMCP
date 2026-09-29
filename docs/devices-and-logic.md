@@ -128,11 +128,17 @@ Print *Kit (StationGod Gateway)* at the Electronics Printer (1 g copper, 1 g gol
 data port. Passing its id as `gateway_id` limits a device call to the devices on its data networks; attached to two
 data networks it covers both, each device once. Without a gateway every device tool reaches the whole world.
 
+`list_gateways` gives each gateway's `status`: `ready` (`available` true, its id scopes a call), `incomplete` (not
+fully built) or `no_data_network` (no data cable on either port); the `world` entry says `bypass`. A device tool given
+an id no gateway has answers `gateway_not_found`; given a gateway that is not `ready`, it answers `gateway_unavailable`
+and the message names the status.
+
 Its model and kit picture are copied from the Logic Memory at run time; no game assets are distributed.
 
 ## Health and game updates
 
 `mod_info` counts every call per method (`calls`, `errors`, `mean_ms`, `max_ms`) and lists `reflection`: every game
 member the mod reaches by name, and whether it was found. After a game update, a missing member turns off only the
-tools that need it; they answer `game_changed`. Every reply also carries `elapsed_ms`, the time it took on the game's
-main thread.
+tools that need it; they answer `game_changed`. The mod's pipe reply envelope, which pipe clients such as the script
+dashboard read, also carries `elapsed_ms`, the time a request took on the game's main thread; MCP tool results do not
+carry it, so read the per-method `mean_ms` and `max_ms` instead.

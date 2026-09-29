@@ -34,7 +34,10 @@ internal static class LogicTypes
         return types.ToArray();
     }
 
-    /// <summary>A LogicType from an enum name (ignoring case) or a number 0..65535, as a string or a number.</summary>
+    /// <summary>
+    /// A LogicType from one enum name (ignoring case) or a number 0..65535, as a string or a number. Never through
+    /// Enum.TryParse, which ORs "Error,PressureInternal" into Setting.
+    /// </summary>
     internal static LogicType Parse(JToken? token)
     {
         if (token == null)
@@ -56,9 +59,14 @@ internal static class LogicTypes
             return (LogicType)id;
         }
 
-        if (!string.IsNullOrWhiteSpace(text) && Enum.TryParse(text, true, out LogicType named))
+        if (EnumName.TryParse(text, out LogicType named))
         {
             return named;
+        }
+
+        if (LogicTypeNumber.IsNumberText(text))
+        {
+            throw ApiErrors.Refused("invalid_logic_type", LogicTypeNumber.RangeMessage);
         }
 
         throw ApiErrors.Refused("invalid_logic_type", $"'{text}' is not a known LogicType name or numeric ushort ID.");

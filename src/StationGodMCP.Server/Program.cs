@@ -542,6 +542,8 @@ internal static class ToolDefinitions
 {
     private const string IcHolderIdDescription = "The circuit holder, by any of: an IC Housing or a worn one (suit, Programmable Visor) from list_devices; a Console or Computer holding a ScriptedScreens Lua board (Circuitboard or Motherboard (Lua Chip)), or a held tablet holding one Lua cartridge; the board or cartridge itself; or the chip in any holder. inspect_slots on the console or tablet lists the board, cartridge and chip ids. Anything else, and a chip in no holder, is refused with not_ic_housing. Replies give reference_id (the device or worn item the scope reaches), holder (the circuit holder itself) and chip.";
 
+    private const string GatewayIdDescription = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks. Refused with gateway_not_found when no StationGod Gateway has that id, and with gateway_unavailable when the gateway cannot scope a call now; the message names why: incomplete (not fully built) or no_data_network (no data cable on either port).";
+
     // move_gas from and to: a reference id or "planet", or a room by room_id or by a thing in it.
     private static readonly object[] GasPlaceSchema =
     {
@@ -651,7 +653,7 @@ internal static class ToolDefinitions
     [
         Tool(
             "list_gateways",
-            "List the scopes device tools accept as gateway_id: first 'world', every device in the world (status 'bypass', kept for older clients), then every StationGod Gateway in the loaded world with its availability and network status; a gateway id only narrows a call to that gateway's data networks. bypass_gateway is always true, kept for older clients.",
+            "List the scopes device tools accept as gateway_id: first 'world', every device in the world (status 'bypass', kept for older clients), then every StationGod Gateway in the loaded world with its availability and network status; a gateway id only narrows a call to that gateway's data networks. status is bypass (world), ready (available true: its id scopes a call), incomplete (not fully built) or no_data_network (no data cable on either port); a device tool given an unavailable gateway answers gateway_unavailable naming that status, an unknown id gateway_not_found. bypass_gateway is always true, kept for older clients.",
             new { type = "object", properties = new { }, additionalProperties = false },
             readOnly: true),
         Tool(
@@ -662,7 +664,7 @@ internal static class ToolDefinitions
                 type = "object",
                 properties = new
                 {
-                    gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                    gateway_id = new { type = "string", description = GatewayIdDescription },
                     prefab_hash = new { type = "integer", description = "Optional exact signed PrefabHash filter." },
                     name_contains = new { type = "string", description = "Optional case-insensitive DisplayName substring filter." }
                 },
@@ -1098,7 +1100,7 @@ internal static class ToolDefinitions
             readOnly: false),
         Tool(
             "mod_info",
-            "The running mod's identity and health: mod_id, mod_version, assembly_version, informational_version, pipe_name (the local named pipe this game listens on, the sidecar's --pipe: tells which game a sidecar reached when two run on one machine), and methods: every method the mod answers, each {method, calls, errors, total_ms, mean_ms (null before the first call), max_ms} counted in memory since the mod loaded (main-thread time per request; errors are replies with ok false). Also count, reflection: [{member, resolved, optional}] (every game member the mod reaches by reflection and every Harmony target it patches; optional ones belong to other mods such as Terraforming Reloaded and BlueprintMod) and missing_count (required members not found: methods that need one answer game_changed). Every reply envelope also carries elapsed_ms, that request's main-thread time. Read only; no gateway is needed.",
+            "The running mod's identity and health: mod_id, mod_version, assembly_version, informational_version, pipe_name (the local named pipe this game listens on, the sidecar's --pipe: tells which game a sidecar reached when two run on one machine), and methods: every method the mod answers, each {method, calls, errors, total_ms, mean_ms (null before the first call), max_ms} counted in memory since the mod loaded (main-thread time per request; errors are replies with ok false). Also count, reflection: [{member, resolved, optional}] (every game member the mod reaches by reflection and every Harmony target it patches; optional ones belong to other mods such as Terraforming Reloaded and BlueprintMod) and missing_count (required members not found: methods that need one answer game_changed). The mod's own pipe reply envelope (read by pipe clients such as the script dashboard) also carries elapsed_ms, that request's main-thread time; MCP tool results do not carry it, so use the methods' mean_ms and max_ms here. Read only; no gateway is needed.",
             new { type = "object", properties = new { }, additionalProperties = false },
             readOnly: true),
         Tool(
@@ -1887,7 +1889,7 @@ internal static class ToolDefinitions
     {
         Dictionary<string, object> properties = new()
         {
-            ["gateway_id"] = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+            ["gateway_id"] = new { type = "string", description = GatewayIdDescription },
             ["reference_id"] = new { type = "string", description = "Target device reference ID returned by list_devices." }
         };
         List<string> required = ["reference_id"];
@@ -1973,7 +1975,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = IcHolderIdDescription },
                 source = new { type = "string", description = "The complete source: IC10, or Lua for a Lua chip (up to 262144 characters)." }
             },
@@ -1989,7 +1991,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = IcHolderIdDescription }
             },
             required = new[] { "reference_id" },
@@ -2004,7 +2006,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = IcHolderIdDescription },
                 stack_start = new { type = "integer", minimum = 0, description = "First stack address to include; defaults to 0." },
                 stack_count = new { type = "integer", minimum = 0, maximum = 512, description = "Number of stack values to include; defaults to 64. Use 0 to omit values." },
@@ -2028,7 +2030,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = "IC Housing reference ID returned by list_devices." },
                 pins = new
                 {
@@ -2052,7 +2054,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = IcHolderIdDescription },
                 action = new { type = "string", @enum = new[] { "pause", "step", "resume", "restart" }, description = "pause, step and resume: IC10 chips. restart: Lua chips." }
             },
@@ -2068,7 +2070,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = IcHolderIdDescription },
                 target_reference_ids = ReferenceIdArraySchema("Optional devices to evaluate selectors for, each one the scope shows; defaults to the devices on the holder's data network.")
             },
@@ -2084,7 +2086,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = "Target device reference ID returned by list_devices." },
                 slot_index = new { type = "integer", minimum = 0, description = "Optional single slot index; omit to inspect every slot." }
             },
@@ -2100,7 +2102,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_ids = ReferenceIdArraySchema("Optional exact device reference-ID filter."),
                 prefab_hash = new { type = "integer", description = "Optional exact signed PrefabHash filter." },
                 name_contains = new { type = "string", description = "Optional case-insensitive DisplayName substring filter." },
@@ -2146,7 +2148,7 @@ internal static class ToolDefinitions
 
         Dictionary<string, object> properties = new()
         {
-            ["gateway_id"] = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+            ["gateway_id"] = new { type = "string", description = GatewayIdDescription },
             [arrayName] = new
             {
                 type = "array",
@@ -2178,7 +2180,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = "Memory-device reference ID returned by list_devices." },
                 start_address = new { type = "integer", minimum = 0 },
                 count = new { type = "integer", minimum = 1, maximum = 512 }
@@ -2195,7 +2197,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 reference_id = new { type = "string", description = "Memory-device reference ID returned by list_devices." },
                 start_address = new { type = "integer", minimum = 0 },
                 values = new
@@ -2218,7 +2220,7 @@ internal static class ToolDefinitions
             type = "object",
             properties = new
             {
-                gateway_id = new { type = "string", description = "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks." },
+                gateway_id = new { type = "string", description = GatewayIdDescription },
                 targets = new
                 {
                     type = "array",

@@ -15,6 +15,7 @@ using Objects.Electrical;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -223,7 +224,7 @@ internal sealed class GasMoveRequest
     private static Chemistry.GasType ParseGas(JToken item)
     {
         string? name = item.Type == JTokenType.String ? item.Value<string>() : null;
-        if (name != null && Enum.TryParse(name.Trim(), true, out Chemistry.GasType gas) && GasTypes.IndexOf(gas) >= 0)
+        if (EnumName.TryParse(name, out Chemistry.GasType gas) && GasTypes.IndexOf(gas) >= 0)
         {
             return gas;
         }
