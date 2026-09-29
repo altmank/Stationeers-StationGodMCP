@@ -142,7 +142,10 @@ Host only.
 - `condition` says it in one word: `broken`, `damaged`, `intact`, `indestructible` or `none`. `broken` is the game's own
   broken state (`is_broken`), and it wins over the numbers: the game heals a structure when it breaks it, so a
   burnt-out vent reads 0 damage and 100 % health. A burst pipe (`pipe_burst` not `none`) is broken too: bursting does
-  not damage it, so it also reads 0 damage. The scan lists broken things whatever their numbers;
+  not damage it, so it also reads 0 damage. So is a burnt cable an overload left (`StructureCableStraightBurnt` and the
+  like, a separate undamaged piece that carries no power; `remove_cables` removes it). The scan lists broken things
+  whatever their numbers;
   `broken_only: true` lists only them. Structures also report `broken_build_state`, their Labeller name
-  (`custom_name`) and the cable, pipe and chute networks they are on (`networks`). `remove_structure` with
+  (`custom_name`) and the cable, pipe and chute networks they are on (`networks`). A thing in a slot (a stored item, a
+  planted plant) reports its outermost holder's `position`, so `near_player_m` finds it. `remove_structure` with
   `allow_broken` removes them.

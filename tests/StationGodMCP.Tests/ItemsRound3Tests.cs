@@ -20,33 +20,34 @@ public sealed class ItemsRound3Tests
     public void AFertiliserSlotRefusesASeed()
     {
         Assert.Equal(GrowerRefusal.NotFertiliser,
-            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, isFertiliser: false, occupied: false, quantity: 1));
+            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, GrowerItem.Plant, occupied: false, quantity: 1));
     }
 
     [Fact]
     public void AFertiliserSlotTakesOneFertiliserIntoAnEmptySlot()
     {
-        Assert.Null(GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, isFertiliser: true, occupied: false, quantity: 1));
+        Assert.Null(
+            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, GrowerItem.Fertiliser, occupied: false, quantity: 1));
         Assert.Equal(GrowerRefusal.OneUnit,
-            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, isFertiliser: true, occupied: false, quantity: 5));
+            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, GrowerItem.Fertiliser, occupied: false, quantity: 5));
         Assert.Equal(GrowerRefusal.Occupied,
-            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, isFertiliser: true, occupied: true, quantity: 1));
+            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, GrowerItem.Fertiliser, occupied: true, quantity: 1));
     }
 
     [Fact]
     public void OtherSlotsAreLeftToTheOtherRules()
     {
-        // The plant slot has its own planting rule; an automated grower's import slot takes seeds from a chute.
-        Assert.Null(GrowerSlotRule.Into(GrowerSlotKind.Plant, isFertiliser: false, occupied: false, quantity: 1));
-        Assert.Null(GrowerSlotRule.Into(GrowerSlotKind.Other, isFertiliser: false, occupied: false, quantity: 3));
+        // A plant into the plant slot has its own planting rule; an automated grower's import slot takes seeds.
+        Assert.Null(GrowerSlotRule.Into(GrowerSlotKind.Plant, GrowerItem.Plant, occupied: false, quantity: 1));
+        Assert.Null(GrowerSlotRule.Into(GrowerSlotKind.Other, GrowerItem.Plant, occupied: false, quantity: 3));
     }
 
     [Fact]
     public void AutoSkipsAFertiliserSlotForAnythingButFertiliser()
     {
-        Assert.False(GrowerSlotRule.AutoTakes(GrowerSlotKind.Fertiliser, isFertiliser: false));
-        Assert.True(GrowerSlotRule.AutoTakes(GrowerSlotKind.Fertiliser, isFertiliser: true));
-        Assert.True(GrowerSlotRule.AutoTakes(GrowerSlotKind.Other, isFertiliser: false));
+        Assert.False(GrowerSlotRule.AutoTakes(GrowerSlotKind.Fertiliser, GrowerItem.Plant));
+        Assert.True(GrowerSlotRule.AutoTakes(GrowerSlotKind.Fertiliser, GrowerItem.Fertiliser));
+        Assert.True(GrowerSlotRule.AutoTakes(GrowerSlotKind.Other, GrowerItem.Plant));
     }
 
     [Fact]

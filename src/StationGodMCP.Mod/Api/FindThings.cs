@@ -133,7 +133,7 @@ internal sealed class ThingFilter
     internal double? NearPlayerM { get; }
 
     /// <summary>
-    /// true: only things in the game's broken state (Wrecks: Thing.IsBroken or a burst pipe); false: only things not
+    /// true: only things in the game's broken state (Wrecks: Thing.IsBroken, a burst pipe or a burnt cable); false: only things not
     /// broken.
     /// </summary>
     internal bool? Broken { get; }

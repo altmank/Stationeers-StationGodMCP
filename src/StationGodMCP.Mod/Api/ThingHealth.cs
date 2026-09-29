@@ -32,7 +32,12 @@ namespace StationGodMCP.Api;
 /// is_broken are the signal, never the numbers (Pure/HealthCondition). A SolarPanel's tooltip
 /// shows Health = RoundToInt(100 - TotalRatio * 100) coloured by SolarPanel.DamageColor, and it generates
 /// PowerGenerated * GenerationEfficiency * (1 - TotalRatio). A Pipe also has IsBurst (PipeBurst), which the game keeps
-/// apart from DamageState: a burst pipe reads 0 damage, so it is reported broken (Wrecks) like a broken structure.
+/// apart from DamageState: a burst pipe reads 0 damage, so it is reported broken (Wrecks) like a broken structure. A
+/// cable an overload burnt is replaced by a separate CableRuptured piece (StructureCableStraightBurnt and the like),
+/// undamaged and carrying no power: reported broken too.
+///
+/// A thing in a slot keeps no position of its own, so position and distance are its outermost holder's
+/// (HolderChain.PlaceOf), as container_contents and find_things place it.
 ///
 /// Three forms: reference_id, one thing; reference_ids, up to 256, a result per id; neither, a scan of every damaged
 /// thing registered in OcclusionManager.AllThings, broken first, then worst first, paged; broken things are listed
@@ -199,9 +204,10 @@ internal static class HealthReader
             thing is Pipe pipe ? PipeBurstName(pipe.IsBurst) : null,
             HealthCondition.Of(broken, damage != null, damage != null && damage.Indestructable, reading.DamageRatio),
             thing is Structure structure ? structure.CurrentBuildStateIndex < 0 : (bool?)null);
+        Vector3 place = HolderChain.PlaceOf(thing).Position;
         return new HealthView(
             GameLookup.ViewOf(thing), KindOf(thing), thing.GetType().Name, reading, flags,
-            GameLookup.ViewOf(thing.Position), origin.DistanceTo(thing.Position), Labels.CustomNameOf(thing),
+            GameLookup.ViewOf(place), origin.DistanceTo(place), Labels.CustomNameOf(thing),
             thing is Structure ? EndsReader.NetworksOf(thing) : null);
     }
 
@@ -310,7 +316,8 @@ internal static class HealthScanner
             return null;
         }
 
-        double? distance = origin.ExactDistanceTo(thing.Position);
+        // A stored item or planted plant keeps no position of its own: its outermost holder places it.
+        double? distance = origin.ExactDistanceTo(HolderChain.PlaceOf(thing).Position);
         if (scan.NearPlayerM.HasValue && !(distance <= scan.NearPlayerM.Value))
         {
             return null;

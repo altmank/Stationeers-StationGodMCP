@@ -34,7 +34,8 @@ these tools need a gateway.
   rename it (`labelable`), whether the device tools take it (`is_device`) and whether `atmosphere_contents` has
   something for it; a structure also reports how it stands turned (`rotation`). Every result has `is_broken` and
   `condition` (`broken`, `damaged`, `intact`, `indestructible`, `none`); `broken: true` finds every wreck, such as
-  fire-burnt vents, which read 100 % health, and burst pipes, which read 0 damage (see `thing_health`).
+  fire-burnt vents, which read 100 % health, burst pipes, which read 0 damage, and burnt cables an overload left (see
+  `thing_health`).
 - `label` renames what the hand Labeller renames. The pipe-size in-line tanks (`StructureInLineTankGas1x1` and the
   rest, insulated too) are not among them: the game has no rename for them, and StationGod keeps no names of its own,
   so `label` refuses them with `not_labelable`. The big in-line tanks take a label. To name a small one, label a sign
@@ -64,10 +65,11 @@ other perishables are never loose in the air.
   hydroponics station's fertiliser slots are hidden in the inventory window, but you plant and fertilise them by hand.
 - A seed or plant moved into a plant slot (a hydroponics tray, planter, station or device) is planted as you plant it
   by hand: one is used off the stack and a new plant grows in the slot with its genes. `quantity` must be 1 (or the
-  stack hold one); an occupied plant slot is refused.
+  stack hold one); an occupied plant slot is refused. A plant slot takes nothing else (`slot_refuses`): fertiliser
+  you hold at a plant goes into the fertiliser slot, and `"auto"` puts it there.
 - A grower's fertiliser slot takes only fertiliser, one at a time into an empty slot, as you add it by hand. Anything
-  else is refused (`slot_refuses`): the game would take a seed or plant there for the tray's plant. `"auto"` never
-  puts anything else there.
+  else is refused (`slot_refuses`); a seed or plant because the game would take it there for the tray's plant.
+  `"auto"` never puts anything else there.
 - A plant growing in a plant slot is never moved out (`planted`): by hand you only harvest its fruit or seeds, or
   clear it. A seed bag left in a plant slot can be moved out.
 - If the game throws part way through a move but the slot holds the result, the move is reported done with the

@@ -46,9 +46,11 @@ namespace StationGodMCP.Api;
 ///
 /// A grower's plant and fertiliser slots are judged by its hand interactions (Pure/GrowerSlotRule), which never ask
 /// whether the slot is interactable: a planter's slots and a station's fertiliser slots are hidden in the inventory
-/// window, yet a player plants and fertilises them by hand. Its fertiliser slot takes one unit
-/// of fertiliser into an empty slot, nothing else (most growers take any plant entering any slot for their plant), and
-/// a plant growing in a plant slot is never taken out whole: a player only harvests or clears it.
+/// window, yet a player plants and fertilises them by hand. Its plant slot takes only a seed or plant (fertiliser in
+/// the hand goes to the fertiliser slot, anything else is refused), its fertiliser slot one unit of fertiliser into
+/// an empty slot, nothing else (most growers take any plant entering any slot for their plant); auto puts each kind
+/// only into its own slot, and a plant growing in a plant slot is never taken out whole: a player only harvests or
+/// clears it.
 ///
 /// A game call that throws part way is read back: when the slot holds the result, the move is reported done with the
 /// game's error as a warning, never as an internal error, so a client does not repeat a move that happened.
@@ -298,7 +300,7 @@ internal static class MovePlanner
         bool plants = item is Plant && kind == GrowerSlotKind.Plant;
         refusal = plants
             ? PlantingRefusal((Plant)item!, target!, slot!, quantity)
-            : FertilisingRefusal(item!, kind, slot!, quantity);
+            : GrowerSlotRefusal(item!, target!, kind, slot!, quantity);
         if (refusal != null)
         {
             return false;
@@ -330,15 +332,20 @@ internal static class MovePlanner
             : null;
     }
 
-    // A fertiliser slot is filled as FertiliserInHand fills it: one unit of fertiliser, into an empty slot.
-    private static ApiException? FertilisingRefusal(DynamicThing item, GrowerSlotKind kind, Slot slot, int quantity)
+    // A plant slot takes only what PlantInHand plants; a fertiliser slot is filled as FertiliserInHand fills it: one
+    // unit of fertiliser, into an empty slot.
+    private static ApiException? GrowerSlotRefusal(DynamicThing item, Thing target, GrowerSlotKind kind, Slot slot,
+        int quantity)
     {
-        switch (GrowerSlotRule.Into(kind, item is Fertiliser, slot.Get() != null, quantity))
+        switch (GrowerSlotRule.Into(kind, GrowerSlots.ItemOf(item), slot.Get() != null, quantity))
         {
+            case GrowerRefusal.NotPlant:
+                return ApiErrors.Refused("slot_refuses",
+                    GrowerRefusalText.NotPlant(SlotAccess.Label(slot), item.DisplayName, GrowerSlots.ItemOf(item),
+                        GrowerSlots.FertiliserSlotOf(target, slot)?.SlotIndex));
             case GrowerRefusal.NotFertiliser:
                 return ApiErrors.Refused("slot_refuses",
-                    $"{SlotAccess.Label(slot)} is a fertiliser slot, which a player fills only with fertiliser; the "
-                    + "game would take a seed or plant there for the grower's plant.");
+                    GrowerRefusalText.NotFertiliser(SlotAccess.Label(slot), GrowerSlots.ItemOf(item)));
             case GrowerRefusal.Occupied:
                 return ApiErrors.Refused("slot_occupied",
                     $"{SlotAccess.Label(slot)} already holds {slot.Get().DisplayName}; a fertiliser slot holds one "
@@ -500,9 +507,9 @@ internal static class MovePlanner
             return ApiErrors.Refused("slot_locked", $"Slot {index} of {target.DisplayName} is locked.");
         }
 
-        if (GrowerSlotRule.HandDecides(GrowerSlots.KindOf(target, slot), item is Plant))
+        if (GrowerSlotRule.HandDecides(GrowerSlots.KindOf(target, slot)))
         {
-            // PlantingRefusal / FertilisingRefusal judge it, as the hand interaction does, hidden slot or not.
+            // PlantingRefusal / GrowerSlotRefusal judge it, as the hand interaction does, hidden slot or not.
             return null;
         }
 
@@ -595,13 +602,14 @@ internal static class MovePlanner
         return ApiErrors.Refused("no_free_slot", $"{target.DisplayName} has no slot that takes {item.DisplayName}.");
     }
 
-    // A grower slot its hand interaction fills is taken by the grower rules, hidden or not; any other by the game's
-    // quick-move rules.
+    // A grower's plant or fertiliser slot is taken by the grower rules, hidden or not (a plant into a plant slot,
+    // fertiliser into a fertiliser slot); any other by the game's quick-move rules.
     private static bool AutoTakesNew(DynamicThing item, Thing target, Slot candidate)
     {
         GrowerSlotKind kind = GrowerSlots.KindOf(target, candidate);
-        return (GrowerSlotRule.HandDecides(kind, item is Plant) || SlotAccess.AutoTakesNew(item, candidate))
-            && GrowerSlotRule.AutoTakes(kind, item is Fertiliser);
+        return GrowerSlotRule.HandDecides(kind)
+            ? GrowerSlotRule.AutoTakes(kind, GrowerSlots.ItemOf(item))
+            : SlotAccess.AutoTakesNew(item, candidate);
     }
 }
 
@@ -767,6 +775,30 @@ internal static class GrowerSlots
 
         return GrowerSlotKind.Other;
     }
+
+    /// <summary>The fertiliser slot mapped to this plant slot, or null when there is none.</summary>
+    internal static Slot? FertiliserSlotOf(Thing holder, Slot plantSlot)
+    {
+        if (!(holder is IGrower grower) || holder.Slots == null)
+        {
+            return null;
+        }
+
+        foreach (Slot candidate in holder.Slots)
+        {
+            if (candidate != null && TryMapping(grower, candidate, out PlantToFertiliserSlotMapping mapping) &&
+                mapping.PlantSlot == plantSlot)
+            {
+                return mapping.FertiliserSlot;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>What the item is to a grower's hand: a plant (seed bags included), a fertiliser, or neither.</summary>
+    internal static GrowerItem ItemOf(DynamicThing item) =>
+        item is Plant ? GrowerItem.Plant : item is Fertiliser ? GrowerItem.Fertiliser : GrowerItem.Other;
 
     private static bool TryMapping(IGrower grower, Slot slot, out PlantToFertiliserSlotMapping mapping)
     {

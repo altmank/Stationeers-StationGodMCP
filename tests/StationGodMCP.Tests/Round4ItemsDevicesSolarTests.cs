@@ -17,24 +17,21 @@ namespace StationGodMCP.Tests;
 public sealed class Round4ItemsDevicesSolarTests
 {
     [Theory]
-    [InlineData("Plant", true, true)]
-    [InlineData("Plant", false, false)]
-    [InlineData("Fertiliser", false, true)]
-    [InlineData("Fertiliser", true, true)]
-    [InlineData("Other", true, false)]
-    [InlineData("Other", false, false)]
-    public void TheHandDecidesPlantsInPlantSlotsAndEverythingInFertiliserSlots(string kind, bool isPlant, bool decides)
+    [InlineData("Plant", true)]
+    [InlineData("Fertiliser", true)]
+    [InlineData("Other", false)]
+    public void TheHandDecidesEverythingInPlantAndFertiliserSlots(string kind, bool decides)
     {
-        Assert.Equal(decides, GrowerSlotRule.HandDecides(System.Enum.Parse<GrowerSlotKind>(kind), isPlant));
+        Assert.Equal(decides, GrowerSlotRule.HandDecides(System.Enum.Parse<GrowerSlotKind>(kind)));
     }
 
     [Fact]
     public void ANonFertiliserInAHandDecidedFertiliserSlotIsStillRefused()
     {
         // HandDecides lets the grower rules speak before the hidden-slot rule; they refuse anything but fertiliser.
-        Assert.True(GrowerSlotRule.HandDecides(GrowerSlotKind.Fertiliser, isPlant: true));
+        Assert.True(GrowerSlotRule.HandDecides(GrowerSlotKind.Fertiliser));
         Assert.Equal(GrowerRefusal.NotFertiliser,
-            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, isFertiliser: false, occupied: false, quantity: 1));
+            GrowerSlotRule.Into(GrowerSlotKind.Fertiliser, GrowerItem.Other, occupied: false, quantity: 1));
     }
 
     [Theory]

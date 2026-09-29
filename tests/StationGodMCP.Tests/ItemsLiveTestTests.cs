@@ -75,10 +75,10 @@ public sealed class ItemsLiveTestTests
     [Fact]
     public void ABurstPipeIsAWreckThoughItsDamageIsZero()
     {
-        bool broken = HealthCondition.IsWreck(gameBroken: false, pipeBurst: true);
+        bool broken = HealthCondition.IsWreck(gameBroken: false, pipeBurst: true, cableBurnt: false);
         Assert.True(broken);
         Assert.Equal(HealthCondition.Broken, HealthCondition.Of(broken, true, false, 0.0));
         Assert.True(HealthCondition.ScanKeeps(broken, true, 0.0, 0.0, brokenOnly: true));
-        Assert.False(HealthCondition.IsWreck(gameBroken: false, pipeBurst: false));
+        Assert.False(HealthCondition.IsWreck(gameBroken: false, pipeBurst: false, cableBurnt: false));
     }
 }

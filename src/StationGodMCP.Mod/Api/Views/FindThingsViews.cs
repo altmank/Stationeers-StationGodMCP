@@ -119,7 +119,8 @@ internal sealed class FoundThingView
     public bool HasAtmosphere { get; }
 
     /// <summary>
-    /// The game's broken state (Thing.IsBroken; a structure also below build state 0), or a burst pipe (Pipe.IsBurst).
+    /// The game's broken state (Thing.IsBroken; a structure also below build state 0), a burst pipe (Pipe.IsBurst) or
+    /// a burnt cable (CableRuptured).
     /// Neither shows in the damage numbers, so this, not thing_health's numbers, says it is wrecked; remove_structure
     /// takes a broken structure with allow_broken.
     /// </summary>
