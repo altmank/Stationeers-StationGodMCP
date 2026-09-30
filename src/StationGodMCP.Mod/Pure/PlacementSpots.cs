@@ -7,38 +7,6 @@ using System.Globalization;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// What makes a structure a rocket's, as the game decides it. Many ordinary station devices (batteries, transformers,
-/// tanks, pipes, valves, vents, connectors) implement IRocketInternals so they may also be fitted inside a rocket;
-/// that alone makes nothing a rocket part. The game keeps a strictly internal piece to rocket cells
-/// (SmallGrid.CanConstruct: CannotPlaceOutsideRocket) and ties a placed piece to a rocket through its RocketNetwork or
-/// Structure.RocketData; the fuselage and launch mount are the rocket's own hull.
-/// </summary>
-internal readonly struct RocketTraits
-{
-    internal RocketTraits(bool strictlyInternal, bool hull, bool onRocket)
-    {
-        StrictlyInternal = strictlyInternal;
-        Hull = hull;
-        OnRocket = onRocket;
-    }
-
-    /// <summary>IRocketInternals.StrictlyInternal: the game places it only inside a rocket.</summary>
-    internal bool StrictlyInternal { get; }
-
-    /// <summary>A fuselage piece or a launch mount.</summary>
-    internal bool Hull { get; }
-
-    /// <summary>Standing in a rocket: a RocketNetwork or RocketData ties it to one.</summary>
-    internal bool OnRocket { get; }
-
-    /// <summary>A prefab only a rocket takes; place_structure refuses to build it.</summary>
-    internal bool RocketOnly => StrictlyInternal || Hull;
-
-    /// <summary>A standing piece that belongs to a rocket; remove_structure refuses to take it down.</summary>
-    internal bool PartOfRocket => RocketOnly || OnRocket;
-}
-
-/// <summary>
 /// Where one placement of a place_structure request stands, as the game's slots tell pieces apart: the snapped
 /// position, the slot kind, and for a piece placed on a cell face its side. The game registers a face-placed piece
 /// (a wall) in the cell it faces into (Structure.GetGrid: position + forward * 0.1, snapped), so a face holds one such

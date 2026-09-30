@@ -111,7 +111,7 @@ grid, centres on multiples of 0.5 m: four small cells per axis in each 2 m cell.
 64-character strings over its small cells:
 
 - `small`: what fills each small cell: `.` empty, `c` cable, `p` pipe, `b` both, `h` chute, `d` device, `o` another
-  small thing, `r` a rocket's cell.
+  small thing, `r` a rocket's empty cell (its fuselage decides which kind of piece it takes).
 - `support`: what would hold a piece there: `i` inside a frame (hidden in the frame's body), `e` a frame edge or
   corner, `f` a frame's face, `w` a wall's plane, `a` air.
   Over those, `x` marks a door's keep-out and `g` a window's face (see *Doors and windows*). A door's face is no
@@ -281,7 +281,7 @@ Each refusal names what it found. An `allow_*` argument accepts that one case af
 | `would_burst` | A pipe network's pressure after the edit would exceed its weakest pipe. | none |
 | `holds_contents`, `contents_would_move` | A pipe removal would delete a network's gas or liquid, or divide it. | none: empty it first with `move_gas` |
 | `content_mismatch` | A pipe of the other content (gas and liquid never join). | none |
-| `cell_blocked`, `cannot_change`, `no_piece_for_ends`, `link_lost` | A cell is taken; a piece cannot be changed (a fuse or meter mounted, indestructible, rocket); no piece has those ends; a piece would lose a link. | none |
+| `cell_blocked`, `cannot_change`, `no_piece_for_ends`, `link_lost` | A cell is taken; a piece cannot be changed (a fuse or meter mounted, indestructible, part of a launching or landing rocket); inside a rocket, a cell whose type takes no piece of the kind, or a free cell right above or below a rocket's cell (the game's rule); no piece has those ends; a piece would lose a link. | none |
 | `nothing_to_join` | A one-cell run joins nothing, so its piece has no direction. | name its ends with `piece` |
 | `assumed_present` | A real run while something in `assume_removed` still stands. | remove it first |
 | `would_loop` (warning) | The run joins something already joined another way: a second path. Keep it only if the redundancy is meant. | not needed |

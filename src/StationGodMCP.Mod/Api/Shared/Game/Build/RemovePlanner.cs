@@ -12,6 +12,7 @@ using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
+using Objects.Rockets;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
@@ -109,7 +110,7 @@ internal sealed class RemovePlan
 
 /// <summary>
 /// remove_structure's whole preflight; nothing here changes the game. Each id must be a structure. The guards
-/// (RemovalRule) read the game: being destroyed, indestructible, rocket, broken (allow_broken: nothing given back), the
+/// (RemovalRule) read the game: being destroyed, indestructible, a launching or landing rocket's part, broken (allow_broken: nothing given back), the
 /// game's own CanDeconstruct (not asked for a broken piece taken with allow_broken, as the game does not), a
 /// mounted device, items in its slots, gas inside, and for a piece that blocks air the pressures of the spaces its
 /// removal would join (the cells on both sides of each face it holds, or the open neighbours of each cell it fills,
@@ -227,9 +228,9 @@ internal static class RemovePlanner
         {
             BeingDestroyed = piece.IsBeingDestroyed,
             Indestructible = piece.Indestructable,
-            Rocket = RocketParts.Of(piece).PartOfRocket,
+            RocketMoving = Rockets.MovingRefusal(piece),
             Broken = Wrecks.IsBroken(piece),
-            GameRefusal = GameRefusal(piece),
+            GameRefusal = GameRefusal(piece, removed),
             Mounted = MountedOn(piece) ?? Unsupported(piece, removed, grid),
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
@@ -262,7 +263,13 @@ internal static class RemovePlanner
     private static List<ItemAmount> RefundOf(Structure piece) =>
         Wrecks.IsBroken(piece) ? new List<ItemAmount>() : BuildMaterials.RefundOf(piece);
 
-    private static string? GameRefusal(Structure piece)
+    // The game's CanDeconstruct where the piece stands, then for a fuselage piece its last step's rule, which the game
+    // asks only at build state 0 and a one-go removal must ask at any state (Rockets.FuselageTakedownRefusal).
+    private static string? GameRefusal(Structure piece, HashSet<long> removed) =>
+        CanDeconstructRefusal(piece) ??
+        (piece is StructureFuselage hull ? Rockets.FuselageTakedownRefusal(hull, removed) : null);
+
+    private static string? CanDeconstructRefusal(Structure piece)
     {
         object? answer = GameMembers.StructureCanDeconstruct.Invoke(piece);
         if (!(answer is CanConstructInfo info) || info.CanConstruct)

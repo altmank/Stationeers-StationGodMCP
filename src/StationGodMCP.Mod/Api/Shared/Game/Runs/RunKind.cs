@@ -59,6 +59,12 @@ internal abstract class RunKind
     internal abstract SmallGrid? SlotOf(SmallCell cell);
 
     /// <summary>
+    /// The rocket cell type the family's pieces fit (IRocketInternals.InternalCellType: Cables, Pipes, Chutes), for
+    /// the route planners' blocked cells; each prefab's own type is checked again when a piece is placed.
+    /// </summary>
+    internal abstract global::Objects.Rockets.RocketInternalCellType RocketCellType { get; }
+
+    /// <summary>
     /// What is left of a piece the game destroyed (a burnt cable): on no network, built by no coil, removed by the
     /// remove tool for nothing and cleared by the place tool's remove_ids. None for pipes and chutes.
     /// </summary>
@@ -214,6 +220,9 @@ internal sealed class CableRunKind : RunKind
 
     internal override SmallGrid? SlotOf(SmallCell cell) => cell.Cable;
 
+    internal override global::Objects.Rockets.RocketInternalCellType RocketCellType =>
+        global::Objects.Rockets.RocketInternalCellType.Cables;
+
     // Cable.Break (CODE) destroys the cable and spawns its RupturedPrefab, a CableRuptured
     // (StructureCableStraightBurnt, StructureCableStraightHBurnt, ...).
     internal override bool IsDebris(Thing thing) => thing is CableRuptured;
@@ -299,6 +308,9 @@ internal sealed class PipeRunKind : RunKind
     internal override PipeContent? ContentOf(Grade grade) => new PipeContent(grade.Content, false);
 
     internal override SmallGrid? SlotOf(SmallCell cell) => cell.Pipe;
+
+    internal override global::Objects.Rockets.RocketInternalCellType RocketCellType =>
+        global::Objects.Rockets.RocketInternalCellType.Pipes;
 
     internal override bool Bridges(Connection end) =>
         (end.ConnectionType & (NetworkType.Pipe | NetworkType.PipeLiquid)) != NetworkType.None;

@@ -477,8 +477,7 @@ internal static class PlanRouteApi
         }
 
         GridCell cell = RunArgs.CellOf(RunArgs.PositionOf(item["at"]!, $"{name}.at"));
-        string? blocked = PlacementCheck.CellBlocked(
-            Assets.Scripts.GridController.World.GetSmallCell(PieceShapes.Grid(cell)), mask, kind, ignore);
+        string? blocked = PlacementCheck.CellBlocked(PieceShapes.Grid(cell), mask, kind, ignore);
         if (blocked != null)
         {
             throw ApiErrors.InvalidArgument(
@@ -693,8 +692,7 @@ internal static class PlanRouteApi
     {
         foreach (GridCell cell in cells)
         {
-            string? blocked = PlacementCheck.CellBlocked(
-                Assets.Scripts.GridController.World.GetSmallCell(PieceShapes.Grid(cell)), mask, kind, ignore);
+            string? blocked = PlacementCheck.CellBlocked(PieceShapes.Grid(cell), mask, kind, ignore);
             if (blocked != null)
             {
                 return $"cell_blocked: no {kind.Noun} piece can stand in cell {cell} of the route (an end's joining " +

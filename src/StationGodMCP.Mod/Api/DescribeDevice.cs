@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Assets.Scripts.Objects.Motherboards;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
 
 namespace StationGodMCP.Api;
@@ -29,6 +30,7 @@ internal static class DescribeDeviceApi
             }
         }
 
-        return new DescribeDeviceView(Devices.ViewOf(device, scope), types);
+        return new DescribeDeviceView(Devices.ViewOf(device, scope), types, RocketReadings.PartOf(device.Thing),
+            RocketReadings.UmbilicalOf(device.Thing));
     }
 }

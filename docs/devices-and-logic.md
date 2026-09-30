@@ -20,7 +20,7 @@ memory, but for any device in the world at once and without a chip.
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
 | `list_devices` | Every device in the world, or on one gateway's networks. | `name_contains`, `prefab_hash`, `gateway_id` |
-| `describe_device` | One device and every logic type it can read or write. | `reference_id` |
+| `describe_device` | One device and every logic type it can read or write; for a rocket's device its rocket, for an umbilical its pairing (see *Rockets and umbilicals*). | `reference_id` |
 | `read_logic` | Read one logic value. | `reference_id`, `logic_type` |
 | `write_logic` | Write one logic value; the reply reads it back at once (`current_value`). | `reference_id`, `logic_type`, `value` |
 | `read_logic_many` | Up to 256 reads in one call; each gets its own result or error. | `reads: [{reference_id, logic_type}]` |
@@ -37,6 +37,20 @@ memory, but for any device in the world at once and without a chip.
 | `run_console_command` | Any console command, with the lines it printed. | `command`, `max_output_lines` |
 | `read_console` | The latest console lines, including Unity errors and stack traces. | `lines` |
 | `mod_info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
+
+## Rockets and umbilicals
+
+`describe_device` on a device in a rocket adds `rocket`: its rocket network, name and state, and what the game counts
+for it (`dry_mass_kg`, `hull_pieces`, `internals`). On a rocket umbilical (gas, power, chute or crew; the male one on
+a Rocket Tower or the socket on the rocket) it adds `umbilical`, and `grid_survey` lists the same on each umbilical
+among its `devices`:
+
+- `role`: `umbilical` (the male one) or `socket`; `open`: extended and passing gas, power or items.
+- `partner`, `partner_distance`: the partner the game holds now and its distance (small cells plus one; 0 unpaired).
+- `search`: the game's own partner search replayed as things stand, without changing anything: `found`,
+  `partner_distance`, `how` (from where, which way, how many columns) and, per column, why it stopped. The male one
+  searches up to 14 small cells along its front, in its own column and two to its right; the socket one column. A
+  partner must be the matching kind, face back (dot 0.9 or more), and have no other device between.
 
 ## Reading back what you wrote
 

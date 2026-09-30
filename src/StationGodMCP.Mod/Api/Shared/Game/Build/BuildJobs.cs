@@ -310,6 +310,13 @@ internal sealed class PlaceWork : BuildWork
                 }
             }
 
+            string? replacing = Replace(placement);
+            if (replacing != null)
+            {
+                GiveBack(plan, taken, log);
+                return Stop(log, placement, "cannot_place", $"{prefab.PrefabName}: {replacing}; nothing more was built.");
+            }
+
             Structure? built = Constructor.SpawnConstruct(new CreateStructureInstance(prefab,
                 GridController.World.WorldToLocal(placement.Position!.Value), placement.Rotation, plan.Owner,
                 placement.ColorIndex));
@@ -341,6 +348,30 @@ internal sealed class PlaceWork : BuildWork
             StationGodMod.LogWarning($"place_structure placement {placement.Index} failed: {exception}");
             return Stop(log, placement, "build_failed", exception.Message);
         }
+    }
+
+    // A merge (PlannedPlacement.Replaces) as the merge kit does it: the standing fuselage piece, found again where the
+    // cursor stands now, leaves its rocket network and is destroyed (MultiMergeConstructor.cs:77-85); the new one is
+    // then built as any other. Why it cannot be done now; null when done or nothing is replaced.
+    private static string? Replace(PlannedPlacement placement)
+    {
+        global::Objects.Rockets.StructureFuselage? planned = placement.Replaces;
+        Structure cursor = placement.Cursor!;
+        global::Objects.Rockets.StructureFuselage? standing = CursorCheck.At(cursor, placement.Position!.Value,
+            placement.Rotation, () => Rockets.Replaced(cursor));
+        if (planned == null && standing == null)
+        {
+            return null;
+        }
+
+        if (planned == null || standing == null || standing.ReferenceId != planned.ReferenceId)
+        {
+            return "the fuselage piece it was to replace is not the one standing there now";
+        }
+
+        standing.StructureNetwork?.Remove(standing);
+        OnServer.Destroy(standing);
+        return null;
     }
 
     private static void GiveBack(PlacePlan plan, List<ItemAmount> taken, BuildLog log)
@@ -459,7 +490,7 @@ internal sealed class RemoveWork : BuildWork
             }
         }
 
-        foreach (PlannedTakedown takedown in plan.Takedowns)
+        foreach (PlannedTakedown takedown in InTakedownOrder(plan.Takedowns))
         {
             if (log.StoppedAt != null)
             {
@@ -473,6 +504,20 @@ internal sealed class RemoveWork : BuildWork
         }
 
         Refund(plan, done, log);
+    }
+
+    // The order a player would have to take them down in (RocketTakedownOrder): fuselage pieces last, top first.
+    private static List<PlannedTakedown> InTakedownOrder(List<PlannedTakedown> takedowns)
+    {
+        List<RocketTakedownItem> items = new List<RocketTakedownItem>(takedowns.Count);
+        for (int order = 0; order < takedowns.Count; order++)
+        {
+            Structure piece = takedowns[order].Piece;
+            items.Add(new RocketTakedownItem(order, piece is global::Objects.Rockets.StructureFuselage,
+                piece.ThingTransformPosition.y));
+        }
+
+        return RocketTakedownOrder.Of(items).ConvertAll(order => takedowns[order]);
     }
 
     internal override bool Settled()

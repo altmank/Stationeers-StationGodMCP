@@ -229,9 +229,10 @@ internal static class RunPlanner
             return "it is indestructible";
         }
 
-        if (InRocket(piece))
+        string? moving = Build.Rockets.MovingRefusal(piece);
+        if (moving != null)
         {
-            return "it is inside a rocket";
+            return moving;
         }
 
         Device? mounted = piece.SmallCell?.Device;
@@ -240,7 +241,10 @@ internal static class RunPlanner
             : kind.Holding(piece);
     }
 
-    /// <summary>Whether the piece is part of a rocket (its network is the rocket's).</summary>
+    /// <summary>
+    /// Whether the piece is part of a rocket (its network is the rocket's). The run tools lay and remove such pieces as
+    /// a player does; the clean and upgrade tools still leave them alone.
+    /// </summary>
     internal static bool InRocket(SmallGrid piece) =>
         (piece is Cable cable && cable.RocketNetwork != null) || (piece is Pipe pipe && pipe.RocketNetwork != null) ||
         (piece is Chute chute && chute.RocketNetwork != null);

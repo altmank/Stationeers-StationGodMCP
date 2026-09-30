@@ -107,7 +107,8 @@ A single local game needs none. The settings cover the local pipe's name and rem
 - **Host only.** The mod runs on the game that hosts; its changes reach other players through the game's own sync.
   Every player who joins needs the same version, because the StationGod Gateway is a new structure.
 - **The building tools refuse rather than guess.** They never make materials, never delete a pipe network's
-  contents, never remove a chute with an item in it, never touch rocket or indestructible pieces, and never swap a
+  contents, never remove a chute with an item in it, never touch indestructible pieces or a launching or landing rocket, and
+  never swap a
   wall or frame in a way that opens a room. Every job that changes pipe networks checks their contents before and
   after (`gas_check`) and stops further pipe jobs if anything went missing, until the world is reloaded or the user
   agrees to accept the loss (`acknowledge_gas_lost`).

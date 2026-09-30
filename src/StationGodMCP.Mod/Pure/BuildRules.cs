@@ -213,7 +213,11 @@ internal sealed class RemovalFacts
 
     internal bool Indestructible { get; set; }
 
-    internal bool Rocket { get; set; }
+    /// <summary>
+    /// Why its rocket may not be touched now (RocketMotionRule: launching or landing); null when it stands in no
+    /// rocket or in one standing still.
+    /// </summary>
+    internal string? RocketMoving { get; set; }
 
     /// <summary>
     /// A wreck (HealthCondition.IsWreck): the game's broken state (Structure.IsBroken: damage at its maximum, or a build
@@ -399,7 +403,8 @@ internal sealed class BurstForecast
 
 /// <summary>
 /// remove_structure's minimal safeguards, each naming its reason. Refused outright: being destroyed, indestructible,
-/// rocket, the game's own refusal, a mounted device. Refused unless allowed: broken (allow_broken: the game cannot
+/// a launching or landing rocket's part, the game's own refusal (a fuselage piece's asked as its last step would ask it),
+/// a mounted device. Refused unless allowed: broken (allow_broken: the game cannot
 /// repair a broken structure, only deconstruct it, and that gives nothing back; the game does not ask CanDeconstruct
 /// on that path, so its refusal is not asked either), items in its slots or gas inside (allow_contents: items drop
 /// where it stood, as a hand deconstruction does; a tank releases its gas there, other devices lose it), and joining
@@ -471,7 +476,7 @@ internal static class RemovalRule
         List<GuardFinding> findings = new List<GuardFinding>();
         Refuse(findings, facts.BeingDestroyed, "being_destroyed", "it is already being destroyed");
         Refuse(findings, facts.Indestructible, "indestructible", "it is indestructible");
-        Refuse(findings, facts.Rocket, "rocket", "it is part of a rocket");
+        Refuse(findings, facts.RocketMoving != null, "rocket_moving", facts.RocketMoving ?? string.Empty);
         if (facts.Broken)
         {
             findings.Add(Allowable(allow.Broken, "broken", "broken_removed", BrokenWhat, "allow_broken",

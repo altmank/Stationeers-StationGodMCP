@@ -21,8 +21,9 @@ namespace StationGodMCP.Api.Shared.Game.Build;
 /// below for batteries, machines and dishes, a wall or floor behind for vents, lights and consoles, a straight pipe
 /// or cable to mount on, terrain, outside, collisions) and CanMountOnWall for a face-mounted piece. Three forms:
 /// <list type="bullet">
-/// <item>Refusal: a new placement (place_structure, find_spot): the cursor check, a rocket's cell, a small-grid slot
-/// already taken.</item>
+/// <item>Refusal: a new placement (place_structure, find_spot): the cursor check (a rocket's cells and hull
+/// included: SmallGrid.CanConstruct, the fuselage, engine and umbilical classes' own), a small-grid slot already
+/// taken.</item>
 /// <item>PieceRefusal: a cable, pipe or chute piece with things treated as gone (place_cables, place_pipes,
 /// place_chutes, their undo restores): PlacementCheck, the game's piece rules made here because the cursor cannot
 /// ignore what a run replaces.</item>
@@ -44,8 +45,7 @@ internal static class PlayerPlacement
             return refusal;
         }
 
-        Grid3[] cells = CursorCheck.SmallCells(prefab, position, rotation);
-        return CursorCheck.RocketCell(cells) ?? CursorCheck.SlotTaken(piece, cells, none);
+        return CursorCheck.SlotTaken(piece, CursorCheck.SmallCells(prefab, position, rotation), none);
     }
 
     /// <summary>Why a player could not place the cable, pipe or chute piece there once the things in gone are gone.</summary>

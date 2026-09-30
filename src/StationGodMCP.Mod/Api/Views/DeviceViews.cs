@@ -178,14 +178,25 @@ internal sealed class DescribeDeviceView
     private const string NoteText =
         "Custom mod logic types can be accessed by numeric ID even when they do not have a discoverable enum name.";
 
-    internal DescribeDeviceView(DeviceView device, List<LogicAccessView> logicTypes)
+    internal DescribeDeviceView(DeviceView device, List<LogicAccessView> logicTypes, RocketPartView? rocket = null,
+        UmbilicalView? umbilical = null)
     {
         Device = device;
         LogicTypes = logicTypes;
         LogicTypeCount = logicTypes.Count;
+        Rocket = rocket;
+        Umbilical = umbilical;
     }
 
     public DeviceView Device { get; }
+
+    /// <summary>The rocket it is part of; absent when none.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public RocketPartView? Rocket { get; }
+
+    /// <summary>Its pairing when it is an umbilical; absent otherwise.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public UmbilicalView? Umbilical { get; }
 
     public List<LogicAccessView> LogicTypes { get; }
 

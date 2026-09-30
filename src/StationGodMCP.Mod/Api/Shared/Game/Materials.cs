@@ -49,6 +49,22 @@ internal static class BuildMaterials
     }
 
     /// <summary>
+    /// States 0 to lastState without state 0's kit: what a merge kit's replacement costs (MultiMergeConstructor.cs:86
+    /// takes no kit when it replaces a standing fuselage piece), the later states as usual.
+    /// </summary>
+    internal static List<ItemAmount> AmountsAfterKit(Structure structure, int lastState, Dictionary<int, Item> items)
+    {
+        List<IReadOnlyList<BuildEntry>> states = EntriesOf(structure, items);
+        if (states.Count > 0)
+        {
+            states[0] = new List<BuildEntry>();
+        }
+
+        List<ItemCount> counts = MaterialRule.Totals(states, lastState);
+        return counts.ConvertAll(count => new ItemAmount(items[count.Item], count.Quantity));
+    }
+
+    /// <summary>
     /// Every build state's entries, keyed by PrefabHash; each item met is added to items so keys can be turned back
     /// into items.
     /// </summary>

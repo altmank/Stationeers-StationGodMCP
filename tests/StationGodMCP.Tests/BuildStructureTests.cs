@@ -226,11 +226,11 @@ public sealed class RemovalRuleTests
     {
         RemovalFacts facts = new RemovalFacts
         {
-            Indestructible = true, Rocket = true, Broken = true, BeingDestroyed = true,
+            Indestructible = true, RocketMoving = "Rocket 1 is launching", Broken = true, BeingDestroyed = true,
             GameRefusal = "a device is attached", Mounted = "Pipe Analyzer (1)"
         };
         List<GuardFinding> findings = RemovalRule.Judge(facts, All);
-        Assert.Equal(new[] { "being_destroyed", "indestructible", "rocket", "broken", "game_refuses", "has_mounted" },
+        Assert.Equal(new[] { "being_destroyed", "indestructible", "rocket_moving", "broken", "game_refuses", "has_mounted" },
             findings.Select(finding => finding.Code));
         Assert.All(findings, finding => Assert.Equal(GuardLevel.Refusal, finding.Level));
         Assert.True(RemovalRule.Refused(findings));
@@ -276,8 +276,8 @@ public sealed class RemovalRuleTests
             findings.Select(finding => finding.Code));
         Assert.True(RemovalRule.Refused(findings));
 
-        RemovalFacts rocket = new RemovalFacts { Broken = true, Rocket = true, Indestructible = true };
-        Assert.Equal(new[] { "indestructible", "rocket", "broken_removed" },
+        RemovalFacts rocket = new RemovalFacts { Broken = true, RocketMoving = "landing", Indestructible = true };
+        Assert.Equal(new[] { "indestructible", "rocket_moving", "broken_removed" },
             RemovalRule.Judge(rocket, Broken).Select(finding => finding.Code));
     }
 

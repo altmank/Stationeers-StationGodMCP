@@ -125,17 +125,28 @@ Tool wear, welder fuel and battery charge are not charged.
 - **Cost:** every build state's items up to the chosen state, from your inventory or `from_id`. `free: true` places
   without materials, in creative worlds only (`not_creative` otherwise). It waives the materials, never the checks:
   every placement is one a player's cursor would accept there.
-- **Refused per placement:** `invalid_prefab` (not loaded, not a structure, no kit builds it, a rocket part),
-  `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason, or a cell inside a rocket; a
-  broken structure in the way is named, with how to remove it),
+- **Refused per placement:** `invalid_prefab` (not loaded, not a structure, no kit builds it),
+  `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason; a broken structure in the way is
+  named, with how to remove it),
   `not_labelable`, `not_paintable`, `invalid_color`, `overlaps_placement` (two placements of the request in one slot,
   or one the game would refuse once an earlier one stands: two small-grid pieces taking the same slot of a cell, such
   as overlapping long pipes, or a frame and another piece in its 2 m cell, such as a wall facing into it, in either
   order). The ports and port checks of a placement read only what stands now, not the earlier placements of the same
   request.
-- **Rocket parts** are what the game places only in a rocket (strictly internal pieces), the fuselage and the launch
-  mount. Batteries, tanks, pipes, valves, vents and other devices that may also be fitted in a rocket are placed as
-  usual.
+- **Rockets (1.6.0+)** are built as a player builds them, with the game's own rules and reasons: the launch mount on
+  four support frames, the engine fuselage on a fully built launch mount, fuselage pieces and the nose cone on a
+  fuselage, never beside another rocket; engines, tanks, batteries, avionics, the miner, scanner, cargo bays and the
+  umbilical sockets in the small cells the fuselage gives them, each cell taking only its kind; a male umbilical in a
+  Rocket Tower. What is built joins the rocket exactly as a hand-built piece does (its network, internals, mass,
+  saves). A rocket built bottom up in one request works: each placement that waits for an earlier one (the pillar
+  frames, the mount or fuselage below, the fuselage whose cells take an internal, the tower) gets the warning
+  `supported_by_placement`, and the job checks it again once that stands.
+- **Replacing a fuselage piece:** placing a fuselage piece where another of its family stands (a plain fuselage by
+  one with doors, say) replaces it as a player with an angle grinder in the other hand does: warning
+  `replaces_fuselage`; the old piece is destroyed and gives nothing back, and no kit is taken for the new one (the
+  states above the kit are charged as usual). Only where a merge kit builds the prefab.
+- **Moving rockets:** nothing is built into or taken from a rocket while it launches or lands (the tool's own rule:
+  its parts move with it then).
 - **Walls back to back:** a face holds one wall per side, so two plates on one face, one facing into each cell, go
   in one request.
 
@@ -311,7 +322,8 @@ go; see [building.md](building.md#how-every-building-tool-works), item 7.
 | Code | Meaning | Override |
 | --- | --- | --- |
 | `not_a_structure` | An item or another movable thing: use `move_item`. | none |
-| `being_destroyed`, `indestructible`, `rocket`, `game_refuses` | The game would not deconstruct it. | none |
+| `being_destroyed`, `indestructible`, `game_refuses` | The game would not deconstruct it. A fuselage piece is judged as its last step would be: nothing on top of it, and no internals left in its cells (both unless the same request removes them). | none |
+| `rocket_moving` | Part of a rocket that is launching or landing (the tool's own rule). | none |
 | `has_mounted` | A device is mounted on it (a light, sensor, console or vent on a wall), or stands on it, and nothing else would hold that face: a plate on the same face, or a frame beside it. The game would leave the device hanging in the air. Remove the device in the same request, or first. | none |
 | `broken` | It is broken (`is_broken`): fire, pressure or other damage wrecked it, including a burst pipe or a burnt cable. The game cannot repair a broken structure, only deconstruct it, and that gives nothing back. | `allow_broken` |
 | `holds_items`, `holds_gas` | Items drop where it stood, as in the game; a tank lets its gas out into its cell, other devices lose it. An in-line tank or passive vent that is the last of its pipe network (with the rest of the request) takes the network's gas with it: the game deletes it. So does one left as the last of a part of a network the request splits, since the job removes pipe pieces first, and so does a pipe piece left as the last of such a part when the request removes pipe pieces alone. The job's gas check expects exactly that gas gone (`planned_loss_mol`) and does not put it back. | `allow_contents` |
@@ -330,8 +342,10 @@ The breach check judges the whole request at once, by the game's own air rule: a
 on it blocks air, or while the structure filling a cell beside it does (a finished frame). So a wall plate on a
 finished frame's face never breaches, and two plates back to back on one face breach only when both are removed in the
 same request; that breach is reported once, on the first of them. A wall and the frame behind it removed together
-are one opening too, reported once. With `refund_to: "none"` the dry run lists no refund. `rocket` means part of a rocket: placed in one, a
-rocket-only piece, a fuselage or a launch mount.
+are one opening too, reported once. With `refund_to: "none"` the dry run lists no refund.
+
+A rocket's parts go as a player takes them down: everything else in the request first, then the fuselage pieces from
+the top down, so a whole rocket can be removed in one request (internals, then nose cone, fuselage, engine fuselage).
 
 Cable, pipe and chute pieces are removed as the remove tools remove them, with their checks (a pipe network's `holds_contents` and `would_burst` come from the same model of what the job leaves as above, as `holds_gas` and `would_burst`, pipe pieces alone too); `would_split` is only a
 warning here, so read it (it does not ask for `allow_split` or `root`, which `remove_structure` does not take; price

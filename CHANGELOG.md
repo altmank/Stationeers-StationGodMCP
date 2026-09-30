@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.6.0
+
+2026-09-30. Rockets: the build tools build and edit them as a player does. 84 tools.
+
+- **`place_structure` builds rocket parts.** Launch mount, engine fuselage, fuselage pieces, nose cone, and the
+  internals (engines, tanks, batteries, avionics, miner, scanner, cargo bays, downlink, umbilical sockets...) were
+  refused as "a rocket part". They are now placed through the same cursor check as everything else, which is where the
+  game keeps every rocket rule (the fuselage on a fully built launch mount or on another fuselage, never beside another
+  rocket; an engine in an engine fuselage; each internal cell taking only its kind; a male umbilical in a Rocket Tower;
+  the launch mount on four support frames), so a placement the game would refuse is refused with the game's reason.
+  The piece is built as a kit builds it and joins the rocket the way a hand-built one does (its network, internals,
+  mass and save data are the game's own doing). `describe_prefab` describes them too.
+- **A rocket in one request.** Placements that wait for an earlier one of the same request (the pillar frames, the
+  mount or fuselage below, the fuselage whose cells take an internal, the tower) get `supported_by_placement` and are
+  checked again by the job once that stands, as a frame below already was.
+- **Replacing a fuselage piece.** A fuselage piece placed where another of its family stands replaces it, as a player
+  with an angle grinder in the other hand does: `replaces_fuselage`; the old piece gives nothing back and no kit is
+  taken for the new one. Only where a merge kit builds the prefab.
+- **Pieces inside rockets.** `place_cables`, `place_pipes` and `place_chutes` (and the route planners) no longer treat
+  every rocket cell as blocked: a cell takes a piece when its fuselage made it a cell of that kind, and a free cell
+  right above or below a rocket's cell takes none, as in the game. Such cells count as held up (no `through_air`).
+- **Taking rockets apart.** `remove_structure`, `remove_cables`, `remove_pipes` and `remove_chutes` no longer refuse
+  rocket parts. A fuselage piece is judged as its last deconstruction step would be (nothing on top of it, no
+  internals left in its cells), both unless the same request removes them; a request's fuselage pieces go last, from
+  the top down, so a whole rocket goes in one request. The `rocket` refusal code is gone; `rocket_moving` refuses
+  parts of a rocket that is launching or landing, the tools' own rule (its parts move with it then).
+- **Umbilical pairing.** `describe_device` and `grid_survey` devices report `umbilical` for rocket umbilicals: the
+  partner the game holds, `partner_distance`, and the game's partner search replayed (`found`, `how`, and per column
+  why it stopped). `describe_device` also reports a rocket device's `rocket` (network, name, state, dry mass, hull
+  pieces, internals).
+- The clean and upgrade tools still leave rocket pieces alone.
+
 ## 1.5.0
 
 2026-09-29. Fixes from a twelve-round live test of 1.4.4 on a dedicated server, the player-placement

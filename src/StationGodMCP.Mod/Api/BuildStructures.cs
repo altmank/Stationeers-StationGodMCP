@@ -41,10 +41,25 @@ internal static class PlaceStructureApi
                 PlaceWork placing = new PlaceWork(run.Arguments, preflight, plan.TouchesPipes);
                 return JobSnapshots.Record(
                     BuildJobs.Start("place", placing, args.OptionalBool("wait") ?? false, acknowledge),
-                    "place_structure", new List<Structure>(), args);
+                    "place_structure", Replaced(plan), args);
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or placements.");
         }
+    }
+
+    // The fuselage pieces the run replaces (merges): the job removes them, so their snapshots are taken with it.
+    private static List<Structure> Replaced(PlacePlan plan)
+    {
+        List<Structure> replaced = new List<Structure>();
+        foreach (PlannedPlacement placement in plan.Placements)
+        {
+            if (placement.Replaces != null)
+            {
+                replaced.Add(placement.Replaces);
+            }
+        }
+
+        return replaced;
     }
 }
 

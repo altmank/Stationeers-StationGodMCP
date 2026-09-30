@@ -77,8 +77,7 @@ internal static class RunSurvey
 
         foreach (GridCell cell in run)
         {
-            string? blocked = PlacementCheck.CellBlocked(world.GetSmallCell(PieceShapes.Grid(cell)), mask, kind,
-                ignore);
+            string? blocked = PlacementCheck.CellBlocked(PieceShapes.Grid(cell), mask, kind, ignore);
             if (blocked != null)
             {
                 around.Blocked[cell] = blocked;
@@ -128,9 +127,10 @@ internal static class RunSurvey
             return $"{piece.PrefabName} is indestructible";
         }
 
-        if (RunPlanner.InRocket(piece))
+        string? moving = Build.Rockets.MovingRefusal(piece);
+        if (moving != null)
         {
-            return $"{piece.PrefabName} is inside a rocket";
+            return $"{piece.PrefabName}: {moving}";
         }
 
         if (piece is Pipe burst && burst.IsBurst != Assets.Scripts.Networks.PipeBurst.None)

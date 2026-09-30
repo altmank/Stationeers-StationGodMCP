@@ -52,6 +52,10 @@ internal sealed class ChuteRunKind : RunKind
 
     internal override SmallGrid? SlotOf(SmallCell cell) => cell.Chute;
 
+    // Chute.InternalCellType is always Chutes (Chute.cs:60).
+    internal override global::Objects.Rockets.RocketInternalCellType RocketCellType =>
+        global::Objects.Rockets.RocketInternalCellType.Chutes;
+
     internal override bool Bridges(Connection end) => (end.ConnectionType & NetworkType.Chute) != NetworkType.None;
 
     internal override object Summary(IReferencable network)

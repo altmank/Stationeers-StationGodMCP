@@ -142,7 +142,7 @@ internal sealed class GridFacts
         SmallCell? small = SmallAt(cell);
         SmallGrid? piece = small != null ? _kind.SlotOf(small) : null;
         bool own = piece != null && !piece.IsBeingDestroyed && !_ignore.Contains(piece.ReferenceId);
-        facts = new SmallCellFacts(PlacementCheck.CellBlocked(small, _mask, _kind, _ignore),
+        facts = new SmallCellFacts(PlacementCheck.CellBlocked(Grid(cell), _mask, _kind, _ignore),
             PlacementCheck.BlockedAxes(small, _mask, _kind, _ignore),
             own ? _kind.Family.NetworkOf(piece!)?.ReferenceId : null, own, Large(SmallCellCode.LargeOf(cell)),
             SmallCellCode.IndexOnAxis(cell.X), SmallCellCode.IndexOnAxis(cell.Y), SmallCellCode.IndexOnAxis(cell.Z),
@@ -209,8 +209,12 @@ internal sealed class GridFacts
         return cells;
     }
 
-    /// <summary>What holds a piece in the small cell up (CellSupports): read from the 2 m cells it touches only.</summary>
-    internal CellSupport Support(GridCell small) => CellSupports.Of(small, Large);
+    /// <summary>
+    /// What holds a piece in the small cell up (CellSupports): read from the 2 m cells it touches, and a rocket's own
+    /// cell (SmallCell.Owner, set by the fuselage piece around it) counts as held by that hull's frame.
+    /// </summary>
+    internal CellSupport Support(GridCell small) =>
+        SmallAt(small)?.Owner != null ? CellSupport.Frame : CellSupports.Of(small, Large);
 
     /// <summary>How visible a piece in the small cell is (CellSupports.VisibilityOf).</summary>
     internal CellVisibility Visibility(GridCell small) => CellSupports.VisibilityOf(small, Large);

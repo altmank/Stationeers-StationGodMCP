@@ -295,9 +295,10 @@ internal sealed class SurveyPieceView
 internal sealed class SurveyDeviceView
 {
     internal SurveyDeviceView(ThingView device, PositionView at, List<SurveyPortView> ports,
-        OrientationView? rotation = null)
+        OrientationView? rotation = null, UmbilicalView? umbilical = null)
     {
         Rotation = rotation;
+        Umbilical = umbilical;
         ReferenceId = device.ReferenceId;
         PrefabName = device.PrefabName;
         DisplayName = device.DisplayName;
@@ -321,6 +322,10 @@ internal sealed class SurveyDeviceView
     public OrientationView? Rotation { get; }
 
     public List<SurveyPortView> Ports { get; }
+
+    /// <summary>Its pairing when it is a rocket umbilical; absent otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public UmbilicalView? Umbilical { get; }
 }
 
 /// <summary>

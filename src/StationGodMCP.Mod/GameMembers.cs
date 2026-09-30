@@ -229,6 +229,23 @@ internal static class GameMembers
     // ---- Structures (replace_walls: a prefab's face points before it is placed, as OnAssignedReference reads them) ----
     internal static readonly GameField StructureBlockingGrids = Field(typeof(Structure), "blockingGrids");
 
+    // ---- Rockets: a rocket's small cells and their types (RocketNetwork.AddSmallCellOwnership), and the partner each
+    // umbilical holds (set by RocketUmbilicalHelper.FindAndSetOtherUmbilical; CrewModule's is a public field) ----
+    internal static readonly GameField RocketSmallCells =
+        Field(typeof(Networks.RocketNetwork), "_smallGridsOccupied");
+    internal static readonly GameField GasUmbilicalMalePartner =
+        Field(typeof(global::Objects.Rockets.RocketGasUmbilicalMale), "_partnerUmbilical");
+    internal static readonly GameField GasUmbilicalFemalePartner =
+        Field(typeof(global::Objects.Rockets.RocketGasUmbilicalFemale), "_partnerUmbilical");
+    internal static readonly GameField PowerUmbilicalPartner =
+        Field(typeof(global::Objects.Rockets.RocketPowerUmbilical), "_partnerUmbilical");
+    internal static readonly GameField ChuteUmbilicalMalePartner =
+        Field(typeof(global::Objects.Rockets.RocketChuteUmbilicalMale), "_partnerUmbilical");
+    internal static readonly GameField ChuteUmbilicalFemalePartner =
+        Field(typeof(global::Objects.Rockets.RocketChuteUmbilicalFemale), "_partnerUmbilical");
+    internal static readonly GameField CrewUmbilicalPartner =
+        Field(typeof(global::Objects.Rockets.RocketCrewUmbilical), "_partnerUmbilical");
+
     // ---- remove_structure: the game's own refusal to deconstruct (Cable, Pipe, Silo, LaunchMount, fuselage) ----
     internal static readonly GameMethod StructureCanDeconstruct = Register(new GameMethod("Structure.CanDeconstruct",
         () => typeof(Structure).GetMethod("CanDeconstruct", PrivateInstance, null, Type.EmptyTypes, null)));

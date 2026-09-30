@@ -9,35 +9,6 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>place_structure and remove_structure: what makes a piece a rocket's.</summary>
-public sealed class RocketTraitsTests
-{
-    // A battery, transformer, tank, pipe, valve, vent or portables connector: IRocketInternals, not strictly internal.
-    [Fact]
-    public void AStationDeviceThatCouldGoInARocketIsNoRocketPart()
-    {
-        RocketTraits battery = new RocketTraits(false, false, false);
-        Assert.False(battery.RocketOnly);
-        Assert.False(battery.PartOfRocket);
-    }
-
-    [Fact]
-    public void AStrictlyInternalPrefabOrTheHullIsRocketOnly()
-    {
-        Assert.True(new RocketTraits(true, false, false).RocketOnly);
-        Assert.True(new RocketTraits(false, true, false).RocketOnly);
-        Assert.True(new RocketTraits(false, true, false).PartOfRocket);
-    }
-
-    [Fact]
-    public void AnOrdinaryDeviceFittedInARocketIsPartOfItButMayBePlacedElsewhere()
-    {
-        RocketTraits fitted = new RocketTraits(false, false, true);
-        Assert.True(fitted.PartOfRocket);
-        Assert.False(fitted.RocketOnly);
-    }
-}
-
 /// <summary>place_structure: two placements of one request in one slot.</summary>
 public sealed class PlacementSpotTests
 {

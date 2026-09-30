@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
 using Objects.Rockets;
+using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -18,11 +19,14 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// (MultiConstructor.Construct and Constructor.SpawnConstruct check nothing; the cursor's SmallGrid.CanConstruct does,
 /// CODE), and because a run must treat the pieces it replaces as gone, which the cursor cannot. The piece classes' own
 /// rules first: an end entering an umbilical the way it faces (Cable, Pipe, Chute), a pipe under a pipe-mounted device
-/// or into an in-line tank's slot (Pipe). Then for each cell the piece would take (GridBounds.GetLocalSmallGrid): a cell owned by a rocket refuses it;
-/// every occupant (Cable, Device, Pipe, Chute, Rail, Other) collides when the two SmallCollisionType masks share a bit
+/// or into an in-line tank's slot (Pipe). Then for each cell the piece would take (GridBounds.GetLocalSmallGrid), in
+/// SmallGrid.CanConstruct's order (SmallGrid.cs:661-720): its rocket rules (Rockets.PlacementRefusal: a free cell
+/// right above or below a rocket's cell refuses a piece that may be fitted in a rocket); every occupant (Cable, Device, Pipe, Chute, Rail, Other) collides when the two SmallCollisionType masks share a bit
 /// (cables 2, pipes 1, devices and chutes most bits, SmallGridBlock), or when an end of one sits within 0.1 m of an
 /// end of the other (SmallGrid.IsPipeEndCollision: a pipe and a cable along the same axis in one cell). Frames, walls
-/// and other large-grid structures are never checked for pieces that are not DualRegister (cables and pipes are not).
+/// and other large-grid structures are never checked for pieces that are not DualRegister (cables and pipes are not);
+/// last, a rocket's cell takes the piece only when the cell's type holds the piece's (Rockets.CollisionRefusal). A
+/// piece built in a rocket's cell becomes the rocket's the way a hand-built one does (Rockets).
 /// </summary>
 internal static class PlacementCheck
 {
@@ -51,7 +55,9 @@ internal static class PlacementCheck
         foreach (Grid3 grid in (Grid3[])prefab.GridBounds.GetLocalSmallGrid(position, rotation))
         {
             SmallCell? cell = world.GetSmallCell(grid);
-            string? refusal = cell != null ? CellRefusal(cell, piece, ends, ignore) : null;
+            string? refusal = Rockets.MovingRefusal(Rockets.OwnerOf(grid)) ?? Rockets.PlacementRefusal(piece, grid) ??
+                              (cell != null ? CellRefusal(cell, piece, ends, ignore) : null) ??
+                              Rockets.CollisionRefusal(piece, grid);
             if (refusal != null)
             {
                 return refusal;
@@ -62,19 +68,22 @@ internal static class PlacementCheck
     }
 
     /// <summary>
-    /// Why no piece with the collision mask may stand in the cell whatever its turn (a rocket's cell, an occupant
+    /// Why no piece with the collision mask may stand in the cell whatever its turn (a rocket's cell of a type that
+    /// takes no piece of the kind, or a free cell right above or below a rocket's: Rockets.KindRefusal; an occupant
     /// sharing a mask bit); null when some turn may. The family's own slot is not looked at (the layout joins it).
     /// </summary>
-    internal static string? CellBlocked(SmallCell? cell, SmallGridBlock mask, RunKind kind, HashSet<long> ignore)
+    internal static string? CellBlocked(Grid3 grid, SmallGridBlock mask, RunKind kind, HashSet<long> ignore)
     {
+        string? rocket = Rockets.KindRefusal(grid, kind.RocketCellType);
+        if (rocket != null)
+        {
+            return rocket;
+        }
+
+        SmallCell? cell = GridController.World.GetSmallCell(grid);
         if (cell == null)
         {
             return null;
-        }
-
-        if (cell.Owner != null)
-        {
-            return "the cell belongs to a rocket";
         }
 
         SmallGrid? own = kind.SlotOf(cell);
@@ -203,11 +212,6 @@ internal static class PlacementCheck
 
     private static string? CellRefusal(SmallCell cell, SmallGrid piece, List<Vector3>? ends, HashSet<long> ignore)
     {
-        if (cell.Owner != null)
-        {
-            return "the cell belongs to a rocket";
-        }
-
         foreach (SmallGrid occupant in Occupants(cell, ignore))
         {
             if (Collides(piece, ends, occupant))

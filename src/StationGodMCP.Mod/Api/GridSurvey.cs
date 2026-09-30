@@ -12,6 +12,7 @@ using Assets.Scripts.Objects.Pipes;
 using Objects.Structures;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
@@ -38,7 +39,8 @@ internal static class GridSurveyApi
         "Each cell is a 2 m cell at its centre (odd metres). small: its 64 small-grid cells (0.5 m) at -1, -0.5, 0 " +
         "and +0.5 m from the centre along each axis (index 0 to 3; index 0 lies on the cell's minimum face plane, " +
         "shared with the neighbour), character index x + 4y + 16z. '.' empty, 'c' cable, 'p' pipe, 'b' cable and " +
-        "pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), 'r' a rocket's cell. " +
+        "pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), 'r' a rocket's empty cell " +
+        "(its fuselage decides which kind of piece it takes). " +
         "Frames and walls never block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable " +
         "(and a cable a pipe) only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, " +
         "chute or 'o'. support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell " +
@@ -446,7 +448,7 @@ internal static class GridSurveyApi
         }
 
         return new SurveyDeviceView(GameLookup.ViewOf(device), GameLookup.ViewOf(device.Position), ports,
-            Orientations.Of(device));
+            Orientations.Of(device), RocketReadings.UmbilicalOf(device));
     }
 
     private static ThingId? NetworkAt(SmallCell? cell, Connection end)

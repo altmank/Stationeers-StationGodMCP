@@ -7,7 +7,6 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
-using Networks;
 using Objects.RoboticArm;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -23,17 +22,20 @@ namespace StationGodMCP.Api.Shared.Game.Build;
 internal sealed class BuildCatalogue
 {
     private readonly HashSet<int> _kitBuilt;
+    private readonly HashSet<int> _mergeKitBuilt;
     private readonly Dictionary<int, Structure> _cursors;
 
-    private BuildCatalogue(HashSet<int> kitBuilt, Dictionary<int, Structure> cursors)
+    private BuildCatalogue(HashSet<int> kitBuilt, HashSet<int> mergeKitBuilt, Dictionary<int, Structure> cursors)
     {
         _kitBuilt = kitBuilt;
+        _mergeKitBuilt = mergeKitBuilt;
         _cursors = cursors;
     }
 
     internal static BuildCatalogue Load()
     {
         HashSet<int> built = new HashSet<int>();
+        HashSet<int> mergeBuilt = new HashSet<int>();
         foreach (Thing prefab in Prefab.AllPrefabs)
         {
             switch (prefab)
@@ -44,6 +46,10 @@ internal sealed class BuildCatalogue
                         if (constructable != null)
                         {
                             built.Add(constructable.PrefabHash);
+                            if (kit is MultiMergeConstructor)
+                            {
+                                mergeBuilt.Add(constructable.PrefabHash);
+                            }
                         }
                     }
 
@@ -67,7 +73,7 @@ internal sealed class BuildCatalogue
             }
         }
 
-        return new BuildCatalogue(built, cursors);
+        return new BuildCatalogue(built, mergeBuilt, cursors);
     }
 
     /// <summary>The registered structure prefab named or hashed, or why there is none to build.</summary>
@@ -99,6 +105,12 @@ internal sealed class BuildCatalogue
     /// <summary>Whether some kit builds the prefab, so a player can place it at all.</summary>
     internal bool KitBuilds(Structure prefab) => _kitBuilt.Contains(prefab.PrefabHash);
 
+    /// <summary>
+    /// Whether a merge kit (MultiMergeConstructor) builds the prefab: only such a kit replaces a standing fuselage piece
+    /// instead of building a second one into its cell (MultiMergeConstructor.Construct, MultiMergeConstructor.cs:39-88).
+    /// </summary>
+    internal bool MergeKitBuilds(Structure prefab) => _mergeKitBuilt.Contains(prefab.PrefabHash);
+
     internal Structure? CursorOf(Structure prefab) =>
         _cursors.TryGetValue(prefab.PrefabHash, out Structure cursor) && cursor != null ? cursor : null;
 
@@ -107,12 +119,6 @@ internal sealed class BuildCatalogue
         if (prefab.BuildStates == null || prefab.BuildStates.Count == 0)
         {
             return $"{prefab.PrefabName} has no build states.";
-        }
-
-        if (RocketParts.Of(prefab).RocketOnly)
-        {
-            return $"{prefab.PrefabName} is a rocket part (the game places it only in a rocket); rockets are not " +
-                   "built by this tool.";
         }
 
         return _kitBuilt.Contains(prefab.PrefabHash)
@@ -144,8 +150,8 @@ internal sealed class BuildCatalogue
 /// Where the cursor would stand and whether the game's cursor lets the piece be built there, checked on the game's
 /// own cursor for the prefab (InventoryManager.UpdatePlacement): the position snapped as the cursor snaps it
 /// (Structure.GetWorldGrid; a face-placed piece then moves half a cell against its forward, onto the face), then
-/// CanConstruct (every structure's own rules: blocked cells and faces, small-grid collisions, rocket cells, the
-/// overrides of each class), CanMountOnWall for a face-mounted piece, and for a piece that fills its cells no loose
+/// CanConstruct (every structure's own rules: blocked cells and faces, small-grid collisions, rocket cells and hulls,
+/// the overrides of each class), CanMountOnWall for a face-mounted piece, and for a piece that fills its cells no loose
 /// thing, creature or player inside it (BoundsIntersectWith, as the cursor checks DynamicThing.DynamicObjects). The
 /// cursor is moved for the check and put back in the same call, so nothing is seen.
 /// </summary>
@@ -197,9 +203,20 @@ internal static class CursorCheck
     /// </summary>
     internal static string? GameRefusal(Structure cursor) => ConstructRefusal(cursor) ?? MountRefusal(cursor);
 
-    /// <summary>The cursor's CanConstruct where it stands (At): the class's own rules; null when it allows it.</summary>
+    /// <summary>
+    /// The cursor's CanConstruct where it stands (At): the class's own rules; null when it allows it. A fuselage piece
+    /// that would replace another (StructureFuselage.CanMerge) is not asked: its CanConstruct then reads the local
+    /// player's other hand and allows the placement outright when that holds the angle grinder (Fuselage.cs:30-41,
+    /// EngineFuselage.cs:31-42, NoseCone.cs:28-39), and the tool builds as a player holding one (place_structure
+    /// refuses such a replacement unless a merge kit builds the prefab).
+    /// </summary>
     internal static string? ConstructRefusal(Structure cursor)
     {
+        if (cursor is global::Objects.Rockets.StructureFuselage fuselage && fuselage.CanMerge())
+        {
+            return null;
+        }
+
         CanConstructInfo info = cursor.CanConstruct();
         return info.CanConstruct ? null : Text(info.ErrorMessage, "the cell or face is taken");
     }
@@ -217,25 +234,6 @@ internal static class CursorCheck
 
         CanMountResult mount = cursor.CanMountOnWall();
         return mount ? null : Text(mount.ResultMessage(), "nothing to mount it on");
-    }
-
-    /// <summary>
-    /// A rocket's cell among the small cells the piece would take (SmallCell.Owner is the RocketNetwork): a piece
-    /// placed there becomes part of that rocket; null when none is.
-    /// </summary>
-    internal static string? RocketCell(Grid3[] cells)
-    {
-        GridController world = GridController.World;
-        foreach (Grid3 grid in cells)
-        {
-            if (world.GetSmallCell(grid)?.Owner is RocketNetwork)
-            {
-                return $"the cell at {GridText.Metres(grid.x, grid.y, grid.z)} is inside a rocket; rockets are not " +
-                       "built by this tool";
-            }
-        }
-
-        return null;
     }
 
     // The cells a small-grid piece would take, as SmallGrid.CanConstruct reads them.

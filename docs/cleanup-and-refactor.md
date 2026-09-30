@@ -38,7 +38,8 @@ What always holds:
 - The grade stays (normal, heavy, super heavy; gas, liquid, insulated), and so do colour and owner.
 - Every connection stays, except those of removed pieces; no device loses a link. The run is refused otherwise.
 - Never removed: a piece with a fuse, analyser, pipe meter or other device mounted on it, indestructible and rocket
-  pieces. Such dead ends are listed in `dead_end_pieces` with `stopped_by`.
+  pieces (the clean tools leave rockets alone; `remove_cables`, `remove_pipes` and `remove_chutes` take rocket pieces
+  as a player does). Such dead ends are listed in `dead_end_pieces` with `stopped_by`.
 - Pipes: the contents stay in the network. A removed pipe takes only its volume, so the pressure rises; the run is
   refused if it would exceed the weakest remaining pipe. The last pipes of a network still holding gas or liquid are
   never removed (`stopped_by: holds_contents`). This holds per network, not per stub: a gas line with two open ends

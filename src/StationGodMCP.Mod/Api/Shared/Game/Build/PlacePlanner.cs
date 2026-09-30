@@ -80,6 +80,15 @@ internal sealed class PlannedPlacement
     /// <summary>An earlier placement of the request that puts the frame this one needs below it; null otherwise.</summary>
     internal PlannedPlacement? SupportedBy { get; set; }
 
+    /// <summary>What the game wants of SupportedBy when it is not a frame below or a support behind (a rocket's).</summary>
+    internal string? SupportNeed { get; set; }
+
+    /// <summary>
+    /// The standing fuselage piece this one replaces (a merge, as a player holding the angle grinder does); null when
+    /// it replaces nothing.
+    /// </summary>
+    internal global::Objects.Rockets.StructureFuselage? Replaces { get; set; }
+
     /// <summary>The layout preview at the planned position and turn; null until resolved that far.</summary>
 
     internal LayoutPreview? Layout { get; set; }
@@ -196,8 +205,10 @@ internal static class PlacePlanner
               FrameNote(placement.Position!.Value, placement.Rotation, refusal);
     }
 
-    // The player-placement rule for a new placement (PlayerPlacement.Refusal); free waives materials, never this.
+    // The player-placement rule for a new placement (PlayerPlacement.Refusal); free waives materials, never this. A
+    // launching or landing rocket is left alone first (Rockets.MovingRefusalAt, the tools' own rule).
     private static string? Check(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation) =>
+        Rockets.MovingRefusalAt(prefab, position, rotation) ??
         PlayerPlacement.Refusal(prefab, cursor, position, rotation);
 
     // A broken structure still takes its cells and slots (the game only swaps its mesh), so a placement there is
@@ -334,9 +345,9 @@ internal static class PlacePlanner
         {
             plan.Warn("supported_by_placement",
                 $"{prefab.PrefabName} at {Describe(position)}: the game wants " +
-                (prefab.PlacementType == PlacementSnap.FaceMount
+                (placement.SupportNeed ?? (prefab.PlacementType == PlacementSnap.FaceMount
                     ? "a support behind it"
-                    : "a frame below it for support") + ", which " +
+                    : "a frame below it for support")) + ", which " +
                 $"placements[{placement.SupportedBy.Index}] ({placement.SupportedBy.Prefab!.PrefabName}) puts there; " +
                 "the job checks it again once that stands.", index);
         }
@@ -349,13 +360,57 @@ internal static class PlacePlanner
                 index);
         }
 
+        if (refusal == null)
+        {
+            Replacing(plan, catalogue, placement, cursor, position);
+        }
+
         Layout(plan, placement, position);
 
         Look(plan, swatches, placement);
         if (!plan.Arguments.Free && placement.State.HasValue)
         {
-            placement.Cost.AddRange(BuildMaterials.Amounts(prefab, placement.State.Value, plan.Items));
+            placement.Cost.AddRange(placement.Replaces != null
+                ? BuildMaterials.AmountsAfterKit(prefab, placement.State.Value, plan.Items)
+                : BuildMaterials.Amounts(prefab, placement.State.Value, plan.Items));
         }
+    }
+
+    // A fuselage piece placed where another of its family stands replaces it (StructureFuselage.CanMerge): the merge kit
+    // takes the old one off its rocket network and destroys it, giving nothing back, and builds the new one without
+    // taking a kit for it (MultiMergeConstructor.cs:75-87, quantity 0 when one stood). Only a merge kit does that; a
+    // plain kit would build a second piece into the cell, so the tool refuses it then.
+    private static void Replacing(PlacePlan plan, BuildCatalogue catalogue, PlannedPlacement placement,
+        Structure cursor, Vector3 position)
+    {
+        global::Objects.Rockets.StructureFuselage? old =
+            CursorCheck.At(cursor, position, placement.Rotation, () => Rockets.Replaced(cursor));
+        if (old == null)
+        {
+            return;
+        }
+
+        Structure prefab = placement.Prefab!;
+        string what = $"{Names.Of(old)} ({old.PrefabName} {old.ReferenceId})";
+        if (!catalogue.MergeKitBuilds(prefab))
+        {
+            plan.Problem("cannot_place", $"{prefab.PrefabName} at {Describe(position)} would replace {what}, which " +
+                                         "only a merge kit does, and no loaded merge kit builds it.", placement.Index);
+            return;
+        }
+
+        string? moving = Rockets.MovingRefusal(old);
+        if (moving != null)
+        {
+            plan.Problem("cannot_place", $"{prefab.PrefabName} at {Describe(position)}: {moving}.", placement.Index);
+            return;
+        }
+
+        placement.Replaces = old;
+        plan.Warn("replaces_fuselage",
+            $"{prefab.PrefabName} replaces {what} as a player holding an angle grinder in the other hand does: " +
+            $"{old.PrefabName} is destroyed and gives nothing back, and no kit is taken for the new piece; the " +
+            "states above its kit are charged as usual.", placement.Index);
     }
 
     // at and a named facing read against the world (AtResolver); a refusal there is the placement's problem.
@@ -620,6 +675,14 @@ internal static class PlacePlanner
     private static PlannedPlacement? PlannedSupport(PlacePlan plan, PlannedPlacement placement, Vector3 position,
         string refusal)
     {
+        placement.SupportNeed = null;
+        PlannedPlacement? rocket = PlannedRocketSupport.Find(plan, placement, position, refusal, out string? need);
+        if (rocket != null)
+        {
+            placement.SupportNeed = need;
+            return rocket;
+        }
+
         if (!(placement.Prefab is SmallGrid piece))
         {
             return null;
