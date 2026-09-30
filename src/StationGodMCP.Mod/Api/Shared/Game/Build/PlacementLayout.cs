@@ -378,7 +378,7 @@ internal static class PlacementLayout
 
             string role = ((ConnectionRole)port.Role).ToString();
             checks.Add(new PortCheckView(port.Index, GameLookup.ViewOf(PieceShapes.CentreOf(port.Cell)),
-                port.Toward?.Name ?? "?", ((NetworkType)port.Type).ToString(), role, PortFlow.Of(role), occupant,
+                port.Toward?.Name ?? "?", ((NetworkType)port.Type).ToString(), role, TwoWayChutePorts.FlowOf(prefab, port.Type, role), occupant,
                 joins, network, blocked, facts.Opening(port.Cell).IsDoor));
         }
 

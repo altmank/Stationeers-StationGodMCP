@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.1
+
+2026-09-30. Fix: chutes join rocket chute umbilicals. 84 tools.
+
+- **A chute umbilical's port carries items both ways.** `place_chutes` refused the piece joining a chute umbilical's
+  port with `flow_conflict`, and `plan_chute_route` refused it as a `from`, because the port's role reads Input. In
+  the game it is two-way: a chute pushes items into the umbilical through it (a chute feeds any chute device whose
+  end there is not an Output), and the partner umbilical pushes its item out into the chute at this port
+  (`RocketChuteUmbilicalMale` and `RocketChuteUmbilicalFemale` `OnServerTick`). The flow checks, route ends,
+  `describe_prefab` and the placement port checks now treat the port of the male, the socket and the socket angle as
+  fixing no direction (`flow` null). Every other guard stays: a line between the umbilical and a device port still
+  follows that port's direction. The other chute devices' ports were checked against their code and prefabs and move
+  items the way their roles say.
+
 ## 1.6.0
 
 2026-09-30. Rockets: the build tools build and edit them as a player does. 84 tools.

@@ -330,7 +330,10 @@ internal static class RouteEnds
 
         int chosenPort = port ?? candidates[0];
         Connection chosen = device.OpenEnds![chosenPort];
-        string? wrongWay = kind is ChuteRunKind ? ChuteRoles.WrongWay((int)chosen.ConnectionRole, target) : null;
+        string? wrongWay = kind is ChuteRunKind
+            ? ChuteRoles.WrongWay(
+                TwoWayChutePorts.RoleOf(device, (int)chosen.ConnectionType, (int)chosen.ConnectionRole), target)
+            : null;
         if (wrongWay != null)
         {
             throw ApiErrors.InvalidArgument(

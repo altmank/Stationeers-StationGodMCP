@@ -127,7 +127,8 @@ internal sealed class ChuteSurroundings
 
             ports.Add(new DevicePort(device.ReferenceId, index,
                 new PieceEnd(PieceShapes.Cell(end.GetLocalGrid()), PieceShapes.Cell(end.GetFacingGrid()),
-                    (int)end.ConnectionType, (int)end.ConnectionRole), false));
+                    (int)end.ConnectionType,
+                    TwoWayChutePorts.RoleOf(device, (int)end.ConnectionType, (int)end.ConnectionRole)), false));
         }
     }
 }

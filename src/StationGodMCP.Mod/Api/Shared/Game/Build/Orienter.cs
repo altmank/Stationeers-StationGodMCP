@@ -136,7 +136,7 @@ internal static class Orienter
 
             string role = ((ConnectionRole)port.Role).ToString();
             ports.Add(new OrientPort(port.Index, ((NetworkType)port.Type).ToString(), role,
-                PortFlow.Of(role), Bodies.V(PieceShapes.CentreOf(port.Cell)), port.Toward.Value.Opposite));
+                TwoWayChutePorts.FlowOf(prefab, port.Type, role), Bodies.V(PieceShapes.CentreOf(port.Cell)), port.Toward.Value.Opposite));
         }
 
         return ports;

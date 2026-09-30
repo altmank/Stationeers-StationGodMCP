@@ -35,6 +35,16 @@ internal static class ChuteRoles
     internal static bool IsDirected(int role) => TakesIn(role) || LetsOut(role);
 
     /// <summary>
+    /// The role a device's chute port has for items. A two-way port fixes no direction (None) whatever its label: a
+    /// rocket chute umbilical's one chute port (OpenEnds[0], labelled Input) takes items in, since a chute pushes into
+    /// any IChute whose joined end is not Output or Output2 (Chute.OnServerTick and IsValidInputConnection), and also
+    /// lets them out, since the partner umbilical's OnServerTick moves its TransportSlot item into the chute at this
+    /// port, which carries it away from the umbilical (RocketChuteUmbilicalMale.OnServerTick,
+    /// RocketChuteUmbilicalFemale.OnServerTick; Chute.SetNeighbor).
+    /// </summary>
+    internal static int OfDevicePort(bool twoWay, int role) => twoWay ? None : role;
+
+    /// <summary>
     /// Why a route running with the items cannot end at a device port of this role (target) or start at it: a port
     /// that pushes items out is only ever a start, one that takes items in only an end. Null when it may.
     /// </summary>

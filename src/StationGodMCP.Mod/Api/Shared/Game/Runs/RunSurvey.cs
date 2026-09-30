@@ -105,7 +105,9 @@ internal static class RunSurvey
 
             around.Ports.Add(new DevicePort(device.ReferenceId, index,
                 new PieceEnd(PieceShapes.Cell(end.GetLocalGrid()), PieceShapes.Cell(end.GetFacingGrid()),
-                    (int)end.ConnectionType, (int)end.ConnectionRole), kind.Bridges(end)));
+                    (int)end.ConnectionType,
+                    TwoWayChutePorts.RoleOf(device, (int)end.ConnectionType, (int)end.ConnectionRole)),
+                kind.Bridges(end)));
         }
     }
 
