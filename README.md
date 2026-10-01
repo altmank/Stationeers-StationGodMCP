@@ -64,11 +64,11 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 
 ## Tools
 
-90 tools, in these areas. Each page lists its tools with what they take and give back.
+91 tools, in these areas. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |
-| Devices, logic and console | `list_devices`, `describe_device`, `read_logic`, `write_logic`, `read_logic_many`, `write_logic_many`, `read_memory`, `write_memory`, `inspect_slots`, `network_snapshot`, `sample_logic`, `connections`, `list_gateways`, `run_console_command`, `read_console`, `game_clock`, `looking_at`, `mod_info` | [devices-and-logic.md](docs/devices-and-logic.md) |
+| Devices, logic and console | `list_devices`, `describe_device`, `read_logic`, `write_logic`, `read_logic_many`, `write_logic_many`, `read_devices`, `read_memory`, `write_memory`, `inspect_slots`, `network_snapshot`, `sample_logic`, `connections`, `list_gateways`, `run_console_command`, `read_console`, `game_clock`, `looking_at`, `mod_info` | [devices-and-logic.md](docs/devices-and-logic.md) |
 | Chips | `get_ic_source`, `set_ic_source`, `get_ic_status`, `control_ic_execution`, `resolve_ic_selectors`, `set_ic_pins` | [chips.md](docs/chips.md) |
 | Items | `find_items`, `find_things`, `item_totals`, `list_containers`, `container_contents`, `move_item`, `label`, `paint`, `consumables` | [items.md](docs/items.md) |
 | Air, planet, plants and survival | `rooms`, `atmosphere_contents`, `water_sources`, `move_gas`, `outer_frames`, `planet`, `deep_miner_spots`, `weather`, `plants`, `plant_genes`, `reagents`, `player_vitals`, `ignition_risk`, `thing_health` | [air-planet-and-plants.md](docs/air-planet-and-plants.md) |
@@ -150,8 +150,9 @@ Earlier: `paste_blueprint` (paste, status and undo), the pipe name setting, ever
 **Not yet tested in game:** what needs a player or a camera (`looking_at`, `at` at the crosshair or relative to you,
 `show_preview`, hidden and body slots with a real inventory, the kit leaving your inventory, suit damage from
 refunds), a real `acknowledge_gas_lost` lift (no gas loss could be provoked), the 1.3.2 landing pad atmospheres in
-`move_gas`, the 1.3.3 planet gas removal (needs Terraforming Reloaded) and the 1.4.0 Ingot Vault tools (need the
-Ingot Vault mod).
+`move_gas`, the 1.3.3 planet gas removal (needs Terraforming Reloaded), the 1.4.0 Ingot Vault tools (need the
+Ingot Vault mod), and 1.10.0's `read_devices` and `thing_health` `network_id` (`tools/read_devices_equivalence.py`
+compares `read_devices` with the single tools on a running game).
 
 ## Documentation
 

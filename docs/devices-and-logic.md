@@ -25,6 +25,7 @@ memory, but for any device in the world at once and without a chip.
 | `write_logic` | Write one logic value; the reply reads it back at once (`current_value`). | `reference_id`, `logic_type`, `value` |
 | `read_logic_many` | Up to 256 reads in one call; each gets its own result or error. | `reads: [{reference_id, logic_type}]` |
 | `write_logic_many` | Up to 256 writes in order, in one call. | `writes: [{reference_id, logic_type, value}]` |
+| `read_devices` | A control loop's whole read in one call, all in one frame (1.10.0+): logic, slot logic, an atmosphere and reagents of up to 128 things, plus the clock (see *One read per tick*). | `items: [{reference_id, logic, slots, atmosphere, reagents}]`, `include: ["clock"]` |
 | `read_memory` | Up to 512 consecutive values from a device with memory (an IC Housing's or suit's chip stack, a Logic Sorter, a satellite dish, a fabricator; a Logic Memory has only `Setting`). | `reference_id`, `start_address`, `count` |
 | `write_memory` | Up to 512 consecutive values into such a device. | `reference_id`, `start_address`, `values` |
 | `inspect_slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. Devices only: for a crate, the lander or a tool use `container_contents`. | `reference_id`, `slot_index` |
@@ -37,6 +38,64 @@ memory, but for any device in the world at once and without a chip.
 | `run_console_command` | Any console command, with the lines it printed. | `command`, `max_output_lines` |
 | `read_console` | The latest console lines, including Unity errors and stack traces. | `lines` |
 | `mod_info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
+
+## One read per tick: `read_devices` (1.10.0+)
+
+A script that reads the same devices every tick (a furnace card, a print queue) can make one call where it made one
+per device, slot and pipe network. Every item is read in the same game frame (one update; the atmospherics thread may
+still run between two items, so it is one frame, not one atmospherics tick).
+
+```json
+{"include": ["clock"],
+ "items": [
+   {"reference_id": "811234", "logic": ["Temperature", "Pressure", "RatioOxygen", "280"],
+    "slots": [{"index": 0, "logic": ["Occupied", "OccupantHash", "Quantity"]}],
+    "atmosphere": {"of": "internal"}, "reagents": true},
+   {"reference_id": "811410", "atmosphere": {"port": 1}},
+   {"reference_id": "811300", "slots": [{"index": 0}]}]}
+```
+
+Each item takes a `reference_id` and at least one part:
+
+- `logic`: up to 64 logic types, read as `read_logic` reads them.
+- `slots`: up to 16 `{index, logic}`; slot logic as a chip's `ls` reads it. Without `logic`, every slot logic type
+  the slot reads, under the names `inspect_slots` gives them (`Occupied`, `Quantity`...).
+- `atmosphere`, compact (pressure, temperature, total moles, volume, liquid volume, and each gas or liquid held):
+  `{}` the id's own (a thing's internal atmosphere, a pipe's or landing pad piece's network, a pipe network id, an
+  atmosphere id); `{of: "internal"}` only the thing's internal one; `{port: n}` the pipe network joined at a device's
+  port `n`, the end index `connections` lists. A port follows the network through rebuilds, so a script need not keep
+  network ids. A device's connected networks are not its own: ask for them by port.
+- `reagents: true`: the total and each reagent, as the `reagents` tool.
+
+`include: ["clock"]` adds `clock`, as `game_clock`.
+
+```json
+{"gateway_id": "world", "clock": {"game_time_s": 84211.5, "paused": false, "time_of_day_ratio": 0.31, "days_past": 12},
+ "count": 3, "success_count": 3, "error_count": 0,
+ "results": [
+   {"index": 0, "ok": true, "reference_id": "811234",
+    "logic": {"Temperature": 881.2, "Pressure": 2604.1, "RatioOxygen": 0.005, "280": 0},
+    "slots": [{"index": 0, "logic": {"Occupied": 1, "OccupantHash": 1758427767, "Quantity": 50}}],
+    "atmosphere": {"source": "internal", "atmosphere_id": "811235", "volume_l": 1000, "pressure_kpa": 2604.1,
+                   "temperature_k": 881.2, "total_mol": 353.0, "liquid_volume_l": 0,
+                   "contents": [{"gas": "Methane", "state": "gas", "amount_mol": 7.0}]},
+    "reagents": {"total": 0, "reagents": []}},
+   {"index": 1, "ok": true, "reference_id": "811410",
+    "atmosphere": {"source": "pipe_network", "atmosphere_id": "900121", "network_id": "900120", "...": "..."}},
+   {"index": 2, "ok": true, "reference_id": "811300", "slots": [{"index": 0, "logic": {"Occupied": 0, "...": 0}}]}]}
+```
+
+- **Keys are what you sent.** `"280"` comes back as `"280"`, `"pressure"` as `"pressure"`: the logic type enum has
+  aliases that share a number, so the mod never renames. The same string twice in one list is refused.
+- **Errors stay small.** An id that names nothing fails its item (`ok: false`, `error`, `thing_not_found`). A part that
+  cannot be read at all goes in the item's `errors` by part name (`logic` and `slots`: `device_not_found` when the
+  device is out of the gateway's scope or not a device; `atmosphere`: `no_atmosphere`, `port_not_joined`). A logic
+  type that does not read goes in `logic_errors` under its name; a missing slot is that slot's `error`
+  (`slot_not_found`). Codes and messages are the single tools'. Parts not asked for and empty error maps are left out.
+- **Bounds.** At most 128 items, 64 logic types per item and per slot, 16 slots per item, 1,024 values in all (a slot
+  without `logic` counts 32). Over a bound, an unknown key in an item, slot or atmosphere, or a slot index given twice
+  is `invalid_argument` and nothing is read.
+- Read only. Writes stay with `write_logic_many`.
 
 ## Rockets and umbilicals
 

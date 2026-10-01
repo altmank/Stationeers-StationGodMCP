@@ -28,6 +28,13 @@ internal static class ReagentsApi
         return new ReagentsView(GameLookup.ViewOf(thing), Total(mixture), ReadReagents(mixture));
     }
 
+    /// <summary>The thing's total and reagents, as Handle reports them.</summary>
+    internal static ReagentsReadView ReadingOf(Thing thing)
+    {
+        ReagentMixture? mixture = thing.ReagentMixture;
+        return new ReagentsReadView(Total(mixture), ReadReagents(mixture));
+    }
+
     private static double Total(ReagentMixture? mixture) => mixture?.TotalReagents ?? 0.0;
 
     private static List<ReagentView> ReadReagents(ReagentMixture? mixture)

@@ -14,7 +14,9 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class GameClockApi
 {
-    internal static GameClockView Handle(Args args) =>
+    internal static GameClockView Handle(Args args) => Now();
+
+    internal static GameClockView Now() =>
         new GameClockView(GameManager.GameTime, WorldManager.IsGamePaused, OrbitalSimulation.TimeOfDay,
             WorldManager.DaysPast);
 }

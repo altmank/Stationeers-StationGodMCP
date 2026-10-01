@@ -12,6 +12,7 @@ using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -39,10 +40,12 @@ namespace StationGodMCP.Api;
 /// A thing in a slot keeps no position of its own, so position and distance are its outermost holder's
 /// (HolderChain.PlaceOf), as container_contents and find_things place it.
 ///
-/// Three forms: reference_id, one thing; reference_ids, up to 256, a result per id; neither, a scan of every damaged
-/// thing registered in OcclusionManager.AllThings, broken first, then worst first, paged; broken things are listed
-/// whatever their (healed) numbers say, and broken_only lists only them. The scan leaves out things being destroyed,
-/// indestructible damage states, entities (see player_vitals) and organs.
+/// Four forms: reference_id, one thing; reference_ids, up to 256, a result per id; network_id, every piece of one pipe,
+/// cable or chute network (its StructureList; devices are not pieces), worst first, paged, damaged_only keeping the
+/// damaged and broken ones; none of them, a scan of every damaged thing registered in OcclusionManager.AllThings,
+/// broken first, then worst first, paged; broken things are listed whatever their (healed) numbers say, and
+/// broken_only lists only them. The scan leaves out things being destroyed, indestructible damage states, entities
+/// (see player_vitals) and organs.
 /// </summary>
 internal static class ThingHealthApi
 {
@@ -56,11 +59,45 @@ internal static class ThingHealthApi
                 return HealthReader.Read(GameLookup.RequireThing(one.Id), PlayerOrigin.Current());
             case HealthRequest.Many many:
                 return ReadMany(many.Ids);
+            case HealthRequest.Network network:
+                return ReadNetwork(network);
             case HealthRequest.Scan scan:
                 return HealthScanner.Scan(scan);
             default:
                 throw ApiErrors.InvalidArgument("Unknown thing_health form.");
         }
+    }
+
+    private static HealthNetworkView ReadNetwork(HealthRequest.Network request)
+    {
+        UpgradeFamily family = request.Kind switch
+        {
+            "cable" => new CableFamily(),
+            "chute" => new ChuteFamily(),
+            _ => new PipeFamily(),
+        };
+        ThingId id = NetworkHandles.Resolve(request.Handle, "network_id", family);
+        List<SmallGrid> members = family.NetworkMembers(id);
+        List<Thing> pieces = new List<Thing>(members.Count);
+        foreach (SmallGrid member in members)
+        {
+            if (member != null && !member.IsBeingDestroyed)
+            {
+                pieces.Add(member);
+            }
+        }
+
+        PlayerOrigin origin = PlayerOrigin.Current();
+        List<Thing> ranked = HealthScanner.WorstFirst(pieces, request.DamagedOnly);
+        Slice<Thing> page = Slice<Thing>.Of(ranked, request.Page);
+        List<HealthView> views = new List<HealthView>(page.Items.Count);
+        foreach (Thing thing in page.Items)
+        {
+            views.Add(HealthReader.Read(thing, origin));
+        }
+
+        return new HealthNetworkView(id, family.NetworkKind, pieces.Count, request.DamagedOnly,
+            Slice<HealthView>.Page(views, request.Page, page.Total));
     }
 
     private static BatchResultView ReadMany(JArray ids)
@@ -100,14 +137,26 @@ internal abstract class HealthRequest
     {
     }
 
+    private static readonly string[] NetworkOnly = { "network_id", "kind", "damaged_only" };
+
     internal static HealthRequest Parse(Args args)
     {
         bool one = args.Has("reference_id");
         bool many = args.Has("reference_ids");
-        if (one && many)
+        bool network = args.Has("network_id");
+        if ((one ? 1 : 0) + (many ? 1 : 0) + (network ? 1 : 0) > 1)
         {
-            throw ApiErrors.InvalidArgument("Pass reference_id or reference_ids, not both.");
+            throw ApiErrors.InvalidArgument("Pass one of reference_id, reference_ids or network_id.");
         }
+
+        if (network)
+        {
+            args.Reject("network_id", "min_damage_ratio", "min_ratio", "structures_only", "broken_only",
+                "near_player_m");
+            return Network.From(args);
+        }
+
+        args.Reject(one ? "reference_id" : many ? "reference_ids" : "the scan", "kind", "damaged_only");
 
         if (one || many)
         {
@@ -138,6 +187,40 @@ internal abstract class HealthRequest
         }
 
         internal JArray Ids { get; }
+    }
+
+    /// <summary>Every piece of one network: network_id (a handle), kind, damaged_only, paged.</summary>
+    internal sealed class Network : HealthRequest
+    {
+        private Network(JToken handle, string kind, bool damagedOnly, PageRequest page)
+        {
+            Handle = handle;
+            Kind = kind;
+            DamagedOnly = damagedOnly;
+            Page = page;
+        }
+
+        internal JToken Handle { get; }
+
+        /// <summary>pipe, cable or chute.</summary>
+        internal string Kind { get; }
+
+        /// <summary>Only the damaged and broken pieces (as the scan lists them).</summary>
+        internal bool DamagedOnly { get; }
+
+        internal PageRequest Page { get; }
+
+        internal static Network From(Args args)
+        {
+            string kind = (args.OptionalString("kind") ?? "pipe").Trim().ToLowerInvariant();
+            if (kind != "pipe" && kind != "cable" && kind != "chute")
+            {
+                throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.");
+            }
+
+            return new Network(args.Optional("network_id")!, kind, args.OptionalBool("damaged_only") ?? false,
+                PageRequest.From(args, Scan.DefaultLimit, Scan.MaximumLimit));
+        }
     }
 
     internal sealed class Scan : HealthRequest
@@ -279,6 +362,38 @@ internal static class HealthScanner
         Slice<HealthRow> rowPage = Slice<HealthRow>.Of(rows, scan.Page);
         return new HealthScanView(ReadPage(rowPage, scan.Page, origin), structures, broken, things.Count,
             scan.MinDamageRatio, origin.View);
+    }
+
+    /// <summary>
+    /// The things worst first (broken, then highest ratio, then highest total, then lowest id), as the scan orders
+    /// them; damagedOnly keeps only what the scan would list (broken, or damaged above 0).
+    /// </summary>
+    internal static List<Thing> WorstFirst(List<Thing> things, bool damagedOnly)
+    {
+        List<HealthRow> rows = new List<HealthRow>(things.Count);
+        foreach (Thing thing in things)
+        {
+            IndestructableDamageState damage = thing.DamageState;
+            bool broken = Wrecks.IsBroken(thing);
+            bool measurable = damage != null && !damage.Indestructable && damage.MaxDamage > 0f;
+            float ratio = measurable ? damage!.TotalRatio : 0f;
+            if (damagedOnly && !HealthCondition.ScanKeeps(broken, measurable, ratio, 0.0, false))
+            {
+                continue;
+            }
+
+            rows.Add(new HealthRow(thing, (float)HealthCondition.RankRatio(broken, ratio),
+                measurable ? damage!.Total : 0f));
+        }
+
+        rows.Sort(static (a, b) => HealthRow.WorstFirst(a, b));
+        List<Thing> ranked = new List<Thing>(rows.Count);
+        foreach (HealthRow row in rows)
+        {
+            ranked.Add(row.Thing);
+        }
+
+        return ranked;
     }
 
     private static Slice<HealthView> ReadPage(Slice<HealthRow> rows, PageRequest page, PlayerOrigin origin)

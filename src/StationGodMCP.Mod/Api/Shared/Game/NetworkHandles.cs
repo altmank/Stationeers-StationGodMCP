@@ -150,7 +150,11 @@ internal static class NetworkHandles
             $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} piece nor a device.");
     }
 
-    private static ThingId OfPort(Thing thing, int port, string name, UpgradeFamily family)
+    /// <summary>
+    /// The family's network joined at a device's port (Device.OpenEnds[port]), or a piece's own network; not recorded
+    /// in resolved_networks.
+    /// </summary>
+    internal static ThingId OfPort(Thing thing, int port, string name, UpgradeFamily family)
     {
         if (!(thing is Device device))
         {

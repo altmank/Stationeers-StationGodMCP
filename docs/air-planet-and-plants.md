@@ -25,7 +25,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | `reagents` | What a furnace, centrifuge, mixer or microwave holds, reagent by reagent (logic only gives the total). | `reference_id` |
 | `player_vitals` | Your hunger and thirst: stores, capacities, drain rates and time until empty, awake and asleep. | none |
 | `ignition_risk` | Whether anything you carry would catch fire in the air around you, by the game's fire rule. | `include_prefabs` |
-| `thing_health` | The damage of any thing, or every damaged or broken thing in the world, broken first, then worst first. | `reference_id`, `reference_ids`, or none; `structures_only`, `broken_only`, `min_damage_ratio` |
+| `thing_health` | The damage of any thing, of every piece of one network, or every damaged or broken thing in the world, broken first, then worst first. | `reference_id`, `reference_ids`, `network_id` (with `kind`, `damaged_only`), or none; `structures_only`, `broken_only`, `min_damage_ratio` |
 
 ## Rooms
 
@@ -150,6 +150,10 @@ Host only.
   (`custom_name`) and the cable, pipe and chute networks they are on (`networks`). A thing in a slot (a stored item, a
   planted plant) reports its outermost holder's `position`, so `near_player_m` finds it. `remove_structure` with
   `allow_broken` removes them.
+- `network_id` (1.10.0+) reads every piece of one network (`kind`: `pipe`, the default, `cable` or `chute`; devices
+  are not pieces), worst first, paged like the scan. `damaged_only: true` keeps the damaged and broken ones, so a whole
+  plant line's pipes are one small call: `{network_id: {reference_id: "<device>", port: 1}, damaged_only: true}`.
+  `network_id` takes a network id, a piece or device on it, or `{reference_id, port}`; `pieces` counts them all.
 
 ## Deep-miner spots
 

@@ -19,8 +19,6 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class InspectSlotsApi
 {
-    private static readonly LogicSlotType[] DistinctSlotTypes = BuildDistinct();
-
     // LogicTypeView is immutable: one per slot logic type, made on first use.
     private static readonly ConcurrentDictionary<LogicSlotType, LogicTypeView> SlotTypeViews =
         new ConcurrentDictionary<LogicSlotType, LogicTypeView>();
@@ -34,10 +32,9 @@ internal static class InspectSlotsApi
         ScopedTarget device = Devices.Require(scope, args.ThingId("reference_id"));
         int? requested = args.OptionalInt("slot_index", 0, int.MaxValue);
         int total = Devices.TotalSlots(device);
-        if (requested.HasValue && requested.Value >= total)
+        if (requested.HasValue)
         {
-            throw ApiErrors.Refused("slot_not_found",
-                $"Device {device.ReferenceId} does not expose slot index {requested.Value}.");
+            SlotLogicTypes.RequireSlot(device, requested.Value);
         }
 
         int first = requested ?? 0;
@@ -49,21 +46,6 @@ internal static class InspectSlotsApi
         }
 
         return new InspectSlotsView(scope.Id, Devices.ViewOf(device, scope), slots, total);
-    }
-
-    private static LogicSlotType[] BuildDistinct()
-    {
-        List<LogicSlotType> types = new List<LogicSlotType>();
-        HashSet<ushort> seen = new HashSet<ushort>();
-        foreach (LogicSlotType type in Enum.GetValues(typeof(LogicSlotType)))
-        {
-            if (seen.Add((ushort)type))
-            {
-                types.Add(type);
-            }
-        }
-
-        return types.ToArray();
     }
 
     private static Slot? LogicalSlot(ScopedTarget device, int index)
@@ -98,7 +80,7 @@ internal static class InspectSlotsApi
     private static List<SlotLogicView> SlotLogic(ScopedTarget device, int index)
     {
         List<SlotLogicView> values = new List<SlotLogicView>();
-        foreach (LogicSlotType type in DistinctSlotTypes)
+        foreach (LogicSlotType type in SlotLogicTypes.Distinct)
         {
             try
             {

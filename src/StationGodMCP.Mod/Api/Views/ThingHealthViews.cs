@@ -291,3 +291,44 @@ internal sealed class HealthScanView
 
     public LocalPlayerView? LocalPlayer { get; }
 }
+
+/// <summary>thing_health network_id: the network's pieces, worst first, paged (only the damaged ones with damaged_only).</summary>
+internal sealed class HealthNetworkView
+{
+    internal HealthNetworkView(ThingId networkId, string kind, int pieces, bool damagedOnly, Slice<HealthView> page)
+    {
+        NetworkId = networkId;
+        Kind = kind;
+        Pieces = pieces;
+        DamagedOnly = damagedOnly;
+        Things = page.Items;
+        Count = page.Items.Count;
+        Total = page.Total;
+        Offset = page.Offset;
+        Limit = page.Limit;
+        HasMore = page.HasMore;
+    }
+
+    public ThingId NetworkId { get; }
+
+    /// <summary>pipe, cable or chute.</summary>
+    public string Kind { get; }
+
+    /// <summary>Every piece on the network, damaged or not.</summary>
+    public int Pieces { get; }
+
+    public bool DamagedOnly { get; }
+
+    public List<HealthView> Things { get; }
+
+    public int Count { get; }
+
+    /// <summary>The pieces listed on every page: all of them, or the damaged and broken ones with damaged_only.</summary>
+    public int Total { get; }
+
+    public int Offset { get; }
+
+    public int Limit { get; }
+
+    public bool HasMore { get; }
+}

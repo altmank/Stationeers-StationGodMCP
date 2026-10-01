@@ -17,8 +17,14 @@ internal static class LogicOps
     {
         ScopedTarget device = Devices.Require(scope, args.ThingId("reference_id"));
         LogicType type = LogicTypes.Parse(args.Optional("logic_type"));
+        return new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(type), ReadValue(device, type));
+    }
+
+    /// <summary>One value as read_logic reads it: refused when the device does not expose the type as readable.</summary>
+    internal static double ReadValue(ScopedTarget device, LogicType type)
+    {
         LogicTypes.RequireReadable(device, type);
-        return new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(type), ValueOf(device, type));
+        return ValueOf(device, type);
     }
 
     internal static LogicWrite Write(DeviceScope scope, Args args)

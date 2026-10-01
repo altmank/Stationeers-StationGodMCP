@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.10.0
+
+2026-10-01. Performance, part 2: one read per tick. 91 tools.
+
+- **`read_devices` (new).** A control loop's whole read in one call, every item read in the same frame. Up to 128
+  items, each a `reference_id` with any of: `logic` (logic types, read as `read_logic`), `slots` (`{index, logic}`, slot
+  logic as a chip's `ls`; without `logic` every type the slot reads, by `inspect_slots`' names), `atmosphere` (compact:
+  `{}` the id's own, `{of: "internal"}`, or `{port: n}` the pipe network at a device port, which follows rebuilds) and
+  `reagents: true`; `include: ["clock"]` adds the game clock. Values are keyed by the string sent (`"280"` stays
+  `"280"`). An id that names nothing fails its item; a part that cannot be read fails in the item's `errors`; a logic
+  type that does not read fails in `logic_errors`, with the single tools' codes and messages. At most 1,024 values;
+  unknown keys inside items are refused. It replaces a card's `read_logic_many`, one `inspect_slots` per slot, one
+  `atmosphere_contents` per pipe line (and the `connections` call to find it), `reagents` and `game_clock`.
+- **`thing_health` `network_id` (new form).** Every piece of one pipe, cable or chute network (`kind`, default pipe),
+  worst first, paged; `damaged_only: true` lists only damaged and broken ones. Replaces listing a line's members and
+  reading them 256 ids at a time.
+- `tools/read_devices_equivalence.py`: a read-only check that `read_devices` answers what the single tools answer for
+  the same ids.
+
 ## 1.9.1
 
 2026-10-01. Performance, part 1: measure what the mod costs the game, and tidy what it leaves behind. 90 tools.

@@ -113,8 +113,45 @@ internal static class AtmosphereOwners
         }
 
         GasMixture mixture = atmosphere.GasMixture;
-        double minimum = Chemistry.MINIMUM_QUANTITY_MOLES.ToDouble();
         List<HeldGasView> contents = new List<HeldGasView>();
+        foreach (HeldGas held in Held(mixture))
+        {
+            contents.Add(new HeldGasView(held.Name, Text.PlainName(held.Mole.DisplayName), held.Liquid, held.Moles,
+                held.LiquidL));
+        }
+
+        return new HeldAtmosphereView(new ThingId(atmosphere.ReferenceId), StateOf(atmosphere), contents,
+            WaterOf(mixture));
+    }
+
+    /// <summary>
+    /// The same figures as ContentsOf, compact: no display names, no water; source and network id as given.
+    /// </summary>
+    internal static AtmosphereReadView CompactOf(Atmosphere atmosphere, string source, ThingId? networkId)
+    {
+        List<CompactGasView> contents = new List<CompactGasView>();
+        foreach (HeldGas held in Held(atmosphere.GasMixture))
+        {
+            contents.Add(new CompactGasView(held.Name, held.Liquid, held.Moles, held.LiquidL));
+        }
+
+        return new AtmosphereReadView(source, new ThingId(atmosphere.ReferenceId), networkId, StateOf(atmosphere),
+            contents);
+    }
+
+    private static AtmosphereState StateOf(Atmosphere atmosphere)
+    {
+        GasMixture mixture = atmosphere.GasMixture;
+        return new AtmosphereState(atmosphere.Volume.ToDouble(), atmosphere.PressureGassesAndLiquids.ToDouble(),
+            atmosphere.Temperature.ToDouble(), mixture.GetTotalMolesGassesAndLiquids.ToDouble(),
+            mixture.VolumeLiquids.ToDouble());
+    }
+
+    // Each gas type in the game's order held above Chemistry.MINIMUM_QUANTITY_MOLES.
+    private static List<HeldGas> Held(GasMixture mixture)
+    {
+        double minimum = Chemistry.MINIMUM_QUANTITY_MOLES.ToDouble();
+        List<HeldGas> held = new List<HeldGas>();
         foreach (Chemistry.GasType type in GasTypes.All)
         {
             Mole mole = mixture.GetMoleValue(type);
@@ -122,16 +159,34 @@ internal static class AtmosphereOwners
             if (moles > minimum)
             {
                 bool liquid = Mole.MatterState(type) == AtmosphereHelper.MatterState.Liquid;
-                contents.Add(new HeldGasView(EnumNames<Chemistry.GasType>.Of(type) ?? type.ToString(), Text.PlainName(mole.DisplayName),
-                    liquid, moles,
+                held.Add(new HeldGas(EnumNames<Chemistry.GasType>.Of(type) ?? type.ToString(), mole, liquid, moles,
                     liquid ? mole.Volume.ToDouble() : null));
             }
         }
 
-        AtmosphereState state = new AtmosphereState(atmosphere.Volume.ToDouble(),
-            atmosphere.PressureGassesAndLiquids.ToDouble(), atmosphere.Temperature.ToDouble(),
-            mixture.GetTotalMolesGassesAndLiquids.ToDouble(), mixture.VolumeLiquids.ToDouble());
-        return new HeldAtmosphereView(new ThingId(atmosphere.ReferenceId), state, contents, WaterOf(mixture));
+        return held;
+    }
+
+    private readonly struct HeldGas
+    {
+        internal HeldGas(string name, Mole mole, bool liquid, double moles, double? liquidL)
+        {
+            Name = name;
+            Mole = mole;
+            Liquid = liquid;
+            Moles = moles;
+            LiquidL = liquidL;
+        }
+
+        internal string Name { get; }
+
+        internal Mole Mole { get; }
+
+        internal bool Liquid { get; }
+
+        internal double Moles { get; }
+
+        internal double? LiquidL { get; }
     }
 
     /// <summary>The water in a mixture: liquid (and the hydration drinking it gives), polluted, and steam.</summary>

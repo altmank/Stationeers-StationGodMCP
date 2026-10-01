@@ -33,6 +33,7 @@ internal static class ApiHost
             ["write_logic"] = static args => WriteLogicApi.Handle(args),
             ["read_logic_many"] = static args => ReadLogicManyApi.Handle(args),
             ["write_logic_many"] = static args => WriteLogicManyApi.Handle(args),
+            ["read_devices"] = static args => ReadDevicesApi.Handle(args),
             ["read_memory"] = static args => ReadMemoryApi.Handle(args),
             ["write_memory"] = static args => WriteMemoryApi.Handle(args),
             ["inspect_slots"] = static args => InspectSlotsApi.Handle(args),

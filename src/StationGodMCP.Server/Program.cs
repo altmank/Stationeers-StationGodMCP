@@ -11,7 +11,7 @@ internal static class Program
 {
     private const string ServerName = "StationGodMCP";
     // Reported in the initialize response. build.ps1 checks it matches StationGodMCP.Server.csproj and the mod.
-    private const string ServerVersion = "1.9.1";
+    private const string ServerVersion = "1.10.0";
     private const string ProtocolVersion = "2025-06-18";
 
     private const string Instructions =
@@ -589,6 +589,7 @@ internal static class ToolDefinitions
         "write_logic",
         "read_logic_many",
         "write_logic_many",
+        "read_devices",
         "read_memory",
         "write_memory",
         "inspect_slots",
@@ -756,6 +757,11 @@ internal static class ToolDefinitions
             "Write up to 256 generic logic values in order in one main-thread request. Each operation returns its own result, by index: {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value as write_logic reads it back), or on failure {index, ok: false, reference_id, logic_type, error: {code, message}} where reference_id and logic_type are null when the entry's own could not be read.",
             BulkLogicSchema("writes", includeValue: true),
             readOnly: false),
+        Tool(
+            "read_devices",
+            "Read many things in one request, every item in the same frame (one game update; not tied to the atmospherics tick), for a control loop's whole read per tick (1.10.0+). Up to 128 items, each {reference_id, logic?, slots?, atmosphere?, reagents?} with at least one part: logic, logic types (name or number, up to 64) read as read_logic reads them; slots, up to 16 {index, logic?}, slot logic as a chip's ls reads it (without logic: every slot logic type the slot reads, by the names inspect_slots gives); atmosphere, compact: {} the id's own (a thing's internal atmosphere, a pipe's or landing pad piece's network, a pipe network id, an atmosphere id), {of: \"internal\"} the thing's internal one only, {port: n} the pipe network joined at port n of a device (its connection end index, as connections numbers the ends); reagents: true, as the reagents tool. Every value comes back keyed by the string sent (\"Pressure\", \"280\"), never renamed. At most 1,024 values in all (a slot without logic counts 32); over any bound, an unknown key in an item, slot or atmosphere, a name sent twice in one list or a slot index given twice is invalid_argument and nothing is read. include: [\"clock\"] adds clock, as game_clock. Reply: gateway_id, clock, count, success_count, error_count, results: per item {index, ok, reference_id, logic: {sent: value}, logic_errors: {sent: {code, message}}, slots: [{index, logic, logic_errors} or {index, error}], atmosphere: {source (internal, pipe_network or landing_pad_network), atmosphere_id, network_id (a network's), volume_l, pressure_kpa, temperature_k, total_mol, liquid_volume_l, contents: [{gas, state, amount_mol, liquid_l (liquids)}]}, reagents: {total, reagents}, errors: {part: {code, message}} for a part that failed whole (device_not_found when the device is out of scope or not a device, no_atmosphere, port_not_joined)}; parts not asked and empty error maps are left out. An id that names no thing, pipe or landing pad network or atmosphere fails its item: {index, ok: false, reference_id, error} (thing_not_found). Error codes and messages are the single tools' (invalid_logic_type, logic_not_readable, read_failed, slot_not_found). NaN and the infinities are the strings \"NaN\", \"Infinity\", \"-Infinity\". Read only.",
+            ReadDevicesSchema(),
+            readOnly: true),
         Tool(
             "read_memory",
             "Read a contiguous range of up to 512 values from a visible device with readable memory, as a chip's get instruction does: an IC Housing or suit (its chip's stack), a Logic Sorter, a satellite dish, a fabricator, rocket avionics and the like. A Logic Memory has only its Setting, no memory (memory_not_readable). Refused: a range past the memory's last address (stack_size in the reply; invalid_argument), and an IC Housing or suit with no chip (no_programmable_chip).",
@@ -1039,7 +1045,7 @@ internal static class ToolDefinitions
             readOnly: false),
         Tool(
             "thing_health",
-            "The damage state of any thing (solar panel, pipe, cable, wall, frame, door, vent, device, item), read from the game's own DamageState: no LogicType exposes damage. Three forms. reference_id: that one thing. reference_ids: up to 256 things, a result per id with index and ok, and a per-item error (thing_not_found, invalid_argument for an id that is not a decimal string) instead of failing the call. Neither: scan every thing in the world and list the damaged and broken ones, broken first, then worst first, paged (broken_only: only broken ones); the scan skips things being destroyed, indestructible things, players and animals, and organs, and counts decaying food and hurt plants as damaged items (use structures_only for the base alone). Each thing has reference_id, prefab_name, display_name, kind (structure, item or other), type (runtime class), damage_state (destructible, indestructible or none), damage_state_class, max_damage (health capacity), total_damage (the sum the game counts: brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (total_damage / max_damage: 0 like new, 1 destroyed), health_percent (100 - damage_ratio * 100 rounded, as the solar panel tooltip shows), damage (each type), is_broken (at max damage, a structure in its broken build state, a burst pipe: pipe_burst not none; bursting leaves a pipe's damage at 0, or a burnt cable: the separate undamaged piece, e.g. StructureCableStraightBurnt, an overload leaves, carrying no power), broken_build_state (structures: below build state 0, the broken mesh the game swaps in; null for other things), condition (1.4.3+: broken, damaged, intact, indestructible or none; broken wins, because the game heals a structure it breaks to 0 damage, so a broken vent reads 100 % health, and a burst pipe or a burnt cable reads 0 damage and 100 % health: the numbers stay the game's own, condition and is_broken are the signal), custom_name (the Labeller name), networks (structures: [{kind, id}] of the cable, pipe and chute networks it is part of or its ports join), being_destroyed, band (solar panels only: the tooltip colour green, yellow over 0.25, red over 0.75), pipe_burst (pipes only: none, pressure, liquid or solid), position (a thing in a slot, e.g. a stored item or a planted plant, is placed by its outermost holder) and distance_m from the local player. An indestructible thing (the modded Force-Field Door, anything marked Indestructable) reports damage_state indestructible with total_damage, damage_ratio and health_percent null, never a fake 0. A solar panel generates (1 - damage_ratio) of its undamaged output. The scan also returns count, total (matches on all pages), structures, broken, scanned, min_damage_ratio, offset, limit, has_more and local_player. Read only; no gateway is needed.",
+            "The damage state of any thing (solar panel, pipe, cable, wall, frame, door, vent, device, item), read from the game's own DamageState: no LogicType exposes damage. Four forms. reference_id: that one thing. reference_ids: up to 256 things, a result per id with index and ok, and a per-item error (thing_not_found, invalid_argument for an id that is not a decimal string) instead of failing the call. network_id (1.10.0+): every piece of one pipe (default), cable or chute network (kind), devices left out, worst first, paged (limit, offset); damaged_only lists only damaged and broken pieces; replies network_id, kind, pieces (every piece), damaged_only, things, count, total, offset, limit, has_more; network_not_found when the network is gone. None of them: scan every thing in the world and list the damaged and broken ones, broken first, then worst first, paged (broken_only: only broken ones); the scan skips things being destroyed, indestructible things, players and animals, and organs, and counts decaying food and hurt plants as damaged items (use structures_only for the base alone). Each thing has reference_id, prefab_name, display_name, kind (structure, item or other), type (runtime class), damage_state (destructible, indestructible or none), damage_state_class, max_damage (health capacity), total_damage (the sum the game counts: brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (total_damage / max_damage: 0 like new, 1 destroyed), health_percent (100 - damage_ratio * 100 rounded, as the solar panel tooltip shows), damage (each type), is_broken (at max damage, a structure in its broken build state, a burst pipe: pipe_burst not none; bursting leaves a pipe's damage at 0, or a burnt cable: the separate undamaged piece, e.g. StructureCableStraightBurnt, an overload leaves, carrying no power), broken_build_state (structures: below build state 0, the broken mesh the game swaps in; null for other things), condition (1.4.3+: broken, damaged, intact, indestructible or none; broken wins, because the game heals a structure it breaks to 0 damage, so a broken vent reads 100 % health, and a burst pipe or a burnt cable reads 0 damage and 100 % health: the numbers stay the game's own, condition and is_broken are the signal), custom_name (the Labeller name), networks (structures: [{kind, id}] of the cable, pipe and chute networks it is part of or its ports join), being_destroyed, band (solar panels only: the tooltip colour green, yellow over 0.25, red over 0.75), pipe_burst (pipes only: none, pressure, liquid or solid), position (a thing in a slot, e.g. a stored item or a planted plant, is placed by its outermost holder) and distance_m from the local player. An indestructible thing (the modded Force-Field Door, anything marked Indestructable) reports damage_state indestructible with total_damage, damage_ratio and health_percent null, never a fake 0. A solar panel generates (1 - damage_ratio) of its undamaged output. The scan also returns count, total (matches on all pages), structures, broken, scanned, min_damage_ratio, offset, limit, has_more and local_player. Read only; no gateway is needed.",
             new
             {
                 type = "object",
@@ -1047,13 +1053,16 @@ internal static class ToolDefinitions
                 {
                     reference_id = new { type = "string", description = "Reference ID of one thing (from find_items, list_devices, list_containers)." },
                     reference_ids = new { type = "array", minItems = 1, maxItems = 256, items = new { type = "string" }, description = "Reference IDs of up to 256 things, for one call per card." },
+                    network_id = new { description = "Network form (1.10.0+): every piece of one network, worst first, paged. A network id, a piece or device on it (a device on one network of the kind), or {reference_id, port}; resolved_networks names what it resolved to.", oneOf = new object[] { new { type = "string" }, new { type = "object", properties = new { reference_id = new { type = "string" }, port = new { type = "integer", minimum = 0, maximum = 64 } }, required = new[] { "reference_id" }, additionalProperties = false } } },
+                    kind = new { type = "string", @enum = new[] { "pipe", "cable", "chute" }, description = "Network form: the network's kind, default pipe." },
+                    damaged_only = new { type = "boolean", description = "Network form: list only damaged and broken pieces (as the scan lists them). Default false." },
                     min_damage_ratio = new { type = "number", minimum = 0, exclusiveMaximum = 1, description = "Scan only: list things whose damage_ratio is above this (0.25 = the yellow band, 0.75 = red). Default 0, any damage. The older name min_ratio is still read." },
                     min_ratio = new { type = "number", minimum = 0, exclusiveMaximum = 1, deprecated = true, description = "Deprecated: the older name of min_damage_ratio, still read (min_damage_ratio wins when both are given)." },
                     structures_only = new { type = "boolean", description = "Scan only: leave items out. Default false." },
                     broken_only = new { type = "boolean", description = "Scan only: list only things in the game's broken state (condition broken), whatever their damage numbers. Default false." },
                     near_player_m = new { type = "number", exclusiveMinimum = 0, description = "Scan only: only things within this many metres of the local player." },
-                    limit = new { type = "integer", minimum = 1, maximum = 500, description = "Scan only: things per page, default 200." },
-                    offset = new { type = "integer", minimum = 0, description = "Scan only: things to skip, for paging." }
+                    limit = new { type = "integer", minimum = 1, maximum = 500, description = "Scan and network forms: things per page, default 200." },
+                    offset = new { type = "integer", minimum = 0, description = "Scan and network forms: things to skip, for paging." }
                 },
                 additionalProperties = false
             },
@@ -2471,6 +2480,95 @@ internal static class ToolDefinitions
             type = "object",
             properties,
             required = new[] { arrayName },
+            additionalProperties = false
+        };
+    }
+
+    private static object ReadDevicesSchema()
+    {
+        return new
+        {
+            type = "object",
+            properties = new
+            {
+                gateway_id = new { type = "string", description = GatewayIdDescription },
+                include = new
+                {
+                    type = "array",
+                    items = new { type = "string", @enum = new[] { "clock" } },
+                    description = "clock: add the game clock, as game_clock reads it, in the same frame."
+                },
+                items = new
+                {
+                    type = "array",
+                    minItems = 1,
+                    maxItems = 128,
+                    description = "The things to read, each with at least one part.",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            reference_id = new { type = "string", description = "A device or thing (for atmosphere alone also a pipe network or atmosphere id)." },
+                            logic = new
+                            {
+                                type = "array",
+                                minItems = 1,
+                                maxItems = 64,
+                                items = LogicTypeSchema(),
+                                description = "Logic types to read; each value comes back under the string sent."
+                            },
+                            slots = new
+                            {
+                                type = "array",
+                                minItems = 1,
+                                maxItems = 16,
+                                items = new
+                                {
+                                    type = "object",
+                                    properties = new
+                                    {
+                                        index = new { type = "integer", minimum = 0, description = "Logical slot index, as inspect_slots numbers them." },
+                                        logic = new
+                                        {
+                                            type = "array",
+                                            minItems = 1,
+                                            maxItems = 64,
+                                            items = new
+                                            {
+                                                oneOf = new object[]
+                                                {
+                                                    new { type = "string" },
+                                                    new { type = "integer", minimum = 0, maximum = 65535 }
+                                                },
+                                                description = "LogicSlotType enum name or numeric ushort ID."
+                                            },
+                                            description = "Slot logic types to read; omit for every one the slot reads."
+                                        }
+                                    },
+                                    required = new[] { "index" },
+                                    additionalProperties = false
+                                }
+                            },
+                            atmosphere = new
+                            {
+                                type = "object",
+                                properties = new
+                                {
+                                    of = new { type = "string", @enum = new[] { "internal" }, description = "internal: only the thing's internal atmosphere." },
+                                    port = new { type = "integer", minimum = 0, maximum = 64, description = "A device's connection end index: the pipe network joined there." }
+                                },
+                                additionalProperties = false,
+                                description = "{} the id's own atmosphere, {of: \"internal\"} or {port: n}."
+                            },
+                            reagents = new { type = "boolean", description = "true: the reagents it holds, as the reagents tool." }
+                        },
+                        required = new[] { "reference_id" },
+                        additionalProperties = false
+                    }
+                }
+            },
+            required = new[] { "items" },
             additionalProperties = false
         };
     }
