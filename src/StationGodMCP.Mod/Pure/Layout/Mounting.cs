@@ -183,6 +183,7 @@ internal static class ConflictCodes
     internal const string CrossesWindow = "crosses_window";
     internal const string BlocksRouteCells = "blocks_route_cells";
     internal const string FrontBlocked = "front_blocked";
+    internal const string ControlsBlocked = "controls_blocked";
     internal const string FacesOutOfRoom = "faces_out_of_room";
     internal const string NotUpright = "not_upright";
 

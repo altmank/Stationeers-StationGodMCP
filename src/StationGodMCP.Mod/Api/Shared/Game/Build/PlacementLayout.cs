@@ -102,6 +102,11 @@ internal static class PlacementLayout
             FrontAndRoom(mount, small, own, facts, conflicts);
         }
 
+        if (turn != null)
+        {
+            ControlsAhead(prefab, turn, mount, small, large, facts, conflicts);
+        }
+
         if (turn != null && prefab is Device)
         {
             VisualUp up = PlacePlanner.VisualUpOf(prefab);
@@ -319,6 +324,164 @@ internal static class PlacementLayout
                 $"to face {outward.Opposite.Name} and mount it on the room's side of {mount.Plane}."));
         }
     }
+
+    /// <summary>
+    /// What stands right in front of the side its controls face (PrefabControls): another device or small-grid thing,
+    /// a chute, a frame's body, a frame or a wall on the plane in front of it. controls_blocked warns (info only when
+    /// the side is the forward fallback). A face-mounted piece whose controls face its front is front_blocked's.
+    /// </summary>
+    private static void ControlsAhead(Structure prefab, CubeRotation turn, MountRect? mount, List<GridCell> small,
+        List<GridCell> large, GridFacts facts, List<LayoutConflict> conflicts)
+    {
+        ControlFace? controls = PrefabControls.Of(prefab);
+        if (controls == null)
+        {
+            return;
+        }
+
+        GridStep face = turn.Turn(controls.Local);
+        if (mount != null && prefab.PlacementType == PlacementSnap.FaceMount && face.Index == mount.Outward.Index)
+        {
+            return;
+        }
+
+        long? id = null;
+        string? blocked = small.Count > 0 ? SmallAhead(face, small, facts, ref id)
+            : large.Count > 0 ? LargeAhead(face, large, facts, ref id)
+            : null;
+        if (blocked != null)
+        {
+            conflicts.Add(new LayoutConflict(ConflictCodes.ControlsBlocked,
+                controls.Fallback ? ConflictLevel.Info : ConflictLevel.Warning,
+                $"The side its controls face, {face.Name} ({controls.Source}), has {blocked} right in front of it.",
+                id));
+        }
+    }
+
+    private static string? SmallAhead(GridStep face, List<GridCell> small, GridFacts facts, ref long? id)
+    {
+        HashSet<GridCell> own = new HashSet<GridCell>(small);
+        foreach (GridCell cell in small)
+        {
+            GridCell front = face.From(cell);
+            if (own.Contains(front))
+            {
+                continue;
+            }
+
+            string? found = ThingIn(front, facts, ref id) ?? PlaneIn(front, face, facts, ref id);
+            if (found != null)
+            {
+                return found;
+            }
+
+            if (facts.Visibility(front) == CellVisibility.Inside)
+            {
+                return $"a frame's body (at {PieceShapes.CentreOf(front)})";
+            }
+        }
+
+        return null;
+    }
+
+    private static string? LargeAhead(GridStep face, List<GridCell> large, GridFacts facts, ref long? id)
+    {
+        HashSet<GridCell> own = new HashSet<GridCell>(large);
+        int nearIndex = face.Index % 2 == 0 ? 0 : SmallCellCode.PerAxis - 1;
+        int axis = face.Index / 2;
+        foreach (GridCell cell in large)
+        {
+            GridCell next = face.From(cell, SmallCellCode.PerAxis);
+            if (own.Contains(next))
+            {
+                continue;
+            }
+
+            string? wall = WallOn(facts.FaceStructures(cell, face), ref id);
+            if (wall != null)
+            {
+                return wall;
+            }
+
+            Frame? frame = facts.FrameAt(next);
+            if (frame != null)
+            {
+                id = frame.ReferenceId;
+                return $"a frame ({frame.PrefabName} {frame.ReferenceId})";
+            }
+
+            for (int index = 0; index < SmallCellCode.PerCell; index++)
+            {
+                GridCell nearSmall = SmallCellCode.SmallAt(next, index);
+                if (SmallCellCode.IndexOnAxis(Along(nearSmall, axis)) == nearIndex)
+                {
+                    string? thing = ThingIn(nearSmall, facts, ref id);
+                    if (thing != null)
+                    {
+                        return thing;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static string? ThingIn(GridCell small, GridFacts facts, ref long? id)
+    {
+        SmallOccupancy occupancy = facts.Occupancy(small);
+        if (!occupancy.Device && !occupancy.Other && !occupancy.Chute)
+        {
+            return null;
+        }
+
+        SmallGrid? thing = Blocker(facts.SmallAt(small));
+        id = thing != null ? thing.ReferenceId : (long?)null;
+        return thing != null ? $"{Names.Of(thing)} ({thing.PrefabName} {thing.ReferenceId})" : "something";
+    }
+
+    // A small cell on the plane across the face's axis: a wall on that plane, or a frame on its far side.
+    private static string? PlaneIn(GridCell small, GridStep face, GridFacts facts, ref long? id)
+    {
+        int axis = face.Index / 2;
+        if (SmallCellCode.IndexOnAxis(Along(small, axis)) != 0)
+        {
+            return null;
+        }
+
+        GridCell above = SmallCellCode.LargeOf(small);
+        GridStep minus = GridStep.All[axis * 2 + 1];
+        string? wall = WallOn(facts.FaceStructures(above, minus), ref id);
+        if (wall != null)
+        {
+            return wall;
+        }
+
+        Frame? frame = facts.FrameAt(face.Index % 2 == 0 ? above : minus.From(above, SmallCellCode.PerAxis));
+        if (frame == null)
+        {
+            return null;
+        }
+
+        id = frame.ReferenceId;
+        return $"a frame ({frame.PrefabName} {frame.ReferenceId})";
+    }
+
+    private static string? WallOn(List<Structure> structures, ref long? id)
+    {
+        foreach (Structure structure in structures)
+        {
+            if (!Openings.IsDoor(structure))
+            {
+                id = structure.ReferenceId;
+                return $"a wall ({structure.PrefabName} {structure.ReferenceId})";
+            }
+        }
+
+        return null;
+    }
+
+    private static int Along(GridCell cell, int axis) => axis == 0 ? cell.X : axis == 1 ? cell.Y : cell.Z;
 
     private static List<PortCheckView>? PortChecks(Structure prefab, Vector3 position, Quaternion rotation,
         HashSet<GridCell> own, GridFacts facts, HashSet<long> ignore)
