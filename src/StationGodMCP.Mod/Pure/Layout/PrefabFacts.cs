@@ -49,7 +49,8 @@ internal sealed class VisualUp
     {
         new VisualUp("StructureCompactFiltration", GridStep.All[3], true,
             "LIVE 2026-09-30 (mod Compact Filtration, Workshop 3603064996, plain and Mirror): LU judged two units " +
-            "built up +y under a ceiling upside down; the units LU built by hand stand up -y, +z, -z or +x, never +y. " +
+            "built up +y under a ceiling upside down; the units LU built by hand stand up -y, +z, -z or +x, " +
+            "never +y. " +
             "-y as its top is read from that, not seen standing on a floor; it is built on its side as often", false),
         new VisualUp("StructureInsulatedInLineTank", GridStep.All[2], true,
             "LIVE 2026-09-28: an in-line tank's long axis is its local +y (a 1x3 standing with up +y fills three " +
