@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
@@ -71,6 +72,7 @@ internal sealed class GameLintWorld : ILintWorld
     private readonly HashSet<long> _gone;
     private readonly HashSet<long> _added = new HashSet<long>();
     private WorldSubject? _world;
+    private List<DoorJamb>? _jambs;
     private BuildCatalogue? _catalogue;
 
     private GameLintWorld(HashSet<long> gone)
@@ -115,6 +117,11 @@ internal sealed class GameLintWorld : ILintWorld
             {
                 world._planned.Add(CellSubject.KeyOf(cell, false));
                 touched.Add(SmallCellCode.LargeOf(cell));
+            }
+
+            if (!subject.IsSmallGrid)
+            {
+                touched.UnionWith(subject.LargeCells);
             }
 
             touched.Add(SmallCellCode.LargeOf(new GridCell((int)System.Math.Round(planned[index].Position.x * 10),
@@ -178,8 +185,6 @@ internal sealed class GameLintWorld : ILintWorld
                 (int)System.Math.Round(point.Z * 2.0) * 5));
 
     public bool IsPlanned(ILintObject subject) => _planned.Contains(subject.Key);
-
-    internal IReadOnlyList<Structure> DoorsNear => _doors;
 
     internal bool IsGone(Thing thing) => _gone.Contains(thing.ReferenceId);
 
@@ -375,7 +380,23 @@ internal sealed class GameLintWorld : ILintWorld
         HashSet<string> seen = new HashSet<string>();
         foreach (ILintObject item in Subjects("things"))
         {
-            ThingSubject thing = (ThingSubject)item;
+            try
+            {
+                AddDerived(set, (ThingSubject)item, subjects, seen);
+            }
+            catch (Exception error)
+            {
+                // A thing the game cannot describe (half torn down) adds nothing to the set; the rest still run.
+                Skipped.Add($"{item.Describe}: {error.GetType().Name}: {error.Message}");
+            }
+        }
+
+        return subjects;
+    }
+
+    private void AddDerived(string set, ThingSubject thing, List<ILintObject> subjects, HashSet<string> seen)
+    {
+        {
             switch (set)
             {
                 case "ports" when !thing.IsPiece && thing.IsSmallGrid:
@@ -412,8 +433,24 @@ internal sealed class GameLintWorld : ILintWorld
                     break;
             }
         }
+    }
 
-        return subjects;
+    /// <summary>Things a derived set had to leave out, and why.</summary>
+    internal List<string> Skipped { get; } = new List<string>();
+
+    /// <summary>The door whose jamb band holds a small cell, of the doors near the checked cells.</summary>
+    internal Structure? JambDoorAt(GridCell cell)
+    {
+        _jambs ??= DoorJambs.Of(_doors, Facts);
+        foreach (DoorJamb jamb in _jambs)
+        {
+            if (jamb.Holds(cell, Facts))
+            {
+                return jamb.Door;
+            }
+        }
+
+        return null;
     }
 
     private static double Order(ILintObject subject) => subject.ReferenceId ?? double.MaxValue;

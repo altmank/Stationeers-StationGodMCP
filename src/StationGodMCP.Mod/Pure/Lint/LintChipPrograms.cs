@@ -78,7 +78,7 @@ internal static class LintChipPrograms
                 ChipBatchNames, cached: true))
             .Add(new LintFunction("chip_writes", "(x: thing, logic: string) -> bool",
                 "Some program chip on one of the thing's data networks writes the logic type to it: by batch to its " +
-                "prefab (sb; sbn with its label), through a pin set to it (s dN), or by its id (sd).",
+                "prefab (sb; sbn with its name hash), through a pin set to it (s dN), or by its id (sd).",
                 ChipWrites, cached: true))
             .Add(new LintFunction("hash", "(s: string) -> number",
                 "The game's HASH(\"...\"): the hash IC10 gives a prefab name or a label.",
@@ -139,8 +139,7 @@ internal static class LintChipPrograms
         ILintObject thing = call[0].AsObject;
         string logic = call[1].AsString;
         int prefabHash = (int)thing.Get(LintModel.Thing["prefab_hash"]).AsNumber;
-        LintValue label = thing.Get(LintModel.Thing["label"]);
-        int nameHash = HashOf(label.IsNull ? thing.Get(LintModel.Thing["display_name"]).AsString : label.AsString);
+        int nameHash = (int)thing.Get(LintModel.Thing["name_hash"]).AsNumber;
         long id = (long)thing.Get(LintModel.Thing["reference_id"]).AsNumber;
         foreach (LintValue network in thing.Get(LintModel.Thing["networks"]).AsList)
         {

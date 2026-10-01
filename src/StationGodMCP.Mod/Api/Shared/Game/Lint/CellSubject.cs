@@ -68,7 +68,7 @@ internal sealed class CellSubject : LintSubject
                     ? LintValue.Of(_world.ThingById(window.Id))
                     : LintValue.Null;
             case "door_jamb":
-                return LintValue.Of(IsLarge ? null : _world.Thing(DoorJambs.DoorOf(Cell, _world.DoorsNear, facts)));
+                return LintValue.Of(IsLarge ? null : _world.Thing(_world.JambDoorAt(Cell)));
             case "room":
                 return LintValue.Of(_world.Room(facts.RoomAt(Large)));
             case "outdoors":
@@ -171,39 +171,50 @@ internal sealed class CellSubject : LintSubject
 /// <summary>
 /// The band beside a door's jambs: on the door's plane band (the keep-out's reach either side of its plane), within
 /// its height, in the column of small cells just past its side edges, not hidden inside a frame. Doors in floors and
-/// ceilings have no jambs.
+/// ceilings have no jambs. Worked out once per door and lint call.
 /// </summary>
-internal static class DoorJambs
+internal sealed class DoorJamb
 {
-    internal static Structure? DoorOf(GridCell cell, IReadOnlyList<Structure> doors, GridFacts facts)
-    {
-        foreach (Structure door in doors)
-        {
-            if (Hugs(door, cell, facts))
-            {
-                return door;
-            }
-        }
+    private readonly int _axis;
+    private readonly int _side;
+    private readonly int _plane;
+    private readonly int _sideMin;
+    private readonly int _sideMax;
+    private readonly int _yMin;
+    private readonly int _yMax;
+    private readonly int _reach;
 
-        return null;
+    private DoorJamb(Structure door, int axis, int side, int plane, int sideMin, int sideMax, int yMin, int yMax,
+        int reach)
+    {
+        Door = door;
+        _axis = axis;
+        _side = side;
+        _plane = plane;
+        _sideMin = sideMin;
+        _sideMax = sideMax;
+        _yMin = yMin;
+        _yMax = yMax;
+        _reach = reach;
     }
 
-    private static bool Hugs(Structure door, GridCell cell, GridFacts facts)
+    internal Structure Door { get; }
+
+    internal static DoorJamb? Of(Structure door, GridFacts facts)
     {
         List<GridCell> faces = Openings.FacesOf(door);
         if (faces.Count == 0)
         {
-            return false;
+            return null;
         }
 
         int axis = FacePoints.AxisOf(faces[0]);
         if (axis == 1)
         {
-            return false;
+            return null;
         }
 
         int side = axis == 0 ? 2 : 0;
-        int plane = FacePlane.Component(faces[0], axis);
         int sideMin = int.MaxValue, sideMax = int.MinValue, yMin = int.MaxValue, yMax = int.MinValue;
         foreach (GridCell face in faces)
         {
@@ -213,11 +224,34 @@ internal static class DoorJambs
             yMax = System.Math.Max(yMax, face.Y + 10);
         }
 
-        int reach = facts.Band.Cells * GridStep.CellSize;
-        int across = FacePlane.Component(cell, side);
-        return System.Math.Abs(FacePlane.Component(cell, axis) - plane) <= reach &&
-               cell.Y >= yMin && cell.Y <= yMax &&
-               (across == sideMin - GridStep.CellSize || across == sideMax + GridStep.CellSize) &&
+        return new DoorJamb(door, axis, side, FacePlane.Component(faces[0], axis), sideMin, sideMax, yMin, yMax,
+            facts.Band.Cells * GridStep.CellSize);
+    }
+
+    internal bool Holds(GridCell cell, GridFacts facts)
+    {
+        int across = FacePlane.Component(cell, _side);
+        return System.Math.Abs(FacePlane.Component(cell, _axis) - _plane) <= _reach &&
+               cell.Y >= _yMin && cell.Y <= _yMax &&
+               (across == _sideMin - GridStep.CellSize || across == _sideMax + GridStep.CellSize) &&
                facts.Visibility(cell) != CellVisibility.Inside;
+    }
+}
+
+/// <summary>The jamb bands of a set of doors (those in floors and ceilings have none).</summary>
+internal static class DoorJambs
+{
+    internal static List<DoorJamb> Of(IReadOnlyList<Structure> doors, GridFacts facts)
+    {
+        List<DoorJamb> jambs = new List<DoorJamb>(doors.Count);
+        foreach (Structure door in doors)
+        {
+            if (DoorJamb.Of(door, facts) is DoorJamb jamb)
+            {
+                jambs.Add(jamb);
+            }
+        }
+
+        return jambs;
     }
 }

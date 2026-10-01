@@ -63,6 +63,7 @@ internal static class LintModel
             .Field("prefab_hash", number, "Prefab hash (as IC10's HASH(\"prefab\") gives).")
             .Field("display_name", text, "The name a player sees: its label when it has one, else its kind's name.")
             .Field("label", textOrNull, "The label a labeller gave it; null when none.")
+            .Field("name_hash", number, "The hash batch operations by name compare (the game's HASH of its DisplayName, as it keeps it).")
             .Field("kind", text, "cable, pipe, chute (network pieces), in_line_tank, passive_vent (stand in a pipe's slot), frame, wall, window, door, device (small-grid devices and things), structure (other 2 m structures, large devices included).")
             .Field("runtime_type", text, "The game class, e.g. SolarPanel.")
             .Field("runtime_types", LintType.ListOf(text), "The game class and every base class, e.g. [\"SolarPanel\", \"Device\", \"SmallGrid\", \"Structure\", \"Thing\"].")
@@ -70,6 +71,7 @@ internal static class LintModel
             .Field("build_state", number, "Build state index (0 is the kit; finished is the last).")
             .Field("finished", flag, "At its last build state.")
             .Field("broken", flag, "A broken structure (a fire-burnt device).")
+            .Field("weather_damage_scale", number, "How much storm damage it takes (Thing.WeatherDamageScale): 0 takes none, 1 the full amount.")
             .Field("planned", flag, "Part of a dry run's plan, not built yet: only its prefab, place, turn, cells and ports are known.")
             .Field("position", vec, "Where it stands, metres.")
             .Field("rotation", LintType.Nullable(Rotation), "Which way it faces; null when not on the grid's axes.")
@@ -187,8 +189,8 @@ internal static class LintModel
         Mount
             .Field("plane", text, "The face plane behind it, e.g. z=668.")
             .Field("outward", text, "Which way it faces out of the plane: +x ... -z.")
-            .Field("back", Cell, "The cell just behind its mesh rectangle's centre, through the plane.")
-            .Field("front", Cell, "The cell just in front of it.")
+            .Field("back", Cell, "The 2 m cell behind its mesh rectangle's centre, through the plane.")
+            .Field("front", Cell, "The 2 m cell in front of it.")
             .Field("sections", number, "How many 2 m wall sections its mesh rectangle spans (more than 0.1 m into each).")
             .Field("fits_one_section", flag, "Neither side of its rectangle is wider than 2.2 m: some shift puts it on one section.");
 

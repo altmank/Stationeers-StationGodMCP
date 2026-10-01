@@ -171,17 +171,18 @@
       "level": "info",
       "description": "A console, computer, display, dial, button, switch, lever or keypad not mounted on a wall.",
       "on": ["audit", "dry_run"],
-      "select": "devices where any([\"Console\", \"Computer\", \"LogicDisplay\", \"Dial\", \"Button\", \"Switch\", \"Lever\", \"Keypad\"], w => contains(prefab, w))",
+      "select": "devices where has(rotation) and count(cells) > 0 and any([\"Console\", \"Computer\", \"LogicDisplay\", \"Dial\", \"Button\", \"Switch\", \"Lever\", \"Keypad\"], w => contains(prefab, w))",
       "assert": "has(mounted) and not (mounted.outward in [\"+y\", \"-y\"])",
       "message": "{display_name} ({prefab} {reference_id}) has controls and is not mounted on a wall.",
       "examples": {
         "pass": [
-          { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9, "mounted": { "outward": "+x" } },
-          { "display_name": "Gas Sensor", "prefab": "StructureGasSensor", "reference_id": 10 }
+          { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9, "rotation": { "facing": "+x", "up": "+y" }, "cells": [ {} ], "mounted": { "outward": "+x" } },
+          { "display_name": "Gas Sensor", "prefab": "StructureGasSensor", "reference_id": 10 },
+          { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9, "rotation": null, "cells": [ {} ] }
         ],
         "fail": [
-          { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9 },
-          { "display_name": "Logic Switch", "prefab": "StructureLogicSwitch", "reference_id": 11, "mounted": { "outward": "+y" } }
+          { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9, "rotation": { "facing": "+z", "up": "+y" }, "cells": [ {} ] },
+          { "display_name": "Logic Switch", "prefab": "StructureLogicSwitch", "reference_id": 11, "rotation": { "facing": "+y", "up": "+z" }, "cells": [ {} ], "mounted": { "outward": "+y" } }
         ]
       }
     },
@@ -202,17 +203,17 @@
     {
       "id": "solar_outdoor_reinforced",
       "level": "problem",
-      "description": "A solar panel storms reach must be a Reinforced variant. While a storm with a damage multiplier runs (Mars dust, Europa snow, Vulcan ash, Venus 1; Vulcan fire storm 3), each panel exposed to the planet's air takes a 10% chance every 0.5 s of losing 0.5% of its health times its WeatherDamageScale and the multiplier (SolarRadiators); the Reinforced panels do not take it.",
+      "description": "A solar panel storms reach must be a Reinforced variant. While a storm with a damage multiplier runs (Mars dust, Europa snow, Vulcan ash, Venus 1; Vulcan fire storm 3), each panel exposed to the planet's air takes a 10% chance every 0.5 s of losing 0.5% of its health times its WeatherDamageScale and the multiplier (SolarRadiators); a panel whose WeatherDamageScale is 0 takes none, as the Reinforced panels.",
       "on": ["audit", "dry_run"],
       "select": "things where \"SolarPanel\" in runtime_types",
-      "assert": "contains(prefab, \"Reinforced\") or not weather_exposed(x)",
+      "assert": "contains(prefab, \"Reinforced\") or weather_damage_scale <= 0 or not weather_exposed(x)",
       "message": "{display_name} ({prefab} {reference_id}) is exposed to storms and is not a Reinforced panel: each storm wears it down (SolarRadiators, WeatherDamageScale).",
       "examples": {
         "pass": [
-          { "prefab": "StructureSolarPanelReinforced", "runtime_types": ["SolarPanel"], "reference_id": 20, "display_name": "Solar Panel", "weather_exposed()": true },
-          { "prefab": "StructureSolarPanel", "runtime_types": ["SolarPanel"], "reference_id": 21, "display_name": "Solar Panel", "weather_exposed()": false }
+          { "prefab": "StructureSolarPanelReinforced", "runtime_types": ["SolarPanel"], "reference_id": 20, "display_name": "Solar Panel", "weather_damage_scale": 0, "weather_exposed()": true },
+          { "prefab": "StructureSolarPanel", "runtime_types": ["SolarPanel"], "reference_id": 21, "display_name": "Solar Panel", "weather_damage_scale": 1, "weather_exposed()": false }
         ],
-        "fail": [ { "prefab": "StructureSolarPanel", "runtime_types": ["SolarPanel"], "reference_id": 21, "display_name": "Solar Panel", "weather_exposed()": true } ]
+        "fail": [ { "prefab": "StructureSolarPanel", "runtime_types": ["SolarPanel"], "reference_id": 21, "display_name": "Solar Panel", "weather_damage_scale": 1, "weather_exposed()": true } ]
       }
     },
     {
@@ -223,7 +224,7 @@
       "select": "pieces where kind == \"cable\"",
       "let": { "n": "network", "flow": "min(network?.potential_load ?? 0, network?.required_load ?? 0)" },
       "assert": "(max_power ?? 0) >= (n?.max_cable_power ?? 0) or flow <= (n?.min_cable_power ?? 0)",
-      "message": "{prefab} {reference_id} is {grade} cable ({max_power} W) on network {n?.id}, whose heaviest cable carries {n?.max_cable_power} W and whose power flow is {format(flow, \"0\")} W: it burns first.",
+      "message": "{prefab} {reference_id} is {grade} cable ({max_power} W), lighter than network {n?.id}'s heaviest ({n?.max_cable_power} W), while the power through the network ({format(flow, \"0\")} W) is more than its weakest cable carries ({n?.min_cable_power} W): the power tick burns a cable rated below that flow.",
       "examples": {
         "pass": [
           { "kind": "cable", "prefab": "StructureCableStraightH", "reference_id": 30, "grade": "heavy", "max_power": 100000, "network": { "id": 5, "max_cable_power": 100000, "min_cable_power": 5000, "potential_load": 20000, "required_load": 20000 } },
@@ -239,14 +240,14 @@
       "on": ["audit"],
       "select": "devices where any(networks, n => n.kind == \"cable\")",
       "let": { "batches": "flat_map(filter(networks, n => n.kind == \"cable\"), n => filter(chip_batch_names(n), b => has(b.name_hash) and b.prefab_hash == x.prefab_hash))" },
-      "assert": "count(batches) == 0 or any(batches, b => b.name_hash == hash(display_name))",
+      "assert": "count(batches) == 0 or any(batches, b => b.name_hash == x.name_hash)",
       "message": "{display_name} ({prefab} {reference_id}): chips on its data network batch {prefab} by name ({join(distinct(map(batches, b => b.name ?? str(b.name_hash))))}) and its name is none of them, so they never reach it.",
       "examples": {
         "pass": [
-          { "prefab": "StructureSolarPanel", "prefab_hash": -2045627372, "reference_id": 40, "display_name": "Tracker", "networks": [ { "id": 2, "kind": "cable", "chip_batch_names()": [ { "prefab_hash": -2045627372, "name": "Tracker", "name_hash": 1675498291, "op": "sbn", "writes": true } ] } ] }
+          { "prefab": "StructureSolarPanel", "prefab_hash": -2045627372, "reference_id": 40, "display_name": "Tracker", "name_hash": 1675498291, "networks": [ { "id": 2, "kind": "cable", "chip_batch_names()": [ { "prefab_hash": -2045627372, "name": "Tracker", "name_hash": 1675498291, "op": "sbn", "writes": true } ] } ] }
         ],
         "fail": [
-          { "prefab": "StructureSolarPanel", "prefab_hash": -2045627372, "reference_id": 40, "display_name": "Solar Panel", "networks": [ { "id": 2, "kind": "cable", "chip_batch_names()": [ { "prefab_hash": -2045627372, "name": "Tracker", "name_hash": 1675498291, "op": "sbn", "writes": true } ] } ] }
+          { "prefab": "StructureSolarPanel", "prefab_hash": -2045627372, "reference_id": 40, "display_name": "Solar Panel", "name_hash": -717993853, "networks": [ { "id": 2, "kind": "cable", "chip_batch_names()": [ { "prefab_hash": -2045627372, "name": "Tracker", "name_hash": 1675498291, "op": "sbn", "writes": true } ] } ] }
         ]
       }
     },
@@ -288,7 +289,7 @@
       "id": "no_oxidiser_vented_outdoors",
       "level": "problem",
       "description": "An outdoor vent (active or passive) whose pipe network, or any network upstream of it through pumps, valves, regulators, filters and mixers, holds oxygen, nitrous oxide or ozone.",
-      "on": ["audit", "dry_run"],
+      "on": ["audit"],
       "select": "things where outdoors and (\"ActiveVent\" in runtime_types or \"PassiveVent\" in runtime_types)",
       "let": {
         "oxidisers": "[\"Oxygen\", \"LiquidOxygen\", \"NitrousOxide\", \"LiquidNitrousOxide\", \"Ozone\", \"LiquidOzone\"]",

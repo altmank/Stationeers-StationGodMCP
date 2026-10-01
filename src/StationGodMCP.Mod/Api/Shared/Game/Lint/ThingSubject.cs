@@ -195,6 +195,10 @@ internal sealed class ThingSubject : LintSubject
                 return LintValue.Of(Names.Of(Source));
             case "label":
                 return LintValue.Of(IsPlanned ? null : Labels.CustomNameOf(Source));
+            case "name_hash":
+                return LintValue.Of(IsPlanned ? LintChipPrograms.HashOf(Source.DisplayName ?? string.Empty) : Source.GetNameHash());
+            case "weather_damage_scale":
+                return LintValue.Of(Source.WeatherDamageScale);
             case "kind":
                 return LintValue.Of(KindOf(Source));
             case "runtime_type":
@@ -242,7 +246,8 @@ internal sealed class ThingSubject : LintSubject
             case "max_pressure":
                 return Source is Pipe pipe ? LintValue.Of(pipe.MaxPressure.ToDouble()) : LintValue.Null;
             case "insulated":
-                return LintValue.Of(Source is Pipe && Source.ThermodynamicsScale <= 0f);
+                return LintValue.Of(Source is Pipe insulated &&
+                                    (insulated.PipeType == Piping.Type.Insulated || insulated.PipeType == Piping.Type.InsulatedLowVolume));
             case "content":
                 return LintValue.Of(Source is Pipe content ? ContentOf(content) : null);
             case "chip":
@@ -288,8 +293,8 @@ internal sealed class ThingSubject : LintSubject
         {
             ["plane"] = LintValue.Of(mount.Plane.ToString()),
             ["outward"] = LintValue.Of(mount.Outward.Name),
-            ["back"] = LintValue.Of(_world.CellAt(centre - step * 0.6, 0.5)),
-            ["front"] = LintValue.Of(_world.CellAt(centre + step * 0.6, 0.5)),
+            ["back"] = LintValue.Of(_world.CellAt(centre - step * 0.6, 2.0)),
+            ["front"] = LintValue.Of(_world.CellAt(centre + step * 0.6, 2.0)),
             ["sections"] = LintValue.Of(mount.Faces().Count),
             ["fits_one_section"] = LintValue.Of(mount.FitsOneSection)
         };
@@ -380,14 +385,14 @@ internal sealed class ThingSubject : LintSubject
             return "frame";
         }
 
-        if (structure.IsDoor || structure is RoboticArmDoor)
-        {
-            return "door";
-        }
-
         if (structure is WindowShutter || structure is WallTransparent)
         {
             return Openings.KindOf(structure) == OpeningKind.Window ? "window" : "wall";
+        }
+
+        if (structure.IsDoor || structure is RoboticArmDoor)
+        {
+            return "door";
         }
 
         if (structure is Wall)
@@ -452,7 +457,7 @@ internal sealed class ThingSubject : LintSubject
     private static string? GradeOf(Structure structure) => structure switch
     {
         Cable cable => cable.CableType == Cable.Type.superHeavy ? "super_heavy" : cable.CableType.ToString().ToLowerInvariant(),
-        Piping piping => piping.PipeType switch
+        Pipe piping => piping.PipeType switch
         {
             Piping.Type.Insulated => "insulated",
             Piping.Type.NormalLowVolume => "normal_low_volume",

@@ -86,7 +86,7 @@ internal sealed class RunWaiting : ActiveRun
         RunPlan plan;
         try
         {
-            plan = RunPlanner.Plan(Request);
+            plan = RunPlanner.Plan(Request, lint: false);
         }
         catch (ApiException refusal)
         {

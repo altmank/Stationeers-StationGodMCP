@@ -75,7 +75,7 @@ internal static class ShowPreviewApi
                 throw ApiErrors.InvalidArgument("show_preview takes placements, not a job_id.");
             }
 
-            PlacePlan plan = PlacePlanner.Plan(run.Arguments);
+            PlacePlan plan = PlacePlanner.Plan(run.Arguments, lint: false);
             report = BuildReports.Of(plan, BuildReports.DryRun, null);
             foreach (PlannedPlacement placement in plan.Placements)
             {

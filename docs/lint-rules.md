@@ -56,7 +56,9 @@ A small save file:
   request would build, in the world around it: the touched 2 m cells and their neighbours, with what the request
   removes or replaces left out. Each finding about a planned thing is a warning `lint_<rule id>`; nothing is refused
   for one, whatever the rule's level. A planned thing knows only its prefab, place, turn, cells and ports: it has no
-  network, slots or logic yet. Removals (`remove_*`, `plan_removal`) are not linted.
+  network, slots or logic yet. The grid around it is read as it stands now, so a frame or wall the same request also
+  places does not yet count as support for its other placements. Removals (`remove_*`, `plan_removal`) are not
+  linted.
 - **`lint_rules`** lists the rules in effect (`list`), validates (`validate`), shows the model (`fields`) and the
   library (`functions`), runs each rule's examples (`test`) and explains a finding (`explain`): the rule run again on
   one subject, with every value it read, so you can see why it fired.
@@ -178,12 +180,12 @@ must pass (or be left out by the `where`), a `fail` example must fail. Every shi
 | `run_along_door` | info | both | a cable, pipe or chute piece hugging a door's jamb |
 | `controls_not_on_wall` | info | both | a console, computer, display, dial, button, switch, lever or keypad not on a wall |
 | `replaceable_unchecked` | info | audit | a thing `not_replaceable` could not ask about |
-| `solar_outdoor_reinforced` | problem | both | a solar panel storms reach that is not a Reinforced panel: each storm wears the others down |
-| `cable_grade_matches_network` | warning | audit | a cable lighter than its network's heaviest while the power through the network is more than it carries: it burns first |
+| `solar_outdoor_reinforced` | problem | both | a solar panel storms reach that is not a Reinforced panel (nor one with a WeatherDamageScale of 0): each storm wears the others down |
+| `cable_grade_matches_network` | warning | audit | a cable lighter than its network's heaviest while the power through the network is more than its weakest cable carries (the power tick burns a cable rated below that flow) |
 | `controller_labels` | warning | audit | a device a chip on its data network batches by name (lbn, sbn, batch_write_name) that carries none of those names, so the chip never reaches it |
 | `solar_unshaded` | warning | both | a solar panel with a structure or the terrain between it and the sun somewhere on the day's path |
 | `filter_output_capped` | warning | audit | a filtration unit with an output network holding no tank or regulator, or with no chip switching it On and off: it pushes with no back-pressure check |
-| `no_oxidiser_vented_outdoors` | problem | both | an outdoor vent whose network, or anything upstream of it through pumps, valves, regulators, filters and mixers, holds oxygen, nitrous oxide or ozone |
+| `no_oxidiser_vented_outdoors` | problem | audit | an outdoor vent whose network, or anything upstream of it through pumps, valves, regulators, filters and mixers, holds oxygen, nitrous oxide or ozone |
 | `fuel_oxidiser_mix_temperature` | warning | audit | a pipe network holding fuel and oxidiser above its auto-ignition temperature |
 | `outdoor_liquid_insulated` | warning | audit | an outdoor liquid pipe that is not insulated while its network is at or below a freezing point of what it holds |
 | `deep_miner_column_clear` | warning | both | a frame or other full-cell structure in a deep miner's drill column, which stops it |
@@ -207,6 +209,7 @@ Anything built: a cable, pipe or chute piece, a device, a frame, wall, window or
 | `prefab_hash` | `number` | Prefab hash (as IC10's HASH("prefab") gives). |
 | `display_name` | `string` | The name a player sees: its label when it has one, else its kind's name. |
 | `label` | `string?` | The label a labeller gave it; null when none. |
+| `name_hash` | `number` | The hash batch operations by name compare (the game's HASH of its DisplayName, as it keeps it). |
 | `kind` | `string` | cable, pipe, chute (network pieces), in_line_tank, passive_vent (stand in a pipe's slot), frame, wall, window, door, device (small-grid devices and things), structure (other 2 m structures). |
 | `runtime_type` | `string` | The game class, e.g. SolarPanel. |
 | `runtime_types` | `list<string>` | The game class and every base class, e.g. ["SolarPanel", "Electrical", "Device", "SmallGrid", "Structure", "Thing", ...]. |
@@ -214,6 +217,7 @@ Anything built: a cable, pipe or chute piece, a device, a frame, wall, window or
 | `build_state` | `number` | Build state index (0 is the kit; finished is the last). |
 | `finished` | `bool` | At its last build state. |
 | `broken` | `bool` | A broken structure (a fire-burnt device). |
+| `weather_damage_scale` | `number` | How much storm damage it takes (Thing.WeatherDamageScale): 0 takes none, 1 the full amount. |
 | `planned` | `bool` | Part of a dry run's plan, not built yet: only its prefab, place, turn, cells and ports are known. |
 | `position` | `vec` | Where it stands, metres. |
 | `rotation` | `rotation?` | Which way it faces; null when not on the grid's axes. |
@@ -351,8 +355,8 @@ One slot of a thing.
 | box | `min`, `max`, `centre`, `size` | `vec` | The box's corners, centre and size, metres. |
 | mount | `plane` | `string` | The face plane behind it, e.g. z=668. |
 | mount | `outward` | `string` | Which way it faces out of the plane: +x ... -z. |
-| mount | `back` | `cell` | The cell just behind its mesh rectangle's centre, through the plane. |
-| mount | `front` | `cell` | The cell just in front of it. |
+| mount | `back` | `cell` | The 2 m cell behind its mesh rectangle's centre, through the plane. |
+| mount | `front` | `cell` | The 2 m cell in front of it. |
 | mount | `sections` | `number` | How many 2 m wall sections its mesh rectangle spans (more than 0.1 m into each). |
 | mount | `fits_one_section` | `bool` | Neither side of its rectangle is wider than 2.2 m: some shift puts it on one section. |
 

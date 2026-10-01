@@ -27,8 +27,11 @@ internal static class RunPlanner
 {
     internal const int MaximumRemovals = 1024;
 
-    /// <summary>The preflight; with join_trunk, the run with the tap to join_to added when it stops short (RunTaps).</summary>
-    internal static RunPlan Plan(RunRequest request)
+    /// <summary>
+    /// The preflight; with join_trunk, the run with the tap to join_to added when it stops short (RunTaps). lint: the
+    /// dry_run lint rules add their warnings (the held tick's final check, whose warnings nobody reads, skips them).
+    /// </summary>
+    internal static RunPlan Plan(RunRequest request, bool lint = true)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
@@ -37,7 +40,11 @@ internal static class RunPlanner
 
         RunPlan plan = PlanOnce(request);
         plan = request.Options.Targets.JoinTrunk ? RunTaps.Tapped(request, plan, PlanOnce) : plan;
-        Lint.LintDryRun.Check(plan);
+        if (lint)
+        {
+            Lint.LintDryRun.Check(plan);
+        }
+
         return plan;
     }
 

@@ -248,6 +248,9 @@ internal static class LintEngine
 /// </summary>
 internal static class LintPairs
 {
+    // A box spanning more 2 m buckets than this is compared with every other box instead.
+    private const long MaximumBuckets = 512;
+
     internal static List<(int A, int B)> Within(IReadOnlyList<ILintObject> objects, double within)
     {
         List<Box3?> boxes = new List<Box3?>(objects.Count);
@@ -258,6 +261,7 @@ internal static class LintPairs
 
         double size = Math.Max(2.0, within * 2);
         Dictionary<(long, long, long), List<int>> buckets = new Dictionary<(long, long, long), List<int>>();
+        List<int> large = new List<int>();
         for (int index = 0; index < boxes.Count; index++)
         {
             if (!(boxes[index] is Box3 box))
@@ -268,6 +272,12 @@ internal static class LintPairs
             long x0 = Cell(box.Min.X - within, size), x1 = Cell(box.Max.X + within, size);
             long y0 = Cell(box.Min.Y - within, size), y1 = Cell(box.Max.Y + within, size);
             long z0 = Cell(box.Min.Z - within, size), z1 = Cell(box.Max.Z + within, size);
+            if ((x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1) > MaximumBuckets)
+            {
+                large.Add(index);
+                continue;
+            }
+
             for (long x = x0; x <= x1; x++)
             {
                 for (long y = y0; y <= y1; y++)
@@ -303,6 +313,20 @@ internal static class LintPairs
             }
         }
 
+        // A box too big to bucket is measured against every other.
+        foreach (int big in large)
+        {
+            for (int other = 0; other < boxes.Count; other++)
+            {
+                int a = Math.Min(big, other), b = Math.Max(big, other);
+                if (a != b && boxes[other] is Box3 near && seen.Add((long)a * objects.Count + b) &&
+                    Gap(boxes[big]!.Value, near) <= within + 1e-9)
+                {
+                    pairs.Add((a, b));
+                }
+            }
+        }
+
         pairs.Sort(static (p, q) => p.Item1 != q.Item1 ? p.Item1.CompareTo(q.Item1) : p.Item2.CompareTo(q.Item2));
         return pairs;
     }
@@ -332,8 +356,9 @@ internal static class LintPairs
                     return box;
                 }
             }
-            catch (LintEvaluationException)
+            catch (Exception)
             {
+                // A box the model cannot give falls back to the position below.
             }
         }
 

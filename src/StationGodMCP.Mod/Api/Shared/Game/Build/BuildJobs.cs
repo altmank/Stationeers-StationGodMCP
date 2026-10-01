@@ -228,7 +228,7 @@ internal sealed class PlaceWork : BuildWork
 
     internal override object? FinalCheck(out ErrorView? refusal)
     {
-        _plan = PlacePlanner.Plan(_arguments);
+        _plan = PlacePlanner.Plan(_arguments, lint: false);
         refusal = _plan.Ready ? null : new ErrorView("final_check_failed",
             $"The check once the tick had stopped found {_plan.Problems.Count} problem(s); nothing was changed.");
         return BuildReports.Of(_plan, _plan.Ready ? BuildReports.Scheduled : BuildReports.Refused, null);

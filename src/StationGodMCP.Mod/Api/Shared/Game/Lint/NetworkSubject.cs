@@ -165,7 +165,7 @@ internal sealed class NetworkSubject : LintSubject
         double? rating = null;
         foreach (ThingSubject member in Members)
         {
-            if (member.Source is Cable cable)
+            if (member.Source is Cable cable && !float.IsInfinity(cable.MaxVoltage) && !float.IsNaN(cable.MaxVoltage))
             {
                 rating = rating.HasValue
                     ? strongest ? Math.Max(rating.Value, cable.MaxVoltage) : Math.Min(rating.Value, cable.MaxVoltage)

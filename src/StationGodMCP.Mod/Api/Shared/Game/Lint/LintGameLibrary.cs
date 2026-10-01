@@ -79,8 +79,8 @@ internal static class LintGameLibrary
                 "hydrazine its critical temperature. null when no fuel is over 1 mol.",
                 AutoIgnition))
             .Add(new LintFunction("drill_column", "(x: thing) -> list<cell>",
-                "The 2 m cells a deep miner drills through: from the thing's own cell straight down while the cell reaches " +
-                "above y 0 (DeepMiner drills to y 0; CheckThingInWay looks at the 2 m cell around the bit).",
+                "The 2 m cells a deep miner drills through: from the cell below the thing straight down while the cell " +
+                "reaches above y 0 (DeepMiner drills to y 0; CheckThingInWay looks at the 2 m cell around the bit).",
                 DrillColumn));
         return library;
     }
@@ -271,8 +271,9 @@ internal static class LintGameLibrary
     {
         ThingSubject thing = Thing(call);
         GameLintWorld world = World(call);
-        GridCell start = SmallCellCode.LargeOf(new GridCell((int)Math.Round(thing.Pose.x * 10.0),
+        GridCell own = SmallCellCode.LargeOf(new GridCell((int)Math.Round(thing.Pose.x * 10.0),
             (int)Math.Round(thing.Pose.y * 10.0), (int)Math.Round(thing.Pose.z * 10.0)));
+        GridCell start = new GridCell(own.X, own.Y - SmallCellCode.Large, own.Z);
         List<LintValue> cells = new List<LintValue>();
         for (GridCell cell = start; cell.Y + SmallCellCode.Large / 2 > 0 && cells.Count < 512;
              cell = new GridCell(cell.X, cell.Y - SmallCellCode.Large, cell.Z))

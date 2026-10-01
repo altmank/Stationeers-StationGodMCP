@@ -34,7 +34,7 @@ internal static class LintDryRun
             GameLintWorld world = GameLintWorld.DryRun(planned, gone);
             return LintReport.Ordered(LintEngine.Run(rules, world, "dry_run").Findings);
         }
-        catch (Exception error) when (!(error is ApiException))
+        catch (Exception error)
         {
             return new List<LintFinding>
             {
