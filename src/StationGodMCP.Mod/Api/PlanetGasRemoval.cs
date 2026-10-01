@@ -72,6 +72,15 @@ internal static class PlanetGasRemoval
         return new PlanetGasRemovalView(before, amountMol, amountMol == null ? SweepTicks : 1);
     }
 
+    /// <summary>The world was left: removals still sweeping its planet stop.</summary>
+    internal static void Clear()
+    {
+        lock (Gate)
+        {
+            Pending.Clear();
+        }
+    }
+
     // On the atmospherics thread, from the move_gas tick postfix. Never throws into the game's tick.
     internal static void ApplyPending()
     {

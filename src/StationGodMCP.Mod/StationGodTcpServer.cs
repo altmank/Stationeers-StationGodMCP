@@ -186,12 +186,12 @@ internal sealed class StationGodTcpServer : IDisposable
 
         if (!Authenticate(reader.ReadLine()))
         {
-            writer.WriteLine(ApiHost.Serialize(
+            writer.WriteLine(ApiHost.SerializeOffMainThread(
                 new AuthRefusedView(new ErrorView("unauthorized", "Authentication failed."))));
             return;
         }
 
-        writer.WriteLine(ApiHost.Serialize(new AuthAcceptedView()));
+        writer.WriteLine(ApiHost.SerializeOffMainThread(new AuthAcceptedView()));
         client.ReceiveTimeout = 0;
         Serve(reader, writer);
     }

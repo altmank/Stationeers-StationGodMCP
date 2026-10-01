@@ -2,18 +2,22 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Text;
 using System.Threading;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP;
 
 /// <summary>
 /// Hands requests from the pipe and TCP threads to the main thread and the replies back. The listener threads queue a
 /// request and wait; StationGodMod.Update drains the queue on the main thread, where the game's objects may be used
-/// (ApiHost.Handle). A request the main thread does not reach in time answers game_timeout and is dropped unrun.
+/// (ApiHost.Handle), first in first out, within the frame's request budget (FrameBudget: the first request of a
+/// frame always runs). A request the main thread does not reach in time answers game_timeout and is dropped unrun.
 /// </summary>
 internal sealed class StationGodRequestDispatcher
 {
@@ -24,48 +28,76 @@ internal sealed class StationGodRequestDispatcher
 
     private readonly ConcurrentQueue<PendingRequest> _requests = new ConcurrentQueue<PendingRequest>();
 
-    internal void ProcessPendingRequests()
+    /// <summary>The per-frame counters mod_info reports.</summary>
+    internal static DispatchStats Stats { get; } = new DispatchStats();
+
+    internal void ProcessPendingRequests(FrameBudget budget)
     {
-        int processed = 0;
-        while (processed < RequestsPerFrame && _requests.TryDequeue(out PendingRequest pending))
+        long frameStarted = Stopwatch.GetTimestamp();
+        int taken = 0;
+        int served = 0;
+        bool budgetStopped = false;
+        while (taken < RequestsPerFrame)
         {
-            processed++;
+            if (!budget.MayServeAnother(served, MillisecondsSince(frameStarted)))
+            {
+                budgetStopped = !_requests.IsEmpty;
+                break;
+            }
+
+            if (!_requests.TryDequeue(out PendingRequest pending))
+            {
+                break;
+            }
+
+            taken++;
             if (pending.IsExpired)
             {
+                // Its client already answered game_timeout: not run, and not charged to the budget.
+                Stats.Expired();
                 continue;
             }
 
-            string response;
+            HandledRequest handled;
             try
             {
-                response = ApiHost.Handle(pending.Json);
+                handled = ApiHost.Handle(pending.Json, MillisecondsSince(pending.QueuedAt));
             }
             catch (Exception exception)
             {
-                // ApiHost.Handle answers every tool error itself; this is the serializer failing on a reply.
-                response = ApiHost.Serialize(
-                    new ErrorReplyView(null, new ErrorView("internal_error", exception.Message), null));
+                // ApiHost.Handle answers every tool and serializer error itself; this is the error reply failing too.
+                handled = new HandledRequest(ApiHost.Serialize(
+                    new ErrorReplyView(null, new ErrorView("internal_error", exception.Message), null)), null);
             }
 
-            pending.TryComplete(response);
+            served++;
+            pending.TryComplete(handled);
         }
+
+        Stats.Frame(served, MillisecondsSince(frameStarted), budgetStopped);
     }
 
     internal string Dispatch(string requestJson, int timeoutMilliseconds)
     {
-        PendingRequest pending = new PendingRequest(requestJson);
+        PendingRequest pending = new PendingRequest(requestJson, Stopwatch.GetTimestamp());
         _requests.Enqueue(pending);
         if (pending.Wait(timeoutMilliseconds))
         {
-            return pending.Response!;
+            string response = pending.Response!;
+            // Counted here, off the main thread, from the text the listener is about to write.
+            MethodStats.RecordReply(pending.Method, Encoding.UTF8.GetByteCount(response));
+            return response;
         }
 
         pending.Expire();
         ErrorView error = new ErrorView("game_timeout",
             "The Stationeers main thread did not process the request within " +
             $"{timeoutMilliseconds / MillisecondsPerSecond} seconds.");
-        return ApiHost.Serialize(new ErrorReplyView(ReadRequestId(requestJson), error, null));
+        return ApiHost.SerializeOffMainThread(new ErrorReplyView(ReadRequestId(requestJson), error, null));
     }
+
+    private static double MillisecondsSince(long timestamp) =>
+        (Stopwatch.GetTimestamp() - timestamp) * 1000.0 / Stopwatch.Frequency;
 
     private static string? ReadRequestId(string json)
     {
@@ -82,17 +114,27 @@ internal sealed class StationGodRequestDispatcher
 
     private sealed class PendingRequest
     {
+        // Not disposed, on purpose: a ManualResetEventSlim makes a kernel event only when its WaitHandle is asked for,
+        // and only Wait(int) and Set are used here. Disposing it after Wait returns would race the tail of Set on the
+        // main thread, and after an expiry a late TryComplete; the gain is nothing (performance review 2026-10-01).
         private readonly ManualResetEventSlim _completed = new ManualResetEventSlim(false);
         private int _expired;
 
-        internal PendingRequest(string json)
+        internal PendingRequest(string json, long queuedAt)
         {
             Json = json;
+            QueuedAt = queuedAt;
         }
 
         internal string Json { get; }
 
+        /// <summary>Stopwatch.GetTimestamp when the listener queued it.</summary>
+        internal long QueuedAt { get; }
+
         internal string? Response { get; private set; }
+
+        /// <summary>The known method it named (for the reply size), set with Response.</summary>
+        internal string? Method { get; private set; }
 
         internal bool IsExpired => Volatile.Read(ref _expired) != 0;
 
@@ -103,14 +145,15 @@ internal sealed class StationGodRequestDispatcher
             Interlocked.Exchange(ref _expired, 1);
         }
 
-        internal void TryComplete(string response)
+        internal void TryComplete(HandledRequest handled)
         {
             if (IsExpired)
             {
                 return;
             }
 
-            Response = response;
+            Response = handled.Json;
+            Method = handled.Method;
             _completed.Set();
         }
     }

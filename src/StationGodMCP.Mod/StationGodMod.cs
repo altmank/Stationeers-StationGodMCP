@@ -26,13 +26,16 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.9.0";
+    public const string Version = "1.9.1";
 
     private readonly StationGodRequestDispatcher _dispatcher = new StationGodRequestDispatcher();
     private Harmony? _harmony;
     private StationGodPipeServer? _pipeServer;
     private StationGodTcpServer? _tcpServer;
     private RemoteSettings? _remote;
+
+    /// <summary>Real time since the mod loaded (mod_info runtime uptime_s).</summary>
+    internal static System.Diagnostics.Stopwatch SinceLoad { get; } = System.Diagnostics.Stopwatch.StartNew();
 
     /// <summary>The local pipe's name, read once at load ([Pipe] Name, STATIONGODMCP_PIPE_NAME).</summary>
     internal static PipeName Pipe { get; private set; } = PipeName.Default;
@@ -50,6 +53,7 @@ public sealed class StationGodMod : ModBehaviour
             Pipe = PipeSettings.Load(configuration);
             _remote = RemoteSettings.Load(configuration);
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
+            PerformanceSettings.Load(configuration);
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
             {
@@ -92,7 +96,7 @@ public sealed class StationGodMod : ModBehaviour
     {
         try
         {
-            GasHold.LiftIfWorldLeft();
+            WorldStores.Tick();
             if (!NetworkManager.IsServer)
             {
                 StopServers();
@@ -110,7 +114,8 @@ public sealed class StationGodMod : ModBehaviour
                 StartTcpServer(_remote);
             }
 
-            _dispatcher.ProcessPendingRequests();
+            _dispatcher.ProcessPendingRequests(
+                FrameBudget.For(PerformanceSettings.RequestBudgetMs, HeldTickJobs.HoldsTick));
             HeldTickJobs.Tick();
             Previews.Tick();
             Highlights.Tick();
@@ -286,6 +291,32 @@ internal sealed class RemoteSettings
     {
         string? value = Environment.GetEnvironmentVariable(name);
         return string.IsNullOrEmpty(value) ? fallback : value!;
+    }
+}
+
+/// <summary>
+/// [Performance] RequestBudgetMs: the main-thread milliseconds one frame may spend on requests (FrameBudget). Read once
+/// at load; a negative or unreadable value falls back to the default with a warning.
+/// </summary>
+internal static class PerformanceSettings
+{
+    /// <summary>The configured budget; 0 = unlimited.</summary>
+    internal static double RequestBudgetMs { get; private set; } = FrameBudget.DefaultMs;
+
+    internal static void Load(ConfigFile configuration)
+    {
+        ConfigEntry<double> budget = configuration.Bind("Performance", "RequestBudgetMs", FrameBudget.DefaultMs,
+            "Main-thread milliseconds one frame may spend answering requests; the rest wait for the next frame, in " +
+            "order. The first request of a frame always runs. 0 = unlimited. While a job holds the game tick the " +
+            $"budget is at most {FrameBudget.JobHeldMs} ms. Restart the game to apply.");
+        double? configured = FrameBudget.Configured(budget.Value);
+        if (configured == null)
+        {
+            StationGodMod.LogWarning(
+                $"Ignoring invalid [Performance] RequestBudgetMs {budget.Value}; using {FrameBudget.DefaultMs} ms.");
+        }
+
+        RequestBudgetMs = configured ?? FrameBudget.DefaultMs;
     }
 }
 

@@ -19,7 +19,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// meanwhile owns the tick: the runner never lets the tick go while a save is running. A run that finds the slot
 /// taken answers busy with the running job's id; with wait it is queued (up to MaximumWaiting) and started, in
 /// order, once the slot is free and nothing else holds the tick. A queued job's own first step runs its whole
-/// preflight again, so the world the earlier jobs left is what it is checked against.
+/// preflight again, so the world the earlier jobs left is what it is checked against. While a job's atmosphere work
+/// that overran its limit is still running (AtmosphericsThread.Busy) no step runs, no queued job starts and the tick is
+/// not let go: a release asked for meanwhile is owed and made once that work has ended.
 /// </summary>
 internal static class HeldTickJobs
 {
@@ -35,7 +37,11 @@ internal static class HeldTickJobs
     private static readonly Dictionary<string, JobHold> Holds = new Dictionary<string, JobHold>();
     private static HeldTickJob? _active;
     private static bool _tickHeld;
+    private static bool _releaseOwed;
     private static long _next;
+
+    /// <summary>A job holds the game tick now (the dispatcher's request budget is smaller then).</summary>
+    internal static bool HoldsTick => _tickHeld;
 
     /// <summary>
     /// Starts a job made for its id (prefix-number) and returns its view. While another job runs (or a save or
@@ -58,7 +64,7 @@ internal static class HeldTickJobs
             throw GasHold.Refusal(refusing);
         }
 
-        bool tickTaken = IsSaving() || GameManager.GameTickPaused;
+        bool tickTaken = IsSaving() || GameManager.GameTickPaused || AtmosphericsThread.Busy;
         if (_active == null && Waiting.Count == 0 && !tickTaken)
         {
             string started = NextId(prefix);
@@ -71,6 +77,13 @@ internal static class HeldTickJobs
 
         if (!wait)
         {
+            if (_active == null && AtmosphericsThread.Busy)
+            {
+                throw ApiErrors.Refused("tick_held",
+                    "An earlier job's atmosphere work ran past its time limit and is still running; the tick stays " +
+                    "held until it ends. Try again, or pass wait: true to queue the run.");
+            }
+
             if (_active == null && tickTaken)
             {
                 throw ApiErrors.Refused("tick_held",
@@ -101,7 +114,17 @@ internal static class HeldTickJobs
 
     private static HeldTickJob Launch(string id, Func<string, HeldTickJob> create)
     {
-        HeldTickJob job = create(id);
+        HeldTickJob job;
+        AtmosphericsThread.CurrentJob = id;
+        try
+        {
+            job = create(id);
+        }
+        finally
+        {
+            AtmosphericsThread.CurrentJob = null;
+        }
+
         GameManager.PauseGameTick();
         _tickHeld = true;
         _active = job;
@@ -109,7 +132,8 @@ internal static class HeldTickJobs
     }
 
     /// <summary>A job runs or waits, or something else holds the tick: a run started with wait now is queued.</summary>
-    internal static bool Occupied => _active != null || Waiting.Count > 0 || IsSaving() || GameManager.GameTickPaused;
+    internal static bool Occupied => _active != null || Waiting.Count > 0 || IsSaving() || GameManager.GameTickPaused ||
+                                     AtmosphericsThread.Busy;
 
     internal static object Status(string id)
     {
@@ -151,12 +175,19 @@ internal static class HeldTickJobs
     /// <summary>Moves the running job on, or starts the next queued one; called every frame on the host.</summary>
     internal static void Tick()
     {
+        if (!AtmosphereWorkSettled())
+        {
+            return;
+        }
+
         if (_active == null)
         {
             StartWaiting();
             return;
         }
+
         JobStep step;
+        AtmosphericsThread.CurrentJob = _active.Id;
         try
         {
             step = _active.Step();
@@ -167,6 +198,10 @@ internal static class HeldTickJobs
             // own failures, so an exception here left the world as the job's state says.
             StationGodMod.LogWarning($"job {_active.Id} failed: {exception}");
             step = JobStep.Finish(_active.Failed(new ErrorView("internal_error", exception.Message)), true);
+        }
+        finally
+        {
+            AtmosphericsThread.CurrentJob = null;
         }
 
         switch (step)
@@ -198,11 +233,53 @@ internal static class HeldTickJobs
 
         Remember(_active!.Id, done.View);
         _active = null;
-        _tickHeld = false;
+        if (!_releaseOwed)
+        {
+            _tickHeld = false;
+        }
     }
 
-    // A save that is running holds the tick itself and lets it go when it ends.
+    // Overrun atmosphere work (AtmosphericsThread) still changing pipe atmospheres: false, and nothing moves this
+    // frame. When it has just ended: its failure is logged, pipe jobs are held (its contents were never checked) and a
+    // release owed meanwhile is made.
+    private static bool AtmosphereWorkSettled()
+    {
+        switch (AtmosphericsThread.Settle())
+        {
+            case WorkSettlement.Running:
+                return false;
+            case WorkSettlement.Ended ended:
+                string owner = ended.Owner ?? "unknown";
+                StationGodMod.LogWarning(ended.Failure != null
+                    ? $"job {owner}'s overrun atmosphere work ended with an error: {ended.Failure}"
+                    : $"job {owner}'s overrun atmosphere work has ended" + (ended.Canceled ? " (canceled)." : "."));
+                GasHold.SetUnchecked(owner);
+                if (_releaseOwed)
+                {
+                    _releaseOwed = false;
+                    ReleaseTick();
+                }
+
+                return true;
+            default:
+                return true;
+        }
+    }
+
+    // A save that is running holds the tick itself and lets it go when it ends. While overrun atmosphere work runs the
+    // tick stays held and the release is owed (AtmosphereWorkSettled makes it).
     private static void ReleaseTick()
+    {
+        if (AtmosphericsThread.Busy)
+        {
+            _releaseOwed |= _tickHeld;
+            return;
+        }
+
+        UnpauseNow();
+    }
+
+    private static void UnpauseNow()
     {
         if (_tickHeld && !IsSaving())
         {
@@ -212,22 +289,35 @@ internal static class HeldTickJobs
         _tickHeld = false;
     }
 
-    /// <summary>The mod is unloading: let the tick go if a job holds it.</summary>
+    /// <summary>The mod is unloading: let the tick go if a job holds it (also with atmosphere work still running).</summary>
     internal static void Abandon()
     {
-        if (_active != null)
+        if (_active != null || _releaseOwed)
         {
-            ReleaseTick();
+            _releaseOwed = false;
+            UnpauseNow();
         }
 
         _active = null;
         Waiting.Clear();
     }
 
+    /// <summary>
+    /// The world was left (WorldStores): queued runs are dropped and finished jobs forgotten, so a poll in the next
+    /// world answers job_not_found rather than a job of the last one. A running job is left to end on its own.
+    /// </summary>
+    internal static void ForgetWorld()
+    {
+        Waiting.Clear();
+        Finished.Clear();
+        FinishedOrder.Clear();
+        Holds.Clear();
+    }
+
     // The next queued job, once nothing holds the tick; one the world can no longer run is dropped, refused.
     private static void StartWaiting()
     {
-        if (Waiting.Count == 0 || IsSaving() || GameManager.GameTickPaused)
+        if (Waiting.Count == 0 || IsSaving() || GameManager.GameTickPaused || AtmosphericsThread.Busy)
         {
             return;
         }

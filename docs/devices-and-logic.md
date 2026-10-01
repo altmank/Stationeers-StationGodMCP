@@ -162,3 +162,11 @@ member the mod reaches by name, and whether it was found. After a game update, a
 tools that need it; they answer `game_changed`. The mod's pipe reply envelope, which pipe clients such as the script
 dashboard read, also carries `elapsed_ms`, the time a request took on the game's main thread; MCP tool results do not
 carry it, so read the per-method `mean_ms` and `max_ms` instead.
+
+`mod_info` also has a `runtime` section (1.9.1+) that shows what the mod costs the game since it loaded. Per method
+called: the main-thread time of the tool (`handler_ms`) and of turning its reply into text (`serialize_ms`), the wait
+for the next frame (`queue_wait_ms`) and the reply's size (`reply_bytes`), each as total, mean and max. Per frame: how
+many requests were answered and how long they took (`frames`), and how often the request budget left some for the
+next frame (`budget_stops`). And the game's garbage collector and Mono heap (`memory`). A frame spends at most
+`[Performance] RequestBudgetMs` (4 ms by default, at most 2 ms while a job holds the game tick) on requests; the rest
+wait for the next frame, in order (see [configuration](configuration.md)).

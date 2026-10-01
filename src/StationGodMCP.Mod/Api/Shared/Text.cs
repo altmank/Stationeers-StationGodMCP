@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using StationGodMCP.Pure;
 
@@ -17,6 +18,37 @@ internal static class Text
     /// </summary>
     internal static string? Plain(string? text) =>
         text == null ? null : RichTextTag.Replace(ThingName.Resolved(text), string.Empty).Trim();
+
+    private const int RememberedNames = 512;
+
+    private static readonly ConcurrentDictionary<string, string> PlainNames =
+        new ConcurrentDictionary<string, string>(System.StringComparer.Ordinal);
+
+    /// <summary>
+    /// Plain, remembered per raw text, for the few short names read again and again (a gas's display name on every
+    /// atmosphere read). The raw text is the key, so a language change is new text and a new entry; at most
+    /// RememberedNames are kept, past that the rest are worked out each time.
+    /// </summary>
+    internal static string? PlainName(string? text)
+    {
+        if (text == null)
+        {
+            return null;
+        }
+
+        if (PlainNames.TryGetValue(text, out string? known))
+        {
+            return known;
+        }
+
+        string plain = Plain(text)!;
+        if (PlainNames.Count < RememberedNames)
+        {
+            PlainNames.TryAdd(text, plain);
+        }
+
+        return plain;
+    }
 
     /// <summary>
     /// A trader condition's DebugName as plain text. The game's GasCondition builds it with an interpolated string

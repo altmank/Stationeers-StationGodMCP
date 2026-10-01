@@ -32,6 +32,9 @@ internal static class PasteBlueprintApi
 
     private static TrackedPaste? _last;
 
+    /// <summary>The world was left: status no longer reports the last world's paste.</summary>
+    internal static void ForgetWorld() => _last = null;
+
     internal static object Handle(Args args)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)

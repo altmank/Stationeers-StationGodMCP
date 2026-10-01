@@ -2,8 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
-using System.Threading.Tasks;
 using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.GridSystem;
@@ -149,15 +147,30 @@ internal abstract class JobGas
 
 /// <summary>
 /// Pipe jobs refused after a job's gas check failed, so a fault that lost gas once cannot lose more before someone
-/// looks. Lifted when the world is left (loading a save or going to the menu; checked every frame by
-/// StationGodMod.Update), or by a run that acknowledges the loss: acknowledge_gas_lost naming the job that set the hold
-/// (GasHoldRule), lifted once that run starts. A later failed check sets it again, with its own job.
+/// looks; also after a job's atmosphere work overran its limit and finished late (SetUnchecked: its contents were never
+/// checked). Lifted when the world is left (WorldStores clears it), or by a run that acknowledges the loss:
+/// acknowledge_gas_lost naming the job that set the hold (GasHoldRule), lifted once that run starts. A later failed
+/// check sets it again, with its own job.
 /// </summary>
 internal static class GasHold
 {
     private static GasLoss? _loss;
 
     internal static void Set(GasLoss loss) => _loss = loss;
+
+    /// <summary>
+    /// A job's atmosphere work overran AtmosphericsThread's limit and went on changing pipe atmospheres after the job
+    /// had failed: nothing checked what it left, so pipe jobs are held as after a failed check.
+    /// </summary>
+    internal static void SetUnchecked(string jobId)
+    {
+        GasLoss loss = GasLoss.Unchecked(jobId,
+            $"Its atmosphere work ran past the {AtmosphericsThread.LimitSeconds} s limit and finished after the job " +
+            "had stopped, so the pipe networks' contents were not checked; look at them (atmosphere_contents) before " +
+            "acknowledging.");
+        _loss = loss;
+        StationGodMod.LogWarning($"gas hold set: {loss.Describe()}.");
+    }
 
     /// <summary>What the hold means for a run that does or does not touch pipe networks, with its acknowledgement.</summary>
     internal static GasHoldVerdict Judge(bool touchesPipes, string? acknowledge) =>
@@ -180,14 +193,8 @@ internal static class GasHold
         }
     }
 
-    /// <summary>Called every frame: a world that is no longer running is not the one the hold was for.</summary>
-    internal static void LiftIfWorldLeft()
-    {
-        if (_loss != null && (GameManager.GameState == GameState.None || GameManager.GameState == GameState.Loading))
-        {
-            _loss = null;
-        }
-    }
+    /// <summary>The world was left (WorldStores): a new world is not the one the hold was for.</summary>
+    internal static void Clear() => _loss = null;
 }
 
 /// <summary>The game's queued gas changes, applied as the start of a game tick applies them.</summary>
@@ -198,7 +205,8 @@ internal static class PipeGasQueue
     /// itself) is not running. The check is made on the main thread, which a save must pass through to start.
     /// </summary>
     internal static bool CanRun() =>
-        GameManager.RunSimulation && GameManager.GameTickPaused && !HeldTickJobs.IsSaving();
+        GameManager.RunSimulation && GameManager.GameTickPaused && !HeldTickJobs.IsSaving() &&
+        !AtmosphericsThread.Busy;
 
     /// <summary>
     /// AtmosphericsController.HandleMainThreadEvents without the mod's own move_gas postfix: split events, then merge
@@ -250,28 +258,28 @@ internal static class PipeGasQueue
     }
 }
 
-/// <summary>Runs atmosphere work where the game tick runs it: on a pool thread, while the main thread waits.</summary>
+/// <summary>
+/// Runs atmosphere work where the game tick runs it: on a pool thread, while the main thread waits up to LimitSeconds.
+/// Work that overruns is not abandoned: it is kept (OutstandingWork) and, until it ends, no new atmosphere work starts
+/// (Run throws), PipeGasQueue.CanRun is false and HeldTickJobs neither steps a job nor lets the tick go; once it ends,
+/// HeldTickJobs logs its failure, holds pipe jobs (GasHold.SetUnchecked) and releases the tick.
+/// </summary>
 internal static class AtmosphericsThread
 {
-    private static readonly TimeSpan Limit = TimeSpan.FromSeconds(10);
+    internal const int LimitSeconds = 10;
 
-    internal static T Run<T>(Func<T> work)
-    {
-        Task<T> task = Task.Run(work);
-        try
-        {
-            if (!task.Wait(Limit))
-            {
-                throw new TimeoutException($"Atmosphere work did not finish within {Limit.TotalSeconds} s.");
-            }
-        }
-        catch (AggregateException failure) when (failure.InnerException != null)
-        {
-            ExceptionDispatchInfo.Capture(failure.InnerException).Throw();
-        }
+    private static readonly OutstandingWork Work = new OutstandingWork(TimeSpan.FromSeconds(LimitSeconds));
 
-        return task.Result;
-    }
+    /// <summary>The job whose step is running (HeldTickJobs sets it around each step); an overrun is charged to it.</summary>
+    internal static string? CurrentJob { get; set; }
+
+    /// <summary>Work that overran its limit is still running.</summary>
+    internal static bool Busy => Work.Busy;
+
+    internal static T Run<T>(Func<T> work) => Work.Run(work, CurrentJob);
+
+    /// <summary>Every frame (HeldTickJobs.Tick): whether overrun work is still running, or has just ended.</summary>
+    internal static WorkSettlement Settle() => Work.Settle();
 }
 
 /// <summary>

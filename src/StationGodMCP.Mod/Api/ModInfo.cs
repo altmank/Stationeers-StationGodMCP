@@ -4,14 +4,18 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
+using UnityEngine.Profiling;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
 /// mod_info: the running mod's identity and the pipe it listens on, every method with its counters since the mod
 /// loaded (MethodStats), and every game member it reaches by reflection or patches, with whether this build of the
-/// game has it (GameMembers.Report). Read only.
+/// game has it (GameMembers.Report), and the runtime section: what the mod costs the game (per-method handler,
+/// serialisation, queue wait and reply size; per-frame load; the collector and the Mono heap). Read only.
 /// </summary>
 internal static class ModInfoApi
 {
@@ -33,6 +37,20 @@ internal static class ModInfoApi
         }
 
         ReflectionReport reflection = GameMembers.Report();
-        return new ModInfoView(identity, methods, reflection.Members, reflection.Missing);
+        return new ModInfoView(identity, methods, reflection.Members, reflection.Missing, Runtime());
+    }
+
+    private static RuntimeView Runtime() =>
+        new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
+            FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
+            Memory(), MethodStats.Called());
+
+    // Unity's Mono (Boehm collector): one generation; the Profiler sizes answer 0 where the build does not report them.
+    private static MemoryView Memory()
+    {
+        long used = Profiler.GetMonoUsedSizeLong();
+        long heap = Profiler.GetMonoHeapSizeLong();
+        return new MemoryView(GC.CollectionCount(0), GC.MaxGeneration, GC.GetTotalMemory(false),
+            used > 0 ? used : null, heap > 0 ? heap : null);
     }
 }

@@ -75,7 +75,7 @@ internal sealed class GameClockView
 internal sealed class ModInfoView
 {
     internal ModInfoView(ModIdentity identity, List<MethodStatsView> methods, List<ReflectionMemberView> reflection,
-        int missingCount)
+        int missingCount, RuntimeView runtime)
     {
         ModId = identity.ModId;
         ModVersion = identity.ModVersion;
@@ -86,6 +86,7 @@ internal sealed class ModInfoView
         Count = methods.Count;
         Reflection = reflection;
         MissingCount = missingCount;
+        Runtime = runtime;
     }
 
     public string ModId { get; }
@@ -107,6 +108,9 @@ internal sealed class ModInfoView
 
     /// <summary>Required game members not found: methods that need one answer game_changed.</summary>
     public int MissingCount { get; }
+
+    /// <summary>What the mod costs the game: per-method timings and sizes, per-frame load, the collector and heap.</summary>
+    public RuntimeView Runtime { get; }
 }
 
 internal sealed class ModIdentity

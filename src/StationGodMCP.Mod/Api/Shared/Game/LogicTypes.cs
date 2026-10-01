@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using Assets.Scripts.Objects.Motherboards;
@@ -72,13 +73,19 @@ internal static class LogicTypes
         throw ApiErrors.Refused("invalid_logic_type", $"'{text}' is not a known LogicType name or numeric ushort ID.");
     }
 
-    internal static LogicTypeView ViewOf(LogicType type) =>
-        new LogicTypeView((ushort)type, Enum.GetName(typeof(LogicType), type));
+    // LogicTypeView is immutable: one per type, made on first use.
+    private static readonly ConcurrentDictionary<LogicType, LogicTypeView> Views =
+        new ConcurrentDictionary<LogicType, LogicTypeView>();
+
+    private static readonly Func<LogicType, LogicTypeView> MakeView =
+        static type => new LogicTypeView((ushort)type, EnumNames<LogicType>.Of(type));
+
+    internal static LogicTypeView ViewOf(LogicType type) => Views.GetOrAdd(type, MakeView);
 
     /// <summary>"Name (id)", or "logic type id" for a type with no enum name, for messages.</summary>
     internal static string Label(LogicType type)
     {
-        string? name = Enum.GetName(typeof(LogicType), type);
+        string? name = EnumNames<LogicType>.Of(type);
         return name == null ? $"logic type {(ushort)type}" : $"{name} ({(ushort)type})";
     }
 

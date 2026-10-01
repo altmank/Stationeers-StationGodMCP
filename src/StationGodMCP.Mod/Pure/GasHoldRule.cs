@@ -12,12 +12,25 @@ namespace StationGodMCP.Pure;
 internal sealed class GasLoss
 {
     internal GasLoss(string jobId, List<long> networks, double missingMol, string summary)
+        : this(jobId, networks, missingMol, summary, false)
+    {
+    }
+
+    private GasLoss(string jobId, List<long> networks, double missingMol, string summary, bool contentsUnchecked)
     {
         JobId = jobId;
         Networks = networks;
         MissingMol = missingMol;
         Summary = summary;
+        ContentsUnchecked = contentsUnchecked;
     }
+
+    /// <summary>
+    /// A job whose atmosphere work overran its limit and finished after the job stopped: no check ran, so nothing is
+    /// known missing (MissingMol 0) and no network is named; the hold is set because the contents are unknown.
+    /// </summary>
+    internal static GasLoss Unchecked(string jobId, string summary) =>
+        new GasLoss(jobId, new List<long>(), 0.0, summary, true);
 
     internal string JobId { get; }
 
@@ -28,9 +41,17 @@ internal sealed class GasLoss
 
     internal string Summary { get; }
 
+    /// <summary>Set by Unchecked: the job's pipe contents were never checked.</summary>
+    internal bool ContentsUnchecked { get; }
+
     /// <summary>"job run-4 lost 12.5 mol from pipe network(s) 101, 102".</summary>
     internal string Describe()
     {
+        if (ContentsUnchecked)
+        {
+            return $"job {JobId} left its pipe networks' contents unchecked";
+        }
+
         string networks = Networks.Count == 0
             ? "its pipe networks"
             : "pipe network(s) " +

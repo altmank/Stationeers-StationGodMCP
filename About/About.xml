@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.9.0</Version>
+  <Version>1.9.1</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,73 +69,86 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.9.1
+- mod_info runtime: what the mod costs the game: per-method tool and serialisation time, wait for the main thread and reply size; requests and time per frame; garbage collector and heap.
+- New setting [Performance] RequestBudgetMs (default 4 ms): requests past it in one frame wait for the next, in order.
+- Leaving a world clears what the mod held about it: chips paused by control_ic_execution run again; jobs, undo records, print and flight logs are forgotten.
+- Fix: a job's gas work that overran its 10 s limit no longer runs on after the job let the game tick go; the tick waits for it and pipe jobs are held until its result is accepted.
+- Less garbage per read; highlights cost nothing while none is shown.
+
 v1.9.0
-New
-- Large replies: every tool that can answer a lot takes output_file (write the whole reply to a JSON file beside the agent and answer a small pointer) and fields (keep only the named keys of each listed entry).
-- find_things location (ground, player, stored, built, world); connections on a network takes prefab_contains and open_ends_only.
-- rocket_status and rocket_forecast burn fuel at Terraforming Reloaded's combustion rate when that mod sets one, and report the rate used.
-Changed
-- A confirmed place_*, remove_*, place_structure or remove_structure run answers its job and a short summary of the dry run; verbose: true gives the whole dry run. Run reports count each network's devices; include_network_devices lists them.
-- Scripts using the mod's pipe directly are held to each tool's argument names: a misspelt argument is refused instead of ignored.
+- Large replies: output_file writes a reply to a JSON file and answers a pointer; fields keeps only the named keys.
+- find_things location; connections prefab_contains and open_ends_only; rocket tools burn fuel at Terraforming Reloaded's combustion rate.
+- Confirmed place/remove runs answer briefly (verbose: true for all); scripts on the pipe are held to each tool's argument names.
+
 v1.8.0
-New
-- rocket_status: where each rocket is going and by which hops, mass, fuel, engines, the thrust the landing check assumes against what the fuel gives now, the auto-land confidence, cargo, battery and burn time.
-- rocket_forecast: flies a copy of the rocket by the game's own rules (launch, hops, re-entry, landing autopilot) and gives fuel, time, mass and battery per leg, the landing verdict and its margins, per re-entry profile; with what-ifs for fuel, cargo, thrust and battery.
-- rocket_flight_log: records a flight once a second, read back as a summary and pages, optionally as a CSV beside the save.
+- rocket_status, rocket_forecast (flies a copy of a rocket by the game's rules: fuel, time, battery, landing verdict, what-ifs) and rocket_flight_log.
 
 v1.7.0
-New
-- grid_survey takes sections, network_ids and compact, so a survey answers only what was asked.
-- highlight: show things, whole networks or a far point through walls and terrain, tinted and labelled. show_preview xray: true draws through walls.
-- deep_miner_spots: what a deep miner would mine where you stand, and the nearest spots for the ores you name, with distance, bearing and ground.
-- place_structure, orient and find_spot know a device's control side and warn controls_blocked when it faces a wall or another device.
-- get_ic_status include_source: false leaves the chip's program out of the reply; item_totals holders_limit sets how many holders each item lists.
-- Lint rules are data: lint-rules.json, overridable per save; lint_rules lists, validates, tests and explains them. New checks include storm-exposed or shaded solar panels, undersized cables, oxidiser vented outdoors, fuel above ignition, freezing outdoor liquid pipes and blocked controls.
-- place_cables, place_pipes, place_chutes, place_structure and the route planners warn lint_&lt;rule&gt; for what they would build.
-Changed
-- Smaller replies by default: a job poll leaves out the dry run and final check the real run already answered with (verbose: true gives them back; a refused job keeps its final check); place_structure lists footprint cells only with include_footprint_cells; the cable, pipe and chute tools give link counts and leave their fixed notes out unless include_links / include_notes, and limit 0 lists no cells.
-Fix
-- describe_prefab's visual_up is marked checked only where the game forces it; Compact Filtration's top is its local -y, so orient stops building it upside down.
+- Smaller replies: grid_survey sections, network_ids and compact; get_ic_status include_source; item_totals holders_limit; job polls brief by default.
+- highlight (through walls), deep_miner_spots, controls_blocked warnings, lint rules as data (lint-rules.json, lint_rules) and dry-run lint in the place and plan tools.
+- Fix: Compact Filtration is no longer built upside down.
 
 v1.6.2
-Fix
-- remove_structure gives a frame's cell back as deconstructing it by hand does: the freed cell gets its own air, empty when it is boxed in or opens only into rooms and cells already freed, and outdoor air only where it opens to the outdoors. Before, every frame it removed left its cell as outdoor air, even inside a sealed room.
+- Fix: remove_structure gives a frame's cell back to the air as hand deconstruction does; no more outdoor air inside sealed rooms.
 
 v1.6.1
-Fix
-- place_chutes and plan_chute_route join a chute to a rocket chute umbilical (male, socket or socket angle) either way. Its port reads "Input", but items pass through it both ways, so the flow check no longer refuses the last piece at the umbilical.
+- Fix: chutes join rocket chute umbilicals either way.
 
 v1.6.0
-New
-- Rockets: place_structure builds every rocket part as a player does, with the game's own rules and reasons: launch mount, engine fuselage, fuselage pieces, nose cone, and engines, tanks, batteries, avionics, miner, scanner, cargo and umbilical sockets in the cells the fuselage gives them. A rocket can be built bottom up in one request. Placing a fuselage piece over another of its family replaces it, as with an angle grinder in the other hand.
-- place_cables, place_pipes and place_chutes lay pieces inside a rocket where the game allows them; remove_structure, remove_cables, remove_pipes and remove_chutes take rocket parts down as a player does (a fuselage piece only with nothing on top and no internals left; a whole rocket in one request goes from the top down).
-- describe_device and grid_survey show umbilical pairing: the partner, its distance, and the game's partner search replayed, with why it stopped. describe_device also shows a device's rocket and the dry mass the game counts.
-- Nothing is built into or taken from a rocket while it launches or lands.
+- Rockets: place_structure builds every rocket part as a player does; the cable, pipe, chute and remove tools work in rockets; umbilical pairing in describe_device and grid_survey.
 
 v1.5.0
-Safety fixes
-- Gas is conserved: splitting a long straight pipe no longer copies a network's gas onto a dead network, changing a network's only pipe keeps its gas and id, and the gas check follows pipes cell by cell, so a swapped long pipe no longer reads as a false loss. A refill never pushes a network past its weakest pipe, and gas you chose to delete is no longer put back (which burst pipes).
-- Items are never lost in hidden slots: move_item, refunds and vault withdrawals use only slots a player could click, never a stack's own slot (a cable coil destroyed what went there). Refunds top up the source stack first and land in front of their holder, not at the world origin.
-- The power overload guard prices every port by the game's own power roles: a run from a battery or transformer output was priced as an input and could burn cables.
-- trader_sell paid for every line but destroyed only one stack when several lines sold the same goods (five lines of 1 iron paid 5, took 1). Lines now add up and each entry sells in one game call.
+- Safety fixes: gas kept through splits and swaps, no items lost in hidden slots, power overload guard by the game's own port roles, trader_sell pays only for what it takes.
+- check_replaceable; only placements a player could make; acknowledge_gas_lost; remove_structure allow_burst; refund_to; would_overload_when_on.
+- Strict arguments: unknown arguments and ids sent as numbers are refused.
 
-New
-- check_replaceable: could a player place each thing again exactly where it stands? Made for checking what a blueprint paste left. 84 tools.
-- Only what a player could build: every tool that creates a structure asks the game's own placement cursor checks. free: true waives materials, never this rule. lint_layout reports things a player could not place again.
-- acknowledge_gas_lost: after a job ends gas_lost, pipe jobs no longer stay refused until the world is reloaded; a real run naming that job accepts the loss and goes on. Agents must ask you first.
-- remove_structure allow_burst: remove an in-line tank or passive vent even though the squeezed network will burst (e.g. outdoors); the reply forecasts which pipes burst and where the gas goes.
-- refund_to on every tool that refunds: an ordered list of targets (inventory, source, storage, a container id, ground), by default inventory, then source, storage, ground. On a dedicated server removals no longer need from_id.
-- would_overload_when_on warning: the load if every device now off on the network were switched on.
-- trader_buy dry runs add the lines up (credits, stock, room); undo_job knows a job it already undid.
+v1.4.4
+- Mesh boxes decide clashes (place_structure, find_spot, wall_map, lint_layout); undo_job puts back removed pipes and cables.
 
-Behaviour changes you will notice
-- Strict arguments: every call is checked against the tool's schema. Unknown arguments, wrong types and ids sent as numbers are refused with a clear message; ids are strings ("123").
-- remove_structure of an in-line tank or passive vent that splits a network holding gas or liquid needs allow_contents, as remove_pipes already did.
-- Placements a player could not make are refused (cannot_place, cell_blocked), also for replace_walls and replace_frames of an off-grid or oddly turned piece.
-- landing_pads no longer reports obstructed: the game never uses it.
-- trader_inventory's have counts only what the trader would accept from you, its conditions applied.
+v1.4.3
+- Placement and layout tools: door keep-outs ([Layout] DoorKeepOutBand), looking_at detail, placement layout, orient, relative positions, wall_map, find_spot, lint_layout, undo_job, print provenance, show_preview.
 
-Also many smaller fixes from a twelve-round live test on a dedicated server. Full notes: CHANGELOG.md on GitHub.
+v1.4.2
+- Broken structures: found by find_things and thing_health, removed with remove_structure allow_broken.
+
+v1.4.1
+- Fix: pipe jobs that merged networks more than once lost gas; every pipe job now settles and checks its gas.
+
+v1.4.0
+- Ingot Vault tools: vault_contents, vault_deposit, vault_withdraw (needs the Ingot Vault mod).
+
+v1.3.5
+- Layout helpers: rotation readout, port preview, route ends at in-line tanks and passive vents, reserved cells and ports, move_gas dry_run.
+
+v1.3.4
+- move_gas takes a room as from or to.
+
+v1.3.3
+- move_gas from the planet: delete named gases from the planet's air (needs Terraforming Reloaded).
+
+v1.3.2
+- Landing pad atmospheres in the gas tools; move_gas checks the receiving side by the game's matter rules.
+
+v1.3.1
+- Fixes from the first live run of 1.3.0: ordinary devices placeable again, walls back to back, devices aimed at a cell stand on its floor.
+
+v1.3.0
+- Network refactor tools: splits name the devices cut off, clean remove_redundant, tap checks, network handles, queued jobs (wait).
+
+v1.2.0
+- assume_removed, prefer hidden, trunk routes, feed_paths, plan_removal; refunds go into the inventory.
+
+v1.1.1
+- inside_frames accepts beam tops; reroute between an APC and its network.
+
+v1.1.0
+- paste_blueprint (with BlueprintMod); [Pipe] Name setting.
+
+v1.0.0
+- First release: 71 tools to read and operate a running game.
+
+Full notes: CHANGELOG.md on GitHub.
 </ChangeLog>
   <WorkshopHandle>0</WorkshopHandle>
   <Tags />

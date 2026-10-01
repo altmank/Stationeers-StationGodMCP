@@ -61,7 +61,9 @@ public sealed class HostWireTests
             {
                 new MethodStatsView("game_clock", 2, 0, 0.5, 0.3), new MethodStatsView("planet", 0, 0, 0.0, 0.0)
             },
-            new List<ReflectionMemberView> { new ReflectionMemberView("Plant._stageTime", true, false) }, 0);
-        WireCheck.Same(old, view);
+            new List<ReflectionMemberView> { new ReflectionMemberView("Plant._stageTime", true, false) }, 0,
+            RuntimeWireTests.EmptyRuntime());
+        // 1.9.1 added runtime at the end; everything before it is unchanged.
+        WireCheck.SameAfterRenames(old, view, new Dictionary<string, string>(), "runtime");
     }
 }

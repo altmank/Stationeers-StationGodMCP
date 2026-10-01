@@ -13,12 +13,16 @@ namespace StationGodMCP.Api.Shared.Game;
 /// highlight's marks, drawn every frame by Tick (the mod's Update) as the T-Ray SPU draws (SPUMesonScanner.Render from
 /// SensorLenses.UpdateEachFrame: Graphics.DrawMesh calls with a see-through material, no game object per piece), plus
 /// labels and screen-edge arrows from an OnGUI overlay on the mod's own game object. Only this game draws them;
-/// nothing in the world changes. Each mark lives for its seconds; Clear removes them all (also when the mod unloads).
+/// nothing in the world changes. Each mark lives for its seconds; Clear removes them all (also when the mod unloads or
+/// the world is left). A frame allocates nothing: one MeshDraws is refilled every frame, each mark keeps its meshes,
+/// and the overlay is disabled (no OnGUI calls) while no mark is shown.
 /// </summary>
 internal static class Highlights
 {
     private static readonly List<HighlightMark> Shown = new List<HighlightMark>();
+    private static readonly MeshDraws Draws = new MeshDraws();
     private static GameObject? _root;
+    private static HighlightOverlay? _overlay;
 
     internal static IReadOnlyList<HighlightMark> Marks => Shown;
 
@@ -28,10 +32,14 @@ internal static class Highlights
         {
             _root = new GameObject("StationGodHighlight");
             Object.DontDestroyOnLoad(_root);
-            _root.AddComponent<HighlightOverlay>();
+            _overlay = _root.AddComponent<HighlightOverlay>();
         }
 
         Shown.Add(mark);
+        if (_overlay != null)
+        {
+            _overlay.enabled = true;
+        }
     }
 
     /// <summary>Drops marks whose time is up and draws the rest; every frame.</summary>
@@ -43,83 +51,115 @@ internal static class Highlights
         }
 
         float now = Time.realtimeSinceStartup;
-        Shown.RemoveAll(mark => mark.Until <= now);
+        if (Expiry.RemoveExpired(Shown, now) > 0 && Shown.Count == 0)
+        {
+            Idle();
+            return;
+        }
+
         Material? material = XRay.MeshMaterial;
-        if (material == null || Shown.Count == 0)
+        if (material == null)
         {
             return;
         }
 
-        MeshDraws draws = new MeshDraws();
+        Draws.BeginFrame();
+        Vector3 eye = CameraPosition();
         foreach (HighlightMark mark in Shown)
         {
-            mark.Draw(draws, CameraPosition(), now);
+            mark.Draw(Draws, eye, now);
         }
 
-        draws.Flush(material);
+        Draws.Flush(material);
     }
 
     internal static int Clear()
     {
         int count = Shown.Count;
         Shown.Clear();
+        Idle();
         return count;
+    }
+
+    // Nothing shown: the overlay stops getting OnGUI calls and the mesh groups are let go.
+    private static void Idle()
+    {
+        if (_overlay != null)
+        {
+            _overlay.enabled = false;
+        }
+
+        Draws.Reset();
     }
 
     internal static Vector3 CameraPosition() =>
         CameraController.CurrentCamera != null ? CameraController.CurrentCamera.transform.position : Vector3.zero;
 }
 
-/// <summary>One frame's meshes: grouped per mesh for the T-Ray material's instanced colours, else one by one.</summary>
+/// <summary>
+/// One frame's meshes: grouped per mesh and submesh for the T-Ray material's instanced colours, else one by one. Kept
+/// across frames (BeginFrame empties the groups but keeps their lists), with one property block and one pair of batch
+/// arrays, so drawing allocates nothing.
+/// </summary>
 internal sealed class MeshDraws
 {
     // DrawMeshInstanced's limit per call, as SPUMesonScanner.MaxBatchSize.
     private const int BatchSize = 1023;
     private static readonly int ColorProperty = Shader.PropertyToID("_Color");
 
-    private readonly Dictionary<(Mesh, int), (List<Matrix4x4> Matrices, List<Vector4> Colors)> _groups =
-        new Dictionary<(Mesh, int), (List<Matrix4x4>, List<Vector4>)>();
+    private readonly FrameGroups<(Mesh, int), Matrix4x4, Vector4> _groups =
+        new FrameGroups<(Mesh, int), Matrix4x4, Vector4>();
+
+    private readonly MaterialPropertyBlock _block = new MaterialPropertyBlock();
+    private readonly Matrix4x4[] _matrices = new Matrix4x4[BatchSize];
+    private readonly Vector4[] _colors = new Vector4[BatchSize];
+
+    internal void BeginFrame() => _groups.BeginFrame();
+
+    internal void Reset() => _groups.Reset();
 
     internal void Add(Mesh mesh, Matrix4x4 matrix, Color color)
     {
         for (int submesh = 0; submesh < mesh.subMeshCount; submesh++)
         {
-            if (!_groups.TryGetValue((mesh, submesh), out var group))
-            {
-                group = (new List<Matrix4x4>(), new List<Vector4>());
-                _groups[(mesh, submesh)] = group;
-            }
-
-            group.Matrices.Add(matrix);
-            group.Colors.Add(color);
+            _groups.Add((mesh, submesh), matrix, color);
         }
     }
 
     internal void Flush(Material material)
     {
-        MaterialPropertyBlock block = new MaterialPropertyBlock();
-        foreach (KeyValuePair<(Mesh, int), (List<Matrix4x4> Matrices, List<Vector4> Colors)> group in _groups)
+        foreach (KeyValuePair<(Mesh, int), FrameGroups<(Mesh, int), Matrix4x4, Vector4>.Group> entry in _groups)
         {
-            (Mesh mesh, int submesh) = group.Key;
+            (Mesh mesh, int submesh) = entry.Key;
+            FrameGroups<(Mesh, int), Matrix4x4, Vector4>.Group group = entry.Value;
+            if (group.Count == 0 || mesh == null)
+            {
+                continue;
+            }
+
             if (XRay.Instanced)
             {
-                for (int start = 0; start < group.Value.Matrices.Count; start += BatchSize)
+                for (int start = 0; start < group.Count; start += BatchSize)
                 {
-                    int count = Mathf.Min(BatchSize, group.Value.Matrices.Count - start);
-                    block.Clear();
-                    block.SetVectorArray(ColorProperty, group.Value.Colors.GetRange(start, count));
-                    Graphics.DrawMeshInstanced(mesh, submesh, material, group.Value.Matrices.GetRange(start, count),
-                        block, ShadowCastingMode.Off, false);
+                    // The arrays are always BatchSize long (a property block keeps the first array size it is
+                    // given); count says how many instances of them are drawn.
+                    int count = Expiry.BatchCount(group.Count, start, BatchSize);
+                    group.First.CopyTo(start, _matrices, 0, count);
+                    group.Second.CopyTo(start, _colors, 0, count);
+                    _block.Clear();
+                    _block.SetVectorArray(ColorProperty, _colors);
+                    Graphics.DrawMeshInstanced(mesh, submesh, material, _matrices, count, _block,
+                        ShadowCastingMode.Off, false);
                 }
 
                 continue;
             }
 
-            for (int index = 0; index < group.Value.Matrices.Count; index++)
+            for (int index = 0; index < group.Count; index++)
             {
-                block.Clear();
-                block.SetColor(ColorProperty, group.Value.Colors[index]);
-                Graphics.DrawMesh(mesh, group.Value.Matrices[index], material, 0, null, submesh, block,
+                _block.Clear();
+                _block.SetColor(ColorProperty, group.Second[index]);
+                Graphics.DrawMesh(mesh, group.First[index], material, 0, null, submesh, _block,
                     ShadowCastingMode.Off, false);
             }
         }
@@ -127,7 +167,7 @@ internal sealed class MeshDraws
 }
 
 /// <summary>One highlight target as drawn: its colour, label, pulse and time.</summary>
-internal abstract class HighlightMark
+internal abstract class HighlightMark : IExpiring
 {
     protected HighlightMark(HighlightTarget target, float until)
     {
@@ -137,7 +177,7 @@ internal abstract class HighlightMark
 
     internal HighlightTarget Target { get; }
 
-    internal float Until { get; }
+    public float Until { get; }
 
     internal abstract void Draw(MeshDraws draws, Vector3 eye, float now);
 
@@ -163,6 +203,11 @@ internal sealed class ThingsMark : HighlightMark
 {
     private readonly List<Thing> _things;
 
+    // Each thing's meshes and their transforms, read once at the first draw; the transforms' matrices are read every
+    // frame, so a thing that moves is drawn where it is. A thing rebuilt to another build state meanwhile keeps the
+    // meshes it had when the mark was first drawn.
+    private List<(Mesh Mesh, Transform Transform)>[]? _parts;
+
     internal ThingsMark(HighlightTarget target, float until, List<Thing> things) : base(target, until)
     {
         _things = things;
@@ -172,17 +217,24 @@ internal sealed class ThingsMark : HighlightMark
 
     internal override void Draw(MeshDraws draws, Vector3 eye, float now)
     {
+        _parts ??= ThingMeshes.PartsOf(_things);
         Color color = ColorAt(now);
-        foreach (Thing thing in _things)
+        for (int index = 0; index < _things.Count; index++)
         {
+            Thing thing = _things[index];
             if (thing == null || thing.IsBeingDestroyed)
             {
                 continue;
             }
 
-            foreach ((Mesh mesh, Matrix4x4 matrix) in ThingMeshes.Of(thing))
+            List<(Mesh Mesh, Transform Transform)> parts = _parts[index];
+            for (int part = 0; part < parts.Count; part++)
             {
-                draws.Add(mesh, matrix, color);
+                (Mesh mesh, Transform transform) = parts[part];
+                if (mesh != null && transform != null)
+                {
+                    draws.Add(mesh, transform.localToWorldMatrix, color);
+                }
             }
         }
     }
@@ -266,28 +318,43 @@ internal sealed class PointMark : HighlightMark
 
 /// <summary>
 /// A thing's meshes as the game draws them: each of its ThingRenderers that is enabled and active (the build state
-/// shown now, a device's every part), at its renderer's transform; all of them when none reads enabled.
+/// shown now, a device's every part), with its renderer's transform; all of them when none reads enabled.
 /// </summary>
 internal static class ThingMeshes
 {
-    internal static List<(Mesh, Matrix4x4)> Of(Thing thing)
+    private static readonly List<(Mesh, Transform)> NoParts = new List<(Mesh, Transform)>(0);
+
+    /// <summary>Each thing's parts, in the things' order; an empty list for a thing that is gone or has none.</summary>
+    internal static List<(Mesh Mesh, Transform Transform)>[] PartsOf(List<Thing> things)
     {
-        List<(Mesh, Matrix4x4)> meshes = new List<(Mesh, Matrix4x4)>();
-        if (thing.Renderers == null)
+        List<(Mesh, Transform)>[] parts = new List<(Mesh, Transform)>[things.Count];
+        for (int index = 0; index < things.Count; index++)
         {
-            return meshes;
+            Thing thing = things[index];
+            parts[index] = thing == null || thing.IsBeingDestroyed ? NoParts : PartsOf(thing);
         }
 
-        Collect(thing, meshes, onlyShown: true);
-        if (meshes.Count == 0)
-        {
-            Collect(thing, meshes, onlyShown: false);
-        }
-
-        return meshes;
+        return parts;
     }
 
-    private static void Collect(Thing thing, List<(Mesh, Matrix4x4)> meshes, bool onlyShown)
+    private static List<(Mesh, Transform)> PartsOf(Thing thing)
+    {
+        List<(Mesh, Transform)> parts = new List<(Mesh, Transform)>();
+        if (thing.Renderers == null)
+        {
+            return parts;
+        }
+
+        Collect(thing, parts, onlyShown: true);
+        if (parts.Count == 0)
+        {
+            Collect(thing, parts, onlyShown: false);
+        }
+
+        return parts;
+    }
+
+    private static void Collect(Thing thing, List<(Mesh, Transform)> parts, bool onlyShown)
     {
         foreach (ThingRenderer renderer in thing.Renderers)
         {
@@ -304,12 +371,15 @@ internal static class ThingMeshes
                 continue;
             }
 
-            meshes.Add((mesh, transform.localToWorldMatrix));
+            parts.Add((mesh, transform));
         }
     }
 }
 
-/// <summary>Draws the marks' labels, and a point's arrow at the screen's edge while it is out of view.</summary>
+/// <summary>
+/// Draws the marks' labels, and a point's arrow at the screen's edge while it is out of view. Enabled only while a
+/// mark is shown (Highlights), so Unity makes no OnGUI calls otherwise.
+/// </summary>
 internal sealed class HighlightOverlay : MonoBehaviour
 {
     private const float EdgeMargin = 0.04f;
@@ -317,6 +387,12 @@ internal sealed class HighlightOverlay : MonoBehaviour
     private const float LabelHeight = 44f;
 
     private GUIStyle? _style;
+
+    // Labels are placed with GUI.Label rects only: no GUILayout pass.
+    private void Awake()
+    {
+        useGUILayout = false;
+    }
 
     private void OnGUI()
     {

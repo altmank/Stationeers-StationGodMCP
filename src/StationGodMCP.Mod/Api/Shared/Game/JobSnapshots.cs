@@ -73,6 +73,15 @@ internal static class JobSnapshots
         return reply;
     }
 
+    /// <summary>The world was left: its jobs' snapshots and undo records name things of that world only.</summary>
+    internal static void Clear()
+    {
+        ByJob.Clear();
+        Order.Clear();
+        Undos.Clear();
+        UndoOrder.Clear();
+    }
+
     internal static RecordedJob? Of(string jobId) => ByJob.TryGetValue(jobId, out RecordedJob entry) ? entry : null;
 
     /// <summary>

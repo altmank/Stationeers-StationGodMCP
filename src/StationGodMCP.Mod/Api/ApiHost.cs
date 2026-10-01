@@ -10,6 +10,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -117,9 +118,36 @@ internal static class ApiHost
             ["mod_info"] = static args => ModInfoApi.Handle(args)
         };
 
-    internal static string Handle(string requestJson)
+    /// <summary>
+    /// One request: its reply as JSON text, and the method it named when that is a known one (for the reply size the
+    /// listener records). The handler's time (parse to reply object) goes into the reply's elapsed_ms; it, the
+    /// serialisation's time and the queue wait go into MethodStats.
+    /// </summary>
+    internal static HandledRequest Handle(string requestJson, double queueWaitMs)
     {
         Stopwatch watch = Stopwatch.StartNew();
+        Answer answer = Run(requestJson, watch);
+        long serializeStarted = Stopwatch.GetTimestamp();
+        string json;
+        try
+        {
+            json = Serialize(answer.Reply);
+        }
+        catch (Exception exception)
+        {
+            // The serializer failing on a tool's reply object: answered internal_error, as any tool failure is.
+            StationGodMod.LogWarning($"API reply could not be serialised: {exception}");
+            answer = answer.Failed(new ErrorView("internal_error", exception.Message));
+            json = Serialize(answer.Reply);
+        }
+
+        double serializeMs = MillisecondsSince(serializeStarted);
+        MethodStats.Record(answer.Method, answer.Ok, answer.HandlerMs, serializeMs, queueWaitMs);
+        return new HandledRequest(json, MethodStats.Counted(answer.Method));
+    }
+
+    private static Answer Run(string requestJson, Stopwatch watch)
+    {
         string? requestId = null;
         string? method = null;
         try
@@ -139,7 +167,8 @@ internal static class ApiHost
             object result = ResolvedNetworks.Attach(handler(new Args(parameters)),
                 ResolvedNetworks.Take());
             result = GasHoldReply.Attach(result, GasHoldReply.Take());
-            return Serialize(new ReplyView(requestId, result, MethodStats.Record(method, watch, true)));
+            double elapsed = Elapsed(watch);
+            return new Answer(requestId, method, new ReplyView(requestId, result, elapsed), true, elapsed);
         }
         catch (ApiException exception)
         {
@@ -197,61 +226,104 @@ internal static class ApiHost
         }
     }
 
-    internal static string Serialize(object reply) => JsonConvert.SerializeObject(reply, ApiJson.Settings);
+    /// <summary>A reply as JSON text, through the one shared serializer: main thread only.</summary>
+    internal static string Serialize(object reply) => ApiJson.WriteShared(reply);
 
-    private static string Failed(string? requestId, string? method, Stopwatch watch, string code, string message)
+    /// <summary>A reply as JSON text from a listener thread (game_timeout, the TCP handshake).</summary>
+    internal static string SerializeOffMainThread(object reply) => ApiJson.WriteFresh(reply);
+
+    private static Answer Failed(string? requestId, string? method, Stopwatch watch, string code, string message)
     {
-        double elapsed = MethodStats.Record(method, watch, false);
-        return Serialize(new ErrorReplyView(requestId, new ErrorView(code, message), elapsed));
+        double elapsed = Elapsed(watch);
+        return new Answer(requestId, method, new ErrorReplyView(requestId, new ErrorView(code, message), elapsed),
+            false, elapsed);
     }
+
+    private static double MillisecondsSince(long timestamp) =>
+        (Stopwatch.GetTimestamp() - timestamp) * 1000.0 / Stopwatch.Frequency;
 
     /// <summary>The main-thread time spent on a request so far, rounded to 0.01 ms.</summary>
     internal static double Elapsed(Stopwatch watch) => Math.Round(watch.Elapsed.TotalMilliseconds, ElapsedDecimals);
 }
 
-/// <summary>Per-method counters since the mod loaded, for mod_info. In memory only; nothing is logged.</summary>
-internal sealed class MethodStats
+/// <summary>A request's outcome before serialisation: the reply object and what MethodStats records of it.</summary>
+internal sealed class Answer
 {
-    private static readonly Dictionary<string, MethodStats> ByMethod =
-        new Dictionary<string, MethodStats>(StringComparer.Ordinal);
-
-    internal long Calls { get; private set; }
-
-    internal long Errors { get; private set; }
-
-    internal double TotalMilliseconds { get; private set; }
-
-    internal double MaximumMilliseconds { get; private set; }
-
-    /// <summary>
-    /// One Stopwatch read, counted for a known method only, so a client sending made-up names cannot grow the table.
-    /// </summary>
-    internal static double Record(string? method, Stopwatch watch, bool ok)
+    internal Answer(string? requestId, string? method, object reply, bool ok, double handlerMs)
     {
-        double elapsed = ApiHost.Elapsed(watch);
-        if (method == null || !ApiHost.Methods.ContainsKey(method))
-        {
-            return elapsed;
-        }
-
-        if (!ByMethod.TryGetValue(method, out MethodStats stats))
-        {
-            stats = new MethodStats();
-            ByMethod[method] = stats;
-        }
-
-        stats.Calls++;
-        stats.Errors += ok ? 0 : 1;
-        stats.TotalMilliseconds += elapsed;
-        stats.MaximumMilliseconds = Math.Max(stats.MaximumMilliseconds, elapsed);
-        return elapsed;
+        RequestId = requestId;
+        Method = method;
+        Reply = reply;
+        Ok = ok;
+        HandlerMs = handlerMs;
     }
 
+    internal string? RequestId { get; }
+
+    internal string? Method { get; }
+
+    internal object Reply { get; }
+
+    internal bool Ok { get; }
+
+    internal double HandlerMs { get; }
+
+    internal Answer Failed(ErrorView error) =>
+        new Answer(RequestId, Method, new ErrorReplyView(RequestId, error, HandlerMs), false, HandlerMs);
+}
+
+/// <summary>A handled request's reply text, and its method when that is a known one (null otherwise).</summary>
+internal sealed class HandledRequest
+{
+    internal HandledRequest(string json, string? method)
+    {
+        Json = json;
+        Method = method;
+    }
+
+    internal string Json { get; }
+
+    internal string? Method { get; }
+}
+
+/// <summary>
+/// Per-method counters since the mod loaded, for mod_info (methods and runtime). In memory only; nothing is logged.
+/// Counted for a known method only, so a client sending made-up names cannot grow the table. Thread-safe
+/// (MethodTimings): the main thread records times, the listener thread the reply size.
+/// </summary>
+internal static class MethodStats
+{
+    private static readonly MethodTimings Timings = new MethodTimings();
+
+    /// <summary>The method when it is one ApiHost knows, else null.</summary>
+    internal static string? Counted(string? method) =>
+        method != null && ApiHost.Methods.ContainsKey(method) ? method : null;
+
+    internal static void Record(string? method, bool ok, double handlerMs, double serializeMs, double queueWaitMs)
+    {
+        string? known = Counted(method);
+        if (known != null)
+        {
+            Timings.Record(known, ok, handlerMs, serializeMs, queueWaitMs);
+        }
+    }
+
+    /// <summary>The reply's size, from the listener thread once it has the text.</summary>
+    internal static void RecordReply(string? method, long bytes)
+    {
+        string? known = Counted(method);
+        if (known != null)
+        {
+            Timings.RecordReply(known, bytes);
+        }
+    }
+
+    /// <summary>mod_info's methods entry: calls, errors and the handler's time, as before 1.9.1.</summary>
     internal static MethodStatsView ViewOf(string method)
     {
-        return ByMethod.TryGetValue(method, out MethodStats stats)
-            ? new MethodStatsView(method, stats.Calls, stats.Errors, stats.TotalMilliseconds,
-                stats.MaximumMilliseconds)
-            : new MethodStatsView(method, 0, 0, 0.0, 0.0);
+        MethodTiming timing = Timings.Snapshot(method);
+        return new MethodStatsView(method, timing.Calls, timing.Errors, timing.Handler.Total, timing.Handler.Maximum);
     }
+
+    internal static List<MethodTiming> Called() => Timings.Called();
 }

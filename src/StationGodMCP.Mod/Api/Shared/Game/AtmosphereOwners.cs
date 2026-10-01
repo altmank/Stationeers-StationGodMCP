@@ -9,6 +9,7 @@ using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using Networks;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -121,7 +122,8 @@ internal static class AtmosphereOwners
             if (moles > minimum)
             {
                 bool liquid = Mole.MatterState(type) == AtmosphereHelper.MatterState.Liquid;
-                contents.Add(new HeldGasView(type.ToString(), Text.Plain(mole.DisplayName), liquid, moles,
+                contents.Add(new HeldGasView(EnumNames<Chemistry.GasType>.Of(type) ?? type.ToString(), Text.PlainName(mole.DisplayName),
+                    liquid, moles,
                     liquid ? mole.Volume.ToDouble() : null));
             }
         }

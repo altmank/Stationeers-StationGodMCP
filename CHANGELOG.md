@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.9.1
+
+2026-10-01. Performance, part 1: measure what the mod costs the game, and tidy what it leaves behind. 90 tools.
+
+- **`mod_info` `runtime` (new).** What the mod has cost the game since it loaded. Per method called, most main-thread
+  time first: the tool's main-thread time (`handler_ms`), the time to serialise its reply (`serialize_ms`, counted
+  nowhere before), the wait for the main thread (`queue_wait_ms`) and the reply size (`reply_bytes`), each as total,
+  mean and max. Per frame: requests answered and the time spent on them (`frames`), frames the request budget left
+  work for the next one (`budget_stops`) and requests never reached before `game_timeout` (`expired`). The garbage
+  collector's count and the Mono heap (`memory`), `uptime_s` and `world_epoch`. The counters are thread-safe now.
+  `methods` is unchanged: its `mean_ms` and `max_ms` stay the tool's own time, without serialisation.
+- **Request budget (new setting `[Performance] RequestBudgetMs`, default 4 ms, 0 = unlimited).** A frame stops
+  answering requests once they have taken this long; the rest are answered the next frame, in order. The first request
+  of every frame always runs. While a job holds the game tick the budget is at most 2 ms, so requests do not stretch the
+  job's pause.
+- **A new world forgets the last one.** Leaving a world (loading a save, starting a new game, going to the menu)
+  clears everything the mod held about it: chips paused with `control_ic_execution` run again; finished and queued
+  jobs are forgotten (`job_not_found`), with their `undo_job` snapshots and the gas hold; print provenance, rocket
+  flight logs, queued `move_gas` moves and planet removals, the last blueprint paste, highlights and previews go.
+  Reference ids repeat across loads of a save, so these could attach to the wrong things.
+- **Fix: gas work that overran its 10 s limit.** A job settles and reads pipe gas on a pool thread while the main
+  thread waits up to 10 s. Past that the job failed and let the game tick go while the work went on changing pipe
+  atmospheres. Now, until that work ends, no job step, queued job or other gas work runs and the tick stays held;
+  once it ends its error (if any) is logged, the tick is let go, and pipe jobs are held (`gas_check_failed`: the
+  job's pipe contents were never checked) until a run acknowledges it (`acknowledge_gas_lost`) or the world is left.
+  A run started meanwhile is queued with `wait: true`, else refused `tick_held`.
+- **Less garbage per read.** Logic type, slot type, slot class and gas names are looked up once and remembered, gas
+  display names are cleaned of rich text once, and replies are serialised by one shared serializer: the reply text is
+  byte for byte the same.
+- **Highlights cost nothing while idle.** Drawing allocates nothing per frame (each mark keeps its meshes, one batch
+  buffer is reused) and the label overlay is switched off while no highlight is shown. A highlighted thing rebuilt to
+  another build state meanwhile is drawn with the meshes it had when its highlight started.
+- **Workshop change note.** The About.xml `ChangeLog` now covers every version since 1.0.0 (nothing has been published
+  to the Workshop yet), one or a few lines each; the details stay here. A test keeps it under 8,000 characters and
+  complete.
+
 ## 1.9.0
 
 2026-10-01. Large replies to a file, slimmer defaults. 90 tools.

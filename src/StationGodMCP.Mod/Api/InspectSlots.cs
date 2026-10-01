@@ -1,12 +1,14 @@
 #nullable enable
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Motherboards;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -18,6 +20,13 @@ namespace StationGodMCP.Api;
 internal static class InspectSlotsApi
 {
     private static readonly LogicSlotType[] DistinctSlotTypes = BuildDistinct();
+
+    // LogicTypeView is immutable: one per slot logic type, made on first use.
+    private static readonly ConcurrentDictionary<LogicSlotType, LogicTypeView> SlotTypeViews =
+        new ConcurrentDictionary<LogicSlotType, LogicTypeView>();
+
+    private static readonly Func<LogicSlotType, LogicTypeView> MakeSlotTypeView =
+        static type => new LogicTypeView((ushort)type, EnumNames<LogicSlotType>.Of(type));
 
     internal static InspectSlotsView Handle(Args args)
     {
@@ -76,7 +85,7 @@ internal static class InspectSlotsApi
         SlotFacts? facts = slot == null
             ? null
             : new SlotFacts(slot.SlotIndex, slot.DisplayName, slot.StringKey,
-                new EnumValueView((int)slot.Type, Enum.GetName(typeof(Slot.Class), slot.Type)),
+                new EnumValueView((int)slot.Type, EnumNames<Slot.Class>.Of(slot.Type)),
                 new SlotFlags(slot.IsInteractable, slot.IsLocked, slot.IsSwappable, slot.HidesOccupant,
                     slot.SpecificTypePrefabHashes));
         SlotOccupantView? occupantView = occupant == null
@@ -95,7 +104,7 @@ internal static class InspectSlotsApi
             {
                 if (device.CanLogicRead(type, index))
                 {
-                    LogicTypeView name = new LogicTypeView((ushort)type, Enum.GetName(typeof(LogicSlotType), type));
+                    LogicTypeView name = SlotTypeViews.GetOrAdd(type, MakeSlotTypeView);
                     values.Add(new SlotLogicView(name, device.GetLogicValue(type, index)));
                 }
             }

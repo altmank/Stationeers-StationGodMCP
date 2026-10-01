@@ -50,7 +50,8 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 - `control_ic_execution` `pause` holds the chip; `step` runs exactly one instruction and stays paused (a running chip is
   paused first); `resume` lets it run. `step` is refused, with nothing changed, while the program has a compile error
   (`ic_compile_error`) or the holder is off or unpowered (`ic_not_operable`). Pausing holds IC Housings and suits only:
-  other holders report paused but keep running.
+  other holders report paused but keep running. A pause lasts until `resume` or until the world is left: loading a
+  save, starting a new game or going to the menu lets every paused chip run again (1.9.1+).
 - `resolve_ic_selectors` lists the devices the chip's batch instructions (`lb`, `lbn`, `sb`, `sbn`) reach: those on the
   holder's data network (`batch_device_count`; null when it has none). A selector is `unique` when exactly one device
   on that network has its prefab and name hash. A device named in `target_reference_ids` that is off the network is

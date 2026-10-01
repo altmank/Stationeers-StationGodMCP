@@ -27,6 +27,9 @@ internal static class GasMoves
             $"{Ledger.MaximumPending} moves are already waiting for the next atmospherics tick " +
             "(is the game paused?).");
 
+    /// <summary>The world was left: moves still queued for it are dropped, and its outcomes forgotten.</summary>
+    internal static void Clear() => Ledger.Clear();
+
     /// <summary>
     /// Whether a move still waiting for the atmospherics tick takes gas from or gives gas to this atmosphere (either
     /// side's set, joined members included). Such a move is not a game event, so Atmosphere.IsAwaitingEvent misses it.

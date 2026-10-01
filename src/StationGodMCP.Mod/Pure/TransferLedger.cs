@@ -140,6 +140,20 @@ internal sealed class TransferLedger<TMove, TOutcome> where TMove : class where 
         }
     }
 
+    /// <summary>
+    /// Forgets every queued transfer and every kept outcome (the world they were made in is gone); one being applied
+    /// right now finishes and keeps its outcome. Ids are never reused.
+    /// </summary>
+    internal void Clear()
+    {
+        lock (_gate)
+        {
+            _pending.Clear();
+            _outcomes.Clear();
+            _outcomeOrder.Clear();
+        }
+    }
+
     internal TransferState<TOutcome> Find(long id)
     {
         lock (_gate)

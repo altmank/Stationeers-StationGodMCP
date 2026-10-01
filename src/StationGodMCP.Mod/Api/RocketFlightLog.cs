@@ -184,6 +184,9 @@ internal static class RocketFlightRecorder
         Logs.Remove(rocketId);
     }
 
+    /// <summary>The world was left: every flight log was of its rockets (ids repeat across loads).</summary>
+    internal static void ClearAll() => Logs.Clear();
+
     internal static void Tick()
     {
         if (Logs.Count == 0)

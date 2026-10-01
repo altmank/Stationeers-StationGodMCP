@@ -31,7 +31,7 @@ these tools need a gateway.
 - Print provenance (1.4.3+): every item a fabricator, printer or other machine makes is recorded as it is made, and a
   stack split off a printed one keeps the record. `find_things` reports `made {maker_id, maker_prefab, maker_name,
   game_time_s, quantity, split_from}` and filters with `made_by` (a maker's id, or text in its name) and `made_since`
-  (a game time, or negative seconds before now). The record lives in memory since the game started.
+  (a game time, or negative seconds before now). The record lives in memory since the world was loaded (1.9.1+: leaving a world clears it).
   `runtime_type: "DynamicGasCanister"` finds every portable tank whatever its prefab or label; `has_atmosphere: true`
   every thing that holds gas; `labelled_only: true` every label in the world. Each result says whether the Labeller can
   rename it (`labelable`), whether the device tools take it (`is_device`) and whether `atmosphere_contents` has
