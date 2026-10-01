@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.6.2
+
+2026-09-30. Fix: frame removal gives the cell back to the air as hand deconstruction does. 84 tools.
+
+- **A removed frame no longer leaves outdoor air behind.** A finished frame fills its cell, which then holds no
+  atmosphere. The game's last deconstruction step sets the frame's build state to -1 before destroying it
+  (`Structure.AttackWith`), so as it leaves the grid it lets air pass and its cell is released
+  (`AtmosphericEventInstance.StructureReleaseGrid`): the cell gets an atmosphere of its own, empty unless one of its
+  open neighbours is outdoors with no air of its own and none belongs to a room. `remove_structure` destroyed the frame
+  at its finished state, so the game queued a blocking event instead, which does nothing in a cell without air; the
+  cell stayed without an atmosphere, which the game reads and mixes as planet air. A block of frames hollowed out from
+  inside a vacuum room filled with outdoor air, even a cell boxed in by frames on every side. Now the frame's build
+  state goes to -1 through the game's setter and the game's own air checks release the cell before it is destroyed,
+  and each release is applied at once, as the ticks between a player's steps apply it: in a request of many frames
+  each cell is judged with the cells removed before it already holding air and the later ones still filled, as by
+  hand. Walls, devices and pieces are removed as before.
+
 ## 1.6.1
 
 2026-09-30. Fix: chutes join rocket chute umbilicals. 84 tools.

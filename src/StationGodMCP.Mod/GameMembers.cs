@@ -250,6 +250,11 @@ internal static class GameMembers
     internal static readonly GameMethod StructureCanDeconstruct = Register(new GameMethod("Structure.CanDeconstruct",
         () => typeof(Structure).GetMethod("CanDeconstruct", PrivateInstance, null, Type.EmptyTypes, null)));
 
+    // remove_structure: the game's air and room checks when a structure's build state changes (FreedCells).
+    internal static readonly GameMethod StructureWorldChangeChecks = Register(new GameMethod(
+        "Structure.WorldChangeChecks",
+        () => typeof(Structure).GetMethod("WorldChangeChecks", PrivateInstance, null, Type.EmptyTypes, null)));
+
     // ---- Plants ----
     internal static readonly GameField PlantStageTime = Field(typeof(Plant), "_stageTime");
     internal static readonly GameField PlantPerennial = Field(typeof(Plant), "_isPerennial");

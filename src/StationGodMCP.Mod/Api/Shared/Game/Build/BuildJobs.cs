@@ -439,7 +439,8 @@ internal sealed class PlaceWork : BuildWork
 /// <summary>
 /// remove_structure's work. Cable, pipe and chute pieces as their remove tool removes them (RunBuilder.Remove: a
 /// network kept whole keeps its id and contents); every other piece as deconstruction ends (with allow_contents its
-/// slots' items are dropped where it stood, as Structure.StructureDestroyed drops them; OnServer.Destroy). Then the
+/// slots' items are dropped where it stood, as Structure.StructureDestroyed drops them; a filled cell given back to
+/// the air as the last deconstruction step gives it, FreedCells; OnServer.Destroy). Then the
 /// refund: what deconstructing every removed piece gives back, to the source (worn items collect, the rest at its
 /// feet), or on the ground where each piece stood.
 /// </summary>
@@ -602,6 +603,8 @@ internal sealed class RemoveWork : BuildWork
                 }
             }
 
+            // A filled cell is given back as the last step of hand deconstruction gives it (FreedCells).
+            FreedCells.Release(piece);
             OnServer.Destroy(piece);
             Done(takedown, done, log);
         }

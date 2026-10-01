@@ -25,7 +25,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.6.1";
+    public const string Version = "1.6.2";
 
     private readonly StationGodRequestDispatcher _dispatcher = new StationGodRequestDispatcher();
     private Harmony? _harmony;

@@ -11,7 +11,7 @@ internal static class Program
 {
     private const string ServerName = "StationGodMCP";
     // Reported in the initialize response. build.ps1 checks it matches StationGodMCP.Server.csproj and the mod.
-    private const string ServerVersion = "1.6.1";
+    private const string ServerVersion = "1.6.2";
     private const string ProtocolVersion = "2025-06-18";
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(35);
