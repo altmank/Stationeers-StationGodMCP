@@ -128,33 +128,6 @@ A single local game needs none. The settings cover the local pipe's name and rem
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
   tools that need it, which answer `game_changed`; `mod_info` lists them.
 
-## Status (1.5.0)
-
-**Proven in real play on a live base:** the device, logic, IC10 and Lua chip tools, `set_ic_source` on Lua chips
-included; the item and container tools, `find_things`, `move_item`, `label` and `paint`; `planet`, `plants`,
-`player_vitals`, `thing_health`, `outer_frames`; the solar, dish and trader tools; `upgrade_cables`; `place_cables`
-and `remove_cables`; `clean_cables` (dead ends, junctions, merge and split, loops); `plan_cable_route` with
-`frames_first`, `assume_removed`, `prefer: hidden`, several starts and trunk taps; `grid_survey`, `feed_paths` and
-`plan_removal`; `replace_walls`; `place_structure` and `remove_structure` for walls, floors and ceilings, batches
-included.
-
-**Proven on a dedicated server:** a twelve-round live test (2026-09-29, headless, no player) ran every tool area with
-real runs and fixed what it found; its last round found nothing. Covered: cables, pipes and chutes (place, remove,
-upgrade, clean with all its operations, the route planners, `undo_job`, `refund_to`), the gas check of pipe jobs
-(merges, splits, long straights swapped, in-line tanks removed, `allow_burst` outdoors and into a room), `move_gas`
-with rooms and its `dry_run`, the placement and layout tools that need no camera (door keep-out, the layout preview,
-`orient`, `wall_map`, `find_spot`, `lint_layout`, `check_replaceable`), `replace_walls` and `replace_frames`,
-broken structures, the power overload guard, the trader tools, the chip tools and the sidecar's argument checks.
-Earlier: `paste_blueprint` (paste, status and undo), the pipe name setting, every 1.3.0 addition and the 1.3.1 fixes.
-Later: 1.10.0's `read_devices` and `thing_health` `network_id` answer value for value what the single tools answer,
-with the game paused (`tools/read_devices_equivalence.py`, read only, runs the same check on any game).
-
-**Not yet tested in game:** what needs a player or a camera (`looking_at`, `at` at the crosshair or relative to you,
-`show_preview`, hidden and body slots with a real inventory, the kit leaving your inventory, suit damage from
-refunds), a real `acknowledge_gas_lost` lift (no gas loss could be provoked), the 1.3.2 landing pad atmospheres in
-`move_gas`, the 1.3.3 planet gas removal (needs Terraforming Reloaded) and the 1.4.0 Ingot Vault tools (need the
-Ingot Vault mod).
-
 ## Documentation
 
 - [Install](docs/install.md): Workshop, sidecar, Claude Code, Codex, dedicated servers, multiplayer, removing it.
