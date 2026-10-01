@@ -306,7 +306,8 @@ internal static class RunArgs
             args.OptionalBool("join_trunk") ?? false);
         return new RunOptions(new EditAllowance(bridge, args.OptionalBool("allow_split") ?? false),
             args.OptionalThingId("from_id"), RefundArgs.RouteWithFlag(args),
-            args.OptionalInt("limit", 1, RunPath.MaximumCells) ?? DefaultListLimit,
-            args.OptionalBool("allow_split_long") ?? true, targets, args.OptionalBool("allow_door_keepout") ?? false);
+            args.OptionalInt("limit", 0, RunPath.MaximumCells) ?? DefaultListLimit,
+            args.OptionalBool("allow_split_long") ?? true, targets, args.OptionalBool("allow_door_keepout") ?? false,
+            new RunDetail(args.OptionalBool("include_links") ?? false, args.OptionalBool("include_notes") ?? false));
     }
 }

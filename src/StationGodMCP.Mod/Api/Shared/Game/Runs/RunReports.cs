@@ -20,7 +20,9 @@ internal static class RunReports
     internal static RunReportView Of(RunPlan plan, string status, string? jobId)
     {
         RunRequest request = plan.Request;
-        List<string> notes = new List<string>(request.Kind.Notes) { SwapGoal.TickNote };
+        List<string>? notes = request.Options.Detail.Notes
+            ? new List<string>(request.Kind.Notes) { SwapGoal.TickNote }
+            : null;
         RunHeaderView header = new RunHeaderView(request.Tool, status, jobId,
             request.Build != null ? request.Kind.NameOf(request.Build.Grade) : null, notes);
         return new RunReportView(header, Cells(plan), Materials(plan), Networks(plan), Issues(plan, plan.Problems),
@@ -410,8 +412,9 @@ internal static class RunReports
         LinkDiff change = Connectivity.Compare(forecast.GameBefore, forecast.After);
         List<UpgradeLinkView> differences = ViewsOf(plan, forecast.ModelCheck.Added);
         differences.AddRange(ViewsOf(plan, forecast.ModelCheck.Lost));
-        return new RunLinksView(forecast.GameBefore.Count, forecast.After.Count, ViewsOf(plan, change.Added),
-            ViewsOf(plan, change.Lost), differences);
+        RunLinksView links = new RunLinksView(forecast.GameBefore.Count, forecast.After.Count,
+            ViewsOf(plan, change.Added), ViewsOf(plan, change.Lost), differences);
+        return plan.Request.Options.Detail.Links ? links : links.CountsOnly();
     }
 
     private static List<UpgradeLinkView> ViewsOf(RunPlan plan, List<Link> links)

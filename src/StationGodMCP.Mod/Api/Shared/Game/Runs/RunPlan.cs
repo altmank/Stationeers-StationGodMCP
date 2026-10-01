@@ -94,11 +94,31 @@ internal sealed class RunRemoval
     internal bool IsEmpty => Ids.Count == 0 && Cells.Count == 0;
 }
 
+/// <summary>
+/// What a run report lists beyond its counts: links (include_links: every link the edit adds and ends) and notes
+/// (include_notes: the tool's fixed explanations). Both are left out by default.
+/// </summary>
+internal sealed class RunDetail
+{
+    internal RunDetail(bool links, bool notes)
+    {
+        Links = links;
+        Notes = notes;
+    }
+
+    internal static RunDetail Brief { get; } = new RunDetail(false, false);
+
+    internal bool Links { get; }
+
+    internal bool Notes { get; }
+}
+
 internal sealed class RunOptions
 {
     internal RunOptions(EditAllowance allow, ThingId? from, RefundRoute refundTo, int listLimit, bool splitLong = true,
-        RunTargets? targets = null, bool allowDoorKeepOut = false)
+        RunTargets? targets = null, bool allowDoorKeepOut = false, RunDetail? detail = null)
     {
+        Detail = detail ?? RunDetail.Brief;
         AllowDoorKeepOut = allowDoorKeepOut;
         Allow = allow;
         From = from;
@@ -112,7 +132,10 @@ internal sealed class RunOptions
     internal RunTargets Targets { get; }
 
     internal RunOptions WithTargets(RunTargets targets) =>
-        new RunOptions(Allow, From, RefundTo, ListLimit, SplitLong, targets, AllowDoorKeepOut);
+        new RunOptions(Allow, From, RefundTo, ListLimit, SplitLong, targets, AllowDoorKeepOut, Detail);
+
+    /// <summary>include_links and include_notes: what the report lists beyond its counts.</summary>
+    internal RunDetail Detail { get; }
 
     /// <summary>allow_door_keepout: new pieces in a door's keep-out are a warning instead of a problem.</summary>
     internal bool AllowDoorKeepOut { get; }

@@ -290,7 +290,9 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 
 - `footprint`: the small cells the game would register it in (its real footprint, from the prefab's grid bounds),
   2 m cells for grid structures, `body` (`render_box`, the box its meshes fill, and `grid_box`, the footprint's box),
-  and `mount`: the face plane behind it (`z=668`) and the rectangle its mesh box covers there (1.4.4+).
+  and `mount`: the face plane behind it (`z=668`) and the rectangle its mesh box covers there (1.4.4+). The cells
+  themselves are listed only with `include_footprint_cells: true` (1.7.0+); without it `small_cells` is its `count`
+  and `large_cells` is left out.
 - `sections`: the 2 m wall (or floor) sections that rectangle covers by more than 0.1 m, with what stands on each, and
   `crosses_seam`.
 - `conflicts`, each `{code, level, message, reference_id}`; warnings also appear in the report's `warnings`:

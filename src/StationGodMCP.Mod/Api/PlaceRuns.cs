@@ -51,6 +51,9 @@ internal static class RemoveChutesApi
 /// <summary>The request forms the run tools share: a dry run, a confirmed run, or a job's status.</summary>
 internal static class RunApi
 {
+    /// <summary>A poll's switch for the whole job view (preflight and final check).</summary>
+    private const string VerboseArgument = "verbose";
+
     internal static object Place(Args args, RunKind kind)
     {
         if (args.Has("job_id"))
@@ -94,7 +97,8 @@ internal static class RunApi
     internal static RunReportView PlanRemoval(Args args)
     {
         args.Reject("plan_removal", "dry_run", "confirm", "job_id", "grade", "join", "extra_ends", "piece", "pieces",
-            "branches", "remove_ids", "assume_removed", "allow_split_long", "join_to", "join_trunk", "wait");
+            "branches", "remove_ids", "assume_removed", "allow_split_long", "join_to", "join_trunk", "wait",
+            VerboseArgument);
         RunKind kind = (args.OptionalString("kind") ?? "cable").Trim().ToLowerInvariant() switch
         {
             "cable" => new CableRunKind(),
@@ -145,13 +149,15 @@ internal static class RunApi
     private static object Status(Args args, params string[] others)
     {
         args.Reject("job_id", others);
-        args.Reject("job_id", "dry_run", "confirm", "from_id", "refund", "refund_to", "limit",
-            GasHoldVerdict.AcknowledgeArgument);
-        return HeldTickJobs.Status(args.String("job_id").Trim());
+        args.Reject("job_id", "dry_run", "confirm", "from_id", "refund", "refund_to", "limit", "include_links",
+            "include_notes", GasHoldVerdict.AcknowledgeArgument);
+        object polled = HeldTickJobs.Status(args.String("job_id").Trim());
+        return (args.OptionalBool(VerboseArgument) ?? false) ? polled : RunJobView.Brief(polled);
     }
 
     private static object Run(Args args, RunRequest request)
     {
+        args.Reject("a run (it is for a job_id poll)", VerboseArgument);
         bool dryRun = args.OptionalBool("dry_run") ?? true;
         bool confirm = args.OptionalBool("confirm") ?? false;
         if (dryRun && confirm)

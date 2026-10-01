@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
@@ -67,7 +68,7 @@ internal sealed class ItemTotalsView
 internal sealed class PrefabTotalView
 {
     internal PrefabTotalView(string? prefabName, string? displayName, string? reagent, int items,
-        PlaceAmounts amounts, List<HolderTotalView> topHolders)
+        PlaceAmounts amounts, List<HolderTotalView>? topHolders)
     {
         PrefabName = prefabName;
         DisplayName = ThingName.Displayed(displayName, prefabName);
@@ -102,8 +103,12 @@ internal sealed class PrefabTotalView
     /// <summary>The reagent's type name for a working-load row (prefab_name null), else null.</summary>
     public string? Reagent { get; }
 
-    /// <summary>The five outermost holders with the most of it, machines holding it as stock included.</summary>
-    public List<HolderTotalView> TopHolders { get; }
+    /// <summary>
+    /// The holders_limit (default five) outermost holders with the most of it, machines holding it as stock included;
+    /// left out with holders_limit 0.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<HolderTotalView>? TopHolders { get; }
 }
 
 /// <summary>A quantity in all, and split by where it is.</summary>

@@ -10,7 +10,7 @@ these tools need a gateway.
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
 | `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock. | `prefab_contains`, `name_contains`, `location`, `within_id`, `near_player_m`, `limit`, `offset` |
-| `item_totals` | Total quantity of each item type, split into on the ground, carried, stored and machine stock, with the five holders that hold the most. | as `find_items` |
+| `item_totals` | Total quantity of each item type, split into on the ground, carried, stored and machine stock, with the holders that hold the most (five by default). | as `find_items`, and `holders_limit` (0 leaves the holders out) |
 | `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, `made_by`, `made_since` |
 | `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. | `reference_id`, `depth` (default 3) |

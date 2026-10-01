@@ -503,6 +503,7 @@ internal sealed class BuildJobResult
         GasCheck = gasCheck;
     }
 
+    /// <summary>The check made as the job started; null in a brief poll unless it refused (it holds why).</summary>
     public object? FinalCheck { get; }
 
     public List<BuiltPieceView> Placed { get; }
@@ -524,6 +525,23 @@ internal sealed class BuildJobResult
     /// <summary>The pipe networks' contents before and after the job.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public GasCheckView? GasCheck { get; }
+
+    /// <summary>The same result without its final check (a brief poll).</summary>
+    internal BuildJobResult WithoutFinalCheck() => new BuildJobResult(null, this);
+
+    private BuildJobResult(object? finalCheck, BuildJobResult result)
+    {
+        FinalCheck = finalCheck;
+        Placed = result.Placed;
+        Removed = result.Removed;
+        Used = result.Used;
+        Refunded = result.Refunded;
+        RefundError = result.RefundError;
+        StoppedAt = result.StoppedAt;
+        Verification = result.Verification;
+        Error = result.Error;
+        GasCheck = result.GasCheck;
+    }
 }
 
 /// <summary>What a job has done so far, as it goes.</summary>
@@ -563,7 +581,9 @@ internal sealed class BuildStopView
 /// </summary>
 internal sealed class BuildJobView
 {
-    internal BuildJobView(string jobId, string tool, string status, object preflight, BuildJobResult? result)
+    private const string RefusedStatus = "refused";
+
+    internal BuildJobView(string jobId, string tool, string status, object? preflight, BuildJobResult? result)
     {
         JobId = jobId;
         Tool = tool;
@@ -578,7 +598,19 @@ internal sealed class BuildJobView
 
     public string Status { get; }
 
-    public object Preflight { get; }
+    /// <summary>The dry run made when the job was asked for; null in a brief poll.</summary>
+    public object? Preflight { get; }
 
     public BuildJobResult? Result { get; }
+
+    /// <summary>
+    /// A poll without verbose: a job view without its preflight and final check, the reports the real run already
+    /// answered with; a refused job keeps its final check, which holds the problems it refused for. Any other view
+    /// (queued, dropped) is returned as it is.
+    /// </summary>
+    internal static object Brief(object polled) =>
+        polled is BuildJobView job
+            ? new BuildJobView(job.JobId, job.Tool, job.Status, null,
+                job.Status == RefusedStatus ? job.Result : job.Result?.WithoutFinalCheck())
+            : polled;
 }

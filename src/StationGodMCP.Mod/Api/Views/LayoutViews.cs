@@ -238,14 +238,26 @@ internal sealed class CellListView
     internal CellListView(IReadOnlyList<GridCell> cells, int cap)
     {
         Count = cells.Count;
-        Cells = new List<PointView>(System.Math.Min(cap, cells.Count));
+        List<PointView> listed = new List<PointView>(System.Math.Min(cap, cells.Count));
         for (int index = 0; index < cells.Count && index < cap; index++)
         {
-            Cells.Add(PointView.OfCell(cells[index]));
+            listed.Add(PointView.OfCell(cells[index]));
         }
+
+        Cells = listed;
+    }
+
+    private CellListView(int count)
+    {
+        Count = count;
     }
 
     public int Count { get; }
 
-    public List<PointView> Cells { get; }
+    /// <summary>The cells, up to the cap; left out of a count-only list.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<PointView>? Cells { get; }
+
+    /// <summary>The total alone, the cells left out.</summary>
+    internal CellListView CountOnly() => new CellListView(Count);
 }

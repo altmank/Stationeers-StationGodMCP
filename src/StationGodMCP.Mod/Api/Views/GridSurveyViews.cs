@@ -8,29 +8,34 @@ namespace StationGodMCP.Api.Views;
 
 /// <summary>
 /// grid_survey: one page of 2 m cells of a box or a room, each with its frame, walls, room and its 64 small cells as
-/// one string (legend), and the pieces, devices and networks standing in the page's cells.
+/// one string (legend), and the pieces, devices and networks standing in the page's cells. A part sections leaves out
+/// is absent; count, offset, limit, total and has_more always describe the page of cells.
 /// </summary>
 internal sealed class GridSurveyView
 {
-    internal GridSurveyView(Slice<SurveyCellView> page, SurveyContents contents, string legend)
+    internal GridSurveyView(Slice<SurveyCellView> page, SurveyContents contents, SurveySections sections,
+        string? legend)
     {
         Legend = legend;
-        Cells = page.Items;
+        Cells = sections.Pick(SurveySection.Cells, page.Items);
         Count = page.Items.Count;
         Offset = page.Offset;
         Limit = page.Limit;
         Total = page.Total;
         HasMore = page.HasMore;
-        Pieces = contents.Pieces;
-        Devices = contents.Devices;
-        Networks = contents.Networks;
-        NetworkVisibility = contents.NetworkVisibility;
-        Doors = contents.Doors;
+        Pieces = sections.Pick(SurveySection.Pieces, contents.Pieces);
+        Devices = sections.Pick(SurveySection.Devices, contents.Devices);
+        Networks = sections.Pick(SurveySection.Networks, contents.Networks);
+        NetworkVisibility = sections.Pick(SurveySection.NetworkVisibility, contents.NetworkVisibility);
+        Doors = sections.Pick(SurveySection.Doors, contents.Doors);
     }
 
-    public string Legend { get; }
+    /// <summary>Left out with compact, or when sections leaves out cells.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Legend { get; }
 
-    public List<SurveyCellView> Cells { get; }
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<SurveyCellView>? Cells { get; }
 
     public int Count { get; }
 
@@ -43,23 +48,31 @@ internal sealed class GridSurveyView
 
     public bool HasMore { get; }
 
-    /// <summary>Cables, pipes and chutes with a cell in this page's cells.</summary>
-    public List<SurveyPieceView> Pieces { get; }
+    /// <summary>Cables, pipes and chutes with a cell in this page's cells (with network_ids: on one of them).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<SurveyPieceView>? Pieces { get; }
 
-    /// <summary>Devices with a cell in this page's cells, with their cable and pipe ports.</summary>
-    public List<SurveyDeviceView> Devices { get; }
+    /// <summary>
+    /// Devices with a cell in this page's cells, with their cable and pipe ports (with network_ids: those with a port
+    /// on one of them).
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<SurveyDeviceView>? Devices { get; }
 
     /// <summary>A RunCableNetworkView or RunPipeNetworkView per network of the pieces listed.</summary>
-    public List<object> Networks { get; }
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<object>? Networks { get; }
 
     /// <summary>
     /// Per network of the pieces listed: their cells by how visible a piece in them is, the floating ones (air) by
     /// position, and with include_refund what removing those pieces would give back.
     /// </summary>
-    public List<SurveyNetworkVisibilityView> NetworkVisibility { get; }
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<SurveyNetworkVisibilityView>? NetworkVisibility { get; }
 
     /// <summary>Doors on the faces of this page's cells, with their keep-out ('x' in support).</summary>
-    public List<SurveyDoorView> Doors { get; }
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<SurveyDoorView>? Doors { get; }
 }
 
 /// <summary>One network's listed pieces: their cells by visibility, where they float, and their removal refund.</summary>
@@ -122,7 +135,7 @@ internal sealed class SurveyContents
 internal sealed class SurveyCellView
 {
     internal SurveyCellView(PositionView at, string? roomId, SurveyFrameView? frame, List<SurveyWallView> walls,
-        string small, string support)
+        string? small, string? support)
     {
         Support = support;
         At = at;
@@ -140,16 +153,18 @@ internal sealed class SurveyCellView
 
     public List<SurveyWallView> Walls { get; }
 
-    /// <summary>64 characters, index x + 4y + 16z (see legend).</summary>
-    public string Small { get; }
+    /// <summary>64 characters, index x + 4y + 16z (see legend); left out with compact.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Small { get; }
 
     /// <summary>
     /// 64 characters in the same order: what holds a piece in each small cell up. 'i' inside a frame (every 2 m cell
     /// it touches holds one), 'e' a frame edge or corner, 'f' on a frame's face, 'w' on a wall's plane, 'a' air (the
     /// planners' frames_first avoids these); over those, 'x' in a door's keep-out (the planners never use it without
-    /// allow_door_keepout) and 'g' on a window's face.
+    /// allow_door_keepout) and 'g' on a window's face. Left out with compact.
     /// </summary>
-    public string Support { get; }
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Support { get; }
 }
 
 internal sealed class SurveyFrameView

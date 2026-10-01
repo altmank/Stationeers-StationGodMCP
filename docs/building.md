@@ -12,6 +12,9 @@ This applies to every tool that changes the world: the run, upgrade and clean to
 
 1. **Dry run by default.** A call without `dry_run: false` changes nothing. It reports every piece, what it costs and
    gives back, the networks before and after, and every problem at once. Read `ready`, `problems` and `warnings`.
+   The run tools (`place_*`, `remove_*`, `plan_*_route`, `plan_removal`) give `links` as counts (`added_count`,
+   `lost_count`) and leave their fixed `notes` out; `include_links: true` lists every link, `include_notes: true`
+   adds the notes. `limit` caps the cells listed (default 200; 0 lists none, the counts stay).
 2. **A real run** needs `dry_run: false` and `confirm: true`, and starts only when the checks find no problem. It
    returns a `job_id`.
 3. **One held tick.** The mod holds the game tick as a save does, runs every check again on the world as it is now,
@@ -28,6 +31,11 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    | `stopped` | A piece failed part way. The job lists what was done and where it stopped; nothing after that was done. For upgrades, running the same call again resumes. |
    | `gas_lost` | Pipe network contents went missing and could not be put back; `gas_check` says how much and where. Every later pipe job is refused (`gas_check_failed`), and so is a `place_structure` / `remove_structure` run that places or removes anything with a pipe; other structure runs and dry runs are not. Loading a save (or going back to the menu) lifts it, and so does a run that acknowledges the loss (`acknowledge_gas_lost`, see *Gas hold* below); ask the user first. |
    | `refused` | The checks in the held tick failed; nothing changed. |
+
+   A poll answers the status and what the job did (pieces, materials, `verification`, `gas_check`, `error`). The
+   reports the real run already answered with, `preflight` and the held tick's `final_check`, come back only with
+   `verbose: true` (a refused job keeps `final_check`: it holds why). This holds for the run tools, `place_structure`
+   and `remove_structure`.
 
 5. **One job at a time.** A real run that finds another job running answers `busy` with `running_job_id` and changes
    nothing. With `wait: true` it is queued instead (status `queued`, its own `job_id` and `position`; up to 8 wait) and
@@ -123,6 +131,17 @@ and role, and the networks with their loads or contents. `rotation` is `{facing,
 `find_things`, `looking_at` and `connections` report the same `rotation` for structures. `network_visibility` counts each network's cells by class and lists the floating
 ones; `include_refund: true` adds what removing each piece would give back. Pages of 27 cells (`limit` up to 125,
 `offset`).
+
+A whole survey of a small box can run to tens of kilobytes. Ask for what you need:
+
+- `sections`: any of `cells`, `pieces`, `devices`, `networks`, `network_visibility`, `doors`; the parts not named are
+  left out of the reply. The pieces and devices are still the ones standing in the page's cells, and `count`, `total`
+  and `has_more` still page the cells.
+- `network_ids`: only the pieces on these networks (a network id, or any cable, pipe or chute piece on it), the
+  devices with a port on one of them, and those networks.
+- `compact: true`: each cell without its `small` and `support` strings, and no `legend`.
+
+Without them the reply is as it always was.
 
 ## Doors and windows
 

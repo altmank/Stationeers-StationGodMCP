@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.7.0
+
+2026-09-30. Smaller replies: ask a tool for only what you need. 84 tools.
+
+- **`grid_survey` filters.** A survey of a 6 x 4 x 4 m box ran to 63 KB. `sections` (any of `cells`, `pieces`,
+  `devices`, `networks`, `network_visibility`, `doors`) keeps only the parts named, the others left out of the reply;
+  `network_ids` (a network id, or any cable, pipe or chute piece on it) keeps only the pieces on those networks, the
+  devices with a port on one of them, and those networks; `compact: true` leaves out each cell's two 64-character
+  strings (`small`, `support`) and the legend. Without them the reply is unchanged.
+- **`get_ic_status` without the source.** `include_source: false` answers `source` null while `source_length` still
+  gives its length, for polling a chip's log or state without a long Lua program in every reply. Default true.
+- **`item_totals` holders.** `holders_limit` sets how many holders each item type lists (default 5, as before; 0 leaves
+  `top_holders` out).
+- **Changed default: job polls are brief.** Polling a `place_structure`, `remove_structure`, `place_*` or `remove_*`
+  job with `job_id` answers its status and what it did (pieces, materials, verification, gas check, error) with
+  `preflight` null and the held tick's `final_check` left out: both repeat the reports the real run already answered
+  with. A refused job keeps `final_check`, which holds why. `verbose: true` gives the whole job as before.
+- **Changed default: footprint cells.** Each `place_structure` layout preview gives `footprint.small_cells` as its
+  count only and leaves `large_cells` out (a small in-line tank listed 36 cells, in the dry run, the job and every
+  poll); `include_footprint_cells: true` lists them.
+- **Changed default: run reports.** `place_*`, `remove_*`, `plan_*_route` and `plan_removal` give `links` as counts
+  (`added_count`, `lost_count`, new) and leave out the tool's fixed `notes`; `include_links: true` lists every added
+  and lost link (34 entries for 15 pipes), `include_notes: true` adds the notes. `limit: 0` lists no cells (the counts
+  stay), also for the dry run a `plan_*_route` reply carries.
+
 ## 1.6.2
 
 2026-09-30. Fix: frame removal gives the cell back to the air as hand deconstruction does. 84 tools.

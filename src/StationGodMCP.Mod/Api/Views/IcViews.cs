@@ -37,10 +37,16 @@ internal sealed class IcChip
     internal const string Lua = "lua";
 
     internal IcChip(string language, ThingView chip, string? source, LuaStateView? lua)
+        : this(language, chip, source, source?.Length ?? 0, lua)
+    {
+    }
+
+    private IcChip(string language, ThingView chip, string? source, int sourceLength, LuaStateView? lua)
     {
         Language = language;
         Chip = chip;
         Source = source;
+        SourceLength = sourceLength;
         LuaState = lua;
     }
 
@@ -48,11 +54,16 @@ internal sealed class IcChip
 
     internal ThingView Chip { get; }
 
+    /// <summary>Null when the chip holds none, or when the caller left it out (WithoutSource).</summary>
     internal string? Source { get; }
 
-    internal int SourceLength => Source?.Length ?? 0;
+    /// <summary>Characters in the chip's source, also when the source itself is left out.</summary>
+    internal int SourceLength { get; }
 
     internal LuaStateView? LuaState { get; }
+
+    /// <summary>The same chip without its source text (include_source false); source_length kept.</summary>
+    internal IcChip WithoutSource() => new IcChip(Language, Chip, null, SourceLength, LuaState);
 }
 
 /// <summary>A chip's line and error state.</summary>
@@ -255,6 +266,7 @@ internal sealed class IcStatusView
 
     public bool HasChip => true;
 
+    /// <summary>The chip's source; null with include_source false (source_length still counts it).</summary>
     public string? Source { get; }
 
     public double LineNumber { get; }

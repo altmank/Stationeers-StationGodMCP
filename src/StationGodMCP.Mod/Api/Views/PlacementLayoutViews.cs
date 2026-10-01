@@ -36,7 +36,7 @@ internal sealed class MountView
 /// <summary>Where a placed piece would take room: its small cells, 2 m cells, body and mount.</summary>
 internal sealed class FootprintView
 {
-    internal FootprintView(CellListView smallCells, List<PositionView> largeCells, BodyView body, MountView? mount)
+    internal FootprintView(CellListView smallCells, List<PositionView>? largeCells, BodyView body, MountView? mount)
     {
         SmallCells = smallCells;
         LargeCells = largeCells;
@@ -47,13 +47,20 @@ internal sealed class FootprintView
     /// <summary>The small cells the game would register it in (GridBounds turned and moved).</summary>
     public CellListView SmallCells { get; }
 
-    /// <summary>The 2 m cells a grid-placed structure takes; empty for small-grid pieces.</summary>
-    public List<PositionView> LargeCells { get; }
+    /// <summary>
+    /// The 2 m cells a grid-placed structure takes; empty for small-grid pieces. Left out without
+    /// include_footprint_cells.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<PositionView>? LargeCells { get; }
 
     public BodyView Body { get; }
 
     /// <summary>The face plane it rests on and the rectangle it covers there; null when it rests on none.</summary>
     public MountView? Mount { get; }
+
+    /// <summary>The footprint with its cell lists left out (small_cells keeps its count).</summary>
+    internal FootprintView WithoutCells() => new FootprintView(SmallCells.CountOnly(), null, Body, Mount);
 }
 
 /// <summary>A face structure a mounted piece rests on.</summary>
@@ -188,6 +195,10 @@ internal sealed class PlacementLayoutView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<PortCheckView>? PortChecks { get; }
+
+    /// <summary>The preview without the footprint's cell lists (no include_footprint_cells).</summary>
+    internal PlacementLayoutView WithoutFootprintCells() =>
+        new PlacementLayoutView(Footprint.WithoutCells(), Sections, Conflicts, PortChecks);
 }
 
 /// <summary>One turn orient scored: the turn, its score (lower is better; null when excluded) and why.</summary>

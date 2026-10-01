@@ -23,7 +23,7 @@ internal static class PlaceStructureApi
         switch (BuildArgs.ParsePlace(args))
         {
             case BuildForm<PlaceArguments>.Poll poll:
-                return HeldTickJobs.Status(poll.JobId);
+                return Polled(poll.JobId, poll.Verbose);
             case BuildForm<PlaceArguments>.Run run:
                 PlacePlan plan = PlacePlanner.Plan(run.Arguments);
                 string? acknowledge = GasHoldArgs.Acknowledgement(args);
@@ -45,6 +45,13 @@ internal static class PlaceStructureApi
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or placements.");
         }
+    }
+
+    /// <summary>A job as polled: brief (no preflight, no final check unless refused) unless verbose.</summary>
+    internal static object Polled(string jobId, bool verbose)
+    {
+        object polled = HeldTickJobs.Status(jobId);
+        return verbose ? polled : BuildJobView.Brief(polled);
     }
 
     // The fuselage pieces the run replaces (merges): the job removes them, so their snapshots are taken with it.
@@ -74,7 +81,7 @@ internal static class RemoveStructureApi
         switch (BuildArgs.ParseRemove(args))
         {
             case BuildForm<RemoveArguments>.Poll poll:
-                return HeldTickJobs.Status(poll.JobId);
+                return PlaceStructureApi.Polled(poll.JobId, poll.Verbose);
             case BuildForm<RemoveArguments>.Run run:
                 RemovePlan plan = RemovePlanner.Plan(run.Arguments);
                 string? acknowledge = GasHoldArgs.Acknowledgement(args);

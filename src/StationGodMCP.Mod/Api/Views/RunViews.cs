@@ -74,7 +74,7 @@ internal sealed class RunReportView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? AirCells { get; }
 
-    /// <summary>The run's cells in order, then neighbours changed to join it; up to limit.</summary>
+    /// <summary>The run's cells in order, then neighbours changed to join it; up to limit (0: none).</summary>
     public List<RunCellView> Cells { get; }
 
     public List<RunRemovalView> Removals { get; }
@@ -91,15 +91,19 @@ internal sealed class RunReportView
 
     public List<RunSplitView> WouldSplit { get; }
 
-    /// <summary>Links the edit makes and ends, predicted; null when nothing is built.</summary>
+    /// <summary>
+    /// Links the edit makes and ends, predicted; null when nothing is built. Counts only unless include_links.
+    /// </summary>
     public RunLinksView? Links { get; }
 
-    public List<string> Notes { get; }
+    /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Notes { get; }
 }
 
 internal sealed class RunHeaderView
 {
-    internal RunHeaderView(string tool, string status, string? jobId, string? grade, List<string> notes)
+    internal RunHeaderView(string tool, string status, string? jobId, string? grade, List<string>? notes)
     {
         Tool = tool;
         Status = status;
@@ -116,7 +120,7 @@ internal sealed class RunHeaderView
 
     internal string? Grade { get; }
 
-    internal List<string> Notes { get; }
+    internal List<string>? Notes { get; }
 }
 
 /// <summary>The report's cells and removals, with the counts over all of them.</summary>
@@ -763,21 +767,45 @@ internal sealed class RunLinksView
         CountAfter = after;
         Added = added;
         Lost = lost;
+        AddedCount = added.Count;
+        LostCount = lost.Count;
         ModelMatchesGame = modelDifferences.Count == 0;
         ModelDifferences = modelDifferences;
+    }
+
+    private RunLinksView(RunLinksView links)
+    {
+        CountBefore = links.CountBefore;
+        CountAfter = links.CountAfter;
+        AddedCount = links.AddedCount;
+        LostCount = links.LostCount;
+        ModelMatchesGame = links.ModelMatchesGame;
+        ModelDifferences = links.ModelDifferences;
     }
 
     public int CountBefore { get; }
 
     public int CountAfter { get; }
 
-    public List<UpgradeLinkView> Added { get; }
+    /// <summary>Every link the edit adds; left out unless include_links (added_count counts them).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeLinkView>? Added { get; }
 
-    public List<UpgradeLinkView> Lost { get; }
+    /// <summary>Every link the edit ends; left out unless include_links (lost_count counts them).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeLinkView>? Lost { get; }
+
+    public int AddedCount { get; }
+
+    public int LostCount { get; }
 
     public bool ModelMatchesGame { get; }
 
+    /// <summary>Where the model reads the game's links differently; always listed (empty when it matches).</summary>
     public List<UpgradeLinkView> ModelDifferences { get; }
+
+    /// <summary>The counts without the added and lost lists (a report without include_links).</summary>
+    internal RunLinksView CountsOnly() => new RunLinksView(this);
 }
 
 /// <summary>
@@ -787,7 +815,9 @@ internal sealed class RunLinksView
 /// </summary>
 internal sealed class RunJobView
 {
-    internal RunJobView(string jobId, string tool, string status, RunReportView preflight, RunJobResultView? result)
+    private const string RefusedStatus = "refused";
+
+    internal RunJobView(string jobId, string tool, string status, RunReportView? preflight, RunJobResultView? result)
     {
         JobId = jobId;
         Tool = tool;
@@ -806,8 +836,10 @@ internal sealed class RunJobView
 
     public string Status { get; }
 
-    public RunReportView Preflight { get; }
+    /// <summary>The dry run made when the run was asked for; null in a brief poll.</summary>
+    public RunReportView? Preflight { get; }
 
+    /// <summary>The whole check made as the job started; left out of a brief poll unless the job was refused.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public RunReportView? FinalCheck { get; }
 
@@ -823,6 +855,18 @@ internal sealed class RunJobView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ErrorView? Error { get; }
+
+    /// <summary>
+    /// A poll without verbose: a run job without its preflight and final check, the reports the real run already
+    /// answered with; a refused job keeps its final check, which holds the problems it refused for. Any other view
+    /// (queued, dropped, another tool's job) is returned as it is.
+    /// </summary>
+    internal static object Brief(object polled) =>
+        polled is RunJobView job
+            ? new RunJobView(job.JobId, job.Tool, job.Status, null,
+                new RunJobResultView(job.Status == RefusedStatus ? job.FinalCheck : null, job.Log, job.Verification,
+                    job.Error, job.GasCheck))
+            : polled;
 }
 
 internal sealed class RunJobResultView

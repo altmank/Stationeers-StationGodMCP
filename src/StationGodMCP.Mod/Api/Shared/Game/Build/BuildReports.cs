@@ -51,7 +51,7 @@ internal static class BuildReports
         List<PlacementView> placements = new List<PlacementView>(plan.Placements.Count);
         foreach (PlannedPlacement placement in plan.Placements)
         {
-            placements.Add(ViewOf(placement));
+            placements.Add(ViewOf(placement, plan.Arguments.FootprintCells));
         }
 
         List<BuildMaterialView> materials = new List<BuildMaterialView>(plan.Stocks.Count);
@@ -102,8 +102,9 @@ internal static class BuildReports
         return new RefundPlanView(RefundArgs.View(plan.Arguments.RefundTo), new List<string>(), destinations);
     }
 
-    internal static PlacementView ViewOf(PlannedPlacement placement)
+    internal static PlacementView ViewOf(PlannedPlacement placement, bool footprintCells)
     {
+        PlacementLayoutView? layout = placement.Layout?.View;
         Structure? prefab = placement.Prefab;
         PlacementPrefabView prefabView = prefab != null
             ? new PlacementPrefabView(prefab.PrefabName, prefab.PrefabHash, prefab.DisplayName,
@@ -118,7 +119,7 @@ internal static class BuildReports
         ColorView? color = placement.ColorIndex >= 0 ? ColorOf(placement.ColorIndex) : null;
         return new PlacementView(placement.Index, prefabView, spot,
             new PlacementLookView(placement.State, placement.Args.Label, color), Amounts(placement.Cost),
-            placement.Ports, placement.Layout?.View, placement.Orient,
+            placement.Ports, footprintCells ? layout : layout?.WithoutFootprintCells(), placement.Orient,
             placement.ResolvedAt != null && placement.At.HasValue
                 ? new ResolvedPlacementView(new PointView(placement.At.Value.X, placement.At.Value.Y,
                         placement.At.Value.Z), AtHow(placement) + (placement.AboveFloorHow ?? string.Empty),

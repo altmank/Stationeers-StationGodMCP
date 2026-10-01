@@ -10,7 +10,8 @@ using StationGodMCP.Api.Views;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// item_totals: the matching items summed per prefab, with where they are and the holders with the most. Quantity is
+/// item_totals: the matching items summed per prefab, with where they are and the holders_limit holders with the most
+/// (default 5; 0 leaves top_holders out). Quantity is
 /// the stack size for IQuantity items and 1 for anything else (WorldItems.QuantityOf). Machine stock (MachineStock)
 /// adds to the same rows: fabricator stock under the ingot it ejects as, a working load under its reagent in a row of
 /// its own (prefab_name null, reagent set). Read only.
@@ -19,7 +20,8 @@ internal static class ItemTotalsApi
 {
     private const int DefaultLimit = 200;
     private const int MaximumLimit = 500;
-    private const int TopHolders = 5;
+    private const int DefaultHolders = 5;
+    private const int MaximumHolders = 100;
 
     // Row key of a working-load reagent, apart from every prefab name.
     private const string ReagentKeyPrefix = "reagent:";
@@ -29,6 +31,7 @@ internal static class ItemTotalsApi
         ItemFilter filter = ItemFilter.Parse(args);
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
         int limit = args.OptionalInt("limit", 1, MaximumLimit) ?? DefaultLimit;
+        int holders = args.OptionalInt("holders_limit", 0, MaximumHolders) ?? DefaultHolders;
         List<ItemRecord> records = WorldItems.Collect(filter, origin);
         List<StockRecord> stock = MachineStock.Collect(filter, origin);
         Dictionary<string, PrefabTally> byKey = new Dictionary<string, PrefabTally>(StringComparer.Ordinal);
@@ -51,7 +54,7 @@ internal static class ItemTotalsApi
         List<PrefabTotalView> totals = new List<PrefabTotalView>(Math.Min(limit, tallies.Count));
         for (int index = 0; index < tallies.Count && index < limit; index++)
         {
-            totals.Add(tallies[index].ToView(TopHolders));
+            totals.Add(tallies[index].ToView(holders));
         }
 
         return new ItemTotalsView(totals, tallies.Count, records.Count, stock.Count);
@@ -144,8 +147,15 @@ internal sealed class PrefabTally
         return byQuantity != 0 ? byQuantity : string.CompareOrdinal(a._key, b._key);
     }
 
+    /// <summary>The row with its topHolders largest holders; with 0, no holder list at all.</summary>
     internal PrefabTotalView ToView(int topHolders)
     {
+        PlaceAmounts amounts = new PlaceAmounts(Quantity, _onGround, _carried, _stored, _machineStock);
+        if (topHolders == 0)
+        {
+            return new PrefabTotalView(_prefab, _display, _reagent, _items, amounts, null);
+        }
+
         _holders.Sort(static (a, b) => HolderTally.LargestFirst(a, b));
         List<HolderTotalView> top = new List<HolderTotalView>(Math.Min(topHolders, _holders.Count));
         for (int index = 0; index < _holders.Count && index < topHolders; index++)
@@ -155,8 +165,7 @@ internal sealed class PrefabTally
                 GameLookup.ViewOf(holder.Root.Position)));
         }
 
-        return new PrefabTotalView(_prefab, _display, _reagent, _items,
-            new PlaceAmounts(Quantity, _onGround, _carried, _stored, _machineStock), top);
+        return new PrefabTotalView(_prefab, _display, _reagent, _items, amounts, top);
     }
 }
 

@@ -59,7 +59,9 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
   unreachable device it is how many other devices that pair would read. An id that is not a device is
   `device_not_found`.
 - A register or stack value that is not finite reads as a string: `"NaN"`, `"Infinity"`, `"-Infinity"`.
-- `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it.
+- `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it. `include_source: false`
+  leaves the program out (`source` null, `source_length` still its length), for polling a chip's log or state without
+  reading a long Lua source every time.
 - A holder with no chip: `get_ic_status` answers only `has_chip: false`, the holder and its pins (no `housing`, power
   or runtime fields); the other tools refuse with `no_programmable_chip`, `resolve_ic_selectors` too. Arguments are
   checked before the chip, so a bad `action` or `source`, or a malformed id in `target_reference_ids`, is

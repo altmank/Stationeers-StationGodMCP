@@ -152,8 +152,10 @@ internal sealed class PlacementArgs
 
 internal sealed class PlaceArguments
 {
-    internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free, bool allowDoorKeepOut = false)
+    internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free, bool allowDoorKeepOut = false,
+        bool footprintCells = false)
     {
+        FootprintCells = footprintCells;
         AllowDoorKeepOut = allowDoorKeepOut;
         Placements = placements;
         From = from;
@@ -170,6 +172,9 @@ internal sealed class PlaceArguments
 
     /// <summary>allow_door_keepout: a piece in a door's keep-out is a warning instead of a problem.</summary>
     internal bool AllowDoorKeepOut { get; }
+
+    /// <summary>include_footprint_cells: each layout preview lists its footprint's cells, not only a count.</summary>
+    internal bool FootprintCells { get; }
 }
 
 internal sealed class RemoveArguments
@@ -201,12 +206,16 @@ internal abstract class BuildForm<T>
 
     internal sealed class Poll : BuildForm<T>
     {
-        internal Poll(string jobId)
+        internal Poll(string jobId, bool verbose)
         {
             JobId = jobId;
+            Verbose = verbose;
         }
 
         internal string JobId { get; }
+
+        /// <summary>verbose: the job with its preflight and final check, as the run reported them.</summary>
+        internal bool Verbose { get; }
     }
 
     internal sealed class Run : BuildForm<T>
@@ -234,6 +243,12 @@ internal abstract class BuildForm<T>
 internal static class BuildArgs
 {
     internal const int MaximumPlacements = 64;
+
+    /// <summary>A poll's switch for the whole job view (preflight and final check).</summary>
+    private const string VerboseArgument = "verbose";
+
+    /// <summary>place_structure's switch for the footprint's cell lists in each layout preview.</summary>
+    private const string FootprintCellsArgument = "include_footprint_cells";
     internal const int MaximumRemovals = 256;
 
     private static readonly string[] PlacementFields =
@@ -244,8 +259,11 @@ internal static class BuildArgs
         if (args.Has("job_id"))
         {
             return Poll<PlaceArguments>(args, "placements", "from_id", "free", "prefab", "at", "rotation", "facing",
-                "up", "face", "build_state", "label", "color", "allow_door_keepout", "orient", "above_floor_m");
+                "up", "face", "build_state", "label", "color", "allow_door_keepout", "orient", "above_floor_m",
+                FootprintCellsArgument);
         }
+
+        args.Reject("a run (it is for a job_id poll)", VerboseArgument);
 
         List<PlacementArgs> placements = new List<PlacementArgs>();
         if (args.Has("placements"))
@@ -271,7 +289,8 @@ internal static class BuildArgs
         bool confirmed = Confirmed(args);
         return new BuildForm<PlaceArguments>.Run(
             new PlaceArguments(placements, args.OptionalThingId("from_id"), args.OptionalBool("free") ?? false,
-                args.OptionalBool("allow_door_keepout") ?? false),
+                args.OptionalBool("allow_door_keepout") ?? false,
+                args.OptionalBool(FootprintCellsArgument) ?? false),
             confirmed);
     }
 
@@ -283,6 +302,7 @@ internal static class BuildArgs
                 "allow_burst", "refund_to", "from_id");
         }
 
+        args.Reject("a run (it is for a job_id poll)", VerboseArgument);
         if (!args.Has("reference_ids"))
         {
             throw ApiErrors.InvalidArgument("Pass reference_ids.");
@@ -540,7 +560,7 @@ internal static class BuildArgs
     {
         args.Reject("job_id", others);
         args.Reject("job_id", "dry_run", "confirm", GasHoldVerdict.AcknowledgeArgument);
-        return new BuildForm<T>.Poll(args.String("job_id").Trim());
+        return new BuildForm<T>.Poll(args.String("job_id").Trim(), args.OptionalBool(VerboseArgument) ?? false);
     }
 
     // A real run needs dry_run false and confirm true; confirm with a dry run is a contradiction.
