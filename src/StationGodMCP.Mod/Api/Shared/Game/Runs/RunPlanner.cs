@@ -36,7 +36,9 @@ internal static class RunPlanner
         }
 
         RunPlan plan = PlanOnce(request);
-        return request.Options.Targets.JoinTrunk ? RunTaps.Tapped(request, plan, PlanOnce) : plan;
+        plan = request.Options.Targets.JoinTrunk ? RunTaps.Tapped(request, plan, PlanOnce) : plan;
+        Lint.LintDryRun.Check(plan);
+        return plan;
     }
 
     private static RunPlan PlanOnce(RunRequest request)

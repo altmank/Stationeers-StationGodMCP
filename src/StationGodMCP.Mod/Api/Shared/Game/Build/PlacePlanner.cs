@@ -192,6 +192,7 @@ internal static class PlacePlanner
         Overlaps(plan);
         Clashes(plan);
         CountMaterials(plan);
+        Lint.LintDryRun.Check(plan);
         return plan;
     }
 

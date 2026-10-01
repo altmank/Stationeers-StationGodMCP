@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <Compile Include="src\StationGodMCP.Mod\**\*.cs" />
+    <!-- The default lint rules, built in for when the mod folder's lint-rules.json is missing. -->
+    <EmbeddedResource Include="lint-rules.json" LogicalName="StationGodMCP.lint-rules.json" />
   </ItemGroup>
 
   <ItemGroup>

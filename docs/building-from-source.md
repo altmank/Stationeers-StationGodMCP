@@ -19,6 +19,7 @@ For maintainers and anyone who wants to build the mod themselves.
 | `src/StationGodMCP.Server` | The sidecar: the MCP server over stdio, and the tool list with every description and argument (`Program.cs`). |
 | `tests/StationGodMCP.Tests` | Tests that need no game. |
 | `About/`, `GameData/` | The Workshop page (`About.xml`), preview images, and the gateway kit's printer recipe. |
+| `lint-rules.json` | The default lint rules: shipped in the package and built into the DLL (used when the file is missing). The tests load it and run every rule's examples. Adding a rule function: [lint-rules.md](lint-rules.md#adding-a-function-maintainers). |
 | `Sidecar/README.txt` | Shipped next to the sidecar archives. |
 | `build.ps1` | Build, check and stage the package; optionally deploy. |
 
@@ -39,7 +40,7 @@ For maintainers and anyone who wants to build the mod themselves.
   StationeersLaunchPad loads every DLL it finds in an enabled mod's folder.
 
 `.\package` holds exactly what the Workshop gets: the `About` and `GameData` folders, `StationGodMCP.dll`, `LICENSE`,
-and `Sidecar` with both archives and its README.
+`lint-rules.json`, and `Sidecar` with both archives and its README.
 
 ## Checks the build makes
 

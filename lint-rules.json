@@ -1,0 +1,363 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "not_replaceable",
+      "level": "problem",
+      "description": "A player could not place the thing again where it stands with its neighbours present (check_replaceable's rule): a vent with nothing behind it, a battery with no frame below, a thing no kit builds.",
+      "on": ["audit"],
+      "select": "things",
+      "let": { "p": "replaceable(x)" },
+      "assert": "p.replaceable != false",
+      "message": "{display_name} ({prefab} {reference_id}): a player could not place it again where it stands ({p.rule ?? \"other\"}): {p.reason}.",
+      "examples": {
+        "pass": [ { "prefab": "StructureActiveVent", "reference_id": 1, "display_name": "Active Vent", "replaceable()": { "replaceable": true, "reason": "" } } ],
+        "fail": [ { "prefab": "StructureActiveVent", "reference_id": 1, "display_name": "Active Vent", "replaceable()": { "replaceable": false, "rule": "support", "reason": "requires a wall behind it" } } ]
+      }
+    },
+    {
+      "id": "run_in_door_keepout",
+      "level": "warning",
+      "description": "A cable, pipe or chute piece (or what stands in its slot) in a door's keep-out: the door's face and the configured band either side.",
+      "on": ["audit", "dry_run"],
+      "select": "pieces",
+      "let": { "door": "first(cells, c => c.in_door_keepout)?.keepout_door" },
+      "assert": "not any(cells, c => c.in_door_keepout)",
+      "message": "{prefab} {reference_id} stands in the keep-out of door {door?.reference_id}.",
+      "other": "door",
+      "examples": {
+        "pass": [ { "prefab": "StructurePipeStraight", "reference_id": 5, "cells": [ { "in_door_keepout": false } ] } ],
+        "fail": [ { "prefab": "StructurePipeStraight", "reference_id": 5, "cells": [ { "in_door_keepout": true, "keepout_door": { "reference_id": 983 } } ] } ]
+      }
+    },
+    {
+      "id": "port_into_doorway",
+      "level": "warning",
+      "description": "A device port whose joining cell lies in a door's keep-out.",
+      "on": ["audit", "dry_run"],
+      "select": "ports",
+      "assert": "not joining_cell.in_door_keepout",
+      "message": "{device.display_name} ({device.reference_id}) port {index} ({type}) joins in the keep-out of door {joining_cell.keepout_door?.reference_id}.",
+      "other": "joining_cell.keepout_door",
+      "examples": {
+        "pass": [ { "index": 0, "type": "Pipe", "device": { "reference_id": 7, "display_name": "Volume Pump" }, "joining_cell": { "in_door_keepout": false } } ],
+        "fail": [ { "index": 0, "type": "Pipe", "device": { "reference_id": 7, "display_name": "Volume Pump" }, "joining_cell": { "in_door_keepout": true, "keepout_door": { "reference_id": 983 } } } ]
+      }
+    },
+    {
+      "id": "port_cell_foreign_network",
+      "level": "warning",
+      "description": "A port's joining cell holds a piece of its kind that does not join it (another network's), so nothing can.",
+      "on": ["audit", "dry_run"],
+      "select": "ports",
+      "assert": "not has(occupant) or joined",
+      "message": "{device.display_name} ({device.reference_id}) port {index} ({type}): its joining cell holds {occupant?.prefab} {occupant?.reference_id}, which does not join it, so nothing can.",
+      "other": "occupant",
+      "examples": {
+        "pass": [
+          { "index": 1, "type": "Pipe", "device": { "reference_id": 7, "display_name": "Volume Pump" }, "joined": false },
+          { "index": 1, "type": "Pipe", "device": { "reference_id": 7, "display_name": "Volume Pump" }, "occupant": { "prefab": "StructurePipeStraight", "reference_id": 9 }, "joined": true }
+        ],
+        "fail": [ { "index": 1, "type": "Pipe", "device": { "reference_id": 7, "display_name": "Volume Pump" }, "occupant": { "prefab": "StructurePipeStraight", "reference_id": 9 }, "joined": false } ]
+      }
+    },
+    {
+      "id": "floating_run",
+      "level": "warning",
+      "description": "A cable, pipe or chute piece with a cell in air: on no frame and no wall plane. In-line tanks and passive vents are not runs and are not checked.",
+      "on": ["audit", "dry_run"],
+      "select": "pieces where kind in [\"cable\", \"pipe\", \"chute\"]",
+      "let": { "air": "count(cells, c => c.support == \"air\")" },
+      "assert": "air == 0",
+      "message": "{prefab} {reference_id} floats in air ({air} of {count(cells)} cells on no frame and no wall plane).",
+      "examples": {
+        "pass": [
+          { "kind": "cable", "prefab": "StructureCableStraight", "reference_id": 3, "cells": [ { "support": "frame_face" }, { "support": "wall_plane" } ] },
+          { "kind": "in_line_tank", "prefab": "StructureInLineTankGas1x1", "reference_id": 4, "cells": [ { "support": "air" } ] }
+        ],
+        "fail": [ { "kind": "pipe", "prefab": "StructurePipeStraight", "reference_id": 3, "cells": [ { "support": "air" }, { "support": "inside_frame" } ] } ]
+      }
+    },
+    {
+      "id": "run_crosses_window",
+      "level": "warning",
+      "description": "A cable, pipe or chute piece on a window's face.",
+      "on": ["audit", "dry_run"],
+      "select": "pieces",
+      "let": { "window": "first(cells, c => c.on_window_face)?.window" },
+      "assert": "not any(cells, c => c.on_window_face)",
+      "message": "{prefab} {reference_id} runs across the face of window {window?.reference_id}.",
+      "other": "window",
+      "examples": {
+        "pass": [ { "prefab": "StructureCableStraight", "reference_id": 3, "cells": [ { "on_window_face": false } ] } ],
+        "fail": [ { "prefab": "StructureCableStraight", "reference_id": 3, "cells": [ { "on_window_face": true, "window": { "reference_id": 77 } } ] } ]
+      }
+    },
+    {
+      "id": "device_visual_overlap",
+      "level": "warning",
+      "description": "Two devices whose mesh boxes run more than 0.1 m into each other, or one inside the other (a sensor under a console's overhang). Flush neighbours only touch or overlap by a rim; things sharing a cell (a device on a pipe) are skipped.",
+      "on": ["audit", "dry_run"],
+      "select": "pairs(devices, within: 0)",
+      "let": { "depth": "mesh_overlap(a, b)" },
+      "assert": "depth <= 0.1 or shares_cell(a, b)",
+      "message": "{a.display_name} ({a.reference_id}) and {b.display_name} ({b.reference_id}) {if(is_infinite(depth), \"overlap: one lies inside the other\", \"run \" + format(depth, \"0.00\") + \" m into each other\")}.",
+      "examples": {
+        "pass": [ { "a": { "reference_id": 1, "display_name": "Console", "mesh_box": { "min": [0, 0, 0], "max": [1, 1, 1] } }, "b": { "reference_id": 2, "display_name": "Gas Sensor", "mesh_box": { "min": [1, 0, 0], "max": [1.5, 0.5, 0.5] } } } ],
+        "fail": [ { "a": { "reference_id": 1, "display_name": "Console", "mesh_box": { "min": [0, 0, 0], "max": [1, 1, 1] } }, "b": { "reference_id": 2, "display_name": "Gas Sensor", "mesh_box": { "min": [0.5, 0, 0], "max": [1.5, 0.5, 0.5] } } } ]
+      }
+    },
+    {
+      "id": "mounted_faces_out_of_room",
+      "level": "warning",
+      "description": "A face-mounted device whose back is in a room and whose front is not: it faces out of the room behind it.",
+      "on": ["audit", "dry_run"],
+      "select": "devices",
+      "assert": "not has(mounted) or has(mounted.front.room) or not has(mounted.back.room)",
+      "message": "{display_name} ({prefab} {reference_id}) faces {mounted?.outward}, out of the room behind it.",
+      "examples": {
+        "pass": [
+          { "display_name": "Wall Light", "prefab": "StructureWallLight", "reference_id": 8 },
+          { "display_name": "Wall Light", "prefab": "StructureWallLight", "reference_id": 8, "mounted": { "outward": "+z", "front": { "room": { "id": 1 } }, "back": { "room": { "id": 1 } } } }
+        ],
+        "fail": [ { "display_name": "Wall Light", "prefab": "StructureWallLight", "reference_id": 8, "mounted": { "outward": "+z", "front": {}, "back": { "room": { "id": 1 } } } } ]
+      }
+    },
+    {
+      "id": "device_crosses_seam",
+      "level": "warning",
+      "description": "A face-mounted device whose mesh rectangle spans more than one 2 m wall section by more than 0.1 m, though neither side is wider than 2.2 m, so a shift would put it on one.",
+      "on": ["audit", "dry_run"],
+      "select": "devices",
+      "assert": "(seam_sections(x) ?? 1) <= 1 or not (mounted?.fits_one_section ?? false)",
+      "message": "{display_name} ({prefab} {reference_id}) spans {seam_sections(x)} wall sections on {mounted?.plane}.",
+      "examples": {
+        "pass": [ { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9, "mounted": { "plane": "z=668", "sections": 1, "fits_one_section": true } } ],
+        "fail": [ { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9, "mounted": { "plane": "z=668", "sections": 2, "fits_one_section": true } } ]
+      }
+    },
+    {
+      "id": "controls_blocked",
+      "level": "warning",
+      "description": "The side of a device carrying its slots, buttons and switches faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it. Only information where no control sits clearly on one side (the device's forward stands in).",
+      "on": ["audit", "dry_run"],
+      "select": "things where kind == \"device\" or kind == \"structure\"",
+      "let": { "c": "controls_side(x)", "blocked": "controls_blocked(x)" },
+      "assert": "not has(blocked)",
+      "level_when": "if(c?.fallback ?? false, \"info\", \"warning\")",
+      "message": "{display_name} ({prefab} {reference_id}): the side its controls face, {c?.side} ({c?.source}), has {blocked} right in front of it.",
+      "examples": {
+        "pass": [ { "kind": "device", "display_name": "Locker", "prefab": "StructureStorageLocker", "reference_id": 12, "controls_side()": { "side": "+z", "fallback": false, "source": "4 controls" }, "controls_blocked()": null } ],
+        "fail": [ { "kind": "device", "display_name": "Locker", "prefab": "StructureStorageLocker", "reference_id": 12, "controls_side()": { "side": "+z", "fallback": false, "source": "4 controls" }, "controls_blocked()": "a wall (StructureWall 44)" } ]
+      }
+    },
+    {
+      "id": "run_along_door",
+      "level": "info",
+      "description": "A cable, pipe or chute piece hugging a door's jamb, just outside its keep-out. Doors in floors or ceilings have no jambs.",
+      "on": ["audit", "dry_run"],
+      "select": "pieces",
+      "let": { "door": "first(cells, c => has(c.door_jamb))?.door_jamb" },
+      "assert": "not any(cells, c => has(c.door_jamb))",
+      "message": "{prefab} {reference_id} runs along the jamb of door {door?.reference_id} ({door?.display_name}).",
+      "other": "door",
+      "examples": {
+        "pass": [ { "prefab": "StructurePipeStraight", "reference_id": 5, "cells": [ {} ] } ],
+        "fail": [ { "prefab": "StructurePipeStraight", "reference_id": 5, "cells": [ { "door_jamb": { "reference_id": 983, "display_name": "Airlock" } } ] } ]
+      }
+    },
+    {
+      "id": "controls_not_on_wall",
+      "level": "info",
+      "description": "A console, computer, display, dial, button, switch, lever or keypad not mounted on a wall.",
+      "on": ["audit", "dry_run"],
+      "select": "devices where any([\"Console\", \"Computer\", \"LogicDisplay\", \"Dial\", \"Button\", \"Switch\", \"Lever\", \"Keypad\"], w => contains(prefab, w))",
+      "assert": "has(mounted) and not (mounted.outward in [\"+y\", \"-y\"])",
+      "message": "{display_name} ({prefab} {reference_id}) has controls and is not mounted on a wall.",
+      "examples": {
+        "pass": [
+          { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9, "mounted": { "outward": "+x" } },
+          { "display_name": "Gas Sensor", "prefab": "StructureGasSensor", "reference_id": 10 }
+        ],
+        "fail": [
+          { "display_name": "Console", "prefab": "StructureConsole", "reference_id": 9 },
+          { "display_name": "Logic Switch", "prefab": "StructureLogicSwitch", "reference_id": 11, "mounted": { "outward": "+y" } }
+        ]
+      }
+    },
+    {
+      "id": "replaceable_unchecked",
+      "level": "info",
+      "description": "check_replaceable's rule could not be asked of the thing (no placement cursor for its prefab).",
+      "on": ["audit"],
+      "select": "things",
+      "let": { "p": "replaceable(x)" },
+      "assert": "has(p.replaceable)",
+      "message": "{display_name} ({prefab} {reference_id}): not checked: {trim_end(p.reason, \".\")}.",
+      "examples": {
+        "pass": [ { "prefab": "StructureFrame", "reference_id": 1, "display_name": "Iron Frame", "replaceable()": { "replaceable": true, "reason": "" } } ],
+        "fail": [ { "prefab": "StructureOdd", "reference_id": 1, "display_name": "Odd", "replaceable()": { "replaceable": null, "reason": "no placement cursor for the prefab." } } ]
+      }
+    },
+    {
+      "id": "solar_outdoor_reinforced",
+      "level": "problem",
+      "description": "A solar panel storms reach must be a Reinforced variant. While a storm with a damage multiplier runs (Mars dust, Europa snow, Vulcan ash, Venus 1; Vulcan fire storm 3), each panel exposed to the planet's air takes a 10% chance every 0.5 s of losing 0.5% of its health times its WeatherDamageScale and the multiplier (SolarRadiators); the Reinforced panels do not take it.",
+      "on": ["audit", "dry_run"],
+      "select": "things where \"SolarPanel\" in runtime_types",
+      "assert": "contains(prefab, \"Reinforced\") or not weather_exposed(x)",
+      "message": "{display_name} ({prefab} {reference_id}) is exposed to storms and is not a Reinforced panel: each storm wears it down (SolarRadiators, WeatherDamageScale).",
+      "examples": {
+        "pass": [
+          { "prefab": "StructureSolarPanelReinforced", "runtime_types": ["SolarPanel"], "reference_id": 20, "display_name": "Solar Panel", "weather_exposed()": true },
+          { "prefab": "StructureSolarPanel", "runtime_types": ["SolarPanel"], "reference_id": 21, "display_name": "Solar Panel", "weather_exposed()": false }
+        ],
+        "fail": [ { "prefab": "StructureSolarPanel", "runtime_types": ["SolarPanel"], "reference_id": 21, "display_name": "Solar Panel", "weather_exposed()": true } ]
+      }
+    },
+    {
+      "id": "cable_grade_matches_network",
+      "level": "warning",
+      "description": "A cable lighter than its network's heaviest cable burns first once the power through it passes its rating (the power tick burns a random cable whose rating is below min(supply, demand)). Fine while that power fits the weakest cable.",
+      "on": ["audit"],
+      "select": "pieces where kind == \"cable\"",
+      "let": { "n": "network", "flow": "min(network?.potential_load ?? 0, network?.required_load ?? 0)" },
+      "assert": "(max_power ?? 0) >= (n?.max_cable_power ?? 0) or flow <= (n?.min_cable_power ?? 0)",
+      "message": "{prefab} {reference_id} is {grade} cable ({max_power} W) on network {n?.id}, whose heaviest cable carries {n?.max_cable_power} W and whose power flow is {format(flow, \"0\")} W: it burns first.",
+      "examples": {
+        "pass": [
+          { "kind": "cable", "prefab": "StructureCableStraightH", "reference_id": 30, "grade": "heavy", "max_power": 100000, "network": { "id": 5, "max_cable_power": 100000, "min_cable_power": 5000, "potential_load": 20000, "required_load": 20000 } },
+          { "kind": "cable", "prefab": "StructureCableStraight", "reference_id": 31, "grade": "normal", "max_power": 5000, "network": { "id": 5, "max_cable_power": 100000, "min_cable_power": 5000, "potential_load": 20000, "required_load": 3000 } }
+        ],
+        "fail": [ { "kind": "cable", "prefab": "StructureCableStraight", "reference_id": 31, "grade": "normal", "max_power": 5000, "network": { "id": 5, "max_cable_power": 100000, "min_cable_power": 5000, "potential_load": 20000, "required_load": 8000 } } ]
+      }
+    },
+    {
+      "id": "controller_labels",
+      "level": "warning",
+      "description": "A device whose prefab a chip on its data network batches by name (lbn, sbn, batch_write_name) must carry one of the names it uses: a solar tracker panel named for its chip. Batches by name reach only devices whose name hashes to the one given.",
+      "on": ["audit"],
+      "select": "devices where any(networks, n => n.kind == \"cable\")",
+      "let": { "batches": "flat_map(filter(networks, n => n.kind == \"cable\"), n => filter(chip_batch_names(n), b => has(b.name_hash) and b.prefab_hash == x.prefab_hash))" },
+      "assert": "count(batches) == 0 or any(batches, b => b.name_hash == hash(display_name))",
+      "message": "{display_name} ({prefab} {reference_id}): chips on its data network batch {prefab} by name ({join(distinct(map(batches, b => b.name ?? str(b.name_hash))))}) and its name is none of them, so they never reach it.",
+      "examples": {
+        "pass": [
+          { "prefab": "StructureSolarPanel", "prefab_hash": -2045627372, "reference_id": 40, "display_name": "Tracker", "networks": [ { "id": 2, "kind": "cable", "chip_batch_names()": [ { "prefab_hash": -2045627372, "name": "Tracker", "name_hash": 1675498291, "op": "sbn", "writes": true } ] } ] }
+        ],
+        "fail": [
+          { "prefab": "StructureSolarPanel", "prefab_hash": -2045627372, "reference_id": 40, "display_name": "Solar Panel", "networks": [ { "id": 2, "kind": "cable", "chip_batch_names()": [ { "prefab_hash": -2045627372, "name": "Tracker", "name_hash": 1675498291, "op": "sbn", "writes": true } ] } ] }
+        ]
+      }
+    },
+    {
+      "id": "solar_unshaded",
+      "level": "warning",
+      "description": "Nothing (a structure or the terrain) stands between a solar panel and the sun along the day's path, while the sun is more than 10 degrees up, as the panel's own raycasts see it.",
+      "on": ["audit", "dry_run"],
+      "select": "things where \"SolarPanel\" in runtime_types",
+      "assert": "not sun_blocked(x)",
+      "message": "{display_name} ({prefab} {reference_id}) is shaded for part of the day: something stands between it and the sun's path.",
+      "examples": {
+        "pass": [ { "prefab": "StructureSolarPanel", "runtime_types": ["SolarPanel"], "reference_id": 21, "display_name": "Solar Panel", "sun_blocked()": false } ],
+        "fail": [ { "prefab": "StructureSolarPanel", "runtime_types": ["SolarPanel"], "reference_id": 21, "display_name": "Solar Panel", "sun_blocked()": true } ]
+      }
+    },
+    {
+      "id": "filter_output_capped",
+      "level": "warning",
+      "description": "A filtration unit pushes into both outputs with no back-pressure check (FiltrationMachineBase: it adds the filtered gas to Output and dumps the rest into Output2), so each output network needs a tank or regulator to take it, and a chip on its data network should switch it On and off.",
+      "on": ["audit"],
+      "select": "things where flow == \"filter\"",
+      "let": {
+        "outs": "filter(ports, p => p.role in [\"Output\", \"Output2\"] and has(p.network))",
+        "open": "filter(outs, p => not any((p.network?.devices ?? []) + (p.network?.members ?? []), d => contains(d.prefab, \"Tank\") or d.flow == \"regulator\"))",
+        "switched": "chip_writes(x, \"On\")"
+      },
+      "assert": "count(open) == 0 and switched",
+      "message": "{display_name} ({prefab} {reference_id}) pushes with no back-pressure check: {if(count(open) > 0, \"no tank or regulator on output network \" + join(map(open, p => p.network?.id ?? 0)), \"\")}{if(count(open) > 0 and not switched, \"; \", \"\")}{if(switched, \"\", \"no chip on its data network writes its On\")}.",
+      "examples": {
+        "pass": [ { "flow": "filter", "prefab": "StructureFiltration", "reference_id": 50, "display_name": "Filtration", "ports": [ { "role": "Output", "network": { "id": 6, "devices": [ { "prefab": "StructureTankSmall" } ] } } ], "chip_writes(On)": true } ],
+        "fail": [
+          { "flow": "filter", "prefab": "StructureFiltration", "reference_id": 50, "display_name": "Filtration", "ports": [ { "role": "Output", "network": { "id": 6, "devices": [ { "prefab": "StructureActiveVent" } ] } } ], "chip_writes(On)": true },
+          { "flow": "filter", "prefab": "StructureFiltration", "reference_id": 50, "display_name": "Filtration", "ports": [], "chip_writes(On)": false }
+        ]
+      }
+    },
+    {
+      "id": "no_oxidiser_vented_outdoors",
+      "level": "problem",
+      "description": "An outdoor vent (active or passive) whose pipe network, or any network upstream of it through pumps, valves, regulators, filters and mixers, holds oxygen, nitrous oxide or ozone.",
+      "on": ["audit", "dry_run"],
+      "select": "things where outdoors and (\"ActiveVent\" in runtime_types or \"PassiveVent\" in runtime_types)",
+      "let": {
+        "oxidisers": "[\"Oxygen\", \"LiquidOxygen\", \"NitrousOxide\", \"LiquidNitrousOxide\", \"Ozone\", \"LiquidOzone\"]",
+        "holding": "flat_map(filter(networks, n => n.kind == \"pipe\"), n => filter(upstream(n) + [n], u => mol_of(u.gases, oxidisers) > 0))"
+      },
+      "assert": "count(holding) == 0",
+      "message": "{display_name} ({prefab} {reference_id}) vents outdoors and network {join(map(distinct(holding), u => u.id))} feeding it holds oxidiser ({format(sum(distinct(holding), u => mol_of(u.gases, oxidisers)), \"0.###\")} mol).",
+      "examples": {
+        "pass": [ { "prefab": "StructureActiveVent", "runtime_types": ["ActiveVent"], "outdoors": true, "reference_id": 60, "display_name": "Active Vent", "networks": [ { "id": 7, "kind": "pipe", "gases": { "CarbonDioxide": 10 }, "upstream()": [] } ] } ],
+        "fail": [ { "prefab": "StructureActiveVent", "runtime_types": ["ActiveVent"], "outdoors": true, "reference_id": 60, "display_name": "Active Vent", "networks": [ { "id": 7, "kind": "pipe", "gases": { "CarbonDioxide": 10 }, "upstream()": [ { "id": 8, "kind": "pipe", "gases": { "Oxygen": 0.5 } } ] } ] } ]
+      }
+    },
+    {
+      "id": "fuel_oxidiser_mix_temperature",
+      "level": "warning",
+      "description": "A pipe network holding both fuel (over 1 mol) and oxidiser must stay below its auto-ignition temperature (GasMixture.IsAutoIgnition: methane and hydrogen 573.15 K, alcohol 673.15 K, 250 K lower with nitrous oxide, 150 K with ozone; hydrazine at its critical temperature), or it burns by itself.",
+      "on": ["audit"],
+      "select": "networks where kind == \"pipe\" and any(keys(gases), g => is_fuel(g) and gases[g] > 1) and any(keys(gases), g => is_oxidiser(g) and gases[g] > 0.00001)",
+      "let": { "limit": "auto_ignition_temperature(gases)" },
+      "assert": "not has(limit) or (temperature ?? 0) <= limit",
+      "message": "Pipe network {id} holds fuel and oxidiser at {format(temperature ?? 0, \"0.#\")} K, above its auto-ignition temperature of {format(limit ?? 0, \"0.#\")} K: it burns.",
+      "examples": {
+        "pass": [ { "id": 9, "kind": "pipe", "gases": { "Methane": 10, "Oxygen": 20 }, "temperature": 300 } ],
+        "fail": [ { "id": 9, "kind": "pipe", "gases": { "Methane": 10, "Oxygen": 20 }, "temperature": 600 } ]
+      }
+    },
+    {
+      "id": "outdoor_liquid_insulated",
+      "level": "warning",
+      "description": "An outdoor liquid pipe must be insulated, or its network warmer than the freezing point of everything it holds: frozen content damages the network's weakest pipe.",
+      "on": ["audit"],
+      "select": "pieces where kind == \"pipe\" and content == \"liquid\" and outdoors",
+      "assert": "insulated or (has(network) and all(filter(keys(network.gases), g => network.gases[g] > 0.00001), g => (network.temperature ?? 0) > (freezing_point(g) ?? 0)))",
+      "message": "{prefab} {reference_id} carries liquid outdoors uninsulated, and network {network?.id} at {format(network?.temperature ?? 0, \"0.#\")} K is at or below a freezing point of what it holds.",
+      "examples": {
+        "pass": [
+          { "kind": "pipe", "content": "liquid", "outdoors": true, "insulated": true, "prefab": "StructureInsulatedPipeLiquidStraight", "reference_id": 70 },
+          { "kind": "pipe", "content": "liquid", "outdoors": true, "insulated": false, "prefab": "StructurePipeLiquidStraight", "reference_id": 71, "network": { "id": 10, "temperature": 300, "gases": { "Water": 50 } } }
+        ],
+        "fail": [ { "kind": "pipe", "content": "liquid", "outdoors": true, "insulated": false, "prefab": "StructurePipeLiquidStraight", "reference_id": 71, "network": { "id": 10, "temperature": 260, "gases": { "Water": 50 } } } ]
+      }
+    },
+    {
+      "id": "deep_miner_column_clear",
+      "level": "warning",
+      "description": "Nothing that fills a 2 m cell (a frame, or another structure with BlockGrid collision) may stand in a deep miner's drill column, from the cell below it down to y 0: the drill stops there with 'something in the way' (DeepMiner.CheckThingInWay). Walls, floors, pipes, cables and small devices do not stop it.",
+      "on": ["audit", "dry_run"],
+      "select": "things where \"DeepMiner\" in runtime_types",
+      "let": { "blocking": "filter(drill_column(x), c => has(c.blocker))" },
+      "assert": "count(blocking) == 0",
+      "message": "{display_name} ({prefab} {reference_id}): {first(blocking)?.blocker?.prefab} {first(blocking)?.blocker?.reference_id} stands in its drill column at {first(blocking)?.position}.",
+      "examples": {
+        "pass": [ { "prefab": "StructureDeepMiner", "runtime_types": ["DeepMiner"], "reference_id": 80, "display_name": "Deep Miner", "drill_column()": [ { "position": [1, 1, 1] } ] } ],
+        "fail": [ { "prefab": "StructureDeepMiner", "runtime_types": ["DeepMiner"], "reference_id": 80, "display_name": "Deep Miner", "drill_column()": [ { "position": [1, -1, 1], "blocker": { "prefab": "StructureFrame", "reference_id": 81 } } ] } ]
+      }
+    },
+    {
+      "id": "cable_on_frames",
+      "level": "warning",
+      "description": "Every cell of a cable lies inside a frame or on a frame's face: no stretch through air or along a bare wall.",
+      "on": ["audit", "dry_run"],
+      "select": "pieces where kind == \"cable\"",
+      "let": { "off": "filter(cells, c => not (c.support in [\"inside_frame\", \"frame_face\"]))" },
+      "assert": "count(off) == 0",
+      "message": "{prefab} {reference_id} has {count(off)} of {count(cells)} cells off the frames ({join(distinct(map(off, c => c.support)))}).",
+      "examples": {
+        "pass": [ { "kind": "cable", "prefab": "StructureCableStraight", "reference_id": 90, "cells": [ { "support": "frame_face" }, { "support": "inside_frame" } ] } ],
+        "fail": [ { "kind": "cable", "prefab": "StructureCableStraight", "reference_id": 90, "cells": [ { "support": "frame_face" }, { "support": "wall_plane" } ] } ]
+      }
+    }
+  ]
+}

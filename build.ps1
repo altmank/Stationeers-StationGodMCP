@@ -86,6 +86,8 @@ try {
     Copy-Item (Join-Path $root 'GameData') $package -Recurse
     Copy-Item $dll $package
     Copy-Item (Join-Path $root 'LICENSE') $package
+    # The default lint rules; a lint-rules.json next to a save overrides them (docs/lint-rules.md).
+    Copy-Item (Join-Path $root 'lint-rules.json') $package
     # The sidecars ship zipped: LaunchPad scans a mod folder recursively for DLLs and would try to load theirs.
     foreach ($to in @((Join-Path $package 'Sidecar'), $portable, $native)) {
         Copy-Item (Join-Path $root 'Sidecar\README.txt') $to

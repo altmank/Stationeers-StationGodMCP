@@ -76,6 +76,8 @@ New
 - deep_miner_spots: what a deep miner would mine where you stand, and the nearest spots for the ores you name, with distance, bearing and ground.
 - place_structure, orient and find_spot know which side of a device carries its slots and buttons and warn controls_blocked when it would face a wall, a frame or another device; describe_prefab reports that side.
 - get_ic_status include_source: false leaves the chip's program out of the reply; item_totals holders_limit sets how many holders each item lists.
+- Lint rules are data: lint_layout and the place and plan tools check against lint-rules.json, and a lint-rules.json in your save's folder turns rules off, changes them or adds your own. lint_rules lists, validates, tests and explains them. New shipped checks: storm-exposed solar panels that are not Reinforced, shaded panels, cables lighter than their network, devices a chip batches by a name they lack, filtration outputs with nowhere to go, oxidiser vented outdoors, fuel and oxidiser above ignition, outdoor liquid pipes near freezing, deep-miner drill columns, cables off the frames, blocked controls.
+- place_cables, place_pipes, place_chutes, place_structure and the route planners warn lint_&lt;rule&gt; for what they would build.
 Changed
 - Smaller replies by default: a job poll leaves out the dry run and final check the real run already answered with (verbose: true gives them back; a refused job keeps its final check); place_structure lists footprint cells only with include_footprint_cells; the cable, pipe and chute tools give link counts and leave their fixed notes out unless include_links / include_notes, and limit 0 lists no cells.
 Fix

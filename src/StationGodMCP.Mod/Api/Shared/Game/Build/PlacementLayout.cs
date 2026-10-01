@@ -136,9 +136,6 @@ internal static class PlacementLayout
     internal static GridStep MountOutward(Structure prefab, CubeRotation turn) =>
         prefab.PlacementType == PlacementSnap.Grid ? turn.Up : turn.Forward;
 
-    private static MountRect? MountOf(Structure prefab, List<GridCell> small, CubeRotation turn, Box3 render) =>
-        MountRect.Of(Box3.OfSmallCells(small), MountOutward(prefab, turn), render);
-
     // A cable, pipe or chute piece, or a small-grid member of a pipe line that sits in the line (an in-line tank, a
     // passive vent): it rests on no wall section, so crossing a seam means nothing for it (pipes-27, pipes-29).
     private static bool IsRunPiece(Structure prefab) =>
@@ -333,30 +330,46 @@ internal static class PlacementLayout
     private static void ControlsAhead(Structure prefab, CubeRotation turn, MountRect? mount, List<GridCell> small,
         List<GridCell> large, GridFacts facts, List<LayoutConflict> conflicts)
     {
-        ControlFace? controls = PrefabControls.Of(prefab);
+        string? blocked = ControlsBlockedBy(prefab, turn, mount, small, large, facts, out ControlFace? controls,
+            out long? id);
+        if (blocked != null && controls != null)
+        {
+            conflicts.Add(new LayoutConflict(ConflictCodes.ControlsBlocked,
+                controls.Fallback ? ConflictLevel.Info : ConflictLevel.Warning,
+                $"The side its controls face, {turn.Turn(controls.Local).Name} ({controls.Source}), has {blocked} right " +
+                "in front of it.", id));
+        }
+    }
+
+    /// <summary>
+    /// What stands right in front of the side the prefab's controls face at this turn (PrefabControls), as text, with
+    /// its id; null when nothing does, when it has no control face, or when the side is a face-mounted piece's front
+    /// (front_blocked's). small and large are the cells it registers in; the thing itself is never in front of itself.
+    /// </summary>
+    internal static string? ControlsBlockedBy(Structure prefab, CubeRotation turn, MountRect? mount,
+        List<GridCell> small, List<GridCell> large, GridFacts facts, out ControlFace? controls, out long? id)
+    {
+        id = null;
+        controls = PrefabControls.Of(prefab);
         if (controls == null)
         {
-            return;
+            return null;
         }
 
         GridStep face = turn.Turn(controls.Local);
         if (mount != null && prefab.PlacementType == PlacementSnap.FaceMount && face.Index == mount.Outward.Index)
         {
-            return;
+            return null;
         }
 
-        long? id = null;
-        string? blocked = small.Count > 0 ? SmallAhead(face, small, facts, ref id)
+        return small.Count > 0 ? SmallAhead(face, small, facts, ref id)
             : large.Count > 0 ? LargeAhead(face, large, facts, ref id)
             : null;
-        if (blocked != null)
-        {
-            conflicts.Add(new LayoutConflict(ConflictCodes.ControlsBlocked,
-                controls.Fallback ? ConflictLevel.Info : ConflictLevel.Warning,
-                $"The side its controls face, {face.Name} ({controls.Source}), has {blocked} right in front of it.",
-                id));
-        }
     }
+
+    /// <summary>The mount rectangle a prefab at a turn has over its small cells and render box (null when it has none).</summary>
+    internal static MountRect? MountOf(Structure prefab, List<GridCell> small, CubeRotation turn, Box3 render) =>
+        MountRect.Of(Box3.OfSmallCells(small), MountOutward(prefab, turn), render);
 
     private static string? SmallAhead(GridStep face, List<GridCell> small, GridFacts facts, ref long? id)
     {

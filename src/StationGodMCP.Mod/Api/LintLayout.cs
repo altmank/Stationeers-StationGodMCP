@@ -1,114 +1,49 @@
 #nullable enable
 
 using System.Collections.Generic;
-using Assets.Scripts;
 using Assets.Scripts.GridSystem;
-using Assets.Scripts.Objects;
-using Assets.Scripts.Objects.Electrical;
-using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
-using StationGodMCP.Api.Shared.Game.Build;
-using StationGodMCP.Api.Shared.Game.Runs;
+using StationGodMCP.Api.Shared.Game.Lint;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
-using UnityEngine;
+using StationGodMCP.Pure.Lint;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// lint_layout: the layout rules over a room (room_id) or a box (min, max), from what stands there now: runs floating
-/// in air or across a window's face, runs and device ports in a door's keep-out, a device port whose cell holds a piece of its kind not joined to
-/// it (another network's), runs hugging a door's jambs, mounted devices crossing a wall seam or facing out of the room,
-/// devices whose bodies run into each other, and controls not on a wall; and whether a player could place each thing
-/// again where it stands, its neighbours present (not_replaceable, PlayerPlacement.AsItStands). Read only.
+/// lint_layout: the audit rules of the effective rule set (lint-rules.json of the mod, with the save's file over it)
+/// over a room (room_id) or a box (min, max), from what stands there now. Read only.
 /// </summary>
 internal static class LintLayoutApi
 {
     private const int DefaultLimit = 100;
     private const int MaximumLimit = 500;
     private const long MaximumCells = 4000;
-    private const int PortTypes = (int)(NetworkType.PowerAndData | NetworkType.Pipe | NetworkType.PipeLiquid |
-                                        NetworkType.Chute);
-    private static readonly CableFamily Cables = new CableFamily();
-    private static readonly PipeFamily Pipes = new PipeFamily();
-    private static readonly ChuteFamily Chutes = new ChuteFamily();
 
     internal static LintLayoutView Handle(Args args)
     {
-        GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
         List<GridCell> region = Region(args, out string described);
-        Dictionary<long, SmallGrid> pieces = new Dictionary<long, SmallGrid>();
-        Dictionary<long, SmallGrid> devices = new Dictionary<long, SmallGrid>();
-        Dictionary<long, Structure> doors = new Dictionary<long, Structure>();
-        Dictionary<long, Structure> structures = new Dictionary<long, Structure>();
-        foreach (GridCell cell in region)
-        {
-            AddLarge(structures, cell, facts);
-        }
-
-        foreach (GridCell large in region)
-        {
-            for (int index = 0; index < SmallCellCode.PerCell; index++)
-            {
-                SmallCell? small = facts.SmallAt(SmallCellCode.SmallAt(large, index));
-                if (small == null)
-                {
-                    continue;
-                }
-
-                Add(pieces, small.Cable);
-                Add(pieces, small.Pipe);
-                Add(pieces, small.Chute);
-                Add(devices, small.Device);
-                Add(devices, small.Other);
-            }
-
-            foreach (GridStep face in GridStep.All)
-            {
-                foreach (Structure structure in facts.FaceStructures(large, face))
-                {
-                    if (Openings.IsDoor(structure))
-                    {
-                        doors[structure.ReferenceId] = structure;
-                    }
-                }
-            }
-        }
-
-        List<LintFinding> findings = new List<LintFinding>();
-        Runs(pieces.Values, facts, findings);
-        foreach (Structure door in doors.Values)
-        {
-            AlongDoor(door, pieces.Values, facts, findings);
-        }
-
-        List<SmallGrid> deviceList = new List<SmallGrid>(devices.Values);
-        deviceList.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
-        foreach (SmallGrid device in deviceList)
-        {
-            Mounting(device, facts, findings);
-            Ports(device, facts, findings);
-        }
-
-        Overlaps(deviceList, findings);
-        Replaceable(pieces.Values, deviceList, structures.Values, findings);
-        List<LintFinding> ordered = LintReport.Ordered(findings);
         int limit = args.OptionalInt("limit", 1, MaximumLimit) ?? DefaultLimit;
+        LintRuleSet rules = LintRuleFiles.Current();
+        GameLintWorld world = GameLintWorld.Audit(region);
+        LintRun run = LintEngine.Run(rules, world, "audit");
+        List<LintFinding> ordered = LintReport.Ordered(run.Findings);
         List<LintFindingView> views = new List<LintFindingView>();
         for (int index = 0; index < ordered.Count && index < limit; index++)
         {
             views.Add(new LintFindingView(ordered[index]));
         }
 
-        return new LintLayoutView(described, region.Count, pieces.Count, devices.Count, structures.Count, doors.Count,
-            LintReport.Counts(findings), views, ordered.Count);
+        return new LintLayoutView(described, region.Count, world.Subjects("pieces").Count,
+            world.Subjects("devices").Count, world.Subjects("structures").Count, world.Doors,
+            LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds);
     }
 
-    private static List<GridCell> Region(Args args, out string described)
+    internal static List<GridCell> Region(Args args, out string described)
     {
         if (args.Has("room_id") == (args.Has("min") || args.Has("max")))
         {
@@ -150,280 +85,5 @@ internal static class LintLayoutApi
     {
         Metres point = BuildArgs.PositionOf(token, name);
         return new Vec3(point.X, point.Y, point.Z);
-    }
-
-    // floating_run and run_in_door_keepout, one finding per piece.
-    private static void Runs(IEnumerable<SmallGrid> pieces, GridFacts facts, List<LintFinding> findings)
-    {
-        foreach (SmallGrid piece in pieces)
-        {
-            IReadOnlyList<GridCell> cells = PieceShapes.Live(piece).Cells;
-            int air = 0;
-            long? door = null;
-            long? window = null;
-            foreach (GridCell cell in cells)
-            {
-                air += facts.Support(cell) == CellSupport.Air ? 1 : 0;
-                OpeningZone zone = facts.Opening(cell);
-                door ??= zone.IsDoor ? zone.Id : (long?)null;
-                window ??= zone.IsWindow ? zone.Id : (long?)null;
-            }
-
-            Vec3 at = Bodies.V(piece.Position);
-            if (air > 0 && IsRunPiece(piece))
-            {
-                findings.Add(new LintFinding(LintCodes.FloatingRun,
-                    $"{piece.PrefabName} {piece.ReferenceId} floats in air ({air} of {cells.Count} cells on no frame " +
-                    "and no wall plane).", piece.ReferenceId, at));
-            }
-
-            if (window.HasValue)
-            {
-                findings.Add(new LintFinding(LintCodes.RunCrossesWindow,
-                    $"{piece.PrefabName} {piece.ReferenceId} runs across the face of window {window}.",
-                    piece.ReferenceId, at, window));
-            }
-
-            if (door.HasValue)
-            {
-                findings.Add(new LintFinding(LintCodes.RunInDoorKeepOut,
-                    $"{piece.PrefabName} {piece.ReferenceId} stands in the keep-out of door {door}.", piece.ReferenceId,
-                    at, door));
-            }
-        }
-    }
-
-    // A cable, pipe or chute piece a run is made of; not an in-line tank or passive vent that stands in a pipe's slot.
-    private static bool IsRunPiece(SmallGrid piece) =>
-        Cables.IsPiece(piece) || Pipes.IsPiece(piece) || Chutes.IsPiece(piece);
-
-    // run_along_door: a run cell on the door's plane band just outside its side edges (hugging a jamb), within its
-    // height. Doors on floors or ceilings have no jambs and are skipped.
-    private static void AlongDoor(Structure door, IEnumerable<SmallGrid> pieces, GridFacts facts,
-        List<LintFinding> findings)
-    {
-        List<GridCell> faces = Openings.FacesOf(door);
-        if (faces.Count == 0)
-        {
-            return;
-        }
-
-        int axis = FacePoints.AxisOf(faces[0]);
-        if (axis == 1)
-        {
-            return;
-        }
-
-        int side = axis == 0 ? 2 : 0;
-        int plane = FacePlane.Component(faces[0], axis);
-        int sideMin = int.MaxValue, sideMax = int.MinValue, yMin = int.MaxValue, yMax = int.MinValue;
-        foreach (GridCell face in faces)
-        {
-            sideMin = System.Math.Min(sideMin, FacePlane.Component(face, side) - 10);
-            sideMax = System.Math.Max(sideMax, FacePlane.Component(face, side) + 10);
-            yMin = System.Math.Min(yMin, face.Y - 10);
-            yMax = System.Math.Max(yMax, face.Y + 10);
-        }
-
-        int reach = facts.Band.Cells * GridStep.CellSize;
-        foreach (SmallGrid piece in pieces)
-        {
-            foreach (GridCell cell in PieceShapes.Live(piece).Cells)
-            {
-                int across = FacePlane.Component(cell, side);
-                bool hugs = System.Math.Abs(FacePlane.Component(cell, axis) - plane) <= reach &&
-                            cell.Y >= yMin && cell.Y <= yMax &&
-                            (across == sideMin - GridStep.CellSize || across == sideMax + GridStep.CellSize) &&
-                            facts.Visibility(cell) != CellVisibility.Inside;
-                if (hugs)
-                {
-                    findings.Add(new LintFinding(LintCodes.RunAlongDoor,
-                        $"{piece.PrefabName} {piece.ReferenceId} runs along the jamb of door {door.ReferenceId} " +
-                        $"({Names.Of(door)}).", piece.ReferenceId, Bodies.V(piece.Position), door.ReferenceId));
-                    break;
-                }
-            }
-        }
-    }
-
-    // device_crosses_seam, mounted_faces_out_of_room and controls_not_on_wall.
-    private static void Mounting(SmallGrid device, GridFacts facts, List<LintFinding> findings)
-    {
-        List<GridCell> cells = Bodies.SmallCells(device);
-        Quaternion rotation = device.ThingTransformRotation;
-        CubeRotation? turn = CubeRotation.FromQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
-        if (cells.Count == 0 || turn == null)
-        {
-            return;
-        }
-
-        Vec3 at = Bodies.V(device.Position);
-        bool mounted = device.PlacementType == PlacementSnap.FaceMount;
-        MountRect? mount = MountRect.Of(Box3.OfSmallCells(cells), mounted ? turn.Forward : turn.Up,
-            Bodies.RenderBox(device));
-        if (mounted && mount != null && mount.CrossesAvoidableSeam)
-        {
-            findings.Add(new LintFinding(LintCodes.DeviceCrossesSeam,
-                $"{Names.Of(device)} ({device.PrefabName} {device.ReferenceId}) spans {mount.Faces().Count} wall " +
-                $"sections on {mount.Plane}.", device.ReferenceId, at));
-        }
-
-        if (mounted && mount != null)
-        {
-            Vec3 centre = Box3.OfSmallCells(cells).Centre.With(mount.Plane.Axis, mount.Plane.Metres);
-            Vec3 step = Vec3.Of(mount.Outward);
-            bool front = facts.RoomAt(PlaneView.LargeAt(centre + step * 0.6)) != null;
-            bool back = facts.RoomAt(PlaneView.LargeAt(centre - step * 0.6)) != null;
-            if (back && !front)
-            {
-                findings.Add(new LintFinding(LintCodes.MountedFacesOutOfRoom,
-                    $"{Names.Of(device)} ({device.PrefabName} {device.ReferenceId}) faces {mount.Outward.Name}, " +
-                    "out of the room behind it.", device.ReferenceId, at));
-            }
-        }
-
-        if (Controls.Has(device.PrefabName) && (mount == null || !mounted || mount.Outward.IsVertical))
-        {
-            findings.Add(new LintFinding(LintCodes.ControlsNotOnWall,
-                $"{Names.Of(device)} ({device.PrefabName} {device.ReferenceId}) has controls and is not mounted on " +
-                "a wall.", device.ReferenceId, at));
-        }
-    }
-
-    // port_into_doorway and port_cell_foreign_network.
-    private static void Ports(SmallGrid device, GridFacts facts, List<LintFinding> findings)
-    {
-        if (device.OpenEnds == null)
-        {
-            return;
-        }
-
-        GridController world = GridController.World;
-        for (int index = 0; index < device.OpenEnds.Count; index++)
-        {
-            Connection end = device.OpenEnds[index];
-            if (end?.Transform == null || ((int)end.ConnectionType & PortTypes) == 0)
-            {
-                continue;
-            }
-
-            GridCell joining = PieceShapes.Cell(end.GetLocalGrid());
-            Vec3 at = Bodies.V(PieceShapes.CentreOf(joining));
-            OpeningZone zone = facts.Opening(joining);
-            if (zone.IsDoor)
-            {
-                findings.Add(new LintFinding(LintCodes.PortIntoDoorway,
-                    $"{Names.Of(device)} ({device.ReferenceId}) port {index} ({end.ConnectionType}) joins in the " +
-                    $"keep-out of door {zone.Id}.", device.ReferenceId, at, zone.Id));
-            }
-
-            SmallCell? cell = world.GetSmallCell(end.GetLocalGrid());
-            if (cell == null)
-            {
-                continue;
-            }
-
-            SmallGrid? piece = (end.ConnectionType & (NetworkType.Pipe | NetworkType.PipeLiquid)) != 0 ? cell.Pipe
-                : (end.ConnectionType & NetworkType.Chute) != 0 ? cell.Chute
-                : (SmallGrid?)cell.Cable;
-            if (piece == null || piece.IsBeingDestroyed || piece.IsConnected(end))
-            {
-                continue;
-            }
-
-            findings.Add(new LintFinding(LintCodes.PortCellForeignNetwork,
-                $"{Names.Of(device)} ({device.ReferenceId}) port {index} ({end.ConnectionType}): its joining cell " +
-                $"holds {piece.PrefabName} {piece.ReferenceId}, which does not join it, so nothing can.",
-                device.ReferenceId, at, piece.ReferenceId));
-        }
-    }
-
-    // device_visual_overlap: mesh boxes clashing by more than the tolerance (VisualClash: one body's mesh over the
-    // other's is enough, a device under a console's overhang included), once per pair; things sharing a small cell (a
-    // device on a pipe) are skipped.
-    private static void Overlaps(List<SmallGrid> devices, List<LintFinding> findings)
-    {
-        List<Box3> boxes = devices.ConvertAll(device => Bodies.RenderBox(device));
-        List<HashSet<GridCell>> cells = devices.ConvertAll(device => new HashSet<GridCell>(Bodies.SmallCells(device)));
-        for (int a = 0; a < devices.Count; a++)
-        {
-            for (int b = a + 1; b < devices.Count; b++)
-            {
-                double depth = VisualClash.Depth(boxes[a], boxes[b]);
-                if (depth <= ConflictCodes.OverlapToleranceM || cells[a].Overlaps(cells[b]))
-                {
-                    continue;
-                }
-
-                string how = double.IsPositiveInfinity(depth)
-                    ? "overlap: one lies inside the other"
-                    : System.FormattableString.Invariant($"run {depth:0.00} m into each other");
-                findings.Add(new LintFinding(LintCodes.DeviceVisualOverlap,
-                    $"{Names.Of(devices[a])} ({devices[a].ReferenceId}) and {Names.Of(devices[b])} " +
-                    $"({devices[b].ReferenceId}) {how}.", devices[a].ReferenceId, Bodies.V(devices[a].Position),
-                    devices[b].ReferenceId));
-            }
-        }
-    }
-
-    // The 2 m structures of a cell: what fills it or registers in it (frames, large devices) and the plates on its faces.
-    private static void AddLarge(Dictionary<long, Structure> found, GridCell cell, GridFacts facts)
-    {
-        Cell? standing = GridController.World.GetCell(new Vector3(cell.X / 10f, cell.Y / 10f, cell.Z / 10f));
-        List<Structure> structures = standing?.AllStructures != null
-            ? new List<Structure>(standing.AllStructures)
-            : new List<Structure>();
-        foreach (GridStep face in GridStep.All)
-        {
-            structures.AddRange(facts.FaceStructures(cell, face));
-        }
-
-        foreach (Structure structure in structures)
-        {
-            if (structure != null && !structure.IsBeingDestroyed && !(structure is SmallGrid))
-            {
-                found[structure.ReferenceId] = structure;
-            }
-        }
-    }
-
-    // not_replaceable and replaceable_unchecked: could a player place each thing again where it stands, with its
-    // neighbours present (PlayerPlacement.AsItStands, check_replaceable's rule). A floating vent, a battery with no
-    // frame below, a pipe analyser on a corner, a thing no kit builds are refused; one with no placement cursor for its
-    // prefab is unchecked.
-    private static void Replaceable(IEnumerable<SmallGrid> pieces, IEnumerable<SmallGrid> devices,
-        IEnumerable<Structure> large, List<LintFinding> findings)
-    {
-        BuildCatalogue catalogue = BuildCatalogue.Load();
-        List<Structure> things = new List<Structure>(pieces);
-        things.AddRange(devices);
-        things.AddRange(large);
-        things.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
-        foreach (Structure thing in things)
-        {
-            string name = $"{Names.Of(thing)} ({thing.PrefabName} {thing.ReferenceId})";
-            switch (PlayerPlacement.AsItStands(thing, catalogue))
-            {
-                case PlacementVerdict.Refused refused:
-                    findings.Add(new LintFinding(LintCodes.NotReplaceable,
-                        $"{name}: a player could not place it again where it stands ({refused.Rule ?? "other"}): " +
-                        $"{refused.Reason}.",
-                        thing.ReferenceId, Bodies.V(thing.Position)));
-                    break;
-                case PlacementVerdict.NotChecked notChecked:
-                    findings.Add(new LintFinding(LintCodes.ReplaceableUnchecked,
-                        $"{name}: not checked: {notChecked.Reason.TrimEnd('.')}.", thing.ReferenceId,
-                        Bodies.V(thing.Position)));
-                    break;
-            }
-        }
-    }
-
-    private static void Add(Dictionary<long, SmallGrid> things, SmallGrid? thing)
-    {
-        if (thing != null && !thing.IsBeingDestroyed)
-        {
-            things[thing.ReferenceId] = thing;
-        }
     }
 }

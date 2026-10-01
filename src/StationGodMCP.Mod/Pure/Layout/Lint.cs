@@ -5,7 +5,10 @@ using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
 
-/// <summary>lint_layout's rule codes.</summary>
+/// <summary>
+/// lint_layout's built-in rule ids and their default levels, in report order: the shipped lint-rules.json defines each
+/// with the same id and level (a test holds them together).
+/// </summary>
 internal static class LintCodes
 {
     internal const string FloatingRun = "floating_run";
@@ -20,6 +23,7 @@ internal static class LintCodes
     internal const string RunCrossesWindow = "run_crosses_window";
     internal const string NotReplaceable = "not_replaceable";
     internal const string ReplaceableUnchecked = "replaceable_unchecked";
+    internal const string ControlsBlocked = "controls_blocked";
 
     /// <summary>Every rule with its level, in report order.</summary>
     internal static readonly (string Code, ConflictLevel Level)[] Rules =
@@ -33,6 +37,7 @@ internal static class LintCodes
         (DeviceVisualOverlap, ConflictLevel.Warning),
         (MountedFacesOutOfRoom, ConflictLevel.Warning),
         (DeviceCrossesSeam, ConflictLevel.Warning),
+        (ControlsBlocked, ConflictLevel.Warning),
         (RunAlongDoor, ConflictLevel.Info),
         (ControlsNotOnWall, ConflictLevel.Info),
         (ReplaceableUnchecked, ConflictLevel.Info)
@@ -56,18 +61,33 @@ internal static class LintCodes
 internal sealed class LintFinding
 {
     internal LintFinding(string code, string message, long? thingId, Vec3 at, long? otherId = null)
+        : this(code, LintCodes.LevelOf(code), LintReport.RuleIndex(code), message, thingId, at, otherId, null, null)
+    {
+    }
+
+    /// <param name="order">The rule's place in its rule set: findings of one level are reported in it.</param>
+    /// <param name="subjectKey">The subject's identity (thing:123, port:123/0, cell:..., a pair joined by +).</param>
+    /// <param name="ruleId">For a rule_error, the rule that could not be evaluated.</param>
+    internal LintFinding(string code, ConflictLevel level, int order, string message, long? thingId, Vec3 at,
+        long? otherId, string? subjectKey, string? subject, string? ruleId = null)
     {
         Code = code;
-        Level = LintCodes.LevelOf(code);
+        Level = level;
+        Order = order;
         Message = message;
         ThingId = thingId;
         At = at;
         OtherId = otherId;
+        SubjectKey = subjectKey;
+        Subject = subject;
+        RuleId = ruleId ?? code;
     }
 
     internal string Code { get; }
 
     internal ConflictLevel Level { get; }
+
+    internal int Order { get; }
 
     internal string Message { get; }
 
@@ -76,9 +96,16 @@ internal sealed class LintFinding
     internal Vec3 At { get; }
 
     internal long? OtherId { get; }
+
+    internal string? SubjectKey { get; }
+
+    internal string? Subject { get; }
+
+    /// <summary>The rule: the code, or for a rule_error the rule that failed to evaluate.</summary>
+    internal string RuleId { get; }
 }
 
-/// <summary>Findings ordered for a reader (problems, then warnings, then info, rules in LintCodes.Rules order) and counted.</summary>
+/// <summary>Findings ordered for a reader (problems, then warnings, then info, rules in rule-set order) and counted.</summary>
 internal static class LintReport
 {
     internal static List<LintFinding> Ordered(List<LintFinding> findings)
@@ -97,7 +124,7 @@ internal static class LintReport
                 return level;
             }
 
-            int rule = RuleIndex(a.Finding.Code).CompareTo(RuleIndex(b.Finding.Code));
+            int rule = a.Finding.Order.CompareTo(b.Finding.Order);
             return rule != 0 ? rule : a.Order.CompareTo(b.Order);
         });
         return ordered.ConvertAll(item => item.Finding);
@@ -114,7 +141,7 @@ internal static class LintReport
         return counts;
     }
 
-    private static int RuleIndex(string code)
+    internal static int RuleIndex(string code)
     {
         for (int index = 0; index < LintCodes.Rules.Length; index++)
         {

@@ -2,7 +2,8 @@
 
 ## 1.7.0
 
-2026-09-30. Smaller replies, controls that face the room, highlighting through walls, deep-miner spots. 86 tools.
+2026-09-30. Smaller replies, controls that face the room, highlighting through walls, deep-miner spots, lint rules as
+data. 87 tools.
 
 - **`grid_survey` filters.** A survey of a 6 x 4 x 4 m box ran to 63 KB. `sections` (any of `cells`, `pieces`,
   `devices`, `networks`, `network_visibility`, `doors`) keeps only the parts named, the others left out of the reply;
@@ -36,6 +37,26 @@
   what one dirty ore holds, and with `ores` (e.g. `["Cobalt"]`, or `["Gold", "Silver"]`) the nearest spots that give
   them, each with distance, compass bearing, the ground height and the miner's own terrain rule, plus `beacons` ready
   for `highlight`. It changes nothing.
+- **Lint rules are data (`lint_layout`, new `lint_rules`).** The layout rules moved out of the code into
+  `lint-rules.json`, shipped in the mod's folder. A `lint-rules.json` in a save's folder takes priority: a rule with
+  the same id replaces the mod's, `"enabled": false` turns one off, `level` changes its level, new ids add rules.
+  Rules are written in a small typed language (selects over pieces, devices, structures, ports, cells, networks,
+  rooms or pairs; comparisons, `matches`, collection forms, explicit nulls) over one model of everything built, and
+  a library of functions; a file is checked as it loads, every error with its rule, line and character, and a rule
+  that cannot be worked out on one thing gives a `rule_error` finding instead of stopping the check. Every rule from
+  before keeps its id, level and message; `controls_blocked` joins them, and ten general checks are new: storm-exposed
+  solar panels that are not Reinforced (problem), shaded solar panels, cables lighter than their network's power,
+  devices a chip batches by a name they do not carry, filtration outputs with no tank or regulator and no chip
+  switching them, oxidiser vented outdoors through any upstream pump, valve, filter or mixer (problem), fuel and
+  oxidiser above their ignition temperature, uninsulated outdoor liquid pipes at or below freezing, deep-miner drill
+  columns, cables off the frames. The reply gains `rule_source` (the files used, what the save changed, what did not
+  load), `elapsed_ms`, and `subject` per finding. `lint_rules` lists the rules in effect, validates a file (also one
+  not yet saved), lists every field and function with its type, runs each rule's examples, and explains a finding
+  with every value it read. Guide: docs/lint-rules.md.
+- **Place and plan tools lint what they would build.** `place_cables`, `place_pipes`, `place_chutes`,
+  `place_structure`, `plan_cable_route`, `plan_pipe_route` and `plan_chute_route` run the rules marked `dry_run` on
+  the planned pieces and placements, in the world around them, and add each finding as a warning `lint_<rule id>`;
+  nothing is refused for one.
 - **Controls facing a wall.** `place_structure` (dry run and job checks), `orient` and `find_spot` now know which side
   of a device carries its slots, buttons and switches, read from the game's own interactables on the prefab, and warn
   `controls_blocked` when that side faces another device, a frame, or a wall panel right in front of it. `orient`

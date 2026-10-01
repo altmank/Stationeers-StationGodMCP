@@ -653,6 +653,8 @@ internal sealed class LintFindingView
         ReferenceId = finding.ThingId.HasValue ? new ThingId(finding.ThingId.Value) : (ThingId?)null;
         OtherId = finding.OtherId.HasValue ? new ThingId(finding.OtherId.Value) : (ThingId?)null;
         At = PointView.Of(finding.At);
+        Subject = finding.Subject;
+        RuleId = finding.Code == finding.RuleId ? null : finding.RuleId;
     }
 
     public string Code { get; }
@@ -668,14 +670,23 @@ internal sealed class LintFindingView
     public ThingId? OtherId { get; }
 
     public PointView At { get; }
+
+    /// <summary>What the rule looked at: a thing, a port, a cell, a network, a room, or a pair.</summary>
+    public string? Subject { get; }
+
+    /// <summary>For a rule_error, the rule that could not be evaluated; null otherwise.</summary>
+    public string? RuleId { get; }
 }
 
 /// <summary>lint_layout: what was checked, the counts per rule and the findings, warnings first.</summary>
 internal sealed class LintLayoutView
 {
     internal LintLayoutView(string region, int cells, int pieces, int devices, int structures, int doors,
-        Dictionary<string, int> counts, List<LintFindingView> findings, int total)
+        Dictionary<string, int> counts, List<LintFindingView> findings, int total, LintRuleSourceView ruleSource,
+        double elapsedMs)
     {
+        RuleSource = ruleSource;
+        ElapsedMs = System.Math.Round(elapsedMs, 1);
         Region = region;
         Cells = cells;
         Pieces = pieces;
@@ -710,6 +721,12 @@ internal sealed class LintLayoutView
     public int Total { get; }
 
     public bool HasMore { get; }
+
+    /// <summary>The rule files in effect (lint-rules.json of the mod and of the save) and any that did not load.</summary>
+    public LintRuleSourceView RuleSource { get; }
+
+    /// <summary>How long the rules took, milliseconds.</summary>
+    public double ElapsedMs { get; }
 }
 
 /// <summary>An item's print record: the maker, the game time it was made, the quantity, and the stack it split off.</summary>

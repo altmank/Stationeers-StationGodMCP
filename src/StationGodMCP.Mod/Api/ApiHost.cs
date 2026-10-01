@@ -90,6 +90,7 @@ internal static class ApiHost
             ["wall_map"] = static args => WallMapApi.Handle(args),
             ["find_spot"] = static args => FindSpotApi.Handle(args),
             ["lint_layout"] = static args => LintLayoutApi.Handle(args),
+            ["lint_rules"] = static args => LintRulesApi.Handle(args),
             ["check_replaceable"] = static args => CheckReplaceableApi.Handle(args),
             ["show_preview"] = static args => ShowPreviewApi.Handle(args),
             ["highlight"] = static args => HighlightApi.Handle(args),

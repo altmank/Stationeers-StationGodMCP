@@ -17,7 +17,8 @@ connections and guard against merging networks, which `place_structure` does not
 | `replace_frames` | Replace frames with another frame prefab, or finish unfinished frames, in place. | `room_id` or `reference_ids`, `to` (optional), `from_prefabs`, `skip_unmatched` |
 | `wall_map` | A text elevation of a wall (or floor) as seen from one side: seams, walls, windows, doors, devices, runs, free rectangles (1.4.3+). | `plane` + `around` + `side`, or `looking`; `radius_m`, `free_rects` |
 | `find_spot` | Ranked places for a prefab near a point on a wall or a room's walls, checked as the cursor checks them (1.4.3+). | `prefab`, `near`, `plane`/`looking`/`room_id`, `require` |
-| `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+); things a player could not place again where they stand (1.5.0+). | `room_id` or `min`/`max`, `limit` |
+| `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+); things a player could not place again where they stand (1.5.0+); rules from `lint-rules.json`, yours per save (1.7.0+, [lint-rules.md](lint-rules.md)). | `room_id` or `min`/`max`, `limit` |
+| `lint_rules` | The lint rules in effect: list, validate a rule file, the fields and functions rules can use, run each rule's examples, explain a finding (1.7.0+). | `action`, `rule_id`, `text`, `reference_id` |
 | `check_replaceable` | For each thing, could a player place it again exactly where it stands, with its neighbours present (1.5.0+). | `reference_ids` |
 | `show_preview` | Draw wire boxes in your game for a planned placement's footprint, body and ports, or any cells and boxes; timed, nothing built (1.4.3+). | as `place_structure`, or `cells`, `boxes`; `seconds`, `clear`, `xray` |
 | `highlight` | Show things, whole networks or far points through walls, frames and terrain, tinted, with labels; timed, nothing changed (1.7.0+). | `targets` (`reference_id(s)`, `network_id` or `at`, with `color`, `label`, `pulse`); `seconds`, `keep`, `clear` |
@@ -210,24 +211,20 @@ removes them. Things are drawn the way the T-Ray lens draws pipes and cables, wi
 
 ### Checking a layout (1.4.3+)
 
-`lint_layout {room_id}` (or a box) reads what stands there and lists findings, problems first, then warnings, with
-`counts` per rule. A box takes the 2 m cells it overlaps; a side on a face plane takes nothing beyond it (a box up to y 222 stops
-below that floor).
+`lint_layout {room_id}` (or a box) reads what stands there and lists findings, problems first, then warnings, then
+information, with `counts` per rule. A box takes the 2 m cells it overlaps; a side on a face plane takes nothing
+beyond it (a box up to y 222 stops below that floor).
 
-| Rule | Level | Finds |
-| --- | --- | --- |
-| `not_replaceable` | problem | a piece, device or 2 m structure a player could not place again where it stands (1.5.0+; `check_replaceable` below) |
-| `run_in_door_keepout` | warning | a cable, pipe or chute piece in a door's keep-out |
-| `port_into_doorway` | warning | a device port that joins in a door's keep-out |
-| `port_cell_foreign_network` | warning | a port whose joining cell holds a piece that does not join it |
-| `floating_run` | warning | a cable, pipe or chute piece in air (in-line tanks and passive vents are not runs) |
-| `run_crosses_window` | warning | a piece on a window's face |
-| `device_visual_overlap` | warning | two devices whose mesh boxes run more than 0.1 m into each other, or one inside the other |
-| `mounted_faces_out_of_room` | warning | a mounted device facing out of the room behind it |
-| `device_crosses_seam` | warning | a mounted device whose mesh spans two wall sections by more than 0.1 m, though it is small enough (2.2 m or less each way) to fit one |
-| `run_along_door` | info | a cable, pipe or chute piece hugging a door's jamb (`pipe_along_door` before 1.4.4) |
-| `controls_not_on_wall` | info | a console, computer, display or switch not on a wall |
-| `replaceable_unchecked` | info | a thing `not_replaceable` could not ask about (no placement cursor for its prefab) |
+From 1.7.0 the rules are data: `lint-rules.json`, shipped with the mod, with a `lint-rules.json` in your save's folder
+taking priority, so a rule can be turned off, made information only, changed or added for one save. The shipped
+rules cover doorways and windows, floating runs, blocked and foreign ports, overlapping, out-facing and seam-crossing
+devices, blocked controls, things a player could not place again, and general checks: solar panels storms reach that
+are not Reinforced or are shaded, cables lighter than their network, devices a chip batches by a name they do not
+carry, filtration outputs with nowhere to go, oxidiser vented outdoors, fuel and oxidiser mixes above their ignition
+point, uninsulated outdoor liquid pipes near freezing, deep-miner drill columns and cables off the frames. The place
+and plan tools run the rules marked `dry_run` on what they would build and report findings as `lint_<rule>`
+warnings. `lint_rules` lists, validates, tests and explains them. The file, the rule language, every field and
+function, and the full rule list: [lint-rules.md](lint-rules.md).
 
 ### Could a player place it again (1.5.0+)
 

@@ -75,7 +75,7 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 | Solar, dishes and traders | `solar_aim`, `dish_aim`, `landing_pads`, `trader_contacts`, `trader_inventory`, `trader_buy`, `trader_sell` | [solar-and-traders.md](docs/solar-and-traders.md) |
 | Cables, pipes and chutes | `grid_survey`, `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`, `place_cables`, `place_pipes`, `place_chutes`, `remove_cables`, `remove_pipes`, `remove_chutes`, `upgrade_cables`, `upgrade_pipes` | [building.md](docs/building.md) |
 | Clean-up and refactoring | `clean_cables`, `clean_pipes`, `plan_removal`, `feed_paths` | [cleanup-and-refactor.md](docs/cleanup-and-refactor.md) |
-| Walls, frames and structures | `replace_walls`, `replace_frames`, `describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `check_replaceable`, `show_preview`, `highlight`, `place_structure`, `remove_structure`, `undo_job` | [walls-frames-structures.md](docs/walls-frames-structures.md) |
+| Walls, frames and structures | `replace_walls`, `replace_frames`, `describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `lint_rules`, `check_replaceable`, `show_preview`, `highlight`, `place_structure`, `remove_structure`, `undo_job` | [walls-frames-structures.md](docs/walls-frames-structures.md), [lint-rules.md](docs/lint-rules.md) |
 | Blueprints | `paste_blueprint` | [blueprints.md](docs/blueprints.md) |
 | Ingot Vault (mod) | `vault_contents`, `vault_deposit`, `vault_withdraw` | [ingot-vault.md](docs/ingot-vault.md) |
 
@@ -153,6 +153,7 @@ Ingot Vault mod).
 - [Building cables, pipes and chutes](docs/building.md)
 - [Clean-up and refactoring networks](docs/cleanup-and-refactor.md)
 - [Walls, frames and structures](docs/walls-frames-structures.md)
+- [Lint rules](docs/lint-rules.md): the rule file, your own rules per save, the rule language, fields and functions.
 - [Blueprints](docs/blueprints.md)
 - [Building from source](docs/building-from-source.md) (maintainers)
 - [Changes per version](CHANGELOG.md)
