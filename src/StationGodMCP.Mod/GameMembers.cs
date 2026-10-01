@@ -249,6 +249,13 @@ internal static class GameMembers
     internal static readonly GameField CrewUmbilicalPartner =
         Field(typeof(global::Objects.Rockets.RocketCrewUmbilical), "_partnerUmbilical");
 
+    // ---- Rocket flight tools: the pipe network an engine draws from (RocketEngineBase.CheckConnections), the landing
+    // autopilot's own thrust peak (Rocket.HandleAutomatedLanding), a miner's drill head (its power multiplier) ----
+    internal static readonly GameField EngineInputNetwork1 = Field(typeof(RocketEngineBase), "_inputNetwork1");
+    internal static readonly GameField RocketHighestRecordedThrust =
+        Field(typeof(global::Objects.Rockets.Rocket), "_highestRecordedThrust");
+    internal static readonly GameField RocketMinerHead = Field(typeof(RocketMiner), "_miningHead");
+
     // ---- remove_structure: the game's own refusal to deconstruct (Cable, Pipe, Silo, LaunchMount, fuselage) ----
     internal static readonly GameMethod StructureCanDeconstruct = Register(new GameMethod("Structure.CanDeconstruct",
         () => typeof(Structure).GetMethod("CanDeconstruct", PrivateInstance, null, Type.EmptyTypes, null)));

@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.8.0
+
+2026-10-01. Rocket forecasting. 90 tools.
+
+- **`rocket_status` (new).** Every rocket as the game holds it: state, node and target with their map codes, the hops
+  left as the game's pathfinder will fly them, mass by part, fuel lines and tanks, engines, thrust, the auto-land
+  confidence the Rocket Control screen shows, cargo slots, battery and per-device power, burn time. It sets the
+  thrust the landing check assumes against the full-throttle thrust the fuel gives now, measured with the game's own
+  combustion on a copy, and flags a check that is optimistic. `checks` compares the forecast's formulas with the
+  game's own numbers on the live rocket.
+- **`rocket_forecast` (new).** Flies a copy of the rocket by the game's rules, tick by tick: launch, space hops,
+  re-entry and its confidence check, the landing autopilot, touchdown; fuel drawn and tanks refilling the pipe, the
+  recorded thrust peak, power paid every tick. Per leg: Δv, time, burn, fuel, tank pressure, mass, battery, thrust,
+  and the landing's confidence, lowest stop altitude and touchdown speed. Landing limits (heaviest landing, fuel range,
+  survivable thrust loss, mass at a confidence floor), the landing at every re-entry profile, the least fuel for the
+  whole plan, and anything in the landing column. A stop at a node (time, mining power, cargo) and the way home. What-ifs
+  for fuel amount, temperature and mix, thrust, throttle, cargo, battery and load.
+- **`rocket_flight_log` (new).** A recorder ticked by the mod: one sample per interval of game time into a bounded
+  ring, optionally a CSV beside the save; read as a summary, state and target changes, and pages of rows.
+
 ## 1.7.0
 
 2026-09-30. Smaller replies, controls that face the room, highlighting through walls, deep-miner spots, lint rules as

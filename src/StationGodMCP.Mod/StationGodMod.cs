@@ -8,6 +8,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
 using StationeersMods.Interface;
+using StationGodMCP.Api;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -25,7 +26,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.7.0";
+    public const string Version = "1.8.0";
 
     private readonly StationGodRequestDispatcher _dispatcher = new StationGodRequestDispatcher();
     private Harmony? _harmony;
@@ -113,6 +114,7 @@ public sealed class StationGodMod : ModBehaviour
             HeldTickJobs.Tick();
             Previews.Tick();
             Highlights.Tick();
+            RocketFlightRecorder.Tick();
         }
         catch (Exception exception)
         {
