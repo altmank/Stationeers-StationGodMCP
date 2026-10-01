@@ -601,6 +601,7 @@ internal static class ToolDefinitions
         "plants",
         "reagents",
         "planet",
+        "deep_miner_spots",
         "set_ic_pins",
         "solar_aim",
         "thing_health",
@@ -965,6 +966,24 @@ internal static class ToolDefinitions
             "planet",
             "The planet's own atmosphere, the one every outdoor cell relaxes toward. Before a world is loaded it returns only loaded false and terraforming_mod. Otherwise: loaded true, world_time_s (days past plus time of day, in seconds), day_length_s, volume_l, gas_volume_l, cells (outdoor 2 m cells), size_ratio (of the size it shipped with), gas_mol, liquid_mol, liquid_l, sea {liquid_l, threshold_l (the volume at which the sea is drawn), shown}, pressure_kpa, game_pressure_kpa, temperature_k, temperature_parts {sun_angle_k, sun_distance_k, greenhouse_k, density_k, weather_k, latent_k, external_k}, sun_angle_deg, solar_energy_percent, range {today_min_k, today_min_sun_angle_deg, today_max_k, today_max_sun_angle_deg, orbit_min_k, orbit_max_k} (the game's own formula swept over every sun angle), storm {id} or null, oxygen_kpa, toxins_kpa (human toxins), fuel_mol, oxidiser_mol (fire risk outdoors), carbon_dioxide_ratio, gases [{gas, display_name, state, amount_mol, per_cell_mol, partial_kpa, freezes_below_k, min_liquid_pressure_kpa, condenses_below_today_coldest_k, condenses_below_orbit_coldest_k}], reservoirs {liquid_clouds, ice_clouds, ice_caps}, each null or {volume_l, liquid_l, amount_mol, contents [{gas, amount_mol}]}, starting_air (the air this world ships with at the planet's present size, the baseline Terraforming Reloaded measures from: {per_cell_mol, mol, gases [{gas, amount_mol}]}), and terraforming_mod (null, or Terraforming Reloaded's {name, version, state, live, temperature_adjustment_k}). Read only; no gateway is needed.",
             new { type = "object", properties = new { }, additionalProperties = false },
+            readOnly: true),
+        Tool(
+            "deep_miner_spots",
+            "Where a deep miner would mine what (1.7.0+). The game gives a deep miner the first of the world's deep-mining profiles whose region condition holds where it is built (read once, when it is registered); this tool asks the same profiles the same way, so it follows the world's own region maps (on Vulcan the VulcanDeepMiningRegions set). Always returns at {position, regions [{set, region, name}], profile_id (null: no profile, so a miner there cannot mine)} for at (default the local player's position) and profiles [{id, reagents [{reagent, grams}] per dirty ore, quantity [min, max) ores per drop, time_s [min, max) seconds per drop at 200 RPM, regions}] in the order the miner tries them. With ores (reagent names as profiles list them, e.g. [\"Cobalt\"] or [\"Gold\", \"Silver\"]; Hydrocarbon is coal; a profile matches when it holds every one): searches a disc around at, nearest first, on a grid no finer than the region map (step_m, default the finest step that keeps it under 250000 samples; 8 s budget), and returns search {ores, profiles (the ids that match), radius_m, step_m, min_separation_m, samples, matched, searched_radius_m (every sample within it was read; truncated true when the budget ran out first)}, spots [{at (the 2 m cell centre over the spot, at the ground), distance_m and bearing_deg (0 = +z north, 90 = +x east) and compass from at, profile_id, regions, terrain {ground_y, cell_volume_l, terrain_ok, note}}] (each at least min_separation_m from the nearer ones) and beacons [{at: [x, y, z], label}] in the shape highlight takes for point targets. terrain is read from the terrain's own density anywhere in the world: ground_y, and terrain_ok when the miner's own rule (world volume at its position at most 6000 L, which needs terrain in its cell) holds at the spot's at; the placement cursor's other checks (structures in the way, the whole footprint) are not run. Read only. No gateway is needed.",
+            new
+            {
+                type = "object",
+                properties = new
+                {
+                    at = new { description = "[x, y, z] or {x, y, z} in metres: the point to report and the search centre. Default the local player's position." },
+                    ores = new { type = "array", minItems = 1, maxItems = 4, items = new { type = "string" }, description = "Reagents a spot's profile must all hold, e.g. [\"Cobalt\"]. Without it only the point report and profiles." },
+                    radius_m = new { type = "number", minimum = 1, maximum = 3000, description = "Search radius around at; default 500." },
+                    count = new { type = "integer", minimum = 1, maximum = 20, description = "Spots returned, nearest first; default 5." },
+                    min_separation_m = new { type = "number", minimum = 0, maximum = 3000, description = "Least distance between two spots returned; default 100 (0: neighbouring samples)." },
+                    step_m = new { type = "number", minimum = 0.5, maximum = 500, description = "Sample spacing; never finer than one pixel of the region map. Default the finest within the sample budget." }
+                },
+                additionalProperties = false
+            },
             readOnly: true),
         Tool(
             "solar_aim",

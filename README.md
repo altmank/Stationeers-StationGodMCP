@@ -64,14 +64,14 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 
 ## Tools
 
-84 tools, in these areas. Each page lists its tools with what they take and give back.
+85 tools, in these areas. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |
 | Devices, logic and console | `list_devices`, `describe_device`, `read_logic`, `write_logic`, `read_logic_many`, `write_logic_many`, `read_memory`, `write_memory`, `inspect_slots`, `network_snapshot`, `sample_logic`, `connections`, `list_gateways`, `run_console_command`, `read_console`, `game_clock`, `looking_at`, `mod_info` | [devices-and-logic.md](docs/devices-and-logic.md) |
 | Chips | `get_ic_source`, `set_ic_source`, `get_ic_status`, `control_ic_execution`, `resolve_ic_selectors`, `set_ic_pins` | [chips.md](docs/chips.md) |
 | Items | `find_items`, `find_things`, `item_totals`, `list_containers`, `container_contents`, `move_item`, `label`, `paint`, `consumables` | [items.md](docs/items.md) |
-| Air, planet, plants and survival | `rooms`, `atmosphere_contents`, `water_sources`, `move_gas`, `outer_frames`, `planet`, `weather`, `plants`, `plant_genes`, `reagents`, `player_vitals`, `ignition_risk`, `thing_health` | [air-planet-and-plants.md](docs/air-planet-and-plants.md) |
+| Air, planet, plants and survival | `rooms`, `atmosphere_contents`, `water_sources`, `move_gas`, `outer_frames`, `planet`, `deep_miner_spots`, `weather`, `plants`, `plant_genes`, `reagents`, `player_vitals`, `ignition_risk`, `thing_health` | [air-planet-and-plants.md](docs/air-planet-and-plants.md) |
 | Solar, dishes and traders | `solar_aim`, `dish_aim`, `landing_pads`, `trader_contacts`, `trader_inventory`, `trader_buy`, `trader_sell` | [solar-and-traders.md](docs/solar-and-traders.md) |
 | Cables, pipes and chutes | `grid_survey`, `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`, `place_cables`, `place_pipes`, `place_chutes`, `remove_cables`, `remove_pipes`, `remove_chutes`, `upgrade_cables`, `upgrade_pipes` | [building.md](docs/building.md) |
 | Clean-up and refactoring | `clean_cables`, `clean_pipes`, `plan_removal`, `feed_paths` | [cleanup-and-refactor.md](docs/cleanup-and-refactor.md) |
