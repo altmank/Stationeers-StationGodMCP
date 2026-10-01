@@ -52,7 +52,7 @@ internal static class DescribePrefabApi
                 PointView.Of(port.Cell - Bodies.V(origin)), port.Outward.Name));
         }
 
-        VisualUp up = VisualUp.Of(prefab.PrefabName);
+        VisualUp up = PlacePlanner.VisualUpOf(prefab);
         return new DescribePrefabView(
             new PlacementPrefabView(prefab.PrefabName, prefab.PrefabHash, prefab.DisplayName,
                 prefab.BuildStates.Count), prefab.GetType().Name,

@@ -104,7 +104,7 @@ internal static class PlacementLayout
 
         if (turn != null && prefab is Device)
         {
-            VisualUp up = VisualUp.Of(prefab.PrefabName);
+            VisualUp up = PlacePlanner.VisualUpOf(prefab);
             string? upright = Uprightness.Problem(turn, up.LocalUp);
             if (upright != null)
             {

@@ -282,7 +282,8 @@ says to write `Mode` 1 after building.
 `describe_prefab {prefab}` shows a prefab before it stands anywhere: how it is placed and turned
 (`allowed_rotations`), its small cells and boxes relative to its origin, its ports (joining cell offset, the way a
 run leaves, role, flow), `visual_up` (which own axis reads as its top, with the source of that fact; `verified:
-false` marks a guess) and a flow its `Mode` reverses.
+false` marks a guess; a prefab with no entry of its own is verified +y up only when the cursor can turn it about y
+alone, and otherwise reads `ASSUMED`) and a flow its `Mode` reverses.
 
 ### The layout preview (1.4.3+)
 

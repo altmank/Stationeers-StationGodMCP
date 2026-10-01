@@ -75,6 +75,8 @@ New
 - get_ic_status include_source: false leaves the chip's program out of the reply; item_totals holders_limit sets how many holders each item lists.
 Changed
 - Smaller replies by default: a job poll leaves out the dry run and final check the real run already answered with (verbose: true gives them back; a refused job keeps its final check); place_structure lists footprint cells only with include_footprint_cells; the cable, pipe and chute tools give link counts and leave their fixed notes out unless include_links / include_notes, and limit 0 lists no cells.
+Fix
+- describe_prefab's visual_up is marked checked only where the game forces it; Compact Filtration's top is its local -y, so orient stops building it upside down.
 
 v1.6.2
 Fix

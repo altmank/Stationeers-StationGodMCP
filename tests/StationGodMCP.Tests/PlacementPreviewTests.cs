@@ -94,14 +94,35 @@ public sealed class PlacementPreviewTests
     }
 
     [Fact]
+    public void AnUncheckedPrefabIsUprightOnlyWhenTheCursorCannotTipIt()
+    {
+        Assert.True(VisualUp.Of("StructureLiquidVolumePump", tips: false).Verified);
+        Assert.StartsWith("CODE", VisualUp.Of("StructureLiquidVolumePump", tips: false).Source);
+        Assert.False(VisualUp.Of("StructureLiquidVolumePump", tips: true).Verified);
+        Assert.StartsWith("ASSUMED", VisualUp.Of("StructureLiquidVolumePump", tips: true).Source);
+    }
+
+    [Fact]
+    public void CompactFiltrationReadsUpsideDownAtPlusY()
+    {
+        foreach (string prefab in new[] { "StructureCompactFiltration", "StructureCompactFiltrationMirror" })
+        {
+            VisualUp up = VisualUp.Of(prefab, tips: true);
+            Assert.Equal("-y", up.LocalUp.Name);
+            Assert.True(up.LyingAllowed);
+            Assert.False(up.Verified);
+        }
+    }
+
+    [Fact]
     public void InLineTanksMayLieDown()
     {
-        VisualUp tank = VisualUp.Of("StructureInsulatedInLineTankGas1x3");
+        VisualUp tank = VisualUp.Of("StructureInsulatedInLineTankGas1x3", tips: true);
         Assert.True(tank.LyingAllowed);
         Assert.True(tank.Verified);
         Assert.Equal("+y", tank.LocalUp.Name);
-        Assert.False(VisualUp.Of("StructureConsole3x3").LyingAllowed);
-        Assert.False(VisualUp.Of("StructureTankSmallInLine").Verified);
+        Assert.False(VisualUp.Of("StructureConsole3x3", tips: true).LyingAllowed);
+        Assert.False(VisualUp.Of("StructureTankSmallInLine", tips: true).Verified);
         // The live 1x3 standing up: +x facing, up +y.
         Assert.Null(Uprightness.Problem(CubeRotation.FromFacing(S("+x"), S("+y"))!, tank.LocalUp));
         // A device lying on its side against a wall: facing +x, top +z.

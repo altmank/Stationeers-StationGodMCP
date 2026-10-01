@@ -547,7 +547,7 @@ internal static class PlacePlanner
             OrientCandidate candidate = new OrientCandidate(turn, PlacementLayout.MountOutward(prefab, turn).Opposite,
                 turn.Forward, Bodies.V(position),
                 Orienter.Ports(prefab, position, placement.Rotation, PortTypes), refusal, layout.Penalty,
-                Uprightness.Problem(turn, VisualUp.Of(prefab.PrefabName).LocalUp));
+                Uprightness.Problem(turn, VisualUpOf(prefab).LocalUp));
             scores.Add(OrientSearch.Score(candidate, intent, roomAhead));
             if (reversible)
             {
@@ -584,6 +584,20 @@ internal static class PlacePlanner
     /// Whether place_structure accepts the turn: a grid-placed prefab only as its cursor turns it (a piece the cursor
     /// turns itself, a cable or pipe, any turn); a face-placed or mounted one any turn, the cursor check deciding.
     /// </summary>
+    /// <summary>The prefab's visual top (VisualUp), knowing whether a placement can tip it off +y.</summary>
+    internal static VisualUp VisualUpOf(Structure prefab)
+    {
+        foreach (CubeRotation turn in CubeRotation.All)
+        {
+            if (turn.Up.Index != GridStep.All[2].Index && CursorAllows(prefab, turn))
+            {
+                return VisualUp.Of(prefab.PrefabName, tips: true);
+            }
+        }
+
+        return VisualUp.Of(prefab.PrefabName, tips: false);
+    }
+
     internal static bool CursorAllows(Structure prefab, CubeRotation turn)
     {
         RotationAxis axes = prefab.RotationAxis;

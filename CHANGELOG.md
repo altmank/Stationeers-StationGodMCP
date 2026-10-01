@@ -24,6 +24,12 @@
   (`added_count`, `lost_count`, new) and leave out the tool's fixed `notes`; `include_links: true` lists every added
   and lost link (34 entries for 15 pipes), `include_notes: true` adds the notes. `limit: 0` lists no cells (the counts
   stay), also for the dry run a `plan_*_route` reply carries.
+- **Fix: `describe_prefab` no longer claims every prefab's top is checked.** `visual_up` said local +y, verified, for
+  any prefab without an entry of its own. That is now verified only where the game forces it (the placement cursor
+  turns the prefab about y alone, so it always stands +y up); anything a player can build any way up reads
+  `verified: false` with the source `ASSUMED`. The modded Compact Filtration (plain and Mirror) gets an entry: its
+  top is local -y (two units built +y up under a ceiling read upside down), and it is built on its side as often, so
+  `not_upright` is only information for it and `orient` no longer turns it +y up.
 
 ## 1.6.2
 
