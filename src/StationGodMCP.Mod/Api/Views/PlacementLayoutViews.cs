@@ -324,8 +324,9 @@ internal sealed class DescribePrefabView
     internal DescribePrefabView(PlacementPrefabView prefab, string runtimeType, string placement, float gridSizeM,
         bool smallGrid, string rotationAxes, List<OrientationView> allowedRotations, List<PointView> smallCells,
         BoxView renderBox, BoxView? gridBox, List<PrefabPortView> ports, VisualUpView visualUp,
-        ModeFlipView? reversibleFlow, bool hasCursor)
+        ModeFlipView? reversibleFlow, bool hasCursor, ControlFaceView? controls = null)
     {
+        Controls = controls;
         PrefabName = prefab.PrefabName;
         PrefabHash = prefab.PrefabHash;
         DisplayName = prefab.DisplayName;
@@ -387,6 +388,36 @@ internal sealed class DescribePrefabView
 
     /// <summary>The game has a placement cursor for it (origin snapped as placing snaps it).</summary>
     public bool HasCursor { get; }
+
+    /// <summary>The side its slots, buttons and switches face; left out for what has none and is no device.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ControlFaceView? Controls { get; }
+}
+
+/// <summary>
+/// The own axis a prefab's controls face (unturned), how many of its controls sit there out of those looked at, where
+/// that comes from, and whether it is the forward fallback.
+/// </summary>
+internal sealed class ControlFaceView
+{
+    internal ControlFaceView(ControlFace face)
+    {
+        Local = face.Local.Name;
+        Votes = face.Votes;
+        Considered = face.Considered;
+        Source = face.Source;
+        Fallback = face.Fallback;
+    }
+
+    public string Local { get; }
+
+    public int Votes { get; }
+
+    public int Considered { get; }
+
+    public string Source { get; }
+
+    public bool Fallback { get; }
 }
 
 /// <summary>A relative at or a named facing as the world resolved it, and how.</summary>

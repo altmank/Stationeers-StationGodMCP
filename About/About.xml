@@ -72,6 +72,7 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 v1.7.0
 New
 - grid_survey takes sections (cells, pieces, devices, networks, network_visibility, doors), network_ids and compact, so a survey can answer only what was asked; without them the reply is unchanged.
+- place_structure, orient and find_spot know which side of a device carries its slots and buttons and warn controls_blocked when it would face a wall, a frame or another device; describe_prefab reports that side.
 - get_ic_status include_source: false leaves the chip's program out of the reply; item_totals holders_limit sets how many holders each item lists.
 Changed
 - Smaller replies by default: a job poll leaves out the dry run and final check the real run already answered with (verbose: true gives them back; a refused job keeps its final check); place_structure lists footprint cells only with include_footprint_cells; the cable, pipe and chute tools give link counts and leave their fixed notes out unless include_links / include_notes, and limit 0 lists no cells.

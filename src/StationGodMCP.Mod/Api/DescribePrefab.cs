@@ -64,7 +64,8 @@ internal static class DescribePrefabApi
             Orienter.ReversibleFlow(prefab)
                 ? new ModeFlipView("Mode", 1, "Mode 0 (Right) and 1 (Left) move gas opposite ways through it")
                 : null,
-            cursor != null);
+            cursor != null,
+            PrefabControls.Of(prefab) is ControlFace controls ? new ControlFaceView(controls) : null);
     }
 
     // The turns the cursor can give a grid-placed prefab; every turn for the others (the cursor check decides).

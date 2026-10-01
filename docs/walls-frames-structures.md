@@ -283,7 +283,9 @@ says to write `Mode` 1 after building.
 (`allowed_rotations`), its small cells and boxes relative to its origin, its ports (joining cell offset, the way a
 run leaves, role, flow), `visual_up` (which own axis reads as its top, with the source of that fact; `verified:
 false` marks a guess; a prefab with no entry of its own is verified +y up only when the cursor can turn it about y
-alone, and otherwise reads `ASSUMED`) and a flow its `Mode` reverses.
+alone, and otherwise reads `ASSUMED`), a flow its `Mode` reverses, and `controls` (1.7.0+): the own axis its slots,
+buttons and switches face, read from the colliders of the game's own interactables against its mesh box; when none
+sits clearly on one side its forward (+z) stands in (`fallback: true`).
 
 ### The layout preview (1.4.3+)
 
@@ -306,6 +308,7 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 | `crosses_window` | warning | It stands on or rests against a window. |
 | `blocks_route_cells` | warning | It would take the joining cell of a free port of a device beside it. |
 | `front_blocked` | warning | Something stands right in front of a mounted piece, or its front faces into a frame. |
+| `controls_blocked` | warning (info for the fallback) | The side with its slots, buttons and switches (`describe_prefab` `controls`) faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it (1.7.0+). `orient` pays for it like any warning and aims `controls_toward` at that side. |
 | `faces_out_of_room` | warning | A mounted piece whose back is in a room and whose front is not. |
 | `not_upright` | warning (info for in-line tanks) | Its visual top does not point up. |
 

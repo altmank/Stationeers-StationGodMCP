@@ -545,7 +545,7 @@ internal static class PlacePlanner
             LayoutPreview layout = PlacementLayout.Of(prefab, position, placement.Rotation, turn, plan.Facts,
                 plan.Arguments.AllowDoorKeepOut, new HashSet<long>());
             OrientCandidate candidate = new OrientCandidate(turn, PlacementLayout.MountOutward(prefab, turn).Opposite,
-                turn.Forward, Bodies.V(position),
+                PrefabControls.FrontOf(prefab, turn), Bodies.V(position),
                 Orienter.Ports(prefab, position, placement.Rotation, PortTypes), refusal, layout.Penalty,
                 Uprightness.Problem(turn, VisualUpOf(prefab).LocalUp));
             scores.Add(OrientSearch.Score(candidate, intent, roomAhead));

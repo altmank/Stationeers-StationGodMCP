@@ -263,6 +263,13 @@ internal sealed class CubeRotation : IEquatable<CubeRotation>
         return w < 0 ? (-x, -y, -z, -w) : (x, y, z, w);
     }
 
+    /// <summary>The world direction a local direction points to once turned.</summary>
+    internal GridStep Turn(GridStep local)
+    {
+        (int x, int y, int z) = Apply(local.Dx, local.Dy, local.Dz);
+        return StepOf(new[] { x, y, z });
+    }
+
     /// <summary>The direction local axis (x, y, z) points to in the world.</summary>
     internal (int X, int Y, int Z) Apply(int x, int y, int z) =>
         (_m[0] * x + _m[1] * y + _m[2] * z, _m[3] * x + _m[4] * y + _m[5] * z, _m[6] * x + _m[7] * y + _m[8] * z);

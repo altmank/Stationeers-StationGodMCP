@@ -395,7 +395,7 @@ internal static class FindSpotApi
             Metres foot = new Metres(position.x, bottom, position.z);
             double floor = AtResolver.FloorBelow(foot, facts) ?? AtResolver.FirstPlaneBelow(foot);
             SpotGeometry geometry = new SpotGeometry(cells.Count, occupied, keepOut,
-                mount?.Faces().Count ?? 0, bottom - floor, FrontBlocked(cells, turn.Forward, require, facts),
+                mount?.Faces().Count ?? 0, bottom - floor, FrontBlocked(cells, PrefabControls.FrontOf(prefab, turn), require, facts),
                 Clashes(render, cells, bodies));
             return new Candidate(plane, turn, rotation, position, cells, (Bodies.V(position) - near).Length,
                 SpotSearch.Filter(geometry, require));
