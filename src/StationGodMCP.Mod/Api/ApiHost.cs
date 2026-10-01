@@ -58,6 +58,7 @@ internal static class ApiHost
             ["plants"] = static args => PlantsApi.Handle(args),
             ["reagents"] = static args => ReagentsApi.Handle(args),
             ["planet"] = static args => PlanetApi.Handle(args),
+            ["deep_miner_spots"] = static args => DeepMinerSpotsApi.Handle(args),
             ["set_ic_pins"] = static args => SetIcPinsApi.Handle(args),
             ["solar_aim"] = static args => SolarAimApi.Handle(args),
             ["thing_health"] = static args => ThingHealthApi.Handle(args),

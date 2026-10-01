@@ -18,6 +18,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | `move_gas` | Move gas and liquid between atmospheres, or delete it. A cheat: it bypasses the game's physics. | `from`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `force`, `dry_run`; `transfer_id` to poll |
 | `outer_frames` | Frames with a face on the planet's outside air. | `near_player_m`, `include_inner`, `limit`, `offset` |
 | `planet` | The planet's atmosphere: pressure, temperature and its parts, every gas, today's and the orbit's temperature range, ice and cloud reservoirs. | none |
+| `deep_miner_spots` | Where a deep miner mines what: the region and ore profile at a point, and the nearest spots whose profile gives the ores you name, with distance, bearing, the ground there and beacons for `highlight` (1.7.0+). | `at`, `ores`, `radius_m`, `count`, `min_separation_m`, `step_m` |
 | `weather` | The storm schedule, when the next event can come, every event this world can roll, and the season. | none |
 | `plants` | Every plant in a tray, planter or station: growth stage, health, problems in plain words, needs, and forecasts to the next stage, harvest and seeds. | `reference_id`, `include_unplanted` |
 | `plant_genes` | Read or edit the genes of plants, seeds and produce, as the Gene Splicer does. | `reference_id` or `reference_ids`, `genes`, `unit`, `force` |
@@ -149,3 +150,19 @@ Host only.
   (`custom_name`) and the cable, pipe and chute networks they are on (`networks`). A thing in a slot (a stored item, a
   planted plant) reports its outermost holder's `position`, so `near_player_m` finds it. `remove_structure` with
   `allow_broken` removes them.
+
+## Deep-miner spots
+
+A deep miner takes the ore profile of the region it is built in, once, when it is built: the first of the world's
+profiles whose region holds there. `deep_miner_spots` asks the game the same question:
+
+- Without arguments: the region and profile under you, and every profile of the world with what one dirty ore holds
+  (`reagents`, grams), how many drop at a time and how long a drop takes at 200 RPM. `profile_id` null means a miner
+  there cannot mine.
+- `ores: ["Cobalt"]` (or several, e.g. `["Gold", "Silver"]`: a profile must hold every one; coal is `Hydrocarbon`):
+  the nearest spots around you (or `at`) within `radius_m` (default 500 m), at least `min_separation_m` apart (default
+  100 m), each with distance, `bearing_deg` (0 north = +z, 90 east = +x), `compass`, and the ground there.
+- `terrain.terrain_ok` is the miner's own terrain rule only (it must stand in terrain: the cell at its position may
+  hold at most 6000 L of air). Structures in the way and the rest of its footprint are not checked; look before
+  building.
+- `beacons` lists the spots as `{at, label}`, ready to pass to `highlight` as point targets.
