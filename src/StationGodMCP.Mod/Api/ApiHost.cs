@@ -91,6 +91,7 @@ internal static class ApiHost
             ["lint_layout"] = static args => LintLayoutApi.Handle(args),
             ["check_replaceable"] = static args => CheckReplaceableApi.Handle(args),
             ["show_preview"] = static args => ShowPreviewApi.Handle(args),
+            ["highlight"] = static args => HighlightApi.Handle(args),
             ["undo_job"] = static args => UndoJobApi.Handle(args),
 
             ["remove_structure"] = static args => RemoveStructureApi.Handle(args),

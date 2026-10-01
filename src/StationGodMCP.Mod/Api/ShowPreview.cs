@@ -15,7 +15,8 @@ namespace StationGodMCP.Api;
 /// show_preview: in-game wire boxes (Previews) for what place_structure would do, read from its own dry run: each
 /// placement's footprint (green, red when it has a problem), its render box (white) and its ports' joining cells
 /// (cyan, red when blocked); plus any cells (yellow 0.5 m cubes, e.g. a planned route) and boxes given. Timed; a new
-/// call replaces the last unless keep is true; clear: true only removes them. Changes nothing in the world.
+/// call replaces the last unless keep is true; clear: true only removes them; xray: true draws them through walls,
+/// frames and terrain (XRay). Changes nothing in the world.
 /// </summary>
 internal static class ShowPreviewApi
 {
@@ -55,6 +56,13 @@ internal static class ShowPreviewApi
         }
 
         int cleared = (args.OptionalBool("keep") ?? false) ? 0 : Previews.Clear();
+        bool xray = args.OptionalBool("xray") ?? false;
+        if (xray && XRay.LineMaterial == null)
+        {
+            throw ApiErrors.Refused("no_line_shader",
+                "This build of the game has no built-in shader to draw see-through lines with.");
+        }
+
         float time = (float)seconds;
         List<string> notes = new List<string>();
         int shown = 0;
@@ -71,19 +79,19 @@ internal static class ShowPreviewApi
             report = BuildReports.Of(plan, BuildReports.DryRun, null);
             foreach (PlannedPlacement placement in plan.Placements)
             {
-                shown += Draw(placement, plan, time);
+                shown += Draw(placement, plan, time, xray);
             }
         }
 
         foreach (Vec3 cell in Cells(args))
         {
             shown += Draw(new Box3(cell - new Vec3(0.25, 0.25, 0.25), cell + new Vec3(0.25, 0.25, 0.25)), Cell, time,
-                "cell");
+                "cell", xray);
         }
 
         foreach ((Box3 box, Color color) in Boxes(args))
         {
-            shown += Draw(box, color, time, "box");
+            shown += Draw(box, color, time, "box", xray);
         }
 
         if (shown == 0)
@@ -96,7 +104,7 @@ internal static class ShowPreviewApi
         return new ShowPreviewView(shown, cleared, seconds, report, notes);
     }
 
-    private static int Draw(PlannedPlacement placement, PlacePlan plan, float seconds)
+    private static int Draw(PlannedPlacement placement, PlacePlan plan, float seconds, bool xray)
     {
         LayoutPreview? layout = placement.Layout;
         if (layout == null)
@@ -108,23 +116,24 @@ internal static class ShowPreviewApi
         int shown = 0;
         if (layout.SmallCells.Count > 0)
         {
-            shown += Draw(Box3.OfSmallCells(layout.SmallCells), problem ? Problem : Footprint, seconds, "footprint");
+            shown += Draw(Box3.OfSmallCells(layout.SmallCells), problem ? Problem : Footprint, seconds, "footprint",
+                xray);
         }
 
-        shown += Draw(layout.Render, Body, seconds, "body");
+        shown += Draw(layout.Render, Body, seconds, "body", xray);
         foreach (PortCheckView port in layout.View.PortChecks ?? new List<PortCheckView>())
         {
             Vec3 centre = new Vec3(port.At.X, port.At.Y, port.At.Z);
             shown += Draw(new Box3(centre - new Vec3(0.2, 0.2, 0.2), centre + new Vec3(0.2, 0.2, 0.2)),
-                port.Blocked != null && !port.Joins ? Problem : Port, seconds, "port");
+                port.Blocked != null && !port.Joins ? Problem : Port, seconds, "port", xray);
         }
 
         return shown;
     }
 
-    private static int Draw(Box3 box, Color color, float seconds, string name)
+    private static int Draw(Box3 box, Color color, float seconds, string name, bool xray)
     {
-        if (!Previews.Box(box, color, seconds, "StationGodPreview " + name))
+        if (!Previews.Box(box, color, seconds, "StationGodPreview " + name, xray))
         {
             throw ApiErrors.Refused("no_line_shader", "This build of the game has no built-in shader to draw lines with.");
         }

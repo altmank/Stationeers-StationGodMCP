@@ -635,6 +635,7 @@ internal static class ToolDefinitions
         "lint_layout",
         "check_replaceable",
         "show_preview",
+        "highlight",
         "undo_job",
         "remove_structure",
         "grid_survey",
@@ -1257,8 +1258,13 @@ internal static class ToolDefinitions
             readOnly: false),
         Tool(
             "show_preview",
-            "Draw in-game wire boxes for a planned layout (1.4.3+), on your screen only (other players see nothing; never the game's construction cursor): the same placement fields as place_structure (placements, or prefab and at, with rotation/facing/face/orient/above_floor_m...) are dry-run and each placement's footprint (green, red when it has a problem), render box (white) and port joining cells (cyan, red when blocked) drawn; cells [[x, y, z], ...] (up to 512, yellow 0.5 m cubes, e.g. a planned route's waypoints or cells) and boxes [{min, max, color red|green|white|cyan|yellow}] (up to 64) too. seconds (default 30, max 300); a new call replaces the last unless keep: true; clear: true only removes them. Returns shown, cleared, seconds, dry_run (place_structure's own dry run of the placements) and notes. Changes nothing in the world. Needs a player camera (not on a dedicated server).",
-            new { type = "object", properties = new { placements = new { type = "array", maxItems = 64, items = new { type = "object" }, description = "As place_structure's placements." }, prefab = new { oneOf = new object[] { new { type = "string" }, new { type = "integer" } } }, at = new { description = "As place_structure's at." }, rotation = new { type = "array", items = new { type = "number" } }, facing = new { type = "string" }, up = new { type = "string" }, face = new { type = "string" }, orient = new { type = "object" }, above_floor_m = new { type = "number" }, build_state = new { }, allow_door_keepout = new { type = "boolean" }, cells = new { type = "array", maxItems = 512 }, boxes = new { type = "array", maxItems = 64, items = new { type = "object", properties = new { min = new { }, max = new { }, color = new { type = "string", @enum = new[] { "red", "green", "white", "cyan", "yellow" } } }, required = new[] { "min", "max" } } }, seconds = new { type = "number", exclusiveMinimum = 0, maximum = 300 }, keep = new { type = "boolean" }, clear = new { type = "boolean" } }, additionalProperties = false },
+            "Draw in-game wire boxes for a planned layout (1.4.3+), on your screen only (other players see nothing; never the game's construction cursor): the same placement fields as place_structure (placements, or prefab and at, with rotation/facing/face/orient/above_floor_m...) are dry-run and each placement's footprint (green, red when it has a problem), render box (white) and port joining cells (cyan, red when blocked) drawn; cells [[x, y, z], ...] (up to 512, yellow 0.5 m cubes, e.g. a planned route's waypoints or cells) and boxes [{min, max, color red|green|white|cyan|yellow}] (up to 64) too. seconds (default 30, max 300); a new call replaces the last unless keep: true; clear: true only removes them. xray: true (1.7.0+) draws every box through walls, frames and terrain (depth test off; see highlight); without it walls and frames hide the lines. Returns shown, cleared, seconds, dry_run (place_structure's own dry run of the placements) and notes. Changes nothing in the world. Needs a player camera (not on a dedicated server).",
+            new { type = "object", properties = new { placements = new { type = "array", maxItems = 64, items = new { type = "object" }, description = "As place_structure's placements." }, prefab = new { oneOf = new object[] { new { type = "string" }, new { type = "integer" } } }, at = new { description = "As place_structure's at." }, rotation = new { type = "array", items = new { type = "number" } }, facing = new { type = "string" }, up = new { type = "string" }, face = new { type = "string" }, orient = new { type = "object" }, above_floor_m = new { type = "number" }, build_state = new { }, allow_door_keepout = new { type = "boolean" }, cells = new { type = "array", maxItems = 512 }, boxes = new { type = "array", maxItems = 64, items = new { type = "object", properties = new { min = new { }, max = new { }, color = new { type = "string", @enum = new[] { "red", "green", "white", "cyan", "yellow" } } }, required = new[] { "min", "max" } } }, seconds = new { type = "number", exclusiveMinimum = 0, maximum = 300 }, keep = new { type = "boolean" }, clear = new { type = "boolean" }, xray = new { type = "boolean", description = "Default false. true: draw through walls, frames and terrain." } }, additionalProperties = false },
+            readOnly: true),
+        Tool(
+            "highlight",
+            "Show the player where things are, through walls, frames and terrain (1.7.0+), on this game's screen only (other players see nothing; nothing in the world changes): targets [{...}] (up to 64), each exactly one of reference_id, reference_ids (up to 1024 things: devices, pieces, items, anything with a mesh), network_id (a cable, pipe or chute network, or any piece on it: every piece of it, up to 4096) or at ([x, y, z] metres: a far point), with color (cyan, magenta, yellow, green, orange, blue, red, white, or [r, g, b] 0 to 1; default the next of those in turn), label (text, up to 80 characters) and pulse (true: the tint swells once a second). Things are drawn with their own meshes as the game holds them (every part of a device, a frame at its build state), tinted, with the T-Ray SPU's own see-through material (SPUMesonScanner, the lens mode that shows pipes and cables through walls) or, without it, a built-in material with the depth test off; a label stands at the thing nearest the camera. A point gets a tall beam (wider with distance, so it stays seen from far off) and a label with its distance, bearing (degrees clockwise from north, +z; 90 is east, +x) and height difference; out of view, the label and a >> arrow sit at the screen's edge in the direction to turn. seconds (default 60, max 600); a new call replaces the last unless keep: true; clear: true only removes them. Returns targets [{index, kind (things, network, point), color, label, pulse, network_id, things (drawn), missing (ids naming nothing), truncated, at, distance_m, bearing_deg, compass, rise_m (from the camera to the point, or to the nearest thing)}], cleared, seconds, renderer (t-ray (shader) or built-in) and notes. Refused: no_camera (a dedicated server), network_not_found, no_network. Needs a player camera.",
+            HighlightSchema(),
             readOnly: true),
         Tool(
             "undo_job",
@@ -1959,6 +1965,47 @@ internal static class ToolDefinitions
                 depth = new { type = "integer", minimum = 1, maximum = 6, description = "How many levels of nested slots to show, default 3." }
             },
             required = new[] { "reference_id" },
+            additionalProperties = false
+        };
+    }
+
+    private static object HighlightSchema()
+    {
+        object position = new { description = "[x, y, z] or {x, y, z} in metres." };
+        object color = new
+        {
+            oneOf = new object[]
+            {
+                new { type = "string", @enum = new[] { "cyan", "magenta", "yellow", "green", "orange", "blue", "red", "white" } },
+                new { type = "array", minItems = 3, maxItems = 3, items = new { type = "number", minimum = 0, maximum = 1 } }
+            },
+            description = "A colour name, or [r, g, b] 0 to 1. Default the next palette colour in turn."
+        };
+        object target = new
+        {
+            type = "object",
+            properties = new
+            {
+                reference_id = new { type = "string", description = "One thing." },
+                reference_ids = new { type = "array", minItems = 1, maxItems = 1024, items = new { type = "string" }, description = "Several things, one colour." },
+                network_id = new { type = "string", description = "A cable, pipe or chute network, or any piece on it: every piece." },
+                at = position,
+                color,
+                label = new { type = "string", description = "Text shown at the target, up to 80 characters." },
+                pulse = new { type = "boolean", description = "Default false. true: the tint swells once a second." }
+            },
+            additionalProperties = false
+        };
+        return new
+        {
+            type = "object",
+            properties = new
+            {
+                targets = new { type = "array", minItems = 1, maxItems = 64, items = target, description = "Each exactly one of reference_id, reference_ids, network_id or at." },
+                seconds = new { type = "number", exclusiveMinimum = 0, maximum = 600, description = "Default 60." },
+                keep = new { type = "boolean", description = "Default false: a new call replaces what earlier calls drew." },
+                clear = new { type = "boolean", description = "Only remove what is drawn; give nothing else." }
+            },
             additionalProperties = false
         };
     }

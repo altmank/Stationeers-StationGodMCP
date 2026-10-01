@@ -191,6 +191,9 @@ internal static class GameMembers
 
     private static readonly List<GameMember> All = new List<GameMember>();
 
+    // ---- The T-Ray SPU's see-through material (XRay: highlight, show_preview xray) ----
+    internal static readonly GameField MesonScannerMaterial = Field(typeof(SPUMesonScanner), "_material");
+
     // ---- ProgrammableChip runtime state (IcRuntimeInspector) ----
     internal static readonly GameField ChipRegisters = Field(typeof(ProgrammableChip), "_Registers");
     internal static readonly GameField ChipStack = Field(typeof(ProgrammableChip), "_Stack");

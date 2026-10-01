@@ -10,6 +10,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// show_preview's in-game ghosts: wire boxes drawn with LineRenderers on game objects of the mod's own, never the
 /// game's construction cursor or any thing. Each lives for its seconds and is destroyed by Tick (the mod's Update);
 /// Clear removes them all (also when the mod unloads). Only the local game draws them: other players see nothing.
+/// With xray the lines use XRay's see-through material, so walls, frames and terrain no longer hide them.
 /// </summary>
 internal static class Previews
 {
@@ -28,9 +29,9 @@ internal static class Previews
     internal static bool CanDraw => MaterialOf() != null;
 
     /// <summary>Draws a box until the given seconds have passed; false when no line material can be made.</summary>
-    internal static bool Box(Box3 box, Color color, float seconds, string name)
+    internal static bool Box(Box3 box, Color color, float seconds, string name, bool xray = false)
     {
-        Material? material = MaterialOf();
+        Material? material = xray ? XRay.LineMaterial : MaterialOf();
         if (material == null)
         {
             return false;
