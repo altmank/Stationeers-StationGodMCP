@@ -72,6 +72,7 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 v1.7.0
 New
 - grid_survey takes sections (cells, pieces, devices, networks, network_visibility, doors), network_ids and compact, so a survey can answer only what was asked; without them the reply is unchanged.
+- deep_miner_spots: what a deep miner would mine where you stand, and the nearest spots for the ores you name, with distance, bearing and ground.
 - place_structure, orient and find_spot know which side of a device carries its slots and buttons and warn controls_blocked when it would face a wall, a frame or another device; describe_prefab reports that side.
 - get_ic_status include_source: false leaves the chip's program out of the reply; item_totals holders_limit sets how many holders each item lists.
 Changed
