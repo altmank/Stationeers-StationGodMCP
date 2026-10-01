@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.9.0
+
+2026-10-01. Large replies to a file, slimmer defaults. 90 tools.
+
+- **`output_file` and `fields` (new, sidecar).** Every tool that can answer a lot (all but 16 small ones) takes two
+  arguments the sidecar answers itself, never sent to the game. `output_file: true` (or a plain file name) writes the
+  whole reply as indented JSON to `%LOCALAPPDATA%\StationGodMCP\output` (or `--output-dir` /
+  `STATIONGODMCP_OUTPUT_DIR`) and answers a pointer `{output_file, bytes, tool, counts, summary, in_file_only}`;
+  files older than 7 days or beyond the newest 200 are deleted. `fields: [...]` keeps only the named keys in each
+  entry of the reply's top-level lists; a name no entry has is listed in `fields_unmatched`. A failed write answers the
+  reply inline with `output_file_error`.
+- **`find_things` `location`** (`ground`, `player`, `stored`, `built`, `world`), as each thing reports it: 270 dirty
+  ores came back as 112 KB with every built and stored thing's details.
+- **`connections` filters.** On a network, `prefab_contains` and `open_ends_only` (members with an end of the network's
+  kind with nothing attached; each lists `open_ends`) apply before paging. A chute network of plain straights was 32 KB.
+- **Changed default: confirmed runs are brief.** A confirmed `place_*`, `remove_*`, `place_structure` or
+  `remove_structure` run answers `job_id`, `status` and `preflight_summary` (`placed`, `changed`, `removed`, warning
+  codes) instead of repeating the whole dry run (6 to 10 KB). `verbose: true` with the confirmed run gives it back; a
+  dry run refuses `verbose`.
+- **Changed default: network devices are counts.** In the run reports (`place_*`, `remove_*`, `plan_*_route`,
+  `plan_removal`) `networks_before` and `networks_after` give `device_count` and leave each device list out (about
+  10 KB on a big network); `include_network_devices: true` lists them.
+- **Pipe clients are held to the argument names.** The mod refuses an argument a tool does not take
+  (`invalid_argument`, naming the nearest one and every one it takes) for scripts that use its pipe directly, as the
+  sidecar already did for MCP clients: `find_things {prefab: ...}` answered 277 KB of everything. The names come from
+  the sidecar's schemas (`tool-arguments.json`, embedded in the DLL; a test keeps it current). Suggestions also find
+  the name one word longer (`prefab` -> `prefab_contains`).
+- **Rocket combustion rate.** `rocket_status` and `rocket_forecast` burn the fuel copy at Terraforming Reloaded's rate
+  (`TerraformingReloaded.Patching.Rockets.CombustionRate()`, its per-world `RocketsBurnCompletely` option) when that mod
+  is loaded, else at the game's 0.96, read by reflection; `combustion {rate, source, note}` says which.
+
 ## 1.8.0
 
 2026-10-01. Rocket forecasting. 90 tools.

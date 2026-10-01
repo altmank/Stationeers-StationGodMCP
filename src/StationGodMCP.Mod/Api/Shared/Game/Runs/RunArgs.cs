@@ -308,6 +308,7 @@ internal static class RunArgs
             args.OptionalThingId("from_id"), RefundArgs.RouteWithFlag(args),
             args.OptionalInt("limit", 0, RunPath.MaximumCells) ?? DefaultListLimit,
             args.OptionalBool("allow_split_long") ?? true, targets, args.OptionalBool("allow_door_keepout") ?? false,
-            new RunDetail(args.OptionalBool("include_links") ?? false, args.OptionalBool("include_notes") ?? false));
+            new RunDetail(args.OptionalBool("include_links") ?? false, args.OptionalBool("include_notes") ?? false,
+                args.OptionalBool("include_network_devices") ?? false));
     }
 }

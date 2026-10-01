@@ -291,13 +291,36 @@ internal static class ArgumentCheck
         return $"Unknown argument '{name}'{suggestion} (known here: {list}).";
     }
 
-    /// <summary>The declared name closest to a misspelt one, when the difference is a slip rather than another word.</summary>
-    internal static string? Nearest(string given, IEnumerable<string> known) =>
-        known.Select(name => (name, distance: Distance(given.ToLowerInvariant(), name.ToLowerInvariant())))
+    /// <summary>
+    /// The declared name closest to a misspelt one, when the difference is a slip rather than another word; else the
+    /// only declared name that is the given one with one word added before or after it (prefab for prefab_contains).
+    /// The mod suggests names the same way (Pure/NearestName).
+    /// </summary>
+    internal static string? Nearest(string given, IEnumerable<string> known)
+    {
+        string[] names = known.ToArray();
+        string? slip = names
+            .Select(name => (name, distance: Distance(given.ToLowerInvariant(), name.ToLowerInvariant())))
             .Where(candidate => candidate.distance <= Math.Max(2, candidate.name.Length / 4))
             .OrderBy(candidate => candidate.distance)
             .Select(candidate => candidate.name)
             .FirstOrDefault();
+        if (slip != null || given.Trim().Length == 0)
+        {
+            return slip;
+        }
+
+        string[] extended = names.Where(name => IsOneWordMore(given.Trim().ToLowerInvariant(), name.ToLowerInvariant())).ToArray();
+        return extended.Length == 1 ? extended[0] : null;
+    }
+
+    private static bool IsOneWordMore(string given, string name)
+    {
+        string[] givenWords = given.Split('_');
+        string[] words = name.Split('_');
+        return words.Length == givenWords.Length + 1 &&
+               (words.Take(givenWords.Length).SequenceEqual(givenWords) || words.Skip(1).SequenceEqual(givenWords));
+    }
 
     private static int Distance(string first, string second)
     {

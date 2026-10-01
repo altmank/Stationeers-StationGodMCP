@@ -95,15 +95,17 @@ internal sealed class RunRemoval
 }
 
 /// <summary>
-/// What a run report lists beyond its counts: links (include_links: every link the edit adds and ends) and notes
-/// (include_notes: the tool's fixed explanations). Both are left out by default.
+/// What a run report lists beyond its counts: links (include_links: every link the edit adds and ends), notes
+/// (include_notes: the tool's fixed explanations) and devices (include_network_devices: every device of each network
+/// before and after). All are left out by default.
 /// </summary>
 internal sealed class RunDetail
 {
-    internal RunDetail(bool links, bool notes)
+    internal RunDetail(bool links, bool notes, bool devices = false)
     {
         Links = links;
         Notes = notes;
+        Devices = devices;
     }
 
     internal static RunDetail Brief { get; } = new RunDetail(false, false);
@@ -111,6 +113,8 @@ internal sealed class RunDetail
     internal bool Links { get; }
 
     internal bool Notes { get; }
+
+    internal bool Devices { get; }
 }
 
 internal sealed class RunOptions

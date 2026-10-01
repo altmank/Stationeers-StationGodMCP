@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>StationGodMCP</AssemblyName>
     <RootNamespace>StationGodMCP</RootNamespace>
-    <Version>1.8.0</Version>
+    <Version>1.9.0</Version>
     <Authors>XCeled</Authors>
     <Description>Lets an AI agent read and operate a running Stationeers game through the Model Context Protocol.</Description>
     <LangVersion>12.0</LangVersion>
@@ -26,6 +26,8 @@
     <Compile Include="src\StationGodMCP.Mod\**\*.cs" />
     <!-- The default lint rules, built in for when the mod folder's lint-rules.json is missing. -->
     <EmbeddedResource Include="lint-rules.json" LogicalName="StationGodMCP.lint-rules.json" />
+    <!-- Every tool's argument names, from the sidecar's schemas (ToolArgumentsFileTests keeps it current). -->
+    <EmbeddedResource Include="tool-arguments.json" LogicalName="StationGodMCP.tool-arguments.json" />
   </ItemGroup>
 
   <ItemGroup>

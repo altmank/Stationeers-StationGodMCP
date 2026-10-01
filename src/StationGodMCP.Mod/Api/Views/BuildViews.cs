@@ -583,8 +583,10 @@ internal sealed class BuildJobView
 {
     private const string RefusedStatus = "refused";
 
-    internal BuildJobView(string jobId, string tool, string status, object? preflight, BuildJobResult? result)
+    internal BuildJobView(string jobId, string tool, string status, object? preflight, BuildJobResult? result,
+        JobPreflightSummaryView? preflightSummary = null)
     {
+        PreflightSummary = preflightSummary;
         JobId = jobId;
         Tool = tool;
         Status = status;
@@ -601,6 +603,10 @@ internal sealed class BuildJobView
     /// <summary>The dry run made when the job was asked for; null in a brief poll.</summary>
     public object? Preflight { get; }
 
+    /// <summary>The dry run in short, in a brief reply to the run that started the job.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JobPreflightSummaryView? PreflightSummary { get; }
+
     public BuildJobResult? Result { get; }
 
     /// <summary>
@@ -608,9 +614,10 @@ internal sealed class BuildJobView
     /// answered with; a refused job keeps its final check, which holds the problems it refused for. Any other view
     /// (queued, dropped) is returned as it is.
     /// </summary>
-    internal static object Brief(object polled) =>
-        polled is BuildJobView job
-            ? new BuildJobView(job.JobId, job.Tool, job.Status, null,
-                job.Status == RefusedStatus ? job.Result : job.Result?.WithoutFinalCheck())
-            : polled;
+    internal static object Brief(object polled) => polled is BuildJobView job ? Brief(job, null) : polled;
+
+    /// <summary>The job as a brief poll gives it, with the preflight in short when summary is given.</summary>
+    internal static BuildJobView Brief(BuildJobView job, JobPreflightSummaryView? summary) =>
+        new BuildJobView(job.JobId, job.Tool, job.Status, null,
+            job.Status == RefusedStatus ? job.Result : job.Result?.WithoutFinalCheck(), summary);
 }

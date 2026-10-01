@@ -387,8 +387,18 @@ internal sealed class RunNetworksView
     internal RunLinksView? Links { get; }
 }
 
+/// <summary>
+/// A network view that lists its devices: a run report gives device_count and leaves the list out unless
+/// include_network_devices (one device list per network repeated every device of a big network in every report).
+/// </summary>
+internal interface IListsDevices
+{
+    /// <summary>The same view with devices left out; device_count stays.</summary>
+    object WithoutDevices();
+}
+
 /// <summary>A cable network the edit touches, as it is now.</summary>
-internal sealed class RunCableNetworkView
+internal sealed class RunCableNetworkView : IListsDevices
 {
     internal RunCableNetworkView(ThingId networkId, int cableCount, CableNetworkRatings ratings,
         List<ThingView> devices)
@@ -401,6 +411,7 @@ internal sealed class RunCableNetworkView
         LowestCableMaxW = ratings.LowestBefore;
         LowestFuseBreakW = ratings.LowestFuse;
         Devices = devices;
+        DeviceCount = devices.Count;
     }
 
     public ThingId NetworkId { get; }
@@ -417,11 +428,22 @@ internal sealed class RunCableNetworkView
 
     public double? LowestFuseBreakW { get; }
 
-    public List<ThingView> Devices { get; }
+    public int DeviceCount { get; }
+
+    /// <summary>Left out of a run report unless include_network_devices; device_count counts them.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ThingView>? Devices { get; private set; }
+
+    public object WithoutDevices()
+    {
+        RunCableNetworkView copy = (RunCableNetworkView)MemberwiseClone();
+        copy.Devices = null;
+        return copy;
+    }
 }
 
 /// <summary>A pipe network the edit touches, as it is now: content kind, air, and the main gases.</summary>
-internal sealed class RunPipeNetworkView
+internal sealed class RunPipeNetworkView : IListsDevices
 {
     internal RunPipeNetworkView(ThingId networkId, string content, int memberCount, PipeNetworkAir air,
         double? lowestMaxPressureKpa, List<RunGasView> gases, List<ThingView> devices)
@@ -437,6 +459,7 @@ internal sealed class RunPipeNetworkView
         LowestMaxPressureKpa = lowestMaxPressureKpa;
         Gases = gases;
         Devices = devices;
+        DeviceCount = devices.Count;
     }
 
     public ThingId NetworkId { get; }
@@ -460,11 +483,22 @@ internal sealed class RunPipeNetworkView
     /// <summary>Gases and liquids over 0.1 % of the moles, most first.</summary>
     public List<RunGasView> Gases { get; }
 
-    public List<ThingView> Devices { get; }
+    public int DeviceCount { get; }
+
+    /// <summary>Left out of a run report unless include_network_devices; device_count counts them.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ThingView>? Devices { get; private set; }
+
+    public object WithoutDevices()
+    {
+        RunPipeNetworkView copy = (RunPipeNetworkView)MemberwiseClone();
+        copy.Devices = null;
+        return copy;
+    }
 }
 
 /// <summary>A chute network the edit touches, as it is now: its pieces, the items riding in them, its devices.</summary>
-internal sealed class RunChuteNetworkView
+internal sealed class RunChuteNetworkView : IListsDevices
 {
     internal RunChuteNetworkView(ThingId networkId, int chuteCount, int itemsRiding, List<RunChuteItemView> items,
         List<ThingView> devices)
@@ -474,6 +508,7 @@ internal sealed class RunChuteNetworkView
         ItemsRiding = itemsRiding;
         Items = items;
         Devices = devices;
+        DeviceCount = devices.Count;
     }
 
     public ThingId NetworkId { get; }
@@ -486,7 +521,18 @@ internal sealed class RunChuteNetworkView
     /// <summary>The first of those items, with the piece each rides in.</summary>
     public List<RunChuteItemView> Items { get; }
 
-    public List<ThingView> Devices { get; }
+    public int DeviceCount { get; }
+
+    /// <summary>Left out of a run report unless include_network_devices; device_count counts them.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ThingView>? Devices { get; private set; }
+
+    public object WithoutDevices()
+    {
+        RunChuteNetworkView copy = (RunChuteNetworkView)MemberwiseClone();
+        copy.Devices = null;
+        return copy;
+    }
 }
 
 /// <summary>An item riding in a chute piece.</summary>
@@ -538,7 +584,7 @@ internal sealed class RunGasView
 /// devices on it with the port each joins by, and the kind's guard numbers (power: flow against the weakest cable;
 /// pipes: the pooled contents' pressure against the weakest pipe).
 /// </summary>
-internal sealed class RunNetworkAfterView
+internal sealed class RunNetworkAfterView : IListsDevices
 {
     internal RunNetworkAfterView(int index, List<ThingId> networksBefore, int newPieces, List<RunPortView> devices,
         object? guard)
@@ -547,6 +593,7 @@ internal sealed class RunNetworkAfterView
         NetworksBefore = networksBefore;
         NewPieces = newPieces;
         Devices = devices;
+        DeviceCount = devices.Count;
         Guard = guard;
     }
 
@@ -556,11 +603,22 @@ internal sealed class RunNetworkAfterView
 
     public int NewPieces { get; }
 
-    public List<RunPortView> Devices { get; }
+    public int DeviceCount { get; }
+
+    /// <summary>The device ports on it; left out unless include_network_devices (device_count counts them).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<RunPortView>? Devices { get; private set; }
 
     /// <summary>A RunPowerAfterView or RunPipeAfterView; null when there is nothing to check.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public object? Guard { get; }
+
+    public object WithoutDevices()
+    {
+        RunNetworkAfterView copy = (RunNetworkAfterView)MemberwiseClone();
+        copy.Devices = null;
+        return copy;
+    }
 }
 
 /// <summary>A device port and the network it is on now (null for none).</summary>
@@ -817,8 +875,10 @@ internal sealed class RunJobView
 {
     private const string RefusedStatus = "refused";
 
-    internal RunJobView(string jobId, string tool, string status, RunReportView? preflight, RunJobResultView? result)
+    internal RunJobView(string jobId, string tool, string status, RunReportView? preflight, RunJobResultView? result,
+        JobPreflightSummaryView? preflightSummary = null)
     {
+        PreflightSummary = preflightSummary;
         JobId = jobId;
         Tool = tool;
         Status = status;
@@ -838,6 +898,10 @@ internal sealed class RunJobView
 
     /// <summary>The dry run made when the run was asked for; null in a brief poll.</summary>
     public RunReportView? Preflight { get; }
+
+    /// <summary>The dry run in short, in a brief reply to the run that started the job.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JobPreflightSummaryView? PreflightSummary { get; }
 
     /// <summary>The whole check made as the job started; left out of a brief poll unless the job was refused.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -861,12 +925,13 @@ internal sealed class RunJobView
     /// answered with; a refused job keeps its final check, which holds the problems it refused for. Any other view
     /// (queued, dropped, another tool's job) is returned as it is.
     /// </summary>
-    internal static object Brief(object polled) =>
-        polled is RunJobView job
-            ? new RunJobView(job.JobId, job.Tool, job.Status, null,
-                new RunJobResultView(job.Status == RefusedStatus ? job.FinalCheck : null, job.Log, job.Verification,
-                    job.Error, job.GasCheck))
-            : polled;
+    internal static object Brief(object polled) => polled is RunJobView job ? Brief(job, null) : polled;
+
+    /// <summary>The job as a brief poll gives it, with the preflight in short when summary is given.</summary>
+    internal static RunJobView Brief(RunJobView job, JobPreflightSummaryView? summary) =>
+        new RunJobView(job.JobId, job.Tool, job.Status, null,
+            new RunJobResultView(job.Status == RefusedStatus ? job.FinalCheck : null, job.Log, job.Verification,
+                job.Error, job.GasCheck), summary);
 }
 
 internal sealed class RunJobResultView

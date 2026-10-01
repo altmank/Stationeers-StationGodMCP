@@ -56,7 +56,7 @@ internal static class ConnectionsApi
 
         if (thing)
         {
-            args.Reject("reference_id", "kind", "limit", "offset");
+            args.Reject("reference_id", "kind", "limit", "offset", "prefab_contains", "open_ends_only");
             return EndsReader.Read(GameLookup.RequireThing(args.ThingId("reference_id")));
         }
 
@@ -69,7 +69,8 @@ internal static class ConnectionsApi
             _ => throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.")
         };
         ThingId id = NetworkHandles.Resolve(args, "network_id", family);
-        return NetworkReader.Read(kind, id, PageRequest.From(args, DefaultLimit, MaximumLimit));
+        return NetworkReader.Read(kind, id, PageRequest.From(args, DefaultLimit, MaximumLimit),
+            NetworkMemberFilter.Parse(args));
     }
 }
 
@@ -313,20 +314,20 @@ internal static class EndsReader
 /// <summary>A network's members, paged, and its summary.</summary>
 internal static class NetworkReader
 {
-    internal static NetworkMembersView Read(string kind, ThingId id, PageRequest page)
+    internal static NetworkMembersView Read(string kind, ThingId id, PageRequest page, NetworkMemberFilter filter)
     {
         switch (kind)
         {
             case "pipe":
                 PipeNetwork pipes = Referencable.Find<PipeNetwork>(id.Value) ?? throw NotFound(kind, id);
-                return Page(kind, id, Members(pipes.StructureList, pipes.DeviceList), PipeSummary(pipes), page);
+                return Page(kind, id, Members(pipes.StructureList, pipes.DeviceList), PipeSummary(pipes), page, filter);
             case "cable":
                 CableNetwork cables = Referencable.Find<CableNetwork>(id.Value) ?? throw NotFound(kind, id);
-                return CableNetworkView(cables, id, page);
+                return CableNetworkView(cables, id, page, filter);
             case "chute":
                 ChuteNetwork chutes = Referencable.Find<ChuteNetwork>(id.Value) ?? throw NotFound(kind, id);
                 NetworkMembers members = Members(chutes.StructureList, chutes.DeviceList);
-                return Page(kind, id, members, new ChuteSummaryView(members.All.Count), page);
+                return Page(kind, id, members, new ChuteSummaryView(members.All.Count), page, filter);
             default:
                 throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.");
         }
@@ -361,7 +362,8 @@ internal static class NetworkReader
             mixture.GetTotalMolesGassesAndLiquids.ToDouble(), mixture.VolumeLiquids.ToDouble(), gases);
     }
 
-    private static NetworkMembersView CableNetworkView(CableNetwork network, ThingId id, PageRequest page)
+    private static NetworkMembersView CableNetworkView(CableNetwork network, ThingId id, PageRequest page,
+        NetworkMemberFilter filter)
     {
         List<Cable> cables = NonNull(network.CableList);
         List<CableFuse> fuses = NonNull(network.FuseList);
@@ -369,7 +371,7 @@ internal static class NetworkReader
             network.RequiredLoad, network.PotentialLoad, network.CurrentLoad, network.ShortfallLoad);
         CableSummaryView summary = new CableSummaryView(
             loads, Lowest(cables), Lowest(fuses), cables.Count, fuses.Count);
-        return Page("cable", id, Members(cables, network.DeviceList), summary, page);
+        return Page("cable", id, Members(cables, network.DeviceList), summary, page, filter);
     }
 
     private static List<T> NonNull<T>(List<T> list) where T : Thing
@@ -437,19 +439,75 @@ internal static class NetworkReader
     }
 
     private static NetworkMembersView Page(string kind, ThingId id, NetworkMembers members, object? summary,
-        PageRequest request)
+        PageRequest request, NetworkMemberFilter filter)
     {
-        Slice<Thing> page = Slice<Thing>.Of(members.All, request);
-        List<NetworkMemberView> views = new List<NetworkMemberView>(page.Items.Count);
-        foreach (Thing member in page.Items)
+        List<KeptMember> kept = new List<KeptMember>(members.All.Count);
+        foreach (Thing member in members.All)
         {
-            views.Add(new NetworkMemberView(
-                GameLookup.ViewOf(member), member is Device ? "device" : kind, GameLookup.ViewOf(member.Position)));
+            if (!filter.KeepsPrefab(member.PrefabName))
+            {
+                continue;
+            }
+
+            List<int>? open = filter.OpenEndsOnly ? OpenEnds(member, kind) : null;
+            if (open == null || open.Count > 0)
+            {
+                kept.Add(new KeptMember(member, open));
+            }
+        }
+
+        Slice<KeptMember> page = Slice<KeptMember>.Of(kept, request);
+        List<NetworkMemberView> views = new List<NetworkMemberView>(page.Items.Count);
+        foreach (KeptMember member in page.Items)
+        {
+            views.Add(new NetworkMemberView(GameLookup.ViewOf(member.Thing), member.Thing is Device ? "device" : kind,
+                GameLookup.ViewOf(member.Thing.Position), member.OpenEnds));
         }
 
         return new NetworkMembersView(new NetworkRefView(kind, id), summary,
             Slice<NetworkMemberView>.Page(views, request, page.Total), members.StructureCount,
             members.All.Count - members.StructureCount);
+    }
+
+    // The indexes of a member's ends of the network's kind that nothing is attached at (EndsReader.AttachedAt).
+    private static List<int> OpenEnds(Thing member, string kind)
+    {
+        List<int> open = new List<int>();
+        if (!(member is SmallGrid grid) || grid.OpenEnds == null)
+        {
+            return open;
+        }
+
+        NetworkType types = kind switch
+        {
+            "pipe" => NetworkType.Pipe | NetworkType.PipeLiquid,
+            "cable" => NetworkType.PowerAndData,
+            _ => NetworkType.Chute
+        };
+        for (int index = 0; index < grid.OpenEnds.Count; index++)
+        {
+            Connection end = grid.OpenEnds[index];
+            if (end != null && (end.ConnectionType & types) != NetworkType.None &&
+                EndsReader.AttachedAt(grid, end).Count == 0)
+            {
+                open.Add(index);
+            }
+        }
+
+        return open;
+    }
+
+    private readonly struct KeptMember
+    {
+        internal KeptMember(Thing thing, List<int>? openEnds)
+        {
+            Thing = thing;
+            OpenEnds = openEnds;
+        }
+
+        internal Thing Thing { get; }
+
+        internal List<int>? OpenEnds { get; }
     }
 
     /// <summary>A network's things, each once (a HashSet of ids), in the order found.</summary>

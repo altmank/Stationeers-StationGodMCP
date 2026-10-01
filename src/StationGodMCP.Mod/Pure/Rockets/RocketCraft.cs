@@ -33,7 +33,8 @@ internal sealed class FuelTank
 
 /// <summary>
 /// What one mole of this fuel does in the engine, measured with the game's own combustion on a copy of the fuel
-/// (Atmosphere.TryCombust(0.96, force) then RocketEngineBase.ExitVelocity and CombustEngine's flow rate,
+/// (Atmosphere.TryCombust at the engines' combustion rate, CombustionRate: 0.96 or Terraforming Reloaded's, with force,
+/// then RocketEngineBase.ExitVelocity and CombustEngine's flow rate,
 /// RocketEngineBase.cs:518-526, 586-591). Draining a tank leaves its make-up and temperature as they were
 /// (GasMixture.Remove takes every gas in proportion), so these hold for the whole flight unless heat moves in or out.
 /// </summary>

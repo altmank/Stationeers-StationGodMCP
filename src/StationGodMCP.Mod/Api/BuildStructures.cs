@@ -39,9 +39,10 @@ internal static class PlaceStructureApi
 
                 PlaceReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
                 PlaceWork placing = new PlaceWork(run.Arguments, preflight, plan.TouchesPipes);
-                return JobSnapshots.Record(
+                object started = JobSnapshots.Record(
                     BuildJobs.Start("place", placing, args.OptionalBool("wait") ?? false, acknowledge),
                     "place_structure", Replaced(plan), args);
+                return run.Verbose ? started : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or placements.");
         }
@@ -97,9 +98,10 @@ internal static class RemoveStructureApi
 
                 RemoveReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
                 RemoveWork removing = new RemoveWork(run.Arguments, preflight, plan.TouchesPipes);
-                return JobSnapshots.Record(
+                object started = JobSnapshots.Record(
                     BuildJobs.Start("remove", removing, args.OptionalBool("wait") ?? false, acknowledge),
                     "remove_structure", plan.Takedowns.ConvertAll(takedown => takedown.Piece), args);
+                return run.Verbose ? started : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or reference_ids.");
         }

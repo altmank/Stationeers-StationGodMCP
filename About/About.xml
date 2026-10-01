@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.8.0</Version>
+  <Version>1.9.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,14 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.9.0
+New
+- Large replies: every tool that can answer a lot takes output_file (write the whole reply to a JSON file beside the agent and answer a small pointer) and fields (keep only the named keys of each listed entry).
+- find_things location (ground, player, stored, built, world); connections on a network takes prefab_contains and open_ends_only.
+- rocket_status and rocket_forecast burn fuel at Terraforming Reloaded's combustion rate when that mod sets one, and report the rate used.
+Changed
+- A confirmed place_*, remove_*, place_structure or remove_structure run answers its job and a short summary of the dry run; verbose: true gives the whole dry run. Run reports count each network's devices; include_network_devices lists them.
+- Scripts using the mod's pipe directly are held to each tool's argument names: a misspelt argument is refused instead of ignored.
 v1.8.0
 New
 - rocket_status: where each rocket is going and by which hops, mass, fuel, engines, the thrust the landing check assumes against what the fuel gives now, the auto-land confidence, cargo, battery and burn time.
@@ -77,12 +85,12 @@ New
 
 v1.7.0
 New
-- grid_survey takes sections (cells, pieces, devices, networks, network_visibility, doors), network_ids and compact, so a survey can answer only what was asked; without them the reply is unchanged.
-- highlight: show things, whole pipe, cable or chute networks, or a far point through walls and terrain on your screen, tinted and labelled, with distance and bearing to far points. show_preview xray: true draws its boxes through walls and frames.
+- grid_survey takes sections, network_ids and compact, so a survey answers only what was asked.
+- highlight: show things, whole networks or a far point through walls and terrain, tinted and labelled. show_preview xray: true draws through walls.
 - deep_miner_spots: what a deep miner would mine where you stand, and the nearest spots for the ores you name, with distance, bearing and ground.
-- place_structure, orient and find_spot know which side of a device carries its slots and buttons and warn controls_blocked when it would face a wall, a frame or another device; describe_prefab reports that side.
+- place_structure, orient and find_spot know a device's control side and warn controls_blocked when it faces a wall or another device.
 - get_ic_status include_source: false leaves the chip's program out of the reply; item_totals holders_limit sets how many holders each item lists.
-- Lint rules are data: lint_layout and the place and plan tools check against lint-rules.json, and a lint-rules.json in your save's folder turns rules off, changes them or adds your own. lint_rules lists, validates, tests and explains them. New shipped checks: storm-exposed solar panels that are not Reinforced, shaded panels, cables lighter than their network, devices a chip batches by a name they lack, filtration outputs with nowhere to go, oxidiser vented outdoors, fuel and oxidiser above ignition, outdoor liquid pipes near freezing, deep-miner drill columns, cables off the frames, blocked controls.
+- Lint rules are data: lint-rules.json, overridable per save; lint_rules lists, validates, tests and explains them. New checks include storm-exposed or shaded solar panels, undersized cables, oxidiser vented outdoors, fuel above ignition, freezing outdoor liquid pipes and blocked controls.
 - place_cables, place_pipes, place_chutes, place_structure and the route planners warn lint_&lt;rule&gt; for what they would build.
 Changed
 - Smaller replies by default: a job poll leaves out the dry run and final check the real run already answered with (verbose: true gives them back; a refused job keeps its final check); place_structure lists footprint cells only with include_footprint_cells; the cable, pipe and chute tools give link counts and leave their fixed notes out unless include_links / include_notes, and limit 0 lists no cells.
@@ -117,7 +125,7 @@ New
 - acknowledge_gas_lost: after a job ends gas_lost, pipe jobs no longer stay refused until the world is reloaded; a real run naming that job accepts the loss and goes on. Agents must ask you first.
 - remove_structure allow_burst: remove an in-line tank or passive vent even though the squeezed network will burst (e.g. outdoors); the reply forecasts which pipes burst and where the gas goes.
 - refund_to on every tool that refunds: an ordered list of targets (inventory, source, storage, a container id, ground), by default inventory, then source, storage, ground. On a dedicated server removals no longer need from_id.
-- would_overload_when_on warning: the load if every device now off on the network, also behind APCs and transformers, were switched on.
+- would_overload_when_on warning: the load if every device now off on the network were switched on.
 - trader_buy dry runs add the lines up (credits, stock, room); undo_job knows a job it already undid.
 
 Behaviour changes you will notice
@@ -127,7 +135,7 @@ Behaviour changes you will notice
 - landing_pads no longer reports obstructed: the game never uses it.
 - trader_inventory's have counts only what the trader would accept from you, its conditions applied.
 
-Also many smaller fixes from a twelve-round live test on a dedicated server: IC10 sources stored as a save keeps them, chip memory ranges checked, dish and solar aiming, growers planted as a player plants, burnt cables and burst pipes found as broken, undo_job. Full notes: CHANGELOG.md on GitHub.
+Also many smaller fixes from a twelve-round live test on a dedicated server. Full notes: CHANGELOG.md on GitHub.
 </ChangeLog>
   <WorkshopHandle>0</WorkshopHandle>
   <Tags />

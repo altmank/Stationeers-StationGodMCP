@@ -3,6 +3,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
@@ -130,9 +132,11 @@ internal static class ApiHost
                 throw ApiErrors.Refused("method_not_found", $"Unknown StationGodMCP method '{method}'.");
             }
 
+            JObject? parameters = request["params"] as JObject;
+            Declared.Value.Check(method, parameters);
             ResolvedNetworks.Begin();
             GasHoldReply.Begin();
-            object result = ResolvedNetworks.Attach(handler(new Args(request["params"] as JObject)),
+            object result = ResolvedNetworks.Attach(handler(new Args(parameters)),
                 ResolvedNetworks.Take());
             result = GasHoldReply.Attach(result, GasHoldReply.Take());
             return Serialize(new ReplyView(requestId, result, MethodStats.Record(method, watch, true)));
@@ -151,6 +155,24 @@ internal static class ApiHost
             StationGodMod.LogWarning($"API request failed: {exception}");
             return Failed(requestId, method, watch, "internal_error", exception.Message);
         }
+    }
+
+    private const string ArgumentsResource = "StationGodMCP.tool-arguments.json";
+
+    // Every tool's argument names, read once from the DLL; without the resource nothing is checked (logged).
+    private static readonly Lazy<DeclaredArguments> Declared = new Lazy<DeclaredArguments>(LoadDeclared);
+
+    private static DeclaredArguments LoadDeclared()
+    {
+        using Stream? stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ArgumentsResource);
+        if (stream == null)
+        {
+            StationGodMod.LogWarning($"No {ArgumentsResource} in the DLL: pipe requests' argument names are not checked.");
+            return DeclaredArguments.None;
+        }
+
+        using StreamReader reader = new StreamReader(stream);
+        return DeclaredArguments.Parse(reader.ReadToEnd());
     }
 
     // A key given twice would otherwise let the last one win silently (a write aimed at the wrong device).

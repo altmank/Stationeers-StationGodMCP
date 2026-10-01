@@ -293,6 +293,11 @@ internal static class GameMembers
     internal static readonly GameType TerraformingGate = Optional("TerraformingReloaded.Patching.Gate");
     internal static readonly GameType TerraformingClimate = Optional("TerraformingReloaded.Patching.Climate");
     internal static readonly GameType TerraformingPlugin = Optional("TerraformingReloaded.Plugin");
+    internal static readonly GameType TerraformingRockets = Optional("TerraformingReloaded.Patching.Rockets");
+    internal static readonly GameMethod TerraformingCombustionRate = Register(new GameMethod(
+        "TerraformingReloaded.Patching.Rockets.CombustionRate",
+        () => TerraformingRockets.OrNull?.GetMethod("CombustionRate", AnyStatic, null, Type.EmptyTypes, null),
+        optional: true));
     internal static readonly GameMethod TerraformingDescribe = Register(new GameMethod(
         "TerraformingReloaded.Patching.Gate.Describe",
         () => TerraformingGate.OrNull?.GetMethod("Describe", PublicStatic),

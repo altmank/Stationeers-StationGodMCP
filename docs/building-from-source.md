@@ -20,6 +20,7 @@ For maintainers and anyone who wants to build the mod themselves.
 | `tests/StationGodMCP.Tests` | Tests that need no game. |
 | `About/`, `GameData/` | The Workshop page (`About.xml`), preview images, and the gateway kit's printer recipe. |
 | `lint-rules.json` | The default lint rules: shipped in the package and built into the DLL (used when the file is missing). The tests load it and run every rule's examples. Adding a rule function: [lint-rules.md](lint-rules.md#adding-a-function-maintainers). |
+| `tool-arguments.json` | Every tool's argument names, written from the sidecar's schemas and built into the DLL: the mod refuses any other name from a pipe client. After a schema change, regenerate it with `$env:STATIONGOD_WRITE_TOOL_ARGUMENTS=1; dotnet test .\tests\StationGodMCP.Tests --filter ToolArgumentsFileTests` (the test fails until it matches). |
 | `Sidecar/README.txt` | Shipped next to the sidecar archives. |
 | `build.ps1` | Build, check and stage the package; optionally deploy. |
 

@@ -148,10 +148,42 @@ internal sealed class NetworkMembersView
     public bool HasMore { get; }
 }
 
+/// <summary>
+/// connections' network-form filters: prefab_contains (a case-insensitive part of the prefab name) and open_ends_only
+/// (only members with an end of the network's kind that nothing is attached at: a run's loose ends, a device port left
+/// unjoined). Both are applied before paging, so total counts the members kept.
+/// </summary>
+internal sealed class NetworkMemberFilter
+{
+    private NetworkMemberFilter(string? prefabContains, bool openEndsOnly)
+    {
+        PrefabContains = prefabContains;
+        OpenEndsOnly = openEndsOnly;
+    }
+
+    internal static NetworkMemberFilter None { get; } = new NetworkMemberFilter(null, false);
+
+    internal string? PrefabContains { get; }
+
+    internal bool OpenEndsOnly { get; }
+
+    internal static NetworkMemberFilter Parse(Args args)
+    {
+        string? prefab = args.OptionalString("prefab_contains")?.Trim();
+        return new NetworkMemberFilter(string.IsNullOrEmpty(prefab) ? null : prefab,
+            args.OptionalBool("open_ends_only") ?? false);
+    }
+
+    internal bool KeepsPrefab(string? prefabName) =>
+        PrefabContains == null ||
+        (prefabName != null && prefabName.IndexOf(PrefabContains, System.StringComparison.OrdinalIgnoreCase) >= 0);
+}
+
 internal sealed class NetworkMemberView
 {
-    internal NetworkMemberView(ThingView thing, string member, PositionView position)
+    internal NetworkMemberView(ThingView thing, string member, PositionView position, List<int>? openEnds = null)
     {
+        OpenEnds = openEnds;
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
         DisplayName = thing.DisplayName;
@@ -169,6 +201,10 @@ internal sealed class NetworkMemberView
     public string Member { get; }
 
     public PositionView Position { get; }
+
+    /// <summary>With open_ends_only: the indexes (as connections lists ends) of its open ends of the network's kind.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<int>? OpenEnds { get; }
 }
 
 internal sealed class PipeSummaryView

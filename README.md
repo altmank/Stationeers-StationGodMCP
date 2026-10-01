@@ -88,9 +88,20 @@ materials taken from your inventory as the game would charge, and refunds put ba
 Every tool error has one shape, `{code, message}`, as the result's text and its structured content alike. Arguments
 are checked against the tool's schema before the call reaches the game: an argument the tool does not take (the
 message names the nearest one it does take), a value of the wrong JSON type, a word the argument's list does not hold
-(case is ignored), a key given twice and a number past a double's range (`1e309`) are `invalid_argument`. An integer
-may be written `3.0` or `1e2`. Reference ids are decimal strings (`"364"`). `game_unavailable` means the game could not be reached, and says whether no pipe
+(case is ignored), a key given twice and a number past a double's range (`1e309`) are `invalid_argument`. The mod
+holds scripts that use its pipe directly to the same argument names (1.9.0+): a filter misspelt as `prefab` for
+`prefab_contains` is refused rather than ignored. An integer may be written `3.0` or `1e2`. Reference ids are decimal strings (`"364"`). `game_unavailable` means the game could not be reached, and says whether no pipe
 answered or the game took the request but did not reply in time (it may still have run).
+
+**Large replies.** Every tool that can answer a lot (lists, surveys, plans, dry runs, job polls, rocket forecasts,
+chip sources) takes two arguments the sidecar answers itself. `fields: ["reference_id", "position"]` keeps only those
+keys in each entry of the reply's top-level lists (a name no entry has comes back in `fields_unmatched`).
+`output_file: true`, or a file name such as `"ores"`, writes the whole reply as indented JSON to a file and answers a
+small pointer instead: `{output_file (the full path), bytes, tool, counts (each list's length), summary (the short
+top-level values), in_file_only}`. Files go to `%LOCALAPPDATA%\StationGodMCP\output` on the machine the sidecar runs
+on (the agent's), or the folder given with `--output-dir`; a named file is overwritten, and files older than 7 days or
+beyond the newest 200 are deleted. Errors always come back in the reply. Run replies are compact by default: a
+confirmed run answers its job and a `preflight_summary`, and network device lists are counts unless asked for.
 
 Things are named by `display_name`, the game's own name (the label, else the localised name). Where the game has no
 English name for a prefab it shows a placeholder such as `<N:EN:StructureCrewUmbilicalDoor>`; `display_name` and every

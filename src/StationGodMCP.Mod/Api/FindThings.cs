@@ -72,7 +72,7 @@ internal static class FindThingsApi
             ThingKinds.Of(thing),
             thing.GetType().Name,
             Labels.CanRename(thing),
-            chain != null ? chain.Location : thing is Structure ? FoundThingView.Built : FoundThingView.World,
+            LocationOf(thing, chain),
             chain?.Carrier != null ? chain.Carrier.DisplayName : null,
             chain != null ? chain.View() : new List<HeldInView>(),
             GameLookup.ViewOf(position),
@@ -85,6 +85,10 @@ internal static class FindThingsApi
             Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null);
     }
 
+    /// <summary>Where a thing is, as the reply's location: its holder chain's for a dynamic thing, else built or world.</summary>
+    internal static string LocationOf(Thing thing, HolderChain? chain) =>
+        chain != null ? chain.Location : thing is Structure ? FoundThingView.Built : FoundThingView.World;
+
     private static string ConditionOf(Thing thing)
     {
         IndestructableDamageState damage = thing.DamageState;
@@ -94,7 +98,9 @@ internal static class FindThingsApi
     }
 }
 
-/// <summary>find_things' filter: names, kind, class, labelled or not, broken or not, holding an atmosphere, how near.</summary>
+/// <summary>
+/// find_things' filter: names, kind, class, labelled or not, broken or not, where it is, holding an atmosphere, how near.
+/// </summary>
 internal sealed class ThingFilter
 {
     private const string AnyKind = "any";
@@ -103,8 +109,9 @@ internal sealed class ThingFilter
     private readonly Dictionary<Type, bool> _typeMatches = new Dictionary<Type, bool>();
 
     private ThingFilter(string? nameContains, string? prefabContains, string kind, string? runtimeType,
-        bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM, bool? broken, PrintFilter made)
+        bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM, bool? broken, PrintFilter made, string location)
     {
+        Location = location;
         Made = made;
         Broken = broken;
         NameContains = nameContains;
@@ -132,6 +139,9 @@ internal sealed class ThingFilter
 
     internal double? NearPlayerM { get; }
 
+    /// <summary>any, or the one location kept (ThingLocations).</summary>
+    internal string Location { get; }
+
     /// <summary>
     /// true: only things in the game's broken state (Wrecks: Thing.IsBroken, a burst pipe or a burnt cable); false: only things not
     /// broken.
@@ -154,7 +164,7 @@ internal sealed class ThingFilter
         return new ThingFilter(args.OptionalString("name_contains"), args.OptionalString("prefab_contains"), kind,
             string.IsNullOrEmpty(runtimeType) ? null : runtimeType, args.OptionalBool("labelled_only") ?? false,
             args.OptionalBool("has_atmosphere"), args.OptionalPositiveDouble("near_player_m"),
-            args.OptionalBool("broken"), MadeOf(args));
+            args.OptionalBool("broken"), MadeOf(args), ThingLocations.Parse(args.OptionalString("location")));
     }
 
     // made_by: a maker's reference id, or text in its prefab or shown name; made_since: a game time (game_clock's
@@ -195,7 +205,12 @@ internal sealed class ThingFilter
         (!Made.IsActive || Made.Keeps(Prints.Log.Of(thing.ReferenceId))) &&
         (RuntimeType == null || IsOfType(thing.GetType())) &&
         (string.IsNullOrEmpty(NameContains) || Labels.NameContains(thing, NameContains!)) &&
+        (Location == ThingLocations.Any || IsAt(thing)) &&
         (!HasAtmosphere.HasValue || AtmosphereContentsApi.HoldsAtmosphere(thing) == HasAtmosphere.Value);
+
+    // A dynamic thing's holder chain is walked only when the location filter asks for one.
+    private bool IsAt(Thing thing) =>
+        FindThingsApi.LocationOf(thing, thing is DynamicThing dynamic ? HolderChain.Of(dynamic) : null) == Location;
 
     private bool IsOfType(Type type)
     {

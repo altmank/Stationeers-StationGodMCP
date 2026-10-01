@@ -233,7 +233,14 @@ internal static class RunReports
             before.Add(kind.Summary(forecast.Context.NetworksBefore[id]));
         }
 
-        return new RunNetworksView(before, After(plan, forecast), Bridges(plan, forecast), Splits(plan, forecast),
+        List<RunNetworkAfterView> after = After(plan, forecast);
+        if (!plan.Request.Options.Detail.Devices)
+        {
+            before = before.ConvertAll(static network => network is IListsDevices listing ? listing.WithoutDevices() : network);
+            after = after.ConvertAll(static network => (RunNetworkAfterView)network.WithoutDevices());
+        }
+
+        return new RunNetworksView(before, after, Bridges(plan, forecast), Splits(plan, forecast),
             Links(plan, forecast));
     }
 

@@ -38,6 +38,7 @@ wins over its variable.
 | `--host <address>` | `STATIONGODMCP_HOST` | none | Connect to a server over TCP instead of the local pipe. |
 | `--port <port>` | `STATIONGODMCP_PORT` | `8765` | The server's TCP port. |
 | `--secret-env <NAME>` | | `STATIONGODMCP_SECRET` | The environment variable that holds the shared secret. With `--host`, the sidecar refuses to start without it. |
+| `--output-dir <folder>` | `STATIONGODMCP_OUTPUT_DIR` | `%LOCALAPPDATA%\StationGodMCP\output` | Where `output_file` writes replies (README, *Large replies*). The sidecar deletes files there older than 7 days and keeps the newest 200 `.json` files. |
 
 The secret is never an argument, so it does not show in process lists. Set it in the agent's MCP registration
 (`claude mcp add --env "STATIONGODMCP_SECRET=..."`, or `[mcp_servers.stationeers.env]` in Codex).

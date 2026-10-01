@@ -51,7 +51,10 @@ internal static class RemoveChutesApi
 /// <summary>The request forms the run tools share: a dry run, a confirmed run, or a job's status.</summary>
 internal static class RunApi
 {
-    /// <summary>A poll's switch for the whole job view (preflight and final check).</summary>
+    /// <summary>
+    /// The switch for the whole job view: a poll's preflight and final check, and a confirmed run's preflight (its
+    /// reply otherwise carries the preflight in short).
+    /// </summary>
     private const string VerboseArgument = "verbose";
 
     internal static object Place(Args args, RunKind kind)
@@ -150,16 +153,20 @@ internal static class RunApi
     {
         args.Reject("job_id", others);
         args.Reject("job_id", "dry_run", "confirm", "from_id", "refund", "refund_to", "limit", "include_links",
-            "include_notes", GasHoldVerdict.AcknowledgeArgument);
+            "include_notes", "include_network_devices", GasHoldVerdict.AcknowledgeArgument);
         object polled = HeldTickJobs.Status(args.String("job_id").Trim());
         return (args.OptionalBool(VerboseArgument) ?? false) ? polled : RunJobView.Brief(polled);
     }
 
     private static object Run(Args args, RunRequest request)
     {
-        args.Reject("a run (it is for a job_id poll)", VerboseArgument);
         bool dryRun = args.OptionalBool("dry_run") ?? true;
         bool confirm = args.OptionalBool("confirm") ?? false;
+        if (dryRun)
+        {
+            args.Reject("a dry run (it is for a confirmed run or a job_id poll)", VerboseArgument);
+        }
+
         if (dryRun && confirm)
         {
             throw ApiErrors.InvalidArgument("confirm: true needs dry_run: false; nothing was changed.");
@@ -187,11 +194,17 @@ internal static class RunApi
             RunPlanner.RequireAssumedGone(plan);
         }
 
-        return plan.Ready
-            ? JobSnapshots.Record(
-                RunJobs.Start(request, RunReports.Of(plan, RunReports.Scheduled, null), wait, acknowledge),
-                request.Tool, Removed(plan), args, Burnt(plan))
-            : RunReports.Of(plan, RunReports.Refused, null);
+        if (!plan.Ready)
+        {
+            return RunReports.Of(plan, RunReports.Refused, null);
+        }
+
+        RunReportView preflight = RunReports.Of(plan, RunReports.Scheduled, null);
+        object started = JobSnapshots.Record(RunJobs.Start(request, preflight, wait, acknowledge), request.Tool,
+            Removed(plan), args, Burnt(plan));
+        return (args.OptionalBool(VerboseArgument) ?? false)
+            ? started
+            : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
     }
 
     // What the run takes down: its removals (not the assumed ones) and every piece it changes (a change builds a new

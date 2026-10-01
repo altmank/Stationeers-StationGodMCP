@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure.Rockets;
 
 namespace StationGodMCP.Api.Views;
 
@@ -237,11 +238,33 @@ internal sealed class RocketEngineView
 }
 
 /// <summary>The thrust figures the landing check and the engines give.</summary>
+/// <summary>
+/// The combustion rate the thrust probe burned the fuel at: rate, source (game, or terraforming_reloaded when that mod
+/// sets it) and a note when the mod answered something unusable.
+/// </summary>
+internal sealed class CombustionView
+{
+    internal CombustionView(CombustionRate rate)
+    {
+        Rate = rate.Rate;
+        Source = rate.Source;
+        Note = rate.Note;
+    }
+
+    public double Rate { get; }
+
+    public string Source { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Note { get; }
+}
+
 internal sealed class RocketThrustView
 {
     internal RocketThrustView(double currentN, double maxRecordedN, double prefabMaxN, double maxExpectedN,
-        double? achievableFullN, string howRecorded)
+        double? achievableFullN, string howRecorded, CombustionView? combustion = null)
     {
+        Combustion = combustion;
         CurrentN = RocketRound.Of(currentN, 0);
         MaxRecordedN = RocketRound.Of(maxRecordedN, 0);
         PrefabMaxN = RocketRound.Of(prefabMaxN, 0);
@@ -269,6 +292,10 @@ internal sealed class RocketThrustView
     public bool RecordedExceedsAchievable { get; }
 
     public string HowRecorded { get; }
+
+    /// <summary>The combustion rate achievable_full_n was measured at.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public CombustionView? Combustion { get; }
 }
 
 /// <summary>The auto-land confidence the avionics shows, computed now.</summary>
@@ -479,8 +506,9 @@ internal sealed class RocketForecastView
     internal RocketForecastView(ThingId rocketId, string rocketName, string startState, SpaceNodeView? destination,
         List<RouteHopView> route, List<string> uncharted, List<string> assumptions, List<ForecastLegView> legs,
         bool succeeded, string verdict, double fuelNowMol, double? leastFuelMol, LandingLimitsView? limits,
-        List<ProfileLandingView>? profiles, ColumnView? column)
+        List<ProfileLandingView>? profiles, ColumnView? column, CombustionView? combustion = null)
     {
+        Combustion = combustion;
         RocketId = rocketId;
         RocketName = rocketName;
         StartState = startState;
@@ -533,4 +561,8 @@ internal sealed class RocketForecastView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ColumnView? Column { get; }
+
+    /// <summary>The combustion rate the engines were modelled at (the game's, or Terraforming Reloaded's).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public CombustionView? Combustion { get; }
 }

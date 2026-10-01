@@ -73,16 +73,14 @@ internal sealed class FuelSample
 /// The engine's own combustion run on a copy of the fuel, as RocketEngineBase.CalculateMaxThrust does at prefab load
 /// (RocketEngineBase.cs:264-286): a fresh Atmosphere (Mode Thing: no fire is registered, Atmosphere.cs:545), the
 /// drawn moles added at the fuel's temperature (energy set as GovernedGasEngine.PrepareThrustSimulation sets it,
-/// GovernedGasEngine.cs:37-47), Atmosphere.TryCombust(0.96, force: true), then CombustEngine's numbers
+/// GovernedGasEngine.cs:37-47), Atmosphere.TryCombust(rate, force: true) at the engines' combustion rate
+/// (CombustionRates: the game's 0.96, or Terraforming Reloaded's when it is loaded), then CombustEngine's numbers
 /// (RocketEngineBase.cs:518-526): FlowRate = molar mass x gas moles / tick / 1000, Force = FlowRate x ExitVelocity
 /// (the engine's own ExitVelocity, 586-591). Nothing in the world is touched; new Moles are not cached, so the main
 /// thread reads them live.
 /// </summary>
 internal static class ThrustProbe
 {
-    /// <summary>RocketEngineBase.ENGINE_COMBUSTION_RATE as CombustEngine passes it (RocketEngineBase.cs:521).</summary>
-    private const double CombustionRate = 0.9599999785423279;
-
     internal static ProbeResult Burn(RocketEngineBase engine, FuelSample fuel, double drawnMol)
     {
         Atmosphere chamber = new Atmosphere
@@ -109,7 +107,7 @@ internal static class ThrustProbe
         double fuelMoles = drawn.TotalFuel.ToDouble() + drawn.TotalOxidiser.ToDouble() +
                            drawn.TotalHypergolics.ToDouble();
         chamber.Add(drawn);
-        chamber.TryCombust(CombustionRate, force: true);
+        chamber.TryCombust(CombustionRates.Current().Rate, force: true);
         float exitVelocity = engine.ExitVelocity(chamber);
         float flowRate = chamber.GasMixture.MolarMassGassesGrams() * chamber.TotalMolesGases.ToFloat() /
                          GameManager.GameTickSpeedSeconds / 1000f;

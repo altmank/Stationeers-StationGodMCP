@@ -99,7 +99,8 @@ internal static class RocketForecastApi
             : null;
         return new RocketForecastView(new ThingId(rocket.ReferenceId), rocket.DisplayName, rocket.RocketState.ToString(),
             SpaceRoutes.ViewOf(target), route, uncharted, assumptions, legs, run.Succeeded && plan.Problem == null,
-            Verdict(run, plan, column, floor), craft.FuelMoles, leastFuel, limitsView, profiles, column);
+            Verdict(run, plan, column, floor), craft.FuelMoles, leastFuel, limitsView, profiles, column,
+            new CombustionView(CombustionRates.Current()));
     }
 
     private static void Refuse(RocketParts parts)

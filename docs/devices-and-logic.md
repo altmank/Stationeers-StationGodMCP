@@ -30,7 +30,7 @@ memory, but for any device in the world at once and without a chip.
 | `inspect_slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. Devices only: for a crate, the lander or a tool use `container_contents`. | `reference_id`, `slot_index` |
 | `network_snapshot` | Many devices and their logic values at one instant, in one game frame. | `reference_ids`, `prefab_hash`, `name_contains`, `logic_types`, `max_devices` |
 | `sample_logic` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `targets: [{reference_id, logic_type}]`, `duration_seconds` (default 5), `interval_seconds` (default 0.5) |
-| `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents. | `reference_id`, or `network_id` with `kind` |
+| `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents. | `reference_id`, or `network_id` with `kind` (filters `prefab_contains`, `open_ends_only`) |
 | `list_gateways` | The scopes device tools accept: `world` and every StationGod Gateway. | none |
 | `looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.3+), the surface the look ray hits and the grid there, and the target's body. | `max_distance_m` |
 | `game_clock` | Game time, paused or not, time of day, days past. | none |
@@ -120,6 +120,12 @@ connected at that end, by the game's own connection test.
   carries more than its weakest cable (the game then burns one such cable every power tick).
 - **Pipe:** content (gas or liquid), volume, pressure, temperature and every gas.
 - **Chute:** the member count.
+
+Two filters narrow the members before paging, so `total` counts what they keep (`structure_count` and `device_count`
+stay the whole network's): `prefab_contains` (part of the prefab name, any case) and `open_ends_only`, which keeps
+members with an end of the network's kind that nothing is attached at (a run's loose ends, a device port left
+unjoined) and lists those ends in each member's `open_ends`. A 32 KB chute network of plain straights answers with
+the few pieces that matter.
 
 Network ids change after almost every edit: when networks merge or split, the game gives them new ids. Wherever a
 tool takes a network id it also takes the reference id of any piece or device on the network, or

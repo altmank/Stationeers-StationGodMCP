@@ -14,9 +14,12 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    gives back, the networks before and after, and every problem at once. Read `ready`, `problems` and `warnings`.
    The run tools (`place_*`, `remove_*`, `plan_*_route`, `plan_removal`) give `links` as counts (`added_count`,
    `lost_count`) and leave their fixed `notes` out; `include_links: true` lists every link, `include_notes: true`
-   adds the notes. `limit` caps the cells listed (default 200; 0 lists none, the counts stay).
+   adds the notes. `limit` caps the cells listed (default 200; 0 lists none, the counts stay). `networks_before` and
+   `networks_after` give each network's `device_count`; `include_network_devices: true` lists the devices too.
 2. **A real run** needs `dry_run: false` and `confirm: true`, and starts only when the checks find no problem. It
-   returns a `job_id`.
+   returns the `job_id`, the status and a `preflight_summary` (pieces placed, changed and removed, and the warning
+   codes); the dry run you already read is left out unless `verbose: true`. This holds for the run tools,
+   `place_structure` and `remove_structure`.
 3. **One held tick.** The mod holds the game tick as a save does, runs every check again on the world as it is now,
    makes every change in one frame, and checks the result the next frame before letting the tick go. No power,
    atmospherics or logic tick ever sees a half-built network. Players see a brief pause.

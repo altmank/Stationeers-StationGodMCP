@@ -177,7 +177,8 @@ internal static class RocketStatusApi
             "MaxRecordedThrust = the highest Rocket.GetThrust (all engines' Force) seen on any physics step since the " +
             "rocket was built, saved with the game, reset to 0 only while the rocket has no engine (Rocket.cs:1982-1989, " +
             "844, 885). The landing check uses max(MaxRecordedThrust, first engine's prefab MaxThrust at 215 K) " +
-            "(GetMaxExpectedThrust, Rocket.cs:2710-2721), never the thrust the fuel gives now.");
+            "(GetMaxExpectedThrust, Rocket.cs:2710-2721), never the thrust the fuel gives now.",
+            new CombustionView(CombustionRates.Current()));
         if (view.RecordedExceedsAchievable)
         {
             notes.Add($"The landing check assumes {view.MaxExpectedN:0} N but the fuel now gives {view.AchievableFullN:0} N " +

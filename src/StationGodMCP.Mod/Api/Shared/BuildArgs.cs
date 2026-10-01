@@ -220,16 +220,20 @@ internal abstract class BuildForm<T>
 
     internal sealed class Run : BuildForm<T>
     {
-        internal Run(T arguments, bool confirmed)
+        internal Run(T arguments, bool confirmed, bool verbose = false)
         {
             Arguments = arguments;
             Confirmed = confirmed;
+            Verbose = verbose;
         }
 
         internal T Arguments { get; }
 
         /// <summary>dry_run false and confirm true: start a job. Otherwise a dry run.</summary>
         internal bool Confirmed { get; }
+
+        /// <summary>A confirmed run's reply with the whole preflight; else the started job and the preflight in short.</summary>
+        internal bool Verbose { get; }
     }
 }
 
@@ -244,7 +248,9 @@ internal static class BuildArgs
 {
     internal const int MaximumPlacements = 64;
 
-    /// <summary>A poll's switch for the whole job view (preflight and final check).</summary>
+    /// <summary>
+    /// The switch for the whole job view: a poll's preflight and final check, and a confirmed run's preflight.
+    /// </summary>
     private const string VerboseArgument = "verbose";
 
     /// <summary>place_structure's switch for the footprint's cell lists in each layout preview.</summary>
@@ -262,8 +268,6 @@ internal static class BuildArgs
                 "up", "face", "build_state", "label", "color", "allow_door_keepout", "orient", "above_floor_m",
                 FootprintCellsArgument);
         }
-
-        args.Reject("a run (it is for a job_id poll)", VerboseArgument);
 
         List<PlacementArgs> placements = new List<PlacementArgs>();
         if (args.Has("placements"))
@@ -291,7 +295,7 @@ internal static class BuildArgs
             new PlaceArguments(placements, args.OptionalThingId("from_id"), args.OptionalBool("free") ?? false,
                 args.OptionalBool("allow_door_keepout") ?? false,
                 args.OptionalBool(FootprintCellsArgument) ?? false),
-            confirmed);
+            confirmed, VerboseOfRun(args, confirmed));
     }
 
     internal static BuildForm<RemoveArguments> ParseRemove(Args args)
@@ -302,7 +306,6 @@ internal static class BuildArgs
                 "allow_burst", "refund_to", "from_id");
         }
 
-        args.Reject("a run (it is for a job_id poll)", VerboseArgument);
         if (!args.Has("reference_ids"))
         {
             throw ApiErrors.InvalidArgument("Pass reference_ids.");
@@ -315,7 +318,8 @@ internal static class BuildArgs
         RefundRoute refundTo = RefundArgs.Route(args);
         bool confirmed = Confirmed(args);
         return new BuildForm<RemoveArguments>.Run(
-            new RemoveArguments(ids, allow, refundTo, args.OptionalThingId("from_id")), confirmed);
+            new RemoveArguments(ids, allow, refundTo, args.OptionalThingId("from_id")), confirmed,
+            VerboseOfRun(args, confirmed));
     }
 
     internal static PlacementArgs Placement(Args item, int index, string prefix)
@@ -564,6 +568,17 @@ internal static class BuildArgs
     }
 
     // A real run needs dry_run false and confirm true; confirm with a dry run is a contradiction.
+    // verbose goes with a confirmed run or a poll: a dry run's reply is the whole report already.
+    private static bool VerboseOfRun(Args args, bool confirmed)
+    {
+        if (!confirmed)
+        {
+            args.Reject("a dry run (it is for a confirmed run or a job_id poll)", VerboseArgument);
+        }
+
+        return args.OptionalBool(VerboseArgument) ?? false;
+    }
+
     private static bool Confirmed(Args args)
     {
         bool dryRun = args.OptionalBool("dry_run") ?? true;

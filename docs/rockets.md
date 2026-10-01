@@ -21,7 +21,9 @@ The forecast does not estimate. It runs the game's own rules on a copy of the ro
   the pathfinder counts hops, not distance, and goes through uncharted nodes. A hop costs its distance in Δv, and that
   distance is twice what the map's coordinates give.
 - **Thrust** comes from the engine's own combustion, run on a copy of the fuel in the line. Fuel temperature and mix
-  therefore count. Draining a tank changes neither, so the thrust per mole holds unless the tank warms or cools; the
+  therefore count. It burns at the game's combustion rate (0.96), or at Terraforming Reloaded's when that mod is loaded
+  (its per-world `RocketsBurnCompletely` option burns at 1.0); `combustion {rate, source}` in `rocket_forecast` and in
+  `rocket_status`'s thrust says which. Draining a tank changes neither, so the thrust per mole holds unless the tank warms or cools; the
   forecast does not follow that heat, and says what 100 K either way would do to the thrust.
 - **The landing** starts with the game's confidence check, once, as the re-entry hop begins. A confidence of 0 sends
   the rocket back to orbit. Otherwise the autopilot's own throttle rules fly it down, and touchdown is judged as the game

@@ -6,6 +6,31 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
+/// <summary>
+/// find_things' location filter: any (default), or one of the locations a thing reports: ground, player and stored as
+/// find_items has them (a dynamic thing in no slot, carried by a player at any depth, in any other slot), built (a
+/// structure) and world (neither a structure nor a dynamic thing: players, animals).
+/// </summary>
+internal static class ThingLocations
+{
+    internal const string Any = "any";
+
+    internal static readonly string[] All = { "ground", "player", "stored", FoundThingView.Built, FoundThingView.World };
+
+    /// <summary>The location named, trimmed and lower-cased; any when absent. Another word is invalid_argument.</summary>
+    internal static string Parse(string? given)
+    {
+        string word = (given ?? Any).Trim().ToLowerInvariant();
+        if (word != Any && System.Array.IndexOf(All, word) < 0)
+        {
+            throw ApiErrors.InvalidArgument(
+                $"Argument 'location' must be {Any}, {string.Join(", ", All)}; '{given}' is none of them.");
+        }
+
+        return word;
+    }
+}
+
 /// <summary>find_things: one page of the things whose names match, nearest first.</summary>
 internal sealed class FindThingsView
 {
