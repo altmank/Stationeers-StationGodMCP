@@ -64,7 +64,7 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 
 ## Tools
 
-85 tools, in these areas. Each page lists its tools with what they take and give back.
+86 tools, in these areas. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |

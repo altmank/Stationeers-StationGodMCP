@@ -2,7 +2,7 @@
 
 ## 1.7.0
 
-2026-09-30. Smaller replies, controls that face the room, and deep-miner spots. 85 tools.
+2026-09-30. Smaller replies, controls that face the room, highlighting through walls, deep-miner spots. 86 tools.
 
 - **`grid_survey` filters.** A survey of a 6 x 4 x 4 m box ran to 63 KB. `sections` (any of `cells`, `pieces`,
   `devices`, `networks`, `network_visibility`, `doors`) keeps only the parts named, the others left out of the reply;
@@ -24,10 +24,18 @@
   (`added_count`, `lost_count`, new) and leave out the tool's fixed `notes`; `include_links: true` lists every added
   and lost link (34 entries for 15 pipes), `include_notes: true` adds the notes. `limit: 0` lists no cells (the counts
   stay), also for the dry run a `plan_*_route` reply carries.
+- **`highlight` (new): see things through walls.** Show things by id, a whole cable, pipe or chute network, or a far
+  point, on your screen only and through walls, frames and terrain. Things are drawn with their own shape, tinted, the
+  way the T-Ray lens draws pipes and cables, with the T-Ray's own material. A point gets a tall beam and a label with
+  its distance, bearing and height; out of view, the label and an arrow sit at the edge of the screen on the side to
+  turn to. Each target takes a colour, a label and an optional pulse. Shown for `seconds` (default 60); `keep` and
+  `clear` work as in `show_preview`. Nothing in the world changes.
+- **`show_preview` `xray: true`** draws its boxes through walls and frames, which used to hide them.
 - **`deep_miner_spots` (new).** A deep miner takes the ore profile of the region it is built in. This tool asks the
   game the same question: the region and profile at a point (default where you stand), every profile of the world with
   what one dirty ore holds, and with `ores` (e.g. `["Cobalt"]`, or `["Gold", "Silver"]`) the nearest spots that give
-  them, each with distance, compass bearing, the ground height and the miner's own terrain rule. It changes nothing.
+  them, each with distance, compass bearing, the ground height and the miner's own terrain rule, plus `beacons` ready
+  for `highlight`. It changes nothing.
 - **Controls facing a wall.** `place_structure` (dry run and job checks), `orient` and `find_spot` now know which side
   of a device carries its slots, buttons and switches, read from the game's own interactables on the prefab, and warn
   `controls_blocked` when that side faces another device, a frame, or a wall panel right in front of it. `orient`
