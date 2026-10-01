@@ -4,6 +4,9 @@
 
 2026-10-01. Performance, part 2: one read per tick. 91 tools.
 
+- **Lint: floating in-line tanks.** `floating_run` now also checks in-line tanks (the small and big tanks that sit in a
+  pipe run), which the game lets stand in air; it warns when one has a cell on no frame and no wall plane.
+
 - **`read_devices` (new).** A control loop's whole read in one call, every item read in the same frame. Up to 128
   items, each a `reference_id` with any of: `logic` (logic types, read as `read_logic`), `slots` (`{index, logic}`, slot
   logic as a chip's `ls`; without `logic` every type the slot reads, by `inspect_slots`' names), `atmosphere` (compact:

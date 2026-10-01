@@ -64,18 +64,21 @@
     {
       "id": "floating_run",
       "level": "warning",
-      "description": "A cable, pipe or chute piece with a cell in air: on no frame and no wall plane. In-line tanks and passive vents are not runs and are not checked.",
+      "description": "A cable, pipe or chute piece, or an in-line tank (the small and big tanks that sit in a pipe run), with a cell in air: on no frame and no wall plane. The game lets these stand in air; the house rule wants them on a frame or a plate. Passive vents are not checked.",
       "on": ["audit", "dry_run"],
-      "select": "pieces where kind in [\"cable\", \"pipe\", \"chute\"]",
+      "select": "pieces where kind in [\"cable\", \"pipe\", \"chute\", \"in_line_tank\"]",
       "let": { "air": "count(cells, c => c.support == \"air\")" },
       "assert": "air == 0",
       "message": "{prefab} {reference_id} floats in air ({air} of {count(cells)} cells on no frame and no wall plane).",
       "examples": {
         "pass": [
           { "kind": "cable", "prefab": "StructureCableStraight", "reference_id": 3, "cells": [ { "support": "frame_face" }, { "support": "wall_plane" } ] },
-          { "kind": "in_line_tank", "prefab": "StructureInLineTankGas1x1", "reference_id": 4, "cells": [ { "support": "air" } ] }
+          { "kind": "in_line_tank", "prefab": "StructureTankSmallInsulatedInLine", "reference_id": 4, "cells": [ { "support": "frame_face" } ] }
         ],
-        "fail": [ { "kind": "pipe", "prefab": "StructurePipeStraight", "reference_id": 3, "cells": [ { "support": "air" }, { "support": "inside_frame" } ] } ]
+        "fail": [
+          { "kind": "pipe", "prefab": "StructurePipeStraight", "reference_id": 3, "cells": [ { "support": "air" }, { "support": "inside_frame" } ] },
+          { "kind": "in_line_tank", "prefab": "StructureTankSmallInsulatedInLine", "reference_id": 5, "cells": [ { "support": "air" } ] }
+        ]
       }
     },
     {
