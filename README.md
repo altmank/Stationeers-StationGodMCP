@@ -146,13 +146,14 @@ with rooms and its `dry_run`, the placement and layout tools that need no camera
 `orient`, `wall_map`, `find_spot`, `lint_layout`, `check_replaceable`), `replace_walls` and `replace_frames`,
 broken structures, the power overload guard, the trader tools, the chip tools and the sidecar's argument checks.
 Earlier: `paste_blueprint` (paste, status and undo), the pipe name setting, every 1.3.0 addition and the 1.3.1 fixes.
+Later: 1.10.0's `read_devices` and `thing_health` `network_id` answer value for value what the single tools answer,
+with the game paused (`tools/read_devices_equivalence.py`, read only, runs the same check on any game).
 
 **Not yet tested in game:** what needs a player or a camera (`looking_at`, `at` at the crosshair or relative to you,
 `show_preview`, hidden and body slots with a real inventory, the kit leaving your inventory, suit damage from
 refunds), a real `acknowledge_gas_lost` lift (no gas loss could be provoked), the 1.3.2 landing pad atmospheres in
-`move_gas`, the 1.3.3 planet gas removal (needs Terraforming Reloaded), the 1.4.0 Ingot Vault tools (need the
-Ingot Vault mod), and 1.10.0's `read_devices` and `thing_health` `network_id` (`tools/read_devices_equivalence.py`
-compares `read_devices` with the single tools on a running game).
+`move_gas`, the 1.3.3 planet gas removal (needs Terraforming Reloaded) and the 1.4.0 Ingot Vault tools (need the
+Ingot Vault mod).
 
 ## Documentation
 
