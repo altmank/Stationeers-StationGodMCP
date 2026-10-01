@@ -112,6 +112,7 @@ public sealed class StationGodMod : ModBehaviour
             _dispatcher.ProcessPendingRequests();
             HeldTickJobs.Tick();
             Previews.Tick();
+            Highlights.Tick();
         }
         catch (Exception exception)
         {
@@ -133,6 +134,7 @@ public sealed class StationGodMod : ModBehaviour
         IcExecutionController.Clear();
         HeldTickJobs.Abandon();
         Previews.Clear();
+        Highlights.Clear();
         _harmony?.UnpatchSelf();
     }
 

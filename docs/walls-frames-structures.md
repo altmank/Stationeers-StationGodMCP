@@ -19,7 +19,8 @@ connections and guard against merging networks, which `place_structure` does not
 | `find_spot` | Ranked places for a prefab near a point on a wall or a room's walls, checked as the cursor checks them (1.4.3+). | `prefab`, `near`, `plane`/`looking`/`room_id`, `require` |
 | `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+); things a player could not place again where they stand (1.5.0+). | `room_id` or `min`/`max`, `limit` |
 | `check_replaceable` | For each thing, could a player place it again exactly where it stands, with its neighbours present (1.5.0+). | `reference_ids` |
-| `show_preview` | Draw wire boxes in your game for a planned placement's footprint, body and ports, or any cells and boxes; timed, nothing built (1.4.3+). | as `place_structure`, or `cells`, `boxes`; `seconds`, `clear` |
+| `show_preview` | Draw wire boxes in your game for a planned placement's footprint, body and ports, or any cells and boxes; timed, nothing built (1.4.3+). | as `place_structure`, or `cells`, `boxes`; `seconds`, `clear`, `xray` |
+| `highlight` | Show things, whole networks or far points through walls, frames and terrain, tinted, with labels; timed, nothing changed (1.7.0+). | `targets` (`reference_id(s)`, `network_id` or `at`, with `color`, `label`, `pulse`); `seconds`, `keep`, `clear` |
 | `describe_prefab` | A prefab in its own frame: placement, allowed turns, footprint, ports, visual up (1.4.3+). | `prefab` |
 | `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]` |
 | `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `allow_burst`, `refund_to` |
@@ -186,7 +187,26 @@ other spots were ruled out, most frequent first, so an empty answer says what st
 placement's footprint (green, red with a problem), its render box (white) and its port cells (cyan, red when
 blocked), for `seconds` (default 30). `cells` (yellow 0.5 m cubes, e.g. a planned route) and `boxes` can be drawn
 too; a new call replaces the last (`keep: true` adds), `clear: true` removes them. Nothing in the world changes and
-other players see nothing.
+other players see nothing. The lines are hidden by walls and frames in front of them, like anything else; `xray: true`
+(1.7.0+) draws them through everything.
+
+### Pointing things out (1.7.0+)
+
+`highlight` shows you where things are, through walls, frames and terrain, on your screen only. Each of up to 64
+`targets` is one of:
+
+- `reference_id` or `reference_ids`: things (a device, a pipe, an item...), drawn with their own shape, tinted.
+- `network_id`: a cable, pipe or chute network, or any piece of it: every piece, so a whole run shows inside the
+  frames it hides in.
+- `at`: a point anywhere, even far away (a deep-miner spot): a tall beam stands on it, and its label gives the
+  distance, the bearing (degrees clockwise from north; north is +z, east +x) and how far up or down it is. When it is
+  out of view the label and a `>>` arrow sit at the edge of the screen, on the side to turn to.
+
+Each target takes `color` (cyan, magenta, yellow, green, orange, blue, red, white, or `[r, g, b]` from 0 to 1;
+without one, the targets take those colours in turn), `label` (text shown at it) and `pulse` (the tint swells once a
+second). `seconds` defaults to 60 (up to 600); a new call replaces the last unless `keep: true`; `clear: true`
+removes them. Things are drawn the way the T-Ray lens draws pipes and cables, with the T-Ray's own material
+(`renderer` in the reply says which was used). The reply also gives each target's distance and bearing from you.
 
 ### Checking a layout (1.4.3+)
 
