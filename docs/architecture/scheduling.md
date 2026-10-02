@@ -40,8 +40,7 @@ The mod measures itself. Since 1.9.1 `mod_info.runtime` reports, per method, the
 of serialising, the wait in the queue and the reply size, each as total, mean and maximum, and per frame the requests
 served, the time spent and how often the budget held requests back (`src/StationGodMCP.Mod/Pure/Runtime/MethodTimings.cs:34-90`,
 `src/StationGodMCP.Mod/Api/Views/RuntimeViews.cs:14-146`; `docs/devices-and-logic.md`, *Health and game updates*).
-Those numbers have not yet been read from the owner's game: the live check for 1.9.1 is still open (owner notes,
-`TODO.md`, "1.9.1 performance phase 1: live checks"). Stage 0 of the plan reads them ([stages.md](stages.md)).
+Those numbers have not yet been read from the owner's game.
 
 What is known today comes from the dashboard's own meter, which times every pipe call it makes
 (StationeersScriptDashboard `stationscript/metrics.py`), read over a 60-second window on 2026-10-01 before the 1.10.0
@@ -65,8 +64,8 @@ game reads for a reply of 50-95 KB, most of it serialising (`reference/PERFORMAN
 owner's brief for this work reports `thing_health` on 84 objects at 62.5 KB a call (not re-measured here; the 24 keys
 per object are in `src/StationGodMCP.Mod/Api/Views/ThingHealthViews.cs:196-249`). Planning and survey tools can take far
 longer: `deep_miner_spots` caps its search at 8 seconds (owner notes, `CLAUDE.md`, State, 1.7.0); whether that search
-runs on the main thread is GUESS. How long one dashboard `read_devices` call takes on the main thread is not known yet;
-stage 0 measures it, because it decides which lane those calls land in.
+runs on the main thread is GUESS. How long one dashboard `read_devices` call takes on the main thread is not known; the
+scheduler's per-item prediction (below) learns it at run time, which decides which lane those calls land in.
 
 ## Lanes
 
@@ -140,15 +139,14 @@ Cost estimate. When a subscription is created, the mod estimates its cost per sa
 reads, using per-part figures measured on that game (moving averages of the sampling time per logic value, per slot
 read, per atmosphere, per reagents read). Until enough samples exist it uses starting values: 0.005 ms per logic or slot
 value, 0.08 ms per atmosphere, 0.05 ms per reagents read (from the estimates in `reference/PERFORMANCE-STRATEGY.md`,
-section 1.3; GUESS until stage 0 measures them). The projected load of a subscription is its cost per sample times its
+section 1.3; GUESS). The projected load of a subscription is its cost per sample times its
 samples per real second (at normal game speed, one game second is one real second).
 
 Admission. A `subscribe` is refused with `subscription_limit` when:
 
 - it would read more than one `read_devices` call allows (128 items, 1,024 values;
   `src/StationGodMCP.Mod/Pure/DeviceReads/DeviceReadRequest.cs:16-22`);
-- the connection would hold more than 64 subscriptions or 8,192 values across them; these limits are set to at least
-  twice what stage 0 measures for the whole dashboard on one connection; or
+- the connection would hold more than 64 subscriptions or 8,192 values across them; or
 - the projected load of every subscription on the mod, this one included, would exceed half of the subscription lane's
   share at 30 frames a second (by default 0.75 ms a frame, 22.5 ms of sampling per second). The reply's `data` gives
   the projection.

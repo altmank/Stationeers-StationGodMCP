@@ -273,12 +273,11 @@ whole, in one step (the owner's standing rule for this repository).
    `STATIONSCRIPT_PIPE`, else `StationGodMCP`.
    Restart the dashboard. Every card and every script that imports `PipeTransport` now runs on the library with no
    other change.
-3. **The replay check, then version 2.** The wrapper samples calls as stage 0 does (method and params, at most 20 an
-   hour per method and caller, rotated, into `%LOCALAPPDATA%\StationGodMCP\corpus\dashboard`, never into a
-   repository). After a full day of normal use, a test in this repository, `CatalogueReplayTests` with
-   `STATIONGOD_CORPUS` pointing at that folder, run locally, sends every sampled call through the mod's own version-2
-   validator; it must refuse none. Each refusal is fixed in the card or the catalogue first. Only then does the wrapper
-   switch to `protocol="auto"`. The same check covers the scripts below, whose calls go through the same wrapper.
+3. **The replay check, then version 2.** A test in this repository, `CatalogueReplayTests`, sends a committed set of
+   calls through the mod's own version-2 validator; it must refuse none. The set is written by hand from the calls the
+   cards and the scripts below make (method and the params their code builds), plus synthetic calls the validator must
+   refuse. Each refusal is fixed in the card or the catalogue first. Only then does the wrapper switch to
+   `protocol="auto"`.
 4. **Key.** Make a `dashboard` key at write level on the host (`StationGodMCP.Server.exe key new dashboard write`), put
    it in `STATIONGOD_KEY_STATIONGODMCP` for the dashboard's process, and pass `client="dashboard"`. New `__main__` options
    `--pipe`, `--game-host`, `--game-port` (the existing `--port` is the dashboard's own web port,
