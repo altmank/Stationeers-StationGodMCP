@@ -1,0 +1,9 @@
+{
+  "description": "Refused before the call is sent: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'.",
+  "method": "find_things",
+  "output_file": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "result": {
+    "things": []
+  },
+  "expected_error": "invalid_argument"
+}

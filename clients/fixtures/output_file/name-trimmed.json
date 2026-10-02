@@ -1,0 +1,23 @@
+{
+  "description": "White space around the name is trimmed.",
+  "method": "rooms",
+  "output_file": "  report-1_a  ",
+  "result": {
+    "rooms": [],
+    "count": 0
+  },
+  "expected_file_name": "report-1_a.json",
+  "expected_pointer": {
+    "tool": "rooms",
+    "counts": {
+      "rooms": 0
+    },
+    "summary": {
+      "count": 0
+    }
+  },
+  "expected_file": {
+    "rooms": [],
+    "count": 0
+  }
+}

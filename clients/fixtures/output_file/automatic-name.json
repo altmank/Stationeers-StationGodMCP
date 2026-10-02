@@ -1,0 +1,19 @@
+{
+  "description": "output_file true: <method>-<local yyyyMMdd-HHmmss-fff>-<4 hex>.json; no in_file_only when nothing is long.",
+  "method": "grid_survey",
+  "output_file": true,
+  "result": {
+    "cells": []
+  },
+  "expected_file_name_pattern": "^grid_survey-[0-9]{8}-[0-9]{6}-[0-9]{3}-[0-9a-f]{4}\\.json$",
+  "expected_pointer": {
+    "tool": "grid_survey",
+    "counts": {
+      "cells": 0
+    },
+    "summary": {}
+  },
+  "expected_file": {
+    "cells": []
+  }
+}

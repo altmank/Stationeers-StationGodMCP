@@ -1,0 +1,9 @@
+{
+  "description": "Refused before the call is sent: '../escape'.",
+  "method": "find_things",
+  "output_file": "../escape",
+  "result": {
+    "things": []
+  },
+  "expected_error": "invalid_argument"
+}

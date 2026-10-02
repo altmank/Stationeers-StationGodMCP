@@ -1,0 +1,61 @@
+{
+  "description": "A named file: .json added; lists counted, short values in summary, long ones named in in_file_only.",
+  "method": "find_things",
+  "output_file": "ores",
+  "result": {
+    "count": 2,
+    "total": 270,
+    "has_more": false,
+    "things": [
+      {
+        "a": 1
+      },
+      {
+        "a": 2
+      }
+    ],
+    "local_player": {
+      "name": "LU"
+    },
+    "preflight": {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  "expected_file_name": "ores.json",
+  "expected_pointer": {
+    "tool": "find_things",
+    "counts": {
+      "things": 2
+    },
+    "summary": {
+      "count": 2,
+      "total": 270,
+      "has_more": false,
+      "local_player": {
+        "name": "LU"
+      }
+    },
+    "in_file_only": [
+      "preflight"
+    ]
+  },
+  "expected_file": {
+    "count": 2,
+    "total": 270,
+    "has_more": false,
+    "things": [
+      {
+        "a": 1
+      },
+      {
+        "a": 2
+      }
+    ],
+    "local_player": {
+      "name": "LU"
+    },
+    "preflight": {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  }
+}

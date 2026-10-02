@@ -1,0 +1,29 @@
+{
+  "description": "A name that already ends in .json, in any case, is kept as given.",
+  "method": "item_totals",
+  "output_file": "Totals.JSON",
+  "result": {
+    "totals": [
+      {
+        "name": "Iron",
+        "count": 3
+      }
+    ]
+  },
+  "expected_file_name": "Totals.JSON",
+  "expected_pointer": {
+    "tool": "item_totals",
+    "counts": {
+      "totals": 1
+    },
+    "summary": {}
+  },
+  "expected_file": {
+    "totals": [
+      {
+        "name": "Iron",
+        "count": 3
+      }
+    ]
+  }
+}

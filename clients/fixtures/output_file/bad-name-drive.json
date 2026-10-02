@@ -1,0 +1,9 @@
+{
+  "description": "Refused before the call is sent: 'C:x'.",
+  "method": "find_things",
+  "output_file": "C:x",
+  "result": {
+    "things": []
+  },
+  "expected_error": "invalid_argument"
+}
