@@ -18,8 +18,8 @@ namespace StationGodMCP.Tests;
 /// </summary>
 public sealed class ReplySlimmingTests
 {
-    private static readonly DeclaredArguments Declared = DeclaredArguments.Parse(
-        File.ReadAllText(Path.Combine(ToolArgumentsFileTests.RepositoryRoot(), "tool-arguments.json")));
+    private static readonly DeclaredArguments Declared = new DeclaredArguments(Pure.Catalogue.Catalogue.Load(
+        File.ReadAllText(CatalogueChecks.CatalogueFiles.AssembledPath)));
 
     [Fact]
     public void AnUnknownArgumentFromAPipeClientIsRefusedNamingTheOneMeant()

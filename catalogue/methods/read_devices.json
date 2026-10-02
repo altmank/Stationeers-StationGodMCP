@@ -1,0 +1,102 @@
+{
+  "name": "read_devices",
+  "description": "Read many things in one request, every item in the same frame (one game update; not tied to the atmospherics tick), for a control loop's whole read per tick (1.10.0+). Up to 128 items, each {reference_id, logic?, slots?, atmosphere?, reagents?} with at least one part: logic, logic types (name or number, up to 64) read as read_logic reads them; slots, up to 16 {index, logic?}, slot logic as a chip's ls reads it (without logic: every slot logic type the slot reads, by the names inspect_slots gives); atmosphere, compact: {} the id's own (a thing's internal atmosphere, a pipe's or landing pad piece's network, a pipe network id, an atmosphere id), {of: \"internal\"} the thing's internal one only, {port: n} the pipe network joined at port n of a device (its connection end index, as connections numbers the ends); reagents: true, as the reagents tool. Every value comes back keyed by the string sent (\"Pressure\", \"280\"), never renamed. At most 1,024 values in all (a slot without logic counts 32); over any bound, an unknown key in an item, slot or atmosphere, a name sent twice in one list or a slot index given twice is invalid_argument and nothing is read. include: [\"clock\"] adds clock, as game_clock. Reply: gateway_id, clock, count, success_count, error_count, results: per item {index, ok, reference_id, logic: {sent: value}, logic_errors: {sent: {code, message}}, slots: [{index, logic, logic_errors} or {index, error}], atmosphere: {source (internal, pipe_network or landing_pad_network), atmosphere_id, network_id (a network's), volume_l, pressure_kpa, temperature_k, total_mol, liquid_volume_l, contents: [{gas, state, amount_mol, liquid_l (liquids)}]}, reagents: {total, reagents}, errors: {part: {code, message}} for a part that failed whole (device_not_found when the device is out of scope or not a device, no_atmosphere, port_not_joined)}; parts not asked and empty error maps are left out. An id that names no thing, pipe or landing pad network or atmosphere fails its item: {index, ok: false, reference_id, error} (thing_not_found). Error codes and messages are the single tools' (invalid_logic_type, logic_not_readable, read_failed, slot_not_found). NaN and the infinities are the strings \"NaN\", \"Infinity\", \"-Infinity\". Read only.",
+  "class": "read",
+  "cost": "bounded",
+  "x-cost-when": [{"when": {"items": {"present": true}}, "cost": "bounded", "per_item": "items"}],
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "include": {
+        "type": "array",
+        "items": {"type": "string", "enum": ["clock"]},
+        "description": "clock: add the game clock, as game_clock reads it, in the same frame."
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 128,
+        "description": "The things to read, each with at least one part.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "reference_id": {
+              "type": "string",
+              "description": "A device or thing (for atmosphere alone also a pipe network or atmosphere id)."
+            },
+            "logic": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+                "description": "LogicType enum name or numeric ushort ID."
+              },
+              "description": "Logic types to read; each value comes back under the string sent."
+            },
+            "slots": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "index": {"type": "integer", "minimum": 0, "description": "Logical slot index, as inspect_slots numbers them."},
+                  "logic": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "items": {
+                      "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+                      "description": "LogicSlotType enum name or numeric ushort ID."
+                    },
+                    "description": "Slot logic types to read; omit for every one the slot reads."
+                  }
+                },
+                "required": ["index"],
+                "additionalProperties": false
+              }
+            },
+            "atmosphere": {
+              "type": "object",
+              "properties": {
+                "of": {
+                  "type": "string",
+                  "enum": ["internal"],
+                  "description": "internal: only the thing's internal atmosphere."
+                },
+                "port": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 64,
+                  "description": "A device's connection end index: the pipe network joined there."
+                }
+              },
+              "additionalProperties": false,
+              "description": "{} the id's own atmosphere, {of: \"internal\"} or {port: n}."
+            },
+            "reagents": {"type": "boolean", "description": "true: the reagents it holds, as the reagents tool."}
+          },
+          "required": ["reference_id"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["items"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "clock": {"type": ["object", "null"]},
+      "count": {"type": "integer"},
+      "success_count": {"type": "integer"},
+      "error_count": {"type": "integer"},
+      "results": {"type": "array"}
+    }
+  },
+  "x-views": ["ReadDevicesView"],
+  "x-shaping": "lists"
+}

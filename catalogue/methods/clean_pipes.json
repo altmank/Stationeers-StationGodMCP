@@ -1,0 +1,149 @@
+{
+  "name": "clean_pipes",
+  "description": [
+    "clean_cables for pipe networks: the same five operations (remove_loops included, with keep_ids), alone or together, with the same order, reports, refusals, jobs and material rules, for every pipe grade (gas, liquid, insulated gas, insulated liquid; grade and content always stay; long pipes where the kit lists them). Contents: the network's gas or liquid stays in its own Atmosphere the whole time. Replacements join before old pieces leave, and a removed pipe leaves the network before it is destroyed, so its volume leaves and its share of the contents stays: moles and energy are unchanged and the pressure rises (networks show total_mol, energy_j, temperature_k, volume_l_before/after, pressure_kpa_before/after). The run is refused if that pressure would exceed the weakest remaining pipe (would_burst), and on burst_pipe, no_atmosphere, atmosphere_busy (a game event or a queued move_gas touching the network is waiting for the next atmospherics tick) or content_mismatch. remove_dead_ends never deletes contents: the game's own removal of a network's last pipe divides its gas among no network (it is lost), so the pieces of a network that removal would empty while it still holds gas or liquid stay, with stopped_by holds_contents and the moles; an empty isolated pipe is removed. The hold is per network, not per stub: a line with two open ends whose rounds would end in emptying it keeps every stub (it is never trimmed down to fewer pipes). remove_redundant holds back the same way (kept reason blocked:holds_contents), counting what earlier operations of the request remove, and treats a member that is not a pipe piece (an in-line tank, a passive vent) as part of the network that stays joined, so the pipes that join it stay (1.4.4+). After a run the verification checks the same Atmosphere, the predicted volume, unchanged contents, links and member count; when the game renumbered a network (a new piece that registered with no connected neighbour got a network of its own, into which the old one was merged), it checks the survivor, whose entry names the old id in renumbered_from (1.4.4+). split_long_straights builds each long straight's singles from its connected tip, so each joins the network as it stands and the network keeps its id. Kits instead of coils. Host only. No gateway is needed. remove_redundant (with keep_ids, only_ids, older_than_id, root) as clean_cables (1.3.0+). Job slot (1.3.0+): while another job runs, a real run answers status busy with running_job_id (nothing changed); wait: true queues it instead (status queued, its own job_id, position; up to 8 wait), and it starts once the slot is free, its whole preflight run again on the world the earlier jobs left. Network handles (1.3.0+): wherever a network id is taken (network_id, to.network_id, join_to, allow_bridge entries) a reference id of any piece or device on the network, or {reference_id, port} of a device port, works too and is resolved to the current id when the call runs (ids change after almost every edit); the reply lists each in resolved_networks [{argument, given, network_id}]. In allow_bridge a bare device id stays the device (its ports may share a network); name one of its networks with {reference_id, port}. Gas check (1.4.1+): the job applies the game's queued gas changes after every piece it builds (the game applies them only at the next tick, and two network merges in one tick lost a network's gas), then compares every family of pipe networks it changed (1.4.4+: networks sharing a pipe, or a cell a pipe filled before and one fills after, whichever id the game's merges kept), moles and energy, before and after: gas_check {checked, ok, summary, families [{networks_before, networks_after, mol_before, mol_after, energy_before_j, energy_after_j, planned_loss_mol, missing_mol, emptied, ok}], ghosts (networks without pipes left holding gas, with the devices still on them), recovered [{into, mol, energy_j}] (gas the merge lost, put back; never past a network's weakest pipe), withheld (1.4.4+: [{network_id, family_networks, mol, pressure_after_kpa, rating_kpa}] gas a family lacks that was not put back because it would take that network over its weakest pipe, which would burst; the check fails), ghosts_cleared, old_ghosts (pipeless networks that already held that gas before), orphans (1.4.4+: networks the game no longer lists that pipes still name [{network_id, pipes, mol, energy_j, volume_l}]; nothing simulates them and their gas counts where it sits, so a copy shows as gas that appeared; any fails the check), old_orphans (such networks already there before the job)}. Status gas_lost when anything is still missing; every later pipe job (place_structure and remove_structure runs too when they place or remove a pipe piece, in-line tank, passive vent or anything with a pipe end) is then refused (gas_check_failed) until the world is loaded again (a save loaded, or back to the menu) or the loss is acknowledged (acknowledge_gas_lost; see Gas hold below). Dry runs still answer.",
+    {"$include": "defs/text/gas_hold.txt"}
+  ],
+  "class": "write",
+  "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
+  "cost": "job",
+  "x-cost-when": [
+    {"when": {"job_id": {"present": true}}, "cost": "instant"},
+    {"when": {"dry_run": {"absent": true}}, "cost": "plan"},
+    {"when": {"dry_run": {"equals": true}}, "cost": "plan"}
+  ],
+  "params": {
+    "type": "object",
+    "properties": {
+      "network_id": {
+        "oneOf": [
+          {"type": "string"},
+          {
+            "type": "object",
+            "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+            "required": ["reference_id"],
+            "additionalProperties": false
+          }
+        ],
+        "description": "A pipe network, every piece of it: its id, a piece or device on it, or {reference_id, port}. Give this or reference_ids."
+      },
+      "reference_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4096,
+        "items": {"type": "string"},
+        "description": "pipe pieces to clean up, by reference id. Give this or network_id."
+      },
+      "keep_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4096,
+        "items": {"type": "string"},
+        "description": "remove_loops: pieces whose loops are spared whole (a loop's pieces are listed in a dry run); remove_redundant: pieces never removed (e.g. a run's created_ids)."
+      },
+      "only_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4096,
+        "items": {"type": "string"},
+        "description": "remove_redundant only: the only pieces that may go."
+      },
+      "older_than_id": {
+        "type": "string",
+        "description": "remove_redundant only: only pieces with a lower reference id (built before this one) may go; any reference id works as the threshold, standing or not."
+      },
+      "root": {
+        "type": "string",
+        "description": "remove_redundant only: the device the network is fed from. Default every supplier on it."
+      },
+      "wait": {"$ref": "defs/wait.json"},
+      "operations": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 6,
+        "items": {
+          "type": "string",
+          "enum": [
+            "remove_dead_ends",
+            "remove_loops",
+            "remove_redundant",
+            "split_long_straights",
+            "merge_straights",
+            "simplify_junctions"
+          ]
+        },
+        "description": "What to do, alone or together (not split_long_straights with merge_straights). Default [\"simplify_junctions\"]."
+      },
+      "dry_run": {"$ref": "defs/dry_run.json"},
+      "confirm": {"$ref": "defs/confirm.json"},
+      "from_id": {
+        "type": "string",
+        "description": "The thing whose inventory gives the coils or kits needed and takes the refund. Default the local player; with neither, a run that takes no coils (removing dead ends, merging straights) and whose refund_to is not the single word source goes ahead, the refund following refund_to (the ground where the first piece stood at the end), else no_local_player."
+      },
+      "skip_unmatched": {"$ref": "defs/skip_unmatched.json"},
+      "refund": {
+        "type": "boolean",
+        "description": "Give back coils or kits where the new pieces cost less. Default true; false is refund_to none."
+      },
+      "refund_to": {"$ref": "defs/refund_to.json"},
+      "limit": {"$ref": "defs/limit.json"},
+      "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."},
+      "acknowledge_gas_lost": {"$ref": "defs/acknowledge_gas_lost.json"}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "job_id": {"type": ["string", "null"]},
+      "tool": {"type": "string"},
+      "status": {"type": "string"},
+      "position": {"type": "integer"},
+      "running_job_id": {"type": ["string", "null"]},
+      "preflight": {},
+      "preflight_summary": {"type": ["object", "null"]},
+      "target": {"type": "string"},
+      "ready": {"type": "boolean"},
+      "problems": {"type": "array"},
+      "pieces_total": {"type": "integer"},
+      "to_swap": {"type": "integer"},
+      "kept": {"type": "integer"},
+      "unmatched": {"type": "integer"},
+      "pieces": {"type": "array"},
+      "pieces_listed": {"type": "integer"},
+      "by_prefab": {"type": "array"},
+      "kept_pieces": {"type": "array"},
+      "unmatched_pieces": {"type": "array"},
+      "dead_ends": {"type": ["integer", "null"]},
+      "dead_end_pieces": {"type": ["array", "null"]},
+      "loops": {"type": ["array", "null"]},
+      "redundant": {"type": ["object", "null"]},
+      "from": {"type": ["object", "null"]},
+      "coils": {"type": "array"},
+      "refund_enabled": {"type": "boolean"},
+      "refund": {"type": "array"},
+      "refund_plan": {"type": ["object", "null"]},
+      "networks": {"type": "array"},
+      "devices": {"type": "array"},
+      "connectivity": {"type": ["object", "null"]},
+      "notes": {"type": "array"},
+      "waiting": {"type": "integer"},
+      "message": {"type": "string"},
+      "final_check": {"type": ["object", "null"]},
+      "swapped": {"type": "array"},
+      "swapped_count": {"type": "integer"},
+      "removed": {"type": ["array", "null"]},
+      "not_swapped": {"type": "array"},
+      "stopped_at": {"type": ["object", "null"]},
+      "used": {"type": "array"},
+      "refund_delivered": {"type": "array"},
+      "refund_error": {"type": ["object", "null"]},
+      "verification": {"type": ["object", "null"]},
+      "gas_check": {"type": ["object", "null"]},
+      "error": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["JobQueuedView", "UpgradeReportView", "JobBusyView", "UpgradeJobView", "JobDroppedView"],
+  "x-shaping": "lists",
+  "x-job": {"poll_param": "job_id"}
+}

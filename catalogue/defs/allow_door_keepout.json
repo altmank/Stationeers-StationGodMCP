@@ -1,0 +1,4 @@
+{
+  "type": "boolean",
+  "description": "Default false: a new piece in a door's keep-out (its face and the configured band, 0.5 m by default, either side inside its rectangle; its own port cells released) is refused with in_door_keepout. true makes it a warning."
+}

@@ -226,6 +226,8 @@ carry it, so read the per-method `mean_ms` and `max_ms` instead.
 called: the main-thread time of the tool (`handler_ms`) and of turning its reply into text (`serialize_ms`), the wait
 for the next frame (`queue_wait_ms`) and the reply's size (`reply_bytes`), each as total, mean and max. Per frame: how
 many requests were answered and how long they took (`frames`), and how often the request budget left some for the
-next frame (`budget_stops`). And the game's garbage collector and Mono heap (`memory`). A frame spends at most
+next frame (`budget_stops`). And the game's garbage collector and Mono heap (`memory`). `catalogue_drift` lists any
+argument name a method's code read that its catalogue entry does not declare (`method`, `argument`, `reads`); it should
+stay empty, and the mod's log names the first read of each. A frame spends at most
 `[Performance] RequestBudgetMs` (4 ms by default, at most 2 ms while a job holds the game tick) on requests; the rest
 wait for the next frame, in order (see [configuration](configuration.md)).

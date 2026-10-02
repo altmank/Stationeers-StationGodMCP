@@ -1,0 +1,18 @@
+{
+  "name": "vault_contents",
+  "description": "What each Ingot Vault (IngotVault Workshop mod 3749011679) stores, read from the vault's own store, exact to 1e-6 rather than the screen's one decimal: ingots as grams of reagent (kind ingot, reagent = the stored reagent, prefab_name = the ingot a vend makes), ores and ices as counts (kind ore). Returns {vaults: [{vault {reference_id, prefab_name, display_name}, position, on_off, powered, stock: [{kind, prefab_name, display_name, reagent, max_stack, quantity}], pending_vends (vends taken off the store and not yet made into the export slot)}], remote_vaults: [{remote, vault_id (the one vault on its data network, or null), connection (None, NoVaultDetected, MultipleVaultsDetected, VaultPoweredOff)}], count}. vault_id: one vault (a Remote Vault id reads the vault it reaches). find_items and item_totals list a vault's ingots only as machine stock of kind processing and do not see its ores; use this. Refusals: ingot_vault_mod_required (IngotVault not loaded), ingot_vault_changed (IngotVault no longer has a member these tools use, named), not_a_vault, vault_not_connected, thing_not_found. Read only. No gateway is needed.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {"vault_id": {"type": "string", "description": "One Ingot Vault or Remote Vault; default every vault."}},
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {"vaults": {"type": "array"}, "remote_vaults": {"type": "array"}, "count": {"type": "integer"}}
+  },
+  "x-views": ["VaultContentsView"],
+  "x-shaping": "lists",
+  "x-needs-mod": ["IngotVault"]
+}

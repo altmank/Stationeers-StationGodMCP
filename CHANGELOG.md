@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **The method catalogue (new).** Every tool's description, argument schema, permission class, cost class and reply
+  keys now live in one file, `catalogue.json`, built from `catalogue/` and embedded in both the mod and the sidecar.
+  The sidecar's tool list comes from it, and so do the argument names the mod accepts from pipe clients (it replaces
+  `tool-arguments.json`). Tools, descriptions and argument names are unchanged; tool schemas now also carry the
+  integer bounds the mod already enforced (`minimum`, `maximum`), and the tool list is in name order.
+- **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
+  declare, per method; it should stay empty.
+
 ## 1.10.0
 
 2026-10-01. Performance, part 2: one read per tick. 91 tools.

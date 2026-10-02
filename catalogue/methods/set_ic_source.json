@@ -1,0 +1,39 @@
+{
+  "name": "set_ic_source",
+  "description": "Write source to the programmable chip of a visible circuit holder, as the IC editor's export does. IC10: compiled at once and restarted at line 0; a paused chip stays paused (at line 0), and registers and the stack are kept (sp is reset to 0). The chip stores IC10 source as ASCII and runs what it stores: CRLF and lone CR line ends become LF (the chip splits lines on LF only) and each non-ASCII character '?' (warnings crlf_normalised, cr_normalised, non_ascii_replaced). The chip runs source of any length, but the in-game editor holds 128 lines of up to 90 characters and 4096 characters in all, and cuts a longer source when a player opens and submits it: warnings over_editor_lines, over_editor_line_length (names every long line, 0-based; past 10, their count and the first 10), over_editor_size (the source is still written). compilation_error true comes with compile_error_line (0-based) and compile_error_type; error_line and error_type are the runtime error's (error_line is the game's own text, a string such as \"0\", while compile_error_line is an integer); error_code is the game's error text without its rich-text tags. warnings is [] for Lua. Lua (a StationeersLua chip in an IC Housing, a ScriptedScreens Console or Computer board, a tablet cartridge or a Programmable Visor): no IC10 line or byte limit; up to 262144 characters (larger is refused with source_too_large). StationeersLua stores it compressed, drops the old runtime and compiles the new source on a worker thread, running its module-level code once and then tick(dt) every game tick; a source that failed before is compiled again. No separate restart is needed. The reply's lua.compiling is usually still true: call get_ic_status until it is false, then check lua.running and lua.last_error. A holder that is off or unpowered compiles when it runs again. A holder with no programmable chip is refused with no_programmable_chip. Writes; sends the chip to multiplayer clients.",
+  "class": "write",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"$ref": "defs/reference_id.json"},
+      "source": {"type": "string", "description": "The complete source: IC10, or Lua for a Lua chip (up to 262144 characters)."}
+    },
+    "required": ["reference_id", "source"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "reference_id": {"type": "string"},
+      "source": {"type": ["string", "null"]},
+      "line_number": {"type": "number"},
+      "compilation_error": {"type": "boolean"},
+      "error_line": {"type": ["string", "null"]},
+      "error_type": {"type": ["string", "null"]},
+      "error_code": {"type": ["string", "null"]},
+      "compile_error_line": {"type": ["integer", "null"]},
+      "compile_error_type": {"type": ["string", "null"]},
+      "language": {"type": "string"},
+      "holder": {"type": "object"},
+      "chip": {"type": "object"},
+      "source_length": {"type": "integer"},
+      "lua": {"type": ["object", "null"]},
+      "warnings": {"type": "array"}
+    }
+  },
+  "x-views": ["IcSourceSetView"],
+  "x-shaping": "none"
+}

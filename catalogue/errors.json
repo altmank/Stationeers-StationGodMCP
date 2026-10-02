@@ -1,0 +1,345 @@
+{
+  "ambiguous_axis": {"description": "<name>: <…> is turned off the grid's axes; use frame world or player.", "origin": "tool"},
+  "ambiguous_circuit_holder": {
+    "description": "Device <reference_id> (<prefab_name>) holds <count> circuit holders (<…>); pass the reference id of the one you mean.",
+    "origin": "tool"
+  },
+  "ambiguous_item": {"description": "<count> of the trader's entries are <…>; give both name and prefab_name.", "origin": "tool"},
+  "ambiguous_node": {"description": "'<wanted>' names <count> nodes: <…>. Give the code.", "origin": "tool"},
+  "ambiguous_port": {
+    "description": "<name>: <prefab_name> <reference_id> is on <count> <network_kind> networks [<…>]; name one with {reference_id, port} (ports: <…>).",
+    "origin": "tool"
+  },
+  "ambiguous_rocket": {"description": "There are <count> rockets: give rocket_id, one of <…>.", "origin": "tool"},
+  "assumed_present": {"description": "Refused with assumed_present.", "origin": "tool"},
+  "atmosphere_not_found": {"description": "'<name>': no thing, pipe network or atmosphere has id <id>.", "origin": "tool"},
+  "blueprint_failed": {"description": "BlueprintMod read nothing from '<path>'.", "origin": "tool"},
+  "build_failed": {"description": "Replacing <prefab_name> <reference_id> by its singles failed: <message>", "origin": "tool"},
+  "busy": {
+    "description": "<maximum_pending> moves are already waiting for the next atmospherics tick (is the game paused?).",
+    "origin": "tool"
+  },
+  "cancelled": {"description": "Cancelled before it started. Nothing ran.", "origin": "protocol", "caller_may_resend": "yes"},
+  "card_not_found": {"description": "Reference id <value> is not a credit card.", "origin": "tool"},
+  "card_not_usable": {
+    "description": "Credit card <reference_id> <where>. The game's sell takes goods from the card holder too and works only with a card a player carries or a vending machine holds.",
+    "origin": "tool"
+  },
+  "cheat_not_armed": {
+    "description": "The connection's level allows cheat, but the owner has not approved it now. Nothing ran.",
+    "origin": "protocol"
+  },
+  "coils_short": {
+    "description": "Only <taken> of <cost> <…> could be taken for cell <cell>; the build stopped before it (what was taken is given back).",
+    "origin": "tool"
+  },
+  "command_not_found": {
+    "description": "No console command is registered as '<key>'. Run the console command 'help' to list them.",
+    "origin": "tool"
+  },
+  "command_not_ready": {
+    "description": "'<key>' needs an initialised GameManager. The console would not run it now: it would be queued and fired later during world init, out of band and with its output attributed to nothing. Retry once the game has finished loading.",
+    "origin": "tool"
+  },
+  "confirm_required": {"description": "A real run needs dry_run: false and confirm: true; nothing was changed.", "origin": "tool"},
+  "contact_not_found": {"description": "No trader contact has reference id <contact_id>.", "origin": "tool"},
+  "device_not_found": {"description": "Pin d<index>: device <id> is not visible <where>.", "origin": "tool"},
+  "dish_not_ready": {"description": "The dish has no horizontal pivot or pointing transform.", "origin": "tool"},
+  "duplicate_id": {"description": "The id is already in flight on this connection. Nothing ran.", "origin": "protocol"},
+  "engine_not_modelled": {
+    "description": "<…> is a <…>; the forecast flies only the Pumped Gas Engine (GovernedGasEngine), whose draw does not depend on pressure.",
+    "origin": "tool"
+  },
+  "final_check_failed": {
+    "description": "The check once the tick had stopped found <count> problem(s); nothing was changed.",
+    "origin": "tool"
+  },
+  "game_changed": {"description": "A game member this method needs is missing in this game build.", "origin": "protocol"},
+  "game_not_running": {"description": "The world is not running.", "origin": "tool"},
+  "game_timeout": {
+    "description": "The call was not started before its deadline. Nothing ran.",
+    "origin": "protocol",
+    "caller_may_resend": "yes"
+  },
+  "game_unavailable": {
+    "description": "The sidecar could not reach the mod (no pipe, or another client held it), or the mod took the call and sent no reply in time; in that case the call may still have run.",
+    "origin": "client",
+    "caller_may_resend": "if_read"
+  },
+  "gas_check_failed": {"description": "Refused with gas_check_failed.", "origin": "tool"},
+  "gas_hold_mismatch": {"description": "Refused with gas_hold_mismatch.", "origin": "tool"},
+  "gateway_not_found": {"description": "No StationGod Gateway has reference ID <id>.", "origin": "tool"},
+  "gateway_unavailable": {"description": "Gateway <id> is unavailable: <unavailable>.", "origin": "tool"},
+  "has_color_state": {"description": "<…> keeps its colour as an animator state; the spray can does not paint it.", "origin": "tool"},
+  "ic_compile_error": {"description": "The IC cannot be stepped while it has a compilation error.", "origin": "tool"},
+  "ic_not_operable": {"description": "Refused with ic_not_operable.", "origin": "tool"},
+  "in_vault_slot": {"description": "<…> is in a slot of <…>; take it out or let the vault finish.", "origin": "tool"},
+  "ingot_vault_changed": {
+    "description": "The IngotVault mod has changed: <…> is gone. This StationGod build needs an update for this IngotVault version; nothing was changed.",
+    "origin": "tool"
+  },
+  "ingot_vault_mod_required": {
+    "description": "The vault tools need the IngotVault mod (Steam Workshop 3749011679), which is not loaded.",
+    "origin": "tool"
+  },
+  "insufficient_available": {"description": "Only <available> that the trader accepts are <…><after>.", "origin": "tool"},
+  "insufficient_credits": {"description": "This costs <cost>; the card holds <currency>.", "origin": "tool"},
+  "insufficient_stock": {"description": "The trader has <limit> in stock.", "origin": "tool"},
+  "internal_error": {"description": "A bug. The method may have partly run.", "origin": "protocol"},
+  "invalid_argument": {
+    "description": "The arguments break the catalogue (version 2) or a tool's own reading (both versions). Nothing ran.",
+    "origin": "protocol"
+  },
+  "invalid_color": {"description": "Empty color.", "origin": "tool"},
+  "invalid_destination": {"description": "<…> is <…> or inside it.", "origin": "tool"},
+  "invalid_logic_type": {"description": "Refused with invalid_logic_type.", "origin": "tool"},
+  "invalid_prefab": {"description": "Refused with invalid_prefab.", "origin": "tool"},
+  "invalid_shape": {"description": "Version 2 only: shape is malformed. Nothing ran.", "origin": "protocol"},
+  "job_not_found": {"description": "No job <id> is running, queued or among the last <kept_jobs>.", "origin": "tool"},
+  "joined_too_large": {
+    "description": "More than <maximum_members> atmospheres are joined; pass joined: false to move from the named one only.",
+    "origin": "tool"
+  },
+  "logic_not_readable": {"description": "Device does not expose <…> as readable.", "origin": "tool"},
+  "logic_not_writable": {"description": "Device <reference_id> does not expose <…> as writable.", "origin": "tool"},
+  "long_piece": {
+    "description": "<prefab_name> <reference_id> is a long straight; start from one of its cells with <name>.at, or make it the target (to), where the route may join any of its cells.",
+    "origin": "tool"
+  },
+  "lua_changed": {"description": "Refused with lua_changed.", "origin": "tool"},
+  "lua_chip_unsupported": {
+    "description": "A Lua chip cannot <action>: it runs a whole tick(dt) per game tick, with no line to stop at. Use restart to run it again from the start, or set_ic_source to change it.",
+    "origin": "tool"
+  },
+  "lua_not_installed": {"description": "Refused with lua_not_installed.", "origin": "tool"},
+  "materials_failed": {"description": "Refused with materials_failed.", "origin": "tool"},
+  "materials_short": {
+    "description": "Only <taken> of <charge> <…> could be taken for this piece; it was swapped and the run stopped after it.",
+    "origin": "tool"
+  },
+  "memory_not_readable": {"description": "Device <reference_id> does not expose readable memory.", "origin": "tool"},
+  "memory_not_writable": {"description": "Device <reference_id> does not expose writable memory.", "origin": "tool"},
+  "method_not_found": {"description": "No such method.", "origin": "protocol"},
+  "mod_missing": {"description": "BlueprintMod has not set up its Blueprints folder yet; pass an absolute path.", "origin": "tool"},
+  "move_failed": {"description": "Refused with move_failed.", "origin": "tool"},
+  "network_empty": {"description": "Network <network> has no <noun> piece.", "origin": "tool"},
+  "network_gone": {"description": "Network <id> no longer exists.", "origin": "tool"},
+  "network_not_found": {"description": "No <kind> network has id <id>.", "origin": "tool"},
+  "no_atmosphere": {
+    "description": "<name> (<id>) holds no gas or liquid: it has no internal atmosphere, is not a pipe or a landing pad piece, is connected to no pipe network and has nothing with an atmosphere in its slots.",
+    "origin": "tool"
+  },
+  "no_camera": {
+    "description": "near: there is no player camera to look from (a dedicated server has none); pass near.",
+    "origin": "tool"
+  },
+  "no_credit_card": {"description": "Refused with no_credit_card.", "origin": "tool"},
+  "no_crosshair_hit": {"description": "near: the look ray hits nothing within 20 m; pass near.", "origin": "tool"},
+  "no_cursor": {"description": "The game has no placement cursor for <prefab_name>.", "origin": "tool"},
+  "no_face": {
+    "description": "<name>: the look ray hits <point>, which is not on a 2 m face plane; look straight at a wall, floor or ceiling.",
+    "origin": "tool"
+  },
+  "no_flight_log": {"description": "This rocket has no flight log: start one with action start.", "origin": "tool"},
+  "no_free_slot": {"description": "<…> has no slot that takes <…>.", "origin": "tool"},
+  "no_fuel_line": {
+    "description": "No engine on this rocket has a pipe network on its input: there is nothing to burn.",
+    "origin": "tool"
+  },
+  "no_genes": {"description": "<…> has no gene set yet.", "origin": "tool"},
+  "no_kit": {"description": "No coil or kit places <…> pieces.", "origin": "tool"},
+  "no_line_shader": {"description": "This build of the game has no built-in shader to draw lines with.", "origin": "tool"},
+  "no_local_player": {"description": "There is no local player in this game (a dedicated server has none).", "origin": "tool"},
+  "no_network": {"description": "<name>: <prefab_name> <id> is on no network.", "origin": "tool"},
+  "no_programmable_chip": {
+    "description": "Device <reference_id> (<prefab_name>) keeps its memory on a programmable chip and has none installed.",
+    "origin": "tool"
+  },
+  "no_reagents": {"description": "<…> carries no reagents; the vault would destroy it and store nothing.", "origin": "tool"},
+  "no_room": {
+    "description": "No vending machine on the pad's network, nor the card holder, has an empty tradable slot.",
+    "origin": "tool"
+  },
+  "no_run_between": {
+    "description": "No run of <noun> pieces joins <reference_id> and <reference_id> by the model's links.",
+    "origin": "tool"
+  },
+  "no_save_folder": {"description": "No save is loaded, so there is no folder for the CSV.", "origin": "tool"},
+  "no_slots": {"description": "<…> has no slots.", "origin": "tool"},
+  "no_target": {"description": "The rocket stands on its pad with no target: give 'to' (a node's name or code).", "origin": "tool"},
+  "no_world": {"description": "No world is loaded.", "origin": "tool"},
+  "no_xray_material": {
+    "description": "Neither the T-Ray SPU's material nor a built-in shader to draw through walls with was found.",
+    "origin": "tool"
+  },
+  "node_not_found": {"description": "No space-map node is called '<wanted>': give its name, its map code, or 'pad'.", "origin": "tool"},
+  "not_a_lua_chip": {
+    "description": "restart is for Lua chips; an IC10 chip restarts at line 0 when set_ic_source writes it.",
+    "origin": "tool"
+  },
+  "not_a_plant": {"description": "<…> (<…>) is not a plant, seed or plant produce.", "origin": "tool"},
+  "not_a_segment": {
+    "description": "The pieces meet the rest of the world at <count> cell(s) [<…>], not two: a reroute replaces a run with one way in and one way out. Name a segment without branches or dead ends.",
+    "origin": "tool"
+  },
+  "not_a_vault": {"description": "<…> (<id>) is not an Ingot Vault or a Remote Vault.", "origin": "tool"},
+  "not_connectable": {"description": "<…> (<…>) is not a pipe, cable, chute or device, so it has no connection ends.", "origin": "tool"},
+  "not_enough_coils": {"description": "Refused with not_enough_coils.", "origin": "tool"},
+  "not_enough_kits": {"description": "Refused with not_enough_kits.", "origin": "tool"},
+  "not_enough_stock": {"description": "The vault holds <…> <…>; cannot take <quantity>.", "origin": "tool"},
+  "not_host": {"description": "This game is a multiplayer client; only the host moves gas.", "origin": "tool"},
+  "not_ic_housing": {
+    "description": "Circuit holder <holder_id> (<prefab_name>) is a <name>; only an IC Housing's pins can be set.",
+    "origin": "tool"
+  },
+  "not_in_room": {"description": "Thing <id> is not in a closed room: its cell is outside.", "origin": "tool"},
+  "not_in_vault": {"description": "The vault holds no <…>; it holds <…>.", "origin": "tool"},
+  "not_labelable": {"description": "Refused with not_labelable.", "origin": "tool"},
+  "not_landed": {"description": "Refused with not_landed.", "origin": "tool"},
+  "not_logic_device": {"description": "Pin d<index>: <id> is a <…>, not a logic device a pin can hold.", "origin": "tool"},
+  "not_movable": {"description": "<…> is not an item that fits in a slot.", "origin": "tool"},
+  "not_on_data_network": {
+    "description": "Pin d<index>: device <id> (<…>) is not on IC Housing <reference_id>'s data network, so the chip would not reach it through the pin. Connect it to the housing's data network, or pass allow_off_network to store it anyway.",
+    "origin": "tool"
+  },
+  "not_on_network": {
+    "description": "<prefab_name> <reference_id> is not on network <wanted>; its <noun> networks: [<…>].",
+    "origin": "tool"
+  },
+  "not_paintable": {"description": "<…> refused the paint (its SetCustomColor is not implemented).", "origin": "tool"},
+  "not_ready": {"description": "The world grid is not loaded.", "origin": "tool"},
+  "not_solar_panel": {"description": "Reference id <id> is not a solar panel.", "origin": "tool"},
+  "not_sold": {"description": "The trader does not <…> <…>.", "origin": "tool"},
+  "not_vault_material": {"description": "<…> is not something the vault imports: it keeps ingots, ores and ices only.", "origin": "tool"},
+  "not_wanted": {"description": "The trader wants only <wanted> more<after>.", "origin": "tool"},
+  "nothing_to_move": {"description": "The source holds none of the requested gases.", "origin": "tool"},
+  "out_of_range": {
+    "description": "Gene <gene>: <value> is outside the game's range <minimum> to <maximum>; pass force to write it anyway.",
+    "origin": "tool"
+  },
+  "pad_unavailable": {"description": "Refused with pad_unavailable.", "origin": "tool"},
+  "paint_failed": {"description": "<…> still shows colour index <now> after painting it <color_index>.", "origin": "tool"},
+  "partial_merge": {"description": "Part of a stack can only go into an empty slot; the game has no partial merge.", "origin": "tool"},
+  "paste_refused": {"description": "Refused with paste_refused.", "origin": "tool"},
+  "permission_denied": {
+    "description": "The method, at the arguments given, needs a higher level than the connection has; or run_console_command was asked to run a stationgod command. Nothing ran.",
+    "origin": "protocol"
+  },
+  "plant_not_found": {"description": "Nothing with reference id <id> is a plant.", "origin": "tool"},
+  "planted": {
+    "description": "<…> is growing in <…>: a player never takes a plant out whole, only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.",
+    "origin": "tool"
+  },
+  "port_not_joined": {"description": "Port <value> of <prefab_name> <reference_id> joins no <noun> network.", "origin": "tool"},
+  "prefab_missing": {"description": "No item prefab <prefab_hash> exists to make.", "origin": "tool"},
+  "protocol_error": {
+    "description": "A message the protocol does not allow: not a JSON object, unknown type, unknown top-level key, a call before welcome, a repeated hello, sign-in not finished within 10 seconds of connecting. The connection is closed after the reply.",
+    "origin": "protocol"
+  },
+  "read_failed": {"description": "Refused with read_failed.", "origin": "tool"},
+  "refund_failed": {"description": "Refused with refund_failed.", "origin": "tool"},
+  "refused": {
+    "description": "'<name>': atmosphere <reference_id> is a <mode> atmosphere. A single world cell is not moved to or from; name its room ({\"room_id\"} or {\"room_of\"}) instead.",
+    "origin": "tool"
+  },
+  "remove_failed": {"description": "Removing <prefab_name> <reference_id> failed: <message>", "origin": "tool"},
+  "reply_too_large": {
+    "description": "The reply would exceed shape.max_bytes or limits.max_reply_bytes. The method ran.",
+    "origin": "protocol",
+    "caller_may_resend": "if_read"
+  },
+  "request_too_large": {"description": "A message longer than limits.max_request_bytes. The connection is closed.", "origin": "protocol"},
+  "rocket_not_found": {
+    "description": "No rocket has the id <value>: give a rocket's, its rocket network's or any of its parts' reference id.",
+    "origin": "tool"
+  },
+  "room_not_found": {"description": "No room has id <id>.", "origin": "tool"},
+  "rule_error": {"description": "Refused with rule_error.", "origin": "tool"},
+  "rule_not_found": {"description": "Refused with rule_not_found.", "origin": "tool"},
+  "same_joined_set": {
+    "description": "'to' is joined to 'from' (the game mixes them every tick), so the gas would flow straight back. Pass joined: false to move between them anyway.",
+    "origin": "tool"
+  },
+  "same_slot": {"description": "<…> is already in that slot.", "origin": "tool"},
+  "save_started": {
+    "description": "A save started while waiting for the game tick; nothing was changed. Run it again.",
+    "origin": "tool"
+  },
+  "sell_separately": {
+    "description": "An earlier line of this call sold goods the game would take again for this entry (they leave their slots only at the end of the frame); sell this entry in a call of its own.",
+    "origin": "tool"
+  },
+  "shutting_down": {
+    "description": "The mod is stopping or the world is unloading; the call was not started.",
+    "origin": "protocol",
+    "caller_may_resend": "yes"
+  },
+  "slot_locked": {"description": "<…> is in a locked slot.", "origin": "tool"},
+  "slot_not_found": {"description": "<…> has no slot <index> (it has <count>).", "origin": "tool"},
+  "slot_occupied": {"description": "<…> already has <…> planted; a plant slot holds one plant.", "origin": "tool"},
+  "slot_refuses": {"description": "The game has no plant that <…> grows into.", "origin": "tool"},
+  "source_too_large": {
+    "description": "The Lua source is <…> characters; the limit is <…>. Split it into library chips (--@module) and require them.",
+    "origin": "tool"
+  },
+  "stack_full": {"description": "<…> holds <quantity> of <max_quantity>; <quantity> more do not fit.", "origin": "tool"},
+  "subject_not_found": {
+    "description": "Rule <id> selects <set>; none of those around the place given is the subject named.",
+    "origin": "tool"
+  },
+  "subscription_limit": {
+    "description": "A subscription would exceed a per-subscription, connection or global limit; poll instead.",
+    "origin": "protocol"
+  },
+  "terraforming_mod_required": {
+    "description": "Removing gas from the planet needs Terraforming Reloaded: the stock game keeps the planet's air read-only, so a removal would not last.",
+    "origin": "tool"
+  },
+  "thing_not_found": {
+    "description": "No thing, pipe or landing pad network or thing's atmosphere has reference id <id>. Room and world air cannot be looked up this way.",
+    "origin": "tool"
+  },
+  "tick_held": {
+    "description": "An earlier job's atmosphere work ran past its time limit and is still running; the tick stays held until it ends. Try again, or pass wait: true to queue the run.",
+    "origin": "tool"
+  },
+  "tick_not_stopped": {"description": "The game tick did not stop in time; nothing was changed.", "origin": "tool"},
+  "too_many_in_flight": {
+    "description": "More calls in flight than limits.max_in_flight. Nothing ran.",
+    "origin": "protocol",
+    "caller_may_resend": "yes"
+  },
+  "too_many_pieces": {"description": "Network <network> has <count> members.", "origin": "tool"},
+  "trade_failed": {"description": "Refused with trade_failed.", "origin": "tool"},
+  "transfer_not_found": {"description": "No move <id> is waiting or among the last <kept_outcomes> applied.", "origin": "tool"},
+  "unauthorized": {
+    "description": "Bad or missing key proof, unknown client name, auth.client not equal to hello.client.name, an anonymous TCP connection, or a key not allowed on this transport; today also the TCP bridge refusing the shared secret. The connection is closed.",
+    "origin": "protocol"
+  },
+  "unit_out_of_range": {"description": "<…> has <count> gene set(s), the top one last: unit must be 0 to <…>.", "origin": "tool"},
+  "unknown_gas": {
+    "description": "'<item>' is not a gas name as atmosphere_contents reports them (Oxygen, Nitrogen, CarbonDioxide, LiquidOxygen, Steam...).",
+    "origin": "tool"
+  },
+  "unknown_gene": {"description": "'<name>' is not a gene. Genes: <…>.", "origin": "tool"},
+  "unknown_subscription": {"description": "unsubscribe of an id this connection does not have.", "origin": "protocol"},
+  "unsupported_protocol": {"description": "No common major version.", "origin": "protocol"},
+  "vault_display_slot": {
+    "description": "Slot <index> of <…> only shows the vault's store; use vault_deposit to store items.",
+    "origin": "tool"
+  },
+  "vault_not_connected": {
+    "description": "Remote Vault <id> reaches no vault (<connection>): it needs exactly one Ingot Vault on its data network.",
+    "origin": "tool"
+  },
+  "vault_not_ready": {"description": "<…> has no store yet.", "origin": "tool"},
+  "vault_unpowered": {
+    "description": "<…> (<reference_id>) is <…>; the vault neither imports nor vends then. Nothing was changed.",
+    "origin": "tool"
+  },
+  "would_burst": {
+    "description": "'<name>' <verb> <predicted> kPa against a limit of <…> kPa (<member>: <max_kpa> kPa across, <outside_kpa> kPa outside). Pass force to move it anyway.",
+    "origin": "tool"
+  },
+  "write_failed": {"description": "Refused with write_failed.", "origin": "tool"}
+}

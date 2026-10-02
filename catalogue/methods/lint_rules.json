@@ -1,0 +1,40 @@
+{
+  "name": "lint_rules",
+  "description": "The lint rule set (1.7.0+) lint_layout audits with and the place and plan tools run on what they would place: lint-rules.json in the mod's folder, with lint-rules.json in the loaded save's folder (saves\\<station>\\) taking priority. A rule: id, level (problem, warning, info; level_when an expression giving it per finding), on ([\"audit\", \"dry_run\"]), select (a set: pieces, devices, structures, things, ports, cells, networks, rooms, with 'where <expression>', or pairs(<set>, within: <metres>) for each unordered pair whose mesh boxes are that close), let (named expressions), assert (an expression each subject must hold), message (with {expression} parts), other (the thing a finding names besides its subject), description, examples ({pass: [...], fail: [...]}: subjects written as their fields; \"fn()\": value fixes a function's result on that object), enabled. Expressions are typed and checked at load: and, or, not, comparisons, + - * / %, in, matches (glob), matches_regex, ?. and ?? and has(x) for nulls (a value that may be null must be guarded before it is read), let x = e in body, if(c, a, b), lists [...], the collection forms any, all, count, sum, min, max, first, map, filter, flat_map, sort_by, distinct with x => lambdas, member access on the model (thing, port, network, cell, room, slot, world ...) and library functions. action: list (default; the rules in effect and where each came from; rule_id for one rule in full, full: true for every rule's expressions), validate (the files in effect, or text: a lint-rules.json's content checked as the save's file before it is saved; errors give file, rule_id, field, line, column and the character in the expression), fields (every object type with its fields' types and meanings, and the sets), functions (the forms and every library function with its signature: replaceable, controls_side, controls_blocked, sun_blocked, weather_exposed, logic, freezing_point, auto_ignition_temperature, drill_column, mesh_overlap, shares_cell, seam_sections, distance, cells_of, neighbors, upstream, downstream, chip_batch_names, chip_writes, hash, is_fuel, is_oxidiser, mol_of, and text and number helpers), test (run every rule's examples, or rule_id's, without the world: tests [{id, passed, examples [{expected, index, actual, ok, message, error}]}], all_passed), explain (rule_id with reference_id: a thing, network or room id, port for one port of a device, other_id for the other of a pair, or at [x, y, z] for a cell; the rule on that subject in the world around it: outcome skipped, passed, failed or error, the message and level, and values [{expression, values}], every field, call and let it read: the values that made it fire). Every reply has rule_source {mod_file, save_file, rules, from_save, disabled, errors}. Read only; nothing is written. Refused: rule_not_found, subject_not_found. No gateway is needed.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "action": {"type": "string", "enum": ["list", "validate", "fields", "functions", "test", "explain"]},
+      "rule_id": {"type": "string"},
+      "full": {"type": "boolean"},
+      "text": {
+        "type": "string",
+        "description": "validate: the content of a lint-rules.json, checked as the save's file (nothing is written)."
+      },
+      "reference_id": {"type": "string", "description": "explain: a thing, network or room id."},
+      "port": {"type": "integer", "minimum": 0, "maximum": 64, "description": "explain: the port index, for a rule over ports."},
+      "other_id": {"type": "string", "description": "explain: the other thing of a pair rule."},
+      "at": {"description": "explain: a cell, [x, y, z] metres, for a rule over cells."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "action": {"type": "string"},
+      "rule_source": {"type": "object"},
+      "rules": {"type": ["array", "null"]},
+      "types": {"type": ["array", "null"]},
+      "sets": {"type": ["object", "null"]},
+      "functions": {"type": ["array", "null"]},
+      "tests": {"type": ["array", "null"]},
+      "all_passed": {"type": ["boolean", "null"]},
+      "explained": {"type": ["array", "null"]},
+      "valid": {"type": ["boolean", "null"]}
+    }
+  },
+  "x-views": ["LintRulesView"],
+  "x-shaping": "lists"
+}

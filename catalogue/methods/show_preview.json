@@ -1,0 +1,50 @@
+{
+  "name": "show_preview",
+  "description": "Draw in-game wire boxes for a planned layout (1.4.3+), on your screen only (other players see nothing; never the game's construction cursor): the same placement fields as place_structure (placements, or prefab and at, with rotation/facing/face/orient/above_floor_m...) are dry-run and each placement's footprint (green, red when it has a problem), render box (white) and port joining cells (cyan, red when blocked) drawn; cells [[x, y, z], ...] (up to 512, yellow 0.5 m cubes, e.g. a planned route's waypoints or cells) and boxes [{min, max, color red|green|white|cyan|yellow}] (up to 64) too. seconds (default 30, max 300); a new call replaces the last unless keep: true; clear: true only removes them. xray: true (1.7.0+) draws every box through walls, frames and terrain (depth test off; see highlight); without it walls and frames hide the lines. Returns shown, cleared, seconds, dry_run (place_structure's own dry run of the placements) and notes. Changes nothing in the world. Needs a player camera (not on a dedicated server).",
+  "class": "read",
+  "cost": "instant",
+  "x-effects": ["display"],
+  "params": {
+    "type": "object",
+    "properties": {
+      "placements": {"type": "array", "maxItems": 64, "items": {"type": "object"}, "description": "As place_structure's placements."},
+      "prefab": {"oneOf": [{"type": "string"}, {"type": "integer"}]},
+      "at": {"description": "As place_structure's at."},
+      "rotation": {"type": "array", "items": {"type": "number"}},
+      "facing": {"type": "string"},
+      "up": {"type": "string"},
+      "face": {"type": "string"},
+      "orient": {"type": "object"},
+      "above_floor_m": {"type": "number"},
+      "build_state": {},
+      "allow_door_keepout": {"type": "boolean"},
+      "cells": {"type": "array", "maxItems": 512},
+      "boxes": {
+        "type": "array",
+        "maxItems": 64,
+        "items": {
+          "type": "object",
+          "properties": {"min": {}, "max": {}, "color": {"type": "string", "enum": ["red", "green", "white", "cyan", "yellow"]}},
+          "required": ["min", "max"]
+        }
+      },
+      "seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 300},
+      "keep": {"type": "boolean"},
+      "clear": {"type": "boolean"},
+      "xray": {"type": "boolean", "description": "Default false. true: draw through walls, frames and terrain."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "shown": {"type": "integer"},
+      "cleared": {"type": "integer"},
+      "seconds": {"type": "number"},
+      "dry_run": {"type": ["object", "null"]},
+      "notes": {"type": "array"}
+    }
+  },
+  "x-views": ["ShowPreviewView"],
+  "x-shaping": "none"
+}

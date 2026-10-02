@@ -1,0 +1,25 @@
+{
+  "name": "weather",
+  "description": "The storm schedule, the world's weather events and the season, from the game's own weather manager. Returns world_has_weather, state (the game's WeatherState: None, StormScheduled, Storm, RainScheduled, Rain, SnowScheduled, Snow), current (null, or the scheduled or running event: {id, name, running, starts_in_s (game seconds until it starts; negative once running), length_s, ends_in_s (null unless running)}), days_past, days_since_last (days since the last event ended), cooldown_days (the cooldown drawn when it ended), world_start_delay_days (7 x the difficulty's starting weather multiplier), can_schedule_now and schedulable_in_days (whole days until both day rules pass: days_since_last > cooldown_days and days_past > world_start_delay_days; 0 once they do). The game picks an event at random the moment both pass and no event is current, and draws its start delay and length then, so starts_in_s is exact from that moment; while an event is current nothing new schedules, and when it ends days_since_last goes to 0 and a new cooldown is drawn. events: every weather event this world can roll, {id, name, cooldown_days_min, cooldown_days_max (the largest cooldown the game can actually draw), start_delay_s_min, start_delay_s_max, duration_s_min, duration_s_max, temperature_offset_day_k, temperature_offset_night_k (null when none or a curve), solar_ratio, active_in_orbit}. season: null before the orbit loads, else {true_anomaly_deg (the orbit angle, 0 at perihelion, advancing evenly in time), year_length_days (solar days per orbit, as the game counts days), solar_energy_percent (as planet reports it), day_of_year (solar days since perihelion, fractional)}. Terraforming Reloaded can stop a stripped world scheduling its own storms (its own setting); this does not model that. Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "instant",
+  "params": {"type": "object", "properties": {}, "additionalProperties": false},
+  "reply": {
+    "type": "object",
+    "properties": {
+      "world_has_weather": {"type": "boolean"},
+      "state": {"type": "string"},
+      "current": {"type": ["object", "null"]},
+      "days_past": {"type": "integer"},
+      "days_since_last": {"type": "integer"},
+      "cooldown_days": {"type": "integer"},
+      "world_start_delay_days": {"type": "number"},
+      "can_schedule_now": {"type": "boolean"},
+      "schedulable_in_days": {"type": "integer"},
+      "events": {"type": "array"},
+      "season": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["WeatherView"],
+  "x-shaping": "none"
+}

@@ -9,18 +9,9 @@ namespace StationGodMCP.Server;
 
 internal static class Program
 {
-    private const string ServerName = "StationGodMCP";
     // Reported in the initialize response. build.ps1 checks it matches StationGodMCP.Server.csproj and the mod.
     private const string ServerVersion = "1.10.0";
     private const string ProtocolVersion = "2025-06-18";
-
-    private const string Instructions =
-        "Device and IC tools reach every device in the world: omit gateway_id or pass 'world'. A StationGod Gateway id narrows a call to the devices on that gateway's data networks. Start with list_devices or describe_device before reading or writing logic. Inventory, clock and console tools need no gateway. " +
-        "Large replies: every tool that can answer a lot takes output_file and fields, answered by this server, not the game. " +
-        "output_file: true (or a file name, letters/digits/-/_/., no folders) writes the whole reply as indented JSON to a file and answers only a pointer {output_file (the full path), bytes, tool, counts (each top-level list's length), summary (the reply's short top-level values), in_file_only (top-level keys too large to repeat)}; read the file with your own tools. " +
-        "The folder is %LOCALAPPDATA%\\StationGodMCP\\output unless the server was started with --output-dir or STATIONGODMCP_OUTPUT_DIR; files older than 7 days, and beyond the newest 200, are deleted. A named file is overwritten. Errors are always answered inline. " +
-        "fields: [names] keeps only those keys in each entry of the reply's top-level lists (e.g. find_things fields [\"reference_id\", \"position\"]); a name no entry has is listed in fields_unmatched. " +
-        "Prefer filters, limit and fields first; use output_file when you need all of a large reply.";
 
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(35);
@@ -62,10 +53,7 @@ internal static class Program
     }
 
     // Every tool's input schema as tools/list publishes it, by tool name: what ArgumentCheck holds arguments to.
-    internal static readonly Dictionary<string, JsonElement> InputSchemas = JsonSerializer
-        .SerializeToElement(ToolDefinitions.All, JsonOptions)
-        .EnumerateArray()
-        .ToDictionary(tool => tool.GetProperty("name").GetString()!, tool => tool.GetProperty("inputSchema").Clone());
+    internal static IReadOnlyDictionary<string, JsonElement> InputSchemas => ToolCatalogue.InputSchemas;
 
     internal static async Task<string?> HandleMcpMessageAsync(string line, GameTransportSettings transport,
         OutputFolder? output = null)
@@ -130,11 +118,11 @@ internal static class Program
                 {
                     protocolVersion = ReadRequestedProtocolVersion(root),
                     capabilities = new { tools = new { listChanged = false } },
-                    serverInfo = new { name = ServerName, version = ServerVersion },
-                    instructions = Instructions
+                    serverInfo = new { name = ToolCatalogue.ServerName, version = ServerVersion },
+                    instructions = ToolCatalogue.Instructions
                 },
                 "ping" => new { },
-                "tools/list" => new { tools = ToolDefinitions.All },
+                "tools/list" => new { tools = ToolCatalogue.Tools },
                 "tools/call" => await CallToolAsync(root, transport, output),
                 _ => throw new McpException(-32601, $"Unknown MCP method '{method}'.")
             };
@@ -163,7 +151,7 @@ internal static class Program
         }
 
         string toolName = nameElement.GetString()!;
-        if (!ToolDefinitions.Names.Contains(toolName))
+        if (!ToolCatalogue.Names.Contains(toolName))
         {
             throw new McpException(-32602, $"Unknown StationGodMCP tool '{toolName}'.");
         }

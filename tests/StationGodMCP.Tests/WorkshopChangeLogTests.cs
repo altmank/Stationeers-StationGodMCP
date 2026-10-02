@@ -18,12 +18,12 @@ public sealed class WorkshopChangeLogTests
     private const int WorkshopLimit = 8000;
 
     private static string ChangeLog() =>
-        XDocument.Load(Path.Combine(ToolArgumentsFileTests.RepositoryRoot(), "About", "About.xml")).Root!
+        XDocument.Load(Path.Combine(CatalogueChecks.CatalogueFiles.RepositoryRoot(), "About", "About.xml")).Root!
             .Element("ChangeLog")!.Value;
 
     private static List<string> ChangelogVersions()
     {
-        string text = File.ReadAllText(Path.Combine(ToolArgumentsFileTests.RepositoryRoot(), "CHANGELOG.md"));
+        string text = File.ReadAllText(Path.Combine(CatalogueChecks.CatalogueFiles.RepositoryRoot(), "CHANGELOG.md"));
         List<string> versions = new List<string>();
         foreach (Match heading in Regex.Matches(text, @"^## (\d+\.\d+\.\d+)\s*$", RegexOptions.Multiline))
         {
@@ -59,7 +59,7 @@ public sealed class WorkshopChangeLogTests
     [Fact]
     public void NewestVersionIsTheModVersion()
     {
-        XElement about = XDocument.Load(Path.Combine(ToolArgumentsFileTests.RepositoryRoot(), "About", "About.xml")).Root!;
+        XElement about = XDocument.Load(Path.Combine(CatalogueChecks.CatalogueFiles.RepositoryRoot(), "About", "About.xml")).Root!;
         string version = about.Element("Version")!.Value;
 
         Assert.Equal(version, ChangelogVersions()[0]);

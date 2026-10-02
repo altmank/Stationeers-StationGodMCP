@@ -1,0 +1,30 @@
+{
+  "name": "read_memory",
+  "description": "Read a contiguous range of up to 512 values from a visible device with readable memory, as a chip's get instruction does: an IC Housing or suit (its chip's stack), a Logic Sorter, a satellite dish, a fabricator, rocket avionics and the like. A Logic Memory has only its Setting, no memory (memory_not_readable). Refused: a range past the memory's last address (stack_size in the reply; invalid_argument), and an IC Housing or suit with no chip (no_programmable_chip).",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"type": "string", "description": "Memory-device reference ID returned by list_devices."},
+      "start_address": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+      "count": {"type": "integer", "minimum": 1, "maximum": 512}
+    },
+    "required": ["reference_id", "start_address", "count"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "reference_id": {"type": "string"},
+      "start_address": {"type": "integer"},
+      "values": {"type": "array"},
+      "count": {"type": "integer"},
+      "stack_size": {"type": ["integer", "null"]}
+    }
+  },
+  "x-views": ["MemoryReadView"],
+  "x-shaping": "lists"
+}

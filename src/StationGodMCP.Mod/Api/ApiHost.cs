@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Api;
 
@@ -156,16 +157,19 @@ internal static class ApiHost
             JObject request = ParseRequest(requestJson);
             requestId = request.Value<string>("id");
             method = request.Value<string>("method");
+            DeclaredArguments declared = Declared.Value.Arguments ??
+                                         throw ApiErrors.Refused("internal_error", Declared.Value.Problem!);
             if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
             {
                 throw ApiErrors.Refused("method_not_found", $"Unknown StationGodMCP method '{method}'.");
             }
 
             JObject? parameters = request["params"] as JObject;
-            Declared.Value.Check(method, parameters);
+            declared.Check(method, parameters);
+            ArgumentNames? names = declared.NamesOf(method);
             ResolvedNetworks.Begin();
             GasHoldReply.Begin();
-            object result = ResolvedNetworks.Attach(handler(new Args(parameters)),
+            object result = ResolvedNetworks.Attach(handler(names != null ? new Args(parameters, names) : new Args(parameters)),
                 ResolvedNetworks.Take());
             result = GasHoldReply.Attach(result, GasHoldReply.Take());
             double elapsed = Elapsed(watch);
@@ -187,22 +191,57 @@ internal static class ApiHost
         }
     }
 
-    private const string ArgumentsResource = "StationGodMCP.tool-arguments.json";
+    private const string CatalogueResource = "StationGodMCP.catalogue.json";
 
-    // Every tool's argument names, read once from the DLL; without the resource nothing is checked (logged).
-    private static readonly Lazy<DeclaredArguments> Declared = new Lazy<DeclaredArguments>(LoadDeclared);
+    // The method catalogue, read once from the DLL. One that does not load is fatal for requests: every call is
+    // answered internal_error naming the problem, rather than run unchecked.
+    private static readonly Lazy<LoadedCatalogue> Declared = new Lazy<LoadedCatalogue>(LoadCatalogue);
 
-    private static DeclaredArguments LoadDeclared()
+    /// <summary>Loads the embedded catalogue now (at mod start), so the log says at once whether it loaded.</summary>
+    internal static void Prepare() => _ = Declared.Value;
+
+    private static LoadedCatalogue LoadCatalogue()
     {
-        using Stream? stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ArgumentsResource);
-        if (stream == null)
+        try
         {
-            StationGodMod.LogWarning($"No {ArgumentsResource} in the DLL: pipe requests' argument names are not checked.");
-            return DeclaredArguments.None;
+            using Stream? stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(CatalogueResource);
+            if (stream == null)
+            {
+                return LoadedCatalogue.Failed($"The mod's DLL has no {CatalogueResource}: the build is broken.");
+            }
+
+            using StreamReader reader = new StreamReader(stream);
+            Catalogue catalogue = Catalogue.Load(reader.ReadToEnd());
+            ArgumentDrift.FirstMiss = static (method, name) =>
+                StationGodMod.LogWarning($"Catalogue drift: {method} read the argument '{name}', which its catalogue entry does not declare.");
+            StationGodMod.Log($"Catalogue loaded: {catalogue.MethodCount} methods, mod version {catalogue.ModVersion}.");
+            return LoadedCatalogue.Of(new DeclaredArguments(catalogue));
+        }
+        catch (CatalogueException exception)
+        {
+            return LoadedCatalogue.Failed($"The method catalogue did not load: {exception.Message}");
+        }
+    }
+
+    private sealed class LoadedCatalogue
+    {
+        private LoadedCatalogue(DeclaredArguments? arguments, string? problem)
+        {
+            Arguments = arguments;
+            Problem = problem;
+            if (problem != null)
+            {
+                StationGodMod.LogError(problem + " Every request is answered internal_error.");
+            }
         }
 
-        using StreamReader reader = new StreamReader(stream);
-        return DeclaredArguments.Parse(reader.ReadToEnd());
+        internal DeclaredArguments? Arguments { get; }
+
+        internal string? Problem { get; }
+
+        internal static LoadedCatalogue Of(DeclaredArguments arguments) => new LoadedCatalogue(arguments, null);
+
+        internal static LoadedCatalogue Failed(string problem) => new LoadedCatalogue(null, problem);
     }
 
     // A key given twice would otherwise let the last one win silently (a write aimed at the wrong device).

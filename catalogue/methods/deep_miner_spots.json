@@ -1,0 +1,48 @@
+{
+  "name": "deep_miner_spots",
+  "description": "Where a deep miner would mine what (1.7.0+). The game gives a deep miner the first of the world's deep-mining profiles whose region condition holds where it is built (read once, when it is registered); this tool asks the same profiles the same way, so it follows the world's own region maps (on Vulcan the VulcanDeepMiningRegions set). Always returns at {position, regions [{set, region, name}], profile_id (null: no profile, so a miner there cannot mine)} for at (default the local player's position) and profiles [{id, reagents [{reagent, grams}] per dirty ore, quantity [min, max) ores per drop, time_s [min, max) seconds per drop at 200 RPM, regions}] in the order the miner tries them. With ores (reagent names as profiles list them, e.g. [\"Cobalt\"] or [\"Gold\", \"Silver\"]; Hydrocarbon is coal; a profile matches when it holds every one): searches a disc around at, nearest first, on a grid no finer than the region map (step_m, default the finest step that keeps it under 250000 samples; 8 s budget), and returns search {ores, profiles (the ids that match), radius_m, step_m, min_separation_m, samples, matched, searched_radius_m (every sample within it was read; truncated true when the budget ran out first)}, spots [{at (the 2 m cell centre over the spot, at the ground), distance_m and bearing_deg (0 = +z north, 90 = +x east) and compass from at, profile_id, regions, terrain {ground_y, cell_volume_l, terrain_ok, note}}] (each at least min_separation_m from the nearer ones) and beacons [{at: [x, y, z], label}] in the shape highlight takes for point targets. terrain is read from the terrain's own density anywhere in the world: ground_y, and terrain_ok when the miner's own rule (world volume at its position at most 6000 L, which needs terrain in its cell) holds at the spot's at; the placement cursor's other checks (structures in the way, the whole footprint) are not run. Read only. No gateway is needed.",
+  "class": "read",
+  "cost": "world",
+  "params": {
+    "type": "object",
+    "properties": {
+      "at": {
+        "description": "[x, y, z] or {x, y, z} in metres: the point to report and the search centre. Default the local player's position."
+      },
+      "ores": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4,
+        "items": {"type": "string"},
+        "description": "Reagents a spot's profile must all hold, e.g. [\"Cobalt\"]. Without it only the point report and profiles."
+      },
+      "radius_m": {"type": "number", "minimum": 1, "maximum": 3000, "description": "Search radius around at; default 500."},
+      "count": {"type": "integer", "minimum": 1, "maximum": 20, "description": "Spots returned, nearest first; default 5."},
+      "min_separation_m": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 3000,
+        "description": "Least distance between two spots returned; default 100 (0: neighbouring samples)."
+      },
+      "step_m": {
+        "type": "number",
+        "minimum": 0.5,
+        "maximum": 500,
+        "description": "Sample spacing; never finer than one pixel of the region map. Default the finest within the sample budget."
+      }
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "at": {"type": "object"},
+      "profiles": {"type": "array"},
+      "search": {"type": ["object", "null"]},
+      "spots": {"type": ["array", "null"]},
+      "beacons": {"type": ["array", "null"]}
+    }
+  },
+  "x-views": ["DeepMinerSpotsView"],
+  "x-shaping": "lists"
+}

@@ -1,0 +1,50 @@
+{
+  "name": "find_spot",
+  "description": "Ranked places for a prefab near a point (1.4.3+), on one face plane (plane with side, or looking: true) or on the walls of a room (room_id: every level face of a room cell toward outside the room carrying a wall or window, seen from inside; its floor and ceiling are not searched, name one with plane: 1.4.4+ that plane is searched too, seen from side or else from the room's side of it (seen from the side away from the room, e.g. under its floor, its spots are those with the room behind them); a plane no room cell touches is invalid_argument). near: a point, \"player\", \"crosshair\" (default; no_camera on a dedicated server, which has no look ray) or {reference_id}; radius_m (default 4, max 12). The turn: a mounted piece faces out of the plane with its top up (facing overrides); a standing piece on a floor stands on it. Every 0.5 m spot within the radius (nearest first over all the planes, at most 4000) is aimed as the cursor snaps it and filtered on geometry first (its small cells free of devices, mounted things and chutes; 1.4.4+: its mesh box clear of every other thing's mesh box, as visual_overlap, when no_visual_overlap; require flags; one_section by its mesh box), then, nearest first and at most max_checks (default 40, max 200), checked with the game's own placement cursor and the layout preview. require: {one_section (default true: one wall section, no seam), min_bottom_above_floor_m, ports_reachable (default false: every port's joining cell free or joining), avoid_doors (default true: nothing in a door's keep-out), front_clear_m (default 0: that many metres in front free), no_visual_overlap (default true)}. Returns prefab_name, planes, spots best first (layout penalty, then distance; limit default 5, max 20) [{position, orientation, distance_m, penalty, plane, conflicts, place_arguments (place_structure's arguments: prefab, at, facing, up)}], tried, filtered, checked, rejected, reasons (1.4.4+: why spots were filtered or rejected [{reason, count}], most frequent first, up to 8; a reason is worded as its first spot had it, spots whose wording differs only in numbers counted together). Read only. No gateway is needed.",
+  "class": "read",
+  "cost": "plan",
+  "params": {
+    "type": "object",
+    "properties": {
+      "prefab": {"oneOf": [{"type": "string"}, {"type": "integer"}], "description": "Prefab name or prefab hash."},
+      "near": {"description": "[x, y, z], \"player\", \"crosshair\" (default) or {reference_id}."},
+      "plane": {"type": "string"},
+      "side": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+      "looking": {"type": "boolean"},
+      "around": {"description": "[x, y, z]: a point near the plane, to choose the side in a room."},
+      "room_id": {"type": "string"},
+      "facing": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+      "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 12},
+      "require": {
+        "type": "object",
+        "properties": {
+          "one_section": {"type": "boolean"},
+          "min_bottom_above_floor_m": {"type": "number"},
+          "ports_reachable": {"type": "boolean"},
+          "avoid_doors": {"type": "boolean"},
+          "front_clear_m": {"type": "number"},
+          "no_visual_overlap": {"type": "boolean"}
+        }
+      },
+      "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+      "max_checks": {"type": "integer", "minimum": 1, "maximum": 200}
+    },
+    "required": ["prefab"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "prefab_name": {"type": ["string", "null"]},
+      "planes": {"type": "array"},
+      "spots": {"type": "array"},
+      "tried": {"type": "integer"},
+      "filtered": {"type": "integer"},
+      "checked": {"type": "integer"},
+      "rejected": {"type": "integer"},
+      "reasons": {"type": "array"}
+    }
+  },
+  "x-views": ["FindSpotView"],
+  "x-shaping": "lists"
+}

@@ -1,0 +1,8 @@
+{
+  "oneOf": [
+    {"type": "string"},
+    {"type": "integer"},
+    {"type": "array", "minItems": 1, "maxItems": 8, "items": {"oneOf": [{"type": "string"}, {"type": "integer"}]}}
+  ],
+  "description": [{"$include": "defs/text/refund_targets.txt"}, " ", {"$include": "defs/text/run_refund_words.txt"}]
+}

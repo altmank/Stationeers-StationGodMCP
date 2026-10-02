@@ -1,0 +1,73 @@
+{
+  "name": "rocket_flight_log",
+  "description": "A flight recorder in the mod. action start (rocket_id; interval_s, default 1 s of game time; capacity, default 3600 samples kept in a ring, oldest dropped; csv true also appends every sample to rocket-log-<id>-<time>.csv in the save's folder), stop, read (default), list, clear. Each sample: game time, state, node, target, progress, altitude, velocity, acceleration, mass, fuel mol, first tank K and kPa, throttle, thrust, recorded thrust peak, confidence, battery J, filled cargo slots, the game's burn-time estimate, flight rule. A reply is a summary (held, recorded, time span, fuel used, lowest altitude, fastest descent, peak thrust, lowest confidence and battery, the last sample, and state, target and node changes as events) plus one page of rows: offset, limit (default 20, at most 200) and every (each n-th row), so a long log never comes back whole; has_more says more rows follow. Recording only reads the game; it stops by itself when the rocket is gone. Logs live in memory until the game closes.",
+  "class": "write",
+  "x-class-when": [
+    {"when": {"action": {"absent": true}}, "class": "read"},
+    {"when": {"action": {"in": ["read", "list"]}}, "class": "read"}
+  ],
+  "cost": "instant",
+  "x-effects": ["server_state", "files"],
+  "params": {
+    "type": "object",
+    "properties": {
+      "action": {"type": "string", "enum": ["start", "stop", "read", "list", "clear"], "description": "Default read."},
+      "rocket_id": {
+        "type": "string",
+        "description": "A rocket, its rocket network, or any of its parts. Omit when there is one rocket."
+      },
+      "interval_s": {
+        "type": "number",
+        "minimum": 0.1,
+        "maximum": 600,
+        "description": "start: seconds of game time between samples. Default 1."
+      },
+      "capacity": {"type": "integer", "minimum": 10, "maximum": 100000, "description": "start: samples kept. Default 3600."},
+      "csv": {"type": "boolean", "description": "start: also write a CSV next to the save. Default false."},
+      "offset": {"type": "integer", "minimum": 0, "description": "read: first row, oldest first.", "maximum": 2147483647},
+      "limit": {"type": "integer", "minimum": 1, "maximum": 200, "description": "read: rows. Default 20."},
+      "every": {"type": "integer", "minimum": 1, "description": "read: every n-th row. Default 1.", "maximum": 100000}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "rocket_id": {"type": "string"},
+      "rocket_name": {"type": "string"},
+      "recording": {"type": "boolean"},
+      "interval_s": {"type": "number"},
+      "csv_path": {"type": ["string", "null"]},
+      "capacity": {"type": "integer"},
+      "held": {"type": "integer"},
+      "recorded": {"type": "integer"},
+      "from_t": {"type": ["number", "null"]},
+      "to_t": {"type": ["number", "null"]},
+      "fuel_used_mol": {"type": ["number", "null"]},
+      "lowest_altitude_m": {"type": ["number", "null"]},
+      "fastest_descent_ms": {"type": "number"},
+      "peak_thrust_n": {"type": "number"},
+      "lowest_confidence": {"type": ["number", "null"]},
+      "lowest_battery_j": {"type": ["number", "null"]},
+      "last": {"type": ["object", "null"]},
+      "events": {"type": "array"},
+      "events_dropped": {"type": "integer"},
+      "rows": {"type": "array"},
+      "offset": {"type": "integer"},
+      "every": {"type": "integer"},
+      "has_more": {"type": "boolean"},
+      "cleared": {"type": "boolean"},
+      "logs": {"type": "array"},
+      "count": {"type": "integer"}
+    }
+  },
+  "x-views": ["FlightLogView", "FlightLogClearedView", "FlightLogListView"],
+  "x-shaping": "lists",
+  "x-paging": {
+    "list": "rows",
+    "offset": "offset",
+    "limit": "limit",
+    "has_more": "has_more",
+    "order": "oldest sample first, every Nth (every)"
+  }
+}

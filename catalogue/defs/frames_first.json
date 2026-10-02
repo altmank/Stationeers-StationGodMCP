@@ -1,0 +1,4 @@
+{
+  "type": "boolean",
+  "description": "Default true: prefer any route over frames or along walls to one through air (a cell on no frame and no wall plane); through air only when no supported route fits the search box. false: no preference."
+}

@@ -1,0 +1,98 @@
+{
+  "name": "remove_chutes",
+  "description": "Remove chute pieces (straights, corners, junctions, and also valves, overflows and splitters) as a player's deconstruction does: reference_ids, or the chute in each cell of waypoints or cells (positions in metres). Refused for a piece with an item riding in it (cannot_remove: the game would lose the item with it; let it pass or take it out with move_item), indestructible pieces or pieces of a launching or landing rocket. would_split when a network would fall apart or a device port would be left joined to nothing (allow_split). drops_items warns where the removal leaves an end that items would now fall out of. Refund (default true): the kits the pieces were built from, where refund_to says (default [\"inventory\", \"source\", \"storage\", \"ground\"], each tried in turn per item: the player's inventory, then topping up from_id when it is a stack, then from_id's slots and those of the container it is stored in, then the ground in front of the holder; a container's reference id is exactly that container; refund_to \"source\" keeps the old way: into from_id's inventory, default the local player, and the player carrying it); each target tops up matching stacks first, then makes new stacks in empty slots that take the item, a holder's own slots before those of the items in them, never a hidden slot, a body slot or a stack's own slot (a cable coil's, whose contents the game destroys with it); the dry run's materials.refund_plan shows each item's destinations; only what nothing takes goes on the ground a metre in front of the outermost holder, at rest (never inside the player); with refund_to \"source\" a from_id stack stored in a holder (a coil in a locker) takes the refund onto itself only, and what does not fit on it goes on the ground in front of that holder (the default's storage target does use the holder's other slots); refunded lists each part with where: merged, slot or ground and the target it went to. The game rebuilds the networks around every removed chute, so they take new ids. Dry run by default; dry_run false and confirm true runs a tick-held job, polled with job_id. Host only. No gateway is needed. 1.3.0+: would_split device detail (root), the busy/wait job slot and network handles as remove_cables.",
+  "class": "write",
+  "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
+  "cost": "job",
+  "x-cost-when": [
+    {"when": {"job_id": {"present": true}}, "cost": "instant"},
+    {"when": {"dry_run": {"absent": true}}, "cost": "plan"},
+    {"when": {"dry_run": {"equals": true}}, "cost": "plan"}
+  ],
+  "params": {
+    "type": "object",
+    "properties": {
+      "reference_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1024,
+        "items": {"type": "string"},
+        "description": "chute pieces to remove. Give one of reference_ids, waypoints or cells."
+      },
+      "waypoints": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1024,
+        "items": {"description": "[x, y, z] or {x, y, z} in metres."},
+        "description": "Remove the chute in every cell along these straight lines."
+      },
+      "cells": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1024,
+        "items": {"description": "[x, y, z] or {x, y, z} in metres."},
+        "description": "Remove the chute in each cell."
+      },
+      "allow_split": {
+        "type": "boolean",
+        "description": "Let the removal split networks or leave ports joined to nothing. Default false."
+      },
+      "root": {"$ref": "defs/root.json"},
+      "wait": {"$ref": "defs/wait.json"},
+      "dry_run": {"$ref": "defs/dry_run.json"},
+      "confirm": {"$ref": "defs/confirm.json"},
+      "from_id": {"$ref": "defs/from_id.json"},
+      "refund": {"$ref": "defs/refund.json"},
+      "refund_to": {"$ref": "defs/refund_to.json"},
+      "include_links": {"$ref": "defs/include_links.json"},
+      "include_notes": {"$ref": "defs/include_notes.json"},
+      "include_network_devices": {"$ref": "defs/include_network_devices.json"},
+      "limit": {"type": "integer", "minimum": 0, "maximum": 1024, "description": "Cells listed, default 200; 0 lists none."},
+      "verbose": {"$ref": "defs/verbose.json"},
+      "job_id": {"$ref": "defs/job_id.json"}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "job_id": {"type": ["string", "null"]},
+      "tool": {"type": "string"},
+      "status": {"type": "string"},
+      "position": {"type": "integer"},
+      "running_job_id": {"type": ["string", "null"]},
+      "preflight": {},
+      "preflight_summary": {"type": ["object", "null"]},
+      "final_check": {"type": ["object", "null"]},
+      "log": {"type": ["object", "null"]},
+      "verification": {"type": ["object", "null"]},
+      "gas_check": {"type": ["object", "null"]},
+      "error": {"type": ["object", "null"]},
+      "grade": {"type": ["string", "null"]},
+      "ready": {"type": "boolean"},
+      "problems": {"type": "array"},
+      "warnings": {"type": "array"},
+      "cells_total": {"type": "integer"},
+      "placed": {"type": "integer"},
+      "changed": {"type": "integer"},
+      "kept": {"type": "integer"},
+      "removed_count": {"type": "integer"},
+      "air_cells": {"type": ["integer", "null"]},
+      "cells": {"type": "array"},
+      "removals": {"type": "array"},
+      "materials": {"type": "object"},
+      "networks_before": {"type": "array"},
+      "networks_after": {"type": "array"},
+      "would_bridge": {"type": "array"},
+      "would_split": {"type": "array"},
+      "links": {"type": ["object", "null"]},
+      "notes": {"type": ["array", "null"]},
+      "result": {"type": ["object", "null"]},
+      "waiting": {"type": "integer"},
+      "message": {"type": "string"}
+    }
+  },
+  "x-views": ["JobQueuedView", "RunJobView", "RunReportView", "BuildJobView", "JobBusyView", "JobDroppedView"],
+  "x-shaping": "lists",
+  "x-job": {"poll_param": "job_id"}
+}

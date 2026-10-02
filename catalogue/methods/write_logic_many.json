@@ -1,0 +1,45 @@
+{
+  "name": "write_logic_many",
+  "description": "Write up to 256 generic logic values in order in one main-thread request. Each operation returns its own result, by index: {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value as write_logic reads it back), or on failure {index, ok: false, reference_id, logic_type, error: {code, message}} where reference_id and logic_type are null when the entry's own could not be read.",
+  "class": "write",
+  "cost": "bounded",
+  "x-cost-when": [{"when": {"writes": {"present": true}}, "cost": "bounded", "per_item": "writes"}],
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "writes": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 256,
+        "items": {
+          "type": "object",
+          "properties": {
+            "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
+            "logic_type": {
+              "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+              "description": "LogicType enum name or numeric ushort ID."
+            },
+            "value": {"type": "number", "description": "Finite double value to write."}
+          },
+          "required": ["reference_id", "logic_type", "value"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["writes"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "results": {"type": "array"},
+      "count": {"type": "integer"},
+      "success_count": {"type": "integer"},
+      "error_count": {"type": "integer"}
+    }
+  },
+  "x-views": ["LogicBatchView"],
+  "x-shaping": "lists"
+}

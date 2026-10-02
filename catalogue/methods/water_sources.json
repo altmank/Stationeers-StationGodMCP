@@ -1,0 +1,37 @@
+{
+  "name": "water_sources",
+  "description": "Every canister, tank, device and pipe network in the world that holds water, polluted water or steam, with its holder or its network's devices, location, pressure, temperature and the water in moles, litres and hydration; largest first, with totals. Room and world air, bodies and organs are left out, and so are bottles and packets (see consumables). A pipe network is listed from the moment it exists, even while paused; a thing's own atmosphere made since the last atmospherics tick (a canister spawned while paused) is listed from the next tick on. owner.kind: item, structure, dynamic (a portable tank) or pipe_network. Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "world",
+  "params": {
+    "type": "object",
+    "properties": {
+      "min_mol": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Skip sources holding less water, polluted water and steam together than this; default 1 mol (0.018 litres). The old name min_moles is still read."
+      },
+      "min_moles": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "deprecated": true,
+        "description": "Deprecated: the old name of min_mol, still read (min_mol wins when both are given)."
+      }
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "sources": {"type": "array"},
+      "count": {"type": "integer"},
+      "totals": {"type": "object"},
+      "min_mol": {"type": "number"},
+      "local_player": {"type": ["object", "null"]},
+      "note": {"type": "string"}
+    }
+  },
+  "x-views": ["WaterSourcesView"],
+  "x-shaping": "lists",
+  "deprecated_aliases": {"min_moles": "min_mol"}
+}

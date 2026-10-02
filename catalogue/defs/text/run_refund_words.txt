@@ -1,0 +1,1 @@
+One word also works: "source" (from_id's inventory and the player carrying it, the rest in front of it, as refund true did before), "ground" (in front of the source), "none" (as refund false), "inventory", "storage" or a container id. Not with refund false.

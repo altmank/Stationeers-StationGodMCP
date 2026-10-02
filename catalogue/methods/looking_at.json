@@ -1,0 +1,30 @@
+{
+  "name": "looking_at",
+  "description": "What the local player's crosshair is on: the game's own CursorManager.CursorThing, the thing its interaction ray (3 m from the camera) hits this frame. Returns player ({reference_id, display_name, position}, null without one), target (null when looking at nothing, terrain, or past 3 m; else {reference_id, prefab_name, display_name, custom_name (the labeller name, null if none), kind (item, dynamic = a movable thing that is not an item such as a portable tank, structure, entity or other), runtime_type, position, distance_m, is_device (a logic device describe_device, read_logic and write_logic take), has_atmosphere (atmosphere_contents has something to report for it), parent (for a thing in a slot: {reference_id, prefab_name, display_name, slot_index, slot_name} of its holder, else null), and for a structure (1.3.5+) rotation {facing (its front: +x, -x, +y, -y, +z, -z), up, euler {x, y, z} (degrees)} in the forms place_structure takes, so it can be placed again as it stands or turned (facing reversed: 180 degrees; facing and up are null for a piece turned off the grid's axes)}) and interactable (null, or the button, switch, port or slot under the crosshair as the game's hand logic takes it: {action (the game's InteractableType: Activate, OnOff, Open, Slot1...), display_name, contextual_name (the name the tooltip shows on this thing), state, slot (for a slot: {slot_index, slot_name, occupant ({reference_id, prefab_name, display_name}, null when empty)}, else null)}). Hand the reference_id to any other tool. Read only; no gateway is needed. v2 (1.4.3+): view {eye, forward, right, up (unit vectors), yaw_deg (0 looking along +z, 90 +x, 180 -z, 270 -x), pitch_deg (up positive), axes {forward, right, up, back, left, down: the world axes nearest the player's LEVEL forward/right, so 'a metre forward' runs along the floor whatever the pitch; look: the axis nearest the look direction itself}, ambiguous (heading within 10 degrees of a diagonal: forward/right could be either axis), third_person, seated}. hit (the same ray cast on the cursor's layers up to max_distance_m, default 10, max 50, so a wall or floor beyond the 3 m reach is found; left out when nothing is hit): {point, distance_m, normal, face (the surface's facing as an axis, null off-axis), face_plane (\"z=668\" when the point lies within 0.3 m of a 2 m face plane: a floor or wall plate's surface stands a little off its plane, 1.4.4+), cell_2m (the 2 m cell on the looker's side), small_cell (the 0.5 m cell a piece mounted there would stand in), support (that cell's grid_survey support character: i, e, f, w, a; x a door's keep-out, g a window), thing (what the ray hit), local_on_target {right_m, up_m, forward_m} (the hit point in the target's own frame)}. For a structure target: body {origin, render_box {min, max, size} (the box its meshes fill, world), centre_offset (render_box centre minus origin), grid_box (the box of the small cells the game registers it in: its real footprint; null for 2 m structures), grid_cells} and facing_me (its front points toward the camera).",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "max_distance_m": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 50,
+        "description": "How far hit casts the look ray; default 10 m."
+      }
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "player": {"type": ["object", "null"]},
+      "target": {"type": ["object", "null"]},
+      "interactable": {"type": ["object", "null"]},
+      "view": {"type": ["object", "null"]},
+      "hit": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["LookingAtView"],
+  "x-shaping": "lists"
+}

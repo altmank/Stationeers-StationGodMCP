@@ -1,0 +1,50 @@
+{
+  "name": "paint",
+  "description": "Paint things with the game's own paint, as a spray can does (the same OnServer.SetCustomColor call, but no paint is used), or list the colours. Two forms. reference_ids (up to 256) with color: paint them all one colour. items (up to 256), each {reference_id, color}: a colour per thing, so a caller can restore the previous_color of an earlier call. color is a colour name (case-insensitive, as colors lists it), a colour index, or 'default' for each thing's own prefab colour. With neither form it only lists the colours. The paint is synced to clients and saved with the world. With no targets it returns colors: [{index, name, paint_only}] and count (paint_only colours, the metallic cans, cannot be set through logic but can be sprayed). With targets it returns results, one per thing: {index, ok, reference_id, previous_color, color} where a colour is {index, name, is_default} (is_default: the prefab's own colour, which the save stores as -1; index and name null when the thing has no colour; for a thing whose colour is a state, the state colour it shows, as the Color logic type reads it), or on failure {index, ok: false, reference_id, previous_color, error: {code, message}}; plus count, success_count and error_count. Per-thing error codes: invalid_argument (reference_id not a decimal string, color not a string), thing_not_found, not_paintable (no paintable material, or a batched structure the game cannot repaint), has_color_state (the colour is a state set through the Color logic type, e.g. the LED display, which the spray can does not paint either; lights paint), invalid_color (unknown name or index, or 'default' on a thing with no prefab colour), paint_failed (the colour did not change, or the game threw while painting). No gateway is needed.",
+  "class": "write",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "reference_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 256,
+        "items": {"type": "string"},
+        "description": "Reference IDs of up to 256 things to paint the one color."
+      },
+      "color": {
+        "type": "string",
+        "description": "With reference_ids: a colour name (e.g. 'Blue'), a colour index (e.g. '3'), or 'default' for each thing's prefab colour."
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 256,
+        "items": {
+          "type": "object",
+          "properties": {
+            "reference_id": {"type": "string", "description": "Reference ID of the thing."},
+            "color": {"type": "string", "description": "Colour name, colour index, or 'default'."}
+          },
+          "required": ["reference_id", "color"],
+          "additionalProperties": false
+        },
+        "description": "Up to 256 {reference_id, color} pairs, e.g. to restore each thing's previous_color."
+      }
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "colors": {"type": "array"},
+      "count": {"type": "integer"},
+      "results": {"type": "array"},
+      "success_count": {"type": "integer"},
+      "error_count": {"type": "integer"}
+    }
+  },
+  "x-views": ["PaintColorsView", "BatchResultView"],
+  "x-shaping": "none"
+}

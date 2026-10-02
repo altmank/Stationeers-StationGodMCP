@@ -1,0 +1,20 @@
+{
+  "shared_reply_keys": [
+    {
+      "key": "resolved_networks",
+      "schema": {
+        "type": "array",
+        "description": "The network handles this request resolved, when any: {argument, given, network_id} each (a plain network id that names the network itself is not listed)."
+      },
+      "applies_when": "takes_network_handles"
+    },
+    {
+      "key": "gas_hold",
+      "schema": {
+        "type": "object",
+        "description": "Present when a gas hold applies to the run, or acknowledge_gas_lost was given: whether the hold applies and what acknowledging lifts."
+      },
+      "applies_when": "may_touch_pipe_networks"
+    }
+  ]
+}

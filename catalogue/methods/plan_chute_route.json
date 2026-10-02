@@ -1,0 +1,94 @@
+{
+  "name": "plan_chute_route",
+  "description": [
+    "plan_cable_route for chutes: from is the source and to the sink, since items travel from the route's first cell to its last. Ends: {reference_id, port} of a device's chute port (connections or grid_survey lists each port's index and role: an Output port or a chute bin is a from, an Input port a to, and the other way round is invalid_argument (1.4.4+); a rocket chute umbilical's port may be either, since it carries items both ways (1.6.1+); a device with one chute port needs no port), {reference_id} of a chute (as to, joining through one of its open ends is free and another direction makes it a junction, which only works where the route merges into a line; as from, the route leaves only through an open end items can leave by, never an Input end nor an open end the line's flow already sends items in by (a side run's open end upstream of its junction), and never through a junction, 1.4.4+; invalid_argument when it has none), or {at}. The same rules and search as plan_cable_route (never through a cell holding a chute, cable, pipe, device or other small-grid thing; frames and walls never block), reroute keeps the old run's direction where the flow fixes it, and the dry run is place_chutes' own with every flow guard. grade is chute (the default). Read only. Host only. No gateway is needed. join_to, join_trunk, root and network handles as plan_cable_route (1.3.0+).",
+    {"$include": "defs/text/lint_dry_run.txt"}
+  ],
+  "class": "read",
+  "cost": "plan",
+  "params": {
+    "type": "object",
+    "properties": {
+      "from": {
+        "description": "A start: {at}, {reference_id} of a chute piece, {reference_id, port} of a device, or {reference_id} of an in-line tank or passive vent (its free end; port when several are free); or several starts (up to 16) as one tree: {reference_id, ports: [..]} (several ports of one device) or an array of starts. The first start routes to the target; each other start routes to the nearest cell of the tree so far and joins it with a junction, so a device with separate ports gets one run, never a loop."
+      },
+      "to": {
+        "type": "object",
+        "description": "{at}, {reference_id} of a chute piece (a long straight: any of its cells, split in the same job), {reference_id, port} of a device, {reference_id} of an in-line tank or passive vent (its free end), or {network_id}: the nearest cell of any piece of that network (network_id may be a piece or device id or {reference_id, port})."
+      },
+      "reroute": {"$ref": "defs/reroute.json"},
+      "allow_door_keepout": {
+        "type": "boolean",
+        "description": "Default false: the search never enters a door's keep-out (its face and the configured band either side inside its rectangle; the route's own end cells released). true lets it, and passes on to the dry run."
+      },
+      "reserve_cells": {"$ref": "defs/reserve_cells.json"},
+      "reserve_ports": {"$ref": "defs/reserve_ports.json"},
+      "grade": {"type": "string", "enum": ["chute"]},
+      "frames_first": {"$ref": "defs/frames_first.json"},
+      "prefer": {"$ref": "defs/prefer.json"},
+      "assume_removed": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1024,
+        "items": {"type": "string"},
+        "description": "Things to plan as if already gone; the kind's pieces among them are removed in the same job (place_arguments.remove_ids)."
+      },
+      "trunk": {"$ref": "defs/trunk.json"},
+      "inside_frames": {"$ref": "defs/inside_frames.json"},
+      "avoid_room_interior": {"$ref": "defs/avoid_room_interior.json"},
+      "avoid_walkways": {"$ref": "defs/avoid_walkways.json"},
+      "avoid_networks": {"$ref": "defs/avoid_networks.json"},
+      "min_bends": {"$ref": "defs/min_bends.json"},
+      "axis_order": {"$ref": "defs/axis_order.json"},
+      "max_length": {"$ref": "defs/max_length.json"},
+      "margin_m": {"$ref": "defs/margin_m.json"},
+      "join": {"$ref": "defs/join.json"},
+      "allow_bridge": {
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {"type": "string"},
+            {
+              "type": "object",
+              "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+              "required": ["reference_id"],
+              "additionalProperties": false
+            }
+          ],
+          "description": "A network (its id, or {reference_id, port} of a device on it) or a device id."
+        }
+      },
+      "root": {"type": "string", "description": "Passed on: the device would_split measures against."},
+      "join_to": {"$ref": "defs/join_to.json"},
+      "join_trunk": {"type": "boolean", "description": "Add a missing tap to join_to (tap_added). Default false."},
+      "allow_split": {"type": "boolean"},
+      "allow_split_long": {"type": "boolean", "description": "Default true: long straights met are split in the same job."},
+      "from_id": {"type": "string"},
+      "include_links": {"$ref": "defs/include_links.json"},
+      "include_notes": {"$ref": "defs/include_notes.json"},
+      "include_network_devices": {"$ref": "defs/include_network_devices.json"},
+      "limit": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1024,
+        "description": "Cells the embedded dry run lists, default 200; 0 lists none."
+      }
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "tool": {"type": "string"},
+      "found": {"type": "boolean"},
+      "route": {"type": ["object", "null"]},
+      "failure": {"type": ["string", "null"]},
+      "place_arguments": {},
+      "dry_run": {"type": ["object", "null"]},
+      "notes": {"type": "array"}
+    }
+  },
+  "x-views": ["PlanRouteView"],
+  "x-shaping": "lists",
+  "x-read-by": {"allow_bridge": "Api/PlanRoute.cs"}
+}

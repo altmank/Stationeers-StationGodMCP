@@ -54,6 +54,7 @@ public sealed class StationGodMod : ModBehaviour
             _remote = RemoteSettings.Load(configuration);
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
+            Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
             {

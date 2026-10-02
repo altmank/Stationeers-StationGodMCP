@@ -1,0 +1,13 @@
+{
+  "name": "list_gateways",
+  "description": "List the scopes device tools accept as gateway_id: first 'world', every device in the world (status 'bypass', kept for older clients), then every StationGod Gateway in the loaded world with its availability and network status; a gateway id only narrows a call to that gateway's data networks. status is bypass (world), ready (available true: its id scopes a call), incomplete (not fully built) or no_data_network (no data cable on either port); a device tool given an unavailable gateway answers gateway_unavailable naming that status, an unknown id gateway_not_found. bypass_gateway is always true, kept for older clients.",
+  "class": "read",
+  "cost": "instant",
+  "params": {"type": "object", "properties": {}, "additionalProperties": false},
+  "reply": {
+    "type": "object",
+    "properties": {"gateways": {"type": "array"}, "count": {"type": "integer"}, "bypass_gateway": {"type": "boolean"}}
+  },
+  "x-views": ["GatewaysView"],
+  "x-shaping": "none"
+}

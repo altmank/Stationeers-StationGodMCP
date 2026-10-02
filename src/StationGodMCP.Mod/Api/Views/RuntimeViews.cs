@@ -3,18 +3,20 @@
 using System;
 using System.Collections.Generic;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
 /// mod_info's runtime section: what the mod costs the game since it loaded. Per method (only those called), the
 /// main-thread time of the tool and of serialising its reply, the wait in the queue for the main thread, and the reply
-/// size; per frame, the requests served and the time spent on them; and the Mono garbage collector's counts and heap.
+/// size; per frame, the requests served and the time spent on them; the Mono garbage collector's counts and heap; and
+/// the argument names handlers read that the catalogue does not declare (catalogue_drift, which should stay empty).
 /// </summary>
 internal sealed class RuntimeView
 {
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
-        MemoryView memory, List<MethodTiming> methods)
+        MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift)
     {
         UptimeS = Math.Round(uptimeS, 1);
         WorldEpoch = worldEpoch;
@@ -23,6 +25,7 @@ internal sealed class RuntimeView
         Memory = memory;
         Methods = methods.ConvertAll(static timing => new MethodRuntimeView(timing));
         MethodCount = Methods.Count;
+        CatalogueDrift = drift.ConvertAll(static count => new CatalogueDriftView(count));
     }
 
     /// <summary>Seconds since the mod loaded (real time).</summary>
@@ -42,6 +45,26 @@ internal sealed class RuntimeView
     public List<MethodRuntimeView> Methods { get; }
 
     public int MethodCount { get; }
+
+    /// <summary>Per method and argument name, reads of a name the method's catalogue entry does not declare.</summary>
+    public List<CatalogueDriftView> CatalogueDrift { get; }
+}
+
+/// <summary>One undeclared argument name a method's handler read since the mod loaded, and how often.</summary>
+internal sealed class CatalogueDriftView
+{
+    internal CatalogueDriftView(DriftCount count)
+    {
+        Method = count.Method;
+        Argument = count.Argument;
+        Reads = count.Reads;
+    }
+
+    public string Method { get; }
+
+    public string Argument { get; }
+
+    public long Reads { get; }
 }
 
 /// <summary>A total, mean and maximum, in milliseconds (0.01) or bytes (whole).</summary>

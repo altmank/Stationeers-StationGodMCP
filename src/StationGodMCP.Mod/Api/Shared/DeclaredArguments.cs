@@ -1,56 +1,39 @@
 #nullable enable
 
-using System;
-using System.Collections.Generic;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Api.Shared;
 
 /// <summary>
-/// The top-level argument names each tool takes (tool-arguments.json, written from the sidecar's schemas), so a pipe
-/// client is held to them as the sidecar holds an MCP client: an argument the tool does not take is invalid_argument,
-/// naming the nearest one it does take and every one it takes, before the tool runs. Without the check a misspelt
-/// filter (prefab for prefab_contains) was dropped and the call answered the whole world. Null is an omitted argument.
-/// Nested objects are left to each tool. A tool the file does not list is not checked.
+/// The top-level argument names each method takes (the catalogue's params), so a pipe client is held to them as the
+/// sidecar holds an MCP client: an argument the method does not take is invalid_argument, naming the nearest one it
+/// does take and every one it takes, before the method runs. Without the check a misspelt filter (prefab for
+/// prefab_contains) was dropped and the call answered the whole world. Null is an omitted argument. Nested objects
+/// are left to each method. A method the catalogue does not list is not checked.
 /// </summary>
 internal sealed class DeclaredArguments
 {
-    private readonly Dictionary<string, List<string>> _byTool;
+    private readonly Catalogue _catalogue;
 
-    private DeclaredArguments(Dictionary<string, List<string>> byTool)
+    internal DeclaredArguments(Catalogue catalogue)
     {
-        _byTool = byTool;
+        _catalogue = catalogue;
     }
 
-    internal static DeclaredArguments None { get; } =
-        new DeclaredArguments(new Dictionary<string, List<string>>(StringComparer.Ordinal));
+    internal int ToolCount => _catalogue.MethodCount;
 
-    internal int ToolCount => _byTool.Count;
+    /// <summary>The method's declared names, or null when the catalogue does not list it.</summary>
+    internal ArgumentNames? NamesOf(string method) =>
+        _catalogue.TryGet(method, out CatalogueMethod found) ? found.ArgumentNames : null;
 
-    internal static DeclaredArguments Parse(string json)
+    /// <summary>Refuses (invalid_argument) a request that gives an argument its method does not take.</summary>
+    internal void Check(string method, JObject? parameters)
     {
-        Dictionary<string, List<string>> byTool = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        foreach (JProperty tool in JObject.Parse(json).Properties())
-        {
-            List<string> names = new List<string>();
-            foreach (JToken name in (JArray)tool.Value)
-            {
-                names.Add((string)name!);
-            }
-
-            names.Sort(StringComparer.Ordinal);
-            byTool[tool.Name] = names;
-        }
-
-        return new DeclaredArguments(byTool);
-    }
-
-    /// <summary>Refuses (invalid_argument) a request that gives an argument its tool does not take.</summary>
-    internal void Check(string tool, JObject? parameters)
-    {
-        if (parameters == null || !_byTool.TryGetValue(tool, out List<string> known))
+        ArgumentNames? names = NamesOf(method);
+        if (parameters == null || names == null)
         {
             return;
         }
@@ -58,13 +41,13 @@ internal sealed class DeclaredArguments
         StringBuilder? problems = null;
         foreach (JProperty property in parameters.Properties())
         {
-            if (property.Value.Type == JTokenType.Null || known.BinarySearch(property.Name, StringComparer.Ordinal) >= 0)
+            if (property.Value.Type == JTokenType.Null || names.Contains(property.Name))
             {
                 continue;
             }
 
             problems ??= new StringBuilder();
-            string? nearest = NearestName.Of(property.Name, known);
+            string? nearest = NearestName.Of(property.Name, names.Sorted);
             problems.Append(nearest != null
                 ? $"Unknown argument '{property.Name}'; did you mean '{nearest}'? "
                 : $"Unknown argument '{property.Name}'. ");
@@ -72,8 +55,8 @@ internal sealed class DeclaredArguments
 
         if (problems != null)
         {
-            string list = known.Count == 0 ? "none" : string.Join(", ", known);
-            throw ApiErrors.InvalidArgument($"{problems}{tool} takes: {list}. Nothing was run.");
+            string list = names.Sorted.Count == 0 ? "none" : string.Join(", ", names.Sorted);
+            throw ApiErrors.InvalidArgument($"{problems}{method} takes: {list}. Nothing was run.");
         }
     }
 }

@@ -1,0 +1,3 @@
+{
+  "description": "true, or a list of network ids (network handles) to keep away from; an id naming no network is network_not_found."
+}

@@ -1,0 +1,120 @@
+{
+  "name": "place_chutes",
+  "description": [
+    "Lay a chute run, or one piece, from Kit (Chute) as a player builds it, choosing for every small-grid cell (0.5 m) the one-cell piece whose ends match that cell's connections: a straight or corner (1 kit each) or, where three ends meet in a T, a junction (2 kits) turned so its output faces downstream; chutes have no other shape (4 ends or a corner of three: no_piece_for_ends), and long straights, windows, valves, overflows, splitters, bins, inlets and outlets are never placed. Items travel along the run from its first cell to its last: start at the source (a device's chute Output port, a chute bin, a line that carries items towards it) and end at the sink (a device's chute Input port, a line that carries them away). The same run forms (waypoints, cells, piece {at, ends}, pieces [{at, ends}] 1.4.4+), join (ends by default: the run's first and last cells join every open chute end and chute port pointing at them, and the chute straight ahead of a run end that joins no chute port and no piece, which becomes a junction), extra_ends, remove_ids, dry run, job, materials and checks as place_cables, except that too few kits in from_id is not_enough_kits (not not_enough_coils). Flow guards, from the item flow of every chute network the edit touches (CODE: a straight or corner passes an item out of the end it did not come in by; a junction takes items in through its two inputs and lets them out only through its output; a device port with role Input takes items off the chute, Output pushes them in; a rocket chute umbilical's port, labelled Input, carries items both ways and fixes no direction, 1.6.1+): flow_reversed when what the run joins pushes items against the run's direction (reverse the waypoints); flow_conflict when two flows would meet head-on or an item would have to enter a piece through its output (a junction merges, it cannot split a flow: that needs a splitter, which these tools do not build); flow_ambiguous when a junction is needed and nothing fixes which way it must face. Warnings: drops_items where items would leave an open end and fall to the ground (a run end with nothing to join gets a straight whose far end stays open: open_end); flow_unknown when no source or sink fixes the direction of new pieces. would_bridge when the run joins two chute networks (listing each one's chute count, riding items and devices), or two chute ports of one device (its output into its own input); allow_bridge names those meant. A piece with an item riding in it is never replaced (cannot_change) or removed. Placement is checked as the cursor would: chutes collide with cables, pipes, devices and other chutes in the same small cell (cell_blocked); frames and walls never block them. Inside a rocket (1.6.0+) pieces go where the game lets a player lay them: a rocket's small cell takes a piece only when its fuselage made it a cell of that kind (RocketNetwork.IsCollision), and a free cell right above or below a rocket's cell takes none (cell_blocked with the game's reason); a piece laid there joins the rocket as a hand-laid one does. Each cell reports flow {in, out} (world axes). Chute network ids change after any removal or change (the game rebuilds them). Host only. No gateway is needed. 1.3.0+: would_split device detail, the tap check (not_joined, join_to, join_trunk), created_ids, the busy/wait job slot and network handles as place_cables. Doors and windows (1.4.3+): as place_cables, in_door_keepout (allow_door_keepout) and crosses_window.",
+    {"$include": "defs/text/lint_dry_run.txt"}
+  ],
+  "class": "write",
+  "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
+  "cost": "job",
+  "x-cost-when": [
+    {"when": {"job_id": {"present": true}}, "cost": "instant"},
+    {"when": {"dry_run": {"absent": true}}, "cost": "plan"},
+    {"when": {"dry_run": {"equals": true}}, "cost": "plan"}
+  ],
+  "params": {
+    "type": "object",
+    "properties": {
+      "waypoints": {"$ref": "defs/waypoints.json"},
+      "cells": {"$ref": "defs/cells.json"},
+      "piece": {"$ref": "defs/piece.json"},
+      "pieces": {"$ref": "defs/pieces.json"},
+      "grade": {"type": "string", "enum": ["chute"], "description": "Default chute."},
+      "join": {
+        "type": "string",
+        "enum": ["ends", "none", "all"],
+        "description": "How the run joins existing chute ends and device ports. Default ends."
+      },
+      "branches": {"$ref": "defs/branches.json"},
+      "allow_door_keepout": {"$ref": "defs/allow_door_keepout.json"},
+      "allow_split_long": {"$ref": "defs/allow_split_long.json"},
+      "extra_ends": {"$ref": "defs/extra_ends.json"},
+      "remove_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1024,
+        "items": {"type": "string"},
+        "description": "chute pieces removed in the same job before building (a reroute)."
+      },
+      "assume_removed": {"$ref": "defs/assume_removed.json"},
+      "allow_bridge": {"$ref": "defs/allow_bridge.json"},
+      "root": {"$ref": "defs/root.json"},
+      "join_to": {
+        "oneOf": [
+          {"type": "string"},
+          {
+            "type": "object",
+            "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+            "required": ["reference_id"],
+            "additionalProperties": false
+          }
+        ],
+        "description": "The chute network the run must end up on (not_joined when it does not): its id, a piece or device on it, or {reference_id, port}."
+      },
+      "join_trunk": {"$ref": "defs/join_trunk.json"},
+      "wait": {"$ref": "defs/wait.json"},
+      "allow_split": {"$ref": "defs/allow_split.json"},
+      "dry_run": {"$ref": "defs/dry_run.json"},
+      "confirm": {"$ref": "defs/confirm.json"},
+      "from_id": {
+        "type": "string",
+        "description": "The thing whose inventory gives the coils or kits and takes the refund. Default the local player."
+      },
+      "refund": {
+        "type": "boolean",
+        "description": "Give back what removed pieces and cheaper changes return. Default true; false is refund_to none."
+      },
+      "refund_to": {"$ref": "defs/refund_to.json"},
+      "include_links": {"$ref": "defs/include_links.json"},
+      "include_notes": {"$ref": "defs/include_notes.json"},
+      "include_network_devices": {"$ref": "defs/include_network_devices.json"},
+      "limit": {"type": "integer", "minimum": 0, "maximum": 1024, "description": "Cells listed, default 200."},
+      "verbose": {"$ref": "defs/verbose.json"},
+      "job_id": {"$ref": "defs/job_id.json"}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "job_id": {"type": ["string", "null"]},
+      "tool": {"type": "string"},
+      "status": {"type": "string"},
+      "position": {"type": "integer"},
+      "running_job_id": {"type": ["string", "null"]},
+      "preflight": {},
+      "preflight_summary": {"type": ["object", "null"]},
+      "final_check": {"type": ["object", "null"]},
+      "log": {"type": ["object", "null"]},
+      "verification": {"type": ["object", "null"]},
+      "gas_check": {"type": ["object", "null"]},
+      "error": {"type": ["object", "null"]},
+      "grade": {"type": ["string", "null"]},
+      "ready": {"type": "boolean"},
+      "problems": {"type": "array"},
+      "warnings": {"type": "array"},
+      "cells_total": {"type": "integer"},
+      "placed": {"type": "integer"},
+      "changed": {"type": "integer"},
+      "kept": {"type": "integer"},
+      "removed_count": {"type": "integer"},
+      "air_cells": {"type": ["integer", "null"]},
+      "cells": {"type": "array"},
+      "removals": {"type": "array"},
+      "materials": {"type": "object"},
+      "networks_before": {"type": "array"},
+      "networks_after": {"type": "array"},
+      "would_bridge": {"type": "array"},
+      "would_split": {"type": "array"},
+      "links": {"type": ["object", "null"]},
+      "notes": {"type": ["array", "null"]},
+      "result": {"type": ["object", "null"]},
+      "waiting": {"type": "integer"},
+      "message": {"type": "string"}
+    }
+  },
+  "x-views": ["JobQueuedView", "RunJobView", "RunReportView", "BuildJobView", "JobBusyView", "JobDroppedView"],
+  "x-shaping": "lists",
+  "x-job": {"poll_param": "job_id"},
+  "x-read-by": {"allow_bridge": "Api/PlaceRuns.cs"}
+}

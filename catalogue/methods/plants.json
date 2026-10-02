@@ -1,0 +1,32 @@
+{
+  "name": "plants",
+  "description": "Every plant growing in a hydroponics tray, planter or station, read from the plant itself, so it works for trays with no data port: its tray, growth stage (index, count, first mature and seeding stages, progress and length of the current stage, every stage's length), whether it is mature, seeding, dead or ready to harvest, growth efficiency and its parts (breathing, temperature, hydration, pressure, light), active problems in plain words (dry, too cold, harmful gas...), each condition's running time (time_s) against the time after which it starts damaging the plant, damage per type with damage_ratio (0 unharmed, 1 dead) and health_percent, harvest and seed counts with a forecast of the next harvest from recorded stress, nutrition, fertiliser, light exposure, the air it breathes (pressure, temperature_k, gas ratios), its tray's water, its needs (ideal and survivable temperature_k and pressure_kpa, gases taken in (mol_per_tick) with the share of the air each needs, water_mol_per_tick, light and dark seconds per day, harmful gas limits) and forecasts at the current efficiency: seconds to the next stage, to harvest, to seeds and, for perennials, to regrow after a harvest (null when it is not growing). Times are game seconds (game_time_s); efficiency parts are multipliers (growth_factor, breathing_factor...); temperatures are kelvin. include_unplanted adds every other plant item (harvested crops, seed bags). Errors: plant_not_found (no plant has that reference_id: no such thing, or not a plant), invalid_argument. Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "world",
+  "params": {
+    "type": "object",
+    "properties": {
+      "reference_id": {
+        "type": "string",
+        "description": "Reference ID of one plant (see find_items or container_contents of its tray); omit for all."
+      },
+      "include_unplanted": {
+        "type": "boolean",
+        "description": "Also list plant items that are not planted: crops in lockers, seed bags. Default false."
+      }
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "game_time_s": {"type": "number"},
+      "day_length_s": {"type": "integer"},
+      "debug_fast_growth": {"type": "boolean"},
+      "plants": {"type": "array"},
+      "count": {"type": "integer"}
+    }
+  },
+  "x-views": ["PlantsView"],
+  "x-shaping": "lists"
+}

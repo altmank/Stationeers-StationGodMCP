@@ -1,0 +1,107 @@
+{
+  "name": "rocket_forecast",
+  "description": "Fly a copy of a rocket to a node and report each leg; the game is not touched. Route: the game's pathfinder, re-planned at every node as the game does; a rocket in transit to another target turns round as Rocket.ChangeTarget does (same first hop kept, else a space hop reverses with progress 1 - progress, and a launch becomes a landing on its pad); a landing rocket cannot be retargeted here. Simulated tick by tick as the game runs it: physics steps at Time.fixedDeltaTime and the 0.5 s game tick every round(0.5/dt) steps (gas mass, landing autopilot, engine draw of 18 x throttle/100 mol per Pumped Gas Engine, tanks mixing with the pipe by volume, batteries paying every device's watts per tick); launch with gravity and the game's abort (net acceleration below zero turns the rocket round to land on its pad, forecast too); space hops (progress grows by thrust/mass x dt / distance); re-entry (the confidence check once at the start, 0 aborts back to orbit; then velocity -distance at the profile's altitude); the landing autopilot's rules (Normal, Alternate, Alternate2, FinalApproach); touchdown (soft under 2 m/s at 0.1 m; else a crash landing: under 4 m/s harmless, 4 to 25 m/s engine damage, faster explodes). Thrust per mole comes from the game's own combustion run on a copy of the fuel, so fuel temperature and mix count; the recorded thrust peak keeps rising as the game's does. Not simulated (named in assumptions): heat the tanks trade with the air (the thrust 100 K colder and warmer is given instead), engines other than the Pumped Gas Engine (refused: engine_not_modelled), the RocketCollisionDetector trigger. Each leg: kind (launch, hop, park, landing), from, to, distance (delta-v), outcome (arrived, parked, stalled, launch_aborted, landing_aborted, landed, hard_landing, crashed, timed_out) and detail, seconds, burn_seconds, delta_v spent, fuel start/used/left mol, first tank kPa at the end, mass start/end, battery start/end J, peak thrust, recorded thrust; a landing adds confidence and band, min required and max expected thrust, start altitude and mass, lowest stop altitude, touchdown speed, seconds, last rule, power_lost, fuel_ran_out. Also, with limits (default true): landing_limits from the rocket as its last landing starts (max landing mass that lands undamaged, max fuel+cargo kg, min and max fuel mol, survivable thrust drop %, the heaviest mass whose confidence stays at or above min_confidence, default 0.25), profiles (the same landing at Low 25 km, Medium 40 km, High 70 km, Max 120 km: outcome, confidence, fuel, time, touchdown, survivable drop) and least_fuel_mol (least starting fuel the whole plan succeeds with). column (column_check, default true): structures or terrain in the column the landing sweeps above the pad, tested as the game's overlap spheres test it. Plus route, uncharted, assumptions, succeeded, verdict. Destination: to, else the rocket's target, else its launch pad (return and land). A stop at a space node: park_s, mine (miners and holds draw power), fill_holds or add_cargo_slots (1 kg each; the cargo itself weighs nothing to the game), park_load_w, then_return (fly back to return_to, default the launch pad). What-ifs: fuel_mol, fuel_temperature_k, fuel_mix (e.g. {\"Methane\": 0.667, \"Oxygen\": 0.333}), thrust_scale, throttle, cargo_slots, add_cargo_kg, battery_j or battery_percent, extra_load_w, profile. Combustion (1.9.0+): engines burn at the game's rate (0.96), or at Terraforming Reloaded's (its RocketsBurnCompletely world option: 1.0) when that mod is loaded; {rate, source: game or terraforming_reloaded, note} is reported as combustion. Read only; no gateway.",
+  "class": "read",
+  "cost": "plan",
+  "params": {
+    "type": "object",
+    "properties": {
+      "rocket_id": {
+        "type": "string",
+        "description": "A rocket, its rocket network, or any of its parts. Omit when there is one rocket."
+      },
+      "to": {
+        "type": "string",
+        "description": "Destination node: its name, map code (as shown, or its number), reference id, or 'pad'. Default the rocket's target, else its pad."
+      },
+      "profile": {
+        "type": "string",
+        "enum": ["Low", "Medium", "High", "Max"],
+        "description": "Re-entry profile. Default the rocket's."
+      },
+      "park_s": {"type": "number", "minimum": 0, "description": "Seconds spent at the destination (mining, scanning)."},
+      "mine": {"type": "boolean", "description": "Miners and cargo holds draw their power while parked. Default false."},
+      "fill_holds": {"type": "boolean", "description": "Every cargo slot is filled by the end of the stop."},
+      "add_cargo_slots": {"type": "integer", "minimum": 0, "description": "Cargo slots filled during the stop.", "maximum": 100000},
+      "park_load_w": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Power draw per tick while parked. Default what AutoShutOff leaves on, plus the mining gear with mine."
+      },
+      "then_return": {"type": "boolean", "description": "After the stop, fly back and land. Default false."},
+      "return_to": {"type": "string", "description": "The pad to return to. Default the launch pad ('pad')."},
+      "fuel_mol": {"type": "number", "minimum": 0, "description": "What-if: total fuel in the engines' lines now."},
+      "fuel_temperature_k": {"type": "number", "exclusiveMinimum": 0, "description": "What-if: fuel temperature."},
+      "fuel_mix": {
+        "type": "object",
+        "description": "What-if: mole fractions by gas name (Methane, Oxygen, Hydrazine...), normalised."
+      },
+      "thrust_scale": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 10,
+        "description": "What-if: share of the measured thrust the engines give; the recorded peak the landing check uses stays."
+      },
+      "throttle": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "description": "What-if: throttle for launch and hops. Default the engines' own."
+      },
+      "cargo_slots": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "What-if: filled cargo slots now (1 kg each).",
+        "maximum": 100000
+      },
+      "add_cargo_kg": {"type": "number", "minimum": 0, "description": "What-if: extra mass now."},
+      "battery_j": {"type": "number", "minimum": 0, "description": "What-if: battery charge now (J)."},
+      "battery_percent": {"type": "number", "minimum": 0, "maximum": 100, "description": "What-if: battery charge now (%)."},
+      "extra_load_w": {"type": "number", "minimum": 0, "description": "What-if: more power draw per tick all trip."},
+      "min_confidence": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Confidence floor for confident_mass_kg and the verdict. Default 0.25."
+      },
+      "limits": {
+        "type": "boolean",
+        "description": "Landing limits, profiles and least fuel (bisection on the simulator). Default true."
+      },
+      "column_check": {"type": "boolean", "description": "Scan the landing column above the pad. Default true."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "rocket_id": {"type": "string"},
+      "rocket_name": {"type": "string"},
+      "start_state": {"type": "string"},
+      "destination": {"type": ["object", "null"]},
+      "route": {"type": "array"},
+      "uncharted": {"type": ["array", "null"]},
+      "assumptions": {"type": "array"},
+      "legs": {"type": "array"},
+      "succeeded": {"type": "boolean"},
+      "verdict": {"type": "string"},
+      "fuel_now_mol": {"type": "number"},
+      "least_fuel_mol": {"type": ["number", "null"]},
+      "landing_limits": {"type": ["object", "null"]},
+      "profiles": {"type": ["array", "null"]},
+      "column": {"type": ["object", "null"]},
+      "combustion": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["RocketForecastView"],
+  "x-shaping": "lists",
+  "x-read-by": {
+    "fuel_mol": "Api/Shared/Game/Flight/RocketModel.cs",
+    "fuel_temperature_k": "Api/Shared/Game/Flight/RocketModel.cs",
+    "thrust_scale": "Api/Shared/Game/Flight/RocketModel.cs",
+    "throttle": "Api/Shared/Game/Flight/RocketModel.cs",
+    "add_cargo_kg": "Api/Shared/Game/Flight/RocketModel.cs",
+    "battery_j": "Api/Shared/Game/Flight/RocketModel.cs",
+    "battery_percent": "Api/Shared/Game/Flight/RocketModel.cs"
+  }
+}

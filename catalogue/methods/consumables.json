@@ -1,0 +1,21 @@
+{
+  "name": "consumables",
+  "description": "Every food and drink in the world wherever it is (carried, stored, on the ground, inside boxes and packages), with its holders and location like find_items. Food: nutrition per unit and in total, food quality and seconds until it decays (decay_time_left_s). Drinks (water bottles and packets): liquid_l and the hydration they give. Boxes and packages (cereal bar boxes, water bottle packages) hold real items, so their contents are counted and listed per package. Decayed food, seeds, plants still growing in a tray, pills and empty drinks are listed as not counted. Totals of nutrition and hydration, and how much of each is still packed. Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "world",
+  "params": {"type": "object", "properties": {}, "additionalProperties": false},
+  "reply": {
+    "type": "object",
+    "properties": {
+      "food": {"type": "array"},
+      "drinks": {"type": "array"},
+      "packages": {"type": "array"},
+      "not_counted": {"type": "array"},
+      "totals": {"type": "object"},
+      "local_player": {"type": ["object", "null"]},
+      "note": {"type": "string"}
+    }
+  },
+  "x-views": ["ConsumablesView"],
+  "x-shaping": "lists"
+}

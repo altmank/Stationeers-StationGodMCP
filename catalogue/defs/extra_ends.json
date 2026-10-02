@@ -1,0 +1,13 @@
+{
+  "type": "array",
+  "maxItems": 64,
+  "items": {
+    "type": "object",
+    "properties": {
+      "at": {"description": "[x, y, z] or {x, y, z} in metres; snapped to the small cell it falls in."},
+      "toward": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]}
+    },
+    "required": ["at", "toward"]
+  },
+  "description": "Extra ends on run cells."
+}

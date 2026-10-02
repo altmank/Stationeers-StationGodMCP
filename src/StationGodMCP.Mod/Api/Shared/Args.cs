@@ -4,17 +4,20 @@ using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Api.Shared;
 
 /// <summary>
 /// A request's parameters with typed getters. JSON null means absent everywhere. A value of the wrong type is
-/// invalid_argument, naming the argument; a getter never guesses.
+/// invalid_argument, naming the argument; a getter never guesses. A request's own parameters know their method's
+/// declared names (the catalogue), and a name read that is not one of them counts in ArgumentDrift.
 /// </summary>
 internal sealed class Args
 {
     private readonly JObject _parameters;
     private readonly string _path;
+    private readonly ArgumentNames? _declared;
 
     internal Args(JObject? parameters)
         : this(parameters, string.Empty)
@@ -23,9 +26,21 @@ internal sealed class Args
 
     /// <summary>A nested object's parameters; path (e.g. "items[3]") prefixes every name an error message gives.</summary>
     internal Args(JObject? parameters, string path)
+        : this(parameters, path, null)
+    {
+    }
+
+    /// <summary>A request's parameters, held to its method's declared argument names.</summary>
+    internal Args(JObject? parameters, ArgumentNames declared)
+        : this(parameters, string.Empty, declared)
+    {
+    }
+
+    private Args(JObject? parameters, string path, ArgumentNames? declared)
     {
         _parameters = parameters ?? new JObject();
         _path = path;
+        _declared = declared;
     }
 
     internal bool Has(string name) => Token(name) != null;
@@ -224,7 +239,7 @@ internal sealed class Args
     {
         JObject copy = (JObject)_parameters.DeepClone();
         copy[name] = value.DeepClone();
-        return new Args(copy, _path);
+        return new Args(copy, _path, _declared);
     }
 
     // The name as an error message gives it: with the nested object's path in front.
@@ -232,9 +247,34 @@ internal sealed class Args
 
     private JToken? Token(string name)
     {
+        if (_declared != null && !_declared.Contains(name))
+        {
+            ArgumentDrift.Record(_declared.Method, name);
+        }
+
         JToken? token = _parameters[name];
         return token == null || token.Type == JTokenType.Null ? null : token;
     }
 
     private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
+}
+
+/// <summary>
+/// The names handlers read that their method's catalogue entry does not declare (mod_info.runtime.catalogue_drift),
+/// and where the first read of each is reported (the mod's log).
+/// </summary>
+internal static class ArgumentDrift
+{
+    internal static CatalogueDrift Counts { get; } = new CatalogueDrift();
+
+    /// <summary>Told the first undeclared read of each name by each method; null reports nothing.</summary>
+    internal static System.Action<string, string>? FirstMiss { get; set; }
+
+    internal static void Record(string method, string name)
+    {
+        if (Counts.Miss(method, name))
+        {
+            FirstMiss?.Invoke(method, name);
+        }
+    }
 }

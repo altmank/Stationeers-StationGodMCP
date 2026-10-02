@@ -1,0 +1,45 @@
+{
+  "name": "run_console_command",
+  "description": "Run any Stationeers console command on the game's main thread and return the console lines it printed. No gateway is needed. This is unrestricted: the console can spawn and delete things, teleport players, start storms, change world settings and quit the game, and nothing here is undoable. Scope refusals ('requires creative mode', 'not in game') and bad arguments come back as red output lines rather than as a call error. On a network client some commands only queue a request to the host; run_simulation reports which case applies. Output covers only what the command itself printed: lines a background thread logged at the same moment (Unity mirrors errors into the console from any thread) are reported as concurrent_log_lines and can be read with read_console. Commands that finish on a background task (save, load, new, file, reset, log, difficulty, exportworld, upnp, steam) return before printing anything: the reply sets completes_asynchronously and output_complete=false, and an empty output then proves nothing at all. Never report such a command as succeeded on the strength of this call; read_console a moment later and quote what it printed.",
+  "class": "cheat",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Full console command line exactly as it would be typed, for example 'addgas Oxygen 144 1000 293', 'storm start' or 'help'."
+      },
+      "max_output_lines": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "description": "Maximum console lines to return; defaults to 100. Truncation keeps the oldest lines, because an error prints its message before its stack trace."
+      }
+    },
+    "required": ["command"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "command": {"type": "string"},
+      "command_key": {"type": ["string", "null"]},
+      "scope": {"type": "string"},
+      "help_text": {"type": ["string", "null"]},
+      "arguments": {"type": ["array", "null"]},
+      "run_simulation": {"type": "boolean"},
+      "console_available": {"type": "boolean"},
+      "completes_asynchronously": {"type": "boolean"},
+      "output_complete": {"type": "boolean"},
+      "output_line_count": {"type": "integer"},
+      "truncated": {"type": "boolean"},
+      "concurrent_log_lines": {"type": "integer"},
+      "output": {"type": "array"},
+      "note": {"type": "string"}
+    }
+  },
+  "x-views": ["ConsoleRunView"],
+  "x-shaping": "lists"
+}

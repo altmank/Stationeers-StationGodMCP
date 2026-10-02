@@ -1,0 +1,4 @@
+{
+  "type": "string",
+  "description": "The device would_split measures cut-off devices against. Default every supplier on the network."
+}
