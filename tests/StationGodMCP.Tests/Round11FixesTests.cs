@@ -138,7 +138,7 @@ public sealed class Round11FixesTests
     [Fact]
     public void TheDescriptionsSayWhatRound11Found()
     {
-        string all = JsonSerializer.Serialize(ToolDefinitions.All);
+        string all = ToolCatalogue.Tools.GetRawText();
 
         Assert.Contains("not capped by wanted", all);
         Assert.Contains("or pipe pieces alone, which remove_pipes refuses outright", all);

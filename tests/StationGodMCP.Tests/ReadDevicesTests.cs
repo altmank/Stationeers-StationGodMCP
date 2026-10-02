@@ -393,8 +393,8 @@ public sealed class ReadDevicesTests
     [Fact]
     public void ReadDevicesIsALargeReplyTool()
     {
-        Assert.DoesNotContain("read_devices", ToolDefinitions.SmallReplies);
-        Assert.Contains("read_devices", ToolDefinitions.Names);
+        Assert.DoesNotContain("read_devices", ToolCatalogue.SmallReplies);
+        Assert.Contains("read_devices", ToolCatalogue.Names);
     }
 
     [Fact]

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -36,7 +37,8 @@ internal sealed class Catalogue
 
     internal int MethodCount => _methods.Count;
 
-    internal bool TryGet(string method, out CatalogueMethod found) => _methods.TryGetValue(method, out found);
+    internal bool TryGet(string method, [NotNullWhen(true)] out CatalogueMethod? found) =>
+        _methods.TryGetValue(method, out found);
 
     /// <summary>The catalogue from its JSON text; a key given twice anywhere is refused, as in requests.</summary>
     internal static Catalogue Load(string json)

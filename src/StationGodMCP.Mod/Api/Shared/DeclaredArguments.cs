@@ -27,7 +27,7 @@ internal sealed class DeclaredArguments
 
     /// <summary>The method's declared names, or null when the catalogue does not list it.</summary>
     internal ArgumentNames? NamesOf(string method) =>
-        _catalogue.TryGet(method, out CatalogueMethod found) ? found.ArgumentNames : null;
+        _catalogue.TryGet(method, out CatalogueMethod? found) ? found.ArgumentNames : null;
 
     /// <summary>Refuses (invalid_argument) a request that gives an argument its method does not take.</summary>
     internal void Check(string method, JObject? parameters)

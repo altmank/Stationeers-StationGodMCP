@@ -65,7 +65,7 @@ public sealed class FileOutputTests : IDisposable
         foreach ((string tool, JsonElement schema) in Program.InputSchemas)
         {
             bool takes = schema.GetProperty("properties").TryGetProperty("output_file", out _);
-            Assert.True(takes != ToolDefinitions.SmallReplies.Contains(tool), tool);
+            Assert.True(takes != ToolCatalogue.SmallReplies.Contains(tool), tool);
         }
     }
 
