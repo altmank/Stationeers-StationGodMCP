@@ -94,7 +94,7 @@ over a private network. The TCP listener exists today, with one shared secret se
 without that secret (`src/StationGodMCP.Mod/StationGodTcpServer.cs:174-229`; `src/StationGodMCP.Mod/StationGodMod.cs:243-250`).
 In the new design TCP speaks exactly the same protocol as the pipe, each client has its own key and level, and the
 key is never sent over the wire, only a proof that the client holds it. The old shared secret keeps working for old
-sidecars but can no longer reach cheat tools. The connection is still not encrypted, so the design expects a private
+sidecars; whether it may still reach cheat tools is a question for the owner below. The connection is still not encrypted, so the design expects a private
 network or a VPN. The owner, playing as a client, approves cheats through the game's own `serverrun` command, which
 forwards a console command from a client to the host when both share the game's server secret (game decompile
 `Util.Commands/ServerRunCommand.cs`, `Util.Commands/ServerRunCommandMessage.cs:15-36`). One gap remains; see *What
@@ -172,7 +172,8 @@ declared, and error codes. Details: [catalogue.md](catalogue.md).
 
 Each connection gets a level when it signs in: read, write or cheat. A key in a small file next to the mod's config
 names a client, its level, and any single methods it is allowed beyond its level. A local connection without a key
-gets a configured level. Remote connections need a key, or the old shared secret, which is capped below cheat.
+gets a configured level. Remote connections need a key, or the old shared secret, whose level is a question for
+the owner below.
 
 Cheat needs more than a key. Even a key whose level is cheat uses cheat tools only while the owner has approved it in
 the game, for a limited time, with a console command: typed in the host's console, the dedicated server's console, or
@@ -298,6 +299,15 @@ they make a key or change a setting), or read. Recommended: write.
 **How the owner says yes to cheats.** Options: a standing key with cheat level (simple, but every agent started with
 it can cheat at any time), or a time-limited approval in the game for one connection or one key. Recommended: the
 time-limited approval in the game.
+
+**Whether the old shared TCP secret may still reach cheat tools.** It travels in plain text, so anyone who can
+watch the network between an old remote sidecar and the host learns it. Option A caps it at write: safe, but an old
+remote sidecar loses `move_gas`, the console tool and the other cheat tools until it moves to keys. Option B keeps
+cheat on it until the old protocol is switched off: nothing breaks, and the exposure stays as it is today.
+Recommended: A, but only if no old remote sidecar is in use. To check: is `[Remote MCP] Enabled` true in the game's
+or server's `BepInEx\config\net.xceled.stationeers.stationgodmcp.cfg`; does any agent registration pass `--host`;
+and, once the new mod runs, does its log show any legacy TCP sign-in. If all three say no, A costs nothing. Until the
+owner decides, B ships.
 
 **When to switch the old protocol off.** It keeps every existing client alive during the move. Recommended: after
 every client in the owner's repositories has moved, plus one clean release on the new protocol; then on the owner's
