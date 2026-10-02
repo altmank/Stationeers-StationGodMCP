@@ -1,0 +1,31 @@
+{
+  "description": "The file is UTF-8 without escaping non-ASCII characters; files compare as parsed JSON.",
+  "method": "find_items",
+  "output_file": "items",
+  "result": {
+    "items": [
+      {
+        "name": "Ölfass"
+      }
+    ],
+    "note": "ä ✓"
+  },
+  "expected_file_name": "items.json",
+  "expected_pointer": {
+    "tool": "find_items",
+    "counts": {
+      "items": 1
+    },
+    "summary": {
+      "note": "ä ✓"
+    }
+  },
+  "expected_file": {
+    "items": [
+      {
+        "name": "Ölfass"
+      }
+    ],
+    "note": "ä ✓"
+  }
+}

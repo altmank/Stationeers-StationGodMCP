@@ -1,0 +1,9 @@
+{
+  "description": "Refused before the call is sent: '.hidden'.",
+  "method": "find_things",
+  "output_file": ".hidden",
+  "result": {
+    "things": []
+  },
+  "expected_error": "invalid_argument"
+}

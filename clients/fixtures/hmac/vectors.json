@@ -1,0 +1,37 @@
+{
+  "description": "protocol.md, Proving a key: proof = lowercase hex HMAC-SHA256, key = the base64-decoded key, message = UTF-8 of \"stationgod-v2\n\" + nonce (base64 text as received) + \"\n\" + client + \"\n\" + transport. Shared by the Python and C# tests.",
+  "cases": [
+    {
+      "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "nonce": "q8XyAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxw=",
+      "client": "dashboard",
+      "transport": "pipe",
+      "message": "stationgod-v2\nq8XyAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxw=\ndashboard\npipe",
+      "proof": "dbd0f8a5fc8b3764e6eeb807a59d09cc4dac8b73244267ee1aa2cc8ef5a8eea8"
+    },
+    {
+      "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "nonce": "q8XyAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxw=",
+      "client": "dashboard",
+      "transport": "tcp",
+      "message": "stationgod-v2\nq8XyAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxw=\ndashboard\ntcp",
+      "proof": "66bf5cc0f84fddba21deeac89b5c30d8d8c5be45cc856edf0a7135cf0c83f36e"
+    },
+    {
+      "key": "//79/Pv6+fj39vX08/Lx8O/u7ezr6uno5+bl5OPi4eDf3t3c29rZ2NfW1dTT0tHQ",
+      "nonce": "wUq0x0/+Zm9vYmFyYmF6cXV4AAAAAAAAAAAAAAAAAAA=",
+      "client": "agents",
+      "transport": "tcp",
+      "message": "stationgod-v2\nwUq0x0/+Zm9vYmFyYmF6cXV4AAAAAAAAAAAAAAAAAAA=\nagents\ntcp",
+      "proof": "44bba6dce07844b466416c1b12b51f34a1057d80eb6dd7a9199f2a8c5667340a"
+    },
+    {
+      "key": "1enZJ/rZm/qUU8+u0qfUXecYk0g+4RfZrkoVetifuZc=",
+      "nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "client": "owner-scripts",
+      "transport": "pipe",
+      "message": "stationgod-v2\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\nowner-scripts\npipe",
+      "proof": "bc8888847ad864cc3829852b90fc9d59bede5b2cd859f766b9d976179e7745d7"
+    }
+  ]
+}

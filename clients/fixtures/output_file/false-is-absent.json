@@ -1,0 +1,11 @@
+{
+  "description": "output_file false answers the reply inline, as if absent.",
+  "method": "game_clock",
+  "output_file": false,
+  "result": {
+    "game_time_s": 1.5
+  },
+  "expected_inline": {
+    "game_time_s": 1.5
+  }
+}

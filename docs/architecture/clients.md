@@ -193,6 +193,69 @@ because the caller's ids may be wrong. A `subscribe` refused with `subscription_
 a version-1 server `subscribe` raises `TooOld`. In both cases the caller polls `read_devices` with the same items; the
 dashboard's runner already has that path.
 
+### As built in stage 7
+
+The library follows the owner's rule that it stays a thin client: connecting, negotiating, signing in, the resend
+rule, subscription bookkeeping and output files, plus what is generated from the catalogue. Everything else is the
+mod's. Where the build differs from the text above, or the protocol left a choice open, this records it.
+
+**What is generated, and what is not.**
+- `clients/python/generate_catalogue.py` writes `stationgod/_methods.py` from `catalogue.json`: the catalogue's hash,
+  a table per method (class, `x-class-when`, `x-effects`, `x-paging`, `x-duration`, declared and required argument
+  names) and one stub per method on the client (`game.thing_health(reference_ids=[...])`; a Python keyword gets a
+  trailing underscore, `move_gas(from_=...)`). `call(method, **params)` still works for any method. A test fails when
+  the module is stale, so whoever changes `catalogue.json` reruns the generator. This replaces `_catalogue.json`:
+  the package carries the table, not the whole file, and `build.ps1` does not need to copy anything.
+- Before sending on version 2 the client refuses, with `invalid_argument` and `data.checked_by: "client"`, an argument
+  name the method does not declare (naming the nearest, by the mod's own rule) and a required argument left out.
+  Types, ranges and patterns are left to the mod. Version 1 sends everything unchecked, as today.
+- The library never shapes a reply. It sends `fields`, `limit` and `max_bytes` as `shape` (on version 2 only when
+  `welcome.features` lists `shape`; on version 1 always) and returns what comes back. Against a mod that does not
+  shape, the reply comes back whole. This replaces "applies `fields` itself" above.
+- `limit` given as an object is `shape.limit`; given as an integer it is the method's own argument.
+- The class rules are evaluated only for the resend rule, never to refuse a call.
+
+**Negotiating and signing in.**
+- `hello` always carries `client` (`name`: the given client name or `stationgod-py`; `version`; `library`
+  `stationgod-py/<version>`) and `features`. It carries `auth: "key"` only when a client name is given and its key
+  variable is set; a name without a key connects anonymously under that name.
+- Any first answer without a `type` key means an old mod. On the pipe the library speaks version 1 on the same
+  connection. On TCP, where the old mod closes after its refused sign-in, it reconnects with the legacy secret from the
+  environment variable `secret_env` (default `STATIONGODMCP_SECRET`, as the sidecar's) and otherwise raises `TooOld`.
+- A version-1 connection has one call in flight. Replies are matched by the echoed `id`; a version-1 reply with a null
+  id goes to the one call in flight.
+- `close()` sends `bye` on version 2.
+
+**Calls, timeouts and resending.**
+- `deadline_ms` is sent only when the caller gives it; the mod adds `x-duration` itself. The client waits its connect
+  timeout plus the deadline (30 s by default) plus `x-duration` (the argument given, else the method's `max_s`) plus
+  5 s from when the call was made, then raises `Unreachable` and sends `cancel` when the server lists it.
+- A written read is resent at most once; broken twice, it fails with `maybe_ran` false.
+- `maybe_ran` is true when the call was written and is not safe to resend, so a written `highlight` reports true.
+- In another world (a different `world.id` after reconnecting) nothing waiting is sent, written or not: those calls
+  raise `WorldChanged`, a subclass of `Unreachable`.
+- A broken connection is reopened by a caller's next call at once. The backoff (100 ms doubling to 5 s) paces only the
+  library's own reconnecting, which runs while calls wait to be resent or subscriptions are open.
+- When `welcome.catalogue.hash` (compared as the text `sha256:<lowercase hex>`) differs from the built-in one, the
+  client calls `catalogue` once per hash on the new connection and uses its table; if that fails it keeps the built-in
+  one. `on_call` is not called for the library's own calls (this fetch and the `world` subscription).
+
+**World changes and subscriptions.**
+- The world-changed callback fires once per new `world.id`: from a `world_changed` event (the connection event and
+  the `world` topic's event are the same name and are told apart by nothing else) or from the welcome after a
+  reconnect. It closes every open subscription with `end_reason` `world_changed`. A `subscription_ended` event closes
+  that one subscription and wakes its waiters, without firing the callback, which the `world_changed` event does.
+- A `game_state` event is read from its `game_state` key.
+- The subscribe reply is bound to its subscription on the reader thread before the caller wakes, so an `update` sent
+  straight after the reply is not lost.
+
+**Tests.** Standard library only: `py -3.12 -m unittest discover -s clients/python/tests` (pytest also runs them).
+The fake mod in `tests/fakemod.py` speaks both versions over loopback TCP and a real overlapped pipe. The live tests
+run when `STATIONGOD_LIVE_PIPE` names the test server's pipe and refuse the default one. The shared fixtures are
+`clients/fixtures/output_file/*.json` (the argument, the result as it came back, the expected file name or name
+pattern, pointer without its path and byte count, and file content; or the expected error) and
+`clients/fixtures/hmac/vectors.json`. A pointer's `summary` limit counts the compact JSON text of each value.
+
 ## The C# client and the sidecar
 
 ### The client
