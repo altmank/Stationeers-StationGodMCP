@@ -1,0 +1,29 @@
+{
+  "name": "atmosphere_contents",
+  "description": "What gas or liquid one thing holds: a canister, portable tank, tank, suit, a pipe (its whole pipe network), any landing pad piece (the pad network's one shared atmosphere, source landing_pad_network), a device (every pipe network it is connected to) and the canisters in its slots (a tank storage, an air conditioner), or a pipe or landing pad network by its own reference id, or an atmosphere_id from water_sources or an earlier reply. Each atmosphere has a source (internal, pipe_network, landing_pad_network, connected_network or slot) and lists every gas and liquid with amount_mol and, for liquids, liquid_l, plus volume_l, pressure_kpa, temperature_k and total_mol, and a water summary: liquid water (liquid_mol, liquid_l and the hydration drinking it would give), polluted water (polluted_mol, polluted_l) and steam (steam_mol, steam_if_condensed_l). Owners have kind item, structure, dynamic (a portable tank: find_things' kinds) or pipe_network. Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "reference_id": {
+        "type": "string",
+        "description": "Reference ID of a thing (find_items, list_devices, list_containers), of a pipe or landing pad network, or an atmosphere_id (water_sources)."
+      }
+    },
+    "required": ["reference_id"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "reference_id": {"type": "string"},
+      "subject": {},
+      "atmospheres": {"type": "array"},
+      "count": {"type": "integer"},
+      "note": {"type": "string"}
+    }
+  },
+  "x-views": ["AtmosphereContentsView"],
+  "x-shaping": "lists"
+}

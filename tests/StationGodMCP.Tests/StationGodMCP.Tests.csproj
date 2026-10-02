@@ -33,5 +33,7 @@
     <!-- The game ships Newtonsoft.Json 13.0.2; the wire checks serialise with the same major version. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+    <!-- Validates catalogue.json against catalogue/catalogue.schema.json (tests only; nothing ships with it). -->
+    <PackageReference Include="JsonSchema.Net" Version="9.4.0" />
   </ItemGroup>
 </Project>

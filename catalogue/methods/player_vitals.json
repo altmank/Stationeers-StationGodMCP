@@ -1,0 +1,37 @@
+{
+  "name": "player_vitals",
+  "description": "The local player's hunger and thirst: nutrition and hydration now and their capacities, food quality and its multiplier, mood, sleeping, brain online, helmet closed, the temperature thirst depends on right now and where it is taken (suit, room or world), the difficulty's hunger rate, hydration rate and offline metabolism, and the drain per game second for hunger and for thirst computed with the game's own per-tick formulas (Human.LifeNutrition, Human.LifeDehydrate): right now (0 while lying in a bed, a powered sleeper or a working cryo tube, halved while sleeping elsewhere) and when up and about, each with the seconds until the body's store reaches 0 at that rate (time_left_s, time_left_awake_s; thirst_temperature has temperature_k). Food and water carried or stored are not counted here; see consumables and water_sources. Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "instant",
+  "params": {"type": "object", "properties": {}, "additionalProperties": false},
+  "reply": {
+    "type": "object",
+    "properties": {
+      "reference_id": {"type": "string"},
+      "display_name": {"type": ["string", "null"]},
+      "nutrition": {"type": "number"},
+      "nutrition_capacity": {"type": "number"},
+      "hydration": {"type": "number"},
+      "hydration_capacity": {"type": "number"},
+      "food_quality": {"type": "number"},
+      "food_quality_multiplier": {"type": "number"},
+      "mood": {"type": "number"},
+      "sleeping": {"type": "boolean"},
+      "brain_online": {"type": "boolean"},
+      "robot": {"type": "boolean"},
+      "life_suspended": {"type": "boolean"},
+      "dead": {"type": "boolean"},
+      "suit_worn": {"type": "boolean"},
+      "helmet_closed": {"type": ["boolean", "null"]},
+      "thirst_temperature": {"type": "object"},
+      "difficulty": {"type": "object"},
+      "hunger": {"type": "object"},
+      "thirst": {"type": ["object", "null"]},
+      "warnings": {"type": "object"},
+      "game_tick_s": {"type": "number"},
+      "note": {"type": "string"}
+    }
+  },
+  "x-views": ["PlayerVitalsView"],
+  "x-shaping": "none"
+}

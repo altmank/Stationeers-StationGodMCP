@@ -15,4 +15,9 @@
   <ItemGroup>
     <InternalsVisibleTo Include="StationGodMCP.Tests" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The method catalogue the tools come from (the repository root's catalogue.json, assembled from catalogue/). -->
+    <EmbeddedResource Include="..\..\catalogue.json" LogicalName="StationGodMCP.catalogue.json" />
+  </ItemGroup>
 </Project>

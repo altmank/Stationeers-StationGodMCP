@@ -1,0 +1,12 @@
+{
+  "oneOf": [
+    {"type": "string"},
+    {
+      "type": "object",
+      "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+      "required": ["reference_id"],
+      "additionalProperties": false
+    }
+  ],
+  "description": "The network the route must end up on (default: to's network, when to names one); its id, a piece or device on it, or {reference_id, port}."
+}

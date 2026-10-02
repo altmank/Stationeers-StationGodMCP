@@ -1,0 +1,28 @@
+{
+  "name": "describe_device",
+  "description": "Describe one network device and dynamically enumerate every vanilla logic type it reports as readable or writable. A device in a rocket also gets rocket {network_id, name, state, dry_mass_kg, hull_pieces, internals} (1.6.0+); a rocket umbilical (gas, power, chute, crew; male or socket) gets umbilical {role, open, partner, partner_distance, search}: the partner the game holds and the game's partner search replayed now (found, partner_distance, how, and per column why it stopped: a device between, a non-matching umbilical, one not facing back).",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."}
+    },
+    "required": ["reference_id"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "device": {"type": "object"},
+      "rocket": {"type": ["object", "null"]},
+      "umbilical": {"type": ["object", "null"]},
+      "logic_types": {"type": "array"},
+      "logic_type_count": {"type": "integer"},
+      "note": {"type": "string"}
+    }
+  },
+  "x-views": ["DescribeDeviceView"],
+  "x-shaping": "lists"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "game_clock",
+  "description": "Read the game clock: game_time_s (seconds, stops while paused, restarts from 0 on every launch), paused, time_of_day_ratio (fraction of the local day, 0 to 1) and days_past. No gateway is needed. Values that stop changing between reads mean the game is paused, not that a device is stuck.",
+  "class": "read",
+  "cost": "instant",
+  "params": {"type": "object", "properties": {}, "additionalProperties": false},
+  "reply": {
+    "type": "object",
+    "properties": {
+      "game_time_s": {"type": "number"},
+      "paused": {"type": "boolean"},
+      "time_of_day_ratio": {"type": "number"},
+      "days_past": {"type": "integer"}
+    }
+  },
+  "x-views": ["GameClockView"],
+  "x-shaping": "none"
+}

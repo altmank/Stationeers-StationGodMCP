@@ -1,0 +1,50 @@
+{
+  "name": "network_snapshot",
+  "description": "Capture one main-thread snapshot of filtered network devices and their readable logic values. Filters may use reference IDs, prefab hash, display-name text, and selected logic types.",
+  "class": "read",
+  "cost": "world",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 256,
+        "items": {"type": "string"},
+        "description": "Optional exact device reference-ID filter."
+      },
+      "prefab_hash": {
+        "type": "integer",
+        "description": "Optional exact signed PrefabHash filter.",
+        "minimum": -2147483648,
+        "maximum": 2147483647
+      },
+      "name_contains": {"type": "string", "description": "Optional case-insensitive DisplayName substring filter."},
+      "logic_types": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "items": {
+          "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+          "description": "LogicType enum name or numeric ushort ID."
+        },
+        "description": "Optional logic types to read. Omit to read every logic type each matching device exposes."
+      },
+      "max_devices": {"type": "integer", "minimum": 1, "maximum": 256, "description": "Maximum returned devices; defaults to 256."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "devices": {"type": "array"},
+      "count": {"type": "integer"},
+      "matched_count": {"type": "integer"},
+      "truncated": {"type": "boolean"}
+    }
+  },
+  "x-views": ["NetworkSnapshotView"],
+  "x-shaping": "lists"
+}

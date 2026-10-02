@@ -1,0 +1,6 @@
+{
+  "type": "integer",
+  "minimum": 1,
+  "maximum": 4096,
+  "description": "Pieces listed per list in the report, default 200 (all are counted and checked)."
+}

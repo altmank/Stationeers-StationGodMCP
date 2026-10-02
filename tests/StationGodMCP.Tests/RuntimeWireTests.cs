@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Catalogue;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -17,7 +18,7 @@ public sealed class RuntimeWireTests
 {
     internal static RuntimeView EmptyRuntime() =>
         new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
-            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>());
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>());
 
     [Fact]
     public void RuntimeWire()
@@ -32,7 +33,7 @@ public sealed class RuntimeWireTests
         frames.Frame(1, 4.5, true);
         frames.Expired();
         RuntimeView view = new RuntimeView(125.04, 2, FrameBudget.For(4.0, false), frames.Snapshot(),
-            new MemoryView(31, 0, 123456789, 100000000, null), timings.Called());
+            new MemoryView(31, 0, 123456789, 100000000, null), timings.Called(), new List<DriftCount>());
 
         Assert.Equal(
             "{\"uptime_s\":125.0,\"world_epoch\":2,\"request_budget_ms\":4.0," +
@@ -45,7 +46,8 @@ public sealed class RuntimeWireTests
             "\"handler_ms\":{\"total\":0.6,\"mean\":0.3,\"max\":0.4}," +
             "\"serialize_ms\":{\"total\":0.4,\"mean\":0.2,\"max\":0.3}," +
             "\"queue_wait_ms\":{\"total\":24.0,\"mean\":12.0,\"max\":15.0}," +
-            "\"reply_bytes\":{\"total\":3000.0,\"mean\":1500.0,\"max\":1600.0}}],\"method_count\":1}",
+            "\"reply_bytes\":{\"total\":3000.0,\"mean\":1500.0,\"max\":1600.0}}],\"method_count\":1," +
+            "\"catalogue_drift\":[]}",
             WireCheck.New(view));
     }
 
@@ -54,7 +56,7 @@ public sealed class RuntimeWireTests
     {
         Assert.Contains("\"request_budget_ms\":null",
             WireCheck.New(new RuntimeView(0.0, 0, FrameBudget.For(0.0, false), new DispatchStats().Snapshot(),
-                new MemoryView(0, 0, 0, null, null), new List<MethodTiming>())));
+                new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>())));
     }
 
     [Fact]
@@ -147,5 +149,21 @@ public sealed class RuntimeWireTests
     public void TallyMaximumOfNegativeSamplesIsTheSample()
     {
         Assert.Equal(-2.0, default(Tally).With(-2.0).Maximum);
+    }
+
+    [Fact]
+    public void CatalogueDriftCountsMissesByMethodAndName()
+    {
+        CatalogueDrift drift = new CatalogueDrift();
+        Assert.True(drift.Miss("thing_health", "prefab"));
+        Assert.False(drift.Miss("thing_health", "prefab"));
+        Assert.True(drift.Miss("find_things", "zzz"));
+        RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), drift.Snapshot());
+
+        Assert.EndsWith(
+            "\"catalogue_drift\":[{\"method\":\"find_things\",\"argument\":\"zzz\",\"reads\":1}," +
+            "{\"method\":\"thing_health\",\"argument\":\"prefab\",\"reads\":2}]}",
+            WireCheck.New(view));
     }
 }

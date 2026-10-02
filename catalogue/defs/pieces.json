@@ -1,0 +1,19 @@
+{
+  "type": "array",
+  "minItems": 1,
+  "maxItems": 256,
+  "items": {
+    "type": "object",
+    "properties": {
+      "at": {"description": "[x, y, z] or {x, y, z} in metres; snapped to the small cell it falls in."},
+      "ends": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 6,
+        "items": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]}
+      }
+    },
+    "required": ["at", "ends"]
+  },
+  "description": "1.4.4+: separate pieces in one job, each as piece lays it (a neighbour without an end back becomes a junction)."
+}

@@ -29,7 +29,7 @@ if (-not (Test-Path (Join-Path $GameDir 'rocketstation_Data\Managed\Assembly-CSh
     throw "Stationeers not found at '$GameDir'. Pass -GameDir or set STATIONEERS_DIR."
 }
 
-# One version in five places and nothing else keeps them in step. A published build and a local build sharing a
+# One version in six places and nothing else keeps them in step. A published build and a local build sharing a
 # version number cannot be told apart afterwards, and the MCP client sees only the sidecar's.
 function Find([string]$path, [string]$pattern) {
     ([regex]::Match((Get-Content (Join-Path $root $path) -Raw), $pattern)).Groups[1].Value
@@ -40,6 +40,8 @@ $versions = [ordered]@{
     'About.xml' = Find 'About\About.xml' '<Version>([^<]+)</Version>'
     'Server.csproj' = Find 'src\StationGodMCP.Server\StationGodMCP.Server.csproj' '<Version>([^<]+)</Version>'
     'Program.ServerVersion' = Find 'src\StationGodMCP.Server\Program.cs' 'ServerVersion = "([^"]+)"'
+    # The method catalogue, embedded in both halves; CatalogueConsistencyTests writes it from catalogue/.
+    'catalogue.json' = Find 'catalogue.json' '"mod_version": "([^"]+)"'
 }
 # @() so a single shared version stays an array; indexing a bare string yields one char.
 $distinct = @($versions.Values | Sort-Object -Unique)
@@ -88,6 +90,8 @@ try {
     Copy-Item (Join-Path $root 'LICENSE') $package
     # The default lint rules; a lint-rules.json next to a save overrides them (docs/lint-rules.md).
     Copy-Item (Join-Path $root 'lint-rules.json') $package
+    # The method catalogue the DLL and the sidecar embed, for tools and clients that read it from the mod folder.
+    Copy-Item (Join-Path $root 'catalogue.json') $package
     # The sidecars ship zipped: LaunchPad scans a mod folder recursively for DLLs and would try to load theirs.
     foreach ($to in @((Join-Path $package 'Sidecar'), $portable, $native)) {
         Copy-Item (Join-Path $root 'Sidecar\README.txt') $to

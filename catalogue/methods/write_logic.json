@@ -1,0 +1,33 @@
+{
+  "name": "write_logic",
+  "description": "Write a generic logic value to a device using a logic-type name or numeric ID. Any device in the world that supports writing that type; a gateway_id limits it to devices on that gateway's data networks. Returns requested_value, previous_value and current_value: current_value is read back at once and can differ from the request, because the device clamps it (On 7 reads 1), ignores it (a paint-only colour index), or moves toward it over time (a solar panel's angle); the write still succeeds.",
+  "class": "write",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
+      "logic_type": {
+        "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+        "description": "LogicType enum name or numeric ushort ID."
+      },
+      "value": {"type": "number", "description": "Finite double value to write."}
+    },
+    "required": ["reference_id", "logic_type", "value"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "reference_id": {"type": "string"},
+      "logic_type": {"type": "object"},
+      "requested_value": {"type": "number"},
+      "previous_value": {"type": ["number", "null"]},
+      "current_value": {"type": ["number", "null"]}
+    }
+  },
+  "x-views": ["LogicWriteView"],
+  "x-shaping": "none"
+}

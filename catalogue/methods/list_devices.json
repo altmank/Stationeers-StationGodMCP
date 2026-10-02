@@ -1,0 +1,30 @@
+{
+  "name": "list_devices",
+  "description": "List every device in the world, or with a gateway_id only those on that gateway's data networks. Reference IDs are returned as strings.",
+  "class": "read",
+  "cost": "world",
+  "x-cost-when": [
+    {"when": {"prefab_hash": {"present": true}}, "cost": "bounded"},
+    {"when": {"name_contains": {"present": true}}, "cost": "bounded"}
+  ],
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "prefab_hash": {
+        "type": "integer",
+        "description": "Optional exact signed PrefabHash filter.",
+        "minimum": -2147483648,
+        "maximum": 2147483647
+      },
+      "name_contains": {"type": "string", "description": "Optional case-insensitive DisplayName substring filter."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {"gateway_id": {"type": "string"}, "devices": {"type": "array"}, "count": {"type": "integer"}}
+  },
+  "x-views": ["DevicesView"],
+  "x-shaping": "lists"
+}

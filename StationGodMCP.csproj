@@ -26,8 +26,8 @@
     <Compile Include="src\StationGodMCP.Mod\**\*.cs" />
     <!-- The default lint rules, built in for when the mod folder's lint-rules.json is missing. -->
     <EmbeddedResource Include="lint-rules.json" LogicalName="StationGodMCP.lint-rules.json" />
-    <!-- Every tool's argument names, from the sidecar's schemas (ToolArgumentsFileTests keeps it current). -->
-    <EmbeddedResource Include="tool-arguments.json" LogicalName="StationGodMCP.tool-arguments.json" />
+    <!-- The method catalogue, assembled from catalogue/ (CatalogueConsistencyTests keeps it current). -->
+    <EmbeddedResource Include="catalogue.json" LogicalName="StationGodMCP.catalogue.json" />
   </ItemGroup>
 
   <ItemGroup>

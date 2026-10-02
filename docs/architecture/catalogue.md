@@ -375,3 +375,52 @@ It does not generate typed stubs: `call(method, **params)` works for any method 
 
 **The documentation.** The per-area pages in `docs/` keep their prose. A later, optional step can generate each page's
 argument tables from the catalogue; it is not part of this plan.
+
+## As built in stage 2
+
+Where the code disagreed with the text above, the build followed the code; this records each difference.
+
+- **No projection in `tools/list`.** Today's schemas already carry some `minimum` and `maximum` (`grid_survey`'s
+  `limit`, for example), so stripping the range keywords would have changed today's list. `inputSchema` is `params` in
+  full; the sidecar's `ArgumentCheck` still enforces no numeric range (`ArgumentCheck.cs:14-16`), so nothing an agent
+  sends is judged differently. The comparison test therefore compares tool by tool, as parsed JSON, with `minimum`,
+  `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `minLength`, `maxLength` and `pattern` removed from both sides.
+  The catalogue added 25 bounds; none disagrees with a bound today's schemas gave. No `pattern` was added.
+- **Order.** `catalogue.json` lists methods by name, so `tools/list` is in name order (it followed `ToolDefinitions`
+  before); the comparison is keyed by name.
+- **Layout and bytes.** The sources and `catalogue.json` share one layout (two-space indents, LF, any object or array
+  that fits in 120 columns on one line), written by the tests; `.gitattributes` keeps `catalogue.json` byte for byte
+  (`-text`). `mod_version` is taken from `StationGodMCP.csproj` when assembling, and `build.ps1` checks it as a sixth
+  version place and copies `catalogue.json` into the package.
+- **Schema additions.** The method schema gains `x-runs-in` (`mod`, default, or `sidecar`), which marks
+  `sample_logic`, the one allowed exception of test 2. The schema subset also accepts the annotation `deprecated`,
+  which today's schemas put on two old argument names (`thing_health` `min_ratio`, `water_sources` `min_moles`).
+  `pattern` must be anchored (`^...$`) and use no groups, alternation or `\b`.
+- **Shared reply keys** are written once, in `shared.json`; assembling adds each one to the `reply` of every method it
+  applies to. `takes_network_handles` applies when `params` has, at any depth, `network_id`, `network_ids`, `join_to`
+  or `allow_bridge`; `may_touch_pipe_networks` when `params` has `acknowledge_gas_lost` at the top level.
+- **`protocol_methods` is empty** until a protocol layer dispatches methods of its own (stage 4); test 2 asserts it.
+- **Test 3, names read.** Files reached one level down from a handler (`BuildArgs.cs`, `RunArgs.cs`, `AtResolver.cs`
+  through them) are shared by many methods and read names for all of them, so "every name read exists in the method's
+  `params`" cannot hold per method. The test holds every name read through `Args` anywhere under `Api/` to be declared
+  by some method's `params`, as a property or, inside an object `params` describes only in prose (`at`,
+  `relative_to`, `reroute.between`), named in a description. The exact per-method check is the run-time drift counter.
+  The other direction is as specified: every top-level parameter is read in the handler's files or named in
+  `x-read-by`, whose file must contain the name as a literal (12 methods use it).
+- **Test 4.** `PageRequest.From(args, default, maximum)` counts as reading `limit` from 1 to `maximum`. A name read
+  with bounds in the handler's own file takes those; otherwise the bound every other file of the handler agrees on;
+  a name read with different bounds gets none (`thing_health`'s `limit`, which differs between the scan and the
+  network form).
+- **Test 5** compares the top level: the keys the views in `x-views` write plus the shared keys that apply, and which
+  of them are lists. 89 methods declare `x-views`; `move_gas` (one of its views lives in a file that uses game types)
+  and `sample_logic` (answered by the sidecar) have hand-written replies. Entry schemas are not described yet.
+- **Test 6** also counts const strings named `...Code` and `...Code` properties that return a literal
+  (`GasHoldRule`'s verdicts, `RunKind.ShortageCode`). A tool code's description is the message at its first refusal
+  site, interpolations shown as `<name>`; the protocol codes come from protocol.md's table, and the sidecar's
+  `game_unavailable` is a `client` code. Methods do not list their own `errors` yet.
+- **Not filled yet** (all optional): `area`, `since`, per-method `errors`, `x-costly` (stage 14).
+- **The mod.** It loads the catalogue when it starts and logs `Catalogue loaded: N methods`; a catalogue that does not
+  load is logged as an error and every request is answered `internal_error` naming the problem. The drift counter is
+  `mod_info.runtime.catalogue_drift`, a list of `{method, argument, reads}`, and the first read of each pair is logged.
+- **The bootstrap** (`STATIONGOD_BOOTSTRAP_CATALOGUE=1`) ran once and was deleted with `ToolDefinitions`, which it read.
+- **Tests** validate `catalogue.json` against `catalogue.schema.json` with JsonSchema.Net, a test-only package.

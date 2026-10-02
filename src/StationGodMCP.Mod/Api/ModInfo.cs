@@ -43,7 +43,7 @@ internal static class ModInfoApi
     private static RuntimeView Runtime() =>
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
-            Memory(), MethodStats.Called());
+            Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot());
 
     // Unity's Mono (Boehm collector): one generation; the Profiler sizes answer 0 where the build does not report them.
     private static MemoryView Memory()

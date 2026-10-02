@@ -1,0 +1,29 @@
+{
+  "name": "read_console",
+  "description": "Read the most recent lines from the in-game console, oldest first, including command output, Unity errors and their stack traces. No gateway is needed.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "lines": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "description": "Number of recent console lines to return; defaults to 50."
+      }
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "requested_lines": {"type": "integer"},
+      "line_count": {"type": "integer"},
+      "console_available": {"type": "boolean"},
+      "lines": {"type": "array"}
+    }
+  },
+  "x-views": ["ConsoleReadView"],
+  "x-shaping": "lists"
+}

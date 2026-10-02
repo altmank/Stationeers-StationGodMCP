@@ -1,0 +1,1 @@
+{"type": "string", "enum": ["any", "vertical_first", "horizontal_first"]}

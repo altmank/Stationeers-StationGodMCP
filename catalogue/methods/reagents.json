@@ -1,0 +1,24 @@
+{
+  "name": "reagents",
+  "description": "The reagents a thing holds, one by one: a furnace's or arc furnace's melted load (Iron, Carbon, Silicon...), a centrifuge's, a mixer's, a microwave's. Logic only gives the total (Reagents). Returns reference_id, prefab_name, display_name, total (every reagent's quantity added, as the game adds them, units mixed) and reagents: [{reagent (type name), name, quantity, unit (the game's unit for that reagent: g, or ml for alcohol, milk and oil)}]. Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {"reference_id": {"type": "string", "description": "Reference ID of the furnace or other thing."}},
+    "required": ["reference_id"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "reference_id": {"type": "string"},
+      "prefab_name": {"type": ["string", "null"]},
+      "display_name": {"type": ["string", "null"]},
+      "total": {"type": "number"},
+      "reagents": {"type": "array"}
+    }
+  },
+  "x-views": ["ReagentsView"],
+  "x-shaping": "lists"
+}

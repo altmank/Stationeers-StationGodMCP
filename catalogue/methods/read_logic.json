@@ -1,0 +1,30 @@
+{
+  "name": "read_logic",
+  "description": "Read a generic logic value from a device using a logic-type name or numeric ID. Any device in the world; a gateway_id limits it to devices on that gateway's data networks.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
+      "logic_type": {
+        "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+        "description": "LogicType enum name or numeric ushort ID."
+      }
+    },
+    "required": ["reference_id", "logic_type"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "reference_id": {"type": "string"},
+      "logic_type": {"type": "object"},
+      "value": {"type": "number"}
+    }
+  },
+  "x-views": ["LogicReadView"],
+  "x-shaping": "none"
+}

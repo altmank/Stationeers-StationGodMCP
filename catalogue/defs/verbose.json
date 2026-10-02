@@ -1,0 +1,4 @@
+{
+  "type": "boolean",
+  "description": "With job_id: the whole job view, preflight and final_check included. Default false (1.7.0+): a poll leaves them out (null; a refused job keeps final_check). With a confirmed run (1.9.0+): the reply carries the whole preflight; by default it answers job_id, status and preflight_summary {placed, changed, removed, warnings} only. Refused with a dry run."
+}

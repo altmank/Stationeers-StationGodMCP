@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stationgod-catalogue-1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalogue_version", "mod_version", "server", "errors", "shared_reply_keys", "methods", "protocol_methods"],
+  "properties": {
+    "catalogue_version": {"const": 1},
+    "mod_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "server": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "instructions"],
+      "properties": {"name": {"type": "string"}, "instructions": {"type": "string"}}
+    },
+    "errors": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "origin"],
+        "properties": {
+          "description": {"type": "string"},
+          "origin": {"enum": ["tool", "protocol", "client"]},
+          "caller_may_resend": {"enum": ["never", "if_read", "yes"], "default": "never"}
+        }
+      }
+    },
+    "shared_reply_keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "schema", "applies_when"],
+        "properties": {
+          "key": {"type": "string"},
+          "schema": {"$ref": "#/$defs/schema"},
+          "applies_when": {"enum": ["takes_network_handles", "may_touch_pipe_networks"]}
+        }
+      }
+    },
+    "protocol_methods": {"type": "array", "items": {"$ref": "#/$defs/method"}},
+    "methods": {"type": "array", "items": {"$ref": "#/$defs/method"}}
+  },
+  "$defs": {
+    "class": {"enum": ["read", "write", "cheat"]},
+    "cost": {"enum": ["instant", "bounded", "world", "plan", "job", "stream"]},
+    "matcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {"equals": {}, "in": {"type": "array", "minItems": 1}, "present": {"const": true}, "absent": {"const": true}}
+    },
+    "when": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/matcher"}},
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["when"],
+      "properties": {
+        "when": {"$ref": "#/$defs/when"},
+        "any_of": {"type": "array", "items": {"$ref": "#/$defs/when"}},
+        "class": {"$ref": "#/$defs/class"},
+        "cost": {"$ref": "#/$defs/cost"},
+        "per_item": {"type": "string"}
+      }
+    },
+    "schema": {"type": "object", "description": "A JSON Schema in the subset listed under 'The schema subset'."},
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "class", "cost", "params", "reply", "x-shaping"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "area": {"type": "string"},
+        "since": {"type": "string"},
+        "description": {"type": "string", "minLength": 1},
+        "class": {"$ref": "#/$defs/class"},
+        "x-class-when": {"type": "array", "items": {"$ref": "#/$defs/rule"}},
+        "cost": {"$ref": "#/$defs/cost"},
+        "x-cost-when": {"type": "array", "items": {"$ref": "#/$defs/rule"}},
+        "x-effects": {"type": "array", "items": {"enum": ["display", "server_state", "files"]}},
+        "params": {"$ref": "#/$defs/schema"},
+        "reply": {"$ref": "#/$defs/schema"},
+        "x-views": {"type": "array", "items": {"type": "string"}},
+        "x-shaping": {"enum": ["lists", "none"]},
+        "x-paging": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["list", "offset", "limit", "order"],
+          "properties": {
+            "list": {"type": "string"},
+            "offset": {"type": "string"},
+            "limit": {"type": "string"},
+            "total": {"type": "string"},
+            "has_more": {"type": "string"},
+            "order": {"type": "string"}
+          }
+        },
+        "x-costly": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["list", "key"],
+            "properties": {"list": {"type": "string"}, "key": {"type": "string"}}
+          }
+        },
+        "x-duration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["param", "max_s"],
+          "properties": {"param": {"type": "string"}, "max_s": {"type": "number", "exclusiveMinimum": 0}}
+        },
+        "x-job": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["poll_param"],
+          "properties": {"poll_param": {"type": "string"}}
+        },
+        "x-needs-mod": {"type": "array", "items": {"enum": ["StationeersLua", "BlueprintMod", "IngotVault", "TerraformingReloaded"]}},
+        "x-mcp": {"enum": ["tool", "hidden"], "default": "tool"},
+        "x-read-by": {"type": "object", "additionalProperties": {"type": "string"}},
+        "deprecated": {"type": "boolean"},
+        "deprecated_aliases": {"type": "object", "additionalProperties": {"type": "string"}},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "x-runs-in": {
+          "enum": ["mod", "sidecar"],
+          "default": "mod",
+          "description": "Where the method runs: the mod (default), or the sidecar while it still does (sample_logic until stage 12)."
+        }
+      }
+    }
+  }
+}

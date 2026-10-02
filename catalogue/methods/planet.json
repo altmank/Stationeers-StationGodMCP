@@ -1,0 +1,42 @@
+{
+  "name": "planet",
+  "description": "The planet's own atmosphere, the one every outdoor cell relaxes toward. Before a world is loaded it returns only loaded false and terraforming_mod. Otherwise: loaded true, world_time_s (days past plus time of day, in seconds), day_length_s, volume_l, gas_volume_l, cells (outdoor 2 m cells), size_ratio (of the size it shipped with), gas_mol, liquid_mol, liquid_l, sea {liquid_l, threshold_l (the volume at which the sea is drawn), shown}, pressure_kpa, game_pressure_kpa, temperature_k, temperature_parts {sun_angle_k, sun_distance_k, greenhouse_k, density_k, weather_k, latent_k, external_k}, sun_angle_deg, solar_energy_percent, range {today_min_k, today_min_sun_angle_deg, today_max_k, today_max_sun_angle_deg, orbit_min_k, orbit_max_k} (the game's own formula swept over every sun angle), storm {id} or null, oxygen_kpa, toxins_kpa (human toxins), fuel_mol, oxidiser_mol (fire risk outdoors), carbon_dioxide_ratio, gases [{gas, display_name, state, amount_mol, per_cell_mol, partial_kpa, freezes_below_k, min_liquid_pressure_kpa, condenses_below_today_coldest_k, condenses_below_orbit_coldest_k}], reservoirs {liquid_clouds, ice_clouds, ice_caps}, each null or {volume_l, liquid_l, amount_mol, contents [{gas, amount_mol}]}, starting_air (the air this world ships with at the planet's present size, the baseline Terraforming Reloaded measures from: {per_cell_mol, mol, gases [{gas, amount_mol}]}), and terraforming_mod (null, or Terraforming Reloaded's {name, version, state, live, temperature_adjustment_k}). Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "instant",
+  "params": {"type": "object", "properties": {}, "additionalProperties": false},
+  "reply": {
+    "type": "object",
+    "properties": {
+      "loaded": {"type": "boolean"},
+      "terraforming_mod": {"type": ["object", "null"]},
+      "world_time_s": {"type": "number"},
+      "day_length_s": {"type": "number"},
+      "volume_l": {"type": "number"},
+      "gas_volume_l": {"type": "number"},
+      "cells": {"type": "number"},
+      "size_ratio": {"type": ["number", "null"]},
+      "gas_mol": {"type": "number"},
+      "liquid_mol": {"type": "number"},
+      "liquid_l": {"type": "number"},
+      "sea": {"type": "object"},
+      "pressure_kpa": {"type": "number"},
+      "game_pressure_kpa": {"type": "number"},
+      "temperature_k": {"type": "number"},
+      "temperature_parts": {"type": "object"},
+      "sun_angle_deg": {"type": "number"},
+      "solar_energy_percent": {"type": "number"},
+      "range": {"type": "object"},
+      "storm": {"type": ["object", "null"]},
+      "oxygen_kpa": {"type": "number"},
+      "toxins_kpa": {"type": "number"},
+      "fuel_mol": {"type": "number"},
+      "oxidiser_mol": {"type": "number"},
+      "carbon_dioxide_ratio": {"type": "number"},
+      "gases": {"type": "array"},
+      "reservoirs": {"type": "object"},
+      "starting_air": {"type": "object"}
+    }
+  },
+  "x-views": ["PlanetNotLoadedView", "PlanetView"],
+  "x-shaping": "lists"
+}

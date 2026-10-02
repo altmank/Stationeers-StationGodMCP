@@ -1,0 +1,32 @@
+{
+  "name": "write_memory",
+  "description": "Write a contiguous range of up to 512 finite values to a visible device with writable memory, as a chip's put instruction does (the devices read_memory lists; a Logic Memory has none: memory_not_writable). Refused before anything is written: a range past the memory's last address (invalid_argument), and an IC Housing or suit with no chip (no_programmable_chip).",
+  "class": "cheat",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"type": "string", "description": "Memory-device reference ID returned by list_devices."},
+      "start_address": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+      "values": {"type": "array", "minItems": 1, "maxItems": 512, "items": {"type": "number"}}
+    },
+    "required": ["reference_id", "start_address", "values"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "reference_id": {"type": "string"},
+      "start_address": {"type": "integer"},
+      "requested_values": {"type": "array"},
+      "previous_values": {"type": ["array", "null"]},
+      "current_values": {"type": ["array", "null"]},
+      "count": {"type": "integer"},
+      "stack_size": {"type": ["integer", "null"]}
+    }
+  },
+  "x-views": ["MemoryWriteView"],
+  "x-shaping": "none"
+}

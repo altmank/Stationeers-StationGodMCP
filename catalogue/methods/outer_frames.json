@@ -1,0 +1,48 @@
+{
+  "name": "outer_frames",
+  "description": "Which frames (iron, steel, corner, side) are outer frames: frames with a face on a cell whose gas is the world's, i.e. the planet's outside air. A face counts as exposed when the 2 m cell across it is in no room (the game's own meaning of outside: rooms are closed spaces of up to 1200 cells, walled by anything that blocks walking), can hold air (no airtight frame or other air-blocking structure in it, not buried in terrain), is open to the frame through the shared face (no terrain and no air-blocking wall on it), and, when that cell holds a one-sheet frame (never part of a room), its air passes the game's storm exposure test (the planet's atmosphere, or within 1 kPa of it). Limits: a sealed space bigger than 1200 cells has no room, so frames facing into it count as outer; a space closed only by one-sheet frames is a room, so its faces do not count though it leaks. Each frame has reference_id, prefab_name, display_name, position, distance_m from the local player, exposed_faces (any of +x, -x, +y, -y, +z, -z; +z is north, +y up), exposed_face_count, blocks_air (whether the frame's current build state is airtight), build_state (the current build state index: 0 bare, up to the prefab's finished state, which differs by frame: a finished steel frame is 3; blocks_air says whether it holds air) and color {index, name} (index null when unpainted and colourless). Nearest first when there is a local player. Also count, total_frames (frames considered, after near_player_m), total_outer, and paging: offset, limit, total (frames listed across all pages: the outer ones, or every frame with include_inner) and has_more; and local_player {reference_id, display_name, position}. Read only; no gateway is needed.",
+  "class": "read",
+  "cost": "world",
+  "params": {
+    "type": "object",
+    "properties": {
+      "near_player_m": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Only frames within this many metres of the local player."
+      },
+      "include_inner": {
+        "type": "boolean",
+        "description": "List every frame, with exposed_faces empty for inner ones. Default false: outer frames only."
+      },
+      "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Frames per page, default 200."},
+      "offset": {"type": "integer", "minimum": 0, "description": "Frames to skip, for paging.", "maximum": 2147483647}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "frames": {"type": "array"},
+      "count": {"type": "integer"},
+      "total_frames": {"type": "integer"},
+      "total_outer": {"type": "integer"},
+      "offset": {"type": "integer"},
+      "limit": {"type": "integer"},
+      "total": {"type": "integer"},
+      "has_more": {"type": "boolean"},
+      "include_inner": {"type": "boolean"},
+      "local_player": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["OuterFramesView"],
+  "x-shaping": "lists",
+  "x-paging": {
+    "list": "frames",
+    "offset": "offset",
+    "limit": "limit",
+    "total": "total",
+    "has_more": "has_more",
+    "order": "nearest the local player first, then reference id"
+  }
+}

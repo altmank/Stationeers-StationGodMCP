@@ -1,0 +1,43 @@
+{
+  "name": "control_ic_execution",
+  "description": "Pause, execute exactly one IC10 instruction while remaining paused, or resume the chip of a visible circuit holder; or restart a Lua chip. Pausing holds only IC Housings and suits; other holders (toolbelts, tablets, mining robots, logic I/O devices) report paused but keep running. A Lua chip (StationeersLua) cannot pause or step (lua_chip_unsupported): restart compiles its current source again and runs it from the start, clearing a latched error, as the Lua debugger's restart does; like set_ic_source it compiles on a worker thread, so poll get_ic_status. restart on an IC10 chip is refused (not_a_lua_chip). step on a running chip pauses it first; step is refused, with nothing changed, while the source has a compile error (ic_compile_error) or the holder is off, unpowered or not built (ic_not_operable). action ignores case. set_ic_source leaves a paused chip paused. A pause lasts until resume or until the world is left (1.9.1+: loading a save, a new game or the menu resumes every paused chip). A holder with no programmable chip is refused with no_programmable_chip.",
+  "class": "write",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"$ref": "defs/reference_id.json"},
+      "action": {
+        "type": "string",
+        "enum": ["pause", "step", "resume", "restart"],
+        "description": "pause, step and resume: IC10 chips. restart: Lua chips."
+      }
+    },
+    "required": ["reference_id", "action"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "reference_id": {"type": "string"},
+      "action": {"type": "string"},
+      "paused": {"type": "boolean"},
+      "previous_line": {"type": "number"},
+      "line_number": {"type": "number"},
+      "compilation_error": {"type": "boolean"},
+      "error_line": {"type": ["string", "null"]},
+      "error_type": {"type": ["string", "null"]},
+      "error_code": {"type": ["string", "null"]},
+      "compile_error_line": {"type": ["integer", "null"]},
+      "compile_error_type": {"type": ["string", "null"]},
+      "language": {"type": "string"},
+      "holder": {"type": "object"},
+      "chip": {"type": "object"},
+      "lua": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["IcControlView"],
+  "x-shaping": "none"
+}

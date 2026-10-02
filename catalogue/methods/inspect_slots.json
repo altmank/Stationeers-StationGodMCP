@@ -1,0 +1,34 @@
+{
+  "name": "inspect_slots",
+  "description": "Inspect generic device slots, occupants, slot constraints (interactable false: a hidden slot, which move_item refuses), and every readable LogicSlotType value without changing inventory contents. Devices only (things with logic): a crate, a lander or a tool answers device_not_found saying it is not a device; container_contents shows the slots of any thing.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
+      "slot_index": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Optional single slot index; omit to inspect every slot.",
+        "maximum": 2147483647
+      }
+    },
+    "required": ["reference_id"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"type": "string"},
+      "reference_id": {"type": "string"},
+      "device": {"type": "object"},
+      "slots": {"type": "array"},
+      "count": {"type": "integer"},
+      "total_slots": {"type": "integer"}
+    }
+  },
+  "x-views": ["InspectSlotsView"],
+  "x-shaping": "lists"
+}

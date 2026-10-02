@@ -1,0 +1,53 @@
+{
+  "name": "vault_withdraw",
+  "description": "Take an amount of one stored thing out of an Ingot Vault's store and make it straight into a holder's slots, as a move: the store goes down exactly as the vault's own vend takes it (an ingot's reagent set to what is left; an ore entry removed when 0.01 or less is left) and the same amount is made as items (the ingot the vault vends for that reagent, with its grams as quantity, or the ore's stack), never more per item than a full stack. No vend queue, export slot or door is used, so nothing lands in front of the vault. Name what to take with one of prefab_name (e.g. ItemIronIngot, ItemIronOre), prefab_hash, or reagent (ingots: Iron, Steel, ...); quantity (grams of ingot, a whole count of ore) must be at most what the vault holds. to_id: the holder (default the local player); to_slot: a slot index, or \"auto\" (default): on a player, first onto matching stacks anywhere in the inventory (belts, backpack, suit storage, a stack in a hand), then new stacks into empty slots that take the item (never into the player's own body slots unless named by index); on anything else its own slots; never a hidden slot (not interactable, e.g. a cable coil's; refused with slot_refuses when named). What does not fit is refused (no_room, nothing changed) unless allow_ground is true, which puts the rest on the ground a metre in front of the holder. vault_id may be a Remote Vault. Dry run by default; dry_run false and confirm true to do it. Returns {dry_run, vault, via, to, quantity, placed: [{where (merged, slot or ground), slot {id, slot} (null on the ground), quantity, reference_id (the stack; null in a dry run for a new one)}], stock: [{kind, prefab_name, display_name, reagent, before, change, after}] (a real run reads after back from the vault)}. If a game call fails part way, what was not made goes back into the store. Refusals: not_in_vault (lists what the vault holds), not_enough_stock, invalid_argument (a fraction of an ore, not exactly one of prefab_name/prefab_hash/reagent), prefab_missing, no_room, slot_not_found, slot_locked, slot_occupied, slot_refuses, no_slots, invalid_destination (a vault as the holder), vault_unpowered, confirm_required, ingot_vault_mod_required, ingot_vault_changed, not_a_vault, vault_not_connected, no_local_player, not_host. Host only. No gateway is needed.",
+  "class": "write",
+  "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "vault_id": {"type": "string", "description": "The Ingot Vault, or a Remote Vault linked to one."},
+      "prefab_name": {
+        "type": "string",
+        "description": "The item to take, as vault_contents names it (e.g. ItemIronIngot, ItemIronOre)."
+      },
+      "prefab_hash": {
+        "type": "integer",
+        "description": "The item to take, by prefab hash.",
+        "minimum": -2147483648,
+        "maximum": 2147483647
+      },
+      "reagent": {"type": "string", "description": "Ingots: the stored reagent (e.g. Iron, Steel)."},
+      "quantity": {"type": "number", "exclusiveMinimum": 0, "description": "Grams of ingot, or a whole count of ore."},
+      "to_id": {"type": "string", "description": "The holder that gets the items; default the local player."},
+      "to_slot": {
+        "oneOf": [{"type": "integer", "minimum": 0}, {"type": "string", "enum": ["auto"]}],
+        "description": "A slot index of to_id, or \"auto\" (default)."
+      },
+      "allow_ground": {
+        "type": "boolean",
+        "description": "Put what does not fit on the ground in front of the holder. Default false: refused instead."
+      },
+      "dry_run": {"type": "boolean", "description": "Default true: check and report only."},
+      "confirm": {"type": "boolean", "description": "true with dry_run false to withdraw."}
+    },
+    "required": ["vault_id", "quantity"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "dry_run": {"type": "boolean"},
+      "vault": {"type": "object"},
+      "via": {"type": ["object", "null"]},
+      "to": {"type": "object"},
+      "quantity": {"type": "number"},
+      "placed": {"type": "array"},
+      "stock": {"type": "array"}
+    }
+  },
+  "x-views": ["VaultWithdrawView"],
+  "x-shaping": "lists",
+  "x-needs-mod": ["IngotVault"]
+}

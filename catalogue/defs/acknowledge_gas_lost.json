@@ -1,0 +1,1 @@
+{"type": "string", "description": [{"$include": "defs/text/acknowledge_gas_lost.txt"}]}

@@ -1,0 +1,58 @@
+{
+  "name": "trader_buy",
+  "description": "Buy from the trader that has landed and is ready at the landing pad (any other contact is refused with not_landed, naming the landed one), exactly as the trade window's Buy button does on the host (TradeDataHelper.BuyItem): the card is charged, the trader's stock drops, and the goods are made straight into the first empty tradable slots of the vending machines on the pad's data network, then of the card holder's inventory, stacked up to their maximum (gas goes into the pad network's atmosphere). The price per unit is the trader's, divided by the respawn stress penalty while you have respawn stress, as the window shows it. Returns {reference_id (the contact), name, dry_run, credit_card_id, credits_before, credits_after, results, count, success_count, error_count, delivered, gas_atmosphere_id}: results has one entry per line, {index, ok, name, prefab_name, gas, quantity, credits_each, credits_spent (signed, dry and real run alike: negative for a line with a negative price, which pays you), stock_after}, or {index, ok: false, name, prefab_name, quantity (bought before the game stopped), credits (paid for those), error {code, message}}; delivered lists each new item where it landed, {reference_id (vending machine or player), slot, item {reference_id, prefab_name, display_name}, quantity}. A dry run adds the lines up as a real run meets them, in order: each line is checked, in the game's order (stock, credits, a free slot), against what the lines before it would leave: the card's credits, the trader's stock of that entry and the empty tradable slots (a stackable item fills slots up to its stack size, anything else takes one slot per unit, gas none), so it reports the lines a real run would refuse (insufficient_stock, insufficient_credits, no_room; a line that runs out of room part way is trade_failed with the part it would buy in quantity and credits). credits_after: the card's balance after the trade; in a dry run (1.4.4+) the predicted balance, credits_before less the credits_spent of every ok line and the credits of a part line, never below 0. A refused line's quantity is how many were bought (0 when refused up front; in a dry run the part a line that runs out of room would buy), not the quantity asked; the index names the line asked. Credits (credits_before, credits_after, credits_spent, credits) are rounded to the cent. The game keeps no trader currency. Refusals for the whole trade: not_host, contact_not_found, not_landed (not landed or not ready at a pad), pad_unavailable (pad off, which is unpowered: the pad is on only while its data and power connection has power; or in error), card_not_found, no_credit_card (no credit_card_id and no local player's card; a dedicated server has no local player). Per line: not_sold, ambiguous_item, insufficient_stock, insufficient_credits, no_room, trade_failed (the game's own message without its rich-text tags, e.g. an incomplete trade when the slots ran out: it charges only for what it delivered). No gateway is needed.",
+  "class": "write",
+  "x-class-when": [{"when": {"dry_run": {"equals": true}}, "class": "read"}],
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "reference_id": {"type": "string", "description": "The trader contact (trader_contacts / trader_inventory reference_id)."},
+      "credit_card_id": {
+        "type": "string",
+        "description": "The credit card; default the one the local player carries, as the trade window uses."
+      },
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 32,
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string", "description": "The entry's name as trader_inventory gives it; matched first."},
+            "prefab_name": {
+              "type": "string",
+              "description": "Breaks a tie between entries of the same name, or matches alone when no name is given."
+            },
+            "quantity": {"type": "integer", "minimum": 1}
+          },
+          "required": ["quantity"],
+          "additionalProperties": false
+        },
+        "description": "Up to 32 lines, each name and/or prefab_name, and quantity; traded in order. An entry still ambiguous after both is refused (ambiguous_item), never picked."
+      },
+      "dry_run": {"type": "boolean", "description": "Check and price only; nothing is traded. Default false."}
+    },
+    "required": ["reference_id", "items"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "reference_id": {"type": "string"},
+      "name": {"type": ["string", "null"]},
+      "dry_run": {"type": "boolean"},
+      "credit_card_id": {"type": "string"},
+      "credits_before": {"type": "number"},
+      "credits_after": {"type": "number"},
+      "results": {"type": "array"},
+      "count": {"type": "integer"},
+      "success_count": {"type": "integer"},
+      "error_count": {"type": "integer"},
+      "delivered": {"type": "array"},
+      "gas_atmosphere_id": {"type": ["string", "null"]}
+    }
+  },
+  "x-views": ["TradeView"],
+  "x-shaping": "lists"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "rocket_status",
+  "description": "Every rocket (or rocket_id: the rocket's, its rocket network's or any part's id), read from the game. where: state (OnLaunchMount, Launching, InSpace, Landing), mode, current and target node (name, map code, code_value = the number the avionics' DestinationCode takes, charted), progress, altitude above the launch mount while launching or landing, velocity, acceleration, flight rule, and the route left to the target as the game will fly it (SpaceMapPathFinder asked afresh at each node, as the game does: fewest hops, not shortest, and through uncharted nodes too; a hop's distance is NodeTransit.GetDistance, twice the map distance, and is also its delta-v). mass: total, structure (1 kg per filled cargo slot included), gas, parts by kind with count and kg. fuel: each engine input network with pipe litres and mol, mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass). engines: on, powered, throttle, thrust, mol drawn last tick, exhaust, prefab max thrust, watts. thrust: current, max_recorded (the highest thrust ever seen, saved with the game, reset only while the rocket has no engine), prefab_max (2:1 premix at 215 K), max_expected (what the landing check uses: the larger), achievable_full (full-throttle thrust of the fuel as it is now, by the game's own combustion run on a copy) and recorded_exceeds_achievable (the check is optimistic: a landing it passes can crash). landing_check: the auto-land confidence the Rocket Control screen shows, by the game's own method, with band, min required thrust, mass, re-entry altitude, delta-v, gravity. cargo: holds with filled/slots and kg. power: battery charge, capacity, percent, load per 0.5 s tick (the game takes a device's watts off the batteries every tick), seconds left at this load, every device's watts now and when on, and whether AutoShutOff leaves it on. burn_time: the game's estimate, ours at full and at current throttle. checks (self_test, default true): the forecast's ported formulas against the game's own numbers now (confidence, apex, max expected thrust, fuel-line gas mass, thrust at the moles drawn last tick while burning, burn time while travelling), each with game, ours, ok. notes. Combustion (1.9.0+): engines burn at the game's rate (0.96), or at Terraforming Reloaded's (its RocketsBurnCompletely world option: 1.0) when that mod is loaded; {rate, source: game or terraforming_reloaded, note} is reported as thrust.combustion. Read only; no gateway.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "rocket_id": {"type": "string", "description": "A rocket, its rocket network, or any of its parts. Omit for every rocket."},
+      "self_test": {"type": "boolean", "description": "Compare the forecast's port with the game's own numbers. Default true."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {"type": "object", "properties": {"rockets": {"type": "array"}, "count": {"type": "integer"}}},
+  "x-views": ["RocketStatusListView"],
+  "x-shaping": "lists"
+}

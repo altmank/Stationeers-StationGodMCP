@@ -1,0 +1,19 @@
+{
+  "type": "array",
+  "maxItems": 64,
+  "items": {
+    "type": "object",
+    "properties": {
+      "reference_id": {"type": "string", "description": "A device, or an in-line tank or other thing with ends."},
+      "port": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 64,
+        "description": "The end's index (connections or grid_survey lists them)."
+      }
+    },
+    "required": ["reference_id", "port"],
+    "additionalProperties": false
+  },
+  "description": "Ports whose joining cell (where a piece joining the port stands) the search treats as blocked, e.g. the device's other ports."
+}
