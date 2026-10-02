@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// The arguments the sidecar answers itself, on every tool that can give a large reply (ToolDefinitions.FileOutput):
+/// The arguments the sidecar answers itself, on every tool that can give a large reply (the catalogue's x-shaping lists):
 /// fields keeps only the named keys in each entry of the reply's top-level lists, and output_file writes the whole
 /// reply to a JSON file and answers a small pointer instead. Neither reaches the game: Take strips them from the
 /// arguments it forwards, so the mod and its pipe clients never see them.

@@ -538,24 +538,17 @@ public sealed class ToolRegistrationTests
     private static readonly string[] SidecarOnly = { "sample_logic" };
 
     [Fact]
-    public void TheToolListTheDefinitionsAndTheModsHandlersAgree()
+    public void TheToolListAndTheModsHandlersAgree()
     {
-        SyntaxNode program = Parse("src", "StationGodMCP.Server", "Program.cs");
-        HashSet<string> names = StringsIn(program.DescendantNodes().OfType<VariableDeclaratorSyntax>()
-            .Single(variable => variable.Identifier.Text == "Names"));
-        HashSet<string> defined = new HashSet<string>(program.DescendantNodes().OfType<InvocationExpressionSyntax>()
-            .Where(call => call.Expression is IdentifierNameSyntax { Identifier.Text: "Tool" })
-            .Select(call => call.ArgumentList.Arguments[0].Expression)
-            .OfType<LiteralExpressionSyntax>()
-            .Select(literal => literal.Token.ValueText));
+        HashSet<string> names = new HashSet<string>(Server.ToolCatalogue.Names);
         SyntaxNode host = Parse("src", "StationGodMCP.Mod", "Api", "ApiHost.cs");
         HashSet<string> handled = new HashSet<string>(host.DescendantNodes().OfType<ImplicitElementAccessSyntax>()
             .Select(access => access.ArgumentList.Arguments[0].Expression)
             .OfType<LiteralExpressionSyntax>()
             .Select(literal => literal.Token.ValueText));
 
-        Assert.Equal(names.OrderBy(name => name), defined.OrderBy(name => name));
         Assert.Empty(names.Except(handled).Except(SidecarOnly));
+        Assert.Empty(handled.Except(names));
         Assert.Subset(names, new HashSet<string> { "replace_walls", "replace_frames" });
         Assert.Subset(handled, new HashSet<string> { "replace_walls", "replace_frames" });
     }

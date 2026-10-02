@@ -115,7 +115,7 @@ public sealed class DevicesRound5Tests
     }
 
     private static string ToolDescription(string name) =>
-        JsonSerializer.SerializeToElement(ToolDefinitions.All).EnumerateArray()
+        ToolCatalogue.Tools.EnumerateArray()
             .Single(tool => tool.GetProperty("name").GetString() == name)
             .GetProperty("description").GetString()!;
 }
