@@ -117,6 +117,23 @@ package, which the dashboard does not reload: the stage needs one dashboard rest
 
 **Risk.** None to the game: reads only.
 
+**As built.** Where the code needed a choice the text above leaves open:
+- `tools/protocol_baseline.py` refuses `--source owner-game` on any pipe but `StationGodMCP`, and that pipe with any
+  other source. The 84 `thing_health` ids are the first 84 of `find_things` `kind: structure`; "one room" is the first
+  room `rooms` lists; the `read_devices` items are up to 32 devices from `list_devices`, each with its first four
+  readable logic types from `describe_device`, cycled to 5, 20 and 128 items. It keeps one connection open, as the
+  dashboard does. Each run is a folder `corpus/<source>/baseline-<UTC time>/` with `report.json` and
+  `replies/<call>.json`; a reply is not kept over 2 MB or when the whole corpus would pass 50 MB. `--self-test` runs
+  the planner, the measurement and the report check against a fake mod.
+- The 50 MB cap covers the whole corpus folder, every source together: the dashboard's sampler deletes only its own
+  oldest files, and stops sampling (one line on stderr, calls unaffected) when the other sources alone fill it.
+- The dashboard's sampler lives in `transport.py` (`CallSampler`); `__main__.py` builds it from the environment, and
+  the README documents the switch. A caller is the card the runner is ticking or binding, else `(runner)`. Each
+  sample is one JSON line `{t, caller, method, params, ms, reply_bytes, reply}`, `reply` being the mod's reply line
+  as received (null at 256 KB or more). The values a card's `read_devices` calls ask for are counted per tick
+  (`values_last_tick`, `items_last_tick`, `max_values_per_tick` in the card's metrics); the names themselves are in
+  the sampled `read_devices` params.
+
 ## Stage 1: shaping in the mod
 
 **Scope.** The mod honours an optional `shape` key in the request envelope, on today's protocol, with the version-1
