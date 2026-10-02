@@ -161,8 +161,12 @@ answers with a `job_id` while its job goes on over later frames
 (`src/StationGodMCP.Mod/Api/Shared/Game/HeldTickJobs.cs:14-31`); a read sent after that reply sees the world as the job
 has left it so far. Clients that need the job's result poll it with the method's `job_id` argument.
 
-Replies and events carry `frame`, the mod's frame counter when the handler or the sample ran. A subscription event
-whose `frame` is greater than a write's reply `frame` reflects that write; one with an equal or smaller `frame` may not.
+Replies and events carry `frame`, the mod's frame counter when the handler or the sample ran. For writes the handler
+applies to the world before it replies (logic and memory writes, chip source and pins, labels, paint, item moves), a
+subscription event whose `frame` is greater than the write's reply `frame` reflects the write; one with an equal or
+smaller `frame` may not. For writes the game applies later, `frame` promises nothing: `move_gas` queues its transfer
+for the next atmospherics tick and answers with a `transfer_id`, building tools answer with a `job_id`, and both are
+polled with those ids.
 
 ### Deadlines and cancelling
 
@@ -599,9 +603,13 @@ A version-1 connection is served as today:
   a version-1 client get shaping before it moves to version 2.
 - Level on the pipe: `[Access] LegacyPipeLevel`, which by default follows `AnonymousPipeLevel` (so today's `cheat` until
   the owner chooses otherwise). Level on TCP: today's `{type: "auth", secret}` first line against `[Remote MCP] Secret`
-  (`StationGodTcpServer.cs:174-229`), at `[Access] LegacyTcpLevel`, which may be `none`, `read` or `write` and never
-  `cheat`, because the secret crosses the network in plain text; default `write` when a secret is set. While legacy TCP
-  is on, the mod logs a warning at load. This is a change for old remote sidecars: they lose cheat tools.
+  (`StationGodTcpServer.cs:174-229`), at `[Access] LegacyTcpLevel` (`none`, `read`, `write` or `cheat`). The secret
+  crosses the network in plain text, so cheat there undoes what keys protect. Whether to allow it is the owner's
+  decision (overview, *Questions for the owner*): option A caps legacy TCP at write, which breaks the cheat tools of
+  old remote sidecars; option B keeps cheat until version 1 is retired. Until the owner decides, the shipped default is
+  B (`cheat` when a secret is set), which keeps every existing client working. While legacy TCP is on, the mod logs a
+  warning at load and logs each legacy TCP sign-in with its remote address, so the owner can see whether anyone still
+  uses it.
 - `none` refuses version 1 on that transport.
 - Permissions apply to version-1 calls too, at that level.
 
