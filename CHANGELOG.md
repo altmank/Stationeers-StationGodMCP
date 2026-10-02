@@ -14,6 +14,11 @@
   (`reply_too_large` with the sizes instead of a larger reply); the reply then carries `"shaped": true`. Every
   `fields` value that worked before gives the same result; a selector that is not a name is listed in
   `fields_unmatched`, as an unknown name is. A sidecar talking to an older mod still applies `fields` itself.
+- **The pipe reads and writes at once.** Each pipe connection now has its own reader and writer on an overlapped pipe,
+  up to `[Server] MaxPipeConnections` connections (32 by default, was 4); a client past the limit waits until one
+  closes. Requests answer exactly as before. A request the game has started is now always answered with its result,
+  even when it finishes after 30 seconds; one not started within 30 seconds is still answered `game_timeout` and never
+  runs. `[Server] OverlappedPipes = false` brings back the synchronous pipe.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
 

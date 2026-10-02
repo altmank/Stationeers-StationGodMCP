@@ -244,6 +244,34 @@ CHANGELOG.
 back to today's code. If neither overlapped route works under Unity's Mono, the plan stops here and the owner decides
 between loopback TCP for local clients and a version 2 without pushes.
 
+**As built.** Where the code needed a choice the text above leaves open:
+- The mod takes the Windows route at once: `CreateNamedPipeW` with `FILE_FLAG_OVERLAPPED`, `ReadFile` and `WriteFile`
+  with an `OVERLAPPED` and event each in unmanaged memory, `CancelIoEx` to end a wait (`Protocol/NativePipe.cs`).
+  The same code then runs under .NET in the tests and under the game's Mono, and nothing depends on how Mono's
+  `PipeStream` implements asynchronous reads. It works under the game's Mono: on the test server the duplex probe's
+  round trip was 8.7 ms, 32 connections were held, the 33rd found the pipe busy and was served 31 ms after one
+  closed. Off Windows, or when those calls are missing, the synchronous pipe is used, as with `OverlappedPipes =
+  false` (checked live: `(4 instances)` in the log, calls answered).
+- One listener thread keeps up to four instances waiting, never more instances than `MaxPipeConnections` in all
+  (Windows enforces it through the pipe's instance count); instances refuse remote clients
+  (`PIPE_REJECT_REMOTE_CLIENTS`).
+- Each connection has a reader and a writer thread (`Protocol/Connection.cs`); the reader owns the connection's life.
+  A version-1 connection still takes its next line only after the previous one is answered. The first complete line
+  must arrive within 10 seconds in all, timed by an overlapped read that `CancelIoEx` ends.
+- Lines end at a line feed, a carriage return before it dropped and a byte order mark at the very start dropped
+  (`Pure/Protocol/LineFramer.cs`); a lone carriage return no longer ends a line as `StreamReader` let it, which no
+  known client relies on.
+- Calls in flight are `QueuedCall`s with a `CallState` (`Pure/Protocol/CallState.cs`); the deadline watch is one
+  `System.Threading.Timer` every 100 ms for the whole mod. A call the main thread has started is answered with its
+  result even when it finishes after its deadline; today's listener answered `game_timeout` at 30 seconds and dropped
+  the late result.
+- The TCP listener and the synchronous pipe keep their threads and call `Dispatch`, which now queues a `LineCall` and
+  waits for its answer; the same deadline watch answers them.
+- The Python pipe module is the client library's (`clients/python/stationgod/pipe.py`, stage 7), tested there against
+  a pipe its tests create; `tools/duplex_probe.py` uses it.
+- Live check 1: `validate.py` needs the blueprint and anchor and `replaceable.py` the ids; both ran end to end on the
+  fixtures, with one verdict that is the game's own rule (the fixture's purifier has no frame below it).
+
 ## Stage 4: protocol version 2
 
 **Scope.** On the stage-3 connections: the first-line classifier; `hello` and `welcome` (anonymous only; every

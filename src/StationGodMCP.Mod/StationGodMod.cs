@@ -10,6 +10,7 @@ using HarmonyLib;
 using StationeersMods.Interface;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
 using UnityEngine;
 
@@ -28,11 +29,14 @@ public sealed class StationGodMod : ModBehaviour
     public const string DisplayName = "StationGod MCP";
     public const string Version = "1.10.0";
 
-    private readonly StationGodRequestDispatcher _dispatcher = new StationGodRequestDispatcher();
+    private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
+
+    private readonly StationGodRequestDispatcher _dispatcher = new StationGodRequestDispatcher(Deadlines);
     private Harmony? _harmony;
-    private StationGodPipeServer? _pipeServer;
+    private IDisposable? _pipeServer;
     private StationGodTcpServer? _tcpServer;
     private RemoteSettings? _remote;
+    private ServerSettings _server = ServerSettings.Defaults;
 
     /// <summary>Real time since the mod loaded (mod_info runtime uptime_s).</summary>
     internal static System.Diagnostics.Stopwatch SinceLoad { get; } = System.Diagnostics.Stopwatch.StartNew();
@@ -52,6 +56,10 @@ public sealed class StationGodMod : ModBehaviour
             ConfigFile configuration = new ConfigFile(ConfigPath, true);
             Pipe = PipeSettings.Load(configuration);
             _remote = RemoteSettings.Load(configuration);
+            _server = ServerSettings.Load(configuration);
+            ProtocolLog.InfoSink = Log;
+            ProtocolLog.WarningSink = LogWarning;
+            ProtocolLog.ReplyWritten = MethodStats.RecordReply;
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
             Api.ApiHost.Prepare();
@@ -104,11 +112,7 @@ public sealed class StationGodMod : ModBehaviour
                 return;
             }
 
-            if (_pipeServer == null)
-            {
-                _pipeServer = new StationGodPipeServer(Pipe.Value, _dispatcher);
-                _pipeServer.Start();
-            }
+            _pipeServer ??= StartPipe();
 
             if (_remote != null && _remote.Enabled && _tcpServer == null)
             {
@@ -152,6 +156,30 @@ public sealed class StationGodMod : ModBehaviour
         _pipeServer = null;
         _tcpServer?.Dispose();
         _tcpServer = null;
+    }
+
+    // The overlapped pipe (one reader and one writer per connection), unless [Server] OverlappedPipes is off, the
+    // platform is not Windows, or the Windows calls it needs are missing: then today's synchronous pipe.
+    private IDisposable StartPipe()
+    {
+        if (_server.OverlappedPipes && Environment.OSVersion.Platform == PlatformID.Win32NT)
+        {
+            try
+            {
+                ProtocolHost host = new ProtocolHost(new ProtocolSettings(_server.MaxPipeConnections), _dispatcher, Deadlines);
+                PipeListener listener = new PipeListener(Pipe.Value, host);
+                listener.Start();
+                return listener;
+            }
+            catch (Exception exception) when (exception is DllNotFoundException || exception is EntryPointNotFoundException)
+            {
+                LogWarning($"Overlapped pipes are not available here ({exception.Message}); using the synchronous pipe.");
+            }
+        }
+
+        StationGodPipeServer server = new StationGodPipeServer(Pipe.Value, _dispatcher);
+        server.Start();
+        return server;
     }
 
     private void StartTcpServer(RemoteSettings remote)
@@ -292,6 +320,51 @@ internal sealed class RemoteSettings
     {
         string? value = Environment.GetEnvironmentVariable(name);
         return string.IsNullOrEmpty(value) ? fallback : value!;
+    }
+}
+
+/// <summary>
+/// [Server]: how local clients connect. MaxPipeConnections is the most pipe connections at once (each agent session,
+/// the dashboard and every script keep one); OverlappedPipes false goes back to the synchronous pipe of 1.10 and
+/// earlier (four connections, one request at a time each). Read once at load.
+/// </summary>
+internal sealed class ServerSettings
+{
+    private const string Section = "Server";
+
+    private ServerSettings(int maxPipeConnections, bool overlappedPipes)
+    {
+        MaxPipeConnections = maxPipeConnections;
+        OverlappedPipes = overlappedPipes;
+    }
+
+    internal static ServerSettings Defaults { get; } =
+        new ServerSettings(ProtocolSettings.DefaultMaxPipeConnections, true);
+
+    internal int MaxPipeConnections { get; }
+
+    internal bool OverlappedPipes { get; }
+
+    internal static ServerSettings Load(ConfigFile configuration)
+    {
+        ConfigEntry<int> connections = configuration.Bind(Section, "MaxPipeConnections",
+            ProtocolSettings.DefaultMaxPipeConnections,
+            new ConfigDescription(
+                "The most local pipe connections at once; a client past it waits until one closes. Restart the game " +
+                "to apply.",
+                new AcceptableValueRange<int>(ProtocolSettings.MinimumPipeConnections, ProtocolSettings.MaximumPipeConnections)));
+        ConfigEntry<bool> overlapped = configuration.Bind(Section, "OverlappedPipes", true,
+            "Serve the pipe with overlapped I/O (reading and writing at once on each connection). false goes back to " +
+            "the synchronous pipe of version 1.10 (four connections). Restart the game to apply.");
+        int maximum = connections.Value;
+        if (maximum < ProtocolSettings.MinimumPipeConnections || maximum > ProtocolSettings.MaximumPipeConnections)
+        {
+            StationGodMod.LogWarning($"Ignoring invalid [Server] MaxPipeConnections {maximum}; using " +
+                                     $"{ProtocolSettings.DefaultMaxPipeConnections}.");
+            maximum = ProtocolSettings.DefaultMaxPipeConnections;
+        }
+
+        return new ServerSettings(maximum, overlapped.Value);
     }
 }
 
