@@ -207,6 +207,22 @@ class Version2Cases:
         self.assertGreater(size, 10)
         self.assertEqual((0.2, 1.5), (elapsed, queued))
 
+    def test_on_call_runs_before_the_caller_wakes(self):
+        # The dashboard attributes each metered call to the card running now, so the hook must have run by the time
+        # call() returns, even when it is slow.
+        mod = self.mod()
+        game = self.client(mod)
+        seen = []
+
+        def slow_hook(*values):
+            time.sleep(0.05)
+            seen.append(values[0])
+        game.on_call = slow_hook
+        for _ in range(5):
+            game.call("game_clock")
+            self.assertEqual(1, len(seen))
+            seen.clear()
+
 
 class Version2OverTcp(Version2Cases, FakeModCase):
     transport = "tcp"
