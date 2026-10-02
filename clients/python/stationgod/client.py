@@ -54,10 +54,14 @@ class _Call:
         self.final = None                  # (result,) once the caller has taken it
         self.internal = False              # the library's own call (world topic, catalogue): not metered
 
-    def finish(self, reply=None, size=0, error=None):
+    def finish(self, reply=None, size=0, error=None, before_wake=None):
+        """Settles the call once; before_wake(call) (the metering hook) runs before the caller wakes, so a caller that
+        attributes calls to whatever it is doing sees each call metered before its own next step."""
         if self.done.is_set():
             return False
         self.reply, self.size, self.error = reply, size, error
+        if before_wake is not None:
+            before_wake(self)
         self.done.set()
         return True
 
@@ -95,8 +99,7 @@ class PendingCall:
                             "the game took the call and did not answer"
                             + ("; it may have reached the game" if not call.safe else "")
                             if written else "it could not be sent (no connection to the game)"),
-                        maybe_ran=written and not call.safe))
-                    self._client._meter(call)
+                        maybe_ran=written and not call.safe), before_wake=self._client._meter)
                 break
             call.done.wait(min(wait, 0.5))
         return self._client._outcome(call)
@@ -383,10 +386,9 @@ class Client(_methods.Methods):
             subscriptions = [sub for sub in self._subscriptions if not sub.closed]
         if world_changed:
             for call in requeued:
-                if call.finish(error=WorldChanged(
+                call.finish(error=WorldChanged(
                         f"the game came back with another world; {call.method} was not sent again",
-                        maybe_ran=call.state == "written" and not call.safe)):
-                    self._meter(call)
+                        maybe_ran=call.state == "written" and not call.safe), before_wake=self._meter)
             for sub in subscriptions:
                 self._drop_subscription(sub, "world_changed")
             self._fire_world_changed(conn.world)
@@ -397,8 +399,7 @@ class Client(_methods.Methods):
                 try:
                     self._submit(call)
                 except StationGodError as error:
-                    if call.finish(error=error):
-                        self._meter(call)
+                    call.finish(error=error, before_wake=self._meter)
             for sub in subscriptions:
                 try:
                     self._subscribe(sub)
@@ -475,8 +476,7 @@ class Client(_methods.Methods):
                         try:
                             self._submit(call)
                         except StationGodError as error:
-                            if call.finish(error=error):
-                                self._meter(call)
+                            call.finish(error=error, before_wake=self._meter)
                     return
                 try:
                     self._connection()
@@ -521,8 +521,7 @@ class Client(_methods.Methods):
                 call.hook(conn, message)
             except Exception:
                 log.exception("stationgod: a reply hook raised")
-        if call.finish(message, size):
-            self._meter(call)
+        call.finish(message, size, before_wake=self._meter)
 
     def _on_event(self, conn, message):
         name = message.get("event")
@@ -582,9 +581,8 @@ class Client(_methods.Methods):
         if call.done.is_set():
             return
         if self._closed:
-            if call.finish(error=Unreachable("the client was closed",
-                                             maybe_ran=call.state == "written" and not call.safe)):
-                self._meter(call)
+            call.finish(error=Unreachable("the client was closed", maybe_ran=call.state == "written" and not call.safe),
+                        before_wake=self._meter)
         elif call.state != "written":
             call.state = "queued"
             self._requeued.append(call)
@@ -595,9 +593,8 @@ class Client(_methods.Methods):
         else:
             reason = ("it was sent again once already" if call.safe else
                       "it may have reached the game, so it is not sent again")
-            if call.finish(error=Unreachable(f"the connection broke while {call.method} was in flight; {reason}",
-                                             maybe_ran=not call.safe)):
-                self._meter(call)
+            call.finish(error=Unreachable(f"the connection broke while {call.method} was in flight; {reason}",
+                                          maybe_ran=not call.safe), before_wake=self._meter)
 
     # ---- subscriptions -----------------------------------------------------------------------------------------
 
