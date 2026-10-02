@@ -16,6 +16,8 @@
     <Compile Include="..\..\src\StationGodMCP.Mod\Pure\**\*.cs" Link="Mod\Pure\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\src\StationGodMCP.Mod\Api\Shared\*.cs" Link="Mod\Api\Shared\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\StationGodMCP.Mod\Api\Views\**\*.cs" Link="Mod\Api\Views\%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- The connection layer (pipes, framing, calls in flight): no game types, so the pipe tests run it here. -->
+    <Compile Include="..\..\src\StationGodMCP.Mod\Protocol\**\*.cs" Link="Mod\Protocol\%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The rule file the mod ships, so the tests compile and self-test every default rule. -->
     <None Include="..\..\lint-rules.json" Link="lint-rules.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\docs\lint-rules.md" Link="lint-rules.md" CopyToOutputDirectory="PreserveNewest" />

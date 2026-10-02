@@ -18,6 +18,8 @@ variable, which wins over the file (handy for Docker and dedicated servers).
 | `Remote MCP` | `BindAddress` | `0.0.0.0` | `STATIONGODMCP_REMOTE_BIND_ADDRESS` | Address to listen on. `0.0.0.0` is every network interface. |
 | `Remote MCP` | `Port` | `8765` | `STATIONGODMCP_REMOTE_PORT` | TCP port, 1 to 65535. |
 | `Remote MCP` | `Secret` | empty | `STATIONGODMCP_REMOTE_SECRET` | Shared secret every sidecar must send. Sent unencrypted: use a long random value. |
+| `Server` | `MaxPipeConnections` | `32` | none | The most local pipe connections at once, 1 to 254 (each agent session, the dashboard and each script keeps one). A client past it waits until one closes. |
+| `Server` | `OverlappedPipes` | `true` | none | Serve the pipe so each connection can read and write at once. `false` goes back to the synchronous pipe of 1.10 and earlier (four connections); off Windows that one is always used. |
 | `Performance` | `RequestBudgetMs` | `4` | none | Main-thread milliseconds one frame may spend answering requests; the rest wait for the next frame, in order. The first request of a frame always runs. `0` is unlimited. While a job holds the game tick the budget is at most 2 ms. A negative value is logged and the default used. |
 | `Layout` | `DoorKeepOutBand` | `0.5` | none | Metres either side of a door's face, inside the door's rectangle, that the route planners keep free and the place tools refuse (`in_door_keepout`); 0 to 2 in 0.5 steps, 0 keeps only the face itself. Unlike the others it applies to the next request. |
 
@@ -25,7 +27,8 @@ Environment values: `true` or `false` for `Enabled`, a number for `Port`. An inv
 value used.
 
 The log confirms what is in use: `Pipe name: <name>.`, then
-`Authoritative MCP bridge listening on \\.\pipe\<name>` once a hosted save is loaded, and, with remote access on,
+`Authoritative MCP bridge listening on \\.\pipe\<name> (overlapped, up to 32 connections).` once a
+hosted save is loaded, and, with remote access on,
 `Authenticated remote MCP bridge listening on <address>:<port> (plain TCP).`
 
 ## Sidecar options
