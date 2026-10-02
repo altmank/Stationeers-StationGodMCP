@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -37,6 +38,45 @@ internal static class ApiJson
         return text.ToString();
     }
 
+    /// <summary>
+    /// A reply envelope as JSON text with its result shaped as it is written (ShapingJsonWriter). Without anything to
+    /// leave out the text is byte for byte WriteShared's. Main thread only.
+    /// </summary>
+    internal static ShapedText WriteShaped(object reply, ShapeRequest shape) => WriteShaped(Shared, reply, shape, ShapingRoot.Envelope);
+
+    /// <summary>As WriteShaped, through the given serializer and with the result where root says.</summary>
+    internal static ShapedText WriteShaped(JsonSerializer serializer, object? value, ShapeRequest shape, ShapingRoot root)
+    {
+        StringWriter text = new StringWriter(new StringBuilder(256), CultureInfo.InvariantCulture);
+        ShapeOutcome outcome;
+        using (JsonTextWriter inner = WriterLike(serializer, text))
+        {
+            ShapingJsonWriter shaping = new ShapingJsonWriter(inner, shape, root);
+            shaping.Formatting = serializer.Formatting;
+            serializer.Serialize(shaping, value, null);
+            shaping.Flush();
+            outcome = shaping.Outcome;
+        }
+
+        return new ShapedText(text.ToString(), outcome);
+    }
+
+    /// <summary>A serializer of its own over Settings, for callers off the main thread (tests).</summary>
+    internal static JsonSerializer Fresh() => JsonSerializer.CreateDefault(Settings);
+
+    // The settings the serializer sets on a writer it is given, set here on the writer that formats behind the
+    // shaping one, so both write the same text.
+    private static JsonTextWriter WriterLike(JsonSerializer serializer, TextWriter text) => new JsonTextWriter(text)
+    {
+        Formatting = serializer.Formatting,
+        Culture = serializer.Culture,
+        DateFormatHandling = serializer.DateFormatHandling,
+        DateTimeZoneHandling = serializer.DateTimeZoneHandling,
+        DateFormatString = serializer.DateFormatString,
+        FloatFormatHandling = serializer.FloatFormatHandling,
+        StringEscapeHandling = serializer.StringEscapeHandling
+    };
+
     /// <summary>A reply as JSON text with a serializer of its own: safe on any thread.</summary>
     internal static string WriteFresh(object? reply) => JsonConvert.SerializeObject(reply, Settings);
 
@@ -58,4 +98,18 @@ internal static class ApiJson
         settings.Converters.Add(new ThingIdJsonConverter());
         return settings;
     }
+}
+
+/// <summary>A shaped reply's text, and what shaping saw while writing it (list lengths for reply_too_large).</summary>
+internal sealed class ShapedText
+{
+    internal ShapedText(string json, ShapeOutcome outcome)
+    {
+        Json = json;
+        Outcome = outcome;
+    }
+
+    internal string Json { get; }
+
+    internal ShapeOutcome Outcome { get; }
 }

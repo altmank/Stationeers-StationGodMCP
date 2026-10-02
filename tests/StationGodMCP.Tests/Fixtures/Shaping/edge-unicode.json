@@ -1,0 +1,15 @@
+{
+  "things": [
+    {
+      "reference_id": "1",
+      "custom_name": "Café ☃ \"quoted\" \\ back\nline\t\u0001",
+      "value": 1e+300
+    },
+    {
+      "reference_id": "2",
+      "custom_name": "<tag>&amp;'",
+      "value": -0.0
+    }
+  ],
+  "count": 2
+}

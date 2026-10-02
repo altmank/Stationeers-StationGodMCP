@@ -131,6 +131,30 @@ and compares, with the world paused; it records nothing.
 **Risk.** Low to medium: every reply passes through the new writer. Guarded by the byte-identical test over all wire
 views and the parsed-JSON comparison against the sidecar.
 
+**As built.** Where the code needed a choice the text above leaves open:
+- The version-1 reading of `shape` never refuses: a `shape` that is not an object is ignored (no `shaped` mark); an
+  empty `fields` means no fields; a selector that is not a string is listed in `fields_unmatched` by its JSON text; a
+  `limit` entry that is not a whole number from 0 to 100,000 and a `max_bytes` outside 1,024 to 16,777,216 are
+  ignored, as are unknown keys.
+- A top-level list that no path names and no single name reaches has its entries emptied, which is what the
+  sidecar's rule gives for a name no entry has. A key kept whole (a single name, or a path that stops there) still
+  counts a deeper path through it as matched when that path's key is present.
+- `fields_unmatched` and then `shape_truncated` are written as the last keys of the result object, and `shaped` as
+  the last key of the envelope. `max_bytes` is compared with the whole reply line's UTF-8 bytes; `reply_too_large`
+  carries `data` `{bytes, limit, counts}` through an optional `data` on `ErrorView`, which errors without data do not
+  write.
+- The byte-identity check runs inside the wire tests' own helper (`WireCheck.New`), so every view any wire test
+  serialises is written through the shaping writer with nothing to leave out and compared byte for byte, in the reply
+  envelope too; the same views are also shaped with every other entry key plus an unknown name and compared with the
+  sidecar's result. The fixtures in `Fixtures/Shaping/` are synthetic.
+- The live checks ran on the test server (fixround, compact-bathroom pasted, paused): `thing_health` on 84 ids with
+  four fields came to 0.122 of the unshaped bytes, `list_devices` with three fields to 0.42, `find_things` with
+  `things.position.x` to 0.063, each equal to the projection; through the new sidecar a path selector kept
+  `position.x`, and the old sidecar still shaped its own replies.
+- The common start's paste needs the blueprint's absolute path: `paste.py` reads a relative name under the game's own
+  Blueprints folder. `setup.ps1` cannot replace the test server's sidecar while an MCP client runs it; the sidecar
+  checks then use a copy of the new build's portable zip.
+
 ## Stage 2: the catalogue
 
 **Scope.** Everything in [catalogue.md](catalogue.md) except what later stages use it for: the `catalogue/` sources,

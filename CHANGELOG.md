@@ -7,6 +7,13 @@
   The sidecar's tool list comes from it, and so do the argument names the mod accepts from pipe clients (it replaces
   `tool-arguments.json`). Tools, descriptions and argument names are unchanged; tool schemas now also carry the
   integer bounds the mod already enforced (`minimum`, `maximum`), and the tool list is in name order.
+- **Shaping in the mod.** `fields` is now applied by the mod while it writes the reply, so the keys left out are
+  never formatted or sent, through the sidecar and for pipe clients alike. Dotted paths reach inside a list's entries
+  (`things.position.x`, `results.logic.Temperature`). Pipe clients send it as a `shape` object beside `params`, with
+  `limit` (keep the first entries of a list, `shape_truncated` says how many there were) and `max_bytes`
+  (`reply_too_large` with the sizes instead of a larger reply); the reply then carries `"shaped": true`. Every
+  `fields` value that worked before gives the same result; a selector that is not a name is listed in
+  `fields_unmatched`, as an unknown name is. A sidecar talking to an older mod still applies `fields` itself.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
 

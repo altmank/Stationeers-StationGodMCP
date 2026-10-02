@@ -1,0 +1,59 @@
+{
+  "gateway_id": "world",
+  "clock": {
+    "game_time_s": 8421.5,
+    "paused": false
+  },
+  "count": 3,
+  "success_count": 2,
+  "error_count": 1,
+  "results": [
+    {
+      "reference_id": "501",
+      "ok": true,
+      "logic": {
+        "Pressure": 101.325,
+        "Temperature": 293.15,
+        "RatioOxygen": 0.21
+      },
+      "atmosphere": {
+        "pressure_kpa": 101.3,
+        "temperature_k": 293.2,
+        "gases": {
+          "Oxygen": 21.0,
+          "Nitrogen": 79.0
+        }
+      }
+    },
+    {
+      "reference_id": "503",
+      "ok": true,
+      "logic": {
+        "Setting": 7.0
+      },
+      "slots": [
+        {
+          "index": 0,
+          "logic": {
+            "Occupied": 1.0,
+            "Quantity": 50.0
+          }
+        }
+      ],
+      "logic_errors": {
+        "Pressure": {
+          "code": "logic_type_not_readable",
+          "message": "Not readable."
+        }
+      }
+    },
+    {
+      "reference_id": "999",
+      "ok": false,
+      "error": {
+        "code": "thing_not_found",
+        "message": "No thing with reference id 999."
+      }
+    }
+  ]
+}

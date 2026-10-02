@@ -94,8 +94,11 @@ holds scripts that use its pipe directly to the same argument names (1.9.0+): a 
 answered or the game took the request but did not reply in time (it may still have run).
 
 **Large replies.** Every tool that can answer a lot (lists, surveys, plans, dry runs, job polls, rocket forecasts,
-chip sources) takes two arguments the sidecar answers itself. `fields: ["reference_id", "position"]` keeps only those
-keys in each entry of the reply's top-level lists (a name no entry has comes back in `fields_unmatched`).
+chip sources) takes two shaping arguments. `fields: ["reference_id", "position"]` keeps only those keys in each entry
+of the reply's top-level lists (a name no entry has comes back in `fields_unmatched`). A dotted name is a path into
+one list: `things.position.x` keeps only `x` inside `position` in each entry of `things`, and dictionary keys keep
+their case (`results.logic.Temperature`). The mod applies `fields` while it writes the reply, so the keys left out
+are never formatted or sent, over the pipe or TCP alike.
 `output_file: true`, or a file name such as `"ores"`, writes the whole reply as indented JSON to a file and answers a
 small pointer instead: `{output_file (the full path), bytes, tool, counts (each list's length), summary (the short
 top-level values), in_file_only}`. Files go to `%LOCALAPPDATA%\StationGodMCP\output` on the machine the sidecar runs

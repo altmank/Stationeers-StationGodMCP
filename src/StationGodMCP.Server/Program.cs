@@ -174,9 +174,9 @@ internal static class Program
             (ReplyShaping shaping, JsonElement forwarded) = ReplyShaping.Take(arguments);
             GameResponse response = toolName == "sample_logic"
                 ? await SampleLogicAsync(transport, forwarded)
-                : await SendToGameAsync(transport, toolName, forwarded);
+                : await SendToGameAsync(transport, toolName, forwarded, shaping.ModShape);
             return response.Ok
-                ? ToolReplies.Of(shaping.Apply(toolName, response.Result, output), isError: false)
+                ? ToolReplies.Of(shaping.Apply(toolName, response.Result, output, response.Shaped), isError: false)
                 : ToolReplies.Of(response.Error, isError: true);
         }
         catch (ToolFailure failure)
@@ -190,14 +190,17 @@ internal static class Program
         }
     }
 
-    private static async Task<GameResponse> SendToGameAsync(GameTransportSettings transport, string method, JsonElement arguments)
+    // shape goes beside params; a mod older than shaping ignores it and answers unshaped (no "shaped" mark).
+    private static async Task<GameResponse> SendToGameAsync(GameTransportSettings transport, string method, JsonElement arguments,
+        JsonElement? shape = null)
     {
         string requestId = Guid.NewGuid().ToString("N");
         string request = JsonSerializer.Serialize(new
         {
             id = requestId,
             method,
-            @params = arguments
+            @params = arguments,
+            shape
         }, JsonOptions);
 
         string responseLine = transport.IsRemote
@@ -311,10 +314,12 @@ internal static class Program
         using JsonDocument responseDocument = JsonDocument.Parse(responseLine);
         JsonElement response = responseDocument.RootElement;
         bool ok = response.GetProperty("ok").GetBoolean();
+        bool shaped = response.TryGetProperty("shaped", out JsonElement mark) && mark.ValueKind == JsonValueKind.True;
         return new GameResponse(
             ok,
             ok ? response.GetProperty("result").Clone() : default,
-            ok ? default : response.GetProperty("error").Clone());
+            ok ? default : response.GetProperty("error").Clone(),
+            shaped);
     }
 
     private static async Task<GameResponse> SampleLogicAsync(GameTransportSettings transport, JsonElement arguments)
@@ -527,7 +532,7 @@ internal static class Program
         return ProtocolVersion;
     }
 
-    private sealed record GameResponse(bool Ok, JsonElement Result, JsonElement Error);
+    private sealed record GameResponse(bool Ok, JsonElement Result, JsonElement Error, bool Shaped = false);
 
     internal sealed record GameTransportSettings(string PipeName, string? Host, int Port, string? Secret)
     {

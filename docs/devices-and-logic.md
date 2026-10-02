@@ -222,6 +222,16 @@ tools that need it; they answer `game_changed`. The mod's pipe reply envelope, w
 dashboard read, also carries `elapsed_ms`, the time a request took on the game's main thread; MCP tool results do not
 carry it, so read the per-method `mean_ms` and `max_ms` instead.
 
+Pipe clients can shape a reply with an optional `shape` object beside `params` in the request line:
+`{"id": "1", "method": "thing_health", "params": {...}, "shape": {"fields": ["reference_id", "damage_ratio"],
+"limit": {"things": 20}, "max_bytes": 65536}}`. `fields` works as the tools' `fields` argument (single names and
+dotted paths; a name that matches nothing, or is not a name, comes back in `fields_unmatched`); `limit` keeps the
+first entries of a top-level list and adds `shape_truncated` (each cut list's length before the cut); `max_bytes`
+(1,024 to 16,777,216) answers `reply_too_large`, with `data` holding the reply's `bytes`, the `limit` and the length
+of every top-level list (`counts`), instead of a larger reply. A key the mod cannot use is ignored. A shaped reply's
+envelope carries `"shaped": true`; errors are never shaped. The method's own paging arguments save the game's work as
+well and are better than `limit` where a method has them.
+
 `mod_info` also has a `runtime` section (1.9.1+) that shows what the mod costs the game since it loaded. Per method
 called: the main-thread time of the tool (`handler_ms`) and of turning its reply into text (`serialize_ms`), the wait
 for the next frame (`queue_wait_ms`) and the reply's size (`reply_bytes`), each as total, mean and max. Per frame: how
