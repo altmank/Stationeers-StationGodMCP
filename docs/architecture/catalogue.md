@@ -236,8 +236,8 @@ never resent automatically, even when it is read class.
 `params` is the argument schema. `reply` describes the reply's top-level keys and says which of them are lists; that
 is all every method must give, because it is what `limit` and the first name of a `fields` path need. A method may
 also describe its lists' entries and name the C# view classes the reply is built from in `x-views`; when it does, the
-tests hold the two together. Entry schemas are added method by method, starting with the methods whose replies stage 0
-shows to be large. `x-shaping: "none"` marks a method whose reply is always small; MCP clients get no `output_file` or
+tests hold the two together. Entry schemas are added method by method, starting with the methods whose replies are
+large. `x-shaping: "none"` marks a method whose reply is always small; MCP clients get no `output_file` or
 `fields` for it, as `SmallReplies` does today (`Program.cs:680-685`). `x-paging` names the method's own paging
 arguments and reply keys, so libraries can walk pages for any method the same way, and states the order of entries;
 pages are not a snapshot, so things that appear or vanish between pages can be missed or seen twice. `x-costly` lists
@@ -300,7 +300,7 @@ and `read_devices` (with `per_item` set), `world` for the scans (`list_devices` 
 `find_items`, `item_totals`, `list_containers`, `thing_health` without ids, `grid_survey`, `lint_layout`, `rooms`,
 `plants`, `outer_frames`, `deep_miner_spots`, `wall_map`, `consumables`, `water_sources`, `ignition_risk`), `plan` for
 planners, dry runs of building tools and forecasts, `job` for real runs of building tools, `stream` for `sample_logic`.
-Stage 2 checks them against stage 0's measurements, and the scheduler refines them at run time
+The scheduler refines them at run time
 ([scheduling.md](scheduling.md)).
 
 ## The consistency tests

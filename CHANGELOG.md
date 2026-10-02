@@ -9,9 +9,6 @@
   integer bounds the mod already enforced (`minimum`, `maximum`), and the tool list is in name order.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
-- `tools/protocol_baseline.py`: a read-only measurement of a fixed set of calls (reply bytes, round trip and the mod's
-  `elapsed_ms`, 20 samples each, plus `mod_info.runtime`) into the local corpus folder
-  `%LOCALAPPDATA%\StationGodMCP\corpus`, which is never committed.
 
 ## 1.10.0
 

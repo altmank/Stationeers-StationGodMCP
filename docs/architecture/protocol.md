@@ -296,8 +296,7 @@ is `invalid_shape`, as is a `shape` with an unknown key or more than 256 selecto
 Errors are never shaped: an error reply is always whole.
 
 The reference for single-name selectors is the sidecar's `FieldSelection`. The mod's results MUST equal it as parsed
-JSON, key order included, on the reference set described in [stages.md](stages.md) (stage 1): every reply recorded in
-stage 0, which covers the methods the dashboard, the scripts and agents call.
+JSON, key order included, on the test fixtures described in [stages.md](stages.md) (stage 1).
 
 ### List limits
 
@@ -532,8 +531,7 @@ Topics:
 
 - Per subscription: the bounds of one `read_devices` call (128 items, 1,024 values).
 - Per connection: `limits.max_subscriptions` (64) and `limits.max_subscription_values` (8,192 values across them,
-  counted as `read_devices` counts them). These are sized to hold every card of the dashboard on one connection; stage 0
-  measures the dashboard's actual values per tick and the limits are set at no less than twice that.
+  counted as `read_devices` counts them). These are sized to hold every card of the dashboard on one connection.
 - Across all connections: the projected sampling cost must fit the subscription share of the frame budget
   ([scheduling.md](scheduling.md), *Subscriptions*).
 

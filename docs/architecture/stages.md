@@ -2,7 +2,7 @@
 
 [Back to the overview](README.md)
 
-Sixteen stages, each small enough to build, test and ship on its own, each leaving every existing client working.
+Fifteen stages, each small enough to build, test and ship on its own, each leaving every existing client working.
 They are ordered by what they give for what they risk: shaping first, because it helps every client at once and
 touches one well-tested path; then the catalogue, which everything later reads; then the pipe I/O that version 2
 needs, proved on its own; then the new protocol in three steps, permissions, the libraries, the moves, and last the
@@ -10,10 +10,9 @@ parts that only pay once the rest is in place.
 
 | Stage | What | Builds on | Implemented by |
 | --- | --- | --- | --- |
-| 0 | Baseline: record today's costs and calls | none | general agent |
-| 1 | Shaping in the mod, on today's protocol | 0 | zoran-dotnet-developer, general agent for the check script |
+| 1 | Shaping in the mod, on today's protocol | none | zoran-dotnet-developer, general agent for the check script |
 | 2 | The catalogue | 1 | zoran-dotnet-developer |
-| 3 | Full-duplex pipes, version 1 only (spike) | 0 | zoran-dotnet-developer (mod), general agent (Python pipe module and duplex probe) |
+| 3 | Full-duplex pipes, version 1 only (spike) | none | zoran-dotnet-developer (mod), general agent (Python pipe module and duplex probe) |
 | 4 | Protocol version 2: hello, calls in flight, order, cancel, events | 2, 3 | zoran-dotnet-developer, general agent for the probe |
 | 5 | Strict argument checking on version 2 | 4 | zoran-dotnet-developer |
 | 6 | Sign-in, permissions, and version 2 over TCP | 4 | zoran-dotnet-developer |
@@ -41,6 +40,9 @@ because each mod stage changes the request path the next one builds on.
   as the sidecar does today.
 - **Briefs.** Each implementer gets a self-contained brief: this folder, the stage's section, the owner's notes
   (`CLAUDE.md`), and for C# the stationeers-mod skill's `implementation-brief.md`.
+- **No measuring or recording systems.** No stage adds code, settings or tools that measure costs or record calls
+  or replies for later comparison. Acceptance is by tests: offline unit tests on synthetic data, and direct calls
+  against the test server.
 - **Tests.** The full suite stays green (1,711 tests at 1.10.0, owner notes `CLAUDE.md`, State). Every changed wire shape
   gets a wire test. A stage is not done while any of its acceptance checks is unrun; an unrun live check goes into the
   owner's `TODO.md` with its exact steps.
@@ -76,64 +78,6 @@ and ends with `powershell -NoProfile -File stop-server.ps1`. "The fixtures" mean
 `CLAUDE.md`, State, 1.10.0). A check that compares two reads of a changing world pauses it first
 (`py -3.12 mcp.py console pause true`) and unpauses after.
 
-## Stage 0: baseline
-
-**Scope.** Read-only measurement and a bounded sample of real calls, no mod change.
-
-Where the data goes. Everything recorded in this stage is a *corpus* that stays on the machine that recorded it, in
-`%LOCALAPPDATA%\StationGodMCP\corpus\` (outside every repository), with one folder per source (`test-server`,
-`owner-game`, `dashboard`). It is never committed: replies from the owner's game and calls from the owner's dashboard
-are the owner's data, and this repository is public. What the tests in this repository may commit instead is described
-in stage 1.
-
-- `tools/protocol_baseline.py` talks version 1 to a pipe named on the command line and, for a fixed set of calls,
-  records reply bytes, round-trip time and the mod's `elapsed_ms`, then saves `mod_info.runtime`. The set:
-  `thing_health` by 84 ids, `thing_health` scan with `limit` 500, `list_devices` for the world, `find_things` with
-  `kind: structure`, `grid_survey` of one room, `read_devices` of 5, 20 and 128 items, `game_clock`; each 20 times.
-  It keeps the first reply of each call (capped at 2 MB) in the corpus as a reference for stage 1.
-- The dashboard's transport samples its calls into the corpus: for each method and each caller (card or script), at
-  most 20 calls an hour, each with its params, its reply size and its reply, the reply kept only when under 256 KB.
-  Files rotate at 10 MB, and the oldest are deleted beyond 50 MB in total, so a day of sampling is tens of megabytes,
-  not the gigabytes a full log would be at today's 6,950 KB of replies a minute. Its metrics also record the values
-  each card's `read_devices` calls ask for per tick. This gives stage 1 real replies to compare against, stage 8 the
-  params the dashboard and the scripts really send, and stage 11 the dashboard's subscription needs.
-
-**Files.** `tools/protocol_baseline.py` (new; writes only to the corpus folder); StationeersScriptDashboard
-`stationscript/transport.py` (sampling, off unless `STATIONSCRIPT_SAMPLE_CALLS=1`), `stationscript/runner.py` and
-`stationscript/metrics.py` (values per tick, from `station.item_weight`). These three are in the `stationscript`
-package, which the dashboard does not reload: the stage needs one dashboard restart, at a time the owner agrees to.
-
-**Acceptance.**
-- Offline: the script's `--self-test` runs its report builder on canned replies and checks every field is present; the
-  dashboard's tests stay green with logging on and off.
-- Live, test server, after the common start with the fixtures:
-  `py -3.12 tools/protocol_baseline.py --pipe StationGodMCP-Test --source test-server`; the report has every
-  method with 20 samples, `bytes` per reply, and a `mod_info.runtime` block whose `methods` list each called method with
-  `handler_ms`, `serialize_ms`, `queue_wait_ms` and `reply_bytes`, including `read_devices` at all three sizes.
-- Owner's game, read-only, only with the owner's OK: the same script with `--pipe StationGodMCP --source owner-game`
-  while the dashboard runs; then the dashboard restarted (with the owner's OK) with `STATIONSCRIPT_SAMPLE_CALLS=1` for
-  a day. The corpus folder stays under 50 MB and nothing under any repository changed (`git status` clean in both). This also closes the 1.9.1 live check on `mod_info.runtime` (owner
-  notes, `TODO.md`).
-
-**Risk.** None to the game: reads only.
-
-**As built.** Where the code needed a choice the text above leaves open:
-- `tools/protocol_baseline.py` refuses `--source owner-game` on any pipe but `StationGodMCP`, and that pipe with any
-  other source. The 84 `thing_health` ids are the first 84 of `find_things` `kind: structure`; "one room" is the first
-  room `rooms` lists; the `read_devices` items are up to 32 devices from `list_devices`, each with its first four
-  readable logic types from `describe_device`, cycled to 5, 20 and 128 items. It keeps one connection open, as the
-  dashboard does. Each run is a folder `corpus/<source>/baseline-<UTC time>/` with `report.json` and
-  `replies/<call>.json`; a reply is not kept over 2 MB or when the whole corpus would pass 50 MB. `--self-test` runs
-  the planner, the measurement and the report check against a fake mod.
-- The 50 MB cap covers the whole corpus folder, every source together: the dashboard's sampler deletes only its own
-  oldest files, and stops sampling (one line on stderr, calls unaffected) when the other sources alone fill it.
-- The dashboard's sampler lives in `transport.py` (`CallSampler`); `__main__.py` builds it from the environment, and
-  the README documents the switch. A caller is the card the runner is ticking or binding, else `(runner)`. Each
-  sample is one JSON line `{t, caller, method, params, ms, reply_bytes, reply}`, `reply` being the mod's reply line
-  as received (null at 256 KB or more). The values a card's `read_devices` calls ask for are counted per tick
-  (`values_last_tick`, `items_last_tick`, `max_values_per_tick` in the card's metrics); the names themselves are in
-  the sampled `read_devices` params.
-
 ## Stage 1: shaping in the mod
 
 **Scope.** The mod honours an optional `shape` key in the request envelope, on today's protocol, with the version-1
@@ -159,16 +103,11 @@ shaped twice. With `output_file` and no `fields`, nothing is sent.
 
 **Acceptance, offline.**
 - Same results as the sidecar, compared as parsed JSON with key order, for a set of single-name selectors per reply
-  (the keys its entries have, a mixed-case name, an unknown name, a name with surrounding spaces, 100 names), in two
-  layers:
-  - Committed fixtures: replies recorded on the test server's `fixround` world (test fixtures only, no owner data),
-    one per method stage 0 called; synthetic replies written for the edge cases (empty lists, lists of non-objects,
-    dictionary keys with capitals, nested lists); and the `FieldSelection` cases in
-    `tests/StationGodMCP.Tests/FileOutputTests.cs:118-141`. They live in `tests/StationGodMCP.Tests/Fixtures/Shaping/`.
-  - The private corpus: the same comparison, `ShapingCorpusTests`, also runs over every reply in the corpus folder when
-    `STATIONGOD_CORPUS` points at it, and is skipped otherwise. The implementer runs it locally on the owner's machine
-    and reports how many replies were compared and any failures; nothing from the corpus is copied into the
-    repository.
+  (the keys its entries have, a mixed-case name, an unknown name, a name with surrounding spaces, 100 names), over
+  synthetic replies written for the tests in `tests/StationGodMCP.Tests/Fixtures/Shaping/`: one per reply form of the
+  methods the dashboard, the scripts and agents call most (`thing_health`, `list_devices`, `find_things`,
+  `grid_survey`, `read_devices`, `game_clock`), the edge cases (empty lists, lists of non-objects, dictionary keys with
+  capitals, nested lists), and the `FieldSelection` cases in `tests/StationGodMCP.Tests/FileOutputTests.cs:118-141`.
 - No change without `shape`: every view the wire tests serialise gives byte-identical output through the new path
   (same serialiser on both sides).
 - Paths: nested keys, dictionary keys with capitals (`logic.Temperature`), a path through a list inside an entry, two
@@ -178,19 +117,19 @@ shaped twice. With `output_file` and no `fields`, nothing is sent.
 - The sidecar: a transcript test with a path selector keeps the path's keys (no second pass on a `shaped` reply); a fake
   old mod (no `shaped`) still gets `FieldSelection`; `shape.fields` is sent only when `fields` is given.
 
-**Acceptance, live (test server, fixtures).** `tools/shape_check.py` sends version-1 lines with and without `shape`.
+**Acceptance, live (test server, fixtures).** `tools/shape_check.py` sends version-1 lines with and without `shape`
+and compares, with the world paused; it records nothing.
 1. `py -3.12 tools/shape_check.py --pipe StationGodMCP-Test --method thing_health --ids-from-find kind=structure,limit=84
-   --fields reference_id,damage_ratio,is_broken,condition` with the world paused: the shaped reply equals the unshaped
-   reply projected in Python by the same rules, and is at most a quarter of its bytes.
+   --fields reference_id,damage_ratio,is_broken,condition`: the shaped reply equals the unshaped reply projected in
+   Python by the same rules, and is at most a quarter of its bytes.
 2. The same for `list_devices` with `fields: [reference_id, prefab_name, display_name]`, and for a path selector on
    `find_things` (`things.position.x`).
-3. `mod_info.runtime.methods` for `thing_health`: `serialize_ms` mean of the shaped calls lower than the unshaped ones.
-4. Through the sidecar: `py -3.12 livetest/lt.py thing_health '{"reference_ids": ["<id>", "<id>"], "fields":
+3. Through the sidecar: `py -3.12 livetest/lt.py thing_health '{"reference_ids": ["<id>", "<id>"], "fields":
    ["reference_id", "damage_ratio"]}'` answers as before the stage; with `"fields": ["things.position.x"]` on
    `find_things`, entries keep `position.x`.
 
 **Risk.** Low to medium: every reply passes through the new writer. Guarded by the byte-identical test over all wire
-views and the parsed-JSON comparison over real replies.
+views and the parsed-JSON comparison against the sidecar.
 
 ## Stage 2: the catalogue
 
@@ -258,8 +197,8 @@ holds no game types); `clients/python/stationgod/pipe.py`, `tools/duplex_probe.p
 CHANGELOG.
 
 **Acceptance, offline.**
-- Version-1 golden transcripts: request and reply lines recorded in stage 0 replay byte for byte through the new pipe
-  code with a fake dispatcher.
+- Version-1 transcripts: request and reply lines written for the test replay byte for byte through the new pipe code
+  with a fake dispatcher.
 - The duplex test on a real Windows named pipe in the test process: the server side (the mod's connection class, built
   against `netstandard2.1` and run under .NET) holds a pending read while its writer sends a line; the client holds a
   pending read while it writes a request; in both directions the line arrives within 100 ms. The Python `pipe.py`
@@ -453,9 +392,10 @@ this one file).
   testing the wrapper against the library's fake server: same errors, same meter calls, no `READ_ONLY` list; and the
   path fallback (library not installed, found by `STATIONGOD_CLIENT_PATH`) and the last fallback (`transport_v1`).
 - Each card edited for `fields` keeps its own tests green.
-- `CatalogueReplayTests` (committed; reads its calls from `STATIONGOD_CORPUS` and is skipped without it) on the
-  stage-0 sample and on a day's sample from the new wrapper, run locally on the owner's machine: zero refusals by the
-  version-2 validator. Its committed fixtures are a handful of synthetic calls that prove it refuses what it should. Only after this passes does the wrapper switch to `protocol="auto"`.
+- `CatalogueReplayTests` (committed): a set of calls written by hand from what the dashboard's cards and the scripts
+  send (method and the params their code builds), plus a handful of synthetic calls that prove it refuses what it
+  should: zero refusals by the version-2 validator for the first set. Only after this passes does the wrapper switch to
+  `protocol="auto"`.
 
 **Acceptance, live.**
 1. Test server: `py -3.12 validate.py` and `py -3.12 replaceable.py` run as before on the new `tsclient`. With
@@ -467,7 +407,7 @@ this one file).
    path fallback.
 3. The owner's game, after the owner agrees and the dashboard is restarted: the dashboard runs with `--dry-run` (it
    logs writes and sends none) for 10 minutes; every card's status matches the status before the change; `/api/state`
-   shows reply KB a minute lower than stage 0's figures for the cards given `fields`. Then normal mode.
+   shows reply KB a minute lower than before the change for the cards given `fields`. Then normal mode.
 
 **Risk.** Medium for the owner's daily tool. The wrapper keeps every name and stays lenient until the replay proves the
 strict path; the dry run catches regressions before any write.
@@ -533,8 +473,7 @@ heavy calls and a longest wait of at most 10 frames; B's calls all complete; A's
 
 **Scope.** [protocol.md](protocol.md), *Subscriptions*: `subscribe` and `unsubscribe`, topics `devices` and `world`,
 whole-reading updates sent only on change (clock excluded), one queued update per subscription with its `seq` kept,
-the per-subscription, per-connection (64 subscriptions, 8,192 values, or at least twice stage 0's measured dashboard
-need) and global limits, `subscription_ended`; the sampling lane from [scheduling.md](scheduling.md). Subscription
+the per-subscription, per-connection (64 subscriptions, 8,192 values) and global limits, `subscription_ended`; the sampling lane from [scheduling.md](scheduling.md). Subscription
 support in the C# client and the Python library.
 
 **Files.** `src/StationGodMCP.Mod/Pure/Subscriptions/` (comparison, admission; new),
@@ -575,7 +514,7 @@ calls the mod's method on a mod that has it and keeps its loop for older mods.
 `src/StationGodMCP.Mod/StationGodPipeServer.cs`, `catalogue/methods/sample_logic.json`, `src/StationGodMCP.Client/`,
 `src/StationGodMCP.Server/Program.cs`, `clients/python/stationgod/client.py`, CHANGELOG.
 
-**Acceptance, offline.** For recorded reading sequences, the mod's change list, `sample_count`, `change_count` and
+**Acceptance, offline.** For synthetic reading sequences, the mod's change list, `sample_count`, `change_count` and
 elapsed-seconds rounding equal the sidecar loop's; intervals of 0.05 s are kept; a paused game does not stop the sampler;
 argument bounds as today (1-32 targets, 0.05-5 s, 0.1-30 s, at most 120 samples).
 
@@ -611,7 +550,7 @@ subscriptions with none refused. Then normal mode for 30 minutes with the same s
 ## Stage 14: skipping costly parts of replies
 
 **Scope.** `args.Shape.Wants(list, key)` for handlers, and `x-costly` entries, with full entry schemas and `x-views`,
-for the parts stage 0 measured as costly, starting with `thing_health`'s `networks`
+for the parts known to be costly, starting with `thing_health`'s `networks`
 (`src/StationGodMCP.Mod/Api/ThingHealth.cs:294`). Each method is its own small change.
 
 **Files.** `src/StationGodMCP.Mod/Api/Shared/Args.cs`, the chosen handlers, their catalogue entries.
