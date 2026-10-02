@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
@@ -12,6 +13,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api;
 
@@ -133,7 +135,9 @@ internal static class ApiHost
         string json;
         try
         {
-            json = Serialize(answer.Reply);
+            json = answer.Shape != null && answer.Reply is ReplyView reply
+                ? SerializeShaped(ref answer, reply, answer.Shape)
+                : Serialize(answer.Reply);
         }
         catch (Exception exception)
         {
@@ -148,6 +152,23 @@ internal static class ApiHost
         return new HandledRequest(json, MethodStats.Counted(answer.Method));
     }
 
+    /// <summary>
+    /// The shaped reply, or reply_too_large (unshaped, with the list lengths) when it is larger than the shape's
+    /// max_bytes.
+    /// </summary>
+    private static string SerializeShaped(ref Answer answer, ReplyView reply, ShapeRequest shape)
+    {
+        ShapedText shaped = ApiJson.WriteShaped(reply.AsShaped(), shape);
+        int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
+        if (shape.MaxBytes is int limit && bytes > limit)
+        {
+            answer = answer.Failed(ReplyTooLarge.Of(bytes, limit, shaped.Outcome));
+            return Serialize(answer.Reply);
+        }
+
+        return shaped.Json;
+    }
+
     private static Answer Run(string requestJson, Stopwatch watch)
     {
         string? requestId = null;
@@ -157,6 +178,7 @@ internal static class ApiHost
             JObject request = ParseRequest(requestJson);
             requestId = request.Value<string>("id");
             method = request.Value<string>("method");
+            ShapeRequest? shape = ShapeRequest.Lenient(request["shape"]);
             DeclaredArguments declared = Declared.Value.Arguments ??
                                          throw ApiErrors.Refused("internal_error", Declared.Value.Problem!);
             if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
@@ -173,7 +195,7 @@ internal static class ApiHost
                 ResolvedNetworks.Take());
             result = GasHoldReply.Attach(result, GasHoldReply.Take());
             double elapsed = Elapsed(watch);
-            return new Answer(requestId, method, new ReplyView(requestId, result, elapsed), true, elapsed);
+            return new Answer(requestId, method, new ReplyView(requestId, result, elapsed), true, elapsed, shape);
         }
         catch (ApiException exception)
         {
@@ -289,13 +311,14 @@ internal static class ApiHost
 /// <summary>A request's outcome before serialisation: the reply object and what MethodStats records of it.</summary>
 internal sealed class Answer
 {
-    internal Answer(string? requestId, string? method, object reply, bool ok, double handlerMs)
+    internal Answer(string? requestId, string? method, object reply, bool ok, double handlerMs, ShapeRequest? shape = null)
     {
         RequestId = requestId;
         Method = method;
         Reply = reply;
         Ok = ok;
         HandlerMs = handlerMs;
+        Shape = shape;
     }
 
     internal string? RequestId { get; }
@@ -307,6 +330,9 @@ internal sealed class Answer
     internal bool Ok { get; }
 
     internal double HandlerMs { get; }
+
+    /// <summary>The request's shape, applied when the reply is serialised; errors are never shaped.</summary>
+    internal ShapeRequest? Shape { get; }
 
     internal Answer Failed(ErrorView error) =>
         new Answer(RequestId, Method, new ErrorReplyView(RequestId, error, HandlerMs), false, HandlerMs);

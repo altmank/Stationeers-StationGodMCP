@@ -4,19 +4,20 @@ using System.Text.Json.Nodes;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// The arguments the sidecar answers itself, on every tool that can give a large reply (the catalogue's x-shaping lists):
-/// fields keeps only the named keys in each entry of the reply's top-level lists, and output_file writes the whole
-/// reply to a JSON file and answers a small pointer instead. Neither reaches the game: Take strips them from the
-/// arguments it forwards, so the mod and its pipe clients never see them.
+/// The shaping arguments of every tool that can give a large reply (the catalogue's x-shaping lists): fields keeps only
+/// the named keys in each entry of the reply's top-level lists, and output_file writes the whole reply to a JSON file
+/// and answers a small pointer instead. Take strips both from the tool's arguments. fields goes to the mod as the
+/// request's shape.fields (ModShape); the mod marks a reply it shaped, and only a reply not so marked (an older mod) is
+/// shaped here. output_file is always written here, on the caller's machine.
 /// </summary>
-internal sealed record ReplyShaping(FieldSelection? Fields, OutputTarget? Output)
+internal sealed record ReplyShaping(FieldSelection? Fields, OutputTarget? Output, JsonElement? ModShape)
 {
     internal const string FieldsArgument = "fields";
     internal const string OutputFileArgument = "output_file";
 
     internal static readonly string[] Arguments = [FieldsArgument, OutputFileArgument];
 
-    private static readonly ReplyShaping None = new(null, null);
+    private static readonly ReplyShaping None = new(null, null, null);
 
     /// <summary>The shaping asked for, and the arguments without it, for the game. A bad file name is invalid_argument.</summary>
     internal static (ReplyShaping Shaping, JsonElement Forwarded) Take(JsonElement arguments)
@@ -29,6 +30,9 @@ internal sealed record ReplyShaping(FieldSelection? Fields, OutputTarget? Output
         FieldSelection? fields = IsGiven(arguments, FieldsArgument)
             ? FieldSelection.Of(arguments.GetProperty(FieldsArgument))
             : null;
+        JsonElement? modShape = fields != null
+            ? JsonSerializer.SerializeToElement(new { fields = arguments.GetProperty(FieldsArgument) })
+            : null;
         OutputTarget? output = IsGiven(arguments, OutputFileArgument)
             ? OutputTarget.Of(arguments.GetProperty(OutputFileArgument))
             : null;
@@ -38,13 +42,16 @@ internal sealed record ReplyShaping(FieldSelection? Fields, OutputTarget? Output
             forwarded.Remove(name);
         }
 
-        return (new ReplyShaping(fields, output), JsonSerializer.SerializeToElement(forwarded));
+        return (new ReplyShaping(fields, output, modShape), JsonSerializer.SerializeToElement(forwarded));
     }
 
-    /// <summary>The reply as the caller asked for it: fields applied, then written to a file when output_file is given.</summary>
-    internal JsonElement Apply(string tool, JsonElement reply, OutputFolder folder)
+    /// <summary>
+    /// The reply as the caller asked for it: fields applied unless the mod already shaped it, then written to a file when
+    /// output_file is given.
+    /// </summary>
+    internal JsonElement Apply(string tool, JsonElement reply, OutputFolder folder, bool shapedByMod = false)
     {
-        JsonElement selected = Fields?.Apply(reply) ?? reply;
+        JsonElement selected = shapedByMod ? reply : Fields?.Apply(reply) ?? reply;
         return Output == null ? selected : folder.Write(tool, Output, selected);
     }
 

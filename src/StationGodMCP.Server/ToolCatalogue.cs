@@ -16,7 +16,7 @@ internal static class ToolCatalogue
 
     private const string OutputFileDescription = "Reply to a JSON file, answer a pointer (server instructions).";
 
-    private const string FieldsDescription = "Keys kept per top-level list entry.";
+    private const string FieldsDescription = "Keys kept per top-level list entry; a dotted name is a path into one list (things.position.x).";
 
     private static readonly Lazy<Loaded> State = new(() => Load(ReadResource()));
 

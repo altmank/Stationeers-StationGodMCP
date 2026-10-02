@@ -1,5 +1,6 @@
 #nullable enable
 
+using Newtonsoft.Json;
 using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared;
@@ -74,16 +75,21 @@ internal sealed class LocalPlayerView
     public PositionView Position { get; }
 }
 
-/// <summary>An error inside a reply: a batch item's, or a move's outcome.</summary>
+/// <summary>An error inside a reply: a batch item's, a move's outcome, or a whole request's.</summary>
 internal sealed class ErrorView
 {
-    internal ErrorView(string code, string message)
+    internal ErrorView(string code, string message, object? data = null)
     {
         Code = code;
         Message = message;
+        Data = data;
     }
 
     public string Code { get; }
 
     public string Message { get; }
+
+    /// <summary>Details a program can act on (reply_too_large's sizes); absent when the error has none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public object? Data { get; }
 }

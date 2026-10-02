@@ -1,0 +1,77 @@
+{
+  "legend": {
+    "#": "frame",
+    ".": "open"
+  },
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "frame": true,
+      "walls": [
+        "north",
+        "east"
+      ],
+      "pieces": [
+        0,
+        1
+      ]
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "z": 0,
+      "frame": false,
+      "walls": [],
+      "pieces": []
+    }
+  ],
+  "count": 2,
+  "offset": 0,
+  "limit": 2,
+  "total": 9,
+  "has_more": true,
+  "pieces": [
+    {
+      "index": 0,
+      "reference_id": "801",
+      "prefab_name": "StructureCableCorner",
+      "network": {
+        "kind": "cable",
+        "network_id": "12"
+      }
+    },
+    {
+      "index": 1,
+      "reference_id": "802",
+      "prefab_name": "StructurePipeStraight",
+      "network": {
+        "kind": "pipe",
+        "network_id": "13"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "reference_id": "803",
+      "prefab_name": "StructureGasSensor",
+      "ports": [
+        {
+          "index": 0,
+          "kind": "data",
+          "network_id": "12"
+        }
+      ]
+    }
+  ],
+  "networks": [
+    {
+      "kind": "cable",
+      "network_id": "12",
+      "members": 30
+    }
+  ],
+  "network_visibility": "all",
+  "doors": []
+}

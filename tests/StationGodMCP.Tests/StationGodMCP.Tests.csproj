@@ -19,6 +19,8 @@
     <!-- The rule file the mod ships, so the tests compile and self-test every default rule. -->
     <None Include="..\..\lint-rules.json" Link="lint-rules.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\docs\lint-rules.md" Link="lint-rules.md" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Synthetic replies (no game data) the mod's shaping is compared against the sidecar's on. -->
+    <None Include="Fixtures\Shaping\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

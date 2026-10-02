@@ -1,0 +1,68 @@
+{
+  "gateway_id": "world",
+  "count": 4,
+  "devices": [
+    {
+      "reference_id": "501",
+      "prefab_name": "StructureGasSensor",
+      "display_name": "Gas Sensor",
+      "custom_name": "Room A",
+      "logic_types": [
+        "Pressure",
+        "Temperature",
+        "RatioOxygen"
+      ],
+      "position": {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 3.0
+      },
+      "powered": true
+    },
+    {
+      "reference_id": "502",
+      "prefab_name": "StructureActiveVent",
+      "display_name": "Active Vent",
+      "custom_name": null,
+      "logic_types": [
+        "On",
+        "Mode",
+        "PressureExternal"
+      ],
+      "position": {
+        "x": 1.5,
+        "y": 2.0,
+        "z": 3.0
+      },
+      "powered": false
+    },
+    {
+      "reference_id": "503",
+      "prefab_name": "StructureLogicMemory",
+      "display_name": "Logic Memory",
+      "custom_name": "Setpoint",
+      "logic_types": [
+        "Setting"
+      ],
+      "position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "powered": true
+    },
+    {
+      "reference_id": "504",
+      "prefab_name": "StructureCircuitHousing",
+      "display_name": "IC Housing",
+      "custom_name": "",
+      "logic_types": [],
+      "position": {
+        "x": -2.0,
+        "y": 1.0,
+        "z": 9.5
+      },
+      "powered": true
+    }
+  ]
+}

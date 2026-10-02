@@ -24,7 +24,13 @@ internal static class WireCheck
 
     internal static string Old(object? shape) => JsonConvert.SerializeObject(shape, OldSettings);
 
-    internal static string New(object? view) => JsonConvert.SerializeObject(view, ApiJson.Settings);
+    /// <summary>The view's wire text; on the way, ShapingChecks holds the shaping writer to it.</summary>
+    internal static string New(object? view)
+    {
+        string text = JsonConvert.SerializeObject(view, ApiJson.Settings);
+        ShapingChecks.HoldFor(view, text);
+        return text;
+    }
 
     internal static void Same(object? oldShape, object? newView) => Assert.Equal(Old(oldShape), New(newView));
 

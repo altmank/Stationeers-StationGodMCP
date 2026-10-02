@@ -1,0 +1,166 @@
+{
+  "things": [
+    {
+      "reference_id": "1000",
+      "prefab_name": "StructurePipeStraight",
+      "display_name": "Pipe (Straight)",
+      "custom_name": null,
+      "condition": "ok",
+      "kind": "pipe",
+      "type": "Pipe",
+      "damage_state": {
+        "brute": 0.0,
+        "burn": 0.0,
+        "oxygen": 0.0
+      },
+      "damage_ratio": 0.0,
+      "health_percent": 100,
+      "is_broken": false,
+      "pipe_burst": false,
+      "position": {
+        "x": -1311.5,
+        "y": 222.0,
+        "z": -711.25
+      },
+      "distance_m": 0.0,
+      "networks": [
+        {
+          "kind": "pipe",
+          "network_id": "77",
+          "members": 12
+        }
+      ]
+    },
+    {
+      "reference_id": "1001",
+      "prefab_name": "StructurePipeStraight",
+      "display_name": "Pipe (Straight)",
+      "custom_name": null,
+      "condition": "ok",
+      "kind": "pipe",
+      "type": "Pipe",
+      "damage_state": {
+        "brute": 0.0,
+        "burn": 1.5,
+        "oxygen": 0.0
+      },
+      "damage_ratio": 0.01,
+      "health_percent": 99,
+      "is_broken": false,
+      "pipe_burst": false,
+      "position": {
+        "x": -1310.5,
+        "y": 222.0,
+        "z": -711.25
+      },
+      "distance_m": 4.2,
+      "networks": [
+        {
+          "kind": "pipe",
+          "network_id": "77",
+          "members": 12
+        }
+      ]
+    },
+    {
+      "reference_id": "1002",
+      "prefab_name": "StructurePipeStraight",
+      "display_name": "Pipe (Straight)",
+      "custom_name": null,
+      "condition": "ok",
+      "kind": "pipe",
+      "type": "Pipe",
+      "damage_state": {
+        "brute": 0.0,
+        "burn": 3.0,
+        "oxygen": 0.0
+      },
+      "damage_ratio": 0.02,
+      "health_percent": 98,
+      "is_broken": false,
+      "pipe_burst": false,
+      "position": {
+        "x": -1309.5,
+        "y": 222.0,
+        "z": -711.25
+      },
+      "distance_m": 8.4,
+      "networks": [
+        {
+          "kind": "pipe",
+          "network_id": "77",
+          "members": 12
+        }
+      ]
+    },
+    {
+      "reference_id": "1003",
+      "prefab_name": "StructurePipeStraight",
+      "display_name": "Pipe (Straight)",
+      "custom_name": null,
+      "condition": "ok",
+      "kind": "pipe",
+      "type": "Pipe",
+      "damage_state": {
+        "brute": 0.0,
+        "burn": 4.5,
+        "oxygen": 0.0
+      },
+      "damage_ratio": 0.03,
+      "health_percent": 97,
+      "is_broken": false,
+      "pipe_burst": false,
+      "position": {
+        "x": -1308.5,
+        "y": 222.0,
+        "z": -711.25
+      },
+      "distance_m": 12.600000000000001,
+      "networks": [
+        {
+          "kind": "pipe",
+          "network_id": "77",
+          "members": 12
+        }
+      ]
+    },
+    {
+      "reference_id": "1004",
+      "prefab_name": "StructurePipeStraight",
+      "display_name": "Pipe (Straight)",
+      "custom_name": null,
+      "condition": "ok",
+      "kind": "pipe",
+      "type": "Pipe",
+      "damage_state": {
+        "brute": 0.0,
+        "burn": 6.0,
+        "oxygen": 0.0
+      },
+      "damage_ratio": 0.04,
+      "health_percent": 96,
+      "is_broken": false,
+      "pipe_burst": false,
+      "position": {
+        "x": -1307.5,
+        "y": 222.0,
+        "z": -711.25
+      },
+      "distance_m": 16.8,
+      "networks": [
+        {
+          "kind": "pipe",
+          "network_id": "77",
+          "members": 12
+        }
+      ]
+    }
+  ],
+  "count": 5,
+  "total": 84,
+  "offset": 0,
+  "limit": 5,
+  "has_more": true,
+  "scanned": 412,
+  "local_player": null
+}

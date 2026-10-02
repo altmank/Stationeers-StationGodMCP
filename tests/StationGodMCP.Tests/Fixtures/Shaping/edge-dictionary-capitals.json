@@ -1,0 +1,21 @@
+{
+  "items": [
+    {
+      "reference_id": "1",
+      "logic": {
+        "Temperature": 300.0,
+        "Pressure": 50.5
+      },
+      "Gases": {
+        "CarbonDioxide": 1.0
+      }
+    },
+    {
+      "reference_id": "2",
+      "logic": {
+        "Temperature": 10.0
+      },
+      "Gases": {}
+    }
+  ]
+}

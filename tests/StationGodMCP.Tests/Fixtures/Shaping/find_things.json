@@ -1,0 +1,73 @@
+{
+  "things": [
+    {
+      "reference_id": "700",
+      "prefab_name": "ItemIronOre",
+      "display_name": "Iron Ore",
+      "quantity": 50,
+      "position": {
+        "x": 0.0,
+        "y": -3.5,
+        "z": 0.125
+      },
+      "held_in": {
+        "reference_id": "600",
+        "slot": 0
+      }
+    },
+    {
+      "reference_id": "701",
+      "prefab_name": "ItemIronOre",
+      "display_name": "Iron Ore",
+      "quantity": 49,
+      "position": {
+        "x": 10.0,
+        "y": -3.5,
+        "z": 0.125
+      },
+      "held_in": null
+    },
+    {
+      "reference_id": "702",
+      "prefab_name": "ItemIronOre",
+      "display_name": "Iron Ore",
+      "quantity": 48,
+      "position": {
+        "x": 20.0,
+        "y": -3.5,
+        "z": 0.125
+      },
+      "held_in": {
+        "reference_id": "600",
+        "slot": 2
+      }
+    },
+    {
+      "reference_id": "703",
+      "prefab_name": "ItemIronOre",
+      "display_name": "Iron Ore",
+      "quantity": 47,
+      "position": {
+        "x": 30.0,
+        "y": -3.5,
+        "z": 0.125
+      },
+      "held_in": null
+    }
+  ],
+  "count": 4,
+  "total": 4,
+  "offset": 0,
+  "limit": 100,
+  "has_more": false,
+  "scanned": 2310,
+  "local_player": {
+    "reference_id": "1",
+    "display_name": "Tester",
+    "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
+  }
+}
