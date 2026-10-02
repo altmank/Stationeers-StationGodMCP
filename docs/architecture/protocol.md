@@ -571,6 +571,42 @@ sidecar's 35-second reply timeout (`Program.cs:26`), add the duration.
 | `cheat_armed` | `until_utc` | The owner armed cheat for this connection. |
 | `cheat_disarmed` | none | The owner disarmed it, or the time ran out. |
 
+### As built: subscription core
+
+The pure parts live in `src/StationGodMCP.Mod/Pure/Subscriptions/` and `Pure/Sampling/`, with the game-side readers
+in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond the text above:
+
+- `SubscriptionEngine` owns every connection's subscriptions. `Subscribe` admits, reads once (the reply's `result`,
+  also the comparison baseline) and registers; `Poll` runs once a frame in the subscription lane; `Unsubscribe`,
+  `DropConnection` (silent), `Revoke` and `ApplyLimits` (with events) end them; `WorldChanged` ends every devices
+  subscription with `world_changed`. Ids (`s1`, `s2`, ...) are never reused while the mod runs.
+- A devices sample is read through `read_devices`' own handler, so it reads exactly what that call reads. Readings are
+  compared with the last reading offered to the client (not the last one written), value by value by
+  `ReadDevicesComparer`; NaN equals NaN.
+- Each subscription has one `UpdateSlot`, which is what sits in the outbound queue. A changed reading offered while
+  the slot waits replaces its contents and keeps its `seq`; the writer thread takes the slot when it reaches it. A
+  slot of an ended subscription writes nothing.
+- `Resync` makes the next sample due at once and sends it even unchanged, with the next `seq`. Every update carries
+  the whole reading, so a resync is also how a client that lost its state gets it back without unsubscribing.
+- Sampling is on a grid of `interval_s` from the subscribe; a late sample does not shift the grid, and a frame that
+  missed several points takes one sample. Due samples go round-robin across connections, oldest due first within
+  one; the connection the lane's budget stopped at goes first next frame.
+- Admission checks, in order: subscriptions off (`SubscriptionBudgetMs` 0), 128 items, 1,024 values, 64 subscriptions
+  (world-topic ones count), 8,192 values, then the projected load. A request over one call's bounds is
+  `subscription_limit`, not `invalid_argument`. `data` is `{name, limit, requested, projected_ms_per_s}`, where
+  `name` is the `welcome.limits` key passed (`max_projected_ms_per_s` and `max_items_per_subscription` for the two
+  limits `welcome` does not list). Costs per sample use the starting figures of [scheduling.md](scheduling.md) as
+  constants; nothing measures them.
+- A read that throws while sampling ends that subscription with reason `read_failed`, a fourth reason beside the
+  three above.
+- `WorldIdentity` mints a random 16-hex-digit `world.id` on the first frame a world is running after none was, using
+  the same notion of running as the per-world stores (`GameState` neither `None` nor `Loading`).
+- `sample_logic`'s `LogicSampler` keeps the sidecar loop's arguments, messages, change list (each result compared as
+  its JSON text would be: the error message counts, and 0 differs from -0), counts and millisecond rounding. Its
+  samples sit on a grid of `interval_seconds` from the first sample, the last at `duration_seconds`; a frame within a
+  microsecond of a due time counts as on it. A read that fails as a whole fails the call with that error, as the
+  sidecar returned it.
+
 ## Reconnecting
 
 A connection can break at any time: the game closed, the save reloaded, the mod restarted. The rules a client follows
