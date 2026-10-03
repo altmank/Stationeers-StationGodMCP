@@ -658,6 +658,11 @@ keys are equal and `mod_info.runtime` `handler_ms` mean is lower without it.
   as `Wants` decides, shaped, equals the full reply shaped byte for byte; `limit` and `max_bytes` see the same lists.
 - No other method was changed: no other reply part is known to be costly. The live check's `handler_ms` comparison
   reads `mod_info`'s existing per-method times; nothing new measures.
+- The live checks ran on the test server (fixround, compact-bathroom pasted, paused): `shape_check.py` passed for the
+  ids form (84 found, `reference_id,damage_ratio,is_broken,condition` and with `networks`), the network form and the
+  scan, each with and without networks kept; with `networks` kept every structure still listed its networks, and
+  without it none did. Over 20 calls of 81 ids, alternating, the per-call handler time was 0.27 and 0.28 ms without
+  networks against 0.58 and 0.45 ms with them.
 
 ## Stage 15: switching the old protocol off
 
