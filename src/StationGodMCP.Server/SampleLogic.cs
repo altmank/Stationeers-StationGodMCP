@@ -7,12 +7,19 @@ using StationGodMCP.Client;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// sample_logic while the catalogue says it runs in the sidecar (x-runs-in: sidecar): read_logic_many at an interval on
-/// the real clock, keeping each reading that changed, with elapsed real seconds. A mod whose catalogue no longer says so
-/// answers it itself, and the sidecar forwards it like any other tool.
+/// sample_logic in the sidecar, for a mod that does not run it itself: read_logic_many at an interval on the real
+/// clock, keeping each reading that changed, with elapsed real seconds. It runs here when the catalogue in use says so
+/// (x-runs-in: sidecar) or when the game speaks only protocol version 1, which mods older than sample_logic in the mod
+/// do; a version-2 mod answers it itself, and the sidecar forwards it like any other tool.
 /// </summary>
 internal static class SampleLogic
 {
+    internal const string Method = "sample_logic";
+
+    /// <summary>Whether this sidecar answers the tool itself on a connection of this protocol version.</summary>
+    internal static bool RunsHere(string tool, ProtocolVersion? protocol) =>
+        tool == Method && protocol != ProtocolVersion.Version2;
+
     private const int MaximumTargets = 32;
     private const int MaximumSamples = 120;
 

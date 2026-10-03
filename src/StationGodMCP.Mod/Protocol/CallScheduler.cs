@@ -169,7 +169,10 @@ internal static class CallProfiles
             : new CallProfile(method, MethodClass.Read, new CallCost(CostClass.Instant, 1));
     }
 
-    internal static CallProfile OfLine(CatalogueFile? catalogue, string line)
+    internal static CallProfile OfLine(CatalogueFile? catalogue, string line) => OfLine(catalogue, line, out _);
+
+    /// <summary>A line's profile, and the milliseconds its method runs for at its params (x-duration; 0 for most).</summary>
+    internal static CallProfile OfLine(CatalogueFile? catalogue, string line, out int durationMs)
     {
         string method = string.Empty;
         JObject? parameters = null;
@@ -185,6 +188,10 @@ internal static class CallProfiles
         }
 
         CallProfile profile = Of(catalogue, method, parameters);
+        CatalogueMethod? entry = null;
+        durationMs = catalogue?.Catalogue.TryGet(method, out entry) == true && entry != null
+            ? entry.DurationMs(parameters)
+            : 0;
         return new CallProfile(profile.Method, MethodClass.Write, new CallCost(profile.Cost, profile.Items));
     }
 }

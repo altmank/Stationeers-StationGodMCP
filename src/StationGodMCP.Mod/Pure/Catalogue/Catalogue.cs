@@ -158,6 +158,30 @@ internal sealed class CatalogueMethod
     /// <summary>x-runs-in sidecar: answered by the sidecar, not the mod (sample_logic).</summary>
     internal bool RunsInSidecar { get; }
 
+    /// <summary>x-duration's argument: the seconds the call itself runs for; null without x-duration.</summary>
+    internal string? DurationParameter { get; private set; }
+
+    /// <summary>x-duration's max_s.</summary>
+    internal double MaxDurationSeconds { get; private set; }
+
+    /// <summary>
+    /// The milliseconds a call runs for at these arguments, which its deadline and every wait for it add: the
+    /// argument given (at most max_s), else max_s; 0 for a method without x-duration.
+    /// </summary>
+    internal int DurationMs(JObject? arguments)
+    {
+        if (DurationParameter == null)
+        {
+            return 0;
+        }
+
+        JToken? given = arguments?[DurationParameter];
+        double seconds = given != null && (given.Type == JTokenType.Integer || given.Type == JTokenType.Float)
+            ? Math.Max(0.0, Math.Min((double)given, MaxDurationSeconds))
+            : MaxDurationSeconds;
+        return (int)Math.Ceiling(seconds * 1000.0);
+    }
+
     /// <summary>x-effects: display, server_state, files; a method with any is never resent automatically.</summary>
     internal List<string> Effects { get; }
 
@@ -218,7 +242,7 @@ internal sealed class CatalogueMethod
             }
         }
 
-        return new CatalogueMethod(name,
+        CatalogueMethod compiled = new CatalogueMethod(name,
             CatalogueWords.ClassOf(method["class"] ?? JValue.CreateNull(), $"{at}.class"),
             CatalogueRule.CompileAll(method["x-class-when"], $"{at}.x-class-when"),
             CatalogueWords.CostOf(method["cost"] ?? JValue.CreateNull(), $"{at}.cost"),
@@ -229,6 +253,17 @@ internal sealed class CatalogueMethod
             (string?)method["x-runs-in"] == "sidecar",
             effects,
             ReplyListsOf(method["reply"]));
+        if (method["x-duration"] is JObject duration)
+        {
+            compiled.DurationParameter = duration["param"]?.Type == JTokenType.String
+                ? (string)duration["param"]!
+                : throw new CatalogueException($"{at}.x-duration.param: must be a string.");
+            compiled.MaxDurationSeconds = duration["max_s"]?.Type == JTokenType.Integer || duration["max_s"]?.Type == JTokenType.Float
+                ? (double)duration["max_s"]!
+                : throw new CatalogueException($"{at}.x-duration.max_s: must be a number.");
+        }
+
+        return compiled;
     }
 
     private static HashSet<string> ReplyListsOf(JToken? reply)

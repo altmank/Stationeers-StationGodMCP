@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Subscriptions;
 using Xunit;
@@ -291,16 +292,22 @@ internal sealed class PipeRig : IDisposable
 
     internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, int lineMs = 30000, bool mainThread = true,
         ProtocolSettings? settings = null, AccessControl? access = null, SubscriptionHub? subscriptions = null,
-        Func<SamplingTick>? tick = null)
+        Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null)
     {
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
         Mod = new FakeMod(mainThread, _deadlines);
         if (subscriptions != null)
         {
             Mod.Samples = subscriptions;
-            Mod.BeforeFrame = () => subscriptions.BeginFrame(tick?.Invoke() ?? new SamplingTick(1, 0));
+            Mod.BeforeFrame = () => subscriptions.BeginFrame(tick?.Invoke() ?? new SamplingTick(1, 0),
+                realTick?.Invoke() ?? new RealTimeTick(1, 0, DateTimeOffset.UnixEpoch));
             Mod.CallHook = (call, queueMs) => SubscriptionHub.Handles(call.Request.Method)
                 ? new CallOutcome(subscriptions.Run(call, queueMs), call.Request.Method)
+                : call.Request.Method == SubscriptionHub.SampleLogicMethod
+                    ? subscriptions.StartSampleLogic(call, queueMs)
+                    : null;
+            Mod.LineHook = (call, queueMs) => call.Profile.Method == SubscriptionHub.SampleLogicMethod
+                ? subscriptions.StartSampleLogic(call, queueMs)
                 : null;
             Mod.ClosedHook = subscriptions.Closed;
         }
@@ -378,7 +385,10 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     /// <summary>The sample lane each frame runs first; null for none.</summary>
     internal ISampleLane? Samples { get; set; }
 
-    /// <summary>Before a version-2 call runs: true when the hook took it (answered or deferred) instead.</summary>
+    /// <summary>Before a version-1 line runs: its outcome when the hook took it (answered or deferred) instead.</summary>
+    internal Func<LineCall, double, CallOutcome?>? LineHook { get; set; }
+
+    /// <summary>Before a version-2 call runs: its outcome when the hook took it (answered or deferred) instead.</summary>
     internal Func<ProtocolCall, double, CallOutcome?>? CallHook { get; set; }
 
     /// <summary>Connections closed, in order.</summary>
@@ -417,6 +427,11 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         Interlocked.Increment(ref _ran);
         Hold();
+        if (LineHook?.Invoke(call, queueWaitMs) is CallOutcome taken)
+        {
+            return taken;
+        }
+
         return new CallOutcome(ReplyTo(call.Json), null);
     }
 
