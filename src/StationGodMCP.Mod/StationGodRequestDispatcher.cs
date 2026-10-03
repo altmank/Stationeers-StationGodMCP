@@ -16,7 +16,8 @@ namespace StationGodMCP;
 /// <summary>
 /// Hands calls from the connections to the main thread and their answers back. Connections (and the TCP and old pipe
 /// listener threads, through Dispatch) queue a call; StationGodMod.Update drains the queue on the main thread, where the
-/// game's objects may be used (ApiHost.Handle), first in first out, within the frame's request budget (FrameBudget: the
+/// game's objects may be used (ApiHost.Handle, ApiHost.HandleCall), in the order the scheduler gives (ICallScheduler:
+/// each connection in turn, keeping each connection's order rule), within the frame's request budget (FrameBudget: the
 /// first request of a frame always runs). Each answer goes straight to its call's Deliver: no thread waits on the main
 /// thread. A call the main thread does not reach before its deadline is answered game_timeout by the DeadlineWatch and
 /// skipped here unrun; a call it has started is always answered with its result.
@@ -29,12 +30,13 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     /// <summary>How much longer than its deadline Dispatch waits for an answer the watch must already have given.</summary>
     private const int DispatchGraceMilliseconds = 5000;
 
-    private readonly ConcurrentQueue<QueuedCall> _requests = new ConcurrentQueue<QueuedCall>();
+    private readonly ICallScheduler _requests;
     private readonly DeadlineWatch _deadlines;
 
-    internal StationGodRequestDispatcher(DeadlineWatch deadlines)
+    internal StationGodRequestDispatcher(DeadlineWatch deadlines, ICallScheduler scheduler)
     {
         _deadlines = deadlines;
+        _requests = scheduler;
     }
 
     /// <summary>The per-frame counters mod_info reports.</summary>
@@ -43,7 +45,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     public void Submit(QueuedCall call)
     {
         _deadlines.Watch(call);
-        _requests.Enqueue(call);
+        _requests.Add(call);
     }
 
     internal void ProcessPendingRequests(FrameBudget budget)
@@ -60,10 +62,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
                 break;
             }
 
-            if (!_requests.TryDequeue(out QueuedCall call))
+            if (!_requests.TryTake(out QueuedCall? next) || next == null)
             {
                 break;
             }
+
+            QueuedCall call = next;
 
             taken++;
             if (!call.State.TryStart())
@@ -98,6 +102,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     public CallOutcome RunLine(string requestJson, double queueWaitMs)
     {
         HandledRequest handled = ApiHost.Handle(requestJson, queueWaitMs);
+        return new CallOutcome(handled.Json, handled.Method);
+    }
+
+    public CallOutcome RunCall(CallRequest call, double queueWaitMs)
+    {
+        HandledRequest handled = ApiHost.HandleCall(call, queueWaitMs, UnityEngine.Time.frameCount);
         return new CallOutcome(handled.Json, handled.Method);
     }
 

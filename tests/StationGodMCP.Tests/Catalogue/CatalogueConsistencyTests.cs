@@ -153,8 +153,10 @@ public sealed class CatalogueConsistencyTests
             $"Only in ApiHost.Methods: {string.Join(", ", handled.Except(catalogued))}.");
         Assert.Equal(new[] { "sample_logic" },
             Methods().Where(method => (string?)method["x-runs-in"] == "sidecar").Select(method => (string)method["name"]!));
-        // No protocol layer dispatches methods of its own yet (stage 4 adds catalogue, subscribe, unsubscribe).
-        Assert.Empty(Assembled.Value["protocol_methods"]!.AsArray());
+        // The protocol methods are exactly those the protocol layer answers itself.
+        Assert.Equal(StationGodMCP.Protocol.ProtocolMethods.Names.OrderBy(name => name, StringComparer.Ordinal),
+            Assembled.Value["protocol_methods"]!.AsArray().Select(method => (string)method!["name"]!)
+                .OrderBy(name => name, StringComparer.Ordinal));
     }
 
     // ---- 3. same arguments ----

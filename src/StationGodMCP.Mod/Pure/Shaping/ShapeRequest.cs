@@ -19,6 +19,9 @@ internal sealed class ShapeRequest
 
     private static readonly Dictionary<string, int> NoLimits = new Dictionary<string, int>(StringComparer.Ordinal);
 
+    /// <summary>Nothing to leave out: every key and entry is written.</summary>
+    internal static readonly ShapeRequest None = new ShapeRequest(null, NoLimits, null);
+
     internal ShapeRequest(FieldSelectors? fields, IReadOnlyDictionary<string, int> limits, int? maxBytes)
     {
         Fields = fields;

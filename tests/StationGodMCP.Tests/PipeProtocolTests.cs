@@ -287,11 +287,13 @@ internal sealed class PipeRig : IDisposable
     private readonly PipeListener _listener;
     private readonly BlockingCollection<Connection> _connected = new BlockingCollection<Connection>();
 
-    internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, int lineMs = 30000, bool mainThread = true)
+    internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, int lineMs = 30000, bool mainThread = true,
+        ProtocolSettings? settings = null)
     {
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
         Mod = new FakeMod(mainThread, _deadlines);
-        Host = new ProtocolHost(new ProtocolSettings(maxConnections, firstLineMs, lineMs), Mod, _deadlines);
+        Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs, lineMs), Mod, _deadlines,
+            TestCatalogue.File.Value);
         _listener = new PipeListener(Name, Host);
         _listener.Connected += connection => _connected.Add(connection);
         _listener.Start();
@@ -327,9 +329,11 @@ internal sealed class PipeRig : IDisposable
 /// </summary>
 internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
 {
-    private readonly BlockingCollection<QueuedCall> _calls = new BlockingCollection<QueuedCall>();
+    private readonly RoundRobinScheduler _calls = new RoundRobinScheduler();
+    private readonly SemaphoreSlim _added = new SemaphoreSlim(0);
     private readonly Thread? _thread;
     private readonly DeadlineWatch _deadlines;
+    private volatile bool _stopped;
     private int _ran;
 
     internal FakeMod(bool mainThread, DeadlineWatch deadlines)
@@ -339,9 +343,10 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         {
             _thread = new Thread(() =>
             {
-                foreach (QueuedCall call in _calls.GetConsumingEnumerable())
+                while (!_stopped)
                 {
-                    RunOne(call, 0);
+                    _added.Wait(50);
+                    RunPending();
                 }
             }) { IsBackground = true };
             _thread.Start();
@@ -357,6 +362,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         _deadlines.Watch(call);
         _calls.Add(call);
+        _added.Release();
     }
 
     public CallOutcome RunLine(string requestJson, double queueWaitMs)
@@ -365,16 +371,48 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         return new CallOutcome(ReplyTo(requestJson), null);
     }
 
+    /// <summary>The ids of version-2 calls in the order the fake main thread ran them.</summary>
+    internal ConcurrentQueue<string> RunOrder { get; } = new ConcurrentQueue<string>();
+
+    /// <summary>A version-2 call is answered with its method and params as result, after params.hold_ms if given.</summary>
+    public CallOutcome RunCall(CallRequest call, double queueWaitMs)
+    {
+        Interlocked.Increment(ref _ran);
+        RunOrder.Enqueue(call.Id);
+        int hold = call.Params?.Value<int?>("hold_ms") ?? 0;
+        if (hold > 0)
+        {
+            Thread.Sleep(hold);
+        }
+
+        Newtonsoft.Json.Linq.JObject result = new Newtonsoft.Json.Linq.JObject
+        {
+            ["method"] = call.Method,
+            ["params"] = call.Params ?? new Newtonsoft.Json.Linq.JObject()
+        };
+        int filler = call.Params?.Value<int?>("reply_bytes") ?? 0;
+        if (filler > 0)
+        {
+            result["filler"] = new string('f', filler);
+        }
+        string reply = Newtonsoft.Json.JsonConvert.SerializeObject(new Newtonsoft.Json.Linq.JObject
+        {
+            ["type"] = "reply", ["id"] = call.Id, ["ok"] = true, ["shaped"] = call.Shape != null, ["result"] = result,
+            ["elapsed_ms"] = 0.01, ["queue_ms"] = Math.Round(queueWaitMs, 2), ["frame"] = 1
+        }, Newtonsoft.Json.Formatting.None);
+        return new CallOutcome(reply, call.Method);
+    }
+
     /// <summary>Takes every queued call now, holding each started one for holdMs before answering.</summary>
     internal void RunPending(int holdMs = 0)
     {
-        while (_calls.TryTake(out QueuedCall? call))
+        while (_calls.TryTake(out QueuedCall? call) && call != null)
         {
             RunOne(call, holdMs);
         }
     }
 
-    public void Dispose() => _calls.CompleteAdding();
+    public void Dispose() => _stopped = true;
 
     private void RunOne(QueuedCall call, int holdMs)
     {
@@ -390,4 +428,15 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
             call.Deliver(outcome.Reply, outcome.Method);
         }
     }
+}
+
+/// <summary>The repository's catalogue.json, loaded as the mod loads it.</summary>
+internal static class TestCatalogue
+{
+    internal static readonly Lazy<StationGodMCP.Pure.Catalogue.CatalogueFile> File = new Lazy<StationGodMCP.Pure.Catalogue.CatalogueFile>(() =>
+    {
+        byte[] bytes = System.IO.File.ReadAllBytes(CatalogueChecks.CatalogueFiles.AssembledPath);
+        return new StationGodMCP.Pure.Catalogue.CatalogueFile(bytes,
+            StationGodMCP.Pure.Catalogue.Catalogue.Load(new UTF8Encoding(false).GetString(bytes)));
+    });
 }

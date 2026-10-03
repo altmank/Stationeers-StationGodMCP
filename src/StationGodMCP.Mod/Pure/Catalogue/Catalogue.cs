@@ -21,11 +21,13 @@ internal sealed class Catalogue
 
     private readonly Dictionary<string, CatalogueMethod> _methods;
 
-    private Catalogue(string modVersion, Dictionary<string, CatalogueMethod> methods, HashSet<string> errorCodes)
+    private Catalogue(string modVersion, Dictionary<string, CatalogueMethod> methods, HashSet<string> errorCodes,
+        int protocolMethodCount)
     {
         ModVersion = modVersion;
         _methods = methods;
         ErrorCodes = errorCodes;
+        ProtocolMethodCount = protocolMethodCount;
     }
 
     internal string ModVersion { get; }
@@ -35,7 +37,11 @@ internal sealed class Catalogue
 
     internal IEnumerable<CatalogueMethod> Methods => _methods.Values;
 
-    internal int MethodCount => _methods.Count;
+    /// <summary>The methods of the methods section (the tools), without the protocol's own.</summary>
+    internal int MethodCount => _methods.Count - ProtocolMethodCount;
+
+    /// <summary>The methods of the protocol_methods section (catalogue, subscribe, ...).</summary>
+    internal int ProtocolMethodCount { get; }
 
     internal bool TryGet(string method, [NotNullWhen(true)] out CatalogueMethod? found) =>
         _methods.TryGetValue(method, out found);
@@ -76,6 +82,7 @@ internal sealed class Catalogue
         }
 
         Dictionary<string, CatalogueMethod> methods = new Dictionary<string, CatalogueMethod>(StringComparer.Ordinal);
+        int protocolMethods = 0;
         foreach (string section in new[] { "methods", "protocol_methods" })
         {
             if (!(root[section] is JArray list))
@@ -92,10 +99,14 @@ internal sealed class Catalogue
                 }
 
                 methods.Add(method.Name, method);
+                if (section == "protocol_methods")
+                {
+                    protocolMethods++;
+                }
             }
         }
 
-        return new Catalogue(modVersion, methods, errorCodes);
+        return new Catalogue(modVersion, methods, errorCodes, protocolMethods);
     }
 }
 

@@ -132,7 +132,7 @@ internal sealed class NativePipe : IByteTransport
     /// <summary>Read's answer when Cancel woke it.</summary>
     internal const int Cancelled = -1;
 
-    public bool Write(byte[] buffer, int count, int timeoutMilliseconds)
+    public WriteResult Write(byte[] buffer, int count, int timeoutMilliseconds)
     {
         GCHandle pinned = GCHandle.Alloc(buffer, GCHandleType.Pinned);
         try
@@ -146,7 +146,7 @@ internal sealed class NativePipe : IByteTransport
                 int error = done ? 0 : Marshal.GetLastWin32Error();
                 if (!done && error != Kernel32.ErrorIoPending)
                 {
-                    return false;
+                    return WriteResult.Closed;
                 }
 
                 uint waited = Kernel32.WaitForMultipleObjects(2, new[] { _write.Event, _stop }, false,
@@ -157,15 +157,20 @@ internal sealed class NativePipe : IByteTransport
                 }
 
                 bool ok = Kernel32.GetOverlappedResult(_handle, _write.Overlapped, out uint written, true);
+                if (waited == Kernel32.WaitTimeout)
+                {
+                    return WriteResult.TimedOut;
+                }
+
                 if (!ok || waited != Kernel32.WaitObject0)
                 {
-                    return false;
+                    return WriteResult.Closed;
                 }
 
                 offset += (int)written;
             }
 
-            return true;
+            return WriteResult.Written;
         }
         finally
         {

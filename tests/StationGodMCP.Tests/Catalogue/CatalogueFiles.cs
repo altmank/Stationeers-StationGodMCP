@@ -151,6 +151,18 @@ internal static class CatalogueFiles
         return methods;
     }
 
+    /// <summary>The protocol's own method source files (protocol/), by method name.</summary>
+    internal static SortedDictionary<string, JsonObject> ProtocolMethodSources()
+    {
+        SortedDictionary<string, JsonObject> methods = new SortedDictionary<string, JsonObject>(StringComparer.Ordinal);
+        foreach (string path in Directory.GetFiles(Path.Combine(SourceRoot, "protocol"), "*.json"))
+        {
+            methods.Add(Path.GetFileNameWithoutExtension(path), ReadJson(path).AsObject());
+        }
+
+        return methods;
+    }
+
     /// <summary>catalogue.json as the sources give it, as text.</summary>
     internal static string Assemble() => Serialize(AssembleNode());
 
@@ -181,9 +193,26 @@ internal static class CatalogueFiles
             ["server"] = Resolve(server.DeepClone(), root),
             ["errors"] = errors.DeepClone(),
             ["shared_reply_keys"] = Resolve(shared.DeepClone(), root),
-            ["protocol_methods"] = new JsonArray(),
+            ["protocol_methods"] = ProtocolMethods(root),
             ["methods"] = methods
         };
+    }
+
+    private static JsonArray ProtocolMethods(string root)
+    {
+        JsonArray methods = new JsonArray();
+        foreach ((string file, JsonObject source) in ProtocolMethodSources())
+        {
+            JsonObject method = Resolve(source.DeepClone(), root).AsObject();
+            if ((string?)method["name"] != file)
+            {
+                throw new InvalidOperationException($"protocol/{file}.json names the method '{method["name"]}'.");
+            }
+
+            methods.Add(method);
+        }
+
+        return methods;
     }
 
     /// <summary>The shared reply keys that apply to a method, by the rules applies_when names.</summary>
