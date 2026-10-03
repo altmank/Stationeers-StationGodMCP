@@ -7,6 +7,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Access;
+using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Protocol;
@@ -16,6 +22,9 @@ internal interface IByteTransport : IDisposable
 {
     /// <summary>"pipe" or "tcp".</summary>
     string Kind { get; }
+
+    /// <summary>Who is at the other end, for the log (a TCP client's address; the pipe's name).</summary>
+    string Peer { get; }
 
     /// <summary>
     /// Bytes read into buffer; 0 when the other end closed; NativePipe.Cancelled after Cancel. Throws TimeoutException
@@ -84,7 +93,13 @@ internal sealed class Connection
         _transport = transport;
         _host = host;
         ClientId = "c" + Interlocked.Increment(ref _lastId);
+        ConnectedAt = Stopwatch.GetTimestamp();
     }
+
+    /// <summary>Stopwatch.GetTimestamp when the client connected.</summary>
+    internal long ConnectedAt { get; }
+
+    internal string Peer => _transport.Peer;
 
     /// <summary>The server's name for this connection, unique while the mod runs.</summary>
     internal string ClientId { get; }
@@ -151,7 +166,9 @@ internal sealed class Connection
         }
         catch (TimeoutException)
         {
-            // Nothing within the first-line timeout: the instance is freed for another client.
+            // Nothing within the first-line timeout (the instance is freed for another client), or a sign-in that did
+            // not finish in time, which the session answers.
+            _session?.OnReadTimeout();
         }
         catch (IOException)
         {
@@ -188,7 +205,8 @@ internal sealed class Connection
         long firstLineBy = QueuedCall.DeadlineAfter(_host.Settings.FirstLineTimeoutMilliseconds);
         while (!_stopping && !_ending)
         {
-            int timeout = _session == null ? RemainingMilliseconds(firstLineBy) : -1;
+            long? signInBy = _session == null ? firstLineBy : _session.SignInBy;
+            int timeout = signInBy.HasValue ? RemainingMilliseconds(signInBy.Value) : -1;
             int read = _transport.Read(buffer, timeout);
             if (read <= 0)
             {
@@ -339,6 +357,9 @@ internal abstract class Session
     /// <summary>How long one line may take to be written before the client is judged too slow; negative for no limit.</summary>
     internal virtual int WriteTimeoutMilliseconds => -1;
 
+    /// <summary>Stopwatch time by which the next line must arrive (a sign-in in progress); null for no limit.</summary>
+    internal virtual long? SignInBy => null;
+
     /// <summary>The key's name, anonymous, or null where the protocol has none.</summary>
     internal virtual string? Client => null;
 
@@ -350,6 +371,11 @@ internal abstract class Session
     internal virtual int InFlight => 0;
 
     internal abstract void OnLine(string line);
+
+    /// <summary>SignInBy passed: the connection ends after this.</summary>
+    internal virtual void OnReadTimeout()
+    {
+    }
 
     /// <summary>A line passed MaximumLineBytes: the connection ends after this.</summary>
     internal virtual void OnOverflow()
@@ -374,27 +400,46 @@ internal abstract class Session
 
 /// <summary>
 /// Version 1: one request line, one reply line, in order. Each request waits for its answer before the next line is
-/// taken, as the listener thread waited before.
+/// taken, as the listener thread waited before. At a level below standing cheat each line is judged on this thread
+/// first (its method and params against the catalogue's class rules), and a call above the level is answered with the
+/// error in today's envelope without running.
 /// </summary>
 internal sealed class LineSession : Session
 {
     private readonly Connection _connection;
     private readonly ProtocolHost _host;
+    private readonly ConnectionAccess _access;
 
-    internal LineSession(Connection connection, ProtocolHost host)
+    internal LineSession(Connection connection, ProtocolHost host, ConnectionAccess access)
     {
         _connection = connection;
         _host = host;
+        _access = access;
     }
 
     internal override int Protocol => 1;
 
-    internal override string Level => "cheat";
+    internal override string Level => AccessLevels.Name(_access.Level);
 
     internal override void OnLine(string line)
     {
         if (string.IsNullOrWhiteSpace(line))
         {
+            return;
+        }
+
+        if (_access.Level == AccessLevel.None)
+        {
+            _connection.Send(ApiJson.WriteFresh(new ErrorReplyView(null,
+                new ErrorView("unauthorized", "This server does not accept the old protocol here; sign in with protocol 2."), null)));
+            _connection.EndGracefully();
+            return;
+        }
+
+        string? refusal = _access.AllowsEverything ? null : Refusal(line);
+        if (refusal != null)
+        {
+            _connection.Send(refusal);
             return;
         }
 
@@ -417,4 +462,118 @@ internal sealed class LineSession : Session
     }
 
     internal override void ShutDown(string reason) => _connection.Close();
+
+    // The line's method at its params against this connection's level; null when it may run (or cannot be read, which
+    // the main thread then answers as it always has).
+    private string? Refusal(string line)
+    {
+        JObject request;
+        try
+        {
+            request = JObject.Parse(line);
+        }
+        catch (JsonReaderException)
+        {
+            return null;
+        }
+
+        string? id = request["id"]?.Type == JTokenType.String ? (string)request["id"]! : null;
+        string? method = request["method"]?.Type == JTokenType.String ? (string)request["method"]! : null;
+        CatalogueMethod? entry = null;
+        if (method == null || _host.Catalogue?.Catalogue.TryGet(method, out entry) != true || entry == null)
+        {
+            return null;
+        }
+
+        MethodClass effective = entry.ClassAt(request["params"] as JObject);
+        if (Permission.Decide(_access, method, effective, armed: false) is Permission.Denied denied)
+        {
+            string required = AccessLevels.Name(denied.Required);
+            return ApiJson.WriteFresh(new ErrorReplyView(id, new ErrorView("permission_denied",
+                $"{method} needs {required} level at these arguments; this connection is {Level}.",
+                new Dictionary<string, string> { ["required"] = required, ["level"] = Level, ["method"] = method }), null));
+        }
+
+        return null;
+    }
+}
+
+/// <summary>
+/// The old TCP sign-in: a first line {"type": "auth", "secret": ...} compared in fixed time with [Remote MCP] Secret, at
+/// [Access] LegacyTcpLevel; then version 1. Each sign-in is logged with the client's address, so the owner can see
+/// whether anyone still uses it.
+/// </summary>
+internal sealed class LegacySignInSession : Session
+{
+    private readonly Connection _connection;
+    private readonly ProtocolHost _host;
+    private LineSession? _signedIn;
+
+    internal LegacySignInSession(Connection connection, ProtocolHost host)
+    {
+        _connection = connection;
+        _host = host;
+    }
+
+    internal override int Protocol => 1;
+
+    internal override string? Level => _signedIn?.Level;
+
+    internal override void OnLine(string line)
+    {
+        if (_signedIn != null)
+        {
+            _signedIn.OnLine(line);
+            return;
+        }
+
+        AccessLevel level = _host.Access.Settings.LegacyTcpLevel;
+        if (level == AccessLevel.None || _host.LegacySecret == null || !LegacySecret.Matches(line, _host.LegacySecret))
+        {
+            _connection.Send(ApiJson.WriteFresh(new AuthRefusedView(new ErrorView("unauthorized", "Authentication failed."))));
+            _connection.EndGracefully();
+            return;
+        }
+
+        ProtocolLog.Info($"Legacy TCP sign-in from {_connection.Peer} ({_connection.ClientId}) at {AccessLevels.Name(level)} level.");
+        _signedIn = new LineSession(_connection, _host, _host.Access.Settings.LegacyTcp);
+        _connection.Send(ApiJson.WriteFresh(new AuthAcceptedView()));
+    }
+
+    internal override void ShutDown(string reason) => _connection.Close();
+}
+
+/// <summary>The old TCP sign-in line, checked against the shared secret in fixed time.</summary>
+internal static class LegacySecret
+{
+    internal static bool Matches(string line, string secret)
+    {
+        try
+        {
+            JObject message = JObject.Parse(line);
+            return string.Equals(message.Value<string>("type"), "auth", StringComparison.Ordinal) &&
+                   FixedTimeEquals(message.Value<string>("secret"), secret);
+        }
+        catch (Exception)
+        {
+            // JObject.Parse on a first line that is not JSON, or a secret that is not a string: not a sign-in.
+            return false;
+        }
+    }
+
+    private static bool FixedTimeEquals(string? supplied, string expected)
+    {
+        byte[] suppliedBytes = Encoding.UTF8.GetBytes(supplied ?? string.Empty);
+        byte[] expectedBytes = Encoding.UTF8.GetBytes(expected);
+        int difference = suppliedBytes.Length ^ expectedBytes.Length;
+        int length = Math.Max(suppliedBytes.Length, expectedBytes.Length);
+        for (int index = 0; index < length; index++)
+        {
+            byte left = index < suppliedBytes.Length ? suppliedBytes[index] : (byte)0;
+            byte right = index < expectedBytes.Length ? expectedBytes[index] : (byte)0;
+            difference |= left ^ right;
+        }
+
+        return difference == 0;
+    }
 }

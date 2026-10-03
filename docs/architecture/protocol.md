@@ -393,8 +393,8 @@ session after sign-in; for that the connection needs a VPN or private network (s
 
 A pipe connection whose `hello` has no `auth` gets the level `[Access] AnonymousPipeLevel` (`read`, `write`, `cheat` or
 `none`) with `[Access] AnonymousCheat` (`standing` or `armed`) when that level is cheat. `none` refuses anonymous
-connections with `unauthorized`. Shipped defaults until the owner answers the overview's question: `cheat` and
-`standing`, which is today's behaviour; the recommendation is `write`.
+connections with `unauthorized`. Shipped default: `write`, the owner's choice (with `AnonymousCheat` `armed` for an
+owner who sets `cheat`).
 
 A TCP connection without `auth` is refused, `unauthorized`.
 
@@ -599,8 +599,8 @@ A version-1 connection is served as today:
 - A `shape` key in a version-1 request is honoured with the version-1 rules above, and the reply then carries
   `shaped: true`. Old clients never send `shape` and ignore the extra key. This is the only version-1 change, and it lets
   a version-1 client get shaping before it moves to version 2.
-- Level on the pipe: `[Access] LegacyPipeLevel`, which by default follows `AnonymousPipeLevel` (so today's `cheat` until
-  the owner chooses otherwise). Level on TCP: today's `{type: "auth", secret}` first line against `[Remote MCP] Secret`
+- Level on the pipe: `[Access] LegacyPipeLevel`, `cheat` by default, with no approval needed (standing), so every
+  client of today's protocol keeps working until version 1 is retired (stage 15). Level on TCP: today's `{type: "auth", secret}` first line against `[Remote MCP] Secret`
   (`StationGodTcpServer.cs:174-229`), at `[Access] LegacyTcpLevel` (`none`, `read`, `write` or `cheat`). The secret
   crosses the network in plain text, so cheat there undoes what keys protect. Whether to allow it is the owner's
   decision (overview, *Questions for the owner*): option A caps legacy TCP at write, which breaks the cheat tools of

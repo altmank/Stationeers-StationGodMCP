@@ -117,8 +117,12 @@ A single local game needs none. The settings cover the local pipe's name and rem
 
 ## Safety
 
-- **This is a cheat-level tool.** The agent gets real write access to your world, console commands and device
-  memory included. There are no per-user permissions and no general undo. Use an agent you trust, and save first.
+- **It can cheat, and you decide who may.** Every tool has a class: read, write (what a player or a chip can do: logic,
+  chips, labels, paint, item moves, trading, building) or cheat (what no player can: `move_gas`, `write_memory`, the
+  console, free placement, gene edits, blueprint pastes). Clients of the current protocol get a level from a key you
+  issue, or `[Access] AnonymousPipeLevel` (write) without one, and a cheat call also needs your OK in the game:
+  `stationgod allow <client>` in the console. Clients of the old protocol, which today's sidecar and scripts speak,
+  keep full access until it is switched off (`[Access] LegacyPipeLevel`). There is no general undo: save first.
 - **Host only.** The mod runs on the game that hosts; its changes reach other players through the game's own sync.
   Every player who joins needs the same version, because the StationGod Gateway is a new structure.
 - **The building tools refuse rather than guess.** They never make materials, never delete a pipe network's
@@ -127,7 +131,8 @@ A single local game needs none. The settings cover the local pipe's name and rem
   wall or frame in a way that opens a room. Every job that changes pipe networks checks their contents before and
   after (`gas_check`) and stops further pipe jobs if anything went missing, until the world is reloaded or the user
   agrees to accept the loss (`acknowledge_gas_lost`).
-- **Remote access is not encrypted.** The TCP transport checks a shared secret but sends everything in plain text.
+- **Remote access is not encrypted.** Over TCP a key is proved without being sent, but everything after the sign-in,
+  and the old shared secret, travels in plain text: use a private network or a VPN.
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
   tools that need it, which answer `game_changed`; `mod_info` lists them.
 

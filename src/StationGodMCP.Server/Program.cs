@@ -24,6 +24,12 @@ internal static class Program
 
     public static async Task Main(string[] args)
     {
+        if (KeyCommand.TryRun(args, Console.Out, Console.Error) is int exitCode)
+        {
+            Environment.ExitCode = exitCode;
+            return;
+        }
+
         GameTransportSettings transport = ReadTransportSettings(args);
         OutputFolder replyFiles = OutputFolder.From(
             ReadArgument(args, OutputFolder.CommandLineOption), Environment.GetEnvironmentVariable(OutputFolder.EnvironmentVariable));

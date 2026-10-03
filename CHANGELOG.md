@@ -34,6 +34,16 @@
   cannot use (not an object, an unknown key, a selector that is not a name, more than 256 selectors, a `limit` on a
   key that is not one of the reply's lists, values out of range) is `invalid_shape`. Version 1 is checked as before;
   `[Server] StrictArguments = false` checks version 2 the same way.
+- **Keys, levels and the owner's OK for cheats (new).** Clients of protocol 2 sign in with a key from
+  `BepInEx\config\net.xceled.stationeers.stationgodmcp.clients.json` (a proof over a challenge; the key never crosses
+  the wire), made with `StationGodMCP.Server key new <name> <level>`. Each connection has a level, read, write or
+  cheat; a call above it is refused `permission_denied`, and a cheat call also needs the owner's `stationgod allow
+  <client id or key> [minutes]` in the game's console (`cheat_not_armed` until then; `cheat_armed` and
+  `cheat_disarmed` events), which `run_console_command` cannot run. A key removed or lowered disconnects its clients
+  (`goodbye revoked`). Without a key a local connection gets `[Access] AnonymousPipeLevel`, write. Clients of the old
+  protocol keep full access by default (`[Access] LegacyPipeLevel`, `LegacyTcpLevel`). Protocol 2 also works over TCP,
+  with a key, at most `[Server] MaxTcpConnections` (8) at once; TCP listens once there is a secret or a TCP key, and
+  the log records each old shared-secret sign-in with its address.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
 

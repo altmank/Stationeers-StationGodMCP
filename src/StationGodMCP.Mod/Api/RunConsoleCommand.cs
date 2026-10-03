@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Protocol;
 using Util.Commands;
 
 namespace StationGodMCP.Api;
@@ -43,12 +44,24 @@ internal static class RunConsoleCommandApi
         int maximumLines = args.OptionalInt("max_output_lines", 1, ConsoleBridge.MaximumConsoleLines) ??
                            DefaultOutputLines;
         string? key = ConsoleBridge.ResolveCommandKey(command);
+        if (StationGodConsole.RefusedFromToolConsole(key, StationGodMod.Access))
+        {
+            throw ApiErrors.Refused("permission_denied",
+                "run_console_command does not run stationgod: approving cheat is for the owner to type in the game's console.");
+        }
+
         CommandBase definition = Require(key);
         bool consoleAvailable = ConsoleBridge.CanCapture();
         bool asynchronous = ConsoleBridge.CompletesAsynchronously(definition);
         ConsoleBridge.Echo(command);
-        List<ConsoleLineView> output = ConsoleBridge.Execute(command, maximumLines, out int lineCount,
-            out bool truncated, out long concurrentLines);
+        List<ConsoleLineView> output;
+        int lineCount;
+        bool truncated;
+        long concurrentLines;
+        using (StationGodConsole.ToolConsole())
+        {
+            output = ConsoleBridge.Execute(command, maximumLines, out lineCount, out truncated, out concurrentLines);
+        }
         ConsoleCapture capture = new ConsoleCapture(consoleAvailable, asynchronous, lineCount, truncated,
             concurrentLines);
         ConsoleCommandInfo info = new ConsoleCommandInfo(command, key, definition.Scope.ToString(),
