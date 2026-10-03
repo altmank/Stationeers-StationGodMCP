@@ -324,8 +324,9 @@ parsing, first-line classifier, call ordering), `src/StationGodMCP.Mod/Pure/Worl
 - `welcome.limits` lists `max_in_flight`, `max_request_bytes` and `max_reply_bytes`; the subscription limits come
   with subscriptions (stage 11). `features` is `shape`, `shape.paths`, `cancel`. `world.save` is the game's
   `XmlSaveLoad.Instance.CurrentStationName` (CODE), `dedicated` is Unity's batch mode, `game_state` the
-  `GameManager.GameState` name. The main thread publishes these as a snapshot when they change (`ServerFacts`), so no
-  connection thread touches a game object. `world.id` is new the first frame a world runs (`WorldScope`).
+  `GameManager.GameState` name, `Paused` while `WorldManager.IsGamePaused` (the game never sets `GameState.Paused`).
+  The main thread publishes these as a snapshot when they change (`ServerFacts`), so no connection thread touches a
+  game object. `world.id` is new the first frame a world runs (`WorldScope`).
 - The protocol method `catalogue` is answered on the reader thread with the embedded catalogue as compact JSON (the
   file itself is indented; the hash is of the file's bytes). Protocol methods have their own sources,
   `catalogue/protocol/<method>.json`, assembled into `protocol_methods`; test 2 holds them to the protocol layer's
