@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:5a20f964a790dd932bda3cf7bf076b3300ccd2f152af16b8a3dea0192c2a6dc5'
+CATALOGUE_HASH = 'sha256:c6b53101fb50ce95a2a1cd320952d712ee7cde43f3ec1ef704ae1b406d8d6545'
 MOD_VERSION = '1.13.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -1455,7 +1455,7 @@ class Methods:
         raise NotImplementedError
 
     def atmosphere_contents(self, *, reference_id: str | None = None, **options) -> dict:
-        """What gas or liquid one thing holds: a canister, portable tank, tank, suit, a pipe (its whole pipe network), any landing pad piece (the pad network's one shared atmosphere, source landing_pad_network), a device (every pipe network it is connected to) and the canisters in its slots (a tank storage,...
+        """What gas or liquid one thing holds: a canister, portable tank, tank, suit, a pipe (its whole pipe network), any landing pad piece (the pad network's one shared atmosphere, source landing_pad_network), a device mounted on a pipe (1.14.0+: a Pipe Analyzer, a gauge: the network of the pipe it sits o...
 
         Class: read. Arguments: reference_id (required).
         """

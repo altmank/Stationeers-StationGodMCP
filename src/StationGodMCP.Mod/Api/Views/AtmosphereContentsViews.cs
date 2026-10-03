@@ -33,6 +33,20 @@ internal sealed class AtmosphereContentsView
     public string Note => NoteText;
 }
 
+/// <summary>Where an atmosphere_contents entry comes from: the reply's source values.</summary>
+internal static class AtmosphereSource
+{
+    internal const string Internal = "internal";
+    internal const string PipeNetwork = "pipe_network";
+    internal const string LandingPadNetwork = "landing_pad_network";
+    internal const string MountedPipeNetwork = "mounted_pipe_network";
+    internal const string ConnectedNetwork = "connected_network";
+    internal const string Slot = "slot";
+
+    internal static readonly string[] All =
+        { Internal, PipeNetwork, LandingPadNetwork, MountedPipeNetwork, ConnectedNetwork, Slot };
+}
+
 /// <summary>One atmosphere of the subject: where it comes from, who owns it, and what it holds.</summary>
 internal sealed class HeldAtmosphereEntryView
 {
@@ -45,7 +59,7 @@ internal sealed class HeldAtmosphereEntryView
         Atmosphere = atmosphere;
     }
 
-    /// <summary>internal, pipe_network, connected_network or slot.</summary>
+    /// <summary>One of AtmosphereSource.All.</summary>
     public string Source { get; }
 
     public object Owner { get; }
