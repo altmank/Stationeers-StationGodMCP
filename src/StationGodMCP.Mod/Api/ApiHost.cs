@@ -262,7 +262,9 @@ internal static class ApiHost
             ArgumentNames? names = declared.NamesOf(method);
             ResolvedNetworks.Begin();
             GasHoldReply.Begin();
-            object result = ResolvedNetworks.Attach(handler(names != null ? new Args(parameters, names) : new Args(parameters)),
+            ShapeRequest replyShape = shape ?? ShapeRequest.None;
+            object result = ResolvedNetworks.Attach(
+                handler(names != null ? new Args(parameters, names, replyShape) : new Args(parameters, replyShape)),
                 ResolvedNetworks.Take());
             result = GasHoldReply.Attach(result, GasHoldReply.Take());
             return Answer.Success(requestId, method, result, Elapsed(watch), shape);

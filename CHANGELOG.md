@@ -15,6 +15,10 @@
   (`reply_too_large` with the sizes instead of a larger reply); the reply then carries `"shaped": true`. Every
   `fields` value that worked before gives the same result; a selector that is not a name is listed in
   `fields_unmatched`, as an unknown name is. A sidecar talking to an older mod still applies `fields` itself.
+- **`fields` saves the game's work too.** A key that costs the game real work is not worked out at all when `fields`
+  leaves it out; the reply is the same as before. The first is `thing_health`'s `networks` in a scan, a network's
+  pieces and a list of ids (`fields: ["reference_id", "damage_ratio"]` no longer walks every structure's ends). The
+  catalogue lists these keys per method (`x-costly`).
 - **The pipe reads and writes at once.** Each pipe connection now has its own reader and writer on an overlapped pipe,
   up to `[Server] MaxPipeConnections` connections (32 by default, was 4); a client past the limit waits until one
   closes. Requests answer exactly as before. A request the game has started is now always answered with its result,

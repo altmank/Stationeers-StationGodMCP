@@ -48,6 +48,74 @@ internal static class ViewShapes
         return contract.Properties.Where(property => !property.Ignored && property.Readable).ToList();
     }
 
+    /// <summary>Every key the views write, and whether any of them writes it as a list.</summary>
+    internal static Dictionary<string, bool> KeysOf(IEnumerable<Type> views)
+    {
+        Dictionary<string, bool> keys = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (Type view in views)
+        {
+            foreach (JsonProperty property in Properties(view))
+            {
+                bool list = IsList(property.PropertyType!);
+                keys[property.PropertyName!] = keys.TryGetValue(property.PropertyName!, out bool known) ? known || list : list;
+            }
+        }
+
+        return keys;
+    }
+
+    /// <summary>
+    /// The entry types of the list key the views write: its element type, or for an abstract element type (a batch's
+    /// BatchItemView) the named views (x-entry-views) that derive from it.
+    /// </summary>
+    internal static List<Type> EntryTypes(IEnumerable<Type> views, string key, IReadOnlyList<Type> named)
+    {
+        List<Type> entries = new List<Type>();
+        foreach (Type view in views)
+        {
+            foreach (JsonProperty property in Properties(view))
+            {
+                if (property.PropertyName != key || ElementOf(property.PropertyType!) is not Type element)
+                {
+                    continue;
+                }
+
+                IEnumerable<Type> found = element.IsAbstract
+                    ? named.Where(candidate => element.IsAssignableFrom(candidate))
+                    : new[] { element };
+                foreach (Type type in found)
+                {
+                    if (!entries.Contains(type))
+                    {
+                        entries.Add(type);
+                    }
+                }
+            }
+        }
+
+        return entries;
+    }
+
+    // The element type of a list type (List<T>, T[], IReadOnlyList<T>); null for anything else.
+    private static Type? ElementOf(Type type)
+    {
+        if (!IsList(type))
+        {
+            return null;
+        }
+
+        if (type.IsArray)
+        {
+            return type.GetElementType();
+        }
+
+        Type? enumerable = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+            ? type
+            : type.GetInterfaces().FirstOrDefault(face => face.IsGenericType &&
+                                                          face.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+        return enumerable?.GetGenericArguments()[0];
+    }
+
     /// <summary>The keys a view writes.</summary>
     internal static List<string> Keys(Type view) => Properties(view).Select(property => property.PropertyName!).ToList();
 

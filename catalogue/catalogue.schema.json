@@ -84,6 +84,7 @@
         "params": {"$ref": "#/$defs/schema"},
         "reply": {"$ref": "#/$defs/schema"},
         "x-views": {"type": "array", "items": {"type": "string"}},
+        "x-entry-views": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
         "x-shaping": {"enum": ["lists", "none"]},
         "x-paging": {
           "type": "object",

@@ -643,6 +643,22 @@ keys are equal and `mod_info.runtime` `handler_ms` mean is lower without it.
 
 **Risk.** Low per method.
 
+**As built.**
+- `ShapeRequest.Wants(list, key)` is true without `fields`, and with `fields` exactly when the writer would keep the
+  key in that list's entries: a single name equal to the key (trimmed, case kept) or a path through the list that
+  starts with it. `Args.Shape` is the call's shape (`ShapeRequest.None` without one, and for nested arguments);
+  `With` keeps it. Both protocols pass it.
+- `thing_health` asks for `networks` in `results` (ids) and `things` (scan, network form) and leaves it null when
+  not wanted, which is what a thing without networks writes (the key is left out when null). The one-thing form
+  answers at the top level, which `fields` does not shape, so it always reads networks.
+- The catalogue's `thing_health` entry gains entry schemas for `results` and `things` (with `networks`' own entries),
+  `x-entry-views` and `x-costly`; see [catalogue.md](catalogue.md), *As built in stage 14*.
+- Equivalence is tested at the view level (`CostlySkippingTests`): for all three list forms and every selection of
+  up to three selectors from a pool of names, paths, a wrong case, unparseable text and unknown names, the reply built
+  as `Wants` decides, shaped, equals the full reply shaped byte for byte; `limit` and `max_bytes` see the same lists.
+- No other method was changed: no other reply part is known to be costly. The live check's `handler_ms` comparison
+  reads `mod_info`'s existing per-method times; nothing new measures.
+
 ## Stage 15: switching the old protocol off
 
 **Scope.** Only after the owner decides (overview, *Questions for the owner*); the recommendation is after every client

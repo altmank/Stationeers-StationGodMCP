@@ -287,51 +287,145 @@ public sealed class CatalogueConsistencyTests
         foreach (JsonObject method in Methods().Where(method => method["x-views"] != null))
         {
             string name = (string)method["name"]!;
-            Dictionary<string, bool> fromViews = new Dictionary<string, bool>(StringComparer.Ordinal);
-            foreach (JsonNode? view in method["x-views"]!.AsArray())
+            List<Type> views = ViewTypes(name, method["x-views"]!.AsArray(), wrong);
+            Dictionary<string, List<Type>> entryViews = new Dictionary<string, List<Type>>(StringComparer.Ordinal);
+            foreach ((string list, JsonNode? listed) in method["x-entry-views"] as JsonObject ?? new JsonObject())
             {
-                Type? type = ViewShapes.Find((string)view!);
-                if (type == null)
-                {
-                    wrong.Add($"{name}: no view class {view} in Api/Views or Api/Shared");
-                    continue;
-                }
-
-                foreach (Newtonsoft.Json.Serialization.JsonProperty property in ViewShapes.Properties(type))
-                {
-                    bool list = ViewShapes.IsList(property.PropertyType!);
-                    fromViews[property.PropertyName!] = fromViews.TryGetValue(property.PropertyName!, out bool known) ? known || list : list;
-                }
+                entryViews[list] = ViewTypes(name, listed!.AsArray(), wrong);
             }
 
+            Dictionary<string, bool> fromViews = ViewShapes.KeysOf(views);
             foreach (JsonObject key in CatalogueFiles.SharedKeysFor(method, shared))
             {
                 fromViews[(string)key["key"]!] = (string?)key["schema"]!["type"] == "array";
             }
 
             JsonObject reply = method["reply"]!["properties"]!.AsObject();
-            foreach ((string key, bool list) in fromViews)
+            AgreeKeys(name, fromViews, reply, wrong);
+            AgreeEntries(name, string.Empty, views, reply, entryViews, wrong);
+        }
+
+        Assert.True(wrong.Count == 0, string.Join("\n", wrong));
+    }
+
+    // ---- x-costly: what a handler may skip is a described entry key, and the handler asks about exactly those ----
+
+    [Fact]
+    public void CostlyPartsAreDescribedEntryKeysTheHandlerAsksAbout()
+    {
+        List<string> wrong = new List<string>();
+        foreach (JsonObject method in Methods())
+        {
+            string name = (string)method["name"]!;
+            HashSet<(string List, string Key)> declared = new HashSet<(string List, string Key)>();
+            foreach (JsonNode? part in method["x-costly"] as JsonArray ?? new JsonArray())
             {
-                if (reply[key] is not JsonObject schema)
+                string list = (string)part!["list"]!;
+                string key = (string)part["key"]!;
+                declared.Add((list, key));
+                if (method["reply"]!["properties"]![list] is not JsonObject listSchema || !TypeNames(listSchema).Contains("array"))
                 {
-                    wrong.Add($"{name}: reply lacks {key}");
+                    wrong.Add($"{name}: x-costly names {list}, which is not a list of its reply");
                 }
-                else if (list != TypeNames(schema).Contains("array"))
+                else if (listSchema["items"]?["properties"]?[key] == null)
                 {
-                    wrong.Add($"{name}: {key} is {(list ? "" : "not ")}a list in the views but not in reply");
+                    wrong.Add($"{name}: x-costly names {list}.{key}, which the list's entry schema does not describe");
                 }
             }
 
-            foreach ((string key, JsonNode? _) in reply)
+            HashSet<(string List, string Key)> asked = Handler.All.TryGetValue(name, out Handler? handler)
+                ? CostlyAsks.In(handler)
+                : new HashSet<(string List, string Key)>();
+            foreach ((string list, string key) in asked.Except(declared))
             {
-                if (!fromViews.ContainsKey(key))
-                {
-                    wrong.Add($"{name}: reply has {key}, which no view in x-views writes");
-                }
+                wrong.Add($"{name}: the handler asks Shape.Wants(\"{list}\", \"{key}\"), which x-costly does not declare");
+            }
+
+            foreach ((string list, string key) in declared.Except(asked))
+            {
+                wrong.Add($"{name}: x-costly declares {list}.{key}, which the handler never asks Shape.Wants about");
             }
         }
 
         Assert.True(wrong.Count == 0, string.Join("\n", wrong));
+    }
+
+    [Fact]
+    public void ThingHealthDeclaresItsNetworksCostly()
+    {
+        JsonArray costly = Method("thing_health")["x-costly"]!.AsArray();
+
+        Assert.Equal(new[] { "results.networks", "things.networks" },
+            costly.Select(part => $"{part!["list"]}.{part["key"]}").OrderBy(text => text, StringComparer.Ordinal));
+    }
+
+    private static void AgreeKeys(string where, Dictionary<string, bool> fromViews, JsonObject schema, List<string> wrong)
+    {
+        foreach ((string key, bool list) in fromViews)
+        {
+            if (schema[key] is not JsonObject property)
+            {
+                wrong.Add($"{where}: reply lacks {key}");
+            }
+            else if (list != TypeNames(property).Contains("array"))
+            {
+                wrong.Add($"{where}: {key} is {(list ? "" : "not ")}a list in the views but not in reply");
+            }
+        }
+
+        foreach ((string key, JsonNode? _) in schema)
+        {
+            if (!fromViews.ContainsKey(key))
+            {
+                wrong.Add($"{where}: reply has {key}, which no view in x-views writes");
+            }
+        }
+    }
+
+    // Each list whose items describe their properties, held to its entry views, as deep as the items describe. A list
+    // is named by its path (results, things[].networks); x-entry-views names the views of a list whose element type is
+    // abstract (a batch's BatchItemView).
+    private static void AgreeEntries(string method, string at, List<Type> views, JsonObject schema,
+        Dictionary<string, List<Type>> entryViews, List<string> wrong)
+    {
+        foreach ((string key, JsonNode? node) in schema)
+        {
+            if (node?["items"]?["properties"] is not JsonObject entry)
+            {
+                continue;
+            }
+
+            string path = at.Length == 0 ? key : $"{at}[].{key}";
+            List<Type> entries = ViewShapes.EntryTypes(views, key,
+                entryViews.TryGetValue(path, out List<Type>? named) ? named : new List<Type>());
+            string where = $"{method}: {path}[]";
+            if (entries.Count == 0)
+            {
+                wrong.Add($"{where}: describes its entries, but no view writes them (an abstract entry type needs x-entry-views)");
+                continue;
+            }
+
+            AgreeKeys(where, ViewShapes.KeysOf(entries), entry, wrong);
+            AgreeEntries(method, path, entries, entry, entryViews, wrong);
+        }
+    }
+
+    private static List<Type> ViewTypes(string method, JsonArray names, List<string> wrong)
+    {
+        List<Type> types = new List<Type>();
+        foreach (JsonNode? view in names)
+        {
+            Type? type = ViewShapes.Find((string)view!);
+            if (type == null)
+            {
+                wrong.Add($"{method}: no view class {view} in Api/Views or Api/Shared");
+                continue;
+            }
+
+            types.Add(type);
+        }
+
+        return types;
     }
 
     // ---- 6. every error code is registered ----
