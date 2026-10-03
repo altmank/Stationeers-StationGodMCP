@@ -1,15 +1,11 @@
-"""One connection to the mod: the transport (pipe or TCP), line framing, the hello / challenge / auth / welcome
+"""One connection to the mod: the transport (pipe or TCP), line framing, the TCP shared secret, the hello / welcome
 exchange with the fall back to version 1, and the reader thread that hands every line from the server to the client.
 
 The connection knows nothing about retrying; client.py decides that when on_closed reports what was in flight.
 """
-import base64
-import hashlib
-import hmac
 import json
 import logging
 import os
-import re
 import socket
 import threading
 
@@ -21,26 +17,8 @@ log = logging.getLogger("stationgod")
 LIBRARY_VERSION = "0.1.0"
 LIBRARY = f"stationgod-py/{LIBRARY_VERSION}"
 FEATURES = ["shape", "shape.paths", "subscriptions", "cancel"]
-HANDSHAKE_TIMEOUT_S = 10.0  # the mod closes a sign-in not finished in 10 s (protocol.md, Proving a key)
+HANDSHAKE_TIMEOUT_S = 10.0  # how long the server may take to answer the secret or hello
 
-
-# ---- keys -------------------------------------------------------------------------------------------------------
-
-def key_variable(pipe_name=None, host=None, port=None):
-    """The default environment variable of a target's key: STATIONGOD_KEY_<PIPE> or STATIONGOD_KEY_<HOST>_<PORT>,
-    every character that is not a letter or digit replaced by _ and letters upper case."""
-    target = pipe_name if host is None else f"{host}_{port}"
-    if target.startswith(pipe.PIPE_PREFIX):
-        target = target[len(pipe.PIPE_PREFIX):]
-    return "STATIONGOD_KEY_" + re.sub(r"[^A-Za-z0-9]", "_", target).upper()
-
-
-def proof(key_base64, nonce, client, transport):
-    """Lowercase hex HMAC-SHA256, keyed by the base64-decoded key, over "stationgod-v2\\n<nonce>\\n<client>\\n<transport>"
-    with the nonce as the base64 text received (protocol.md, Proving a key)."""
-    key = base64.b64decode(key_base64, validate=True)
-    text = f"stationgod-v2\n{nonce}\n{client}\n{transport}".encode("utf-8")
-    return hmac.new(key, text, hashlib.sha256).hexdigest()
 
 
 # ---- transports -------------------------------------------------------------------------------------------------
@@ -255,48 +233,29 @@ def _read_with_timeout(stream, lines, timeout, what):
     return message if isinstance(message, dict) else {}
 
 
-def open_connection(target, *, protocol="auto", client=None, key=None, secret=None, connect_timeout=1.0,
+def open_connection(target, *, protocol="auto", client=None, secret=None, connect_timeout=1.0,
                     handshake_timeout=HANDSHAKE_TIMEOUT_S):
-    """Connects and signs in. protocol "auto" sends hello and falls back to version 1 when the old mod answers it
-    as a request; "v1" speaks version 1 from the start. key is the base64 key (from the environment), secret the
-    legacy TCP secret for a version-1 server."""
+    """Connects. Over TCP the shared secret goes first; after it TCP talks as the pipe does. protocol "auto" sends hello
+    and falls back to version 1 when an old mod answers it as a request; "v1" speaks version 1 from the start."""
+    if protocol not in ("auto", "v1"):
+        raise ValueError(f"protocol must be 'auto' or 'v1', not {protocol!r}")
     stream = target.open(connect_timeout)
     lines = _Lines(stream)
-    if protocol == "v1":
-        return _version_one(target, stream, lines, secret, connect_timeout, handshake_timeout, reopened=False)
-    if protocol != "auto":
-        stream.close()
-        raise ValueError(f"protocol must be 'auto' or 'v1', not {protocol!r}")
-    name = client or "stationgod-py"
     try:
+        if target.kind == "tcp":
+            _sign_in(target, stream, lines, secret, handshake_timeout)
+        if protocol == "v1":
+            return Connection(stream, lines, target, 1)
         hello = {"type": "hello", "protocol": [2],
-                 "client": {"name": name, "version": LIBRARY_VERSION, "library": LIBRARY},
+                 "client": {"name": client or "stationgod-py", "version": LIBRARY_VERSION, "library": LIBRARY},
                  "features": FEATURES}
-        if key:
-            hello["auth"] = "key"
         stream.write(encode(hello))
         answer = _read_with_timeout(stream, lines, handshake_timeout, "hello")
         if answer is None:
             raise Unreachable(f"{target.describe()} closed the connection after hello")
         if "type" not in answer:
             # An old mod read hello as a version-1 request with no method (protocol.md, Old clients).
-            if target.kind == "tcp":
-                # ... and over TCP as a failed version-1 sign-in, after which it closes the connection.
-                stream.close()
-                if not secret:
-                    raise TooOld(f"{target.describe()} speaks only protocol version 1, which needs the legacy "
-                                 "shared secret (secret_env); no secret was given")
-                return _version_one(target, None, None, secret, connect_timeout, handshake_timeout, reopened=True)
             return Connection(stream, lines, target, 1)
-        if answer.get("type") == "challenge":
-            if not key:
-                raise Unreachable("the server sent a challenge to a hello that offered no key")
-            nonce = str(answer.get("nonce") or "")
-            stream.write(encode({"type": "auth", "client": name,
-                                 "proof": proof(key, nonce, name, target.kind)}))
-            answer = _read_with_timeout(stream, lines, handshake_timeout, "auth")
-            if answer is None:
-                raise Unreachable(f"{target.describe()} closed the connection during sign-in")
         if answer.get("type") == "welcome":
             return Connection(stream, lines, target, 2, answer)
         if answer.get("type") == "reply" and answer.get("ok") is False:
@@ -310,30 +269,21 @@ def open_connection(target, *, protocol="auto", client=None, key=None, secret=No
         raise
 
 
-def _version_one(target, stream, lines, secret, connect_timeout, handshake_timeout, reopened):
-    if stream is None:
-        stream = target.open(connect_timeout)
-        lines = _Lines(stream)
-    if target.kind != "tcp":
-        return Connection(stream, lines, target, 1)
-    try:
-        if not secret:
-            raise Unauthorized("unauthorized", f"{target.describe()}: version 1 over TCP needs the shared secret")
-        stream.write(encode({"type": "auth", "secret": secret}))
-        answer = _read_with_timeout(stream, lines, handshake_timeout, "the legacy sign-in")
-        if not answer or answer.get("ok") is not True:
-            raise game_error((answer or {}).get("error") or {"code": "unauthorized",
-                                                             "message": "the legacy sign-in was refused"})
-        return Connection(stream, lines, target, 1)
-    except BaseException:
-        stream.close()
-        raise
+def _sign_in(target, stream, lines, secret, handshake_timeout):
+    """TCP: the shared secret, before anything else."""
+    if not secret:
+        raise Unauthorized("unauthorized", f"{target.describe()}: TCP needs the shared secret (secret_env)")
+    stream.write(encode({"type": "auth", "secret": secret}))
+    answer = _read_with_timeout(stream, lines, handshake_timeout, "the shared secret")
+    if not answer or answer.get("ok") is not True:
+        raise game_error((answer or {}).get("error") or {"code": "unauthorized",
+                                                         "message": "the shared secret was refused"})
 
 
-def read_key(variable):
+def read_secret(variable):
     value = os.environ.get(variable) if variable else None
     return value.strip() if value and value.strip() else None
 
 
-__all__ = ["Connection", "PipeTarget", "TcpTarget", "open_connection", "key_variable", "proof", "read_key",
+__all__ = ["Connection", "PipeTarget", "TcpTarget", "open_connection", "read_secret",
            "GameError"]

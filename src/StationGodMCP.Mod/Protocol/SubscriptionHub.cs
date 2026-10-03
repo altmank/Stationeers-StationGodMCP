@@ -100,8 +100,6 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         }
     }
 
-    /// <summary>The connection lost its level: every subscription ends with subscription_ended {reason: revoked}.</summary>
-    internal void Revoke(string clientId) => _engine.Revoke(new ConnectionId(clientId), this);
 
     /// <summary>A world finished loading: devices subscriptions end, world-topic ones hear the new id.</summary>
     internal void WorldChanged(string worldId) => _engine.WorldChanged(WorldId.Of(worldId), this);

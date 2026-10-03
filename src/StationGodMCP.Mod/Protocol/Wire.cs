@@ -89,14 +89,11 @@ internal sealed class WorldFacts
 /// <summary>The welcome message: who the client is now, which server and world it reached, and the limits.</summary>
 internal sealed class WelcomeView
 {
-    internal WelcomeView(string clientId, string client, string level, IReadOnlyList<string> grants, CheatView cheat,
-        WelcomeServerView server, WelcomeCatalogueView catalogue, WelcomeLimitsView limits, IReadOnlyList<string> features)
+    internal WelcomeView(string clientId, string client, WelcomeServerView server, WelcomeCatalogueView catalogue,
+        WelcomeLimitsView limits, IReadOnlyList<string> features)
     {
         ClientId = clientId;
         Client = client;
-        Level = level;
-        Grants = grants;
-        Cheat = cheat;
         Server = server;
         Catalogue = catalogue;
         Limits = limits;
@@ -111,12 +108,6 @@ internal sealed class WelcomeView
 
     public string Client { get; }
 
-    public string Level { get; }
-
-    public IReadOnlyList<string> Grants { get; }
-
-    public CheatView Cheat { get; }
-
     public WelcomeServerView Server { get; }
 
     public WelcomeCatalogueView Catalogue { get; }
@@ -124,24 +115,6 @@ internal sealed class WelcomeView
     public WelcomeLimitsView Limits { get; }
 
     public IReadOnlyList<string> Features { get; }
-}
-
-/// <summary>Whether cheat is armed for the connection, until when (UTC, ISO 8601), and whether it is standing.</summary>
-internal sealed class CheatView
-{
-    internal CheatView(bool armed, string? untilUtc, bool standing)
-    {
-        Armed = armed;
-        UntilUtc = untilUtc;
-        Standing = standing;
-    }
-
-    public bool Armed { get; }
-
-    [JsonProperty(NullValueHandling = NullValueHandling.Include)]
-    public string? UntilUtc { get; }
-
-    public bool Standing { get; }
 }
 
 internal sealed class WelcomeServerView
@@ -228,7 +201,7 @@ internal sealed class WelcomeLimitsView
     public double? MinSubscriptionIntervalS { get; }
 }
 
-/// <summary>An event with no keys of its own (ping, cheat_disarmed).</summary>
+/// <summary>An event with no keys of its own (ping).</summary>
 internal sealed class EventView
 {
     internal EventView(string name) => Event = name;
@@ -248,28 +221,6 @@ internal sealed class WorldChangedView
     public string Event => "world_changed";
 
     public WorldFacts World { get; }
-}
-
-/// <summary>challenge: the nonce the client's key proof is made over.</summary>
-internal sealed class ChallengeView
-{
-    internal ChallengeView(string nonce) => Nonce = nonce;
-
-    public string Type => "challenge";
-
-    public string Nonce { get; }
-}
-
-/// <summary>cheat_armed: the owner approved cheat for this connection until then (UTC).</summary>
-internal sealed class CheatArmedView
-{
-    internal CheatArmedView(string untilUtc) => UntilUtc = untilUtc;
-
-    public string Type => "event";
-
-    public string Event => "cheat_armed";
-
-    public string UntilUtc { get; }
 }
 
 /// <summary>goodbye: the server closes the connection on purpose, and why.</summary>

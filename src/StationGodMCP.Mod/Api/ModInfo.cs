@@ -54,11 +54,11 @@ internal static class ModInfoApi
         }
 
         List<ConnectionView> views = new List<ConnectionView>();
-        foreach (Connection connection in StationGodMod.Access.Connections())
+        foreach (Connection connection in StationGodMod.AllConnections())
         {
             Session? session = connection.Session;
             views.Add(new ConnectionView(connection.ClientId, session?.Client, session?.Label, connection.Transport,
-                session?.Protocol, session?.Level, session?.InFlight ?? 0, connection.ServedCount, connection.BytesSent));
+                session?.Protocol, session?.InFlight ?? 0, connection.ServedCount, connection.BytesSent));
         }
 
         views.Sort(static (left, right) => string.CompareOrdinal(left.ClientId, right.ClientId));

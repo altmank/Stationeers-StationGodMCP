@@ -183,16 +183,6 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         }
     }
 
-    /// <summary>The connection lost the level: every subscription ends with subscription_ended {reason: revoked}.</summary>
-    internal void Revoke(ConnectionId connection, ISubscriptionEvents<TReading> events)
-    {
-        if (_byConnection.TryGetValue(connection, out ConnectionSubscriptions? held))
-        {
-            held.EndAll(SubscriptionEnd.Revoked, events);
-            Forget(held);
-        }
-    }
-
     /// <summary>
     /// A world finished loading: every devices subscription ends with world_changed, since its reference ids may name
     /// other things now, and every world-topic subscription is told the new id.

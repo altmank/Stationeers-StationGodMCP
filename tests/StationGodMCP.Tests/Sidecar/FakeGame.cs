@@ -48,8 +48,8 @@ internal sealed record FakeCall(int Connection, int Version, JsonElement Id, str
 
 /// <summary>
 /// An in-process fake of the mod's listener, on a real overlapped named pipe or loopback TCP: today's protocol (hello
-/// answered as a request with no method, TCP signed in with the shared secret) or version 2 (hello, challenge and key
-/// proof, welcome, calls answered out of order, events pushed). Every line it receives is kept; Answer decides each
+/// answered as a request with no method) or version 2 (hello, welcome, calls answered out of order, events pushed);
+/// over TCP the shared secret comes first. Every line it receives is kept; Answer decides each
 /// call's reply, null for none.
 /// </summary>
 internal sealed class FakeGame : IAsyncDisposable
@@ -90,9 +90,6 @@ internal sealed class FakeGame : IAsyncDisposable
     public List<string> Features { get; set; } = ["shape", "shape.paths", "subscriptions", "cancel"];
 
     public int MaxInFlight { get; set; } = 16;
-
-    /// <summary>Key name to base64 key: a hello with auth "key" must prove one of these.</summary>
-    public Dictionary<string, string> Keys { get; } = new(StringComparer.Ordinal);
 
     public ConcurrentQueue<JsonElement> Received { get; } = new();
 
@@ -207,12 +204,10 @@ internal sealed class FakeGame : IAsyncDisposable
             return;
         }
 
-        bool isHello = hello.TryGetProperty("type", out JsonElement type) && type.ValueEquals("hello");
-        if (_listener != null && (Protocol == FakeProtocol.OldMod || !isHello))
+        if (_listener != null)
         {
-            // Today's TCP: the first line must be the shared-secret sign-in; anything else is refused and closed.
-            bool signedIn = isHello is false && hello.TryGetProperty("secret", out JsonElement secret) &&
-                            secret.ValueEquals(TestSecret);
+            // TCP: the first line must be the shared-secret sign-in; anything else is refused and closed.
+            bool signedIn = hello.TryGetProperty("secret", out JsonElement secret) && secret.ValueEquals(TestSecret);
             if (!signedIn)
             {
                 await peer.WriteAsync("""{"ok":false,"error":{"code":"unauthorized","message":"Authentication failed."}}""");
@@ -220,39 +215,25 @@ internal sealed class FakeGame : IAsyncDisposable
             }
 
             await peer.WriteAsync("""{"ok":true}""");
-            await ServeVersionOneAsync(peer, null);
-            return;
+            if (await ReadAsync(peer) is not { } next)
+            {
+                return;
+            }
+
+            hello = next;
         }
 
+        bool isHello = hello.TryGetProperty("type", out JsonElement type) && type.ValueEquals("hello");
         if (Protocol == FakeProtocol.OldMod || !isHello)
         {
             await ServeVersionOneAsync(peer, hello);
             return;
         }
 
-        if (hello.TryGetProperty("auth", out JsonElement auth) && auth.ValueEquals("key"))
-        {
-            string nonce = Convert.ToBase64String(Guid.NewGuid().ToByteArray().Concat(Guid.NewGuid().ToByteArray()).ToArray());
-            await peer.WriteAsync($$"""{"type":"challenge","nonce":"{{nonce}}"}""");
-            JsonElement? proofLine = await ReadAsync(peer);
-            string name = hello.GetProperty("client").GetProperty("name").GetString()!;
-            string transport = _listener != null ? "tcp" : "pipe";
-            bool proven = proofLine is { } given && Keys.TryGetValue(name, out string? key) &&
-                          given.GetProperty("client").ValueEquals(name) &&
-                          given.GetProperty("proof").ValueEquals(KeyProof.Of(key, nonce, name, transport)!);
-            if (!proven)
-            {
-                await peer.WriteAsync("""{"type":"reply","id":null,"ok":false,"error":{"code":"unauthorized","message":"Bad key proof."}}""");
-                return;
-            }
-
-            peer.Client = name;
-        }
-
         peer.Version = 2;
         string features = string.Join(",", Features.Select(feature => $"\"{feature}\""));
         await peer.WriteAsync(
-            $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","level":"cheat","grants":[],"cheat":{"armed":false,"until_utc":null,"standing":true},"server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":91,"protocol_methods":3},"limits":{"max_in_flight":{{MaxInFlight}}},"features":[{{features}}]}""");
+            $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":91,"protocol_methods":3},"limits":{"max_in_flight":{{MaxInFlight}}},"features":[{{features}}]}""");
         while (await ReadAsync(peer) is { } message)
         {
             string? kind = message.TryGetProperty("type", out JsonElement value) ? value.GetString() : null;

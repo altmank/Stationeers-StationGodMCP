@@ -14,7 +14,6 @@ using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Serialization;
 using StationGodMCP.Protocol;
-using StationGodMCP.Pure.Access;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Subscriptions;
@@ -48,8 +47,6 @@ public sealed class StationGodMod : ModBehaviour
     private RemoteSettings? _remote;
     private ServerSettings _server = ServerSettings.Defaults;
     private SubscriptionHub? _subscriptions;
-    private float _nextClientsCheck;
-    private float _nextCheatCheck;
 
     /// <summary>Real time since the mod loaded (mod_info runtime uptime_s).</summary>
     internal static System.Diagnostics.Stopwatch SinceLoad { get; } = System.Diagnostics.Stopwatch.StartNew();
@@ -60,8 +57,28 @@ public sealed class StationGodMod : ModBehaviour
     /// <summary>The overlapped pipe's connections while it listens; null otherwise.</summary>
     internal static ProtocolHost? Connections { get; private set; }
 
-    /// <summary>Keys, levels and the owner's approvals for cheat, shared by the pipe and TCP (mod_info connections).</summary>
-    internal static AccessControl Access { get; private set; } = new AccessControl(AccessSettings.Defaults, null);
+    /// <summary>The TCP listener's connections while it listens; null otherwise.</summary>
+    internal static ProtocolHost? TcpConnections { get; private set; }
+
+    /// <summary>Every open connection on the pipe and over TCP.</summary>
+    internal static System.Collections.Generic.IEnumerable<StationGodMCP.Protocol.Connection> AllConnections()
+    {
+        if (Connections != null)
+        {
+            foreach (StationGodMCP.Protocol.Connection connection in Connections.Open)
+            {
+                yield return connection;
+            }
+        }
+
+        if (TcpConnections != null)
+        {
+            foreach (StationGodMCP.Protocol.Connection connection in TcpConnections.Open)
+            {
+                yield return connection;
+            }
+        }
+    }
 
     public override void OnLoaded(ContentHandler contentHandler)
     {
@@ -79,10 +96,6 @@ public sealed class StationGodMod : ModBehaviour
             ProtocolLog.InfoSink = Log;
             ProtocolLog.WarningSink = LogWarning;
             ProtocolLog.ReplyWritten = MethodStats.RecordReply;
-            Access = new AccessControl(AccessSettingsFile.Load(configuration), ClientsPath);
-            Access.ReloadIfChanged();
-            WarnAboutLegacyTcp();
-            RegisterConsoleCommand();
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
             _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
@@ -148,9 +161,7 @@ public sealed class StationGodMod : ModBehaviour
                 StartPipe();
             }
 
-            WatchAccess();
-            if (_remote != null && _tcpListener == null &&
-                TcpAcceptor.ShouldListen(_remote.Enabled, _remote.Secret, Access.Clients.AnyTcp))
+            if (_remote != null && _tcpListener == null && TcpAcceptor.ShouldListen(_remote.Enabled, _remote.Secret))
             {
                 StartTcpServer(_remote);
             }
@@ -196,50 +207,8 @@ public sealed class StationGodMod : ModBehaviour
         _synchronousPipe = null;
         _tcpListener?.ShutDown(reason);
         _tcpListener = null;
+        TcpConnections = null;
     }
-
-    // The clients file is read again when it changes (every 2 s at most); approvals that ran out are announced (every
-    // second).
-    private void WatchAccess()
-    {
-        float now = Time.unscaledTime;
-        if (now >= _nextClientsCheck)
-        {
-            _nextClientsCheck = now + 2f;
-            Access.ReloadIfChanged();
-        }
-
-        if (now >= _nextCheatCheck)
-        {
-            _nextCheatCheck = now + 1f;
-            Access.RefreshCheat();
-        }
-    }
-
-    private static void RegisterConsoleCommand()
-    {
-        try
-        {
-            StationGodCommands.Register(Access);
-        }
-        catch (Exception exception)
-        {
-            // CommandLine.AddCommand in a game build that changed it: cheat stays unapproved, keys still work.
-            LogWarning($"Could not add the stationgod console command: {exception.Message}");
-        }
-    }
-
-    private void WarnAboutLegacyTcp()
-    {
-        if (_remote != null && _remote.Enabled && !string.IsNullOrEmpty(_remote.Secret) &&
-            Access.Settings.LegacyTcpLevel != AccessLevel.None)
-        {
-            LogWarning($"Remote MCP accepts the old shared-secret sign-in at {AccessLevels.Name(Access.Settings.LegacyTcpLevel)} " +
-                       "level ([Access] LegacyTcpLevel). The secret travels in plain text; each such sign-in is logged.");
-        }
-    }
-
-    internal static string ClientsPath => Path.Combine(Paths.ConfigPath, $"{ModId}.clients.json");
 
     // The overlapped pipe (one reader and one writer per connection), unless [Server] OverlappedPipes is off, the
     // platform is not Windows, or the Windows calls it needs are missing: then today's synchronous pipe.
@@ -252,7 +221,7 @@ public sealed class StationGodMod : ModBehaviour
                 ProtocolHost host = new ProtocolHost(
                     new ProtocolSettings(_server.MaxPipeConnections, protocol2: _server.Protocol2,
                         strictArguments: _server.StrictArguments), _dispatcher, Deadlines,
-                    ApiHost.CatalogueFile, Access, subscriptions: _subscriptions);
+                    ApiHost.CatalogueFile, subscriptions: _subscriptions);
                 PipeListener listener = new PipeListener(Pipe.Value, host);
                 listener.Start();
                 _pipeListener = listener;
@@ -292,7 +261,7 @@ public sealed class StationGodMod : ModBehaviour
                 _subscriptions?.WorldChanged(worldId);
             }
 
-            foreach (StationGodMCP.Protocol.Connection connection in Access.Connections())
+            foreach (StationGodMCP.Protocol.Connection connection in AllConnections())
             {
                 connection.Session?.OnWorldChanged(world);
             }
@@ -312,10 +281,11 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxTcpConnections, protocol2: true, strictArguments: _server.StrictArguments),
-                _dispatcher, Deadlines, ApiHost.CatalogueFile, Access, remote.Secret, _subscriptions);
+                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions);
             server = new TcpAcceptor(remote.BindAddress, remote.Port, _server.MaxTcpConnections, host);
             server.Start();
             _tcpListener = server;
+            TcpConnections = host;
         }
         catch (Exception exception)
         {
@@ -517,62 +487,6 @@ internal sealed class ServerSettings
 
         return new ServerSettings(maximum, overlapped.Value, protocol2.Value, strict.Value,
             tcp.Value >= 1 && tcp.Value <= 64 ? tcp.Value : DefaultMaxTcpConnections);
-    }
-}
-
-/// <summary>
-/// [Access]: what a connection without a key may do on the pipe, and the old protocol's clients on the pipe and over
-/// TCP. Read once at load; an unknown value is logged and the default used.
-/// </summary>
-internal static class AccessSettingsFile
-{
-    private const string Section = "Access";
-
-    internal static AccessSettings Load(ConfigFile configuration)
-    {
-        AccessSettings defaults = AccessSettings.Defaults;
-        ConfigEntry<string> anonymous = configuration.Bind(Section, "AnonymousPipeLevel", AccessLevels.Name(defaults.AnonymousPipeLevel),
-            new ConfigDescription(
-                "What a local pipe connection without a key may do: none, read, write (logic, chips, labels, paint, item " +
-                "moves, trading, building) or cheat (also move_gas, write_memory, the console, free placement, gene " +
-                "edits, blueprint pastes). Restart the game to apply.",
-                new AcceptableValueList<string>("none", "read", "write", "cheat")));
-        ConfigEntry<string> anonymousCheat = configuration.Bind(Section, "AnonymousCheat", "armed",
-            new ConfigDescription(
-                "With AnonymousPipeLevel cheat: armed (each cheat call needs the owner's stationgod allow in the " +
-                "game console) or standing (no approval needed). Restart the game to apply.",
-                new AcceptableValueList<string>("armed", "standing")));
-        ConfigEntry<string> legacyPipe = configuration.Bind(Section, "LegacyPipeLevel", AccessLevels.Name(defaults.LegacyPipeLevel),
-            new ConfigDescription(
-                "What a pipe client of the old protocol (version 1, no hello) may do: none refuses it, otherwise read, " +
-                "write or cheat (needing no approval, as before). Restart the game to apply.",
-                new AcceptableValueList<string>("none", "read", "write", "cheat")));
-        ConfigEntry<string> legacyTcp = configuration.Bind(Section, "LegacyTcpLevel", AccessLevels.Name(defaults.LegacyTcpLevel),
-            new ConfigDescription(
-                "What a TCP client signing in the old way, with the shared [Remote MCP] Secret, may do: none refuses " +
-                "it, otherwise read, write or cheat. The secret travels in plain text. Restart the game to apply.",
-                new AcceptableValueList<string>("none", "read", "write", "cheat")));
-        ConfigEntry<bool> toolConsole = configuration.Bind(Section, "AllowArmingFromToolConsole", false,
-            "For a dedicated test server nobody can type into only: lets run_console_command run stationgod allow and " +
-            "deny. Never set it on a game you play: any client allowed run_console_command could then approve its " +
-            "own cheats. Restart the game to apply.");
-        return new AccessSettings(
-            Level(anonymous, defaults.AnonymousPipeLevel),
-            string.Equals(anonymousCheat.Value?.Trim(), "standing", StringComparison.OrdinalIgnoreCase),
-            Level(legacyPipe, defaults.LegacyPipeLevel),
-            Level(legacyTcp, defaults.LegacyTcpLevel),
-            toolConsole.Value);
-    }
-
-    private static AccessLevel Level(ConfigEntry<string> entry, AccessLevel fallback)
-    {
-        AccessLevel? level = AccessLevels.Parse(entry.Value);
-        if (level == null)
-        {
-            StationGodMod.LogWarning($"Ignoring invalid [Access] {entry.Definition.Key} '{entry.Value}'; using {AccessLevels.Name(fallback)}.");
-        }
-
-        return level ?? fallback;
     }
 }
 

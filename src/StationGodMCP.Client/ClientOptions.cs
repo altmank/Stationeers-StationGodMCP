@@ -8,19 +8,15 @@ public enum ProtocolChoice
 }
 
 /// <summary>
-/// How a client connects. A key is read from an environment variable, never given as a value, so it does not show in
-/// process lists; it is offered only when a client name is given and the variable is set (clients.md, As built in
-/// stage 7). The legacy shared secret is for a version-1 server over TCP.
+/// How a client connects. Over TCP the shared secret is read from an environment variable, never given as a value, so
+/// it does not show in process lists.
 /// </summary>
 public sealed record ClientOptions(GameTarget Target)
 {
     public const string DefaultSecretVariable = "STATIONGODMCP_SECRET";
 
-    /// <summary>The name in hello; the key's name when signing in. Null connects anonymously as stationgod-cs.</summary>
+    /// <summary>The name in hello. Null connects as stationgod-cs.</summary>
     public string? ClientName { get; init; }
-
-    /// <summary>The variable holding the key; null for the target's default (STATIONGOD_KEY_&lt;PIPE&gt;).</summary>
-    public string? KeyVariable { get; init; }
 
     public string SecretVariable { get; init; } = DefaultSecretVariable;
 
@@ -38,18 +34,12 @@ public sealed record ClientOptions(GameTarget Target)
     /// <summary>The catalogue the caller was built with; replaced by the mod's when the hashes differ.</summary>
     public GameCatalogue BuiltInCatalogue { get; init; } = GameCatalogue.BuiltIn;
 
-    /// <summary>Where keys and the secret are read from: the process environment unless a test says otherwise.</summary>
+    /// <summary>Where the secret is read from: the process environment unless a test says otherwise.</summary>
     public Func<string, string?> ReadEnvironment { get; init; } = Environment.GetEnvironmentVariable;
 
     internal string HelloName => string.IsNullOrWhiteSpace(ClientName) ? Library.DefaultClientName : ClientName.Trim();
 
     internal TimeSpan EffectiveConnectTimeout => ConnectTimeout ?? Target.DefaultConnectTimeout;
-
-    internal string EffectiveKeyVariable =>
-        string.IsNullOrWhiteSpace(KeyVariable) ? Target.DefaultKeyVariable : KeyVariable.Trim();
-
-    /// <summary>The key to offer: only with a client name and a non-empty variable.</summary>
-    internal string? Key => string.IsNullOrWhiteSpace(ClientName) ? null : Value(EffectiveKeyVariable);
 
     internal string? Secret => Value(SecretVariable);
 

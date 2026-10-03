@@ -17,7 +17,7 @@ import time
 
 from . import _methods, output
 from .catalogue import Catalogue, extract
-from .connection import PipeTarget, TcpTarget, key_variable, open_connection, read_key
+from .connection import PipeTarget, TcpTarget, open_connection, read_secret
 from .errors import InvalidArgument, StationGodError, TooOld, Unreachable, WorldChanged, game_error
 from .subscriptions import Subscription
 
@@ -114,13 +114,12 @@ class PendingCall:
 class Client(_methods.Methods):
     """A connection to StationGod. Safe to use from several threads."""
 
-    def __init__(self, pipe=DEFAULT_PIPE, host=None, port=DEFAULT_PORT, client=None, key_env=None, protocol="auto",
+    def __init__(self, pipe=DEFAULT_PIPE, host=None, port=DEFAULT_PORT, client=None, protocol="auto",
                  secret_env="STATIONGODMCP_SECRET", connect_timeout=None, output_dir=None, check_arguments=True):
         if protocol not in ("auto", "v1"):
             raise ValueError("protocol must be 'auto' or 'v1'")
         self._target = TcpTarget(host, port) if host else PipeTarget(pipe)
         self.client_name = client
-        self.key_env = key_env or (key_variable(host=host, port=port) if host else key_variable(pipe_name=pipe))
         self._protocol_option = protocol
         self._secret_env = secret_env
         self._connect_timeout = connect_timeout if connect_timeout is not None else (3.0 if host else 1.0)
@@ -146,7 +145,6 @@ class Client(_methods.Methods):
         self._version = None
         self.world = None
         self.game_state = None
-        self.cheat = None
         self.on_call = None     # on_call(method, ms, reply_bytes, elapsed_ms, queue_ms): a metering hook
         self.on_event = None    # on_event(event): every event message, after the library has handled it
 
@@ -161,10 +159,6 @@ class Client(_methods.Methods):
     def protocol(self):
         """1 or 2 once connected, else None."""
         return self._version
-
-    @property
-    def level(self):
-        return (self._welcome or {}).get("level")
 
     @property
     def features(self):
@@ -354,8 +348,7 @@ class Client(_methods.Methods):
                     raise Unreachable("the client is closed")
                 conn = open_connection(
                     self._target, protocol=self._protocol_option, client=self.client_name,
-                    key=read_key(self.key_env) if self.client_name else None,
-                    secret=read_key(self._secret_env), connect_timeout=self._connect_timeout)
+                    secret=read_secret(self._secret_env), connect_timeout=self._connect_timeout)
                 adopted = self._adopt(conn)
         if adopted is not None:
             self._after_adopt(conn, adopted)
@@ -377,7 +370,6 @@ class Client(_methods.Methods):
         self.world = conn.world
         server = (conn.welcome or {}).get("server") or {}
         self.game_state = server.get("game_state", self.game_state)
-        self.cheat = (conn.welcome or {}).get("cheat")
         return changed
 
     def _after_adopt(self, conn, world_changed):
@@ -547,10 +539,6 @@ class Client(_methods.Methods):
                 self._fire_world_changed(world)
         elif name == "game_state":
             self.game_state = message.get("game_state", message.get("state"))
-        elif name == "cheat_armed":
-            self.cheat = dict(self.cheat or {}, armed=True, until_utc=message.get("until_utc"))
-        elif name == "cheat_disarmed":
-            self.cheat = dict(self.cheat or {}, armed=False, until_utc=None)
         hook = self.on_event
         if hook is not None and name != "ping":
             try:

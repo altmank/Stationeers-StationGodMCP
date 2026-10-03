@@ -16,14 +16,6 @@ class GameError(StationGodError):
         self.data = data or {}
 
 
-class PermissionDenied(GameError):
-    """permission_denied: the call needs a higher level than this connection has. Nothing ran."""
-
-
-class CheatNotArmed(GameError):
-    """cheat_not_armed: the owner has not approved cheats for this connection now. Nothing ran."""
-
-
 class InvalidArgument(GameError):
     """invalid_argument (or invalid_shape): the arguments break the catalogue. Nothing ran."""
 
@@ -37,7 +29,7 @@ class SubscriptionRefused(GameError):
 
 
 class Unauthorized(GameError):
-    """unauthorized: bad or missing key proof, unknown client name, or a key not allowed on this transport."""
+    """unauthorized: the TCP shared secret is missing or wrong."""
 
 
 class Unreachable(StationGodError):
@@ -65,8 +57,6 @@ class MethodNotFound(GameError, TooOld):
 
 
 _BY_CODE = {
-    "permission_denied": PermissionDenied,
-    "cheat_not_armed": CheatNotArmed,
     "invalid_argument": InvalidArgument,
     "invalid_shape": InvalidArgument,
     "subscription_limit": SubscriptionRefused,

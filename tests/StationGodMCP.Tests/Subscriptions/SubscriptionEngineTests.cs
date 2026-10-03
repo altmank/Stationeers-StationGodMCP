@@ -393,22 +393,6 @@ public sealed class SubscriptionEngineTests
     }
 
     [Fact]
-    public void RevokingEndsEverySubscriptionOfTheConnectionWithReasonRevoked()
-    {
-        SubscriptionEngine<FakeReading> engine = Engine();
-        Subscribe(engine, A);
-        Subscribed(engine.SubscribeWorld(A, At(0, 0)));
-        Subscribe(engine, B);
-
-        engine.Revoke(A, _events);
-
-        Assert.Equal(2, _events.Ended.Count);
-        Assert.All(_events.Ended, ended => Assert.Equal(A, ended.Connection));
-        Assert.All(_events.Ended, ended => Assert.Equal("revoked", ended.End.Reason));
-        Assert.Equal(1, engine.CountOf(B));
-    }
-
-    [Fact]
     public void AReadThatThrowsWhileSamplingEndsOnlyThatSubscription()
     {
         SubscriptionEngine<FakeReading> engine = Engine();

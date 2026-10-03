@@ -286,21 +286,19 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task TheSidecarSignsInOverTcpWithAKey()
+    public async Task TheSidecarSignsInOverTcpWithTheSharedSecret()
     {
-        const string key = "1enZJ/rZm/qUU8+u0qfUXecYk0g+4RfZrkoVetifuZc=";
         await using FakeGame game = FakeGame.OnTcp(FakeProtocol.Version2);
-        game.Keys["probe-read"] = key;
         GameTarget.Tcp target = (GameTarget.Tcp)game.Target;
         SidecarOptions options = Assert.IsType<SidecarOptions.Parsed.Valid>(SidecarOptions.Parse(
-            ["--host", "127.0.0.1", "--port", target.Port.ToString(), "--client", "probe-read", "--key-env", "K"],
-            name => name == "K" ? key : null)).Options;
+            ["--host", "127.0.0.1", "--port", target.Port.ToString(), "--client", "probe-read"],
+            name => name == ClientOptions.DefaultSecretVariable ? FakeGame.TestSecret : null)).Options;
         await using McpAdapter sidecar = new(options);
 
         JsonElement result = Result(await sidecar.HandleAsync(Call(1, "mod_info", "{}")));
 
         Assert.False(result.GetProperty("isError").GetBoolean());
-        Assert.Equal("probe-read", game.Received.First().GetProperty("client").GetProperty("name").GetString());
+        Assert.Equal("probe-read", game.Received.Skip(1).First().GetProperty("client").GetProperty("name").GetString());
     }
 
     [Fact]

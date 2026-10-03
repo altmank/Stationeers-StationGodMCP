@@ -8,9 +8,8 @@ using System.Threading;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// The TCP listener: each accepted socket becomes a Connection like a pipe client's, so TCP speaks the same protocol.
-/// A first line that is a hello must sign in with a key; anything else is the old sign-in with the shared secret
-/// (LegacySignInSession). At most maxConnections at once, counted apart from the pipe's, so remote connections and
+/// The TCP listener: each accepted socket becomes a Connection like a pipe client's. Its first line must be the
+/// shared-secret sign-in (SecretGateSession); after it the connection speaks the same protocols as the pipe. At most maxConnections at once, counted apart from the pipe's, so remote connections and
 /// unfinished sign-ins never take a local client's place; a socket past it is closed at once.
 /// </summary>
 internal sealed class TcpAcceptor : IDisposable
@@ -43,12 +42,8 @@ internal sealed class TcpAcceptor : IDisposable
         _host = host;
     }
 
-    /// <summary>
-    /// Whether TCP listens: when it is enabled and something can sign in over it, a shared secret (the old sign-in) or
-    /// a key whose transports include tcp.
-    /// </summary>
-    internal static bool ShouldListen(bool enabled, string? secret, bool anyTcpKey) =>
-        enabled && (!string.IsNullOrEmpty(secret) || anyTcpKey);
+    /// <summary>Whether TCP listens: when it is enabled and the shared secret is set.</summary>
+    internal static bool ShouldListen(bool enabled, string? secret) => enabled && !string.IsNullOrEmpty(secret);
 
     /// <summary>The port actually bound (the one asked for, or the system's choice for 0 in tests).</summary>
     internal int BoundPort => ((IPEndPoint)_listener!.LocalEndpoint).Port;

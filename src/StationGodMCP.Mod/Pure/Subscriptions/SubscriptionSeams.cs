@@ -83,9 +83,6 @@ internal abstract class SubscriptionEnd
     /// <summary>A new world loaded: reference ids may name other things now.</summary>
     internal static readonly SubscriptionEnd WorldChanged = new Named("world_changed");
 
-    /// <summary>The connection lost the level the subscription needs.</summary>
-    internal static readonly SubscriptionEnd Revoked = new Named("revoked");
-
     /// <summary>The owner lowered a limit the subscription now passes.</summary>
     internal static readonly SubscriptionEnd Limit = new Named("limit");
 

@@ -10,21 +10,18 @@ See docs/architecture/clients.md in the StationGodMCP repository.
 """
 from .client import Client, PendingCall
 from .connection import LIBRARY_VERSION as __version__
-from .connection import key_variable, proof
-from .errors import (CheatNotArmed, GameError, InvalidArgument, MethodNotFound, NotFound, PermissionDenied,
-                     StationGodError, SubscriptionRefused, TooOld, Unauthorized, Unreachable, WorldChanged)
+from .errors import (GameError, InvalidArgument, MethodNotFound, NotFound, StationGodError, SubscriptionRefused, TooOld, Unauthorized, Unreachable, WorldChanged)
 from .subscriptions import Subscription
 
 
-def connect(pipe="StationGodMCP", host=None, port=8765, client=None, key_env=None, protocol="auto", **options):
-    """Connects now and returns the Client. pipe names the local pipe; host and port choose TCP instead. client is
-    the key's name; the key is read from the environment variable key_env (default STATIONGOD_KEY_<PIPE> or
-    STATIONGOD_KEY_<HOST>_<PORT>). protocol "v1" speaks today's protocol from the start. Other options:
-    secret_env (the legacy TCP secret's variable), connect_timeout, output_dir, check_arguments."""
-    return Client(pipe=pipe, host=host, port=port, client=client, key_env=key_env, protocol=protocol,
-                  **options).open()
+def connect(pipe="StationGodMCP", host=None, port=8765, client=None, protocol="auto", **options):
+    """Connects now and returns the Client. pipe names the local pipe; host and port choose TCP instead (the shared
+    secret is read from the environment variable secret_env, default STATIONGODMCP_SECRET). client is the name sent in
+    hello. protocol "v1" speaks today's protocol from the start. Other options: secret_env, connect_timeout,
+    output_dir, check_arguments."""
+    return Client(pipe=pipe, host=host, port=port, client=client, protocol=protocol, **options).open()
 
 
-__all__ = ["connect", "Client", "PendingCall", "Subscription", "StationGodError", "GameError", "PermissionDenied",
-           "CheatNotArmed", "InvalidArgument", "NotFound", "SubscriptionRefused", "Unauthorized", "MethodNotFound",
-           "Unreachable", "WorldChanged", "TooOld", "key_variable", "proof", "__version__"]
+__all__ = ["connect", "Client", "PendingCall", "Subscription", "StationGodError", "GameError", "InvalidArgument",
+           "NotFound", "SubscriptionRefused", "Unauthorized", "MethodNotFound", "Unreachable", "WorldChanged", "TooOld",
+           "__version__"]

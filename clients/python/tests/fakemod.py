@@ -1,14 +1,11 @@
 """An in-process stand-in for the mod, speaking the wire protocol as protocol.md defines it, over loopback TCP or a
-real overlapped named pipe. version=2 plays a mod with protocol 2 (hello, challenge and auth, calls in flight,
+real overlapped named pipe. version=2 plays a mod with protocol 2 (hello and welcome, calls in flight,
 events, subscriptions); version=1 plays today's mod, which reads hello as a request with no method.
 
 Tests steer it: handlers answer methods, hold() keeps a method from answering until released, break_on() drops the
 connection when a method's call arrives (after it was read, so the call counts as written), drop_all() breaks every
 connection, set_world() changes the world id a new welcome reports, push() sends an event.
 """
-import base64
-import hashlib
-import hmac
 import itertools
 import json
 import os
@@ -31,10 +28,6 @@ class FakeError(Exception):
             self.error["data"] = data
 
 
-def key_of(seed):
-    return base64.b64encode(hashlib.sha256(seed.encode()).digest()).decode()
-
-
 class _Conn:
     def __init__(self, mod, stream_read, stream_write, stream_close, transport):
         self.mod = mod
@@ -46,7 +39,6 @@ class _Conn:
         self.version = None
         self.signed_in = False
         self.client = None
-        self.nonce = None
         self.in_flight = {}
         self.subscriptions = {}
         self.closed = False
@@ -72,13 +64,11 @@ class _Conn:
 
 
 class FakeMod:
-    def __init__(self, transport="tcp", version=2, keys=None, anonymous=True, features=None, world_id="w1",
-                 catalogue_hash=None, max_in_flight=16, legacy_secret=None, shapes_v1=False, catalogue=None,
+    def __init__(self, transport="tcp", version=2, features=None, world_id="w1",
+                 catalogue_hash=None, max_in_flight=16, legacy_secret="s3cret", shapes_v1=False, catalogue=None,
                  subscription_limit=None):
         self.transport = transport
         self.version = version
-        self.keys = keys or {}               # name -> (base64 key, level)
-        self.anonymous = anonymous
         self.features = list(DEFAULT_FEATURES if features is None else features)
         self.world_id = world_id
         self.catalogue_hash = catalogue_hash or _methods.CATALOGUE_HASH
@@ -123,7 +113,7 @@ class FakeMod:
 
     def push(self, event):
         for conn in list(self.connections):
-            if conn.version == 2 and conn.signed_in:
+            if conn.version == 2 and getattr(conn, "welcomed", False):
                 conn.send(dict({"type": "event"}, **event))
 
     def push_update(self, subscription, result, seq=1, frame=100):
@@ -203,19 +193,21 @@ class FakeMod:
 
     def _line(self, conn, message):
         self.received.append(message)
+        if conn.transport == "tcp" and not conn.signed_in:
+            # TCP: the first line must be the shared secret; after it the connection talks as the pipe does.
+            if not (message.get("type") == "auth" and self.legacy_secret and
+                    message.get("secret") == self.legacy_secret):
+                conn.send({"ok": False, "error": {"code": "unauthorized", "message": "Authentication failed."}})
+                conn.close()
+                return
+            conn.signed_in = True
+            conn.send({"ok": True})
+            return
         if conn.version is None:
             if self.version == 2 and message.get("type") == "hello":
                 conn.version = 2
                 return self._hello(conn, message)
             conn.version = 1
-            if conn.transport == "tcp":
-                if not (message.get("type") == "auth" and self.legacy_secret and
-                        message.get("secret") == self.legacy_secret):
-                    conn.send({"ok": False, "error": {"code": "unauthorized", "message": "Authentication failed."}})
-                    conn.close()
-                    return
-                conn.send({"ok": True})
-                return
         if conn.version == 1:
             return self._v1(conn, message)
         return self._v2(conn, message)
@@ -246,26 +238,10 @@ class FakeMod:
 
     def _hello(self, conn, message):
         conn.hello = message
-        name = (message.get("client") or {}).get("name")
-        if message.get("auth") == "key":
-            conn.nonce = base64.b64encode(os.urandom(32)).decode()
-            conn.send({"type": "challenge", "nonce": conn.nonce})
-            return
-        if conn.transport == "tcp" or not self.anonymous:
-            return self._refuse(conn)
-        self._welcome(conn, "anonymous", "cheat")
-
-    def _refuse(self, conn):
-        conn.send({"type": "reply", "id": None, "ok": False,
-                   "error": {"code": "unauthorized", "message": "Sign-in refused."}})
-        conn.close()
-
-    def _welcome(self, conn, client, level):
-        conn.signed_in = True
-        conn.client = client
+        conn.welcomed = True
+        conn.client = (message.get("client") or {}).get("name")
         self.instance += 1
-        conn.send({"type": "welcome", "protocol": 2, "client_id": f"c{next(self._client_ids)}", "client": client,
-                   "level": level, "grants": [], "cheat": {"armed": False, "until_utc": None, "standing": False},
+        conn.send({"type": "welcome", "protocol": 2, "client_id": f"c{next(self._client_ids)}", "client": "anonymous",
                    "server": {"mod_version": "9.9.9", "instance_id": "fake", "pipe_name": self.pipe_name,
                               "transport": conn.transport, "role": "host", "dedicated": False,
                               "world": {"id": self.world_id, "save": "fixround", "epoch": 1},
@@ -279,18 +255,6 @@ class FakeMod:
 
     def _v2(self, conn, message):
         kind = message.get("type")
-        if not conn.signed_in:
-            if kind == "auth" and conn.nonce:
-                name = message.get("client")
-                entry = self.keys.get(name)
-                hello_name = (conn.hello.get("client") or {}).get("name")
-                if entry and name == hello_name:
-                    expected = hmac.new(base64.b64decode(entry[0]),
-                                        f"stationgod-v2\n{conn.nonce}\n{name}\n{conn.transport}".encode(),
-                                        hashlib.sha256).hexdigest()
-                    if hmac.compare_digest(expected, str(message.get("proof"))):
-                        return self._welcome(conn, name, entry[1])
-            return self._refuse(conn)
         if kind == "cancel":
             return
         if kind == "bye":

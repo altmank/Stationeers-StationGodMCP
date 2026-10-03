@@ -11,7 +11,7 @@ FIXTURES = os.path.join(REPOSITORY, "clients", "fixtures")
 
 import stationgod  # noqa: E402
 from stationgod import client as client_module  # noqa: E402
-from fakemod import FakeError, FakeMod, key_of  # noqa: E402,F401
+from fakemod import FakeError, FakeMod  # noqa: E402,F401
 
 
 def wait_for(predicate, timeout=5.0, what="condition"):
@@ -32,17 +32,15 @@ class FakeModCase(unittest.TestCase):
         self.addCleanup(setattr, client_module, "REPLY_GRACE_S", grace)
 
     def mod(self, **options):
-        options.setdefault("keys", {"tester": (key_of("tester"), "cheat")})
         mod = FakeMod(transport=self.transport, **options).start()
         self.addCleanup(mod.stop)
         return mod
 
     def client(self, mod, **options):
-        """A client of the fake mod; over TCP (where the mod refuses anonymous connections) it signs in as tester."""
-        if self.transport == "tcp" and mod.version == 2:
-            os.environ["STATIONGOD_TEST_KEY"] = key_of("tester")
-            options.setdefault("client", "tester")
-            options.setdefault("key_env", "STATIONGOD_TEST_KEY")
+        """A client of the fake mod; over TCP it sends the fake mod's shared secret first."""
+        if self.transport == "tcp" and "secret_env" not in options:
+            os.environ["STATIONGOD_TEST_SECRET"] = mod.legacy_secret or ""
+            options["secret_env"] = "STATIONGOD_TEST_SECRET"
         game = stationgod.Client(**mod.client_options(), **options)
         self.addCleanup(game.close)
         return game
