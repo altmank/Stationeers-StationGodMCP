@@ -71,6 +71,7 @@ internal sealed class PipeListener : IDisposable
         }
 
         _host.CloseAll(reason, StopWaitMilliseconds);
+        _host.Retire();
         _host.ConnectionEnded -= OnConnectionEnded;
         if (_thread == null || !_thread.IsAlive)
         {

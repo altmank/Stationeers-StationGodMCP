@@ -139,7 +139,8 @@ folder; the pipe name matches (see *Two games on one machine*).
   game's state lives, and every change reaches players through the game's own sync. The StationGod Gateway and its kit
   are new prefabs, which a game without the mod cannot show.
 - The pipe and the TCP listener open only on the host. On a client the mod does nothing.
-- Anyone who can run a sidecar on the host's machine, or reach its TCP port with the secret, controls the world.
+- Anyone who can run a program on the host's machine can open the pipe; over TCP only a key or the secret gets in. A
+  key's level, and your approval in the game for cheat tools, limit what a client does (see *Keys and levels*).
 - Building jobs hold the game tick for a frame or two; players see a brief pause.
 
 ## Dedicated servers and remote access
@@ -187,6 +188,39 @@ Several sidecars may connect at once.
 
 **A dedicated server with nobody connected** may hold its world paused. Gas moves and blueprint pastes wait for the
 game to run; the console command `pause false` (through `run_console_command`) unpauses it.
+
+## Keys and levels
+
+Clients that speak the current protocol (the Python client library, and the sidecar from a later version) sign in
+with a key you make on the host, outside the game:
+
+```powershell
+& "$env:LOCALAPPDATA\StationGodMCP\server\StationGodMCP.Server.exe" key new dashboard write
+& "$env:LOCALAPPDATA\StationGodMCP\server\StationGodMCP.Server.exe" key new agents cheat --transports pipe,tcp
+```
+
+Each command adds the key to `BepInEx\config\net.xceled.stationeers.stationgodmcp.clients.json` (`--config <folder>`
+for another game or a dedicated server) and prints it once, in that terminal only; give it to the client in its key
+variable (`STATIONGOD_KEY_<PIPE NAME>`, for the default pipe `STATIONGOD_KEY_STATIONGODMCP`). The mod reads the file
+again within seconds of a change; a client whose key was removed or lowered is disconnected. Options: `--grants
+method,...` allows single methods beyond the level, `--cheat standing` lets a cheat key work without your approval,
+`--replace` replaces a key of that name.
+
+A key at cheat level still needs your OK for each cheat tool, for a while, in the game's console:
+
+- `stationgod allow c9 15` approves one connection (its id is in its welcome and in `stationgod clients`) for 15
+  minutes (at most 240); `stationgod allow agents 15` approves every connection of the key `agents`, subagents
+  included.
+- `stationgod deny c9` takes it back at once; `stationgod clients` lists the connections.
+- On a client of a remote host, type `serverrun stationgod allow c9 15`; the game runs it on the host when both have the
+  same `ServerAuthSecret`. Without one, use a key with `--cheat standing`.
+- `run_console_command` never runs `stationgod`, so no client can approve itself.
+
+A local connection without a key gets `[Access] AnonymousPipeLevel` (write). Clients of the old protocol, which
+today's sidecar, the script dashboard and the scripts speak, keep full access (`[Access] LegacyPipeLevel`, and
+`LegacyTcpLevel` for the old TCP secret) until the old protocol is switched off. Over TCP, a client of the current
+protocol always needs a key whose `--transports` include `tcp`; with such a key, TCP listens even without a `Secret`.
+See [configuration.md](configuration.md), *Access*.
 
 ## Two games on one machine
 

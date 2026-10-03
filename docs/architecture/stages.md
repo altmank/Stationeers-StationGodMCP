@@ -446,6 +446,39 @@ config afterwards.
 **Risk.** Medium: a mistake could lock clients out. Every shipped default keeps today's behaviour; option A for
 legacy TCP, if the owner chooses it, is the one deliberate break and gets its own CHANGELOG note.
 
+**As built.** Where the code needed a choice the text above leaves open:
+- The owner's decisions, applied: the catalogue's classes as recommended (cheat: `run_console_command`, `move_gas`,
+  `write_memory`, free placement, gene edits, `paste_blueprint` except its status; write: item moves, trading, the
+  vault, logic, chips, labels, paint, building); `AnonymousPipeLevel` `write`; cheat needs the time-limited OK in the
+  game; legacy TCP keeps cheat (option B) until version 1 retires.
+- `LegacyPipeLevel` defaults to `cheat`, not to `AnonymousPipeLevel`: at write, today's sidecar (`move_gas`, the
+  console), the dashboard (the smelter's `write_memory`) and the scripts would lose tools, and every existing client
+  must keep working until stage 15. A legacy client's cheat, on the pipe and over TCP, needs no approval, as today. A
+  dashboard moved to protocol 2 keeps its `write_memory` with a key such as `key new dashboard write --grants
+  write_memory --cheat standing`.
+- Keys: the fingerprint is the first 8 hex digits of the SHA-256 of the key's bytes. An entry's defaults: no grants,
+  cheat `armed`, transports `pipe`. A name given twice disables every entry of that name.
+- The level check runs on the reader thread after the argument check; a method the catalogue does not have goes to
+  the main thread (`method_not_found`). A version-1 line is parsed on the reader thread only when its connection's
+  level is below standing cheat, so today's clients pay nothing.
+- A key whose new entry gives less (a lower level, a grant or a transport gone, standing cheat made armed) or is gone
+  revokes its connections; a key that gives more applies to new connections.
+- `stationgod allow` takes a connection only if it is at cheat level and not standing, and a key name only at cheat
+  level; minutes are clamped to 1 to 240. `cheat_armed` and `cheat_disarmed` go out at once on allow and deny, and
+  within a second when an approval runs out (the main thread checks every second). `stationgod clients` also answers
+  from `run_console_command`, which only reads; allow and deny refuse there. `run_console_command` refuses
+  `stationgod` (any case, with or without leading dashes) with `permission_denied`, unless the test-only
+  `AllowArmingFromToolConsole` is set.
+- The whole sign-in has the first-line time from connecting (10 s); past it, `protocol_error`, `goodbye`, close.
+- TCP: `StationGodTcpServer` is replaced by `Protocol/TcpAcceptor.cs`, which hands each socket to the same
+  connection and sessions as the pipe: a hello must sign in with a key allowed on `tcp`; any other first line is the
+  old sign-in at `LegacyTcpLevel`, refused without a `Secret`. A ninth TCP connection is closed at once. TCP starts once
+  `Enabled` holds and there is a secret or a TCP key; the check runs every frame, so a key added later starts it.
+- `key new` writes into `--config` or the game's `BepInEx\config` (from `STATIONEERS_DIR`, else the Steam folder),
+  refuses a name already there unless `--replace`, and writes through a temporary file.
+- The synchronous pipe (`[Server] OverlappedPipes = false`) is the 1.10 code and applies no levels.
+- Live (test server): not run; the owner's game was running (owner's TODO).
+
 ## Stage 7: the Python library
 
 **Scope.** `clients/python/stationgod` as [clients.md](clients.md) describes it, on stage 3's `pipe.py`, the shared

@@ -37,6 +37,8 @@ internal sealed class NativePipe : IByteTransport
 
     public string Kind => "pipe";
 
+    public string Peer => "local";
+
     /// <summary>A new listening instance, or null with the Windows error (ERROR_PIPE_BUSY when all are in use).</summary>
     internal static NativePipe? Create(string pipeName, int maximumInstances, out int error)
     {

@@ -228,6 +228,28 @@ internal sealed class WorldChangedView
     public WorldFacts World { get; }
 }
 
+/// <summary>challenge: the nonce the client's key proof is made over.</summary>
+internal sealed class ChallengeView
+{
+    internal ChallengeView(string nonce) => Nonce = nonce;
+
+    public string Type => "challenge";
+
+    public string Nonce { get; }
+}
+
+/// <summary>cheat_armed: the owner approved cheat for this connection until then (UTC).</summary>
+internal sealed class CheatArmedView
+{
+    internal CheatArmedView(string untilUtc) => UntilUtc = untilUtc;
+
+    public string Type => "event";
+
+    public string Event => "cheat_armed";
+
+    public string UntilUtc { get; }
+}
+
 /// <summary>goodbye: the server closes the connection on purpose, and why.</summary>
 internal sealed class GoodbyeView
 {

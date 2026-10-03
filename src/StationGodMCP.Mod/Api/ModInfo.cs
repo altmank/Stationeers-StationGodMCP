@@ -48,14 +48,13 @@ internal static class ModInfoApi
 
     private static List<ConnectionView>? Connections()
     {
-        ProtocolHost? host = StationGodMod.Connections;
-        if (host == null)
+        if (StationGodMod.Connections == null)
         {
             return null;
         }
 
         List<ConnectionView> views = new List<ConnectionView>();
-        foreach (Connection connection in host.Open)
+        foreach (Connection connection in StationGodMod.Access.Connections())
         {
             Session? session = connection.Session;
             views.Add(new ConnectionView(connection.ClientId, session?.Client, session?.Label, connection.Transport,

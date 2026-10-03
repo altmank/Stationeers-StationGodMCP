@@ -51,9 +51,9 @@ public sealed class ProtocolV2Tests
         Assert.Equal(2, (int)welcome["protocol"]!);
         Assert.StartsWith("c", (string?)welcome["client_id"]);
         Assert.Equal("anonymous", (string?)welcome["client"]);
-        Assert.Equal("cheat", (string?)welcome["level"]);
+        Assert.Equal("write", (string?)welcome["level"]);
         Assert.Equal(JTokenType.Null, welcome["cheat"]!["until_utc"]!.Type);
-        Assert.True((bool)welcome["cheat"]!["standing"]!);
+        Assert.False((bool)welcome["cheat"]!["standing"]!);
         Assert.Equal("TestPipe", (string?)welcome["server"]!["pipe_name"]);
         Assert.Equal("pipe", (string?)welcome["server"]!["transport"]);
         Assert.Equal("host", (string?)welcome["server"]!["role"]);
@@ -486,18 +486,18 @@ public sealed class ProtocolV2Tests
 /// <summary>A version-2 test client on a real pipe: a reader task collects every line the server sends.</summary>
 internal sealed class V2Client : IDisposable
 {
-    private readonly NamedPipeClientStream _pipe;
+    private readonly Stream _pipe;
     private readonly BlockingCollection<string> _lines = new BlockingCollection<string>();
     private readonly ManualResetEventSlim _closed = new ManualResetEventSlim(false);
     private readonly ManualResetEventSlim _reading = new ManualResetEventSlim(true);
 
-    private V2Client(NamedPipeClientStream pipe)
+    internal V2Client(Stream pipe)
     {
         _pipe = pipe;
         Task.Run(ReadAll);
     }
 
-    internal JObject Welcome { get; private set; } = new JObject();
+    internal JObject Welcome { get; set; } = new JObject();
 
     internal static async Task<V2Client> Open(PipeRig rig)
     {
@@ -508,13 +508,45 @@ internal sealed class V2Client : IDisposable
     internal static async Task<V2Client> Connect(PipeRig rig, string name = "tester")
     {
         V2Client client = await Open(rig);
-        client.Send(new JObject
-        {
-            ["type"] = "hello", ["protocol"] = new JArray(2), ["client"] = new JObject { ["name"] = name, ["version"] = "1" }
-        }.ToString(Formatting.None));
+        client.Hello(name);
         client.Welcome = client.Next();
         Assert.Equal("welcome", (string?)client.Welcome["type"]);
         return client;
+    }
+
+    /// <summary>Sends hello (with auth key when key is given) and, for a key, answers the challenge; returns the answer.</summary>
+    internal JObject SignIn(string name, string? key, string transport, string? authName = null, string? badProof = null)
+    {
+        Hello(name, key != null);
+        JObject answer = Next();
+        if (key != null && (string?)answer["type"] == "challenge")
+        {
+            string proof = badProof ?? StationGodMCP.Pure.Access.KeyProof.Compute(Convert.FromBase64String(key),
+                (string)answer["nonce"]!, authName ?? name, transport);
+            Send(new JObject { ["type"] = "auth", ["client"] = authName ?? name, ["proof"] = proof }.ToString(Formatting.None));
+            answer = Next();
+        }
+
+        if ((string?)answer["type"] == "welcome")
+        {
+            Welcome = answer;
+        }
+
+        return answer;
+    }
+
+    internal void Hello(string name, bool key = false)
+    {
+        JObject hello = new JObject
+        {
+            ["type"] = "hello", ["protocol"] = new JArray(2), ["client"] = new JObject { ["name"] = name, ["version"] = "1" }
+        };
+        if (key)
+        {
+            hello["auth"] = "key";
+        }
+
+        Send(hello.ToString(Formatting.None));
     }
 
     internal void Send(string line) => SendRaw(line + "\n");
@@ -529,7 +561,14 @@ internal sealed class V2Client : IDisposable
         NextOrNull(timeoutMs) ?? throw new TimeoutException("no line from the server");
 
     internal JObject? NextOrNull(int timeoutMs) =>
-        _lines.TryTake(out string? line, timeoutMs) ? JObject.Parse(line!) : null;
+        _lines.TryTake(out string? line, timeoutMs) ? Parse(line!) : null;
+
+    // As the wire has it: an ISO time stays a string.
+    private static JObject Parse(string line)
+    {
+        using JsonTextReader reader = new JsonTextReader(new StringReader(line)) { DateParseHandling = DateParseHandling.None };
+        return JObject.Load(reader);
+    }
 
     internal JObject Call(string id, string method, JObject parameters, int timeoutMs = 5000)
     {

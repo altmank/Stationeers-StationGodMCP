@@ -74,13 +74,23 @@ internal sealed class ProtocolHost
     private readonly ICallQueue _calls;
     private readonly ConcurrentDictionary<Connection, byte> _open = new ConcurrentDictionary<Connection, byte>();
 
-    internal ProtocolHost(ProtocolSettings settings, ICallQueue calls, DeadlineWatch deadlines, CatalogueFile? catalogue)
+    internal ProtocolHost(ProtocolSettings settings, ICallQueue calls, DeadlineWatch deadlines, CatalogueFile? catalogue,
+        AccessControl access, string? legacySecret = null)
     {
         Settings = settings;
         _calls = calls;
         Deadlines = deadlines;
         Catalogue = catalogue;
+        Access = access;
+        LegacySecret = string.IsNullOrEmpty(legacySecret) ? null : legacySecret;
+        access.Register(this);
     }
+
+    /// <summary>Keys, levels and the owner's approvals, shared by every listener.</summary>
+    internal AccessControl Access { get; }
+
+    /// <summary>The old TCP sign-in's shared secret ([Remote MCP] Secret); null when it is not set.</summary>
+    internal string? LegacySecret { get; }
 
     internal ProtocolSettings Settings { get; }
 
@@ -111,10 +121,20 @@ internal sealed class ProtocolHost
     }
 
     /// <summary>The protocol a connection speaks, from its first line: a hello starts version 2, anything else version 1.</summary>
-    internal Session SessionFor(Connection connection, string firstLine) =>
-        Settings.Protocol2 && FirstLine.StartsVersion2(firstLine)
-            ? new CallSession(connection, this)
-            : new LineSession(connection, this);
+    internal Session SessionFor(Connection connection, string firstLine)
+    {
+        if (Settings.Protocol2 && FirstLine.StartsVersion2(firstLine))
+        {
+            return new CallSession(connection, this);
+        }
+
+        return connection.Transport == "pipe"
+            ? new LineSession(connection, this, Access.Settings.LegacyPipe)
+            : new LegacySignInSession(connection, this);
+    }
+
+    /// <summary>The listener stopped: this host's connections no longer count for the console and mod_info.</summary>
+    internal void Retire() => Access.Unregister(this);
 
     /// <summary>A world finished loading: every connection is told.</summary>
     internal void WorldChanged(WorldFacts world)
