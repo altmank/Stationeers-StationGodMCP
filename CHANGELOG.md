@@ -46,6 +46,31 @@
   the log records each old shared-secret sign-in with its address.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
+- **Python client library (new).** `clients/python` (`stationgod`, Python 3.12): connect to the pipe or TCP, call any
+  method by its catalogue name with `fields`, `limit` and `output_file`, page through paged methods, run several calls
+  at once, reconnect, and subscribe; it signs in with a key when given one and falls back to the old protocol on an
+  older mod.
+- **The sidecar runs on a C# client library.** One connection to the game, kept open, with the agent's calls sent over
+  it as they come; the tool list comes from the game's catalogue, and the agent is told when it changes. A reply over
+  200 KB without `output_file` goes to a file on its own (`auto_output_file: true`; `--inline-limit-kb`). New options
+  `--client` and `--key-env` sign in with a key; `--host` no longer needs the secret to start. A call that never
+  reached the game, or a read whose connection broke, is sent again once; a write that may have run is not.
+- **Fair sharing of the game's frame.** Calls are sorted into a light and a heavy lane by what the method's recent
+  calls cost per item (surveys, plans and building jobs are always heavy). Each frame runs light calls with clients
+  taking turns, then at most one heavy call; a heavy call passed over 10 frames runs even over budget. New
+  `[Performance]` settings `SubscriptionBudgetMs` (1.5), `HeavyThresholdMs` (1.0) and `HeavyMaxWaitFrames` (10).
+- **Subscriptions (new, protocol 2).** `subscribe` with `read_devices`' `items`, `include` and `gateway_id` and an
+  `interval_s` in game seconds (0.5 to 3600, 1 by default) answers the first reading, then pushes an `update` event
+  only when a value other than the clock changed, with a `seq` that never skips; a client that falls behind gets the
+  newest reading, not a backlog. Topic `world` pushes `world_changed` and `game_state`. A new world ends devices
+  subscriptions (`subscription_ended`). Limits: one `read_devices` call's bounds per subscription, 64 subscriptions and
+  8,192 values per connection, and a sampling load within the frame's subscription share; past them `subscribe` is
+  refused `subscription_limit` and the client polls. `unsubscribe` ends one (`unknown_subscription` for an id the
+  connection does not hold). welcome lists the `subscriptions` feature and the limits.
+- **`sample_logic` runs in the game.** It keeps its arguments, limits and reply, and now takes each sample in the
+  first frame it is due, on the real clock, instead of one round trip per sample; the call answers when its last
+  sample is taken. Every wait for it, in the mod and the clients, grows by its `duration_seconds`. A sidecar talking to
+  an older mod still samples it itself.
 
 ## 1.10.0
 

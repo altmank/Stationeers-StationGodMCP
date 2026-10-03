@@ -607,6 +607,38 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
   microsecond of a due time counts as on it. A read that fails as a whole fails the call with that error, as the
   sidecar returned it.
 
+### As built: the wiring of subscriptions and sample_logic
+
+- `Protocol/SubscriptionHub.cs` holds the `SubscriptionEngine` and the `LogicSampler` and is the scheduler's
+  `ISampleLane`: each `RunNextDueSample` takes one `sample_logic` sample if one is due, else one subscription sample, so
+  the lane's share and its first-sample rule cover both.
+- `subscribe` and `unsubscribe` are protocol methods (`ProtocolMethods.Names`, `catalogue/protocol/`) that run on the
+  main thread as calls, in the light lane, with the usual reply (`elapsed_ms`, `queue_ms`, `frame`). Their `items` and
+  `include` schemas are `read_devices`' own (`catalogue/defs/device_read_items.json`, `device_read_include.json`).
+  `subscribe` on version 1 is `method_not_found`.
+- An update waits in the connection's outbound queue as an `IOutboundLine` over its subscription's `UpdateSlot`; the
+  writer thread makes the event's line when it reaches it, so a merged update is written with its newest reading.
+  Every subscription event is the view's keys after `"type":"event"`.
+- `welcome.features` lists `subscriptions`, and `welcome.limits` gains `max_subscriptions`, `max_subscription_values`,
+  `max_values_per_subscription` and `min_subscription_interval_s`, whenever the server has the hub (always in the mod).
+- World identity: the world id is `WorldScope`'s, the one `welcome` already carries; the core's own `WorldIdentity` was
+  a second source of ids and is gone (`WorldId` stays). The hub hears `WorldChanged` where the mod already announces a
+  new world to every connection, and `ObserveGameState` every frame after the server's facts are published.
+- A closed connection posts its end; at the next frame its subscriptions and `sample_logic` runs are dropped without an
+  event. A revoked connection's subscriptions end with `subscription_ended {reason: revoked}` before its goodbye.
+- A subscription's sample reads through `ReadDevicesApi.Read` with the request parsed once at `subscribe`; only the
+  gateway is looked up again each sample, since it may have gone.
+- `sample_logic` on either version: arguments refused by `SampleLogicArguments.Of` are answered at once; otherwise the
+  call is left running and answered when its run ends, shaped as asked. Its `elapsed_ms` is the run's real time from
+  start to last sample, since it never holds the main thread for more than one sample. Its catalogue entry no longer
+  says `x-runs-in: sidecar`; the sidecar forwards it on version 2 and keeps its own loop for a mod it reaches on version
+  1 only.
+- `x-duration` is read by the mod's catalogue model (`CatalogueMethod.DurationMs`): a version-2 call's deadline, a
+  version-1 line's wait and the synchronous pipe's wait each add the duration at the call's arguments (the argument
+  given, at most `max_s`, else `max_s`).
+- `Resync` is in the engine but has no message on the wire yet; `ApplyLimits` has no caller, since the limits are read
+  once at load.
+
 ## Reconnecting
 
 A connection can break at any time: the game closed, the save reloaded, the mod restarted. The rules a client follows

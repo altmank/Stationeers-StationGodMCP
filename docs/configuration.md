@@ -28,7 +28,10 @@ variable, which wins over the file (handy for Docker and dedicated servers).
 | `Access` | `LegacyPipeLevel` | `cheat` | none | What a pipe client of the old protocol (no `hello`) may do: `none` refuses it; at cheat it needs no approval, as before. |
 | `Access` | `LegacyTcpLevel` | `cheat` | none | What a TCP client signing in with the shared `Secret` may do: `none` refuses it. The secret travels in plain text; while this is on, the log warns at load and records each such sign-in with its address. |
 | `Access` | `AllowArmingFromToolConsole` | `false` | none | Test servers only: lets `run_console_command` run `stationgod allow`. Never set it on a game you play. |
-| `Performance` | `RequestBudgetMs` | `4` | none | Main-thread milliseconds one frame may spend answering requests; the rest wait for the next frame, in order. The first request of a frame always runs. `0` is unlimited. While a job holds the game tick the budget is at most 2 ms. A negative value is logged and the default used. |
+| `Performance` | `RequestBudgetMs` | `4` | none | Main-thread milliseconds one frame may spend answering requests; the rest wait for the next frame. Clients take turns, one call each per round, and a call that changes the world still waits for its own client's earlier calls. The first request of a frame always runs. `0` is unlimited. While a job holds the game tick the budget is at most 2 ms. A negative value is logged and the default used. |
+| `Performance` | `SubscriptionBudgetMs` | `1.5` | none | Milliseconds of each frame for subscription and `sample_logic` samples, taken out of the same frame and at most half of `RequestBudgetMs`. The first due sample of a frame always runs. `0` turns subscriptions off (`subscribe` is refused `subscription_limit`, and clients poll instead). |
+| `Performance` | `HeavyThresholdMs` | `1.0` | none | A call the mod expects to take longer than this (from the method's recent calls, per item) waits in the heavy lane. Surveys, plans and building jobs are always heavy. At most one heavy call runs per frame, after the light ones. |
+| `Performance` | `HeavyMaxWaitFrames` | `10` | none | A heavy call passed over this many frames runs even when the frame is over budget, so heavy calls always finish. |
 | `Layout` | `DoorKeepOutBand` | `0.5` | none | Metres either side of a door's face, inside the door's rectangle, that the route planners keep free and the place tools refuse (`in_door_keepout`); 0 to 2 in 0.5 steps, 0 keeps only the face itself. Unlike the others it applies to the next request. |
 
 Environment values: `true` or `false` for `Enabled`, a number for `Port`. An invalid value is logged and the file's
@@ -47,7 +50,7 @@ clients of the current protocol sign in with. `StationGodMCP.Server key new <nam
 
 ```json
 {"clients": [
-  {"name": "dashboard", "key": "<base64 of 32 random bytes>", "level": "write", "grants": ["write_memory"], "cheat": "standing", "transports": ["pipe"]},
+  {"name": "dashboard", "key": "<base64 of 32 random bytes>", "level": "write", "grants": ["write_memory"], "transports": ["pipe"]},
   {"name": "agents", "key": "...", "level": "cheat", "cheat": "armed", "transports": ["pipe", "tcp"]}
 ]}
 ```
@@ -56,6 +59,11 @@ clients of the current protocol sign in with. `StationGodMCP.Server key new <nam
 need `stationgod allow` in the game) or `standing`; `transports` is `pipe` (default), `tcp` or both. A wrong entry (a
 short key, an unknown level, a name given twice, an unknown transport) is left out and logged; the rest load. The
 file is read again within seconds of a change.
+
+A grant lets a key call one method above its level; it does not lift the approval a cheat method needs. The
+dashboard's key above is write with a `write_memory` grant and no standing cheat: its smelter watchdog's
+`write_memory` runs only while you have approved the dashboard with `stationgod allow` in the game, and is refused
+`cheat_not_armed` otherwise. Do not give the dashboard `--cheat standing`.
 
 ## Sidecar options
 
@@ -67,12 +75,20 @@ wins over its variable.
 | `--pipe <name>` | `STATIONGODMCP_PIPE_NAME` | `StationGodMCP` | The local pipe to connect to. Must match the game's `[Pipe] Name`. |
 | `--host <address>` | `STATIONGODMCP_HOST` | none | Connect to a server over TCP instead of the local pipe. |
 | `--port <port>` | `STATIONGODMCP_PORT` | `8765` | The server's TCP port. |
-| `--secret-env <NAME>` | | `STATIONGODMCP_SECRET` | The environment variable that holds the shared secret. With `--host`, the sidecar refuses to start without it. |
+| `--secret-env <NAME>` | | `STATIONGODMCP_SECRET` | The environment variable that holds the old shared secret, asked for only when a mod over TCP speaks the old protocol. |
+| `--client <name>` | | none | Sign in as this key's name (protocol 2). Without it the sidecar connects without a key, at `[Access] AnonymousPipeLevel` on the pipe; over TCP a key is required. |
+| `--key-env <NAME>` | | `STATIONGOD_KEY_<PIPE NAME>` | The environment variable that holds the key for `--client` (for the default pipe `STATIONGOD_KEY_STATIONGODMCP`). |
+| `--inline-limit-kb <n>` | | `200` | A reply larger than this, without `output_file`, is written to a file on its own and answered with the pointer, marked `auto_output_file: true`. `0` never does. |
 | `--output-dir <folder>` | `STATIONGODMCP_OUTPUT_DIR` | `%LOCALAPPDATA%\StationGodMCP\output` | Where `output_file` writes replies (README, *Large replies*). The sidecar deletes files there older than 7 days and keeps the newest 200 `.json` files. |
 
-The secret is never an argument, so it does not show in process lists. Set it in the agent's MCP registration
-(`claude mcp add --env "STATIONGODMCP_SECRET=..."`, or `[mcp_servers.stationeers.env]` in Codex).
+The secret and the key are never arguments, so they do not show in process lists. Set them in the agent's MCP
+registration (`claude mcp add --env "STATIONGODMCP_SECRET=..."`, or `[mcp_servers.stationeers.env]` in Codex).
 
-The sidecar waits 3 seconds to connect and up to 35 seconds for the game to answer one call.
+The sidecar keeps one connection to the game and sends the agent's calls over it as they come, several at once. It
+waits 1 second to connect to the pipe (3 over TCP), and for each call its deadline (30 seconds) plus the call's own
+duration (`sample_logic`'s `duration_seconds`) plus 5 seconds. A call that never reached the game, or a read whose
+connection broke, is sent again once on a new connection, never into another world; anything else that may have run is
+answered `game_unavailable` saying so. When the game's tool list changes (a newer mod), the sidecar tells the agent
+(`notifications/tools/list_changed`).
 
 Setup walkthroughs for remote access and two games on one machine: [install.md](install.md#dedicated-servers-and-remote-access).
