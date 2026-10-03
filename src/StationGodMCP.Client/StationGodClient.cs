@@ -466,7 +466,7 @@ public sealed class StationGodClient : IAsyncDisposable
                 OnWorldChanged(Wire.Child(message, "world"));
                 break;
             case "game_state":
-                GameState = Wire.Text(message, "game_state") ?? GameState;
+                GameState = Wire.Text(message, "state") ?? GameState;
                 break;
         }
 

@@ -237,7 +237,7 @@ mod's. Where the build differs from the text above, or the protocol left a choic
   the `world` topic's event are the same name and are told apart by nothing else) or from the welcome after a
   reconnect. It closes every open subscription with `end_reason` `world_changed`. A `subscription_ended` event closes
   that one subscription and wakes its waiters, without firing the callback, which the `world_changed` event does.
-- A `game_state` event is read from its `game_state` key.
+- A `game_state` event is read from its `state` key.
 - The subscribe reply is bound to its subscription on the reader thread before the caller wakes, so an `update` sent
   straight after the reply is not lost.
 
@@ -314,7 +314,7 @@ Where the build differs from the text above, or the text left a choice open, thi
   `unauthorized` naming the variable; an old mod is any first answer without a `type` key; the hash is the text
   `sha256:<lowercase hex>`, fetched once per hash, with the built-in catalogue kept when the fetch fails and used on version 1; the world-changed event fires once per new `world.id`,
   from the event or from a welcome after a reconnect, and closes every subscription; a `game_state` event is read from
-  its `game_state` key; `deadline_ms` is sent only when given; `hello` names the given client or `stationgod-cs`.
+  its `state` key; `deadline_ms` is sent only when given; `hello` names the given client or `stationgod-cs`.
 - Each call carries its own resend rule instead of a shared requeue: a call never written is tried on the next
   connection; a written read without `x-effects` is sent once more; a call waiting to be sent again keeps trying to
   connect with the backoff until its time runs out, and is not sent into another world. Each try gets a fresh id. The
