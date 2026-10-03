@@ -71,7 +71,7 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 
 ## Tools
 
-91 tools, in these areas. Each page lists its tools with what they take and give back.
+92 tools, in these areas. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |
@@ -83,7 +83,7 @@ the APC to the new room along the frames". The agent reads each tool's own descr
 | Cables, pipes and chutes | `grid_survey`, `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`, `place_cables`, `place_pipes`, `place_chutes`, `remove_cables`, `remove_pipes`, `remove_chutes`, `upgrade_cables`, `upgrade_pipes` | [building.md](docs/building.md) |
 | Clean-up and refactoring | `clean_cables`, `clean_pipes`, `plan_removal`, `feed_paths` | [cleanup-and-refactor.md](docs/cleanup-and-refactor.md) |
 | Walls, frames and structures | `replace_walls`, `replace_frames`, `describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `lint_rules`, `check_replaceable`, `show_preview`, `highlight`, `place_structure`, `remove_structure`, `undo_job` | [walls-frames-structures.md](docs/walls-frames-structures.md), [lint-rules.md](docs/lint-rules.md) |
-| Rockets | `rocket_status`, `rocket_forecast`, `rocket_flight_log` | [rockets.md](docs/rockets.md) |
+| Rockets | `rocket_status`, `rocket_forecast`, `rocket_mining_options`, `rocket_flight_log` | [rockets.md](docs/rockets.md) |
 | Blueprints | `paste_blueprint` | [blueprints.md](docs/blueprints.md) |
 | Ingot Vault (mod) | `vault_contents`, `vault_deposit`, `vault_withdraw` | [ingot-vault.md](docs/ingot-vault.md) |
 

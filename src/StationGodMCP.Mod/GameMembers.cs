@@ -256,6 +256,14 @@ internal static class GameMembers
         Field(typeof(global::Objects.Rockets.Rocket), "_highestRecordedThrust");
     internal static readonly GameField RocketMinerHead = Field(typeof(RocketMiner), "_miningHead");
 
+    // ---- Every rocket design (1.13.0): an engine's second input (fuel/oxidiser or heat exchanger), a miner's own
+    // speed multipliers (prefab values, RocketMiner.cs:24-32), a scanner's head (RocketScanner.cs:32) ----
+    internal static readonly GameField EngineInputNetwork2 = Field(typeof(RocketEngineBase), "_inputNetwork2");
+    internal static readonly GameField RocketMinerOreSpeed = Field(typeof(RocketMiner), "oreSpeedMultiplier");
+    internal static readonly GameField RocketMinerIceSpeed = Field(typeof(RocketMiner), "iceSpeedMultiplier");
+    internal static readonly GameField RocketMinerJunkSpeed = Field(typeof(RocketMiner), "junkSpeedMultiplier");
+    internal static readonly GameField RocketScannerHead = Field(typeof(RocketScanner), "_scanningHead");
+
     // ---- remove_structure: the game's own refusal to deconstruct (Cable, Pipe, Silo, LaunchMount, fuselage) ----
     internal static readonly GameMethod StructureCanDeconstruct = Register(new GameMethod("Structure.CanDeconstruct",
         () => typeof(Structure).GetMethod("CanDeconstruct", PrivateInstance, null, Type.EmptyTypes, null)));

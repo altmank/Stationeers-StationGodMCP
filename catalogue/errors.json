@@ -43,7 +43,7 @@
   "dish_not_ready": {"description": "The dish has no horizontal pivot or pointing transform.", "origin": "tool"},
   "duplicate_id": {"description": "The id is already in flight on this connection. Nothing ran.", "origin": "protocol"},
   "engine_not_modelled": {
-    "description": "<…> is a <…>; the forecast flies only the Pumped Gas Engine (GovernedGasEngine), whose draw does not depend on pressure.",
+    "description": "<…> is a <…>, none of the game's six engine classes (or a class built on one): its feed law is unknown to the forecast.",
     "origin": "tool"
   },
   "final_check_failed": {
@@ -108,6 +108,10 @@
     "origin": "tool"
   },
   "lua_not_installed": {"description": "Refused with lua_not_installed.", "origin": "tool"},
+  "manned_target": {
+    "description": "Someone sits in a Crew Module Chair: the rocket may only target a launch mount; the game clears <…> as a target.",
+    "origin": "tool"
+  },
   "materials_failed": {"description": "Refused with materials_failed.", "origin": "tool"},
   "materials_short": {
     "description": "Only <taken> of <charge> <…> could be taken for this piece; it was swapped and the run stopped after it.",

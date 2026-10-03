@@ -82,6 +82,7 @@ internal static class ApiHost
             ["rocket_status"] = static args => RocketStatusApi.Handle(args),
             ["rocket_forecast"] = static args => RocketForecastApi.Handle(args),
             ["rocket_flight_log"] = static args => RocketFlightLogApi.Handle(args),
+            ["rocket_mining_options"] = static args => RocketMiningOptionsApi.Handle(args),
             ["move_item"] = static args => MoveItemApi.Handle(args),
             ["upgrade_cables"] = static args => UpgradeCablesApi.Handle(args),
             ["upgrade_pipes"] = static args => UpgradePipesApi.Handle(args),

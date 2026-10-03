@@ -200,6 +200,56 @@ internal static class SpaceRoutes
                 : throw Ambiguous(wanted, found);
     }
 
+    /// <summary>
+    /// As Resolve, but "pad"/"home" means this rocket's pad when there are several: the pad it stands on or is
+    /// launching from or landing on, else the only ground (not orbital) launch mount; otherwise it is ambiguous_node
+    /// and the caller names the pad.
+    /// </summary>
+    internal static SpaceMapNode ResolveFor(string text, Rocket rocket)
+    {
+        string wanted = text.Trim();
+        if (!string.Equals(wanted, "pad", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(wanted, "home", StringComparison.OrdinalIgnoreCase))
+        {
+            return Resolve(wanted);
+        }
+
+        List<SpaceMapNode> pads = Pads();
+        if (pads.Count == 1)
+        {
+            return pads[0];
+        }
+
+        if (IsPad(rocket.CurrentNode))
+        {
+            return rocket.CurrentNode!;
+        }
+
+        NodeTransit? transit = rocket.CurrentTransit;
+        if (transit != null && IsPad(transit.From))
+        {
+            return transit.From;
+        }
+
+        if (transit != null && IsPad(transit.Destination))
+        {
+            return transit.Destination;
+        }
+
+        SpaceMapNode? ground = null;
+        int grounds = 0;
+        for (int index = 0; index < pads.Count; index++)
+        {
+            if (pads[index].Owner != null && !pads[index].Owner.IsOrbital)
+            {
+                ground = pads[index];
+                grounds++;
+            }
+        }
+
+        return grounds == 1 ? ground! : throw Ambiguous(wanted, pads);
+    }
+
     private static ApiException Ambiguous(string wanted, List<SpaceMapNode> nodes)
     {
         List<string> names = new List<string>(nodes.Count);

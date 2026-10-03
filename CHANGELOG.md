@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.13.0
+
+2026-10-03. Every rocket design. 92 tools.
+
+- **All six engines are flown.** `rocket_forecast` no longer refuses anything but the Pumped Gas Engine. Each engine
+  draws its fuel by its own law from the game's code: the Pumped Gas Engine 18 mol a tick whatever the pressure; the
+  Pressure Fed Gas Engine and its heavy version moles from each of its two inputs by that input's gas pressure, so the
+  draw and the thrust sag as the tanks drain; the Pumped Liquid Engine 0.55 L of liquid a tick shared between its two
+  inputs by its Setting (liquid hydrazine alone at Setting 100); the Pressure Fed Liquid Engine and its heavy version
+  0.04 to 0.8 (1.5) L by the gas pressure over the liquid, plus some of that gas, its second input a heat exchanger.
+  Thrust is the game's own combustion of what each tick draws, so a fuel-to-oxidiser ratio that drifts counts. A
+  mod's engine is refused (`engine_not_modelled`); an engine missing an input it needs is refused (`no_fuel_line`).
+- **Gas and liquid lines.** Fuel lines are both engine inputs; pipes and tanks hold gas and liquid, liquid takes its
+  room from the gas, and tanks share both with the pipe by volume every tick.
+- **Stops in space.** `deploy_payload` (the payloads' mass leaves at the planet's orbit), `transfer_mol` and
+  `transfer_with` (another rocket's matching gas or liquid sockets even out with this rocket's by volume, as the
+  Transfer action does), `transfer_battery_j`; what-if `payload_kg`. `return_to` and `to` take any launch mount,
+  ground or orbital, and `pad` means this rocket's own pad when there are several. A crewed rocket may only target
+  launch mounts (refused `manned_target`).
+- **New `rocket_mining_options`.** The rocket's miners and their drill heads (speed, ore and ice factors, wear, power),
+  gas collectors, scanners and their heads, holds and tanks, and for the destination's sites or every charted site
+  what that loadout collects: units per cycle and per hour, cargo slots per hour, cycles until the site and the head
+  run out, and the reason when it gets nothing (an ice head at an ore site gives 0 ore while each cycle still shrinks
+  the site and wears the head; miners skip gas; a collector gets only gas). `rocket_forecast` reports `mining` for the
+  destination, warns when the loadout collects nothing there, and with `mine` fills the cargo slots the stop yields.
+- **`rocket_status`.** Engines with their feed law and inputs; fuel lines with liquid, pipe gas pressure and which
+  engine inputs draw from them; `landing_at_pad`, the check the game makes at the pad the rocket is heading for (1
+  m/s² at an Orbital Launch Mount); payload mass; `collects`; `manned`; burn time from the engines' own feeds.
+  `compact` leaves out the long lists, `parts` lists every part's position and turn from the engine mount with what
+  sits in its slots, and the thrust explanation is said once per reply (`explanations`) instead of once per rocket.
+
 ## 1.12.1
 
 2026-10-03. 91 tools.

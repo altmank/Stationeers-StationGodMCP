@@ -212,7 +212,7 @@ internal sealed class FakeGame : IAsyncDisposable
         peer.Welcomed = true;
         string features = string.Join(",", Features.Select(feature => $"\"{feature}\""));
         await peer.WriteAsync(
-            $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":91,"protocol_methods":3},"limits":{"max_in_flight":{{MaxInFlight}}},"features":[{{features}}]}""");
+            $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":92,"protocol_methods":3},"limits":{"max_in_flight":{{MaxInFlight}}},"features":[{{features}}]}""");
         while (await ReadAsync(peer) is { } message)
         {
             string? kind = message.TryGetProperty("type", out JsonElement value) ? value.GetString() : null;

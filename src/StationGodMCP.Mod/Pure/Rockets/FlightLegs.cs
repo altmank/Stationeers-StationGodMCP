@@ -1,5 +1,7 @@
 #nullable enable
 
+using System.Collections.Generic;
+
 namespace StationGodMCP.Pure.Rockets;
 
 /// <summary>Where a landing begins: from a hop out of space (re-entry), or part way down already.</summary>
@@ -161,19 +163,28 @@ internal sealed class LandingLeg : FlightLeg
 }
 
 /// <summary>
-/// A stop at a node: the time spent there (mining, scanning) with its power draw, and the cargo slots filled by the end.
-/// The engine burns nothing parked once AutoShutOff (or the player) has switched it off; a forecast assumes it is
-/// switched on again for the next leg.
+/// A stop at a node: the time spent there (mining, scanning, deploying, transferring) with its power draw, the cargo
+/// slots filled by the end, and what leaves or arrives: a deployed payload's mass, fuel and charge another rocket gives
+/// or takes through the Transfer action. The engine burns nothing parked once AutoShutOff (or the player) has switched
+/// it off; a forecast assumes it is switched on again for the next leg.
 /// </summary>
 internal sealed class ParkLeg : FlightLeg
 {
     internal ParkLeg(string at, float seconds, double loadW, int addCargoSlots, double addCargoKg)
+        : this(at, seconds, loadW, addCargoSlots, addCargoKg, new List<LineTransfer>(), 0.0)
+    {
+    }
+
+    internal ParkLeg(string at, float seconds, double loadW, int addCargoSlots, double addCargoKg,
+        List<LineTransfer> fuel, double batteryJ)
         : base(at, at, 0f)
     {
         Seconds = seconds;
         LoadW = loadW;
         AddCargoSlots = addCargoSlots;
         AddCargoKg = addCargoKg;
+        Fuel = fuel;
+        BatteryJ = batteryJ;
     }
 
     internal float Seconds { get; }
@@ -184,9 +195,30 @@ internal sealed class ParkLeg : FlightLeg
     /// <summary>Cargo slots filled during the stop: 1 kg each (RocketChuteStorage.MassContribution, RocketChuteStorage.cs:30).</summary>
     internal int AddCargoSlots { get; }
 
+    /// <summary>Mass added (positive) or gone (negative, a deployed payload) by the end of the stop.</summary>
     internal double AddCargoKg { get; }
+
+    /// <summary>Fuel received (positive) or given (negative) on each fuel line by the end of the stop.</summary>
+    internal List<LineTransfer> Fuel { get; }
+
+    /// <summary>Battery charge received (positive) or given (negative) by the end of the stop.</summary>
+    internal double BatteryJ { get; }
 
     internal override string Kind => "park";
 
     internal override LegResult Fly(FlightSimulator simulator, RocketCraft craft) => simulator.Park(this, craft);
+}
+
+/// <summary>Moles a fuel line receives (positive) or gives (negative).</summary>
+internal readonly struct LineTransfer
+{
+    internal LineTransfer(int line, double moles)
+    {
+        Line = line;
+        Moles = moles;
+    }
+
+    internal int Line { get; }
+
+    internal double Moles { get; }
 }

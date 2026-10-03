@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.12.1",
+  "mod_version": "1.13.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "Device and IC tools reach every device in the world: omit gateway_id or pass 'world'. A StationGod Gateway id narrows a call to the devices on that gateway's data networks. Start with list_devices or describe_device before reading or writing logic. Inventory, clock and console tools need no gateway. Large replies: every tool that can answer a lot takes output_file, written by this server, and fields, applied by the game as it writes the reply. output_file: true (or a file name, letters/digits/-/_/., no folders) writes the whole reply as indented JSON to a file and answers only a pointer {output_file (the full path), bytes, tool, counts (each top-level list's length), summary (the reply's short top-level values), in_file_only (top-level keys too large to repeat)}; read the file with your own tools. The folder is %LOCALAPPDATA%\\StationGodMCP\\output unless the server was started with --output-dir or STATIONGODMCP_OUTPUT_DIR; files older than 7 days, and beyond the newest 200, are deleted. A named file is overwritten. Errors are always answered inline. fields: [names] keeps only those keys in each entry of the reply's top-level lists (e.g. find_things fields [\"reference_id\", \"position\"]); a dotted name is a path into one list (things.position.x keeps only x of each things entry's position; dictionary keys keep their case, results.logic.Temperature); a name no entry has is listed in fields_unmatched. Prefer filters, limit and fields first; use output_file when you need all of a large reply. The player (the default from_id, to_id and credit card holder, a 'player' argument, near_player_m, local_player and player in replies, player_vitals) is the local player when the game has one; without one (a dedicated server) it is the one connected, living player in the world when there is exactly one, and with none or several those calls refuse no_local_player, saying which. The camera and screen (looking_at, crosshair, on_face_i_look_at, the player frame, looking, highlight, show_preview) are that player's: this game's own, or on a dedicated server the view the player's own StationGod shares and the screen it draws on (StationGod is optional there; without it those calls refuse no_view, saying why)."
@@ -50,7 +50,7 @@
     "dish_not_ready": {"description": "The dish has no horizontal pivot or pointing transform.", "origin": "tool"},
     "duplicate_id": {"description": "The id is already in flight on this connection. Nothing ran.", "origin": "protocol"},
     "engine_not_modelled": {
-      "description": "<…> is a <…>; the forecast flies only the Pumped Gas Engine (GovernedGasEngine), whose draw does not depend on pressure.",
+      "description": "<…> is a <…>, none of the game's six engine classes (or a class built on one): its feed law is unknown to the forecast.",
       "origin": "tool"
     },
     "final_check_failed": {
@@ -115,6 +115,10 @@
       "origin": "tool"
     },
     "lua_not_installed": {"description": "Refused with lua_not_installed.", "origin": "tool"},
+    "manned_target": {
+      "description": "Someone sits in a Crew Module Chair: the rocket may only target a launch mount; the game clears <…> as a target.",
+      "origin": "tool"
+    },
     "materials_failed": {"description": "Refused with materials_failed.", "origin": "tool"},
     "materials_short": {
       "description": "Only <taken> of <charge> <…> could be taken for this piece; it was swapped and the run stopped after it.",
@@ -5539,7 +5543,7 @@
     },
     {
       "name": "rocket_forecast",
-      "description": "Fly a copy of a rocket to a node and report each leg; the game is not touched. Route: the game's pathfinder, re-planned at every node as the game does; a rocket in transit to another target turns round as Rocket.ChangeTarget does (same first hop kept, else a space hop reverses with progress 1 - progress, and a launch becomes a landing on its pad); a landing rocket cannot be retargeted here. Simulated tick by tick as the game runs it: physics steps at Time.fixedDeltaTime and the 0.5 s game tick every round(0.5/dt) steps (gas mass, landing autopilot, engine draw of 18 x throttle/100 mol per Pumped Gas Engine, tanks mixing with the pipe by volume, batteries paying every device's watts per tick); launch with gravity and the game's abort (net acceleration below zero turns the rocket round to land on its pad, forecast too); space hops (progress grows by thrust/mass x dt / distance); re-entry (the confidence check once at the start, 0 aborts back to orbit; then velocity -distance at the profile's altitude); the landing autopilot's rules (Normal, Alternate, Alternate2, FinalApproach); touchdown (soft under 2 m/s at 0.1 m; else a crash landing: under 4 m/s harmless, 4 to 25 m/s engine damage, faster explodes). Thrust per mole comes from the game's own combustion run on a copy of the fuel, so fuel temperature and mix count; the recorded thrust peak keeps rising as the game's does. Not simulated (named in assumptions): heat the tanks trade with the air (the thrust 100 K colder and warmer is given instead), engines other than the Pumped Gas Engine (refused: engine_not_modelled), the RocketCollisionDetector trigger. Each leg: kind (launch, hop, park, landing), from, to, distance (delta-v), outcome (arrived, parked, stalled, launch_aborted, landing_aborted, landed, hard_landing, crashed, timed_out) and detail, seconds, burn_seconds, delta_v spent, fuel start/used/left mol, first tank kPa at the end, mass start/end, battery start/end J, peak thrust, recorded thrust; a landing adds confidence and band, min required and max expected thrust, start altitude and mass, lowest stop altitude, touchdown speed, seconds, last rule, power_lost, fuel_ran_out. Also, with limits (default true): landing_limits from the rocket as its last landing starts (max landing mass that lands undamaged, max fuel+cargo kg, min and max fuel mol, survivable thrust drop %, the heaviest mass whose confidence stays at or above min_confidence, default 0.25), profiles (the same landing at Low 25 km, Medium 40 km, High 70 km, Max 120 km: outcome, confidence, fuel, time, touchdown, survivable drop) and least_fuel_mol (least starting fuel the whole plan succeeds with). column (column_check, default true): structures or terrain in the column the landing sweeps above the pad, tested as the game's overlap spheres test it. Plus route, uncharted, assumptions, succeeded, verdict. Destination: to, else the rocket's target, else its launch pad (return and land). A stop at a space node: park_s, mine (miners and holds draw power), fill_holds or add_cargo_slots (1 kg each; the cargo itself weighs nothing to the game), park_load_w, then_return (fly back to return_to, default the launch pad). What-ifs: fuel_mol, fuel_temperature_k, fuel_mix (e.g. {\"Methane\": 0.667, \"Oxygen\": 0.333}), thrust_scale, throttle, cargo_slots, add_cargo_kg, battery_j or battery_percent, extra_load_w, profile. Combustion (1.9.0+): engines burn at the game's rate (0.96), or at Terraforming Reloaded's (its RocketsBurnCompletely world option: 1.0) when that mod is loaded; {rate, source: game or terraforming_reloaded, note} is reported as combustion. Read only; no gateway.",
+      "description": "Fly a copy of a rocket to a node and report each leg; the game is not touched. Every engine the game builds is flown by its own feed law from the code: Pumped Gas Engine 18 x throttle/100 mol a tick from input 1 whatever the pressure; Pressure Fed Gas Engine (and Heavy) moles from each input by its own gas pressure (up to 5,000 or 8,500 kPa x (3 - 2.999/(1 + (p/60,795/2)^0.7)) over a 10 L pipe), both inputs needed; Pumped Liquid Engine 0.55 L a tick x throttle, Setting % from input 1 and the rest from input 2, liquid only (hydrazine alone works: Setting 100); Pressure Fed Liquid Engine (and Heavy) 0.04-0.8 (1.5) L of liquid by input 1's gas pressure plus a pressure-fed gas draw, input 2 a heat exchanger only. Lines hold gas and liquid; tanks mix with their pipe by volume every tick; the gas pressure the pressure-fed engines read falls as the line drains, so their thrust sags. Thrust is the game's own combustion run on a copy of what each tick draws (cached per mix of the inputs' gas and liquid). Route: the game's pathfinder, re-planned at every node; a rocket in transit to another target turns round as Rocket.ChangeTarget does; a landing rocket cannot be retargeted here. A manned rocket (someone in a Crew Module Chair) may only target launch mounts (refused: manned_target). Simulated tick by tick: physics steps at Time.fixedDeltaTime and the 0.5 s game tick (gas mass, landing autopilot, engine draws, tanks mixing, batteries paying every device's watts per tick); launch with gravity and the game's abort; space hops; re-entry (the confidence check once at the start with the pad's own hop and gravity, 1 m/s2 at an Orbital Launch Mount; 0 aborts back to orbit); the landing autopilot's rules; touchdown (soft under 2 m/s; under 4 m/s harmless, 4 to 25 m/s engine damage, faster explodes). Not simulated (named in assumptions): heat the tanks trade with the air and boiling or condensing in the lines (the thrust 100 K colder and warmer is given), a Pressure Fed Liquid Engine's heat exchange, a mod's engine class (refused: engine_not_modelled), the RocketCollisionDetector trigger. Each leg: kind (launch, hop, park, landing), from, to, distance (delta-v), outcome and detail, seconds, burn_seconds, delta_v spent, fuel start/used/left mol, first tank gas kPa at the end, mass, battery, peak and recorded thrust; a landing adds confidence and band, thrusts, start altitude and mass, lowest stop altitude, touchdown speed, last rule, power_lost, fuel_ran_out. With limits (default true): landing_limits, profiles (Low 25 km, Medium 40 km, High 70 km, Max 120 km) and least_fuel_mol. column (column_check, default true). Plus route, uncharted, assumptions, succeeded, verdict. Destination: to, else the rocket's target, else its pad ('pad' means this rocket's pad: the one it stands on, launches from or lands on, else the only ground launch mount). A stop at a space node: park_s, mine (miners, collectors and holds draw power; with no cargo arguments the stop fills the slots the site's yield fills in park_s), fill_holds or add_cargo_slots (1 kg each), park_load_w, deploy_payload (at a node with Deploy, the planet's orbit: the payloads' mass leaves, 20 s), transfer_mol (fuel received, negative given, spread over the lines), transfer_with (another rocket: each pair of compatible gas or liquid umbilical sockets equalises the two networks by volume, as the Transfer action does; a pump moves more), transfer_battery_j, then_return (fly back to return_to, any launch mount, ground or orbital). mining: when the destination has a deposit, whether this loadout collects it, units per hour, units and slots in the stop, and problems (e.g. an ice head at an ore site); a site the loadout cannot collect is also a warning in assumptions and the verdict. What-ifs: fuel_mol, fuel_temperature_k, fuel_mix (gas and liquid names, e.g. {\"LiquidHydrazine\": 1}), thrust_scale, throttle, cargo_slots, add_cargo_kg, payload_kg, battery_j or battery_percent, extra_load_w, profile. Combustion: the game's rate (0.96), or Terraforming Reloaded's when that mod is loaded. Read only; no gateway.",
       "class": "read",
       "cost": "plan",
       "params": {
@@ -5568,7 +5572,26 @@
             "description": "Power draw per tick while parked. Default what AutoShutOff leaves on, plus the mining gear with mine."
           },
           "then_return": {"type": "boolean", "description": "After the stop, fly back and land. Default false."},
-          "return_to": {"type": "string", "description": "The pad to return to. Default the launch pad ('pad')."},
+          "return_to": {
+            "type": "string",
+            "description": "The pad to land on after the stop: any launch mount, ground or orbital. Default this rocket's pad."
+          },
+          "deploy_payload": {
+            "type": "boolean",
+            "description": "At the stop (a node with Deploy, the planet's orbit) the payloads leave: their mass goes, 20 s. Default false."
+          },
+          "transfer_mol": {
+            "type": "number",
+            "description": "Fuel received at the stop from another rocket (negative: given), spread over the fuel lines."
+          },
+          "transfer_with": {
+            "type": "string",
+            "description": "Another rocket at the stop: its compatible gas or liquid umbilical sockets equalise with this rocket's by volume (the Transfer action)."
+          },
+          "transfer_battery_j": {
+            "type": "number",
+            "description": "Battery charge received at the stop through power sockets (negative: given)."
+          },
           "fuel_mol": {"type": "number", "minimum": 0, "description": "What-if: total fuel in the engines' lines now."},
           "fuel_temperature_k": {"type": "number", "exclusiveMinimum": 0, "description": "What-if: fuel temperature."},
           "fuel_mix": {
@@ -5594,6 +5617,11 @@
             "maximum": 100000
           },
           "add_cargo_kg": {"type": "number", "minimum": 0, "description": "What-if: extra mass now."},
+          "payload_kg": {
+            "type": "number",
+            "minimum": 0,
+            "description": "What-if: the payloads on the bays weigh this together (a Payload Delivery Container or Orbital Launch Mount Payload is 200)."
+          },
           "battery_j": {"type": "number", "minimum": 0, "description": "What-if: battery charge now (J)."},
           "battery_percent": {"type": "number", "minimum": 0, "maximum": 100, "description": "What-if: battery charge now (%)."},
           "extra_load_w": {"type": "number", "minimum": 0, "description": "What-if: more power draw per tick all trip."},
@@ -5629,7 +5657,8 @@
           "landing_limits": {"type": ["object", "null"]},
           "profiles": {"type": ["array", "null"]},
           "column": {"type": ["object", "null"]},
-          "combustion": {"type": ["object", "null"]}
+          "combustion": {"type": ["object", "null"]},
+          "mining": {"type": ["object", "null"]}
         }
       },
       "x-views": ["RocketForecastView"],
@@ -5640,24 +5669,75 @@
         "thrust_scale": "Api/Shared/Game/Flight/RocketModel.cs",
         "throttle": "Api/Shared/Game/Flight/RocketModel.cs",
         "add_cargo_kg": "Api/Shared/Game/Flight/RocketModel.cs",
+        "payload_kg": "Api/Shared/Game/Flight/RocketModel.cs",
         "battery_j": "Api/Shared/Game/Flight/RocketModel.cs",
         "battery_percent": "Api/Shared/Game/Flight/RocketModel.cs"
       }
     },
     {
+      "name": "rocket_mining_options",
+      "description": "What a rocket can collect, by the game's own mining formulas. loadout: every Rocket Miner (on, its drill head: name, speed, ice_yield, ore_yield, health, power_factor, durability, expected_cycles_left, mines = ice and ore / ice only / ore only; the miner's own ore and ice speed factors; power while mining; hold_on_board), every Rocket Gas Collector (on, has_pipe_network), every Rocket Scanner (head_kind normal / surface / none, points and cycle from the prefab, what it can do), cargo (holds, slots, filled, free), gas and liquid tank litres, and collects (ore, ice, gas, chart/discover/survey, surface_scan). sites: the destination node 'to' and its discovered sites, else every charted node with a deposit; each with kind (ore, ice, gas: what a cycle digs or collects there), density, richness, size, survey_percent (past 200 % yields x1.1, past 1,000 % x1.25), depleted, cycle_time_s (10 s at density 0 to 6 s at density 10), base_units_per_cycle (round(baseline(size) x richness^1.6 x type factor), at least 1), stack_size, materials (ore prefabs with reagent grams per unit, ice with gas moles per unit, gas with moles per unit), machines (each miner and collector: collects, collected, units_per_cycle after the head's factor, cycle_s in whole 0.5 s ticks, units_per_hour, slots_per_hour, cycles_to_deplete with every miner on board, total_units_left, head_cycles_left, problems), collectable, units_per_hour, problems. Mismatches are named with the code: an ice head at an ore site gives 0 ore while each cycle still depletes the site and wears the head; miners skip gas sites; a collector gets nothing but at a gas site and only equalises with its pipe (a pump must fill tanks); no head, a worn head, the miner off, no cargo hold. collectable and not_collectable list the sites by name. Read only; no gateway.",
+      "class": "read",
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {
+          "rocket_id": {
+            "type": "string",
+            "description": "A rocket, its rocket network, or any of its parts. Omit when there is one rocket."
+          },
+          "to": {
+            "type": "string",
+            "description": "A node (name, map code or its number, reference id): that node's deposit and its discovered sites. Omit for every charted node with a deposit."
+          },
+          "collectable_only": {"type": "boolean", "description": "Only the sites this loadout collects at. Default false."}
+        },
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "rocket_id": {"type": "string"},
+          "rocket_name": {"type": "string"},
+          "loadout": {"type": "object"},
+          "collectable": {"type": "array"},
+          "not_collectable": {"type": "array"},
+          "sites": {"type": "array"},
+          "count": {"type": "integer"},
+          "notes": {"type": "array"}
+        }
+      },
+      "x-views": ["RocketMiningOptionsView"],
+      "x-shaping": "lists"
+    },
+    {
       "name": "rocket_status",
-      "description": "Every rocket (or rocket_id: the rocket's, its rocket network's or any part's id), read from the game. where: state (OnLaunchMount, Launching, InSpace, Landing), mode, current and target node (name, map code, code_value = the number the avionics' DestinationCode takes, charted), progress, altitude above the launch mount while launching or landing, velocity, acceleration, flight rule, and the route left to the target as the game will fly it (SpaceMapPathFinder asked afresh at each node, as the game does: fewest hops, not shortest, and through uncharted nodes too; a hop's distance is NodeTransit.GetDistance, twice the map distance, and is also its delta-v). mass: total, structure (1 kg per filled cargo slot included), gas, parts by kind with count and kg. fuel: each engine input network with pipe litres and mol, mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass). engines: on, powered, throttle, thrust, mol drawn last tick, exhaust, prefab max thrust, watts. thrust: current, max_recorded (the highest thrust ever seen, saved with the game, reset only while the rocket has no engine), prefab_max (2:1 premix at 215 K), max_expected (what the landing check uses: the larger), achievable_full (full-throttle thrust of the fuel as it is now, by the game's own combustion run on a copy) and recorded_exceeds_achievable (the check is optimistic: a landing it passes can crash). landing_check: the auto-land confidence the Rocket Control screen shows, by the game's own method, with band, min required thrust, mass, re-entry altitude, delta-v, gravity. cargo: holds with filled/slots and kg. power: battery charge, capacity, percent, load per 0.5 s tick (the game takes a device's watts off the batteries every tick), seconds left at this load, every device's watts now and when on, and whether AutoShutOff leaves it on. burn_time: the game's estimate, ours at full and at current throttle. checks (self_test, default true): the forecast's ported formulas against the game's own numbers now (confidence, apex, max expected thrust, fuel-line gas mass, thrust at the moles drawn last tick while burning, burn time while travelling), each with game, ours, ok. notes. Combustion (1.9.0+): engines burn at the game's rate (0.96), or at Terraforming Reloaded's (its RocketsBurnCompletely world option: 1.0) when that mod is loaded; {rate, source: game or terraforming_reloaded, note} is reported as thrust.combustion. Read only; no gateway.",
+      "description": "Every rocket (or rocket_id: the rocket's, its rocket network's or any part's id), read from the game. Every rocket design the game builds: all six engines, gas and liquid lines, payload bays, crew modules, miners, collectors, scanners. where: state (OnLaunchMount, Launching, InSpace, Landing), mode, current and target node (name, map code, code_value = the number the avionics' DestinationCode takes, charted), progress, altitude above the launch mount while launching or landing, velocity, acceleration, flight rule, and the route left to the target as the game will fly it (SpaceMapPathFinder asked afresh at each node: fewest hops, through uncharted nodes too; a hop's distance is twice the map distance and is also its delta-v). manned: someone sits in a Crew Module Chair (only launch mounts can be targeted). mass: total, structure (1 kg per filled cargo slot included), gas (gas and liquid in the rocket's pipes, tanks and engine chambers), payload_kg (payloads on bays), parts by kind with count and kg. fuel: each engine input network (input 1 and input 2 of every engine; a Pressure Fed Liquid Engine's input 2 is a heat exchanger, not fuel) with pipe litres and mol, total mol, liquid mol and litres, pipe gas kPa (what pressure-fed engines read), which engine inputs draw from it (feeds), mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass). engines: engine name, feed (its feed law with the game's numbers: Pumped Gas 18 mol x throttle; Pressure Fed Gas and Heavy by each input's gas pressure; Pumped Liquid 0.55 L x throttle split by Setting; Pressure Fed Liquid and Heavy 0.04-0.8 / 1.5 L by input 1's gas pressure plus a gas draw), input networks, missing_input, on, powered, throttle, thrust, mol drawn last tick, exhaust, prefab max thrust, watts, modelled. thrust: current, max_recorded, prefab_max, max_expected (what the landing check uses), achievable_full (every engine's first full-throttle tick on the lines as they are, by the game's own combustion on a copy) and recorded_exceeds_achievable. landing_check: the confidence the Rocket Control screen shows (ground pad's hop, world gravity). landing_at_pad: the check the game really makes at re-entry toward the target pad, else its home pad (pad, orbital: an Orbital Launch Mount uses gravity 1 m/s2, delta_v, confidence, band, min required thrust). collects: what the gear can bring home or do (ore, ice, gas, chart/discover/survey, surface_scan; rocket_mining_options has the detail). cargo: holds with filled/slots and kg. power: charge, capacity, percent, load per 0.5 s tick, seconds left, every device's watts now and when on, and whether AutoShutOff leaves it on. burn_time: the game's estimate, ours at full and at current throttle (every engine's feed law run tick by tick on a copy until nothing is drawn). checks (self_test, default true unless compact): the forecast's ported formulas against the game's own numbers now. notes. parts (parts: true): every hull piece and internal part with prefab, label, role (hull or internal), offset in metres from the engine mount in the mount's frame, rotation relative to the mount (as place_structure takes it) and what sits in its slots: enough to build the rocket again. compact: leaves out mass parts, fuel tanks, power devices and checks. explanations: what the thrust and landing numbers mean, once per reply. Combustion: the game's rate (0.96), or Terraforming Reloaded's when that mod is loaded (thrust.combustion). Read only; no gateway.",
       "class": "read",
       "cost": "instant",
       "params": {
         "type": "object",
         "properties": {
           "rocket_id": {"type": "string", "description": "A rocket, its rocket network, or any of its parts. Omit for every rocket."},
-          "self_test": {"type": "boolean", "description": "Compare the forecast's port with the game's own numbers. Default true."}
+          "self_test": {
+            "type": "boolean",
+            "description": "Compare the forecast's port with the game's own numbers. Default true (false with compact)."
+          },
+          "compact": {
+            "type": "boolean",
+            "description": "Short form: no mass parts, fuel tanks, power devices or checks. Default false."
+          },
+          "parts": {
+            "type": "boolean",
+            "description": "Every part with its pose relative to the engine mount and its slot contents. Default false."
+          }
         },
         "additionalProperties": false
       },
-      "reply": {"type": "object", "properties": {"rockets": {"type": "array"}, "count": {"type": "integer"}}},
+      "reply": {
+        "type": "object",
+        "properties": {"rockets": {"type": "array"}, "count": {"type": "integer"}, "explanations": {"type": "array"}}
+      },
       "x-views": ["RocketStatusListView"],
       "x-shaping": "lists"
     },

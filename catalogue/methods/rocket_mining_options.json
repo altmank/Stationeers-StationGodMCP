@@ -1,0 +1,36 @@
+{
+  "name": "rocket_mining_options",
+  "description": "What a rocket can collect, by the game's own mining formulas. loadout: every Rocket Miner (on, its drill head: name, speed, ice_yield, ore_yield, health, power_factor, durability, expected_cycles_left, mines = ice and ore / ice only / ore only; the miner's own ore and ice speed factors; power while mining; hold_on_board), every Rocket Gas Collector (on, has_pipe_network), every Rocket Scanner (head_kind normal / surface / none, points and cycle from the prefab, what it can do), cargo (holds, slots, filled, free), gas and liquid tank litres, and collects (ore, ice, gas, chart/discover/survey, surface_scan). sites: the destination node 'to' and its discovered sites, else every charted node with a deposit; each with kind (ore, ice, gas: what a cycle digs or collects there), density, richness, size, survey_percent (past 200 % yields x1.1, past 1,000 % x1.25), depleted, cycle_time_s (10 s at density 0 to 6 s at density 10), base_units_per_cycle (round(baseline(size) x richness^1.6 x type factor), at least 1), stack_size, materials (ore prefabs with reagent grams per unit, ice with gas moles per unit, gas with moles per unit), machines (each miner and collector: collects, collected, units_per_cycle after the head's factor, cycle_s in whole 0.5 s ticks, units_per_hour, slots_per_hour, cycles_to_deplete with every miner on board, total_units_left, head_cycles_left, problems), collectable, units_per_hour, problems. Mismatches are named with the code: an ice head at an ore site gives 0 ore while each cycle still depletes the site and wears the head; miners skip gas sites; a collector gets nothing but at a gas site and only equalises with its pipe (a pump must fill tanks); no head, a worn head, the miner off, no cargo hold. collectable and not_collectable list the sites by name. Read only; no gateway.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "rocket_id": {
+        "type": "string",
+        "description": "A rocket, its rocket network, or any of its parts. Omit when there is one rocket."
+      },
+      "to": {
+        "type": "string",
+        "description": "A node (name, map code or its number, reference id): that node's deposit and its discovered sites. Omit for every charted node with a deposit."
+      },
+      "collectable_only": {"type": "boolean", "description": "Only the sites this loadout collects at. Default false."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "rocket_id": {"type": "string"},
+      "rocket_name": {"type": "string"},
+      "loadout": {"type": "object"},
+      "collectable": {"type": "array"},
+      "not_collectable": {"type": "array"},
+      "sites": {"type": "array"},
+      "count": {"type": "integer"},
+      "notes": {"type": "array"}
+    }
+  },
+  "x-views": ["RocketMiningOptionsView"],
+  "x-shaping": "lists"
+}

@@ -138,7 +138,17 @@ internal sealed class FlightSimulator
         }
 
         craft.Power.OtherLoadW = previous;
-        craft.StructureMassKg += leg.AddCargoSlots + (float)leg.AddCargoKg;
+        craft.Power.Transfer(leg.BatteryJ);
+        for (int index = 0; index < leg.Fuel.Count; index++)
+        {
+            LineTransfer transfer = leg.Fuel[index];
+            if (transfer.Line >= 0 && transfer.Line < craft.Lines.Count)
+            {
+                craft.TransferFuel(transfer.Line, transfer.Moles);
+            }
+        }
+
+        craft.StructureMassKg = Math.Max(0f, craft.StructureMassKg + leg.AddCargoSlots + (float)leg.AddCargoKg);
         craft.GasMassKg = craft.CountedGasKg();
         tally.Seconds = leg.Seconds;
         return End(leg, LegOutcome.Parked.Instance, craft, tally);
@@ -234,7 +244,7 @@ internal sealed class FlightSimulator
             if (tick)
             {
                 detail.PowerLost |= !craft.Power.Powered;
-                detail.FuelRanOut |= craft.FuelMoles <= 1e-6;
+                detail.FuelRanOut |= craft.OutOfFuel;
             }
 
             // Rocket.SetRocketTargetPosition: the target moves at last step's velocity; a soft landing ends it.
@@ -325,20 +335,23 @@ internal sealed class FlightSimulator
 
         bool burn = craft.EnginesOn && craft.Power.Powered;
         float force = 0f;
-        for (int index = 0; index < craft.Lines.Count; index++)
+        // Every engine's OnPreAtmosphere (draw and burn), then every tank's OnAtmosphericTick (GameManager.cs:750-790).
+        for (int index = 0; index < craft.Engines.Count; index++)
         {
-            FuelLine line = craft.Lines[index];
+            EngineUnit engine = craft.Engines[index];
             if (burn)
             {
-                double drawn = line.Draw(craft.Throttle);
-                force += (float)(line.Burn.ForcePerMolN * drawn) * craft.ThrustScale;
+                force += (float)engine.Burn(craft.Throttle, craft.Lines) * craft.ThrustScale;
             }
             else
             {
-                line.ExhaustMoles = 0.0;
+                engine.Idle();
             }
+        }
 
-            line.Mix();
+        for (int index = 0; index < craft.Lines.Count; index++)
+        {
+            craft.Lines[index].Mix();
         }
 
         craft.Force = force;
@@ -352,7 +365,7 @@ internal sealed class FlightSimulator
 
     private static void RecordThrust(RocketCraft craft)
     {
-        if (craft.Lines.Count > 0)
+        if (craft.Engines.Count > 0)
         {
             craft.MaxRecordedThrust = Math.Max(craft.Force, craft.MaxRecordedThrust);
         }
@@ -368,9 +381,9 @@ internal sealed class FlightSimulator
 
     private static string StallReason(RocketCraft craft, string where)
     {
-        if (craft.FuelMoles <= 1e-6)
+        if (craft.OutOfFuel)
         {
-            return $"No fuel left {where}: the engines make no thrust.";
+            return $"No fuel left {where} that the engines' feed can take: they make no thrust.";
         }
 
         if (!craft.Power.Powered)
@@ -381,6 +394,12 @@ internal sealed class FlightSimulator
         if (craft.Throttle <= 0f)
         {
             return $"Throttle 0 {where}: the engines draw nothing.";
+        }
+
+        if (craft.Force <= 0f)
+        {
+            return $"The engines draw {where} but what they draw does not burn (no fuel and oxidiser together, or only " +
+                   "pressurant left): no thrust.";
         }
 
         return $"Thrust is below the rocket's weight {where}: it does not move, and burns fuel while it waits.";

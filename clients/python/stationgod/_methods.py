@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:b0ebfbf1e094af55448c0fb3b7e1c1cefaa6b790042b4545532902d7535d234a'
-MOD_VERSION = '1.12.1'
+CATALOGUE_HASH = 'sha256:c07d104ec9adc8d9a48ba532542131f0a3e1bff09789acef9820b9c69cf1dcca'
+MOD_VERSION = '1.13.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -12,9 +12,9 @@ READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections'
  'landing_pads', 'lint_layout', 'lint_rules', 'list_containers', 'list_devices', 'list_gateways', 'looking_at',
  'mod_info', 'network_snapshot', 'outer_frames', 'plan_cable_route', 'plan_chute_route', 'plan_pipe_route',
  'plan_removal', 'planet', 'plants', 'player_vitals', 'read_console', 'read_devices', 'read_logic',
- 'read_logic_many', 'read_memory', 'reagents', 'resolve_ic_selectors', 'rocket_forecast', 'rocket_status', 'rooms',
- 'sample_logic', 'solar_aim', 'thing_health', 'trader_contacts', 'trader_inventory', 'vault_contents', 'wall_map',
- 'water_sources', 'weather'])
+ 'read_logic_many', 'read_memory', 'reagents', 'resolve_ic_selectors', 'rocket_forecast', 'rocket_mining_options',
+ 'rocket_status', 'rooms', 'sample_logic', 'solar_aim', 'thing_health', 'trader_contacts', 'trader_inventory',
+ 'vault_contents', 'wall_map', 'water_sources', 'weather'])
 
 TABLE = {'catalogue': {'class': 'read',
                'class_when': [],
@@ -1098,6 +1098,10 @@ TABLE = {'catalogue': {'class': 'read',
                                 'park_load_w',
                                 'then_return',
                                 'return_to',
+                                'deploy_payload',
+                                'transfer_mol',
+                                'transfer_with',
+                                'transfer_battery_j',
                                 'fuel_mol',
                                 'fuel_temperature_k',
                                 'fuel_mix',
@@ -1105,6 +1109,7 @@ TABLE = {'catalogue': {'class': 'read',
                                 'throttle',
                                 'cargo_slots',
                                 'add_cargo_kg',
+                                'payload_kg',
                                 'battery_j',
                                 'battery_percent',
                                 'extra_load_w',
@@ -1114,12 +1119,21 @@ TABLE = {'catalogue': {'class': 'read',
                      'required': [],
                      'shaping': 'lists',
                      'protocol': False},
+ 'rocket_mining_options': {'class': 'read',
+                           'class_when': [],
+                           'effects': [],
+                           'paging': None,
+                           'duration': None,
+                           'params': ['rocket_id', 'to', 'collectable_only'],
+                           'required': [],
+                           'shaping': 'lists',
+                           'protocol': False},
  'rocket_status': {'class': 'read',
                    'class_when': [],
                    'effects': [],
                    'paging': None,
                    'duration': None,
-                   'params': ['rocket_id', 'self_test'],
+                   'params': ['rocket_id', 'self_test', 'compact', 'parts'],
                    'required': [],
                    'shaping': 'lists',
                    'protocol': False},
@@ -1891,19 +1905,26 @@ class Methods:
         """
         return self.call('rocket_flight_log', **{'action': action, 'rocket_id': rocket_id, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'offset': offset, 'limit': limit, 'every': every}, **options)
 
-    def rocket_forecast(self, *, rocket_id: str | None = None, to: str | None = None, profile: str | None = None, park_s: float | None = None, mine: bool | None = None, fill_holds: bool | None = None, add_cargo_slots: int | None = None, park_load_w: float | None = None, then_return: bool | None = None, return_to: str | None = None, fuel_mol: float | None = None, fuel_temperature_k: float | None = None, fuel_mix: dict | None = None, thrust_scale: float | None = None, throttle: float | None = None, cargo_slots: int | None = None, add_cargo_kg: float | None = None, battery_j: float | None = None, battery_percent: float | None = None, extra_load_w: float | None = None, min_confidence: float | None = None, limits: bool | None = None, column_check: bool | None = None, **options) -> dict:
+    def rocket_forecast(self, *, rocket_id: str | None = None, to: str | None = None, profile: str | None = None, park_s: float | None = None, mine: bool | None = None, fill_holds: bool | None = None, add_cargo_slots: int | None = None, park_load_w: float | None = None, then_return: bool | None = None, return_to: str | None = None, deploy_payload: bool | None = None, transfer_mol: float | None = None, transfer_with: str | None = None, transfer_battery_j: float | None = None, fuel_mol: float | None = None, fuel_temperature_k: float | None = None, fuel_mix: dict | None = None, thrust_scale: float | None = None, throttle: float | None = None, cargo_slots: int | None = None, add_cargo_kg: float | None = None, payload_kg: float | None = None, battery_j: float | None = None, battery_percent: float | None = None, extra_load_w: float | None = None, min_confidence: float | None = None, limits: bool | None = None, column_check: bool | None = None, **options) -> dict:
         """Fly a copy of a rocket to a node and report each leg; the game is not touched.
 
-        Class: read. Arguments: rocket_id, to, profile, park_s, mine, fill_holds, add_cargo_slots, park_load_w, then_return, return_to, fuel_mol, fuel_temperature_k, fuel_mix, thrust_scale, throttle, cargo_slots, add_cargo_kg, battery_j, battery_percent, extra_load_w, min_confidence, limits, column_check.
+        Class: read. Arguments: rocket_id, to, profile, park_s, mine, fill_holds, add_cargo_slots, park_load_w, then_return, return_to, deploy_payload, transfer_mol, transfer_with, transfer_battery_j, fuel_mol, fuel_temperature_k, fuel_mix, thrust_scale, throttle, cargo_slots, add_cargo_kg, payload_kg, battery_j, battery_percent, extra_load_w, min_confidence, limits, column_check.
         """
-        return self.call('rocket_forecast', **{'rocket_id': rocket_id, 'to': to, 'profile': profile, 'park_s': park_s, 'mine': mine, 'fill_holds': fill_holds, 'add_cargo_slots': add_cargo_slots, 'park_load_w': park_load_w, 'then_return': then_return, 'return_to': return_to, 'fuel_mol': fuel_mol, 'fuel_temperature_k': fuel_temperature_k, 'fuel_mix': fuel_mix, 'thrust_scale': thrust_scale, 'throttle': throttle, 'cargo_slots': cargo_slots, 'add_cargo_kg': add_cargo_kg, 'battery_j': battery_j, 'battery_percent': battery_percent, 'extra_load_w': extra_load_w, 'min_confidence': min_confidence, 'limits': limits, 'column_check': column_check}, **options)
+        return self.call('rocket_forecast', **{'rocket_id': rocket_id, 'to': to, 'profile': profile, 'park_s': park_s, 'mine': mine, 'fill_holds': fill_holds, 'add_cargo_slots': add_cargo_slots, 'park_load_w': park_load_w, 'then_return': then_return, 'return_to': return_to, 'deploy_payload': deploy_payload, 'transfer_mol': transfer_mol, 'transfer_with': transfer_with, 'transfer_battery_j': transfer_battery_j, 'fuel_mol': fuel_mol, 'fuel_temperature_k': fuel_temperature_k, 'fuel_mix': fuel_mix, 'thrust_scale': thrust_scale, 'throttle': throttle, 'cargo_slots': cargo_slots, 'add_cargo_kg': add_cargo_kg, 'payload_kg': payload_kg, 'battery_j': battery_j, 'battery_percent': battery_percent, 'extra_load_w': extra_load_w, 'min_confidence': min_confidence, 'limits': limits, 'column_check': column_check}, **options)
 
-    def rocket_status(self, *, rocket_id: str | None = None, self_test: bool | None = None, **options) -> dict:
+    def rocket_mining_options(self, *, rocket_id: str | None = None, to: str | None = None, collectable_only: bool | None = None, **options) -> dict:
+        """What a rocket can collect, by the game's own mining formulas.
+
+        Class: read. Arguments: rocket_id, to, collectable_only.
+        """
+        return self.call('rocket_mining_options', **{'rocket_id': rocket_id, 'to': to, 'collectable_only': collectable_only}, **options)
+
+    def rocket_status(self, *, rocket_id: str | None = None, self_test: bool | None = None, compact: bool | None = None, parts: bool | None = None, **options) -> dict:
         """Every rocket (or rocket_id: the rocket's, its rocket network's or any part's id), read from the game.
 
-        Class: read. Arguments: rocket_id, self_test.
+        Class: read. Arguments: rocket_id, self_test, compact, parts.
         """
-        return self.call('rocket_status', **{'rocket_id': rocket_id, 'self_test': self_test}, **options)
+        return self.call('rocket_status', **{'rocket_id': rocket_id, 'self_test': self_test, 'compact': compact, 'parts': parts}, **options)
 
     def rooms(self, *, reference_id: str | None = None, include_cells: bool | None = None, include_devices: bool | None = None, **options) -> dict:
         """The game's closed rooms measured cell by cell: every room in the world, or with reference_id only the room that thing (a device, item or player; an item in a slot counts where its outermost holder is) is in.

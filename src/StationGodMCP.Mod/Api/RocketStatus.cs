@@ -3,7 +3,8 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Atmospherics;
-using Assets.Scripts.Objects.Electrical;
+using Assets.Scripts.Inventory;
+using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Objects.Rockets;
 using StationGodMCP.Api.Shared;
@@ -11,42 +12,68 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Rockets;
+using UnityEngine;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// rocket_status: where each rocket is and goes, what it weighs, its fuel, engines, thrust, the auto-land confidence the
-/// avionics shows, cargo, power and burn time, all read from the game; plus checks of the forecast's port against the
-/// game's own numbers. Read only: every game method called here (GetAutoLandConfidenceRatio, GetApex,
-/// GetMaxExpectedThrust, TotalMass, GetThrust, SpaceMapPathFinder) only computes.
+/// rocket_status: where each rocket is and goes, what it weighs, its fuel lines, engines and their feed laws, thrust, the
+/// auto-land confidence the avionics shows and the one the game will really check at its pad, cargo, power, burn time
+/// and gear, all read from the game; plus checks of the forecast's port against the game's own numbers, and (parts)
+/// every part's pose relative to the engine mount. Read only: every game method called here only computes.
 /// </summary>
 internal static class RocketStatusApi
 {
+    private const string HowRecorded =
+        "thrust.max_recorded = the highest Rocket.GetThrust (all engines' Force) seen on any physics step since the " +
+        "rocket was built, saved with the game, reset to 0 only while the rocket has no engine (Rocket.cs:1982-1989, " +
+        "844, 885). The landing check uses max(max_recorded, first engine's prefab MaxThrust) (GetMaxExpectedThrust, " +
+        "Rocket.cs:2710-2721), never the thrust the fuel gives now: thrust.achievable_full is that, by the game's " +
+        "combustion on a copy of a full-throttle draw.";
+
+    private const string ScreenCheck =
+        "landing_check is what the Rocket Control screen shows (RocketAvionicsDevice.GetAutoLandConfidenceRatio: the " +
+        "ground pad's hop and the world's gravity, RocketAvionicsDevice.cs:1294-1300); landing_at_pad is the check the " +
+        "game makes as the rocket re-enters toward its pad, with that pad's hop and gravity (1 m/s2 at an orbital launch " +
+        "mount; Rocket.cs:2174-2188). A landing whose check is 0 is aborted back to orbit.";
+
     internal static RocketStatusListView Handle(Args args)
     {
         ThingId? id = args.OptionalThingId("rocket_id");
-        bool selfTest = args.OptionalBool("self_test") ?? true;
+        bool compact = args.OptionalBool("compact") ?? false;
+        bool selfTest = args.OptionalBool("self_test") ?? !compact;
+        bool withParts = args.OptionalBool("parts") ?? false;
         List<Rocket> rockets = id.HasValue ? new List<Rocket> { RocketLocator.Find(id.Value) } : RocketLocator.All();
         List<RocketStatusView> views = new List<RocketStatusView>(rockets.Count);
         for (int index = 0; index < rockets.Count; index++)
         {
-            views.Add(Describe(rockets[index], selfTest));
+            views.Add(Describe(rockets[index], selfTest, compact, withParts));
         }
 
-        return new RocketStatusListView(views);
+        List<string> explanations = new List<string>(3) { HowRecorded, ScreenCheck };
+        if (!compact)
+        {
+            explanations.Add("power: the game takes each device's watts off the batteries once per 0.5 s tick " +
+                             "(PowerTick.cs:88-150), so seconds_left = charge / load x 0.5.");
+        }
+
+        return new RocketStatusListView(views, explanations);
     }
 
-    internal static RocketStatusView Describe(Rocket rocket, bool selfTest)
+    internal static RocketStatusView Describe(Rocket rocket, bool selfTest, bool compact = false, bool withParts = false)
     {
         RocketParts parts = RocketParts.Of(rocket);
         List<string> notes = new List<string>(4);
         float profileAltitude = RoutePlanner.AltitudeOf(rocket.ReEntryProfile);
+        RocketCraft craft = RocketModel.Craft(parts, RocketWhatIfNone.Value);
         RocketStatusView view = new RocketStatusView(new ThingId(rocket.ReferenceId),
             new ThingId(rocket.RocketNetwork.ReferenceId), rocket.DisplayName, rocket.AutomatedLanding,
             rocket.AutomatedShutOff, rocket.ReEntryProfile.ToString(), profileAltitude, Where(rocket, notes),
-            Mass(rocket, parts), Fuel(parts), Engines(parts), Thrust(rocket, parts, notes),
-            LandingCheck(rocket, parts, profileAltitude), Cargo(parts), Power(parts), BurnTime(rocket, parts),
-            selfTest ? Checks(rocket, parts, profileAltitude) : new List<SelfCheckView>(), notes);
+            Mass(rocket, parts, compact), Fuel(parts, compact), Engines(parts), Thrust(rocket, craft, notes),
+            LandingCheck(rocket, parts, profileAltitude), Cargo(parts), Power(parts, compact),
+            BurnTime(rocket, parts, craft), selfTest ? Checks(rocket, parts, craft, profileAltitude) : null, notes,
+            rocket.IsManned, LandingAtPad(rocket, profileAltitude), MiningPlans.Loadout(parts).Collects,
+            withParts ? Poses(parts) : null);
         Notes(rocket, parts, notes);
         return view;
     }
@@ -84,11 +111,11 @@ internal static class RocketStatusApi
             rocket.FlightControlRule.ToString(), route, uncharted);
     }
 
-    private static RocketMassView Mass(Rocket rocket, RocketParts parts) =>
+    private static RocketMassView Mass(Rocket rocket, RocketParts parts, bool compact) =>
         new RocketMassView(rocket.TotalMass(), parts.Network.DryMass, parts.Network.GasMass, parts.CargoSlotsFilled,
-            parts.MassParts);
+            compact ? null : parts.MassParts, parts.PayloadKg);
 
-    private static List<FuelLineView> Fuel(RocketParts parts)
+    private static List<FuelLineView> Fuel(RocketParts parts, bool compact)
     {
         List<FuelLineView> lines = new List<FuelLineView>(parts.Lines.Count);
         for (int index = 0; index < parts.Lines.Count; index++)
@@ -96,28 +123,53 @@ internal static class RocketStatusApi
             FuelLineRead line = parts.Lines[index];
             Atmosphere pipe = line.Network.Atmosphere;
             double total = pipe.TotalMoles.ToDouble();
+            double liquid = pipe.GasMixture.GetTotalMolesLiquids.ToDouble();
+            double litres = pipe.TotalVolumeLiquids.ToDouble();
             List<FuelTankView> tanks = new List<FuelTankView>(line.Tanks.Count);
             for (int tank = 0; tank < line.Tanks.Count; tank++)
             {
                 FuelTankRead read = line.Tanks[tank];
                 double moles = read.Atmosphere.TotalMoles.ToDouble();
                 total += moles;
+                liquid += read.Atmosphere.GasMixture.GetTotalMolesLiquids.ToDouble();
+                litres += read.Atmosphere.TotalVolumeLiquids.ToDouble();
                 tanks.Add(new FuelTankView(new ThingId(read.Owner.ReferenceId), Names.Of(read.Owner),
                     read.Atmosphere.Volume.ToDouble(), moles, read.Atmosphere.Temperature.ToDouble(),
                     read.Atmosphere.PressureGassesAndLiquids.ToDouble(), read.Counted));
             }
 
             lines.Add(new FuelLineView(new ThingId(line.Network.ReferenceId), line.Engines.Count,
-                pipe.Volume.ToDouble(), pipe.TotalMoles.ToDouble(), total, pipe.Temperature.ToDouble(), Mix(pipe),
-                tanks));
+                pipe.Volume.ToDouble(), pipe.TotalMoles.ToDouble(), total, pipe.Temperature.ToDouble(), Mix(line),
+                compact ? null : tanks, liquid, litres, pipe.PressureGasses.ToDouble(), Feeds(parts, index)));
         }
 
         return lines;
     }
 
-    private static Dictionary<string, double> Mix(Atmosphere atmosphere)
+    private static List<string> Feeds(RocketParts parts, int line)
     {
-        FuelSample sample = FuelSample.Of(atmosphere);
+        List<string> feeds = new List<string>(2);
+        for (int index = 0; index < parts.EngineReads.Count; index++)
+        {
+            EngineRead read = parts.EngineReads[index];
+            string name = EngineSpecs.NameOf(read.ClassName);
+            if (read.Input1 == line)
+            {
+                feeds.Add($"{name} input 1");
+            }
+
+            if (read.Input2 == line)
+            {
+                feeds.Add($"{name} input 2");
+            }
+        }
+
+        return feeds;
+    }
+
+    private static Dictionary<string, double> Mix(FuelLineRead line)
+    {
+        FuelSample sample = line.Sample();
         double total = sample.Total;
         Dictionary<string, double> mix = new Dictionary<string, double>(4);
         for (int index = 0; index < sample.Moles.Length; index++)
@@ -133,52 +185,48 @@ internal static class RocketStatusApi
 
     private static List<RocketEngineView> Engines(RocketParts parts)
     {
-        List<RocketEngineView> engines = new List<RocketEngineView>(parts.Engines.Count);
-        for (int index = 0; index < parts.Engines.Count; index++)
+        List<RocketEngineView> engines = new List<RocketEngineView>(parts.EngineReads.Count);
+        for (int index = 0; index < parts.EngineReads.Count; index++)
         {
-            RocketEngineBase engine = parts.Engines[index];
-            object? input = GameMembers.EngineInputNetwork1.GetValue(engine);
+            EngineRead read = parts.EngineReads[index];
+            RocketEngineBase engine = read.Engine;
             engines.Add(new RocketEngineView(new ThingId(engine.ReferenceId), Names.Of(engine),
                 engine.GetType().Name, engine.OnOff, engine.Powered, engine.Throttle, engine.Force,
                 engine.PassedMoles.ToDouble(), engine.ExhaustVelocity, engine.ExhaustTemperature.ToDouble(),
                 engine.MaxThrust, engine.UsedPower,
-                input is Assets.Scripts.Networks.PipeNetwork network ? new ThingId(network.ReferenceId) : null,
-                engine is GovernedGasEngine));
+                read.Input1.HasValue ? new ThingId(parts.Lines[read.Input1.Value].Network.ReferenceId) : null,
+                read.Feed != null && read.MissingInput == null, EngineSpecs.NameOf(read.ClassName), read.Feed?.Law,
+                read.Input2.HasValue ? new ThingId(parts.Lines[read.Input2.Value].Network.ReferenceId) : null,
+                read.HeatExchange != null ? new ThingId(read.HeatExchange.ReferenceId) : null, read.MissingInput));
         }
 
         return engines;
     }
 
-    /// <summary>Full-throttle thrust of every fuel line's engines on the fuel as it is, by the game's combustion on a copy.</summary>
-    internal static double? AchievableFullThrust(RocketParts parts)
+    /// <summary>Full-throttle thrust of every engine on its lines as they are: the first tick's draw, by the game's combustion.</summary>
+    internal static double? AchievableFullThrust(RocketCraft craft)
     {
-        if (parts.Lines.Count == 0)
+        if (craft.Engines.Count == 0)
         {
             return null;
         }
 
+        RocketCraft copy = craft.Copy();
         double total = 0.0;
-        for (int index = 0; index < parts.Lines.Count; index++)
+        for (int index = 0; index < copy.Engines.Count; index++)
         {
-            FuelLineRead line = parts.Lines[index];
-            FuelSample sample = FuelSample.Of(line.Network.Atmosphere);
-            total += ThrustProbe.Burn(line.Engines[0], sample, FuelLine.MaxMolesPerTick).ForceN * line.Engines.Count;
+            total += copy.Engines[index].Burn(100f, copy.Lines);
         }
 
         return total;
     }
 
-    private static RocketThrustView Thrust(Rocket rocket, RocketParts parts, List<string> notes)
+    private static RocketThrustView Thrust(Rocket rocket, RocketCraft craft, List<string> notes)
     {
         float prefab = rocket.RocketNetwork.Engines.Count > 0 ? rocket.RocketNetwork.Engines[0].MaxThrust : 0f;
-        double? achievable = AchievableFullThrust(parts);
+        double? achievable = AchievableFullThrust(craft);
         RocketThrustView view = new RocketThrustView(rocket.GetThrust(), rocket.MaxRecordedThrust, prefab,
-            rocket.GetMaxExpectedThrust(), achievable,
-            "MaxRecordedThrust = the highest Rocket.GetThrust (all engines' Force) seen on any physics step since the " +
-            "rocket was built, saved with the game, reset to 0 only while the rocket has no engine (Rocket.cs:1982-1989, " +
-            "844, 885). The landing check uses max(MaxRecordedThrust, first engine's prefab MaxThrust at 215 K) " +
-            "(GetMaxExpectedThrust, Rocket.cs:2710-2721), never the thrust the fuel gives now.",
-            new CombustionView(CombustionRates.Current()));
+            rocket.GetMaxExpectedThrust(), achievable, null, new CombustionView(CombustionRates.Current()));
         if (view.RecordedExceedsAchievable)
         {
             notes.Add($"The landing check assumes {view.MaxExpectedN:0} N but the fuel now gives {view.AchievableFullN:0} N " +
@@ -213,12 +261,45 @@ internal static class RocketStatusApi
             FlightMath.ClampGravity(gravity), source);
     }
 
+    // The re-entry check toward the target pad, else the rocket's home pad (Rocket.cs:2174-2181): the hop down is
+    // twice the pad's connection distance (NodeTransit.GetDistance), gravity -1 at an orbital mount.
+    private static LandingAtPadView? LandingAtPad(Rocket rocket, float profileAltitude)
+    {
+        SpaceMapNode? pad = SpaceRoutes.IsPad(rocket.TargetNode) ? rocket.TargetNode : null;
+        if (pad == null)
+        {
+            try
+            {
+                pad = SpaceRoutes.ResolveFor("pad", rocket);
+            }
+            catch (ApiException)
+            {
+                return null;
+            }
+        }
+
+        if (pad?.ParentConnection == null)
+        {
+            return null;
+        }
+
+        bool orbital = pad.Owner != null && pad.Owner.IsOrbital;
+        float deltaV = pad.ParentConnection.Distance() * 2f;
+        float gravity = FlightMath.ClampGravity(orbital ? -1f : WorldSetting.Current.Gravity);
+        ConfidenceReading reading = FlightMath.Confidence(rocket.AutomatedLanding, deltaV, gravity, profileAltitude,
+            rocket.GetMaxExpectedThrust(), rocket.TotalMass());
+        return new LandingAtPadView(SpaceRoutes.NameOf(pad), orbital, reading.Ratio,
+            FlightMath.ConfidenceBand(reading.Ratio),
+            float.IsInfinity(reading.MinRequiredThrust) ? null : reading.MinRequiredThrust, rocket.GetMaxExpectedThrust(),
+            rocket.TotalMass(), profileAltitude, deltaV, gravity);
+    }
+
     private static List<CargoHoldView> Cargo(RocketParts parts)
     {
         List<CargoHoldView> holds = new List<CargoHoldView>(parts.Holds.Count);
         for (int index = 0; index < parts.Holds.Count; index++)
         {
-            RocketChuteStorage hold = parts.Holds[index];
+            Assets.Scripts.Objects.Electrical.RocketChuteStorage hold = parts.Holds[index];
             holds.Add(new CargoHoldView(new ThingId(hold.ReferenceId), Names.Of(hold), RocketParts.FilledSlots(hold),
                 RocketParts.Slots(hold), hold.MassContribution));
         }
@@ -226,7 +307,7 @@ internal static class RocketStatusApi
         return holds;
     }
 
-    private static RocketPowerView Power(RocketParts parts)
+    private static RocketPowerView Power(RocketParts parts, bool compact)
     {
         double charge = 0.0;
         double capacity = 0.0;
@@ -252,30 +333,20 @@ internal static class RocketStatusApi
                 device.Device.OnOff, device.NowW, device.OnW, device.StaysOnAtArrival));
         }
 
-        return new RocketPowerView(charge, capacity, load, engines, devices);
+        return new RocketPowerView(charge, capacity, load, engines, compact ? null : devices);
     }
 
-    private static BurnTimeView BurnTime(Rocket rocket, RocketParts parts)
+    // The game's own estimate, and ours: the engines' feed laws run tick by tick on a copy until nothing is drawn.
+    private static BurnTimeView BurnTime(Rocket rocket, RocketParts parts, RocketCraft craft)
     {
-        double fuel = 0.0;
-        double full = 0.0;
-        for (int index = 0; index < parts.Lines.Count; index++)
-        {
-            FuelLineRead line = parts.Lines[index];
-            fuel += LineMoles(line) * FuelShare(line.Network.Atmosphere);
-            full += line.Engines.Count * FuelLine.MaxMolesPerTick;
-        }
-
+        double tick = Assets.Scripts.GameManager.GameTickSpeedSeconds;
         float throttle = RocketModel.FirstThrottle(parts);
-        double? fullSeconds = full > 0.0 ? fuel / full * Assets.Scripts.GameManager.GameTickSpeedSeconds : null;
-        double? nowSeconds = full > 0.0 && throttle > 0f
-            ? fuel / (full * throttle / 100.0) * Assets.Scripts.GameManager.GameTickSpeedSeconds
-            : null;
-        return new BurnTimeView(rocket.EstimatedRemainingBurnTimeSeconds, fullSeconds, nowSeconds);
+        return new BurnTimeView(rocket.EstimatedRemainingBurnTimeSeconds, Pure.Rockets.BurnTime.Seconds(craft, 100f, tick),
+            throttle > 0f ? Pure.Rockets.BurnTime.Seconds(craft, throttle, tick) : null);
     }
 
-    // The kg RocketNetwork.CalculateGasMass counts for one fuel line: its pipe, the tanks it lists, the engines' chambers.
-    private static double LineGasKg(FuelLineRead line, Networks.RocketNetwork network)
+    // The kg RocketNetwork.CalculateGasMass counts for one fuel line: its pipe and the tanks it lists.
+    private static double LineGasKg(FuelLineRead line)
     {
         double grams = line.Network.Atmosphere.GasMixture.TotalMassGassesAndLiquidsGrams();
         for (int index = 0; index < line.Tanks.Count; index++)
@@ -283,15 +354,6 @@ internal static class RocketStatusApi
             if (line.Tanks[index].Counted)
             {
                 grams += line.Tanks[index].Atmosphere.GasMixture.TotalMassGassesAndLiquidsGrams();
-            }
-        }
-
-        for (int index = 0; index < line.Engines.Count; index++)
-        {
-            Atmosphere? chamber = line.Engines[index].InternalAtmosphere;
-            if (chamber != null && network.RocketAtmospheres.Contains(chamber))
-            {
-                grams += chamber.GasMixture.TotalMassGassesAndLiquidsGrams();
             }
         }
 
@@ -321,7 +383,7 @@ internal static class RocketStatusApi
     }
 
     /// <summary>The port against the game's own methods, on the rocket as it is now.</summary>
-    private static List<SelfCheckView> Checks(Rocket rocket, RocketParts parts, float profileAltitude)
+    private static List<SelfCheckView> Checks(Rocket rocket, RocketParts parts, RocketCraft craft, float profileAltitude)
     {
         List<SelfCheckView> checks = new List<SelfCheckView>(6);
         float deltaV = SpaceMap.Current.DistanceToOrbit * 2f;
@@ -337,25 +399,25 @@ internal static class RocketStatusApi
         float acceleration = rocket.RocketState == RocketState.Landing ? rocket.Acceleration : 1.5f;
         checks.Add(new SelfCheckView("apex_m", Rocket.GetApex(altitude, velocity, acceleration),
             FlightMath.Apex(altitude, velocity, acceleration), 1e-3));
-
-        RocketCraft craft = RocketModel.Craft(parts, RocketWhatIfNone.Value);
         checks.Add(new SelfCheckView("max_expected_thrust_n", rocket.GetMaxExpectedThrust(), craft.MaxExpectedThrust,
             0.01));
         for (int index = 0; index < parts.Lines.Count && index < craft.Lines.Count; index++)
         {
-            double measured = LineGasKg(parts.Lines[index], parts.Network);
+            double measured = LineGasKg(parts.Lines[index]);
             checks.Add(new SelfCheckView($"fuel_line_gas_kg (network {parts.Lines[index].Network.ReferenceId})",
                 measured, craft.Lines[index].CountedMassKg, 0.5 + measured * 0.01));
         }
 
-        for (int index = 0; index < parts.Lines.Count; index++)
+        // A Pumped Gas Engine's last draw is one make-up from one input: the probe can replay it exactly.
+        for (int index = 0; index < parts.EngineReads.Count; index++)
         {
-            FuelLineRead line = parts.Lines[index];
-            RocketEngineBase engine = line.Engines[0];
+            EngineRead read = parts.EngineReads[index];
+            RocketEngineBase engine = read.Engine;
             double passed = engine.PassedMoles.ToDouble();
-            if (engine.Force > 0f && passed > 0.0)
+            if (read.Feed is PumpedGasFeed && read.Input1.HasValue && engine.Force > 0f && passed > 0.0)
             {
-                double probe = ThrustProbe.Burn(engine, FuelSample.Of(line.Network.Atmosphere), passed).ForceN;
+                double probe = ThrustProbe.Burn(engine, FuelSample.Of(parts.Lines[read.Input1.Value].Network.Atmosphere),
+                    passed).ForceN;
                 checks.Add(new SelfCheckView($"thrust_n_at_{passed:0.##}_mol (engine {engine.ReferenceId})",
                     engine.Force, probe, engine.Force * 0.01));
             }
@@ -368,10 +430,11 @@ internal static class RocketStatusApi
             for (int index = 0; index < parts.Lines.Count; index++)
             {
                 fuel += LineMoles(parts.Lines[index]) * FuelShare(parts.Lines[index].Network.Atmosphere);
-                for (int engine = 0; engine < parts.Lines[index].Engines.Count; engine++)
-                {
-                    drawn += parts.Lines[index].Engines[engine].PassedMoles.ToDouble();
-                }
+            }
+
+            for (int index = 0; index < parts.Engines.Count; index++)
+            {
+                drawn += parts.Engines[index].PassedMoles.ToDouble();
             }
 
             if (drawn > 0.0)
@@ -385,12 +448,69 @@ internal static class RocketStatusApi
         return checks;
     }
 
+    // Every hull piece and internal part with its offset and turn in the engine mount's frame (the anchor RocketNetwork
+    // measures RocketData offsets from, RocketNetwork.cs:350-363), and what sits in its slots.
+    private static List<PartPoseView> Poses(RocketParts parts)
+    {
+        List<PartPoseView> poses = new List<PartPoseView>(parts.Network.StructureList.Count + parts.Network.Internals.Count);
+        Thing? anchor = parts.Network.Anchor;
+        Vector3 origin = anchor != null ? anchor.ThingTransformPosition : Vector3.zero;
+        Quaternion turn = anchor != null ? Quaternion.Inverse(anchor.ThingTransformRotation) : Quaternion.identity;
+        for (int index = 0; index < parts.Network.StructureList.Count; index++)
+        {
+            if (parts.Network.StructureList[index] is Thing piece && !piece.IsBeingDestroyed)
+            {
+                poses.Add(Pose(piece, "hull", origin, turn));
+            }
+        }
+
+        for (int index = 0; index < parts.Network.Internals.Count; index++)
+        {
+            if (parts.Network.Internals[index] is Thing part && !part.IsBeingDestroyed)
+            {
+                poses.Add(Pose(part, "internal", origin, turn));
+            }
+        }
+
+        return poses;
+    }
+
+    private static PartPoseView Pose(Thing thing, string role, Vector3 origin, Quaternion turn)
+    {
+        Vector3 offset = turn * (thing.ThingTransformPosition - origin);
+        List<string>? contents = null;
+        if (thing.Slots != null)
+        {
+            for (int index = 0; index < thing.Slots.Count; index++)
+            {
+                DynamicThing? item = thing.Slots[index]?.Get();
+                if (item != null)
+                {
+                    contents ??= new List<string>(2);
+                    contents.Add(item.PrefabName);
+                }
+            }
+        }
+
+        return new PartPoseView(new ThingId(thing.ReferenceId), thing.PrefabName, Labels.CustomNameOf(thing), role,
+            offset.x, offset.y, offset.z, Orientations.Of(turn * thing.ThingTransformRotation), contents);
+    }
+
     private static void Notes(Rocket rocket, RocketParts parts, List<string> notes)
     {
         for (int index = 0; index < parts.Unmodelled.Count; index++)
         {
-            notes.Add($"{Names.Of(parts.Unmodelled[index])} is a {parts.Unmodelled[index].GetType().Name}: " +
-                      "rocket_forecast flies only the Pumped Gas Engine (GovernedGasEngine).");
+            notes.Add($"{Names.Of(parts.Unmodelled[index])} is a {parts.Unmodelled[index].GetType().Name}, none of the " +
+                      "game's six engine classes: rocket_forecast refuses it.");
+        }
+
+        for (int index = 0; index < parts.EngineReads.Count; index++)
+        {
+            if (parts.EngineReads[index].MissingInput != null)
+            {
+                notes.Add($"{Names.Of(parts.EngineReads[index].Engine)}: {parts.EngineReads[index].MissingInput}; the " +
+                          "game keeps it inoperable (no thrust).");
+            }
         }
 
         bool parked = rocket.RocketState == RocketState.InSpace && rocket.Progress == 0f;
@@ -412,6 +532,11 @@ internal static class RocketStatusApi
         if (rocket.TargetNode != null && !rocket.TargetNode.IsCharted)
         {
             notes.Add("The target is uncharted.");
+        }
+
+        if (rocket.IsManned)
+        {
+            notes.Add("Manned: only launch mounts (ground or orbital) can be targeted (Rocket.cs:1871-1885).");
         }
     }
 }

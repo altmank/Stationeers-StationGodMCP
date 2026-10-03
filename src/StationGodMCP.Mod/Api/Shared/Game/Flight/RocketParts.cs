@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.Networks;
@@ -11,10 +12,11 @@ using Networks;
 using Objects.Items;
 using Objects.Rockets;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Rockets;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
 
-/// <summary>A tank on an engine's fuel line, with the atmosphere it holds and whether the rocket counts it for mass.</summary>
+/// <summary>A tank on a fuel line, with the atmosphere it holds and whether the rocket counts it for mass.</summary>
 internal sealed class FuelTankRead
 {
     internal FuelTankRead(Thing owner, Atmosphere atmosphere, bool counted)
@@ -31,7 +33,7 @@ internal sealed class FuelTankRead
     internal bool Counted { get; }
 }
 
-/// <summary>A pipe network rocket engines draw from (RocketEngineBase._inputNetwork1), its engines and tanks.</summary>
+/// <summary>A pipe network rocket engines draw from (an engine's _inputNetwork1 or _inputNetwork2), its engines and tanks.</summary>
 internal sealed class FuelLineRead
 {
     internal FuelLineRead(PipeNetwork network)
@@ -41,9 +43,63 @@ internal sealed class FuelLineRead
 
     internal PipeNetwork Network { get; }
 
+    /// <summary>Engines drawing from it (on either input).</summary>
     internal List<RocketEngineBase> Engines { get; } = new List<RocketEngineBase>(2);
 
     internal List<FuelTankRead> Tanks { get; } = new List<FuelTankRead>(2);
+
+    /// <summary>The pipe and every tank on it, gas and liquid, as one fuel sample.</summary>
+    internal FuelSample Sample()
+    {
+        FuelSample sample = FuelSample.Of(Network.Atmosphere);
+        for (int index = 0; index < Tanks.Count; index++)
+        {
+            sample = sample.Plus(FuelSample.Of(Tanks[index].Atmosphere));
+        }
+
+        return sample;
+    }
+}
+
+/// <summary>An engine, its feed law (EngineSpecs) and the fuel lines its inputs are on.</summary>
+internal sealed class EngineRead
+{
+    internal EngineRead(RocketEngineBase engine, string className, EngineFeed? feed, int? input1, int? input2,
+        PipeNetwork? heatExchange)
+    {
+        Engine = engine;
+        ClassName = className;
+        Feed = feed;
+        Input1 = input1;
+        Input2 = input2;
+        HeatExchange = heatExchange;
+    }
+
+    internal RocketEngineBase Engine { get; }
+
+    /// <summary>The game class the feed law was chosen by (the engine's class, or the nearest known base class).</summary>
+    internal string ClassName { get; }
+
+    /// <summary>Null when no class in its chain is one of the six engines.</summary>
+    internal EngineFeed? Feed { get; }
+
+    internal int? Input1 { get; }
+
+    /// <summary>Input 2's fuel line, when input 2 carries propellant and is connected.</summary>
+    internal int? Input2 { get; }
+
+    /// <summary>The Pressure Fed Liquid Engines' input 2: a heat exchanger, not propellant.</summary>
+    internal PipeNetwork? HeatExchange { get; }
+
+    /// <summary>Why the engine cannot burn, from its IsOperable inputs; null when its inputs are there.</summary>
+    internal string? MissingInput =>
+        Feed == null
+            ? null
+            : Input1 == null
+                ? "input 1 has no pipe network"
+                : Feed.NeedsInput2 && Input2 == null
+                    ? "input 2 has no pipe network (this engine needs both)"
+                    : null;
 }
 
 /// <summary>A powered device on the batteries' outputs: what it draws now and while on.</summary>
@@ -88,14 +144,33 @@ internal sealed class RocketParts
 
     internal List<RocketEngineBase> Engines { get; } = new List<RocketEngineBase>(2);
 
-    /// <summary>Engines whose class rocket_forecast does not fly.</summary>
+    internal List<EngineRead> EngineReads { get; } = new List<EngineRead>(2);
+
+    /// <summary>Engines whose class is none of the six the forecast knows (a mod's engine).</summary>
     internal List<RocketEngineBase> Unmodelled { get; } = new List<RocketEngineBase>();
 
-    internal List<FuelLineRead> Lines { get; } = new List<FuelLineRead>(1);
+    internal List<FuelLineRead> Lines { get; } = new List<FuelLineRead>(2);
 
     internal List<Battery> Batteries { get; } = new List<Battery>(2);
 
     internal List<RocketChuteStorage> Holds { get; } = new List<RocketChuteStorage>(2);
+
+    internal List<RocketMiner> Miners { get; } = new List<RocketMiner>(2);
+
+    internal List<RocketGasCollector> Collectors { get; } = new List<RocketGasCollector>(1);
+
+    internal List<RocketScanner> Scanners { get; } = new List<RocketScanner>(1);
+
+    internal List<RocketPayloadBay> PayloadBays { get; } = new List<RocketPayloadBay>(1);
+
+    internal List<CrewModuleChair> Chairs { get; } = new List<CrewModuleChair>(2);
+
+    internal List<RocketGasUmbilicalFemale> FluidSockets { get; } = new List<RocketGasUmbilicalFemale>(2);
+
+    internal List<RocketPowerUmbilicalFemale> PowerSockets { get; } = new List<RocketPowerUmbilicalFemale>(1);
+
+    /// <summary>Tanks and canister storage on no engine line (spare tanks, cargo gas or liquid).</summary>
+    internal List<Thing> OtherTanks { get; } = new List<Thing>(2);
 
     internal List<PowerLoadRead> Loads { get; } = new List<PowerLoadRead>(16);
 
@@ -139,10 +214,46 @@ internal sealed class RocketParts
         }
     }
 
-    /// <summary>RocketChuteStorage.CurrentIndex less its INDEX_OFFSET of 2 (RocketChuteStorage.cs:20, 30).</summary>
-    internal static int FilledSlots(RocketChuteStorage hold) => System.Math.Max(0, hold.CurrentIndex - 2);
+    /// <summary>The payloads in the bays, kg (RocketPayload.MassContribution: 200, RocketPayload.cs:20).</summary>
+    internal double PayloadKg
+    {
+        get
+        {
+            double total = 0.0;
+            for (int index = 0; index < PayloadBays.Count; index++)
+            {
+                IRocketPayload? payload = PayloadBays[index].Payload;
+                if (payload != null)
+                {
+                    total += payload.MassContribution;
+                }
+            }
 
-    internal static int Slots(RocketChuteStorage hold) => System.Math.Max(0, hold.Slots.Count - 2);
+            return total;
+        }
+    }
+
+    /// <summary>RocketChuteStorage.CurrentIndex less its INDEX_OFFSET of 2 (RocketChuteStorage.cs:20, 30).</summary>
+    internal static int FilledSlots(RocketChuteStorage hold) => Math.Max(0, hold.CurrentIndex - 2);
+
+    internal static int Slots(RocketChuteStorage hold) => Math.Max(0, hold.Slots.Count - 2);
+
+    /// <summary>The engine class whose feed law applies: the engine's own, else the nearest known base class.</summary>
+    internal static string EngineClassOf(RocketEngineBase engine)
+    {
+        for (Type? type = engine.GetType(); type != null && type != typeof(RocketEngineBase); type = type.BaseType)
+        {
+            if (EngineSpecs.FeedOf(type.Name, 0.0, 0f) != null)
+            {
+                return type.Name;
+            }
+        }
+
+        return engine.GetType().Name;
+    }
+
+    internal static RocketMiningDrillHead? HeadOf(RocketMiner miner) =>
+        GameMembers.RocketMinerHead.GetValue(miner) as RocketMiningDrillHead;
 
     private void Read()
     {
@@ -155,27 +266,7 @@ internal sealed class RocketParts
                 continue;
             }
 
-            switch (part)
-            {
-                case RocketEngineBase engine:
-                    Engines.Add(engine);
-                    if (!(engine is GovernedGasEngine))
-                    {
-                        Unmodelled.Add(engine);
-                    }
-
-                    break;
-                case Battery battery:
-                    Batteries.Add(battery);
-                    break;
-                case RocketChuteStorage hold:
-                    Holds.Add(hold);
-                    break;
-                case RocketAvionicsDevice avionics:
-                    Avionics ??= avionics;
-                    break;
-            }
-
+            Sort(part);
             if (part is IRocketMassContributor contributor)
             {
                 Count(mass, thing, contributor.MassContribution);
@@ -198,7 +289,53 @@ internal sealed class RocketParts
 
         MassParts.Sort(static (a, b) => b.Kg.CompareTo(a.Kg));
         ReadLines();
+        ReadOtherTanks();
         ReadLoads();
+    }
+
+    private void Sort(IRocketInternals part)
+    {
+        switch (part)
+        {
+            case RocketEngineBase engine:
+                Engines.Add(engine);
+                if (EngineSpecs.FeedOf(EngineClassOf(engine), 0.0, 0f) == null)
+                {
+                    Unmodelled.Add(engine);
+                }
+
+                break;
+            case Battery battery:
+                Batteries.Add(battery);
+                break;
+            case RocketChuteStorage hold:
+                Holds.Add(hold);
+                break;
+            case RocketAvionicsDevice avionics:
+                Avionics ??= avionics;
+                break;
+            case RocketMiner miner:
+                Miners.Add(miner);
+                break;
+            case RocketGasCollector collector:
+                Collectors.Add(collector);
+                break;
+            case RocketScanner scanner:
+                Scanners.Add(scanner);
+                break;
+            case RocketPayloadBay bay:
+                PayloadBays.Add(bay);
+                break;
+            case CrewModuleChair chair:
+                Chairs.Add(chair);
+                break;
+            case RocketGasUmbilicalFemale socket:
+                FluidSockets.Add(socket);
+                break;
+            case RocketPowerUmbilicalFemale power:
+                PowerSockets.Add(power);
+                break;
+        }
     }
 
     private static void Count(Dictionary<string, MassTally> mass, Thing thing, float kg)
@@ -219,36 +356,56 @@ internal sealed class RocketParts
         tally.Kg += kg;
     }
 
-    // Each engine's input network, the tanks feeding it: Tank (DeviceInternal) outputs into it, GasTankStorage holds
-    // canisters mixed with its ConnectedPipeNetworks (GasTankStorage.cs:108-143).
+    // Each engine's input networks (RocketEngineBase._inputNetwork1 / _inputNetwork2) and the tanks on them: a Tank
+    // (DeviceInternal) outputs into it, a Gas/Liquid Tank Storage mixes its canisters with its ConnectedPipeNetworks
+    // (GasTankStorage.cs:108-143). Input 2 of a Pressure Fed Liquid Engine is a heat exchanger, not a fuel line.
     private void ReadLines()
     {
         for (int index = 0; index < Engines.Count; index++)
         {
             RocketEngineBase engine = Engines[index];
-            if (!(GameMembers.EngineInputNetwork1.GetValue(engine) is PipeNetwork input) || input.Atmosphere == null)
-            {
-                continue;
-            }
-
-            FuelLineRead? line = null;
-            for (int existing = 0; existing < Lines.Count; existing++)
-            {
-                if (ReferenceEquals(Lines[existing].Network, input))
-                {
-                    line = Lines[existing];
-                }
-            }
-
-            if (line == null)
-            {
-                line = new FuelLineRead(input);
-                Lines.Add(line);
-                AddTanks(line);
-            }
-
-            line.Engines.Add(engine);
+            string className = EngineClassOf(engine);
+            EngineFeed? feed = EngineSpecs.FeedOf(className, engine.PressurePerTick.ToDouble(), engine.OutputSetting);
+            PipeNetwork? first = NetworkOf(GameMembers.EngineInputNetwork1.GetValue(engine));
+            PipeNetwork? second = NetworkOf(GameMembers.EngineInputNetwork2.GetValue(engine));
+            bool secondIsFuel = feed == null || feed.Input2IsPropellant;
+            int? input1 = first != null ? LineIndex(first, engine) : null;
+            int? input2 = second != null && secondIsFuel ? LineIndex(second, engine) : null;
+            EngineReads.Add(new EngineRead(engine, className, feed, input1, input2, secondIsFuel ? null : second));
         }
+    }
+
+    private static PipeNetwork? NetworkOf(object? value) =>
+        value is PipeNetwork network && network.Atmosphere != null ? network : null;
+
+    private int LineIndex(PipeNetwork network, RocketEngineBase engine)
+    {
+        for (int index = 0; index < Lines.Count; index++)
+        {
+            if (ReferenceEquals(Lines[index].Network, network))
+            {
+                if (!Lines[index].Engines.Contains(engine))
+                {
+                    Lines[index].Engines.Add(engine);
+                }
+
+                return index;
+            }
+        }
+
+        FuelLineRead line = new FuelLineRead(network);
+        line.Engines.Add(engine);
+        AddTanks(line);
+        Lines.Add(line);
+        return Lines.Count - 1;
+    }
+
+    /// <summary>A pipe network on this rocket with the tanks on it (not necessarily an engine line).</summary>
+    internal FuelLineRead ContentsOf(PipeNetwork network)
+    {
+        FuelLineRead line = new FuelLineRead(network);
+        AddTanks(line);
+        return line;
     }
 
     private void AddTanks(FuelLineRead line)
@@ -275,6 +432,39 @@ internal sealed class RocketParts
                 }
             }
         }
+    }
+
+    private void ReadOtherTanks()
+    {
+        for (int index = 0; index < Network.Internals.Count; index++)
+        {
+            IRocketInternals part = Network.Internals[index];
+            if ((part is Tank || part is GasTankStorage) && part is Thing thing && !OnALine(thing))
+            {
+                OtherTanks.Add(thing);
+            }
+        }
+    }
+
+    private bool OnALine(Thing thing)
+    {
+        for (int line = 0; line < Lines.Count; line++)
+        {
+            if (thing is GasTankStorage storage && storage.ConnectedPipeNetworks.Contains(Lines[line].Network))
+            {
+                return true;
+            }
+
+            for (int tank = 0; tank < Lines[line].Tanks.Count; tank++)
+            {
+                if (ReferenceEquals(Lines[line].Tanks[tank].Owner, thing))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     // Every powered device on a battery's output network: what Device.GetUsedPower gives now, and with it on
@@ -304,7 +494,7 @@ internal sealed class RocketParts
                 continue;
             }
 
-            double now = System.Math.Max(0f, device.GetUsedPower(power));
+            double now = Math.Max(0f, device.GetUsedPower(power));
             double on = device.UsedPower * HeadMultiplier(device);
             bool shutOff = avionicsData != null && device.HasOnOffState && avionicsData.DataDeviceList.Contains(device) &&
                            !(device is RocketAvionicsDevice) && !(device is RocketCircuitHousing);
@@ -313,7 +503,7 @@ internal sealed class RocketParts
     }
 
     private static float HeadMultiplier(Device device) =>
-        device is RocketMiner miner && GameMembers.RocketMinerHead.GetValue(miner) is RocketMiningDrillHead head
+        device is RocketMiner miner && HeadOf(miner) is RocketMiningDrillHead head
             ? head.PowerConsumptionMultiplier
             : 1f;
 

@@ -35,6 +35,9 @@ internal sealed class RocketWhatIf
 
     internal double AddCargoKg { get; private set; }
 
+    /// <summary>The payloads in the bays together (replaces what is attached now).</summary>
+    internal double? PayloadKg { get; private set; }
+
     internal double? BatteryJ { get; private set; }
 
     internal double? BatteryPercent { get; private set; }
@@ -50,6 +53,7 @@ internal sealed class RocketWhatIf
             Throttle = (float?)Ranged(args, "throttle", 0.0, 100.0),
             CargoSlots = args.OptionalInt("cargo_slots", 0, 100000),
             AddCargoKg = NonNegative(args, "add_cargo_kg") ?? 0.0,
+            PayloadKg = NonNegative(args, "payload_kg"),
             BatteryJ = NonNegative(args, "battery_j"),
             BatteryPercent = Ranged(args, "battery_percent", 0.0, 100.0),
             ExtraLoadW = NonNegative(args, "extra_load_w") ?? 0.0,
@@ -66,7 +70,8 @@ internal sealed class RocketWhatIf
                     property.Value.Value<double>() < 0.0)
                 {
                     throw ApiErrors.InvalidArgument(
-                        $"fuel_mix.{property.Name}: give a gas name (e.g. Methane, Oxygen) and a fraction of 0 or more.");
+                        $"fuel_mix.{property.Name}: give a gas or liquid name (e.g. Methane, Oxygen, LiquidHydrazine) " +
+                        "and a fraction of 0 or more.");
                 }
 
                 fractions[index] = property.Value.Value<double>();
@@ -114,17 +119,18 @@ internal sealed class RocketWhatIf
     {
         if (FuelMol.HasValue)
         {
-            into.Add($"what-if: fuel set to {FuelMol.Value:0} mol in the same proportions across the tanks and pipe");
+            into.Add($"what-if: fuel set to {FuelMol.Value:0} mol in the same proportions across the lines, tanks and pipes");
         }
 
         if (FuelTemperatureK.HasValue)
         {
-            into.Add($"what-if: fuel at {FuelTemperatureK.Value:0} K (thrust per mole re-measured by the game's combustion)");
+            into.Add($"what-if: fuel at {FuelTemperatureK.Value:0} K (thrust re-measured by the game's combustion)");
         }
 
         if (FuelMix != null)
         {
-            into.Add("what-if: fuel mix replaced (thrust per mole re-measured by the game's combustion)");
+            into.Add("what-if: every fuel line's mix replaced, each container keeping its moles, gas and liquid split " +
+                     "by the mix (thrust re-measured by the game's combustion)");
         }
 
         if (Math.Abs(ThrustScale - 1f) > 1e-6f)
@@ -140,6 +146,12 @@ internal sealed class RocketWhatIf
         if (CargoSlots.HasValue || AddCargoKg > 0.0)
         {
             into.Add($"what-if: cargo {(CargoSlots.HasValue ? CargoSlots.Value + " filled slots" : "as loaded")} plus {AddCargoKg:0} kg");
+        }
+
+        if (PayloadKg.HasValue)
+        {
+            into.Add($"what-if: payloads in the bays weigh {PayloadKg.Value:0} kg together (a Payload Delivery Container " +
+                     "or Orbital Launch Mount Payload weighs 200, RocketPayload.cs:20; the bay itself 100, RocketPayloadBay.cs:55)");
         }
 
         if (BatteryJ.HasValue || BatteryPercent.HasValue)
@@ -170,20 +182,52 @@ internal static class RocketModel
     {
         Rocket rocket = parts.Rocket;
         List<FuelLine> lines = new List<FuelLine>(parts.Lines.Count);
+        List<FuelSample> samples = new List<FuelSample>(parts.Lines.Count);
         double countedKg = 0.0;
         for (int index = 0; index < parts.Lines.Count; index++)
         {
-            FuelLine line = LineOf(parts.Lines[index], what);
+            FuelSample sample = SampleOf(parts.Lines[index], what);
+            FuelLine line = LineOf(parts.Lines[index], sample, what.FuelMix != null);
             countedKg += line.CountedMassKg;
             lines.Add(line);
+            samples.Add(sample);
         }
 
-        // Gas the rocket counts outside its fuel lines (other tanks and pipes) stays as it is all flight.
-        double otherGasKg = Math.Max(0.0, parts.Network.GasMass - countedKg);
+        List<EngineUnit> engines = new List<EngineUnit>(parts.EngineReads.Count);
+        double exhaustKg = 0.0;
+        for (int index = 0; index < parts.EngineReads.Count; index++)
+        {
+            EngineRead read = parts.EngineReads[index];
+            if (read.Feed == null || read.MissingInput != null || !read.Input1.HasValue)
+            {
+                continue;
+            }
+
+            ProbeThrust thrust = new ProbeThrust(read.Engine, samples[read.Input1.Value],
+                read.Input2.HasValue ? samples[read.Input2.Value] : null);
+            EngineUnit unit = new EngineUnit(EngineSpecs.NameOf(read.ClassName), read.Feed, read.Input1.Value,
+                read.Input2, thrust);
+            Atmosphere? chamber = read.Engine.InternalAtmosphere;
+            if (chamber != null && parts.Network.RocketAtmospheres.Contains(chamber))
+            {
+                unit.ExhaustKg = chamber.GasMixture.TotalMassGassesAndLiquidsGrams() / 1000.0;
+            }
+
+            exhaustKg += unit.ExhaustKg;
+            engines.Add(unit);
+        }
+
+        // Gas the rocket counts outside its fuel lines and engine chambers (other tanks and pipes) stays as it is all flight.
+        double otherGasKg = Math.Max(0.0, parts.Network.GasMass - countedKg - exhaustKg);
         float structure = parts.Network.DryMass + (float)otherGasKg;
         if (what.CargoSlots.HasValue)
         {
             structure += what.CargoSlots.Value - parts.CargoSlotsFilled;
+        }
+
+        if (what.PayloadKg.HasValue)
+        {
+            structure += (float)(what.PayloadKg.Value - parts.PayloadKg);
         }
 
         structure += (float)what.AddCargoKg;
@@ -194,7 +238,7 @@ internal static class RocketModel
             enginesOn |= parts.Engines[index].OnOff;
         }
 
-        RocketCraft craft = new RocketCraft(structure, lines,
+        RocketCraft craft = new RocketCraft(structure, lines, engines,
             rocket.RocketNetwork.Engines.Count > 0 ? rocket.RocketNetwork.Engines[0].MaxThrust : 0f,
             rocket.MaxRecordedThrust, rocket.AutomatedLanding, throttle, enginesOn, rocket.GetThrust(), Power(parts, what))
         {
@@ -213,9 +257,10 @@ internal static class RocketModel
     internal static float FirstThrottle(RocketParts parts) =>
         parts.Engines.Count > 0 ? parts.Engines[0].Throttle : 0f;
 
+    /// <summary>The line's make-up (pipe and tanks together), with the what-if mix and temperature applied.</summary>
     internal static FuelSample SampleOf(FuelLineRead line, RocketWhatIf what)
     {
-        FuelSample sample = FuelSample.Of(line.Network.Atmosphere);
+        FuelSample sample = line.Sample();
         if (what.FuelMix != null)
         {
             sample = sample.WithMix(what.FuelMix);
@@ -224,43 +269,34 @@ internal static class RocketModel
         return what.FuelTemperatureK.HasValue ? sample.WithTemperature(what.FuelTemperatureK.Value) : sample;
     }
 
-    private static FuelLine LineOf(FuelLineRead read, RocketWhatIf what)
+    // The pipe and each tank by gas and liquid moles; with a mix what-if each keeps its moles, split by the mix.
+    private static FuelLine LineOf(FuelLineRead read, FuelSample sample, bool remix)
     {
+        double total = sample.Total;
+        double liquidShare = total > 0.0 ? sample.Phase(true).Total / total : 0.0;
         Atmosphere pipe = read.Network.Atmosphere;
         List<FuelTank> tanks = new List<FuelTank>(read.Tanks.Count);
         for (int index = 0; index < read.Tanks.Count; index++)
         {
             Atmosphere atmosphere = read.Tanks[index].Atmosphere;
-            tanks.Add(new FuelTank(atmosphere.Volume.ToDouble(), atmosphere.TotalMoles.ToDouble(),
-                read.Tanks[index].Counted));
+            (double gas, double liquid) = Split(atmosphere, remix, liquidShare);
+            tanks.Add(new FuelTank(atmosphere.Volume.ToDouble(), gas, liquid, read.Tanks[index].Counted));
         }
 
-        FuelSample sample = SampleOf(read, what);
-        double kpaLitres = KpaLitresPerMol(read, sample);
-        FuelBurn burn = ThrustProbe.BurnFor(read.Engines[0], sample, kpaLitres);
-        double exhaust = 0.0;
-        for (int index = 0; index < read.Engines.Count; index++)
-        {
-            RocketEngineBase engine = read.Engines[index];
-            exhaust += engine.OnOff && engine.Powered ? engine.PassedMoles.ToDouble() : 0.0;
-        }
-
-        return new FuelLine(pipe.Volume.ToDouble(), pipe.TotalMoles.ToDouble(), tanks, read.Engines.Count, burn)
-        {
-            ExhaustMoles = exhaust
-        };
+        (double pipeGas, double pipeLiquid) = Split(pipe, remix, liquidShare);
+        return new FuelLine(pipe.Volume.ToDouble(), pipeGas, pipeLiquid, tanks, sample.Phases());
     }
 
-    // P V / n of the first tank (else the pipe) as the game reads it, scaled to a what-if temperature.
-    private static double KpaLitresPerMol(FuelLineRead read, FuelSample sample)
+    private static (double Gas, double Liquid) Split(Atmosphere atmosphere, bool remix, double liquidShare)
     {
-        Atmosphere atmosphere = read.Tanks.Count > 0 ? read.Tanks[0].Atmosphere : read.Network.Atmosphere;
-        double moles = atmosphere.TotalMoles.ToDouble();
-        double kelvin = atmosphere.Temperature.ToDouble();
-        double measured = moles > 0.0
-            ? atmosphere.PressureGassesAndLiquids.ToDouble() * atmosphere.Volume.ToDouble() / moles
-            : 8.3144 * sample.TemperatureK;
-        return kelvin > 0.0 ? measured * sample.TemperatureK / kelvin : measured;
+        GasMixture mixture = atmosphere.GasMixture;
+        if (!remix)
+        {
+            return (mixture.GetTotalMolesGasses.ToDouble(), mixture.GetTotalMolesLiquids.ToDouble());
+        }
+
+        double total = mixture.GetTotalMolesGassesAndLiquids.ToDouble();
+        return (total * (1.0 - liquidShare), total * liquidShare);
     }
 
     private static PowerBank Power(RocketParts parts, RocketWhatIf what)
@@ -304,7 +340,7 @@ internal static class RocketModel
     /// <summary>
     /// The draw at a stop: what AutoShutOff leaves on (RocketAvionicsDevice.RunAutoShutOff switches off every device on
     /// the avionics' data network but avionics, batteries and circuit housings, RocketAvionicsDevice.cs:930-943), plus
-    /// the miners and cargo holds while mining, plus any extra load.
+    /// the miners, gas collectors and cargo holds while mining, plus any extra load.
     /// </summary>
     internal static double ParkLoad(RocketParts parts, bool mining, double extraW)
     {
