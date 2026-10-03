@@ -1,0 +1,65 @@
+{
+  "type": "array",
+  "minItems": 1,
+  "maxItems": 128,
+  "description": "The things to read, each with at least one part.",
+  "items": {
+    "type": "object",
+    "properties": {
+      "reference_id": {
+        "type": "string",
+        "description": "A device or thing (for atmosphere alone also a pipe network or atmosphere id)."
+      },
+      "logic": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "items": {
+          "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+          "description": "LogicType enum name or numeric ushort ID."
+        },
+        "description": "Logic types to read; each value comes back under the string sent."
+      },
+      "slots": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 16,
+        "items": {
+          "type": "object",
+          "properties": {
+            "index": {"type": "integer", "minimum": 0, "description": "Logical slot index, as inspect_slots numbers them."},
+            "logic": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+                "description": "LogicSlotType enum name or numeric ushort ID."
+              },
+              "description": "Slot logic types to read; omit for every one the slot reads."
+            }
+          },
+          "required": ["index"],
+          "additionalProperties": false
+        }
+      },
+      "atmosphere": {
+        "type": "object",
+        "properties": {
+          "of": {"type": "string", "enum": ["internal"], "description": "internal: only the thing's internal atmosphere."},
+          "port": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64,
+            "description": "A device's connection end index: the pipe network joined there."
+          }
+        },
+        "additionalProperties": false,
+        "description": "{} the id's own atmosphere, {of: \"internal\"} or {port: n}."
+      },
+      "reagents": {"type": "boolean", "description": "true: the reagents it holds, as the reagents tool."}
+    },
+    "required": ["reference_id"],
+    "additionalProperties": false
+  }
+}

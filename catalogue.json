@@ -389,6 +389,139 @@
       },
       "x-shaping": "none",
       "x-mcp": "hidden"
+    },
+    {
+      "name": "subscribe",
+      "description": "Ask the mod to read a set of device values every interval_s game seconds and push an update event when a value other than the clock changed (topic devices, the default), or to be told when a world finishes loading and when the game state changes (topic world, no other params). items, include and gateway_id are read_devices'; one subscription holds what one read_devices call may (128 items, 1,024 values). The reply carries the subscription id and the first reading in read_devices' reply shape. A subscription over a limit is refused with subscription_limit: poll with read_devices at the same interval instead. Subscriptions end with the connection, on unsubscribe, or with a subscription_ended event (world_changed, revoked, limit, read_failed).",
+      "class": "read",
+      "cost": "bounded",
+      "x-cost-when": [{"when": {"items": {"present": true}}, "cost": "bounded", "per_item": "items"}],
+      "params": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": ["devices", "world"],
+            "description": "devices (the default): device reads; world: world_changed and game_state events."
+          },
+          "gateway_id": {
+            "type": "string",
+            "description": "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks. Refused with gateway_not_found when no StationGod Gateway has that id, and with gateway_unavailable when the gateway cannot scope a call now; the message names why: incomplete (not fully built) or no_data_network (no data cable on either port)."
+          },
+          "include": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["clock"]},
+            "description": "clock: add the game clock, as game_clock reads it, in the same frame."
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 128,
+            "description": "The things to read, each with at least one part.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "reference_id": {
+                  "type": "string",
+                  "description": "A device or thing (for atmosphere alone also a pipe network or atmosphere id)."
+                },
+                "logic": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 64,
+                  "items": {
+                    "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+                    "description": "LogicType enum name or numeric ushort ID."
+                  },
+                  "description": "Logic types to read; each value comes back under the string sent."
+                },
+                "slots": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 16,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Logical slot index, as inspect_slots numbers them."
+                      },
+                      "logic": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 64,
+                        "items": {
+                          "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+                          "description": "LogicSlotType enum name or numeric ushort ID."
+                        },
+                        "description": "Slot logic types to read; omit for every one the slot reads."
+                      }
+                    },
+                    "required": ["index"],
+                    "additionalProperties": false
+                  }
+                },
+                "atmosphere": {
+                  "type": "object",
+                  "properties": {
+                    "of": {
+                      "type": "string",
+                      "enum": ["internal"],
+                      "description": "internal: only the thing's internal atmosphere."
+                    },
+                    "port": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 64,
+                      "description": "A device's connection end index: the pipe network joined there."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "{} the id's own atmosphere, {of: \"internal\"} or {port: n}."
+                },
+                "reagents": {"type": "boolean", "description": "true: the reagents it holds, as the reagents tool."}
+              },
+              "required": ["reference_id"],
+              "additionalProperties": false
+            }
+          },
+          "interval_s": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 3600,
+            "description": "Game seconds between reads; default 1. A paused game reads nothing."
+          }
+        },
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "subscription": {"type": "string"},
+          "interval_s": {"type": "number"},
+          "values": {"type": "integer"},
+          "frame": {"type": "integer"},
+          "result": {"type": "object"}
+        }
+      },
+      "x-shaping": "none",
+      "x-mcp": "hidden"
+    },
+    {
+      "name": "unsubscribe",
+      "description": "End one of this connection's subscriptions; unknown_subscription when it holds no such id.",
+      "class": "read",
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {"subscription": {"type": "string", "description": "The id subscribe gave, such as \"s3\"."}},
+        "required": ["subscription"],
+        "additionalProperties": false
+      },
+      "reply": {"type": "object", "properties": {"subscription": {"type": "string"}, "ended": {"type": "boolean"}}},
+      "x-shaping": "none",
+      "x-mcp": "hidden"
     }
   ],
   "methods": [

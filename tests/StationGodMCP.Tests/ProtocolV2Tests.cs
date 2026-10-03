@@ -69,7 +69,7 @@ public sealed class ProtocolV2Tests
         byte[] file = File.ReadAllBytes(CatalogueChecks.CatalogueFiles.AssembledPath);
         Assert.Equal(CatalogueFile.HashOf(file), (string?)welcome["catalogue"]!["hash"]);
         Assert.Matches("^sha256:[0-9a-f]{64}$", (string?)welcome["catalogue"]!["hash"]);
-        Assert.Equal(1, (int)welcome["catalogue"]!["protocol_methods"]!);
+        Assert.Equal(3, (int)welcome["catalogue"]!["protocol_methods"]!);
     }
 
     [Fact]
@@ -133,10 +133,13 @@ public sealed class ProtocolV2Tests
         Assert.True((bool)client.Next()["ok"]!);
     }
 
+    // No budget, so a slow test machine cannot end a frame early.
+    private static readonly SchedulerSettings Unlimited = new SchedulerSettings(0, 1.5, 1, 10, 16);
+
     [Fact]
     public void EachConnectionGetsATurnPerRound()
     {
-        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        LaneScheduler scheduler = new LaneScheduler(Unlimited);
         List<string> order = new List<string>();
         object a = new object();
         object b = new object();
@@ -157,7 +160,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void ACancelledWriteHoldsNothingBack()
     {
-        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        LaneScheduler scheduler = new LaneScheduler(Unlimited);
         List<string> order = new List<string>();
         object a = new object();
         TestCall write = new TestCall(a, "w", isWrite: true, order);
@@ -174,7 +177,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void AWriteWaitsForTheEarlierReadsOfItsConnection()
     {
-        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        LaneScheduler scheduler = new LaneScheduler(Unlimited);
         List<string> order = new List<string>();
         object a = new object();
         scheduler.Add(new TestCall(a, "r1", isWrite: false, order));
@@ -189,7 +192,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void ACallOverMaxInFlightIsRefusedUnrun()
     {
-        LaneScheduler scheduler = new LaneScheduler(new SchedulerSettings(4, 1.5, 1, 10, 2));
+        LaneScheduler scheduler = new LaneScheduler(new SchedulerSettings(0, 1.5, 1, 10, 2));
         List<string> order = new List<string>();
         object a = new object();
         TestCall[] calls = Enumerable.Range(0, 3).Select(index => new TestCall(a, $"c{index}", false, order)).ToArray();
@@ -207,7 +210,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void AClosedConnectionsCallsDoNotRun()
     {
-        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        LaneScheduler scheduler = new LaneScheduler(Unlimited);
         List<string> order = new List<string>();
         object a = new object();
         object b = new object();
@@ -223,7 +226,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void AHeavyCallRunsAfterTheLightOnes()
     {
-        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        LaneScheduler scheduler = new LaneScheduler(Unlimited);
         List<string> order = new List<string>();
         object a = new object();
         object b = new object();
@@ -240,7 +243,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void TheSampleLaneRunsFirst()
     {
-        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        LaneScheduler scheduler = new LaneScheduler(Unlimited);
         List<string> order = new List<string>();
         scheduler.Add(new TestCall(new object(), "read", false, order));
 

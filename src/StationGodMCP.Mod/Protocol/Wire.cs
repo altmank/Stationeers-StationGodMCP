@@ -192,11 +192,18 @@ internal sealed class WelcomeCatalogueView
 
 internal sealed class WelcomeLimitsView
 {
-    internal WelcomeLimitsView(int maxInFlight, int maxRequestBytes, int maxReplyBytes)
+    internal WelcomeLimitsView(int maxInFlight, int maxRequestBytes, int maxReplyBytes,
+        StationGodMCP.Pure.Subscriptions.SubscriptionLimits? subscriptions = null)
     {
         MaxInFlight = maxInFlight;
         MaxRequestBytes = maxRequestBytes;
         MaxReplyBytes = maxReplyBytes;
+        MaxSubscriptions = subscriptions?.MaxSubscriptions;
+        MaxSubscriptionValues = subscriptions?.MaxConnectionValues;
+        MaxValuesPerSubscription = subscriptions?.MaxValuesPerSubscription;
+        MinSubscriptionIntervalS = subscriptions != null
+            ? StationGodMCP.Pure.Subscriptions.SamplingInterval.MinimumSeconds
+            : null;
     }
 
     public int MaxInFlight { get; }
@@ -204,6 +211,21 @@ internal sealed class WelcomeLimitsView
     public int MaxRequestBytes { get; }
 
     public int MaxReplyBytes { get; }
+
+    /// <summary>Subscriptions one connection may hold; absent when the server has none.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public int? MaxSubscriptions { get; }
+
+    /// <summary>Values across one connection's subscriptions.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public int? MaxSubscriptionValues { get; }
+
+    /// <summary>Values one subscription may read (one read_devices call's).</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public int? MaxValuesPerSubscription { get; }
+
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public double? MinSubscriptionIntervalS { get; }
 }
 
 /// <summary>An event with no keys of its own (ping, cheat_disarmed).</summary>

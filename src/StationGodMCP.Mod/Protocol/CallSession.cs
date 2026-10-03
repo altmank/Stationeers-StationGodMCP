@@ -27,6 +27,9 @@ internal sealed class CallSession : Session
     /// <summary>What welcome lists in features: what this server does beyond the basics.</summary>
     internal static readonly string[] Features = { "shape", "shape.paths", "cancel" };
 
+    /// <summary>The features with subscriptions, when the server has them.</summary>
+    internal static readonly string[] FeaturesWithSubscriptions = { "shape", "shape.paths", "subscriptions", "cancel" };
+
     private readonly Connection _connection;
     private readonly ProtocolHost _host;
     private readonly object _sync = new object();
@@ -173,6 +176,7 @@ internal sealed class CallSession : Session
         }
 
         ProtocolLog.Info($"Connection {_connection.ClientId} ({_client}) revoked: its key changed.");
+        _host.Subscriptions?.Revoke(_connection.ClientId);
         _connection.Send(Wire.Line(new GoodbyeView("revoked")));
         _connection.EndGracefully();
     }
@@ -278,7 +282,8 @@ internal sealed class CallSession : Session
             new WelcomeServerView(ServerFacts.Current, _connection.Transport),
             new WelcomeCatalogueView(file?.Hash ?? string.Empty, file?.Catalogue.MethodCount ?? 0,
                 file?.Catalogue.ProtocolMethodCount ?? 0),
-            new WelcomeLimitsView(MaxInFlight, MaxRequestBytes, _host.Settings.MaxReplyBytes), Features);
+            new WelcomeLimitsView(MaxInFlight, MaxRequestBytes, _host.Settings.MaxReplyBytes, _host.Subscriptions?.Limits),
+            _host.Subscriptions != null ? FeaturesWithSubscriptions : Features);
         _connection.Send(Wire.Line(welcome));
         _welcomed = true;
     }
@@ -478,5 +483,6 @@ internal sealed class CatalogueReplyView
 /// <summary>The methods the protocol layer answers itself, not the main thread; the catalogue lists them in protocol_methods.</summary>
 internal static class ProtocolMethods
 {
-    internal static readonly string[] Names = { CallSession.CatalogueMethod };
+    internal static readonly string[] Names =
+        { CallSession.CatalogueMethod, SubscriptionHub.SubscribeMethod, SubscriptionHub.UnsubscribeMethod };
 }

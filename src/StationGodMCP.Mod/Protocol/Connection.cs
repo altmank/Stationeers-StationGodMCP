@@ -39,6 +39,15 @@ internal interface IByteTransport : IDisposable
     void Cancel();
 }
 
+/// <summary>
+/// A line that is made when the writer reaches it rather than when it is queued (a subscription's update, which may
+/// change while it waits); false when there is nothing to write any more.
+/// </summary>
+internal interface IOutboundLine
+{
+    bool TryTake(out string line);
+}
+
 /// <summary>How a write ended.</summary>
 internal enum WriteResult
 {
@@ -135,6 +144,18 @@ internal sealed class Connection
         }
 
         _outbound.Enqueue(new Outgoing(line, method));
+        _outboundReady.Release();
+    }
+
+    /// <summary>Queues a line the writer makes when it reaches it (a subscription's update).</summary>
+    internal void Send(IOutboundLine line)
+    {
+        if (_stopping)
+        {
+            return;
+        }
+
+        _outbound.Enqueue(new Outgoing(line));
         _outboundReady.Release();
     }
 
@@ -279,6 +300,16 @@ internal sealed class Connection
                     message = new Outgoing(Wire.Line(new EventView("ping")), null);
                 }
 
+                if (message.Deferred != null)
+                {
+                    if (!message.Deferred.TryTake(out string taken))
+                    {
+                        continue;
+                    }
+
+                    message = new Outgoing(taken, null);
+                }
+
                 int count = utf8.GetMaxByteCount(message.Line.Length) + 1;
                 if (bytes.Length < count)
                 {
@@ -334,11 +365,21 @@ internal sealed class Connection
         {
             Line = line;
             Method = method;
+            Deferred = null;
+        }
+
+        internal Outgoing(IOutboundLine deferred)
+        {
+            Line = string.Empty;
+            Method = null;
+            Deferred = deferred;
         }
 
         internal string Line { get; }
 
         internal string? Method { get; }
+
+        internal IOutboundLine? Deferred { get; }
     }
 }
 

@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Pure.Subscriptions;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -289,13 +290,24 @@ internal sealed class PipeRig : IDisposable
     private readonly BlockingCollection<Connection> _connected = new BlockingCollection<Connection>();
 
     internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, int lineMs = 30000, bool mainThread = true,
-        ProtocolSettings? settings = null, AccessControl? access = null)
+        ProtocolSettings? settings = null, AccessControl? access = null, SubscriptionHub? subscriptions = null,
+        Func<SamplingTick>? tick = null)
     {
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
         Mod = new FakeMod(mainThread, _deadlines);
+        if (subscriptions != null)
+        {
+            Mod.Samples = subscriptions;
+            Mod.BeforeFrame = () => subscriptions.BeginFrame(tick?.Invoke() ?? new SamplingTick(1, 0));
+            Mod.CallHook = (call, queueMs) => SubscriptionHub.Handles(call.Request.Method)
+                ? new CallOutcome(subscriptions.Run(call, queueMs), call.Request.Method)
+                : null;
+            Mod.ClosedHook = subscriptions.Closed;
+        }
+
         Access = access ?? new AccessControl(AccessSettings.Defaults, null);
         Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs, lineMs), Mod, _deadlines,
-            TestCatalogue.File.Value, Access);
+            TestCatalogue.File.Value, Access, subscriptions: subscriptions);
         _listener = new PipeListener(Name, Host);
         _listener.Connected += connection => _connected.Add(connection);
         _listener.Start();
@@ -372,8 +384,14 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     /// <summary>Connections closed, in order.</summary>
     internal ConcurrentQueue<object> ClosedSources { get; } = new ConcurrentQueue<object>();
 
+    /// <summary>Called on the main thread at the start of each frame.</summary>
+    internal Action? BeforeFrame { get; set; }
+
     /// <summary>Called on the main thread at the end of each frame.</summary>
     internal Action? AfterFrame { get; set; }
+
+    /// <summary>Called (on the connection's reader thread) when a connection ends.</summary>
+    internal Action<object>? ClosedHook { get; set; }
 
     internal static string ReplyTo(string line) =>
         "{\"echo\":" + Newtonsoft.Json.JsonConvert.ToString(line) + ",\"ok\":true}";
@@ -390,6 +408,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     public void Closed(object source)
     {
         _calls.Close(source);
+        ClosedHook?.Invoke(source);
         ClosedSources.Enqueue(source);
         _added.Release();
     }
@@ -471,6 +490,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         lock (_frame)
         {
+            BeforeFrame?.Invoke();
             FrameOutcome outcome = _calls.RunFrame(jobHoldsTick, Samples, this);
             AfterFrame?.Invoke();
             return outcome;

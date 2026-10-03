@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Subscriptions;
@@ -10,8 +11,9 @@ using StationGodMCP.Pure.Subscriptions;
 namespace StationGodMCP.Subscriptions;
 
 /// <summary>
-/// A devices subscription's sample through read_devices' own handler, so a subscription reads exactly what the same
-/// read_devices call would, in the calling frame. Errors of the whole call (gateway_not_found) throw as they do there.
+/// A devices subscription's sample through read_devices' own read path, so a subscription reads exactly what the same
+/// read_devices call would, in the calling frame, from the request parsed once at subscribe; only the gateway is looked
+/// up again, since it may be gone. Errors of the whole call (gateway_not_found) throw as they do there.
 /// </summary>
 internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
 {
@@ -21,7 +23,8 @@ internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
     {
     }
 
-    public ReadDevicesView Read(DeviceSubscriptionQuery query) => ReadDevicesApi.Handle(new Args(query.ReadArguments));
+    public ReadDevicesView Read(DeviceSubscriptionQuery query) =>
+        ReadDevicesApi.Read(Devices.Scope(new Args(query.ReadArguments)), query.Request);
 }
 
 /// <summary>A sample_logic sample through read_logic_many's own handler: each target read as read_logic reads it.</summary>

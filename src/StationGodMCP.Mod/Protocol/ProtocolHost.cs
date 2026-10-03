@@ -75,8 +75,9 @@ internal sealed class ProtocolHost
     private readonly ConcurrentDictionary<Connection, byte> _open = new ConcurrentDictionary<Connection, byte>();
 
     internal ProtocolHost(ProtocolSettings settings, ICallQueue calls, DeadlineWatch deadlines, CatalogueFile? catalogue,
-        AccessControl access, string? legacySecret = null)
+        AccessControl access, string? legacySecret = null, SubscriptionHub? subscriptions = null)
     {
+        Subscriptions = subscriptions;
         Settings = settings;
         _calls = calls;
         Deadlines = deadlines;
@@ -85,6 +86,9 @@ internal sealed class ProtocolHost
         LegacySecret = string.IsNullOrEmpty(legacySecret) ? null : legacySecret;
         access.Register(this);
     }
+
+    /// <summary>Subscriptions and their events (welcome lists the subscriptions feature); null when off.</summary>
+    internal SubscriptionHub? Subscriptions { get; }
 
     /// <summary>Keys, levels and the owner's approvals, shared by every listener.</summary>
     internal AccessControl Access { get; }

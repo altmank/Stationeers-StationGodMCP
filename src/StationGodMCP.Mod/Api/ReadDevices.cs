@@ -37,6 +37,12 @@ internal static class ReadDevicesApi
             _ => throw ApiErrors.InvalidArgument("Unknown read_devices request."),
         };
 
+        return Read(scope, request);
+    }
+
+    /// <summary>An already parsed request in a scope: a subscription's sample, without reading its items again.</summary>
+    internal static ReadDevicesView Read(DeviceScope scope, DeviceReadRequest request)
+    {
         BatchBuilder batch = new BatchBuilder(request.Items.Count);
         for (int index = 0; index < request.Items.Count; index++)
         {

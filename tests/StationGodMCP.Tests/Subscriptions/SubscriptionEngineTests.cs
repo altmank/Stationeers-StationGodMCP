@@ -432,11 +432,7 @@ public sealed class SubscriptionEngineTests
         SubscriptionEngine<FakeReading> engine = Engine();
         Subscribe(engine, A);
         Subscribe(engine, B);
-        WorldIdentity identity = new WorldIdentity(new ScriptedWorldIds());
-        identity.Observe(true);
-        identity.Observe(false);
-        Assert.True(identity.Observe(true));
-        Assert.True(identity.TryGetCurrent(out WorldId world));
+        WorldId world = new ScriptedWorldIds().Next();
 
         engine.WorldChanged(world, _events);
         _reader.Value = 9;
