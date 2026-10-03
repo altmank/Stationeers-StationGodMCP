@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
-using StationGodMCP.Pure.Access;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
@@ -12,10 +11,9 @@ using StationGodMCP.Pure.Shaping;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// Version 2 on one connection: hello, a challenge and the key's proof when the client signs in with a key, and
-/// welcome; then calls by id, several in flight, answered in any order and matched by id; cancel; events. Lines are
-/// parsed, checked and judged against the connection's level here, on the connection's reader thread; only the methods
-/// themselves run on the main thread.
+/// Version 2 on one connection: hello and welcome, then calls by id, several in flight, answered in any order and
+/// matched by id; cancel; events. Lines are parsed and checked here, on the connection's reader thread; only the
+/// methods themselves run on the main thread.
 /// </summary>
 internal sealed class CallSession : Session
 {
@@ -35,11 +33,7 @@ internal sealed class CallSession : Session
     private readonly object _sync = new object();
     private readonly Dictionary<string, ProtocolCall> _inFlight = new Dictionary<string, ProtocolCall>(StringComparer.Ordinal);
     private ClientMessage.Hello? _hello;
-    private string? _nonce;
     private bool _welcomed;
-    private string _client = AnonymousClient;
-    private ConnectionAccess _access = new ConnectionAccess(AccessLevel.None, null, false);
-    private DateTime? _reportedArmedUntil;
 
     internal CallSession(Connection connection, ProtocolHost host)
     {
@@ -55,20 +49,9 @@ internal sealed class CallSession : Session
 
     internal override int WriteTimeoutMilliseconds => _host.Settings.SlowClientMilliseconds;
 
-    /// <summary>The whole sign-in, from connecting to welcome, has the first-line time; after it reads wait as long as they like.</summary>
-    internal override long? SignInBy => _welcomed ? null : _connection.ConnectedAt +
-        (long)(_host.Settings.FirstLineTimeoutMilliseconds * (double)System.Diagnostics.Stopwatch.Frequency / 1000.0);
-
-    internal override string Client => _client;
+    internal override string Client => AnonymousClient;
 
     internal override string? Label => _hello?.ClientName;
-
-    internal override string Level => AccessLevels.Name(_access.Level);
-
-    /// <summary>The key this connection signed in with; null for none.</summary>
-    internal ClientKey? Key { get; private set; }
-
-    internal ConnectionAccess Access => _access;
 
     internal override int InFlight
     {
@@ -100,12 +83,6 @@ internal sealed class CallSession : Session
             case ClientMessage.Hello _:
                 Refuse(ClientMessage.Refused.Protocol("hello was already answered.", line));
                 break;
-            case ClientMessage.Auth auth when _nonce != null && !_welcomed:
-                SignIn(auth);
-                break;
-            case ClientMessage.Auth _:
-                Refuse(ClientMessage.Refused.Protocol("auth comes only after a challenge.", line));
-                break;
             case ClientMessage.Call _ when !_welcomed:
                 Refuse(ClientMessage.Refused.Protocol("A call before welcome.", line));
                 break;
@@ -119,14 +96,6 @@ internal sealed class CallSession : Session
                 _connection.EndGracefully();
                 break;
         }
-    }
-
-    internal override void OnReadTimeout()
-    {
-        _connection.Send(Wire.Refusal(null, "protocol_error",
-            $"The sign-in did not finish within {_host.Settings.FirstLineTimeoutMilliseconds / 1000} seconds of connecting."));
-        _connection.Send(Wire.Line(new GoodbyeView("protocol_error")));
-        _connection.EndGracefully();
     }
 
     internal override void OnOverflow()
@@ -167,44 +136,6 @@ internal sealed class CallSession : Session
         }
     }
 
-    /// <summary>The key was removed or now gives less: its unstarted calls are dropped, goodbye revoked, closed.</summary>
-    internal void Revoke()
-    {
-        foreach (ProtocolCall call in Waiting())
-        {
-            call.State.TryDrop();
-        }
-
-        ProtocolLog.Info($"Connection {_connection.ClientId} ({_client}) revoked: its key changed.");
-        _host.Subscriptions?.Revoke(_connection.ClientId);
-        _connection.Send(Wire.Line(new GoodbyeView("revoked")));
-        _connection.EndGracefully();
-    }
-
-    /// <summary>Sends cheat_armed or cheat_disarmed when the owner's approval for this connection began, changed or ended.</summary>
-    internal void RefreshCheat()
-    {
-        if (!_welcomed || _access.Level < AccessLevel.Cheat || _access.StandingCheat)
-        {
-            return;
-        }
-
-        DateTime? until = _host.Access.Arming.ArmedUntil(_connection.ClientId, Key?.Name);
-        lock (_sync)
-        {
-            if (until == _reportedArmedUntil)
-            {
-                return;
-            }
-
-            _reportedArmedUntil = until;
-        }
-
-        _connection.Send(until.HasValue
-            ? Wire.Line(new CheatArmedView(AccessControl.Utc(until.Value)))
-            : Wire.Line(new EventView("cheat_disarmed")));
-    }
-
     private List<ProtocolCall> Waiting()
     {
         lock (_sync)
@@ -224,61 +155,8 @@ internal sealed class CallSession : Session
             return;
         }
 
-        if (hello.ProvesKey)
-        {
-            _nonce = KeyProof.NewNonce();
-            _connection.Send(Wire.Line(new ChallengeView(_nonce)));
-            return;
-        }
-
-        ConnectionAccess anonymous = _host.Access.Settings.AnonymousPipe;
-        if (_connection.Transport != "pipe" || anonymous.Level == AccessLevel.None)
-        {
-            Unauthorized(_connection.Transport != "pipe"
-                ? "A connection over TCP must sign in with a key (hello auth \"key\")."
-                : "This server does not accept connections without a key.");
-            return;
-        }
-
-        Welcome(AnonymousClient, anonymous, null);
-    }
-
-    private void SignIn(ClientMessage.Auth auth)
-    {
-        ClientKey? key = null;
-        bool good = auth.Client == _hello!.ClientName &&
-                    _host.Access.Clients.Clients.TryGetValue(auth.Client, out key) &&
-                    key.Transports.Contains(_connection.Transport) &&
-                    KeyProof.Matches(key.Key, _nonce!, auth.Client, _connection.Transport, auth.Proof);
-        if (!good)
-        {
-            Unauthorized("The key's proof is wrong, the client is unknown, or the key is not allowed on this transport.");
-            return;
-        }
-
-        Welcome(key!.Name, key.Access, key);
-    }
-
-    private void Unauthorized(string message)
-    {
-        _connection.Send(Wire.Refusal(null, "unauthorized", message));
-        _connection.EndGracefully();
-    }
-
-    private void Welcome(string client, ConnectionAccess access, ClientKey? key)
-    {
-        _client = client;
-        _access = access;
-        Key = key;
-        DateTime? until = access.Level == AccessLevel.Cheat && !access.StandingCheat
-            ? _host.Access.Arming.ArmedUntil(_connection.ClientId, key?.Name)
-            : null;
-        _reportedArmedUntil = until;
         CatalogueFile? file = _host.Catalogue;
-        List<string> grants = new List<string>(access.Grants);
-        grants.Sort(StringComparer.Ordinal);
-        WelcomeView welcome = new WelcomeView(_connection.ClientId, client, Level, grants,
-            new CheatView(until.HasValue, until.HasValue ? AccessControl.Utc(until.Value) : null, access.StandingCheat),
+        WelcomeView welcome = new WelcomeView(_connection.ClientId, Client,
             new WelcomeServerView(ServerFacts.Current, _connection.Transport),
             new WelcomeCatalogueView(file?.Hash ?? string.Empty, file?.Catalogue.MethodCount ?? 0,
                 file?.Catalogue.ProtocolMethodCount ?? 0),
@@ -321,15 +199,9 @@ internal sealed class CallSession : Session
             shape = ShapeRequest.Lenient(call.Shape);
         }
 
-        MethodClass effective = method?.ClassAt(call.Params) ?? MethodClass.Read;
-        if (method != null && !Permitted(call, effective))
-        {
-            return;
-        }
-
         CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape);
         CallProfile profile = method != null
-            ? new CallProfile(method.Name, effective, method.CostAt(call.Params))
+            ? new CallProfile(method.Name, method.ClassAt(call.Params), method.CostAt(call.Params))
             : CallProfiles.Of(null, call.Method, call.Params);
         // A method that runs for a while (x-duration: sample_logic) gets that long added to its deadline.
         int deadlineMs = call.DeadlineMs + (method?.DurationMs(call.Params) ?? 0);
@@ -354,29 +226,6 @@ internal sealed class CallSession : Session
         }
 
         _host.Submit(queued);
-    }
-
-    // The connection's level against the call's effective class: permission_denied or cheat_not_armed, nothing run.
-    private bool Permitted(ClientMessage.Call call, MethodClass effective)
-    {
-        bool armed = _host.Access.Arming.ArmedUntil(_connection.ClientId, Key?.Name).HasValue;
-        switch (Permission.Decide(_access, call.Method, effective, armed))
-        {
-            case Permission.Denied denied:
-                string required = AccessLevels.Name(denied.Required);
-                _connection.Send(Wire.Refusal(call.Id, "permission_denied",
-                    $"{call.Method} needs {required} level at these arguments; this connection is {Level}.",
-                    new Dictionary<string, string> { ["required"] = required, ["level"] = Level, ["method"] = call.Method }));
-                return false;
-            case Permission.NotArmed _:
-                _connection.Send(Wire.Refusal(call.Id, "cheat_not_armed",
-                    $"{call.Method} is a cheat tool and the owner has not approved cheats for {_connection.ClientId} " +
-                    $"({_client}). In the game console: stationgod allow {_connection.ClientId}",
-                    new Dictionary<string, string> { ["client_id"] = _connection.ClientId, ["client"] = _client }));
-                return false;
-            default:
-                return true;
-        }
     }
 
     // Version 2's full check, before anything is queued: the shape (invalid_shape), then the params against the

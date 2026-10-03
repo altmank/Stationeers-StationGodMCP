@@ -52,9 +52,8 @@ public sealed class ProtocolV2Tests
         Assert.Equal(2, (int)welcome["protocol"]!);
         Assert.StartsWith("c", (string?)welcome["client_id"]);
         Assert.Equal("anonymous", (string?)welcome["client"]);
-        Assert.Equal("write", (string?)welcome["level"]);
-        Assert.Equal(JTokenType.Null, welcome["cheat"]!["until_utc"]!.Type);
-        Assert.False((bool)welcome["cheat"]!["standing"]!);
+        Assert.Null(welcome["level"]);
+        Assert.Null(welcome["cheat"]);
         Assert.Equal("TestPipe", (string?)welcome["server"]!["pipe_name"]);
         Assert.Equal("pipe", (string?)welcome["server"]!["transport"]);
         Assert.Equal("host", (string?)welcome["server"]!["role"]);
@@ -632,38 +631,12 @@ internal sealed class V2Client : IDisposable
         return client;
     }
 
-    /// <summary>Sends hello (with auth key when key is given) and, for a key, answers the challenge; returns the answer.</summary>
-    internal JObject SignIn(string name, string? key, string transport, string? authName = null, string? badProof = null)
-    {
-        Hello(name, key != null);
-        JObject answer = Next();
-        if (key != null && (string?)answer["type"] == "challenge")
-        {
-            string proof = badProof ?? StationGodMCP.Pure.Access.KeyProof.Compute(Convert.FromBase64String(key),
-                (string)answer["nonce"]!, authName ?? name, transport);
-            Send(new JObject { ["type"] = "auth", ["client"] = authName ?? name, ["proof"] = proof }.ToString(Formatting.None));
-            answer = Next();
-        }
-
-        if ((string?)answer["type"] == "welcome")
-        {
-            Welcome = answer;
-        }
-
-        return answer;
-    }
-
-    internal void Hello(string name, bool key = false)
+    internal void Hello(string name)
     {
         JObject hello = new JObject
         {
             ["type"] = "hello", ["protocol"] = new JArray(2), ["client"] = new JObject { ["name"] = name, ["version"] = "1" }
         };
-        if (key)
-        {
-            hello["auth"] = "key";
-        }
-
         Send(hello.ToString(Formatting.None));
     }
 

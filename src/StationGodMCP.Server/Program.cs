@@ -11,11 +11,6 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
-        if (KeyCommand.TryRun(args, Console.Out, Console.Error) is int exitCode)
-        {
-            return exitCode;
-        }
-
         switch (SidecarOptions.Parse(args, Environment.GetEnvironmentVariable))
         {
             case SidecarOptions.Parsed.Valid valid:

@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// One version-2 message from a client, parsed on its connection's reader thread: hello, auth, call, cancel or bye, or
+/// One version-2 message from a client, parsed on its connection's reader thread: hello, call, cancel or bye, or
 /// a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are fixed; an
 /// unknown one is a protocol error, so a client cannot believe the server read something it ignored.
 /// </summary>
@@ -67,7 +67,6 @@ internal abstract class ClientMessage
         return type switch
         {
             "hello" => Hello.From(message, line),
-            "auth" => Auth.From(message, line),
             "call" => Call.From(message, line),
             "cancel" => Cancel.From(message, line),
             "bye" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new Bye(),
@@ -124,18 +123,16 @@ internal abstract class ClientMessage
         return true;
     }
 
-    /// <summary>hello: the protocols the client speaks, who it is, what it understands, and whether it proves a key.</summary>
+    /// <summary>hello: the protocols the client speaks, who it is, and what it understands.</summary>
     internal sealed class Hello : ClientMessage
     {
-        private Hello(List<int> protocols, string clientName, string? clientVersion, string? library, List<string> features,
-            bool provesKey)
+        private Hello(List<int> protocols, string clientName, string? clientVersion, string? library, List<string> features)
         {
             Protocols = protocols;
             ClientName = clientName;
             ClientVersion = clientVersion;
             Library = library;
             Features = features;
-            ProvesKey = provesKey;
         }
 
         internal List<int> Protocols { get; }
@@ -148,11 +145,9 @@ internal abstract class ClientMessage
 
         internal List<string> Features { get; }
 
-        internal bool ProvesKey { get; }
-
         internal static ClientMessage From(JObject message, string line)
         {
-            Refused? unknown = OnlyKeys(message, line, "type", "protocol", "client", "features", "auth");
+            Refused? unknown = OnlyKeys(message, line, "type", "protocol", "client", "features");
             if (unknown != null)
             {
                 return unknown;
@@ -202,46 +197,10 @@ internal abstract class ClientMessage
                 return Refused.Protocol("hello.features must be an array of strings.", line);
             }
 
-            JToken? auth = message["auth"];
-            bool provesKey = auth != null && auth.Type == JTokenType.String && (string)auth! == "key";
-            if (auth != null && auth.Type != JTokenType.Null && !provesKey)
-            {
-                return Refused.Protocol("hello.auth must be \"key\" or left out.", line);
-            }
-
-            return new Hello(protocols, name, Text(client["version"]), Text(client["library"]), features, provesKey);
+            return new Hello(protocols, name, Text(client["version"]), Text(client["library"]), features);
         }
 
         private static string? Text(JToken? token) => token?.Type == JTokenType.String ? (string)token! : null;
-    }
-
-    /// <summary>auth: the key's name and the proof that the client holds it.</summary>
-    internal sealed class Auth : ClientMessage
-    {
-        private Auth(string client, string proof)
-        {
-            Client = client;
-            Proof = proof;
-        }
-
-        internal string Client { get; }
-
-        internal string Proof { get; }
-
-        internal static ClientMessage From(JObject message, string line)
-        {
-            Refused? unknown = OnlyKeys(message, line, "type", "client", "proof");
-            if (unknown != null)
-            {
-                return unknown;
-            }
-
-            string? client = message["client"]?.Type == JTokenType.String ? (string)message["client"]! : null;
-            string? proof = message["proof"]?.Type == JTokenType.String ? (string)message["proof"]! : null;
-            return client != null && proof != null
-                ? new Auth(client, proof)
-                : Refused.Protocol("auth needs client and proof, both strings.", line);
-        }
     }
 
     /// <summary>call: one method call, by id, with its params, shape and deadline.</summary>

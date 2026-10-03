@@ -1,6 +1,6 @@
 """The parts of the method catalogue a client needs, and nothing more.
 
-The mod owns every rule about arguments, shaping and permissions. The library reads the catalogue for exactly four
+The mod owns every rule about arguments and shaping. The library reads the catalogue for exactly four
 things (clients.md, What every library does the same way):
 
 - whether a call that may have reached the game is safe to send again: its effective class is read (the method's

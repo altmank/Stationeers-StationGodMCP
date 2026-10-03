@@ -17,47 +17,11 @@ namespace StationGodMCP.Tests.Sidecar;
 
 /// <summary>
 /// The C# client against an in-process fake game: negotiating (version 2, the fall back to version 1 on the pipe and
-/// over TCP), signing in, calls in flight, the resend rule, the catalogue, world changes and subscriptions.
+/// over TCP), the TCP secret, calls in flight, the resend rule, the catalogue, world changes and subscriptions.
 /// </summary>
 public sealed class ClientTests
 {
     private static readonly string Root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-
-    [Fact]
-    public void TheKeyProofMatchesTheSharedVectors()
-    {
-        using JsonDocument vectors = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "clients", "fixtures", "hmac", "vectors.json")));
-        JsonElement[] cases = vectors.RootElement.GetProperty("cases").EnumerateArray().ToArray();
-
-        Assert.NotEmpty(cases);
-        foreach (JsonElement vector in cases)
-        {
-            Assert.Equal(vector.GetProperty("proof").GetString(), KeyProof.Of(vector.GetProperty("key").GetString()!,
-                vector.GetProperty("nonce").GetString()!, vector.GetProperty("client").GetString()!,
-                vector.GetProperty("transport").GetString()!));
-        }
-    }
-
-    [Fact]
-    public void AKeyThatIsNotBase64GivesNoProof()
-    {
-        Assert.Null(KeyProof.Of("not base64!", "n", "c", "pipe"));
-    }
-
-    [Theory]
-    [InlineData("StationGodMCP", "STATIONGOD_KEY_STATIONGODMCP")]
-    [InlineData("StationGodMCP-Test", "STATIONGOD_KEY_STATIONGODMCP_TEST")]
-    [InlineData(@"\\.\pipe\StationGodMCP", "STATIONGOD_KEY_STATIONGODMCP")]
-    public void APipesKeyVariableIsNamedAfterThePipe(string pipe, string variable)
-    {
-        Assert.Equal(variable, new GameTarget.Pipe(pipe).DefaultKeyVariable);
-    }
-
-    [Fact]
-    public void ATcpKeyVariableIsNamedAfterHostAndPort()
-    {
-        Assert.Equal("STATIONGOD_KEY_10_8_0_2_8765", new GameTarget.Tcp("10.8.0.2", 8765).DefaultKeyVariable);
-    }
 
     // The Python library's generated table carries the hash of the same file, computed by another language.
     [Fact]
@@ -96,7 +60,7 @@ public sealed class ClientTests
     }
 
     [Fact]
-    public async Task AnAnonymousHelloNamesTheLibraryAndOffersNoKey()
+    public async Task AHelloNamesTheLibrary()
     {
         await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
         await using StationGodClient client = new(new ClientOptions(game.Target) { ReadEnvironment = _ => "c2VjcmV0" });
@@ -114,7 +78,7 @@ public sealed class ClientTests
     }
 
     [Fact]
-    public async Task ANameWithoutAKeyConnectsAnonymouslyUnderThatName()
+    public async Task AGivenNameIsSentInHello()
     {
         await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
         await using StationGodClient client = new(new ClientOptions(game.Target) { ClientName = "agents", ReadEnvironment = _ => null });
@@ -124,44 +88,6 @@ public sealed class ClientTests
         JsonElement hello = game.Received.First();
         Assert.Equal("agents", hello.GetProperty("client").GetProperty("name").GetString());
         Assert.False(hello.TryGetProperty("auth", out _));
-    }
-
-    [Fact]
-    public async Task AKeyIsProvenAndNeverSent()
-    {
-        const string key = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
-        game.Keys["agents"] = key;
-        string variable = game.Target.DefaultKeyVariable;
-        await using StationGodClient client = new(new ClientOptions(game.Target)
-        {
-            ClientName = "agents",
-            ReadEnvironment = name => name == variable ? key : null
-        });
-
-        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("game_clock", Json("{}")));
-
-        Assert.Equal("key", game.Received.First().GetProperty("auth").GetString());
-        Assert.Contains(game.Received, message => message.TryGetProperty("proof", out _));
-        Assert.DoesNotContain(game.Received, message => message.GetRawText().Contains(key, StringComparison.Ordinal));
-        Assert.Equal("agents", client.Welcome!.Value.GetProperty("client").GetString());
-    }
-
-    [Fact]
-    public async Task AWrongKeyIsRefused()
-    {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
-        game.Keys["agents"] = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
-        await using StationGodClient client = new(new ClientOptions(game.Target)
-        {
-            ClientName = "agents",
-            ReadEnvironment = _ => "//79/Pv6+fj39vX08/Lx8O/u7ezr6uno5+bl5OPi4eDf3t3c29rZ2NfW1dTT0tHQ"
-        });
-
-        CallOutcome outcome = await client.CallAsync("game_clock", Json("{}"));
-
-        Assert.Equal("unauthorized", Assert.IsType<CallOutcome.Refused>(outcome).Code);
-        Assert.Empty(game.Calls);
     }
 
     [Fact]
@@ -194,7 +120,7 @@ public sealed class ClientTests
         Assert.IsType<CallOutcome.Answered>(await client.CallAsync("mod_info", Json("{}")));
 
         Assert.Equal(ProtocolVersion.Version1, client.Protocol);
-        Assert.Equal(2, game.Connections);
+        Assert.Equal(1, game.Connections);
     }
 
     [Fact]
@@ -210,22 +136,19 @@ public sealed class ClientTests
     }
 
     [Fact]
-    public async Task VersionTwoOverTcpSignsInWithAKey()
+    public async Task VersionTwoOverTcpSignsInWithTheSharedSecretFirst()
     {
-        const string key = "1enZJ/rZm/qUU8+u0qfUXecYk0g+4RfZrkoVetifuZc=";
         await using FakeGame game = FakeGame.OnTcp(FakeProtocol.Version2);
-        game.Keys["probe-read"] = key;
         await using StationGodClient client = new(new ClientOptions(game.Target)
         {
-            ClientName = "probe-read",
-            KeyVariable = "K",
-            ReadEnvironment = name => name == "K" ? key : null
+            ReadEnvironment = name => name == ClientOptions.DefaultSecretVariable ? FakeGame.TestSecret : null
         });
 
         Assert.IsType<CallOutcome.Answered>(await client.CallAsync("mod_info", Json("{}")));
 
         Assert.Equal(ProtocolVersion.Version2, client.Protocol);
         Assert.Equal(1, game.Connections);
+        Assert.Equal(FakeGame.TestSecret, game.Received.First().GetProperty("secret").GetString());
     }
 
     [Fact]

@@ -77,19 +77,19 @@ class OldModOverPipe(FakeModCase):
 class OldModOverTcp(FakeModCase):
     transport = "tcp"
 
-    def test_a_legacy_secret_reconnects_with_version_1(self):
+    def test_the_secret_then_hello_falls_back_to_version_1_on_one_connection(self):
         mod = self.mod(version=1, legacy_secret="s3cret")
         os.environ["STATIONGOD_TEST_SECRET"] = "s3cret"
         game = self.client(mod, secret_env="STATIONGOD_TEST_SECRET")
         self.assertEqual(84211.5, game.call("game_clock")["game_time_s"])
         self.assertEqual(1, game.protocol)
-        self.assertEqual("hello", mod.received[0]["type"])
-        self.assertEqual({"type": "auth", "secret": "s3cret"}, mod.received[1])
+        self.assertEqual({"type": "auth", "secret": "s3cret"}, mod.received[0])
+        self.assertEqual("hello", mod.received[1]["type"])
 
-    def test_without_a_secret_the_server_is_too_old(self):
+    def test_without_a_secret_tcp_is_refused(self):
         mod = self.mod(version=1, legacy_secret="s3cret")
         os.environ.pop("STATIONGOD_NO_SECRET", None)
-        with self.assertRaises(stationgod.TooOld):
+        with self.assertRaises(stationgod.Unauthorized):
             self.client(mod, secret_env="STATIONGOD_NO_SECRET").open()
 
     def test_protocol_v1_signs_in_with_the_secret(self):

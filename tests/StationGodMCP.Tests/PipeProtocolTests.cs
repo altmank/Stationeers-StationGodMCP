@@ -291,7 +291,7 @@ internal sealed class PipeRig : IDisposable
     private readonly BlockingCollection<Connection> _connected = new BlockingCollection<Connection>();
 
     internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, int lineMs = 30000, bool mainThread = true,
-        ProtocolSettings? settings = null, AccessControl? access = null, SubscriptionHub? subscriptions = null,
+        ProtocolSettings? settings = null, SubscriptionHub? subscriptions = null,
         Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null)
     {
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
@@ -312,9 +312,8 @@ internal sealed class PipeRig : IDisposable
             Mod.ClosedHook = subscriptions.Closed;
         }
 
-        Access = access ?? new AccessControl(AccessSettings.Defaults, null);
         Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs, lineMs), Mod, _deadlines,
-            TestCatalogue.File.Value, Access, subscriptions: subscriptions);
+            TestCatalogue.File.Value, subscriptions: subscriptions);
         _listener = new PipeListener(Name, Host);
         _listener.Connected += connection => _connected.Add(connection);
         _listener.Start();
@@ -325,8 +324,6 @@ internal sealed class PipeRig : IDisposable
     internal FakeMod Mod { get; }
 
     internal ProtocolHost Host { get; }
-
-    internal AccessControl Access { get; }
 
     internal async Task<NamedPipeClientStream> ConnectAsync()
     {

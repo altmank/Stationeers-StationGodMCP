@@ -8,7 +8,7 @@ import threading
 import time
 import unittest
 
-from _support import FakeError, FakeModCase, key_of, stationgod, wait_for
+from _support import FakeError, FakeModCase, stationgod, wait_for
 
 
 class Version2Cases:
@@ -17,9 +17,8 @@ class Version2Cases:
         game = self.client(mod).open()
         self.assertEqual(2, game.protocol)
         self.assertEqual("w1", game.welcome["server"]["world"]["id"])
-        self.assertEqual("cheat", game.level)
         self.assertIn("subscriptions", game.features)
-        hello = mod.received[0]
+        hello = [message for message in mod.received if message.get("type") == "hello"][0]
         self.assertEqual("hello", hello["type"])
         self.assertEqual([2], hello["protocol"])
         self.assertEqual("stationgod-py/0.1.0", hello["client"]["library"])
@@ -72,11 +71,10 @@ class Version2Cases:
                 raise FakeError(code, f"{code} message", {"required": "write"})
             return handler
 
-        for code in ("permission_denied", "cheat_not_armed", "thing_not_found", "invalid_argument", "game_changed"):
+        for code in ("thing_not_found", "invalid_argument", "game_changed"):
             mod.handlers[code] = refuse(code)
         game = self.client(mod, check_arguments=False)
-        expected = {"permission_denied": stationgod.PermissionDenied, "cheat_not_armed": stationgod.CheatNotArmed,
-                    "thing_not_found": stationgod.NotFound, "invalid_argument": stationgod.InvalidArgument,
+        expected = {"thing_not_found": stationgod.NotFound, "invalid_argument": stationgod.InvalidArgument,
                     "game_changed": stationgod.GameError}
         for code, kind in expected.items():
             with self.assertRaises(kind) as raised:
@@ -227,41 +225,34 @@ class Version2Cases:
 class Version2OverTcp(Version2Cases, FakeModCase):
     transport = "tcp"
 
-    def test_a_wrong_key_is_unauthorized(self):
-        mod = self.mod()
-        os.environ["STATIONGOD_WRONG_KEY"] = key_of("not the key")
-        with self.assertRaises(stationgod.Unauthorized):
-            self.client(mod, client="tester", key_env="STATIONGOD_WRONG_KEY").open()
-
-    def test_an_anonymous_tcp_connection_is_refused(self):
-        mod = self.mod()
-        with self.assertRaises(stationgod.Unauthorized):
-            stationgod.Client(**mod.client_options()).open()
-
-    def test_the_proof_names_the_transport(self):
+    def test_the_shared_secret_goes_first(self):
         mod = self.mod()
         self.client(mod).open()
-        auth = [message for message in mod.received if message.get("type") == "auth"][0]
-        self.assertEqual("tester", auth["client"])
-        self.assertEqual(64, len(auth["proof"]))
+        self.assertEqual({"type": "auth", "secret": "s3cret"}, mod.received[0])
+        self.assertEqual("hello", mod.received[1]["type"])
+
+    def test_a_wrong_secret_is_unauthorized(self):
+        mod = self.mod()
+        os.environ["STATIONGOD_WRONG_SECRET"] = "nope"
+        with self.assertRaises(stationgod.Unauthorized):
+            self.client(mod, secret_env="STATIONGOD_WRONG_SECRET").open()
+
+    def test_without_a_secret_tcp_is_refused(self):
+        mod = self.mod()
+        os.environ.pop("STATIONGOD_NO_SECRET", None)
+        with self.assertRaises(stationgod.Unauthorized):
+            self.client(mod, secret_env="STATIONGOD_NO_SECRET").open()
 
 
 class Version2OverPipe(Version2Cases, FakeModCase):
     transport = "pipe"
 
-    def test_a_key_signs_in_over_the_pipe(self):
-        mod = self.mod(keys={"dashboard": (key_of("dashboard"), "write")})
-        os.environ["STATIONGOD_DASHBOARD_KEY"] = key_of("dashboard")
-        game = self.client(mod, client="dashboard", key_env="STATIONGOD_DASHBOARD_KEY").open()
-        self.assertEqual(("dashboard", "write"), (game.welcome["client"], game.level))
-        self.assertEqual("key", mod.received[0]["auth"])
-
-    def test_a_client_name_without_a_key_connects_anonymously(self):
+    def test_a_client_name_is_sent_in_hello(self):
         mod = self.mod()
-        os.environ.pop("STATIONGOD_ABSENT_KEY", None)
-        game = self.client(mod, client="dashboard", key_env="STATIONGOD_ABSENT_KEY").open()
-        self.assertEqual("anonymous", game.welcome["client"])
+        game = self.client(mod, client="dashboard").open()
+        self.assertEqual("dashboard", mod.received[0]["client"]["name"])
         self.assertNotIn("auth", mod.received[0])
+        self.assertEqual(2, game.protocol)
 
 
 if __name__ == "__main__":

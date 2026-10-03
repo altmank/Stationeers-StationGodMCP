@@ -25,10 +25,6 @@
     "description": "Credit card <reference_id> <where>. The game's sell takes goods from the card holder too and works only with a card a player carries or a vending machine holds.",
     "origin": "tool"
   },
-  "cheat_not_armed": {
-    "description": "The connection's level allows cheat, but the owner has not approved it now. Nothing ran.",
-    "origin": "protocol"
-  },
   "coils_short": {
     "description": "Only <taken> of <cost> <…> could be taken for cell <cell>; the build stopped before it (what was taken is given back).",
     "origin": "tool"
@@ -221,10 +217,6 @@
   "paint_failed": {"description": "<…> still shows colour index <now> after painting it <color_index>.", "origin": "tool"},
   "partial_merge": {"description": "Part of a stack can only go into an empty slot; the game has no partial merge.", "origin": "tool"},
   "paste_refused": {"description": "Refused with paste_refused.", "origin": "tool"},
-  "permission_denied": {
-    "description": "The method, at the arguments given, needs a higher level than the connection has; or run_console_command was asked to run a stationgod command. Nothing ran.",
-    "origin": "protocol"
-  },
   "plant_not_found": {"description": "Nothing with reference id <id> is a plant.", "origin": "tool"},
   "planted": {
     "description": "<…> is growing in <…>: a player never takes a plant out whole, only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.",
@@ -312,10 +304,7 @@
   "too_many_pieces": {"description": "Network <network> has <count> members.", "origin": "tool"},
   "trade_failed": {"description": "Refused with trade_failed.", "origin": "tool"},
   "transfer_not_found": {"description": "No move <id> is waiting or among the last <kept_outcomes> applied.", "origin": "tool"},
-  "unauthorized": {
-    "description": "Bad or missing key proof, unknown client name, auth.client not equal to hello.client.name, an anonymous TCP connection, or a key not allowed on this transport; today also the TCP bridge refusing the shared secret. The connection is closed.",
-    "origin": "protocol"
-  },
+  "unauthorized": {"description": "The TCP shared secret is missing or wrong. The connection is closed.", "origin": "protocol"},
   "unit_out_of_range": {"description": "<…> has <count> gene set(s), the top one last: unit must be 0 to <…>.", "origin": "tool"},
   "unknown_gas": {
     "description": "'<item>' is not a gas name as atmosphere_contents reports them (Oxygen, Nitrogen, CarbonDioxide, LiquidOxygen, Steam...).",

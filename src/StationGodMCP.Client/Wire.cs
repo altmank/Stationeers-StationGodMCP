@@ -9,7 +9,7 @@ internal static class Wire
 {
     private static readonly JsonWriterOptions Compact = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    internal static string Hello(ClientOptions options, bool offersKey) => Write(writer =>
+    internal static string Hello(ClientOptions options) => Write(writer =>
     {
         writer.WriteString("type", "hello");
         writer.WriteStartArray("protocol");
@@ -27,21 +27,10 @@ internal static class Wire
         }
 
         writer.WriteEndArray();
-        if (offersKey)
-        {
-            writer.WriteString("auth", "key");
-        }
     });
 
-    internal static string Auth(string client, string proof) => Write(writer =>
-    {
-        writer.WriteString("type", "auth");
-        writer.WriteString("client", client);
-        writer.WriteString("proof", proof);
-    });
-
-    // Today's TCP sign-in: the shared secret in plain text, version 1 only.
-    internal static string LegacyAuth(string secret) => Write(writer =>
+    // The TCP sign-in: the shared secret in plain text, sent before anything else.
+    internal static string SecretAuth(string secret) => Write(writer =>
     {
         writer.WriteString("type", "auth");
         writer.WriteString("secret", secret);

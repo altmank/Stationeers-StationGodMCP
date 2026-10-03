@@ -6,8 +6,8 @@ namespace StationGodMCP.Server;
 /// <summary>
 /// The sidecar's command line (docs/configuration.md, Sidecar options): --pipe (else STATIONGODMCP_PIPE_NAME, else
 /// StationGodMCP), or --host (else STATIONGODMCP_HOST) with --port (else STATIONGODMCP_PORT, else 8765) for TCP;
-/// --secret-env names the variable of the legacy shared secret for a version-1 server (STATIONGODMCP_SECRET);
-/// --client and --key-env sign in with a key; --output-dir (else STATIONGODMCP_OUTPUT_DIR) is where output files go;
+/// --secret-env names the variable of the TCP shared secret (STATIONGODMCP_SECRET);
+/// --client names this sidecar in hello; --output-dir (else STATIONGODMCP_OUTPUT_DIR) is where output files go;
 /// --inline-limit-kb is the reply size above which a reply goes to a file on its own (200, 0 for never).
 /// </summary>
 internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output, int InlineLimitBytes)
@@ -44,7 +44,6 @@ internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output,
         ClientOptions client = new(target)
         {
             ClientName = Argument(args, "--client"),
-            KeyVariable = Argument(args, "--key-env"),
             SecretVariable = Argument(args, "--secret-env") ?? ClientOptions.DefaultSecretVariable,
             ClientVersion = Program.ServerVersion,
             ReadEnvironment = environment

@@ -61,7 +61,7 @@ internal sealed class RuntimeView
 /// </summary>
 internal sealed class ConnectionView
 {
-    internal ConnectionView(string clientId, string? client, string? label, string transport, int? protocol, string? level,
+    internal ConnectionView(string clientId, string? client, string? label, string transport, int? protocol,
         int inFlight, long served, long bytesSent)
     {
         ClientId = clientId;
@@ -69,7 +69,6 @@ internal sealed class ConnectionView
         Label = label;
         Transport = transport;
         Protocol = protocol;
-        Level = level;
         InFlight = inFlight;
         Served = served;
         BytesSent = bytesSent;
@@ -84,8 +83,6 @@ internal sealed class ConnectionView
     public string Transport { get; }
 
     public int? Protocol { get; }
-
-    public string? Level { get; }
 
     public int InFlight { get; }
 

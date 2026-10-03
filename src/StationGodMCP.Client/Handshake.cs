@@ -15,10 +15,10 @@ internal abstract record Connecting
 }
 
 /// <summary>
-/// Opening a connection and signing in (protocol.md, Versions and negotiation; Proving a key; Old clients). With
-/// ProtocolChoice.Auto the client sends hello offering version 2. Any first answer without a type key is an old mod:
-/// on the pipe it read hello as a version-1 request and the same connection goes on in version 1; over TCP it refused
-/// hello as a sign-in and closed, so the client reconnects with the legacy shared secret when it has one.
+/// Opening a connection (protocol.md, Versions and negotiation; Old clients). Over TCP the shared secret goes first;
+/// after it TCP talks as the pipe does. With ProtocolChoice.Auto the client sends hello offering version 2; any first
+/// answer without a type key is an old mod, which read hello as a version-1 request, and the same connection goes on in
+/// version 1.
 /// </summary>
 internal static class Handshake
 {
@@ -35,14 +35,17 @@ internal static class Handshake
         Connecting outcome;
         try
         {
-            outcome = options.Protocol == ProtocolChoice.Version1
-                ? await VersionOneAsync(options, channel, cancellation).ConfigureAwait(false)
-                : await HelloAsync(options, channel, cancellation).ConfigureAwait(false);
+            Connecting? signIn = target is GameTarget.Tcp
+                ? await SecretAsync(options, channel, cancellation).ConfigureAwait(false)
+                : null;
+            outcome = signIn ?? (options.Protocol == ProtocolChoice.Version1
+                ? new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version1, null))
+                : await HelloAsync(options, channel, cancellation).ConfigureAwait(false));
         }
         catch (Exception exception) when (exception is IOException or ObjectDisposedException ||
                                           exception is OperationCanceledException && !cancellation.IsCancellationRequested)
         {
-            outcome = Unreachable($"The connection to {target.Description} broke while signing in ({exception.Message}).");
+            outcome = Unreachable($"The connection to {target.Description} broke while connecting ({exception.Message}).");
         }
 
         if (outcome is not Connecting.Connected)
@@ -56,8 +59,7 @@ internal static class Handshake
     private static async Task<Connecting> HelloAsync(ClientOptions options, LineChannel channel, CancellationToken cancellation)
     {
         GameTarget target = options.Target;
-        string? key = options.Key;
-        await channel.WriteLineAsync(Wire.Hello(options, key != null), cancellation).ConfigureAwait(false);
+        await channel.WriteLineAsync(Wire.Hello(options), cancellation).ConfigureAwait(false);
         Answer answer = await NextAsync(options, channel, "hello", cancellation).ConfigureAwait(false);
         if (answer is not Answer.Message { Value: var message })
         {
@@ -66,87 +68,28 @@ internal static class Handshake
 
         if (!message.TryGetProperty("type", out _))
         {
-            if (target is GameTarget.Pipe)
-            {
-                return new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version1, null));
-            }
-
-            await channel.DisposeAsync().ConfigureAwait(false);
-            return await LegacyTcpAsync(options, cancellation).ConfigureAwait(false);
-        }
-
-        if (Wire.Text(message, "type") == "challenge")
-        {
-            if (key == null)
-            {
-                return Refused("unauthorized", $"{target.Description} asked for a key proof, but none was offered.");
-            }
-
-            string? proof = KeyProof.Of(key, Wire.Text(message, "nonce") ?? string.Empty, options.HelloName, target.Transport);
-            if (proof == null)
-            {
-                return Refused("unauthorized", $"The key in {options.EffectiveKeyVariable} is not base64 text.");
-            }
-
-            await channel.WriteLineAsync(Wire.Auth(options.HelloName, proof), cancellation).ConfigureAwait(false);
-            answer = await NextAsync(options, channel, "the key proof", cancellation).ConfigureAwait(false);
-            if (answer is not Answer.Message { Value: var signedIn })
-            {
-                return Unreachable(((Answer.Missing)answer).Why);
-            }
-
-            message = signedIn;
+            return new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version1, null));
         }
 
         return Wire.Text(message, "type") switch
         {
             "welcome" => new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version2, message)),
             "reply" when Wire.Child(message, "error") is { } error => new Connecting.Failed(new CallOutcome.Refused(error)),
-            _ => Unreachable($"{target.Description} answered the sign-in unexpectedly: {Shorten(message)}")
+            _ => Unreachable($"{target.Description} answered hello unexpectedly: {Shorten(message)}")
         };
     }
 
-    // An old mod over TCP closed after refusing hello; version 1 there needs today's shared secret.
-    private static async Task<Connecting> LegacyTcpAsync(ClientOptions options, CancellationToken cancellation)
-    {
-        if (options.Secret == null)
-        {
-            return Refused("unauthorized",
-                $"{options.Target.Description} speaks only protocol version 1, which needs the shared secret in the " +
-                $"environment variable {options.SecretVariable}; it is not set.");
-        }
-
-        Opened opened = await options.Target.OpenAsync(options.EffectiveConnectTimeout, cancellation).ConfigureAwait(false);
-        if (opened is not Opened.Stream stream)
-        {
-            return Unreachable(((Opened.Nothing)opened).Message);
-        }
-
-        LineChannel channel = new(stream.Value);
-        Connecting outcome = await VersionOneAsync(options, channel, cancellation).ConfigureAwait(false);
-        if (outcome is not Connecting.Connected)
-        {
-            await channel.DisposeAsync().ConfigureAwait(false);
-        }
-
-        return outcome;
-    }
-
-    private static async Task<Connecting> VersionOneAsync(ClientOptions options, LineChannel channel, CancellationToken cancellation)
+    // TCP: the shared secret first; null when the server accepted it, else why not.
+    private static async Task<Connecting?> SecretAsync(ClientOptions options, LineChannel channel, CancellationToken cancellation)
     {
         GameTarget target = options.Target;
-        if (target is not GameTarget.Tcp)
-        {
-            return new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version1, null));
-        }
-
         if (options.Secret is not { } secret)
         {
             return Refused("unauthorized",
-                $"Version 1 over TCP needs the shared secret in the environment variable {options.SecretVariable}; it is not set.");
+                $"TCP needs the shared secret in the environment variable {options.SecretVariable}; it is not set.");
         }
 
-        await channel.WriteLineAsync(Wire.LegacyAuth(secret), cancellation).ConfigureAwait(false);
+        await channel.WriteLineAsync(Wire.SecretAuth(secret), cancellation).ConfigureAwait(false);
         Answer answer = await NextAsync(options, channel, "the shared secret", cancellation).ConfigureAwait(false);
         if (answer is not Answer.Message { Value: var message })
         {
@@ -154,7 +97,7 @@ internal static class Handshake
         }
 
         return message.TryGetProperty("ok", out JsonElement ok) && ok.ValueKind == JsonValueKind.True
-            ? new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version1, null))
+            ? null
             : Wire.Child(message, "error") is { } error
                 ? new Connecting.Failed(new CallOutcome.Refused(error))
                 : Refused("unauthorized", $"{target.Description} rejected the shared secret.");
