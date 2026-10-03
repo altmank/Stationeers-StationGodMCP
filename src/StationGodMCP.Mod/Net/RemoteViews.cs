@@ -4,14 +4,15 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects.Entities;
+using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Pure.RemoteView;
 using UnityEngine;
 
 namespace StationGodMCP.Net;
 
 /// <summary>
-/// The server's side: the latest view each remote player's StationGod sent, keyed by that player's human (the
-/// message's connection's Client.RegisteredHuman), with the connection it came on. A view of another protocol or one
+/// The server's side: the latest view each remote player's StationGod sent, keyed by that player's human (the human of
+/// the message's connection's client, ViewSender), with the connection it came on. A view of another protocol or one
 /// that does not read is ignored, logged once per connection, and remembered as the reason that player has no view.
 /// Views go when their player's client leaves or the human is no longer theirs (checked every second), and with the
 /// world (WorldStores).
@@ -32,15 +33,21 @@ internal static class RemoteViews
         switch (ViewWire.Decode(payload))
         {
             case WireRead<ViewReport>.Read read:
-                Human? human = Client.Find(connectionId)?.RegisteredHuman;
+                Client? client = Client.Find(connectionId);
+                Human? human = HumanOf(client);
                 if (human == null)
                 {
+                    OnceLog.Warning($"view_owner:{connectionId}",
+                        $"Ignoring {NameOf(client, connectionId)}'s views: no living, connected human in the world " +
+                        "belongs to that player.");
                     return;
                 }
 
                 if (Book.Offer(human.ReferenceId, read.Value, Now))
                 {
                     ConnectionOf[human.ReferenceId] = connectionId;
+                    OnceLog.Info($"view_kept:{human.ReferenceId}",
+                        $"Keeping {NameOf(client, connectionId)}'s views for {human.DisplayName} ({human.ReferenceId}).");
                 }
 
                 Unreadable.Remove(connectionId);
@@ -69,7 +76,7 @@ internal static class RemoteViews
     {
         foreach (Client client in NetworkBase.Clients)
         {
-            if (client.RegisteredHuman == human && Unreadable.TryGetValue(client.connectionId, out string? reason))
+            if (HumanOf(client) == human && Unreadable.TryGetValue(client.connectionId, out string? reason))
             {
                 return reason;
             }
@@ -96,8 +103,8 @@ internal static class RemoteViews
         foreach (long human in new List<long>(Book.Keys))
         {
             Client? client = ConnectionOf.TryGetValue(human, out long connection) ? Client.Find(connection) : null;
-            if (client == null || client.state == ClientState.Disconnected || client.RegisteredHuman == null ||
-                client.RegisteredHuman.ReferenceId != human)
+            Human? owner = client == null || client.state == ClientState.Disconnected ? null : HumanOf(client);
+            if (owner == null || owner.ReferenceId != human)
             {
                 Book.Remove(human);
                 ConnectionOf.Remove(human);
@@ -123,9 +130,38 @@ internal static class RemoteViews
         RemoteDrawings.Clear();
     }
 
+    private static Human? HumanOf(Client? client)
+    {
+        if (client == null)
+        {
+            return null;
+        }
+
+        Human registered = client.RegisteredHuman;
+        ClientHuman<Human>? known = registered != null
+            ? new ClientHuman<Human>(registered, registered.OwnerClientId, inPlay: true)
+            : null;
+        return ViewSender.HumanOf(client.ClientId, known, Humans());
+    }
+
+    // Lazy: read only when the client's registered human is missing or no longer its own.
+    private static IEnumerable<ClientHuman<Human>> Humans()
+    {
+        foreach (Human human in Human.AllHumans)
+        {
+            if (human != null && !human.IsBeingDestroyed)
+            {
+                yield return new ClientHuman<Human>(human, human.OwnerClientId,
+                    PlayerOrigin.IsConnected(human) && PlayerOrigin.IsAlive(human));
+            }
+        }
+    }
+
+    private static string NameOf(Client? client, long connectionId) => client?.name ?? $"connection {connectionId}";
+
     private static void Ignore(long connectionId, string reason)
     {
-        string name = Client.Find(connectionId)?.name ?? $"connection {connectionId}";
+        string name = NameOf(Client.Find(connectionId), connectionId);
         if (!Unreadable.ContainsKey(connectionId))
         {
             StationGodMod.LogWarning($"Ignoring {name}'s views: {reason}. Run the same StationGod version on both.");

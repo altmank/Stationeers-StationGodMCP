@@ -91,13 +91,17 @@ internal abstract class PlayerOrigin
                 continue;
             }
 
-            candidates.Add(new PlayerCandidate<Human>(human, human.DisplayName,
-                human.OrganBrain != null && human.OrganBrain.IsOnline,
-                human.State != EntityState.Dead && human.State != EntityState.Decay));
+            candidates.Add(new PlayerCandidate<Human>(human, human.DisplayName, IsConnected(human), IsAlive(human)));
         }
 
         return candidates;
     }
+
+    /// <summary>Its brain belongs to a client connected now (Brain.IsOnline).</summary>
+    internal static bool IsConnected(Human human) => human.OrganBrain != null && human.OrganBrain.IsOnline;
+
+    /// <summary>Not dead and not decaying.</summary>
+    internal static bool IsAlive(Human human) => human.State != EntityState.Dead && human.State != EntityState.Decay;
 
     private sealed class Present : PlayerOrigin
     {

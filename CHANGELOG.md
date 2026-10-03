@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.1
+
+2026-10-03. 91 tools.
+
+- **Fix: views of a player who rejoined their character.** On a dedicated server the views a player's StationGod
+  sends were dropped when that player had rejoined an existing character (a loaded save, a reconnect): the server
+  looked the player up through the game's own link from the client to its human, which the game sets only when a
+  human changes hands. The server now takes that player's connected, living human from the world when the link is
+  missing, so `looking_at`, the `crosshair`, `highlight`, `show_preview` and the other camera tools answer for them
+  instead of refusing `no_view`. The log says once per connection when a player's views match no human, and once per
+  player when their first view is kept.
+
 ## 1.12.0
 
 2026-10-03. The player's view on a dedicated server. 91 tools.
