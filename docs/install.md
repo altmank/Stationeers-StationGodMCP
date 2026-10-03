@@ -135,10 +135,26 @@ folder; the pipe name matches (see *Two games on one machine*).
 
 ## Multiplayer
 
-- **The host needs the mod; every player who joins needs the same version.** Requests run on the host, where the
-  game's state lives, and every change reaches players through the game's own sync. The StationGod Gateway and its kit
-  are new prefabs, which a game without the mod cannot show.
-- The pipe and the TCP listener open only on the host. On a client the mod does nothing.
+- **The host needs the mod; the players who join do not.** Requests run on the host, where the game's state lives,
+  and every change reaches players through the game's own sync. A player without StationGod, or with another version,
+  joins as before. One exception: a world with a StationGod Gateway in it needs the mod on every player's game, as the
+  Gateway and its kit are new prefabs, which a game without the mod cannot show.
+- **What StationGod on a player's game adds (1.12.0+).** On a dedicated server the agent's "the player" is the one
+  connected player, but their camera is on their own machine. With StationGod there, their game shares where they look
+  with the server, so the camera tools work for them as in single player: `looking_at`, placing at the `crosshair`,
+  `on_face_i_look_at`, the `player` frame, `find_spot` near the crosshair, `wall_map` and `find_spot` with
+  `looking: true`, and `highlight` and `show_preview`, which their game then draws on their screen (the reply's
+  `drawn_on` names them). Without it those calls refuse `no_view`, and the message says why (no StationGod on their
+  game, or a version that speaks another view protocol). A view the player has since walked away from (more than
+  0.3 m, or older than 5 s once they moved) is refused `view_stale` rather than read; standing still keeps it current,
+  alt-tabbed or not. Both games need the same view protocol, which this version calls 1; the log of each says when
+  they differ.
+- StationGod's messages between games go through StationeersLaunchPad's networking. As soon as any mod uses it, a game
+  expects it on the other side of a join, so on a server where StationGod is the only mod that does, a player whose
+  game runs no such mod cannot join. If that matters, set `[Multiplayer] ShareViews = false` on the server (see
+  [configuration](configuration.md)); the camera tools then refuse `no_view` for remote players.
+- The pipe and the TCP listener open only on the host. On a client the mod serves no requests: it shares its player's
+  view with a server running StationGod and draws what that server sends it.
 - Anyone who can run a program on the host's machine can open the pipe; over TCP only the secret gets in. Every
   connection can call every tool, cheats included; agents tell you when a tool is a cheat.
 - Building jobs hold the game tick for a frame or two; players see a brief pause.

@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>StationGodMCP</AssemblyName>
     <RootNamespace>StationGodMCP</RootNamespace>
-    <Version>1.11.0</Version>
+    <Version>1.12.0</Version>
     <Authors>XCeled</Authors>
     <Description>Lets an AI agent read and operate a running Stationeers game through the Model Context Protocol.</Description>
     <LangVersion>12.0</LangVersion>
@@ -42,6 +42,8 @@
     <Reference Include="BepInEx" HintPath="$(BepInExCorePath)\BepInEx.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(BepInExCorePath)\0Harmony.dll" Private="false" />
     <Reference Include="StationeersMods.Interface" HintPath="$(LaunchPadPath)\StationeersMods.Interface.dll" Private="false" />
+    <!-- Multiplayer messages (Net/): only touched once StationGodNet.Register found it, never shipped with the mod. -->
+    <Reference Include="LaunchPadBooster" HintPath="$(LaunchPadPath)\LaunchPadBooster.dll" Private="false" />
     <Reference Include="Newtonsoft.Json" HintPath="$(ManagedPath)\Newtonsoft.Json.dll" Private="false" />
     <Reference Include="UnityEngine" HintPath="$(ManagedPath)\UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)\UnityEngine.CoreModule.dll" Private="false" />

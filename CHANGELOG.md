@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.12.0
+
+2026-10-03. The player's view on a dedicated server. 91 tools.
+
+- **Camera tools on a dedicated server.** A player whose game runs StationGod now shares where they look with the
+  server: the cursor's ray, the thing and button under their crosshair and the first surface the ray hits, read on
+  their own game exactly as the game's cursor reads them. So `looking_at`, `place_structure` at the `crosshair`,
+  `on_face_i_look_at`, the `player` frame and `out_of_face`, `find_spot` near the crosshair or `looking`, and
+  `wall_map` `looking` answer for that player as they do in single player. `highlight` and `show_preview` are drawn by
+  that player's game, on their screen; the reply's `drawn_on` names them and `renderer` is `remote`. Replies that read
+  the view say which one: `view` {`source` `local` or `remote`, `age_s`} (in `looking_at` inside its `view`, in
+  `place_structure` in each placement's `resolved`).
+- **StationGod stays optional on players' games.** A player without it, or with another version, joins as before. The
+  server announces its StationGod in the join data; a player's game sends its view only to a server that speaks the
+  same view protocol, and the server draws only on a game it has a view from, so nothing is sent to a game that cannot
+  read it. Without a view the camera tools refuse the new `no_view`, saying why (no player, no camera yet, no
+  StationGod on the player's game, or one speaking another protocol). A view the player has since walked away from
+  (more than 0.3 m, or older than 5 s once they moved) is refused `view_stale`; age alone never makes a view stale.
+  `no_camera` is gone.
+- **New setting `[Multiplayer] ShareViews`** (default `true`). StationGod's messages go through StationeersLaunchPad's
+  networking, and a game that uses it expects it on the other side of a join; on a server where no other mod uses it,
+  `false` lets in players whose game runs no such mod.
+
 ## 1.11.0
 
 2026-10-03. The player on a dedicated server; protocol version 2 only. 91 tools.

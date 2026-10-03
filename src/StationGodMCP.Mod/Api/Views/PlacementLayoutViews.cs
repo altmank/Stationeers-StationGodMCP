@@ -423,8 +423,10 @@ internal sealed class ControlFaceView
 /// <summary>A relative at or a named facing as the world resolved it, and how.</summary>
 internal sealed class ResolvedPlacementView
 {
-    internal ResolvedPlacementView(PointView at, string atHow, string? facing, string? facingHow)
+    internal ResolvedPlacementView(PointView at, string atHow, string? facing, string? facingHow,
+        ViewSourceView? view = null)
     {
+        View = view;
         At = at;
         AtHow = atHow;
         Facing = facing;
@@ -441,6 +443,10 @@ internal sealed class ResolvedPlacementView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? FacingHow { get; }
+
+    /// <summary>The player's view at or the facing was read from (crosshair, player frame, a face): local or remote.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ViewSourceView? View { get; }
 }
 
 /// <summary>A device or mounted thing on a wall map, by its key.</summary>
@@ -515,8 +521,10 @@ internal sealed class FreeRectView
 internal sealed class WallMapView
 {
     internal WallMapView(string plane, string side, string right, string up, List<string> rows, PointView topLeft,
-        List<WallSectionView> sections, List<WallThingView> things, List<FreeRectView>? freeRects, string legend)
+        List<WallSectionView> sections, List<WallThingView> things, List<FreeRectView>? freeRects, string legend,
+        ViewSourceView? view = null)
     {
+        View = view;
         Plane = plane;
         Side = side;
         Right = right;
@@ -554,6 +562,10 @@ internal sealed class WallMapView
     public List<FreeRectView>? FreeRects { get; }
 
     public string Legend { get; }
+
+    /// <summary>The player's view the call read (looking, a crosshair near): local or remote and its age; else left out.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ViewSourceView? View { get; }
 }
 
 /// <summary>One spot find_spot offers: where, turned how, how far, its layout findings and ready arguments.</summary>
@@ -594,8 +606,9 @@ internal sealed class SpotView
 internal sealed class FindSpotView
 {
     internal FindSpotView(string? prefabName, List<string> planes, List<SpotView> spots, int tried, int filtered,
-        int checkedCount, int rejected, List<SpotReasonView>? reasons = null)
+        int checkedCount, int rejected, List<SpotReasonView>? reasons = null, ViewSourceView? view = null)
     {
+        View = view;
         PrefabName = prefabName;
         Planes = planes;
         Spots = spots;
@@ -626,6 +639,10 @@ internal sealed class FindSpotView
 
     /// <summary>Why spots were filtered or rejected, most frequent first (structures round 2: 0 spots, no reason).</summary>
     public List<SpotReasonView> Reasons { get; }
+
+    /// <summary>The player's view the call read (looking, a crosshair near): local or remote and its age; else left out.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ViewSourceView? View { get; }
 }
 
 /// <summary>One reason find_spot ruled spots out, as first worded, and how many spots it ruled out.</summary>
@@ -760,8 +777,11 @@ internal sealed class PrintView
 /// <summary>show_preview: how many boxes it drew, how many earlier ones it cleared, for how long, and the dry run.</summary>
 internal sealed class ShowPreviewView
 {
-    internal ShowPreviewView(int shown, int cleared, double seconds, PlaceReportView? dryRun, List<string> notes)
+    internal ShowPreviewView(int shown, int cleared, double seconds, PlaceReportView? dryRun, List<string> notes,
+        string? drawnOn = null, ViewSourceView? view = null)
     {
+        DrawnOn = drawnOn;
+        View = view;
         Shown = shown;
         Cleared = cleared;
         Seconds = seconds;
@@ -780,6 +800,14 @@ internal sealed class ShowPreviewView
     public PlaceReportView? DryRun { get; }
 
     public List<string> Notes { get; }
+
+    /// <summary>The player whose game drew them, when that is not this game (a client of a dedicated server).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? DrawnOn { get; }
+
+    /// <summary>The player's view the screen was found through: local or remote and its age.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ViewSourceView? View { get; }
 }
 
 /// <summary>undo_job's plan: what it removes, what it builds again, why it cannot, notes.</summary>

@@ -23,16 +23,17 @@ namespace StationGodMCP;
 
 /// <summary>
 /// The mod: at load it checks every reflected game member (GameMembers.CheckAll), applies each Harmony patch class,
-/// reads the pipe and remote settings and registers the gateway prefab. Every frame on a host (NetworkManager.IsServer)
-/// it keeps the named pipe (and, when configured, the TCP transport) listening and runs the queued requests on the
-/// main thread.
+/// reads the pipe and remote settings, registers its multiplayer messages (Net/StationGodNet) and the gateway prefab.
+/// Every frame on a host (NetworkManager.IsServer) it keeps the named pipe (and, when configured, the TCP transport)
+/// listening and runs the queued requests on the main thread. On a client of a server it serves no requests: it shares
+/// its player's view with a server that runs StationGod (ViewReporter) and draws what that server sends it.
 /// </summary>
 [StationeersMod(ModId, DisplayName, Version)]
 public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.11.0";
+    public const string Version = "1.12.0";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
@@ -98,6 +99,7 @@ public sealed class StationGodMod : ModBehaviour
             ProtocolLog.ReplyWritten = MethodStats.RecordReply;
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
+            Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
             _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
                 Subscriptions.ReadLogicManyReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
@@ -153,8 +155,13 @@ public sealed class StationGodMod : ModBehaviour
             if (!NetworkManager.IsServer)
             {
                 StopServers("world_unloaded");
+                Net.ViewReporter.Tick();
+                Previews.Tick();
+                Highlights.Tick();
                 return;
             }
+
+            Net.RemoteViews.Tick();
 
             if (_pipeListener == null && !_pipeUnavailable)
             {
@@ -481,6 +488,22 @@ internal sealed class ServerSettings
         return new ServerSettings(maximum, strict.Value,
             tcp.Value >= 1 && tcp.Value <= 64 ? tcp.Value : DefaultMaxTcpConnections);
     }
+}
+
+/// <summary>
+/// [Multiplayer]: whether StationGod shares views between games (a client's view to the server, the server's drawings
+/// back). Read once at load.
+/// </summary>
+internal static class MultiplayerSettings
+{
+    internal static bool ShareViews(ConfigFile configuration) =>
+        configuration.Bind("Multiplayer", "ShareViews", true,
+            "Share views between games: a client tells a server running StationGod where its player looks, so the " +
+            "server's camera tools (looking_at, crosshair placement, show_preview, highlight...) work for that " +
+            "player, and the server's drawings show on that player's screen. StationGod stays optional on every " +
+            "machine. It registers StationGod with LaunchPadBooster's networking, which makes a game expect " +
+            "LaunchPadBooster networking on the other side of a join: on a server where no other mod uses it, " +
+            "false lets players join whose game runs no such mod. Restart the game to apply.").Value;
 }
 
 /// <summary>

@@ -80,26 +80,15 @@ internal sealed class PlaneView
     /// The plane as asked: plane "z=668" with side (+z or -z; default the side whose 2 m cell is in a room), or the face
     /// the look ray hits (looking: true). Also the point the map centres on when the call gives none.
     /// </summary>
-    internal static PlaneView Read(Args args, GridFacts facts, out Vec3? around)
+    internal static PlaneView Read(Args args, GridFacts facts, CameraUse camera, out Vec3? around)
     {
         around = null;
         if (args.OptionalBool("looking") ?? false)
         {
-            if (!Look.HasCamera)
-            {
-                throw ApiErrors.Refused("no_camera",
-                    "looking: there is no player camera to look from (a dedicated server has none: a remote " +
-                    "player's camera stays on their own machine).");
-            }
-
-            CursorManager cursor = CursorManager.Instance;
-            if (cursor == null || !Look.Cast(cursor, 20.0, out RaycastHit hit))
-            {
-                throw ApiErrors.Refused("no_crosshair_hit", "The look ray hits nothing within 20 m.");
-            }
-
-            GridStep? outward = ViewBasis.Along(Bodies.V(hit.normal), 10.0);
-            Vec3 point = Bodies.V(hit.point);
+            CameraHit hit = camera.Require("looking").HitWithin(20.0) ??
+                            throw ApiErrors.Refused("no_crosshair_hit", "The look ray hits nothing within 20 m.");
+            GridStep? outward = ViewBasis.Along(hit.Normal, 10.0);
+            Vec3 point = hit.Point;
             if (!outward.HasValue)
             {
                 throw ApiErrors.Refused("no_face", $"The look ray hits {point}, not a surface along an axis.");

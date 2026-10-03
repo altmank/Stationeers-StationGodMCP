@@ -37,7 +37,8 @@ internal static class WallMapApi
     internal static WallMapView Handle(Args args)
     {
         GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
-        PlaneView plane = PlaneView.Read(args, facts, out Vec3? looked);
+        CameraUse camera = new CameraUse();
+        PlaneView plane = PlaneView.Read(args, facts, camera, out Vec3? looked);
         Vec3 around = args.Has("around") ? PlaneView.PointOf(args.Optional("around")!) : looked ?? Vec3.Zero;
         if (!args.Has("around") && looked == null)
         {
@@ -55,7 +56,7 @@ internal static class WallMapApi
             GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position)));
         return new WallMapView(plane.Plane.ToString(), plane.Side.Name, plane.Right.Name, plane.Up.Name,
             map.Lines(), PointView.Of(plane.PointAt(map.U(0), map.V(0))), Sections(plane, map, facts), thingViews,
-            FreeRects(args, plane, map), Legend);
+            FreeRects(args, plane, map), Legend, camera.Source);
     }
 
     /// <summary>The map of the plane within radius of a point (as the viewer sees it), with the things keyed.</summary>

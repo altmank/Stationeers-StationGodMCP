@@ -61,6 +61,9 @@ internal sealed class PlannedPlacement
 
     internal string? ResolvedFacingHow { get; set; }
 
+    /// <summary>The player's view at or the facing was read from; null when neither read one.</summary>
+    internal StationGodMCP.Api.Views.ViewSourceView? View { get; set; }
+
     /// <summary>The turn asked for: the rotation as given, or a named facing resolved to an axis.</summary>
     internal RotationSpec Spec { get; set; } = RotationSpec.Default;
 
@@ -425,19 +428,22 @@ internal static class PlacePlanner
         string name = plan.Arguments.Placements.Count > 1 ? $"placements[{placement.Index}].at" : "at";
         try
         {
-            ResolvedAt at = AtResolver.Resolve(placement.Args.At, plan.Facts, name);
+            CameraUse camera = new CameraUse();
+            ResolvedAt at = AtResolver.Resolve(placement.Args.At, plan.Facts, name, camera);
             placement.ResolvedAt = at;
             placement.At = at.Point;
             placement.Spec = placement.Args.Rotation;
             NamedFacing? named = placement.Args.NamedFacing;
             if (named != null)
             {
-                GridStep facing = AtResolver.Facing(named, at, plan.Facts, name.Replace(".at", ".facing"),
+                GridStep facing = AtResolver.Facing(named, at, plan.Facts, name.Replace(".at", ".facing"), camera,
                     out string how);
                 placement.Spec = new RotationSpec.Facing(facing, named.Up);
                 placement.ResolvedFacing = facing.Name;
                 placement.ResolvedFacingHow = how;
             }
+
+            placement.View = camera.Source;
 
             return true;
         }

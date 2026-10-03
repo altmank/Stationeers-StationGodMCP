@@ -272,8 +272,10 @@ then stands inside a frame, not on one, and `check_replaceable` answers false (`
 - `above_floor_m`: its bottom (the bottom of its mesh, what stands on the floor) that high above the floor below `at`
   (a floor plate, or a frame under the plane, within 10 m; with none the placement is refused). The cursor snaps to
   0.5 m, so the snap whose bottom lands nearest the height asked is used; `resolved.at_how` says where it ended up.
-- The player frame, `crosshair` and `on_face_i_look_at` need a player camera: a dedicated server answers `no_camera`,
-  so use frame `world` or `target` there.
+- The player frame, `crosshair` and `on_face_i_look_at` need the player's view: this game's camera, or on a dedicated
+  server the view the player's own StationGod shares (1.12.0+). Without one they refuse `no_view`, saying why, and a
+  view the player has walked away from is refused `view_stale`; frame `world` or `target` needs no view.
+  `resolved.view` says which view was read (`local` or `remote`, and its age).
 - `facing` also takes `toward_player`, `away_from_player`, `out_of_face` (the face you look at) and `into_room`.
 
 ### Placing by intent (1.4.3+)

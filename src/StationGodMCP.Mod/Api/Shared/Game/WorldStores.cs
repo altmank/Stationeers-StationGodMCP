@@ -56,6 +56,7 @@ internal static class WorldStores
         scope.Register("blueprint_paste", PasteBlueprintApi.ForgetWorld);
         scope.Register("highlights", static () => Highlights.Clear());
         scope.Register("previews", static () => Previews.Clear());
+        scope.Register("remote_views", Net.RemoteViews.Clear);
         return scope;
     }
 

@@ -52,7 +52,8 @@ internal static class FindSpotApi
             throw ApiErrors.Refused("no_cursor", $"The game has no placement cursor for {prefab.PrefabName}.");
         }
 
-        Vec3 near = Near(args);
+        CameraUse camera = new CameraUse();
+        Vec3 near = Near(args, camera);
         double radius = args.OptionalPositiveDouble("radius_m") ?? DefaultRadiusM;
         if (radius > MaximumRadiusM)
         {
@@ -60,7 +61,7 @@ internal static class FindSpotApi
         }
 
         SpotRequirements require = Requirements(args.OptionalObject("require"));
-        List<PlaneView> planes = Planes(args, facts, out Room? room, out PlaneView? named);
+        List<PlaneView> planes = Planes(args, facts, camera, out Room? room, out PlaneView? named);
         int limit = args.OptionalInt("limit", 1, 20) ?? DefaultLimit;
         int maxChecks = args.OptionalInt("max_checks", 1, MaximumChecks) ?? DefaultChecks;
         GridStep? facing = args.Has("facing") ? Step(args.OptionalString("facing"), "facing") : (GridStep?)null;
@@ -150,7 +151,8 @@ internal static class FindSpotApi
 
         return new FindSpotView(prefab.PrefabName, planes.ConvertAll(plane => $"{plane.Plane} seen from {plane.Side.Name}"),
             spots, passed.Count + filtered, filtered, checkedSpots.Count + rejected, rejected,
-            reasons.Top(MaximumReasons).ConvertAll(static reason => new SpotReasonView(reason.Reason, reason.Count)));
+            reasons.Top(MaximumReasons).ConvertAll(static reason => new SpotReasonView(reason.Reason, reason.Count)),
+            camera.Source);
     }
 
     // The search window on the plane, a metre deep either side: where the things a spot could clash with stand.
@@ -177,25 +179,15 @@ internal static class FindSpotApi
         internal List<NearBody>? Bodies { get; set; }
     }
 
-    private static Vec3 Near(Args args)
+    private static Vec3 Near(Args args, CameraUse camera)
     {
         JToken? near = args.Optional("near");
         if (near == null || (near.Type == JTokenType.String && near.Value<string>() == "crosshair"))
         {
-            if (!Look.HasCamera)
-            {
-                throw ApiErrors.Refused("no_camera",
-                    "near: there is no player camera to look from (a dedicated server has none: a remote " +
-                    "player's camera stays on their own machine); pass near.");
-            }
-
-            CursorManager cursor = CursorManager.Instance;
-            if (cursor == null || !Look.Cast(cursor, 20.0, out RaycastHit hit))
-            {
-                throw ApiErrors.Refused("no_crosshair_hit", "near: the look ray hits nothing within 20 m; pass near.");
-            }
-
-            return Bodies.V(hit.point);
+            CameraHit hit = camera.Require("near (or pass near)").HitWithin(20.0) ??
+                            throw ApiErrors.Refused("no_crosshair_hit",
+                                "near: the look ray hits nothing within 20 m; pass near.");
+            return hit.Point;
         }
 
         if (near.Type == JTokenType.String && near.Value<string>() == "player")
@@ -222,13 +214,14 @@ internal static class FindSpotApi
 
     // One plane (plane/side or looking) or the walls of a room (room_id): every face of a room cell toward a cell
     // outside the room that carries a wall or window, seen from inside.
-    private static List<PlaneView> Planes(Args args, GridFacts facts, out Room? room, out PlaneView? named)
+    private static List<PlaneView> Planes(Args args, GridFacts facts, CameraUse camera, out Room? room,
+        out PlaneView? named)
     {
         room = null;
         named = null;
         if (!args.Has("room_id"))
         {
-            return new List<PlaneView> { PlaneView.Read(args, facts, out _) };
+            return new List<PlaneView> { PlaneView.Read(args, facts, camera, out _) };
         }
 
         if (!ThingId.TryRead(args.Optional("room_id"), out ThingId id))
@@ -273,7 +266,7 @@ internal static class FindSpotApi
 
         if (args.Has("plane") || (args.OptionalBool("looking") ?? false))
         {
-            PlaneView asked = NamedPlane(args, facts, cells, id);
+            PlaneView asked = NamedPlane(args, facts, cells, id, camera);
             named = planes.Find(plane => plane.Plane.Axis == asked.Plane.Axis &&
                                          plane.Plane.Coordinate == asked.Plane.Coordinate &&
                                          plane.Side.Index == asked.Side.Index);
@@ -290,11 +283,12 @@ internal static class FindSpotApi
 
     // plane (or looking) with room_id: that plane too, e.g. the room's floor or ceiling (structures-25: it was ignored).
     // Seen from side when given, else from the room's side of it; a plane no room cell touches is refused.
-    private static PlaneView NamedPlane(Args args, GridFacts facts, HashSet<GridCell> cells, ThingId room)
+    private static PlaneView NamedPlane(Args args, GridFacts facts, HashSet<GridCell> cells, ThingId room,
+        CameraUse camera)
     {
         if (args.Has("side") || (args.OptionalBool("looking") ?? false))
         {
-            return PlaneView.Read(args, facts, out _);
+            return PlaneView.Read(args, facts, camera, out _);
         }
 
         string text = args.OptionalString("plane")!;
