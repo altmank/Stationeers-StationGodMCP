@@ -49,6 +49,9 @@ that passes its requests to the game.
 
 4. Turn on *Start Local Host* in the game's settings and load a save. The mod only answers in a game that hosts.
 
+The mod and the sidecar must be the same version: when the mod updates, extract the new sidecar too. A sidecar from
+another version cannot talk to the mod.
+
 Full steps, Codex, dedicated servers and multiplayer: **[docs/install.md](docs/install.md)**.
 
 ## First steps
@@ -86,11 +89,11 @@ materials taken from your inventory as the game would charge, and refunds put ba
 [building.md](docs/building.md#how-every-building-tool-works).
 
 Every tool error has one shape, `{code, message}`, as the result's text and its structured content alike. Arguments
-are checked against the tool's schema before the call reaches the game: an argument the tool does not take (the
-message names the nearest one it does take), a value of the wrong JSON type, a word the argument's list does not hold
-(case is ignored), a key given twice and a number past a double's range (`1e309`) are `invalid_argument`. The mod
-holds scripts that use its pipe directly to the same argument names (1.9.0+): a filter misspelt as `prefab` for
-`prefab_contains` is refused rather than ignored. An integer may be written `3.0` or `1e2`. Reference ids are decimal strings (`"364"`). `game_unavailable` means the game could not be reached, and says whether no pipe
+are checked against the tool's schema before the call runs: an argument the tool does not take (the message names the
+nearest one it does take), a value of the wrong JSON type, a value out of range, a word the argument's list does not
+hold, a missing required argument, a key given twice and a number past a double's range (`1e309`) are
+`invalid_argument`, with each problem and where it is. The mod does the checking, so scripts that talk to it directly
+get the same checks: a filter misspelt as `prefab` for `prefab_contains` is refused rather than ignored. An integer may be written `3.0` or `1e2`. Reference ids are decimal strings (`"364"`). `game_unavailable` means the game could not be reached, and says whether no pipe
 answered or the game took the request but did not reply in time (it may still have run).
 
 **Large replies.** Every tool that can answer a lot (lists, surveys, plans, dry runs, job polls, rocket forecasts,

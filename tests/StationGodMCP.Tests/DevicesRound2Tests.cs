@@ -161,34 +161,13 @@ public sealed class DevicesRound2Tests
     }
 
     [Theory]
-    [InlineData("1e2", 100)]
-    [InlineData("3.0", 3)]
-    [InlineData("7", 7)]
-    public void AnIntegerMayHaveAnExponentOrAZeroFraction(string written, long expected)
+    [InlineData("1e2")]
+    [InlineData("3.0")]
+    [InlineData("7")]
+    public void AnIntegerMayHaveAnExponentOrAZeroFraction(string written)
     {
         string arguments = $$"""{"reference_id":"939","start_address":{{written}},"count":1}""";
         Assert.Empty(Problems("read_memory", arguments));
-
-        JsonElement normalised = Normalised("read_memory", arguments);
-        Assert.Equal($"{expected}", normalised.GetProperty("start_address").GetRawText());
-        Assert.Equal("\"939\"", normalised.GetProperty("reference_id").GetRawText());
-    }
-
-    [Fact]
-    public void AnIntegerInsideAOneOfIsNormalisedToo()
-    {
-        JsonElement normalised = Normalised("move_item", """{"reference_id":"1","to_id":"2","to_slot":4.0,"quantity":2e0}""");
-
-        Assert.Equal("4", normalised.GetProperty("to_slot").GetRawText());
-        Assert.Equal("2", normalised.GetProperty("quantity").GetRawText());
-    }
-
-    [Fact]
-    public void ANumberFieldKeepsItsFraction()
-    {
-        JsonElement normalised = Normalised("write_logic", """{"reference_id":"1","logic_type":"Setting","value":2.5}""");
-
-        Assert.Equal("2.5", normalised.GetProperty("value").GetRawText());
     }
 
     [Fact]
@@ -281,12 +260,6 @@ public sealed class DevicesRound2Tests
     {
         using JsonDocument document = JsonDocument.Parse(arguments);
         return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
-    }
-
-    private static JsonElement Normalised(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Normalised(Program.InputSchemas[tool], document.RootElement);
     }
 
     private static async Task<JsonElement> Handle(string line)

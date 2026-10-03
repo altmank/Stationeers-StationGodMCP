@@ -16,7 +16,6 @@ internal sealed record ToolSet(
     IReadOnlyDictionary<string, JsonElement> InputSchemas,
     IReadOnlySet<string> Names,
     IReadOnlySet<string> SmallReplies,
-    IReadOnlySet<string> RunInSidecar,
     string ServerName,
     string Instructions)
 {
@@ -43,23 +42,16 @@ internal sealed record ToolSet(
         }
 
         HashSet<string> small = new(StringComparer.Ordinal);
-        HashSet<string> sidecar = new(StringComparer.Ordinal);
         foreach (JsonNode? method in document["methods"]!.AsArray())
         {
-            string name = (string)method!["name"]!;
-            if ((string?)method["x-shaping"] == "none")
+            if ((string?)method!["x-shaping"] == "none")
             {
-                small.Add(name);
-            }
-
-            if ((string?)method["x-runs-in"] == "sidecar")
-            {
-                sidecar.Add(name);
+                small.Add((string)method["name"]!);
             }
         }
 
         JsonObject? server = document["server"] as JsonObject;
-        return new ToolSet(tools, schemas, new HashSet<string>(schemas.Keys, StringComparer.Ordinal), small, sidecar,
+        return new ToolSet(tools, schemas, new HashSet<string>(schemas.Keys, StringComparer.Ordinal), small,
             (string?)server?["name"] ?? fallback?.ServerName ?? "StationGodMCP",
             (string?)server?["instructions"] ?? fallback?.Instructions ?? string.Empty);
     }

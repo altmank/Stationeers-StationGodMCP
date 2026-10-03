@@ -1,13 +1,15 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace StationGodMCP.Server;
+namespace StationGodMCP.Tests;
 
 /// <summary>
-/// fields on a reply the sidecar builds itself (sample_logic, while it runs here): the keys to keep in every object
-/// entry of the reply's top-level lists; the other top-level keys stay as they are. A name no entry has is listed in
-/// fields_unmatched, so a misspelt field is seen rather than silently giving empty entries. Replies from the mod are
-/// shaped by the mod and never here. This is also the reference the mod's single-name selectors are tested against.
+/// The reference the mod's single-name selectors are tested against (protocol.md, Field selectors): the keys to keep
+/// in every object entry of the reply's top-level lists; the other top-level keys stay as they are. A name no entry has
+/// is listed in fields_unmatched, so a misspelt field is seen rather than silently giving empty entries.
 /// </summary>
 internal sealed record FieldSelection(IReadOnlyList<string> Names)
 {

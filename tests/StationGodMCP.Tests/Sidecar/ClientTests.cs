@@ -16,8 +16,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Sidecar;
 
 /// <summary>
-/// The C# client against an in-process fake game: negotiating (version 2, the fall back to version 1 on the pipe and
-/// over TCP), the TCP secret, calls in flight, the resend rule, the catalogue, world changes and subscriptions.
+/// The C# client against an in-process fake game: hello and welcome, the TCP secret, calls in flight, the resend rule, the catalogue, world changes and subscriptions.
 /// </summary>
 public sealed class ClientTests
 {
@@ -62,7 +61,7 @@ public sealed class ClientTests
     [Fact]
     public async Task AHelloNamesTheLibrary()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         await using StationGodClient client = new(new ClientOptions(game.Target) { ReadEnvironment = _ => "c2VjcmV0" });
 
         Assert.IsType<CallOutcome.Answered>(await client.CallAsync("game_clock", Json("{}")));
@@ -74,13 +73,12 @@ public sealed class ClientTests
         Assert.StartsWith("stationgod-cs/", hello.GetProperty("client").GetProperty("library").GetString());
         Assert.Contains("shape", hello.GetProperty("features").EnumerateArray().Select(feature => feature.GetString()));
         Assert.False(hello.TryGetProperty("auth", out _));
-        Assert.Equal(ProtocolVersion.Version2, client.Protocol);
     }
 
     [Fact]
     public async Task AGivenNameIsSentInHello()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         await using StationGodClient client = new(new ClientOptions(game.Target) { ClientName = "agents", ReadEnvironment = _ => null });
 
         Assert.IsType<CallOutcome.Answered>(await client.CallAsync("game_clock", Json("{}")));
@@ -91,42 +89,9 @@ public sealed class ClientTests
     }
 
     [Fact]
-    public async Task AnOldModOnThePipeIsSpokenToInVersionOneOnTheSameConnection()
+    public async Task OverTcpWithoutTheSecretTheCallIsRefusedWithTheReason()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
-        game.Answer = call => Task.FromResult<string?>(call.Ok("""{"game_time_s":1.5}"""));
-        await using StationGodClient client = new(new ClientOptions(game.Target));
-
-        CallOutcome outcome = await client.CallAsync("game_clock", Json("{}"), Json("""{"fields":["a"]}"""), deadlineMs: 5000);
-
-        Assert.Equal("""{"game_time_s":1.5}""", Assert.IsType<CallOutcome.Answered>(outcome).Result.GetRawText());
-        Assert.Equal(ProtocolVersion.Version1, client.Protocol);
-        Assert.Equal(1, game.Connections);
-        JsonElement request = Assert.Single(game.Calls).Message;
-        Assert.False(request.TryGetProperty("type", out _));
-        Assert.True(request.TryGetProperty("shape", out _));
-        Assert.False(request.TryGetProperty("deadline_ms", out _));
-    }
-
-    [Fact]
-    public async Task AnOldModOverTcpIsSignedInWithTheSharedSecret()
-    {
-        await using FakeGame game = FakeGame.OnTcp(FakeProtocol.OldMod);
-        await using StationGodClient client = new(new ClientOptions(game.Target)
-        {
-            ReadEnvironment = name => name == ClientOptions.DefaultSecretVariable ? FakeGame.TestSecret : null
-        });
-
-        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("mod_info", Json("{}")));
-
-        Assert.Equal(ProtocolVersion.Version1, client.Protocol);
-        Assert.Equal(1, game.Connections);
-    }
-
-    [Fact]
-    public async Task AnOldModOverTcpWithoutTheSecretIsRefusedWithTheReason()
-    {
-        await using FakeGame game = FakeGame.OnTcp(FakeProtocol.OldMod);
+        await using FakeGame game = FakeGame.OnTcp();
         await using StationGodClient client = new(new ClientOptions(game.Target) { ReadEnvironment = _ => null });
 
         CallOutcome.Refused refused = Assert.IsType<CallOutcome.Refused>(await client.CallAsync("mod_info", Json("{}")));
@@ -138,7 +103,7 @@ public sealed class ClientTests
     [Fact]
     public async Task VersionTwoOverTcpSignsInWithTheSharedSecretFirst()
     {
-        await using FakeGame game = FakeGame.OnTcp(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnTcp();
         await using StationGodClient client = new(new ClientOptions(game.Target)
         {
             ReadEnvironment = name => name == ClientOptions.DefaultSecretVariable ? FakeGame.TestSecret : null
@@ -146,7 +111,6 @@ public sealed class ClientTests
 
         Assert.IsType<CallOutcome.Answered>(await client.CallAsync("mod_info", Json("{}")));
 
-        Assert.Equal(ProtocolVersion.Version2, client.Protocol);
         Assert.Equal(1, game.Connections);
         Assert.Equal(FakeGame.TestSecret, game.Received.First().GetProperty("secret").GetString());
     }
@@ -154,7 +118,7 @@ public sealed class ClientTests
     [Fact]
     public async Task FiveCallsAreInFlightOnOneConnection()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         TaskCompletionSource allArrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
         game.Answer = async call =>
         {
@@ -177,23 +141,9 @@ public sealed class ClientTests
     }
 
     [Fact]
-    public async Task VersionOneCallsTakeTurnsOnOneConnection()
-    {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
-        game.Answer = call => Task.FromResult<string?>(call.Ok($$"""{"n":{{call.Params.GetProperty("n").GetInt32()}}}"""));
-        await using StationGodClient client = new(new ClientOptions(game.Target));
-
-        CallOutcome[] outcomes = await Task.WhenAll(Enumerable.Range(0, 3)
-            .Select(n => client.CallAsync("read_logic", Json($$"""{"n":{{n}}}"""))));
-
-        Assert.All(outcomes, outcome => Assert.IsType<CallOutcome.Answered>(outcome));
-        Assert.Equal(1, game.Connections);
-    }
-
-    [Fact]
     public async Task AWrittenReadIsSentAgainOnceAfterABreak()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call =>
         {
             if (call.Method == "read_logic" && game.CallsTo("read_logic").Count() == 1)
@@ -216,7 +166,7 @@ public sealed class ClientTests
     [Fact]
     public async Task AReadBrokenTwiceIsNotSentAThirdTime()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call =>
         {
             if (call.Method != "read_logic")
@@ -242,7 +192,7 @@ public sealed class ClientTests
     [InlineData("place_cables", """{"dry_run":false,"confirm":true}""")]
     public async Task AWrittenCallThatMayChangeTheGameIsNotSentAgain(string method, string parameters)
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call =>
         {
             if (call.Method != method)
@@ -264,7 +214,7 @@ public sealed class ClientTests
     [Fact]
     public async Task NothingIsSentAgainIntoAnotherWorld()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call =>
         {
             if (call.Method != "read_logic")
@@ -291,7 +241,7 @@ public sealed class ClientTests
     [Fact]
     public async Task AnErrorReplyIsNeverSentAgain()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Error("game_timeout", "Not started in time."));
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
@@ -304,7 +254,7 @@ public sealed class ClientTests
     [Fact]
     public async Task ACallWithNoReplyInTimeIsCancelledAndSaysItMayHaveRun()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Method == "write_logic" ? null : call.Ok("{}"));
         await using StationGodClient client = new(new ClientOptions(game.Target) { ConnectTimeout = TimeSpan.FromMilliseconds(200) });
 
@@ -323,7 +273,7 @@ public sealed class ClientTests
     [Fact]
     public async Task NoDeadlineIsSentUnlessGivenAndNoShapeUnlessTheServerListsIt()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Features = ["cancel"];
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
@@ -348,7 +298,7 @@ public sealed class ClientTests
     [Fact]
     public async Task TheModsCatalogueIsFetchedOncePerHash()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.CatalogueHash = "sha256:" + new string('a', 64);
         game.CatalogueJson = CatalogueWithout("weather");
         await using StationGodClient client = new(new ClientOptions(game.Target));
@@ -369,7 +319,7 @@ public sealed class ClientTests
     [Fact]
     public async Task ACatalogueThatCannotBeFetchedLeavesTheBuiltInOne()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.CatalogueHash = "sha256:" + new string('b', 64);
         game.CatalogueJson = "[]";
         await using StationGodClient client = new(new ClientOptions(game.Target));
@@ -382,7 +332,7 @@ public sealed class ClientTests
     [Fact]
     public async Task AWorldChangeIsToldOncePerNewWorld()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         await using StationGodClient client = new(new ClientOptions(game.Target));
         List<string> worlds = [];
         client.WorldChanged += world => worlds.Add(world.GetProperty("id").GetString()!);
@@ -400,7 +350,7 @@ public sealed class ClientTests
     [Fact]
     public async Task TheClientSubscribesToTheWorldTopic()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
         await client.CallAsync("game_clock", Json("{}"));
@@ -411,7 +361,7 @@ public sealed class ClientTests
     [Fact]
     public async Task ASubscriptionFollowsUpdatesAndComesBackAfterAReconnectIntoTheSameWorld()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         int subscriptions = 0;
         game.Answer = call => Task.FromResult<string?>(call.Method == "subscribe" && call.Params.TryGetProperty("items", out _)
             ? call.Ok("{\"subscription\":\"s" + Interlocked.Increment(ref subscriptions) +
@@ -444,7 +394,7 @@ public sealed class ClientTests
     [Fact]
     public async Task ARefusedSubscriptionCarriesTheModsCode()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Method == "subscribe" && call.Params.TryGetProperty("items", out _)
             ? call.Error("subscription_limit", "Too many values.")
             : call.Ok("{}"));
@@ -457,9 +407,10 @@ public sealed class ClientTests
     }
 
     [Fact]
-    public async Task AnOldModHasNoSubscriptions()
+    public async Task AServerWithoutTheFeatureHasNoSubscriptions()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
+        await using FakeGame game = FakeGame.OnPipe();
+        game.Features = ["shape", "cancel"];
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
         Assert.IsType<SubscribeOutcome.Unsupported>(await client.SubscribeAsync(Json("""{"items":[]}""")));
@@ -468,7 +419,7 @@ public sealed class ClientTests
     [Fact]
     public async Task ClosingSaysByeOnVersionTwo()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         StationGodClient client = new(new ClientOptions(game.Target));
         await client.CallAsync("game_clock", Json("{}"));
 

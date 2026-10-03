@@ -262,11 +262,10 @@ subscription admission. The wiring and the binding are below; subscription admis
   `RunFrame` on the main thread), and `LaneScheduler` implements it over `FrameScheduler<QueuedCall>`. Connections post
   calls, cancels and their own end to a `ConcurrentQueue`; each `RunFrame` first takes that inbox into the scheduler
   (`Enqueue`, `Cancel`, `Close`), then runs the frame. A connection's place in the rounds is keyed by its `Connection`;
-  the synchronous pipe's calls, which have none, share one place.
+  the synchronous pipe's calls, which had none, shared one place (the synchronous pipe is gone since stage 15).
 - Each call's `CallProfile` is made on the thread that received it (`CallSession.Accept` from the catalogue entry it
-  already looked up; `CallProfiles.OfLine` for a version-1 line). A method the catalogue does not know is an instant
-  read. A version-1 line is always ordered like a write, whatever its class, so a version-1 connection's lines and the
-  synchronous pipe's run one after another as before.
+  already looked up). A method the catalogue does not know is an instant read. (Until stage 15 a version-1 line was
+  always ordered like a write, through `CallProfiles.OfLine`; both are gone.)
 - The reader thread's own `max_in_flight` check (16) stays first; the scheduler's is the second guard and answers
   `too_many_in_flight` unrun.
 - `StationGodMod.Update` calls `RunFrame(HeldTickJobs.HoldsTick, subscriptionHub)` where `ProcessPendingRequests` was;

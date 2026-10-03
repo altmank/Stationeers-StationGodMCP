@@ -67,7 +67,6 @@ public sealed class DevicesRound3Tests
         string arguments = $$"""{"reference_id":"422","start_address":{{written}},"count":1}""";
 
         Assert.Empty(Problems("read_memory", arguments));
-        Assert.Equal(written, Normalised("read_memory", arguments).GetProperty("start_address").GetRawText());
     }
 
     [Fact]
@@ -115,11 +114,4 @@ public sealed class DevicesRound3Tests
     {
         using JsonDocument document = JsonDocument.Parse(arguments);
         return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
-    }
-
-    private static JsonElement Normalised(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Normalised(Program.InputSchemas[tool], document.RootElement);
-    }
-}
+    }}

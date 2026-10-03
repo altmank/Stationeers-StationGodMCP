@@ -181,25 +181,6 @@ public sealed class SidecarArgumentTests
 public sealed class SidecarReplyTests
 {
     [Fact]
-    public async Task AnArgumentErrorHasTheEnvelope()
-    {
-        JsonElement result = Result(await Handle(Call(1, "move_item", """{"reference_id":"1","quantty":2}"""), AbsentPipe()));
-
-        AssertError(result, "invalid_argument");
-    }
-
-    [Fact]
-    public async Task SampleLogicRangeErrorsAreArgumentErrors()
-    {
-        JsonElement result = Result(await Handle(
-            Call(2, "sample_logic", """{"targets":[{"reference_id":"1","logic_type":"On"}],"duration_seconds":0.05}"""),
-            AbsentPipe()));
-
-        AssertError(result, "invalid_argument");
-        Assert.Equal("Argument 'duration_seconds' must be from 0.1 to 30.", result.GetProperty("structuredContent").GetProperty("message").GetString());
-    }
-
-    [Fact]
     public async Task AMissingPipeSaysSo()
     {
         JsonElement result = Result(await Handle(Call(3, "game_clock", "{}"), AbsentPipe()));
@@ -211,7 +192,7 @@ public sealed class SidecarReplyTests
     [Fact]
     public async Task TheGamesOwnErrorHasTheSameEnvelope()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Error("thing_not_found", "No thing with reference id 9."));
 
         JsonElement result = Result(await Handle(Call(4, "describe_device", """{"reference_id":"9"}"""),

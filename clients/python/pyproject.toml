@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stationgod"
-version = "0.1.0"
+version = "0.2.0"
 description = "Client library for the StationGodMCP Stationeers mod: wire protocol v2 over the named pipe or TCP."
 requires-python = ">=3.10"
 dependencies = []

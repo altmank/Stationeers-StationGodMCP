@@ -111,7 +111,8 @@ The `welcome` message:
 
 ## Versions and negotiation
 
-The protocol has a major version, an integer. This page defines 2; version 1 is today's protocol.
+The protocol has a major version, an integer. This page defines 2, the only one the mod speaks. Version 1 (one
+request line, one reply line, no `hello`) was removed in stage 15 (*Old clients*).
 
 1. The client sends `hello` with every major version it speaks.
 2. The server picks the highest one it also speaks and answers in it. If there is none, it answers
@@ -236,7 +237,7 @@ neither formatted nor sent. The serialiser still reads every property of the rep
 formatting and transport, not the work of building the reply; where a method declares costly parts, the handler also
 skips building them (below).
 
-`shape` is an optional object on a `call`, and on a version-1 request (see *Old clients*):
+`shape` is an optional object on a `call`:
 
 | Key | Type | Meaning |
 | --- | --- | --- |
@@ -244,8 +245,7 @@ skips building them (below).
 | `limit` | object: list name to integer 0-100000 | Keep at most this many entries of that top-level list. |
 | `max_bytes` | integer 1024-16777216 | Refuse to send a reply larger than this (`reply_too_large`). |
 
-When the mod applied a `shape`, its reply envelope carries `shaped: true`. A client that applies `fields` itself for
-old mods (the sidecar, the libraries' version-1 fallback) MUST NOT apply it again to a reply marked `shaped`.
+When the mod applied a `shape`, its reply envelope carries `shaped: true`; clients never apply `fields` themselves.
 
 ### Field selectors
 
@@ -278,11 +278,12 @@ selector that matched no key in any entry, when the reply had at least one objec
 today's rule (`ReplyShaping.cs:89-94`) extended to paths. A reply with no list entries gets no `fields_unmatched`, as
 today.
 
-Compatibility. Every `fields` value the sidecar accepts today (an array of at least one string, no further limits,
-`src/StationGodMCP.Server/Program.cs:2188-2194`) is accepted on version 1 and through the sidecar, with today's results
-for single names: a selector that does not follow the grammar (a name with `-`, an empty string after trimming, a
-stray dot) is not refused but listed in `fields_unmatched`, as an unknown name is today. On version 2 such a selector
-is `invalid_shape`, as is a `shape` with an unknown key or more than 256 selectors.
+Compatibility. Every `fields` value the sidecar accepts (an array of at least one string, no further limits) is
+accepted through the sidecar, with the old results for single names: a selector that does not follow the grammar (a
+name with `-`, an empty string after trimming, a stray dot) is not sent but listed in `fields_unmatched` by the
+sidecar, as an unknown name is. Sent to the mod, such a selector is `invalid_shape`, as is a `shape` with an unknown
+key or more than 256 selectors; with `[Server] StrictArguments = false` the mod reads a shape leniently instead and
+lists such a selector in `fields_unmatched`.
 
 Errors are never shaped: an error reply is always whole.
 
@@ -294,8 +295,8 @@ JSON, key order included, on the test fixtures described in [stages.md](stages.m
 `limit: {"things": 20}` keeps the first 20 entries of the top-level list `things` after the method has built it. This
 saves formatting and transport, not the method's own work; a method with its own paging arguments (`offset`, `limit`,
 which the catalogue marks with `x-paging`) saves both and is preferred. When `limit` cuts a list, the mod adds
-`shape_truncated: {"things": 84}` (each cut list's length before the cut) to the reply's top-level object. On version 1
-a `limit` naming a key that is not a top-level list is ignored; on version 2 it is `invalid_shape`.
+`shape_truncated: {"things": 84}` (each cut list's length before the cut) to the reply's top-level object. A `limit`
+naming a key that is not a top-level list is `invalid_shape` (ignored with `StrictArguments` off).
 
 ### Shaping before the reply is built
 
@@ -326,8 +327,7 @@ one connection*), and agents use cheat to tell the owner when a tool is a cheat 
 
 A TCP connection's first line MUST be the shared-secret sign-in, `{"type":"auth","secret":"..."}`, checked in fixed
 time against `[Remote MCP] Secret` (`StationGodTcpServer.cs:231-245`). The server answers `{"ok":true}`, or
-`unauthorized` and closes. After it the connection talks exactly as a pipe connection: a `hello` starts version 2,
-anything else is a version-1 request. The mod logs each sign-in with the client's address. A pipe connection has no
+`unauthorized` and closes. After it the connection talks exactly as a pipe connection, `hello` first. The mod logs each sign-in with the client's address. A pipe connection has no
 sign-in.
 
 On either transport the first line must arrive within 10 seconds of connecting, the time today's pipe allows
@@ -461,9 +461,8 @@ saw; otherwise they close it and tell the caller ([clients.md](clients.md), *Sub
 is paused, and reporting the changes with elapsed real seconds (`src/StationGodMCP.Server/Program.cs:332-455`,
 `:359-376`, `:448`). It is not a subscription: it has its own sampler in the mod, which takes each sample in the first
 frame at or after it is due and counts in the subscription lane's time ([scheduling.md](scheduling.md)). Its catalogue
-entry declares `x-duration` from `duration_seconds`, so the call's deadline and every timeout on the way, including the
-version-1 listener's 30-second wait (`StationGodPipeServer.cs:24`, `StationGodRequestDispatcher.cs:80-96`) and the
-sidecar's 35-second reply timeout (`Program.cs:26`), add the duration.
+entry declares `x-duration` from `duration_seconds`, so the call's deadline and every client's wait for its reply add
+the duration.
 
 ### Connection events
 
@@ -516,7 +515,6 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
 - `subscribe` and `unsubscribe` are protocol methods (`ProtocolMethods.Names`, `catalogue/protocol/`) that run on the
   main thread as calls, in the light lane, with the usual reply (`elapsed_ms`, `queue_ms`, `frame`). Their `items` and
   `include` schemas are `read_devices`' own (`catalogue/defs/device_read_items.json`, `device_read_include.json`).
-  `subscribe` on version 1 is `method_not_found`.
 - An update waits in the connection's outbound queue as an `IOutboundLine` over its subscription's `UpdateSlot`; the
   writer thread makes the event's line when it reaches it, so a merged update is written with its newest reading.
   Every subscription event is the view's keys after `"type":"event"`.
@@ -529,14 +527,12 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
   event.
 - A subscription's sample reads through `ReadDevicesApi.Read` with the request parsed once at `subscribe`; only the
   gateway is looked up again each sample, since it may have gone.
-- `sample_logic` on either version: arguments refused by `SampleLogicArguments.Of` are answered at once; otherwise the
+- `sample_logic`: arguments refused by `SampleLogicArguments.Of` are answered at once; otherwise the
   call is left running and answered when its run ends, shaped as asked. Its `elapsed_ms` is the run's real time from
   start to last sample, since it never holds the main thread for more than one sample. Its catalogue entry no longer
-  says `x-runs-in: sidecar`; the sidecar forwards it on version 2 and keeps its own loop for a mod it reaches on version
-  1 only.
-- `x-duration` is read by the mod's catalogue model (`CatalogueMethod.DurationMs`): a version-2 call's deadline, a
-  version-1 line's wait and the synchronous pipe's wait each add the duration at the call's arguments (the argument
-  given, at most `max_s`, else `max_s`).
+  says `x-runs-in: sidecar`; the sidecar forwards it (its own loop and `x-runs-in` went in stage 15).
+- `x-duration` is read by the mod's catalogue model (`CatalogueMethod.DurationMs`): a call's deadline adds the
+  duration at the call's arguments (the argument given, at most `max_s`, else `max_s`).
 - `Resync` is in the engine but has no message on the wire yet; `ApplyLimits` has no caller, since the limits are read
   once at load.
 
@@ -555,28 +551,12 @@ A connection can break at any time: the game closed, the save reloaded, the mod 
 
 ## Old clients
 
-The mod tells a version-1 client from a version-2 one by its first line: an object with `type: "hello"` starts
-version 2; anything else is a version-1 request. On TCP that first line is the one after the shared secret.
-
-A version-1 connection is served as today:
-
-- One request line, one reply line, in order (`StationGodPipeServer.cs:174-209`). The reply envelope is today's
-  `{id, ok, result, elapsed_ms}` or `{id, ok, error, elapsed_ms}`, no `type`
-  (`src/StationGodMCP.Mod/Api/Views/HostViews.cs:10-50`).
-- Arguments are checked only for unknown top-level names, as today (`DeclaredArguments.cs:51-77`), and otherwise read
-  leniently by each tool (ids as JSON integers accepted, `src/StationGodMCP.Server/ArgumentCheck.cs:17`).
-- A `shape` key in a version-1 request is honoured with the version-1 rules above, and the reply then carries
-  `shaped: true`. Old clients never send `shape` and ignore the extra key. This is the only version-1 change, and it lets
-  a version-1 client get shaping before it moves to version 2.
-- Over TCP, the shared secret comes first, as today (`StationGodTcpServer.cs:174-229`), so an old remote sidecar keeps
-  working.
-
-The other direction: a version-2 client against an old mod. The old mod reads `hello` as a request with no method and
-answers `{"id":null,"ok":false,"error":{"code":"method_not_found",...}}` (`ApiHost.cs:157-161`). The libraries take
-that answer as "version 1 only" and fall back: they speak version 1 on the same connection, apply `fields` themselves
-(the sidecar's rules), offer no subscriptions (callers poll), and treat every method not in their built-in catalogue's
-read class as unsafe to resend. Over TCP the same holds: the libraries send the shared secret first, which an old mod
-accepts as today, and its answer to `hello` tells them to fall back.
+There are none. Until stage 15 the mod also spoke version 1, chosen by a first line that was not a `hello`, and the
+libraries fell back to it on an older mod. Both are gone, with no switch to bring them back: the mod and its clients
+ship together and are updated together. Every connection's first message (after the shared secret over TCP) must be
+`hello`; anything else is answered `protocol_error` (null id, `data.line_start`), then `goodbye` `protocol_error`, and
+the connection closes. Blank lines before it are ignored and do not stop the 10-second first-line timeout. A client
+that meets an older mod gets that mod's answer to `hello`, which is no `welcome`, and gives up with an error naming it.
 
 ## Appendix: one complete exchange
 

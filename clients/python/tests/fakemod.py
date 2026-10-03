@@ -1,6 +1,6 @@
 """An in-process stand-in for the mod, speaking the wire protocol as protocol.md defines it, over loopback TCP or a
-real overlapped named pipe. version=2 plays a mod with protocol 2 (hello and welcome, calls in flight,
-events, subscriptions); version=1 plays today's mod, which reads hello as a request with no method.
+real overlapped named pipe: hello and welcome, calls in flight, events, subscriptions; a first message that is not
+hello is a protocol_error that closes the connection.
 
 Tests steer it: handlers answer methods, hold() keeps a method from answering until released, break_on() drops the
 connection when a method's call arrives (after it was read, so the call counts as written), drop_all() breaks every
@@ -36,7 +36,7 @@ class _Conn:
         self._close = stream_close
         self.transport = transport
         self.lock = threading.Lock()
-        self.version = None
+        self.welcomed = False
         self.signed_in = False
         self.client = None
         self.in_flight = {}
@@ -64,18 +64,16 @@ class _Conn:
 
 
 class FakeMod:
-    def __init__(self, transport="tcp", version=2, features=None, world_id="w1",
-                 catalogue_hash=None, max_in_flight=16, legacy_secret="s3cret", shapes_v1=False, catalogue=None,
+    def __init__(self, transport="tcp", features=None, world_id="w1",
+                 catalogue_hash=None, max_in_flight=16, legacy_secret="s3cret", catalogue=None,
                  subscription_limit=None):
         self.transport = transport
-        self.version = version
         self.features = list(DEFAULT_FEATURES if features is None else features)
         self.world_id = world_id
         self.catalogue_hash = catalogue_hash or _methods.CATALOGUE_HASH
         self.catalogue = catalogue
         self.max_in_flight = max_in_flight
         self.legacy_secret = legacy_secret
-        self.shapes_v1 = shapes_v1
         self.subscription_limit = subscription_limit
         self.handlers = {"game_clock": lambda params: {"game_time_s": 84211.5, "paused": False}}
         self.received = []                   # every message read, in order
@@ -113,7 +111,7 @@ class FakeMod:
 
     def push(self, event):
         for conn in list(self.connections):
-            if conn.version == 2 and getattr(conn, "welcomed", False):
+            if conn.welcomed:
                 conn.send(dict({"type": "event"}, **event))
 
     def push_update(self, subscription, result, seq=1, frame=100):
@@ -203,38 +201,15 @@ class FakeMod:
             conn.signed_in = True
             conn.send({"ok": True})
             return
-        if conn.version is None:
-            if self.version == 2 and message.get("type") == "hello":
-                conn.version = 2
+        if not conn.welcomed:
+            if message.get("type") == "hello":
                 return self._hello(conn, message)
-            conn.version = 1
-        if conn.version == 1:
-            return self._v1(conn, message)
-        return self._v2(conn, message)
-
-    # ---- version 1 (today's mod) ----
-
-    def _v1(self, conn, message):
-        method = message.get("method")
-        if not method:
-            conn.send({"id": message.get("id"), "ok": False,
-                       "error": {"code": "method_not_found", "message": "Unknown StationGodMCP method ''."}})
-            return
-        if method in self.breaks:
+            conn.send({"type": "reply", "id": None, "ok": False,
+                       "error": {"code": "protocol_error", "message": "The first message must be hello."}})
+            conn.send({"type": "goodbye", "reason": "protocol_error"})
             conn.close()
             return
-        reply = {"id": message.get("id")}
-        try:
-            result = self._run(method, message.get("params") or {})
-            if self.shapes_v1 and message.get("shape"):
-                result = _fields(result, message["shape"].get("fields"))
-                reply["shaped"] = True
-            reply.update(ok=True, result=result, elapsed_ms=0.1)
-        except FakeError as error:
-            reply.update(ok=False, error=error.error, elapsed_ms=0.1)
-        conn.send(reply)
-
-    # ---- version 2 ----
+        return self._v2(conn, message)
 
     def _hello(self, conn, message):
         conn.hello = message

@@ -37,18 +37,13 @@ internal static class Wire
     });
 
     /// <summary>
-    /// A call. Version 1: {id, method, params, shape?}, shape always sent (an old mod ignores it). Version 2: {type,
-    /// id, method, params, shape?, deadline_ms?}, shape only when the server lists the feature, deadline_ms only when
-    /// the caller gave one.
+    /// A call: {type, id, method, params, shape?, deadline_ms?}, shape only when the server lists the feature,
+    /// deadline_ms only when the caller gave one.
     /// </summary>
-    internal static string Call(ProtocolVersion version, IReadOnlySet<string> features, string id, string method,
-        JsonElement parameters, JsonElement? shape, int? deadlineMs) => Write(writer =>
+    internal static string Call(IReadOnlySet<string> features, string id, string method, JsonElement parameters,
+        JsonElement? shape, int? deadlineMs) => Write(writer =>
     {
-        if (version == ProtocolVersion.Version2)
-        {
-            writer.WriteString("type", "call");
-        }
-
+        writer.WriteString("type", "call");
         writer.WriteString("id", id);
         writer.WriteString("method", method);
         writer.WritePropertyName("params");
@@ -62,14 +57,13 @@ internal static class Wire
             writer.WriteEndObject();
         }
 
-        if (shape is { ValueKind: JsonValueKind.Object } given &&
-            (version == ProtocolVersion.Version1 || features.Contains("shape")))
+        if (shape is { ValueKind: JsonValueKind.Object } given && features.Contains("shape"))
         {
             writer.WritePropertyName("shape");
             given.WriteTo(writer);
         }
 
-        if (version == ProtocolVersion.Version2 && deadlineMs is { } deadline)
+        if (deadlineMs is { } deadline)
         {
             writer.WriteNumber("deadline_ms", deadline);
         }

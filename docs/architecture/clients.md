@@ -23,11 +23,8 @@ TCP*). The secret is read from an environment variable, never from an argument, 
 as the sidecar's today (`docs/configuration.md`): `STATIONGODMCP_SECRET` unless the caller names another. A pipe
 connection needs nothing. Optionally a client name, sent in `hello` and shown in `mod_info`.
 
-**Negotiating.** With `protocol="auto"` (the default), send `hello` with protocol `[2]`; if the answer is version 2,
-use it; if it is the old mod's `method_not_found` with a null id, fall back to version 1 on the same connection
-([protocol.md](protocol.md), *Old clients*). With `protocol="v1"`, speak version 1 from the start: one call at a time,
-today's lenient argument handling, and `shape` still sent. On version 1, the library applies `fields` itself only to a
-reply not marked `shaped` (an old mod).
+**Negotiating.** Send `hello` with protocol `[2]` and expect a `welcome`; any other answer ends the connection
+attempt. There is no other protocol to fall back to (*As built in stage 15* below).
 
 **Calling.** One connection, several calls in flight up to the server's `max_in_flight`; more wait in the library.
 A call returns the shaped `result` or raises an error carrying `code`, `message` and `data`.
@@ -120,8 +117,7 @@ clients/python/
     catalogue.py        loading, effective class, paging data
     pipe.py             overlapped named-pipe I/O
     connection.py       pipe and TCP, framing, hello/auth, reader thread
-    client.py           calls, reconnect, resend rule, version-1 fallback
-    shaping.py          fields for old mods (the sidecar's rules)
+    client.py           calls, reconnect, resend rule
     output.py           output files
     subscriptions.py    subscriptions
   tests/
@@ -137,7 +133,6 @@ game = stationgod.connect()                                   # local pipe Stati
 game = stationgod.connect(pipe="StationGodMCP-Test")          # the test server
 game = stationgod.connect(pipe="StationGodMCP", client="dashboard")            # named in hello and mod_info
 game = stationgod.connect(host="10.8.0.2", port=8765, secret_env="MY_SECRET")  # TCP, secret from MY_SECRET
-game = stationgod.connect(protocol="v1")                      # today's protocol, lenient checking
 
 game.welcome            # the welcome message as a dict (server.pipe_name, server.world, limits, ...)
 
@@ -172,7 +167,7 @@ Errors:
 | --- | --- |
 | `stationgod.GameError(code, message, data)` | The mod answered with an error. Subclasses for codes callers often branch on: `InvalidArgument`, `NotFound` (`thing_not_found`, `device_not_found`, ...), `SubscriptionRefused` (`subscription_limit`). |
 | `stationgod.Unreachable(message, maybe_ran)` | No answer: no pipe, the connection broke, or no reply in time. `maybe_ran` is true when the call was written and is not a read. |
-| `stationgod.TooOld(message)` | The server cannot do what was asked: a feature not in `welcome.features` (subscriptions on an old mod), or a method it does not have. |
+| `stationgod.TooOld(message)` | The server cannot do what was asked: a feature not in `welcome.features` (subscriptions), a protocol it does not speak (`unsupported_protocol`), or a method it does not have. |
 
 Threads. A `Client` is safe to use from several threads. One reader thread per connection matches replies to waiting
 calls and runs subscription callbacks; a callback that raises is logged and does not stop the reader.
@@ -187,7 +182,7 @@ in time" (`Program.cs:298-310`).
 `welcome.server.world.id` is unchanged, and replaces `state` with the new first reading. If the world changed, or the
 mod ended the subscription with `world_changed`, it closes the subscription and raises the world-changed callback,
 because the caller's ids may be wrong. A `subscribe` refused with `subscription_limit` raises `SubscriptionRefused`; on
-a version-1 server `subscribe` raises `TooOld`. In both cases the caller polls `read_devices` with the same items; the
+a server without the `subscriptions` feature `subscribe` raises `TooOld`. In both cases the caller polls `read_devices` with the same items; the
 dashboard's runner already has that path.
 
 ### As built in stage 7
@@ -263,12 +258,12 @@ A new project, `src/StationGodMCP.Client` (net8, no dependencies), referenced by
   per call id, one write lock, events to subscribers.
 - `StationGodClient`: `CallAsync(method, JsonElement parameters, Shape? shape, CancellationToken)` returning a sealed
   result type (a reply or an error, `return-result-not-exception` in the owner's C# rules); reconnect and the resend
-  rule; version-1 fallback.
+  rule.
 - `Catalogue`: the catalogue as records, the class-rule evaluator, the hash.
 - `ReplyShaping`, `FieldSelection`, `OutputFolder`: moved from the sidecar (`src/StationGodMCP.Server/ReplyShaping.cs`,
   `OutputFolder.cs`); `FieldSelection` applies only to replies not marked `shaped`.
-- `ArgumentCheck` (`src/StationGodMCP.Server/ArgumentCheck.cs`): kept for the version-1 fallback, so a new sidecar
-  talking to an old mod still checks types and enums, until the old protocol is switched off.
+- `ArgumentCheck` (`src/StationGodMCP.Server/ArgumentCheck.cs`): stays in the sidecar for its own arguments
+  (*As built in stage 15*).
 
 The sidecar's own code already uses records on net8 (`ReplyShaping.cs:12`, `:60`, `:101`, `:125`); the client does
 too. The mod targets netstandard2.1 (`StationGodMCP.csproj`, `TargetFramework`) and uses no records; its new code uses
@@ -290,9 +285,8 @@ The sidecar becomes MCP on one side and `StationGodClient` on the other:
   (`src/StationGodMCP.Server/ToolReplies.cs:25-36`).
 - Argument checking on version 2 is the mod's: a wrong argument gets the mod's `invalid_argument`, which names the
   nearest declared argument as both check today (`src/StationGodMCP.Mod/Api/Shared/DeclaredArguments.cs:66-76`;
-  `src/StationGodMCP.Server/ArgumentCheck.cs:6-17`). On version 1 the sidecar checks with `ArgumentCheck` as today.
-- `sample_logic` is a mod method from stage 12 ([stages.md](stages.md)); against an older mod, the sidecar keeps its
-  loop (`Program.cs:332-455`) until the old protocol is switched off.
+  `src/StationGodMCP.Server/ArgumentCheck.cs:6-17`).
+- `sample_logic` is a mod method from stage 12 ([stages.md](stages.md)); the sidecar forwards it like any other.
 - One connection for the life of the sidecar, opened at the first call (an agent session usually starts before the game,
   so connecting at `initialize` would fail for nothing).
 - Options: today's `--pipe`, `--host`, `--port`, `--output-dir`, `--secret-env`; new `--client <name>` and
@@ -353,6 +347,32 @@ TCP, speaking the old protocol or version 2, calls answered out of order, events
 `ClientTests` and `SidecarTranscriptTests`. The output-file fixtures are the shared ones, and the
 built-in hash is checked against the one the Python generator wrote into `_methods.py`. The live checks have not run:
 the owner's game was running when this stage was built.
+
+### As built in stage 15
+
+The old protocol is gone from every client; the mod and the sidecar ship together and are updated together. What the
+stage 7, 8 and 9 notes above say about version 1, the fall back to it, `protocol="v1"` or `protocol="auto"`, and a
+sidecar or library talking to an older mod no longer holds:
+
+- The Python library and the C# client send `hello` and need a `welcome`. An answer that is not one (an older mod's
+  answer to `hello` included) is `Unreachable` / `NoAnswer` naming the answer's start; `unsupported_protocol` is
+  `TooOld` / `Refused`. The library's `protocol` option and `Client.protocol`, and the C# client's `ProtocolChoice`,
+  `ProtocolVersion` and `StationGodClient.Protocol`, are gone; `ConnectAsync` answers whether it connected. Library
+  version 0.2.0.
+- The library checks argument names and required arguments before every call while `check_arguments` is on (the
+  default); version 1's unchecked path is gone.
+- The sidecar checks only what cannot be sent as written (a key given twice at any depth, a number past a double's
+  range, `ArgumentCheck.Unsendable`) and its own `fields` and `output_file`; every other argument goes to the mod as
+  given, connected or not, so with no game running a bad argument is answered `game_unavailable`, not
+  `invalid_argument`. `ArgumentCheck.Normalised` is gone. `ArgumentCheck.Problems` remains as the check of a whole call
+  against a published tool schema, which the tests hold the schemas to.
+- The sidecar's `sample_logic` loop and the catalogue's `x-runs-in` are gone: `sample_logic` is the mod's.
+- `FieldSelection` left the sidecar for the test project, where it stays the reference the mod's single-name selectors
+  are compared against.
+- Every selector goes through the sidecar as on version 2: the ones that follow the grammar as `shape.fields`, the
+  others added to `fields_unmatched` by the sidecar.
+- The dashboard's transport drops its `PROTOCOL` constant, and `tsclient.py` proves the test pipe from
+  `welcome.server.pipe_name` only.
 
 ## Moving existing clients over
 

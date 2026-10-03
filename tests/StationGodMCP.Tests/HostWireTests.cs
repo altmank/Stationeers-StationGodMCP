@@ -7,22 +7,21 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>The reply envelope, game_clock and mod_info: the old StationApi shapes against the new views.</summary>
+/// <summary>The reply envelope, game_clock and mod_info: the wire shapes against the views.</summary>
 public sealed class HostWireTests
 {
     [Fact]
     public void EnvelopesSameWire()
     {
-        WireCheck.Same(new { id = "7", ok = true, result = new { member_count = 0 }, elapsed_ms = 1.25 },
-            new ReplyView("7", new ChuteSummaryView(0), 1.25));
-        WireCheck.Same(new { id = (string?)null, ok = true, result = new { member_count = 0 }, elapsed_ms = 0.5 },
-            new ReplyView(null, new ChuteSummaryView(0), 0.5));
         WireCheck.Same(
-            new { id = "7", ok = false, error = new { code = "method_not_found", message = "m" }, elapsed_ms = 0.1 },
-            new ErrorReplyView("7", new ErrorView("method_not_found", "m"), 0.1));
+            new { type = "reply", id = "7", ok = true, shaped = false, result = new { member_count = 0 }, elapsed_ms = 1.25, queue_ms = 0.5, frame = 9L },
+            CallReplyView.Of("7", new ChuteSummaryView(0), false, 1.25, 0.5, 9));
         WireCheck.Same(
-            new { id = "7", ok = false, error = new { code = "game_timeout", message = "t" } },
-            new ErrorReplyView("7", new ErrorView("game_timeout", "t"), null));
+            new { type = "reply", id = "7", ok = false, error = new { code = "method_not_found", message = "m" }, elapsed_ms = 0.1, queue_ms = 0.5, frame = 9L },
+            CallReplyView.Failed("7", new ErrorView("method_not_found", "m"), 0.1, 0.5, 9));
+        WireCheck.Same(
+            new { type = "reply", id = (string?)null, ok = false, error = new { code = "game_timeout", message = "t" } },
+            CallReplyView.Refused(null, new ErrorView("game_timeout", "t")));
     }
 
     [Fact]

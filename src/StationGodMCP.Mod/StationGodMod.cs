@@ -40,7 +40,7 @@ public sealed class StationGodMod : ModBehaviour
         new StationGodRequestDispatcher(Deadlines, new LaneScheduler(SchedulerSettings.Default));
     private Harmony? _harmony;
     private PipeListener? _pipeListener;
-    private StationGodPipeServer? _synchronousPipe;
+    private bool _pipeUnavailable;
     private GameState? _publishedState;
     private string _publishedWorld = string.Empty;
     private TcpAcceptor? _tcpListener;
@@ -156,7 +156,7 @@ public sealed class StationGodMod : ModBehaviour
                 return;
             }
 
-            if (_pipeListener == null && _synchronousPipe == null)
+            if (_pipeListener == null && !_pipeUnavailable)
             {
                 StartPipe();
             }
@@ -196,50 +196,52 @@ public sealed class StationGodMod : ModBehaviour
         _harmony?.UnpatchSelf();
     }
 
-    // reason goes to version-2 clients in their goodbye: world_unloaded when the host leaves the world, shutting_down
+    // reason goes to clients in their goodbye: world_unloaded when the host leaves the world, shutting_down
     // when the mod stops.
     private void StopServers(string reason)
     {
         _pipeListener?.ShutDown(reason);
         _pipeListener = null;
         Connections = null;
-        _synchronousPipe?.Dispose();
-        _synchronousPipe = null;
         _tcpListener?.ShutDown(reason);
         _tcpListener = null;
         TcpConnections = null;
     }
 
-    // The overlapped pipe (one reader and one writer per connection), unless [Server] OverlappedPipes is off, the
-    // platform is not Windows, or the Windows calls it needs are missing: then today's synchronous pipe.
+    // The overlapped pipe: one reader and one writer per connection. It needs Windows' overlapped pipe calls; where
+    // they are missing the pipe stays off (logged once) and only TCP serves.
     private void StartPipe()
     {
-        if (_server.OverlappedPipes && Environment.OSVersion.Platform == PlatformID.Win32NT)
+        if (Environment.OSVersion.Platform != PlatformID.Win32NT)
         {
-            try
-            {
-                ProtocolHost host = new ProtocolHost(
-                    new ProtocolSettings(_server.MaxPipeConnections, protocol2: _server.Protocol2,
-                        strictArguments: _server.StrictArguments), _dispatcher, Deadlines,
-                    ApiHost.CatalogueFile, subscriptions: _subscriptions);
-                PipeListener listener = new PipeListener(Pipe.Value, host);
-                listener.Start();
-                _pipeListener = listener;
-                Connections = host;
-                return;
-            }
-            catch (Exception exception) when (exception is DllNotFoundException || exception is EntryPointNotFoundException)
-            {
-                LogWarning($"Overlapped pipes are not available here ({exception.Message}); using the synchronous pipe.");
-            }
+            PipeUnavailable("this platform is not Windows");
+            return;
         }
 
-        _synchronousPipe = new StationGodPipeServer(Pipe.Value, _dispatcher);
-        _synchronousPipe.Start();
+        try
+        {
+            ProtocolHost host = new ProtocolHost(
+                new ProtocolSettings(_server.MaxPipeConnections, strictArguments: _server.StrictArguments), _dispatcher,
+                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions);
+            PipeListener listener = new PipeListener(Pipe.Value, host);
+            listener.Start();
+            _pipeListener = listener;
+            Connections = host;
+        }
+        catch (Exception exception) when (exception is DllNotFoundException || exception is EntryPointNotFoundException)
+        {
+            PipeUnavailable(exception.Message);
+        }
+    }
+
+    private void PipeUnavailable(string reason)
+    {
+        _pipeUnavailable = true;
+        LogWarning($"The named pipe is not available ({reason}); only the TCP listener can serve clients.");
     }
 
     // What welcome says about the server, published when it changes; a world that starts running is announced to every
-    // version-2 connection.
+    // connection.
     private void PublishFacts()
     {
         GameState state = GameManager.GameState;
@@ -280,7 +282,7 @@ public sealed class StationGodMod : ModBehaviour
         try
         {
             ProtocolHost host = new ProtocolHost(
-                new ProtocolSettings(_server.MaxTcpConnections, protocol2: true, strictArguments: _server.StrictArguments),
+                new ProtocolSettings(_server.MaxTcpConnections, strictArguments: _server.StrictArguments),
                 _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions);
             server = new TcpAcceptor(remote.BindAddress, remote.Port, _server.MaxTcpConnections, host);
             server.Start();
@@ -418,9 +420,9 @@ internal sealed class RemoteSettings
 }
 
 /// <summary>
-/// [Server]: how local clients connect. MaxPipeConnections is the most pipe connections at once (each agent session,
-/// the dashboard and every script keep one); OverlappedPipes false goes back to the synchronous pipe of 1.10 and
-/// earlier (four connections, one request at a time each). Read once at load.
+/// [Server]: how clients connect. MaxPipeConnections is the most pipe connections at once (each agent session, the
+/// dashboard and every script keep one); MaxTcpConnections the most TCP connections, counted apart; StrictArguments
+/// whether calls are checked against the catalogue in full. Read once at load.
 /// </summary>
 internal sealed class ServerSettings
 {
@@ -428,27 +430,18 @@ internal sealed class ServerSettings
 
     internal const int DefaultMaxTcpConnections = 8;
 
-    private ServerSettings(int maxPipeConnections, bool overlappedPipes, bool protocol2, bool strictArguments,
-        int maxTcpConnections = DefaultMaxTcpConnections)
+    private ServerSettings(int maxPipeConnections, bool strictArguments, int maxTcpConnections = DefaultMaxTcpConnections)
     {
         MaxTcpConnections = maxTcpConnections;
         MaxPipeConnections = maxPipeConnections;
-        OverlappedPipes = overlappedPipes;
-        Protocol2 = protocol2;
         StrictArguments = strictArguments;
     }
 
-    internal static ServerSettings Defaults { get; } =
-        new ServerSettings(ProtocolSettings.DefaultMaxPipeConnections, true, true, true);
+    internal static ServerSettings Defaults { get; } = new ServerSettings(ProtocolSettings.DefaultMaxPipeConnections, true);
 
     internal int MaxPipeConnections { get; }
 
-    internal bool OverlappedPipes { get; }
-
-    /// <summary>Whether a client may speak protocol version 2 (hello) on the overlapped pipe.</summary>
-    internal bool Protocol2 { get; }
-
-    /// <summary>Whether version-2 calls are checked against the catalogue in full.</summary>
+    /// <summary>Whether calls are checked against the catalogue in full.</summary>
     internal bool StrictArguments { get; }
 
     /// <summary>The most TCP connections at once, counted apart from the pipe's.</summary>
@@ -462,16 +455,10 @@ internal sealed class ServerSettings
                 "The most local pipe connections at once; a client past it waits until one closes. Restart the game " +
                 "to apply.",
                 new AcceptableValueRange<int>(ProtocolSettings.MinimumPipeConnections, ProtocolSettings.MaximumPipeConnections)));
-        ConfigEntry<bool> overlapped = configuration.Bind(Section, "OverlappedPipes", true,
-            "Serve the pipe with overlapped I/O (reading and writing at once on each connection). false goes back to " +
-            "the synchronous pipe of version 1.10 (four connections). Restart the game to apply.");
-        ConfigEntry<bool> protocol2 = configuration.Bind(Section, "Protocol2", true,
-            "Let clients speak protocol version 2 (a first line of type hello: several calls in flight, cancel, events). " +
-            "false answers every connection with version 1 only, as before. Restart the game to apply.");
         ConfigEntry<bool> strict = configuration.Bind(Section, "StrictArguments", true,
-            "Check version-2 calls against the method catalogue in full (names at every depth, types, ranges, enums, " +
-            "patterns, required arguments, the shape) before they run. false checks them as version 1 does (top-level " +
-            "names only). Version 1 is never checked in full. Restart the game to apply.");
+            "Check calls against the method catalogue in full (names at every depth, types, ranges, enums, patterns, " +
+            "required arguments, the shape) before they run. false checks only top-level argument names. Restart " +
+            "the game to apply.");
         ConfigEntry<int> tcp = configuration.Bind(Section, "MaxTcpConnections", DefaultMaxTcpConnections,
             new ConfigDescription(
                 "The most TCP connections at once, counted apart from the pipe's, so remote clients and unfinished " +
@@ -485,7 +472,7 @@ internal sealed class ServerSettings
             maximum = ProtocolSettings.DefaultMaxPipeConnections;
         }
 
-        return new ServerSettings(maximum, overlapped.Value, protocol2.Value, strict.Value,
+        return new ServerSettings(maximum, strict.Value,
             tcp.Value >= 1 && tcp.Value <= 64 ? tcp.Value : DefaultMaxTcpConnections);
     }
 }

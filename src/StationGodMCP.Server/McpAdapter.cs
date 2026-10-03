@@ -12,8 +12,8 @@ namespace StationGodMCP.Server;
 /// when the mod's catalogue differs from the built-in one, the tools switch to it and the agent is told
 /// (notifications/tools/list_changed). tools/call takes out the sidecar's own arguments (fields, output_file), sends
 /// the call, writes the reply to a file when asked or when it is larger than the inline limit, and wraps the result or
-/// error in the one MCP result shape (ToolReplies). Arguments are the mod's to check on protocol version 2; on version 1,
-/// or before any connection, the sidecar checks them against the tool's schema first, as it always has.
+/// error in the one MCP result shape (ToolReplies). The sidecar checks only what cannot be sent as written and its own
+/// arguments; the rest are the mod's to check.
 /// </summary>
 internal sealed class McpAdapter : IAsyncDisposable
 {
@@ -150,24 +150,12 @@ internal sealed class McpAdapter : IAsyncDisposable
             ? value.Clone()
             : NoArguments;
 
-        if (tool == SampleLogic.Method && _client.Protocol is null)
-        {
-            // Where sample_logic runs depends on the game's protocol: learn it before the first one is answered.
-            await _client.ConnectAsync().ConfigureAwait(false);
-        }
-
-        bool modChecks = _client.Protocol == ProtocolVersion.Version2;
-        IReadOnlyList<string> problems = modChecks
-            ? ArgumentCheck.ProblemsOf(schema, arguments, SidecarArguments.Names)
-            : ArgumentCheck.Problems(schema, arguments);
+        IReadOnlyList<string> problems = ArgumentCheck.Unsendable(arguments) is { Count: > 0 } unsendable
+            ? unsendable
+            : ArgumentCheck.ProblemsOf(schema, arguments, SidecarArguments.Names);
         if (problems.Count > 0)
         {
             return ToolReplies.Error(ToolFailure.InvalidArgument, string.Join(" ", problems));
-        }
-
-        if (!modChecks)
-        {
-            arguments = ArgumentCheck.Normalised(schema, arguments);
         }
 
         SidecarArguments call = SidecarArguments.Take(arguments);
@@ -176,22 +164,8 @@ internal sealed class McpAdapter : IAsyncDisposable
             return ToolReplies.Error(ToolFailure.InvalidArgument, refused.Message);
         }
 
-        CallOutcome outcome;
-        IReadOnlyList<string> unparsed = [];
-        if (tools.RunInSidecar.Contains(tool) || SampleLogic.RunsHere(tool, _client.Protocol))
-        {
-            outcome = await SampleLogic.RunAsync(call.Forwarded,
-                reads => _client.CallAsync("read_logic_many", reads), CancellationToken.None).ConfigureAwait(false);
-            if (outcome is CallOutcome.Answered answered && call.Fields is { ValueKind: JsonValueKind.Array } fields)
-            {
-                outcome = answered with { Result = FieldSelection.Of(fields).Apply(answered.Result) };
-            }
-        }
-        else
-        {
-            (JsonElement? shape, unparsed) = call.ShapeFor(_client.Protocol);
-            outcome = await _client.CallAsync(tool, call.Forwarded, shape).ConfigureAwait(false);
-        }
+        (JsonElement? shape, IReadOnlyList<string> unparsed) = call.Shape();
+        CallOutcome outcome = await _client.CallAsync(tool, call.Forwarded, shape).ConfigureAwait(false);
 
         return outcome.Match(
             answered => ToolReplies.Of(Delivered(tool, call.Output, SidecarArguments.WithUnmatched(answered.Result, unparsed)), isError: false),

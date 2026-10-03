@@ -18,40 +18,34 @@ import argparse
 import itertools
 import json
 import math
+import os
 import sys
-import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "clients", "python"))
+from stationgod.connection import PipeTarget, encode, open_connection  # noqa: E402
 
 LIVE_ABS = 0.5           # default tolerance for live values: absolute ...
 LIVE_REL = 0.02          # ... or relative, whichever is larger
 
 
 class Pipe:
-    """One JSON request line out, one reply line back, per connection (the mod's named pipe protocol)."""
+    """One protocol-2 connection on the named pipe (hello and welcome through the Python library in clients/python);
+    each call's reply message ({ok, result} or {ok, error}) read back here, one call at a time."""
 
     def __init__(self, name):
-        self.path = "\\\\.\\pipe\\" + name
+        self.connection = open_connection(PipeTarget(name), client="read-devices-equivalence", connect_timeout=10.0)
         self.ids = itertools.count(1)
 
     def call(self, method, **params):
-        request = (json.dumps({"id": str(next(self.ids)), "method": method, "params": params}) + "\n").encode()
-        deadline = time.monotonic() + 10
+        call_id = str(next(self.ids))
+        self.connection.stream.write(encode({"type": "call", "id": call_id, "method": method, "params": params}))
         while True:
-            try:
-                pipe = open(self.path, "r+b", buffering=0)
-                break
-            except OSError:
-                if time.monotonic() > deadline:
-                    raise
-                time.sleep(0.02)
-        with pipe:
-            pipe.write(request)
-            reply = bytearray()
-            while not reply.endswith(b"\n"):
-                chunk = pipe.read(65536)
-                if not chunk:
-                    raise RuntimeError(f"{method}: the game closed the pipe without replying")
-                reply += chunk
-        return json.loads(reply)
+            line = self.connection.lines.next()
+            if line is None:
+                raise RuntimeError(f"{method}: the game closed the connection without replying")
+            reply = json.loads(line)
+            if reply.get("type") == "reply" and reply.get("id") == call_id:
+                return reply
 
 
 class Report:

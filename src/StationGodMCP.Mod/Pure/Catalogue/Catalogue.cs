@@ -117,7 +117,7 @@ internal sealed class CatalogueMethod
     private readonly List<CatalogueRule> _costRules;
 
     private CatalogueMethod(string name, MethodClass defaultClass, List<CatalogueRule> classRules, CostClass defaultCost,
-        List<CatalogueRule> costRules, SchemaNode parameters, bool listsShaped, bool hidden, bool runsInSidecar,
+        List<CatalogueRule> costRules, SchemaNode parameters, bool listsShaped, bool hidden,
         List<string> effects, HashSet<string> replyLists)
     {
         ReplyLists = replyLists;
@@ -129,7 +129,6 @@ internal sealed class CatalogueMethod
         Parameters = parameters;
         ListsShaped = listsShaped;
         Hidden = hidden;
-        RunsInSidecar = runsInSidecar;
         Effects = effects;
         ArgumentNames = new ArgumentNames(name, parameters.PropertyNames);
     }
@@ -143,7 +142,7 @@ internal sealed class CatalogueMethod
 
     internal CostClass DefaultCost { get; }
 
-    /// <summary>The argument schema, compiled: what version 2 checks a call against.</summary>
+    /// <summary>The argument schema, compiled: what a call is checked against.</summary>
     internal SchemaNode Parameters { get; }
 
     /// <summary>The top-level argument names params declares.</summary>
@@ -154,9 +153,6 @@ internal sealed class CatalogueMethod
 
     /// <summary>x-mcp hidden: not an MCP tool (a protocol method).</summary>
     internal bool Hidden { get; }
-
-    /// <summary>x-runs-in sidecar: answered by the sidecar, not the mod (sample_logic).</summary>
-    internal bool RunsInSidecar { get; }
 
     /// <summary>x-duration's argument: the seconds the call itself runs for; null without x-duration.</summary>
     internal string? DurationParameter { get; private set; }
@@ -250,7 +246,6 @@ internal sealed class CatalogueMethod
             SchemaNode.Compile(parameters, $"{at}.params"),
             (string?)method["x-shaping"] == "lists",
             (string?)method["x-mcp"] == "hidden",
-            (string?)method["x-runs-in"] == "sidecar",
             effects,
             ReplyListsOf(method["reply"]));
         if (method["x-duration"] is JObject duration)

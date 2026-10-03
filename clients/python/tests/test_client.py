@@ -15,13 +15,12 @@ class Version2Cases:
     def test_connect_gives_the_welcome(self):
         mod = self.mod()
         game = self.client(mod).open()
-        self.assertEqual(2, game.protocol)
         self.assertEqual("w1", game.welcome["server"]["world"]["id"])
         self.assertIn("subscriptions", game.features)
         hello = [message for message in mod.received if message.get("type") == "hello"][0]
         self.assertEqual("hello", hello["type"])
         self.assertEqual([2], hello["protocol"])
-        self.assertEqual("stationgod-py/0.1.0", hello["client"]["library"])
+        self.assertEqual("stationgod-py/0.2.0", hello["client"]["library"])
 
     def test_a_call_returns_its_result(self):
         mod = self.mod()
@@ -252,7 +251,6 @@ class Version2OverPipe(Version2Cases, FakeModCase):
         game = self.client(mod, client="dashboard").open()
         self.assertEqual("dashboard", mod.received[0]["client"]["name"])
         self.assertNotIn("auth", mod.received[0])
-        self.assertEqual(2, game.protocol)
 
 
 if __name__ == "__main__":

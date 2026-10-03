@@ -19,9 +19,7 @@ variable, which wins over the file (handy for Docker and dedicated servers).
 | `Remote MCP` | `Port` | `8765` | `STATIONGODMCP_REMOTE_PORT` | TCP port, 1 to 65535. |
 | `Remote MCP` | `Secret` | empty | `STATIONGODMCP_REMOTE_SECRET` | Shared secret every TCP client must send first. Sent unencrypted: use a long random value. |
 | `Server` | `MaxPipeConnections` | `32` | none | The most local pipe connections at once, 1 to 254 (each agent session, the dashboard and each script keeps one). A client past it waits until one closes. |
-| `Server` | `OverlappedPipes` | `true` | none | Serve the pipe so each connection can read and write at once. `false` goes back to the synchronous pipe of 1.10 and earlier (four connections); off Windows that one is always used. |
-| `Server` | `Protocol2` | `true` | none | Let pipe clients speak protocol version 2 (a first line of type `hello`: several calls in flight per connection, `cancel`, events). `false` answers every connection with version 1 only. |
-| `Server` | `StrictArguments` | `true` | none | Check version-2 calls against the method catalogue in full before they run: argument names at every depth, types, ranges, enums, patterns, required arguments and the `shape`; a refusal lists each problem with its path. `false` checks them as version 1 is checked (top-level names only). Version 1 is never checked in full. |
+| `Server` | `StrictArguments` | `true` | none | Check every call against the method catalogue in full before it runs: argument names at every depth, types, ranges, enums, patterns, required arguments and the `shape`; a refusal lists each problem with its path. `false` checks top-level argument names only. |
 | `Server` | `MaxTcpConnections` | `8` | none | The most TCP connections at once, 1 to 64, counted apart from the pipe's. |
 | `Performance` | `RequestBudgetMs` | `4` | none | Main-thread milliseconds one frame may spend answering requests; the rest wait for the next frame. Clients take turns, one call each per round, and a call that changes the world still waits for its own client's earlier calls. The first request of a frame always runs. `0` is unlimited. While a job holds the game tick the budget is at most 2 ms. A negative value is logged and the default used. |
 | `Performance` | `SubscriptionBudgetMs` | `1.5` | none | Milliseconds of each frame for subscription and `sample_logic` samples, taken out of the same frame and at most half of `RequestBudgetMs`. The first due sample of a frame always runs. `0` turns subscriptions off (`subscribe` is refused `subscription_limit`, and clients poll instead). |
@@ -31,6 +29,9 @@ variable, which wins over the file (handy for Docker and dedicated servers).
 
 Environment values: `true` or `false` for `Enabled`, a number for `Port`. An invalid value is logged and the file's
 value used.
+
+The pipe needs Windows. On any other system (a Linux dedicated server) the log says the pipe is not available, and
+only remote access over TCP serves.
 
 The log confirms what is in use: `Pipe name: <name>.`, then
 `Authoritative MCP bridge listening on \\.\pipe\<name> (overlapped, up to 32 connections).` once a

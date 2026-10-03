@@ -22,22 +22,45 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Protocol version 2 on a real named pipe with a fake main thread: hello and welcome, calls by id several at a time,
+/// Protocol version 2 on a real named pipe with a fake main thread: hello first and welcome, calls by id several at a time,
 /// the order rule, ids, cancel and deadlines, framing limits, protocol errors, events, shutdown and slow clients.
 /// </summary>
 public sealed class ProtocolV2Tests
 {
     [Theory]
-    [InlineData("""{"type":"hello","protocol":[2],"client":{"name":"x"}}""", true)]
-    [InlineData("""  {"client":{"name":"x"},"type":"hello"}  """, true)]
-    [InlineData("""{"id":"1","method":"hello","params":{}}""", false)]
-    [InlineData("""{"id":"1","method":"game_clock"}""", false)]
-    [InlineData("{}", false)]
-    [InlineData("hello there", false)]
-    [InlineData("""{"type":"helloo"}""", false)]
-    public void TheFirstLineChoosesTheProtocol(string line, bool version2)
+    [InlineData("""{"id":"1","method":"game_clock","params":{}}""")]
+    [InlineData("""{"id":"1","method":"hello","params":{}}""")]
+    [InlineData("{}")]
+    [InlineData("hello there")]
+    [InlineData("""{"type":"helloo"}""")]
+    [InlineData("""{"type":"call","id":"1","method":"game_clock"}""")]
+    [InlineData("""{"type":"cancel","id":"1"}""")]
+    [InlineData("""{"type":"bye"}""")]
+    [InlineData("""{"type":"call","id":"1","id":"2","method":"game_clock"}""")]
+    public async Task AnythingButHelloFirstIsAProtocolErrorAndClosesTheConnection(string line)
     {
-        Assert.Equal(version2, FirstLine.StartsVersion2(line));
+        using PipeRig rig = new PipeRig();
+        using V2Client client = await V2Client.Open(rig);
+        client.Send(line);
+
+        JObject refused = client.Next();
+        Assert.Equal("protocol_error", (string?)refused["error"]!["code"]);
+        Assert.Equal(JTokenType.Null, refused["id"]!.Type);
+        Assert.Equal(line, (string?)refused["error"]!["data"]!["line_start"]);
+        Assert.Equal("protocol_error", (string?)client.Next()["reason"]);
+        Assert.True(client.WaitClosed(5000));
+        Assert.Equal(0, rig.Mod.Ran);
+    }
+
+    [Fact]
+    public async Task BlankLinesBeforeHelloAreIgnored()
+    {
+        using PipeRig rig = new PipeRig();
+        using V2Client client = await V2Client.Open(rig);
+        client.SendRaw("\r\n  \n");
+        client.Hello("late");
+
+        Assert.Equal("welcome", (string?)client.Next()["type"]);
     }
 
     [Fact]
@@ -253,14 +276,10 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
-    public void AV1LineIsOrderedWhateverItsClass()
+    public void ACallsProfileComesFromTheCatalogue()
     {
-        CallProfile profile = CallProfiles.OfLine(TestCatalogue.File.Value,
-            """{"id":"1","method":"read_logic","params":{"reference_id":"1","logic_type":"On"}}""");
-
-        Assert.True(profile.IsOrdered);
-        Assert.Equal("read_logic", profile.Method);
         Assert.False(CallProfiles.Of(TestCatalogue.File.Value, "read_logic", new JObject()).IsOrdered);
+        Assert.True(CallProfiles.Of(TestCatalogue.File.Value, "write_logic", new JObject()).IsOrdered);
         Assert.Equal(CostClass.World, CallProfiles.Of(TestCatalogue.File.Value, "grid_survey", new JObject()).Cost);
     }
 
@@ -426,17 +445,6 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
-    public async Task WithVersionTwoOffAHelloIsAnsweredAsVersionOne()
-    {
-        using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, protocol2: false));
-        using V2Client client = await V2Client.Open(rig);
-        string hello = """{"type":"hello","protocol":[2],"client":{"name":"x"}}""";
-        client.Send(hello);
-
-        Assert.Equal(JObject.Parse(FakeMod.ReplyTo(hello)), client.Next());
-    }
-
-    [Fact]
     public async Task EveryVersionTwoConnectionHearsOfANewWorld()
     {
         using PipeRig rig = new PipeRig();
@@ -530,7 +538,7 @@ public sealed class ProtocolV2Tests
         Assert.NotEqual(ServerFacts.RandomHex(8), ServerFacts.RandomHex(8));
     }
 
-    // The fake mod's own params (hold_ms, reply_bytes) are no method's arguments: these rigs check calls as version 1.
+    // The fake mod's own params (hold_ms, reply_bytes) are no method's arguments: these rigs check top-level names only.
     private static PipeRig Loose(bool mainThread = true) =>
         new PipeRig(mainThread: mainThread, settings: new ProtocolSettings(32, strictArguments: false));
 
@@ -574,8 +582,6 @@ public sealed class ProtocolV2Tests
 
     private sealed class NoRunner : ICallRunner
     {
-        public CallOutcome RunLine(LineCall call, double queueWaitMs) => throw new InvalidOperationException();
-
         public CallOutcome RunCall(ProtocolCall call, double queueWaitMs) => throw new InvalidOperationException();
     }
 

@@ -26,9 +26,8 @@ class LiveTests(unittest.TestCase):
         self.addCleanup(self.game.close)
 
     def test_connect_and_welcome(self):
-        if self.game.protocol == 2:
-            self.assertEqual(PIPE, self.game.welcome["server"]["pipe_name"])
-            self.assertTrue(self.game.welcome["server"]["world"]["id"])
+        self.assertEqual(PIPE, self.game.welcome["server"]["pipe_name"])
+        self.assertTrue(self.game.welcome["server"]["world"]["id"])
         self.assertIn("game_time_s", self.game.call("game_clock"))
 
     def test_fields_equal_the_projection_of_the_full_reply(self):

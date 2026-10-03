@@ -628,6 +628,22 @@ subscriptions with none refused. Then normal mode for 30 minutes with the same s
 
 **Risk.** Medium for the owner's daily tool; the dry run and the per-chunk fallback contain it.
 
+**As built** (this repository 7cf1a04, StationeersScriptDashboard 679b7d7). The owner ruled out fallbacks, so the
+text's per-chunk polling is not built:
+- The library gained `protocol="v2"`, which refused a mod with only version 1 (`TooOld`); stage 15 then removed the
+  option with version 1 itself. The dashboard's transport spoke version 2 only from this stage.
+- The runner subscribes each card's device reads per gateway and chunk when the card binds: the same items, at the
+  card's interval clamped to the mod's 0.5 to 3600 seconds. Each tick reads the subscription's last pushed reading;
+  the runner makes no `read_devices` calls of its own.
+- A refused subscription, a mod without subscriptions, or a subscription the mod ends is the card's error (an ended
+  one is subscribed again at the next tick); there is no fall back to polling. A subscription waiting for the
+  connection, or a new world, makes the game unreachable and every card binds again. A rebind, an edit, a card switched
+  off, or reads a card no longer asks for close their subscriptions.
+- A value a card wrote reads as written until the subscription's next reading.
+- The smelter card's own `read_devices` call stays a poll. The read-clock stand-in for `game_clock` is gone, since a
+  subscription carries no fresh clock, and so is `Station.read_devices`, which nothing used.
+- The live check (dry run, then normal mode) has not run; it is in the owner's TODO.
+
 ## Stage 14: skipping costly parts of replies
 
 **Scope.** `args.Shape.Wants(list, key)` for handlers, and `x-costly` entries, with full entry schemas and `x-views`,
@@ -675,3 +691,31 @@ path, the sidecar's `ArgumentCheck` and `sample_logic` loop, and the dashboard's
 closes; the library, the sidecar and every migrated client work.
 
 **Risk.** Breaks any client not moved. That is why it is last and the owner's call.
+
+**As built.** The owner decided against the staged switch-off: he is the only consumer and updates every client, so
+version 1 was removed at once, with no setting to refuse it and no compatibility path. The mod and the sidecar ship
+together and must be updated together (CHANGELOG, Unreleased).
+- Mod: `LineSession`, `LineCall`, `ICallRunner.RunLine`, the dispatcher's `Dispatch`, `ApiHost.Handle` (the version-1
+  request parser and envelope, `ReplyView`, `ErrorReplyView`), `CallProfiles.OfLine`, `FirstLine` and the version-1
+  `sample_logic` start are gone, and so is the synchronous pipe (`StationGodPipeServer`, which served only version 1)
+  with `[Server] OverlappedPipes` and `[Server] Protocol2`. Off Windows, or where the overlapped pipe calls are
+  missing, the pipe stays off with one log line and only TCP serves.
+- Every connection's first message (after the TCP shared secret, which stays) must be `hello`; anything else is
+  `protocol_error` and closes ([protocol.md](protocol.md), *Old clients*). Blank lines before it are ignored and do not
+  stop the first-line timeout. `[Server] StrictArguments` stays: `false` checks top-level names only.
+- The catalogue's `x-runs-in` is gone (schema, `CatalogueMethod.RunsInSidecar`, the sidecar's `RunInSidecar`), with
+  the sidecar's `sample_logic` loop. `catalogue.json` did not change.
+- Clients: [clients.md](clients.md), *As built in stage 15*. The C# client and the Python library speak version 2 only
+  (`ProtocolChoice`, `ProtocolVersion` and the `protocol` option gone; library 0.2.0). The sidecar checks only what
+  cannot be sent as written and its own arguments; `ArgumentCheck.Normalised` is gone, `FieldSelection` moved to the
+  tests as the shaping reference.
+- Tools: `tools/duplex_probe.py` (version 1 only) is deleted; `tools/shape_check.py` and
+  `tools/read_devices_equivalence.py` call over version 2 through the library's connection module.
+- Callers: the dashboard re-vendors the library and drops its `PROTOCOL`; StationeersTestServer `tsclient.py` drops
+  `protocol="v1"` and proves the test pipe from `welcome.server.pipe_name`; the CheatEngineExpert scripts pass no
+  protocol option and need no change; the TerraformingReloaded leak runner goes through `tsclient`.
+- Tests: the version-1 transcript, timeout and envelope tests, the old-mod fakes and tests (C# `FakeProtocol.OldMod`,
+  Python `test_fallback.py` and the fake mod's version 1) are deleted; tests that used them as a vehicle now use
+  version 2. New: anything but `hello` first is `protocol_error`; blank lines before it keep the first-line timeout.
+- The live check (the test server: a version-1 line refused and closed; library, sidecar, dashboard, `tsclient` and
+  the leak runner working) has not run; it is in the owner's TODO.

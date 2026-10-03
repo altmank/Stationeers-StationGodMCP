@@ -47,10 +47,7 @@ public sealed class StationGodClient : IAsyncDisposable
     /// <summary>The catalogue in use: the built-in one, or the mod's after a welcome announced another hash.</summary>
     public GameCatalogue Catalogue { get; private set; }
 
-    /// <summary>The protocol of the last connection, null before the first.</summary>
-    public ProtocolVersion? Protocol { get; private set; }
-
-    /// <summary>The last welcome message (null on version 1).</summary>
+    /// <summary>The last welcome message (null before the first connection).</summary>
     public JsonElement? Welcome { get; private set; }
 
     /// <summary>The world the game is in, {id, save, epoch}, as the last welcome or world_changed event said.</summary>
@@ -93,10 +90,10 @@ public sealed class StationGodClient : IAsyncDisposable
         }
 
         GameConnection connection = ((Connecting.Connected)connecting).Connection;
-        if (connection.Version != ProtocolVersion.Version2 || !connection.Features.Contains("subscriptions"))
+        if (!connection.Features.Contains("subscriptions"))
         {
             return new SubscribeOutcome.Unsupported(
-                "This server has no subscriptions (protocol version 1, or 'subscriptions' not in welcome.features); poll read_devices instead.");
+                "This server has no subscriptions ('subscriptions' not in welcome.features); poll read_devices instead.");
         }
 
         Subscription subscription = new(this, request.Clone());
@@ -133,11 +130,7 @@ public sealed class StationGodClient : IAsyncDisposable
 
         if (connection != null)
         {
-            if (connection.Version == ProtocolVersion.Version2)
-            {
-                await connection.TrySendAsync(Wire.Bye()).ConfigureAwait(false);
-            }
-
+            await connection.TrySendAsync(Wire.Bye()).ConfigureAwait(false);
             connection.Close();
         }
     }
@@ -240,7 +233,7 @@ public sealed class StationGodClient : IAsyncDisposable
                 return new Attempt.NotWritten();
             }
 
-            string line = Wire.Call(connection.Version, connection.Features, id, method, parameters, shape, deadlineMs);
+            string line = Wire.Call(connection.Features, id, method, parameters, shape, deadlineMs);
             if (!await connection.TrySendAsync(line).ConfigureAwait(false))
             {
                 // A write that failed part way may still have reached the game: only a safe call is sent again.
@@ -252,7 +245,7 @@ public sealed class StationGodClient : IAsyncDisposable
             if (finished != ended)
             {
                 cancellation.ThrowIfCancellationRequested();
-                if (connection.Version == ProtocolVersion.Version2 && connection.Features.Contains("cancel"))
+                if (connection.Features.Contains("cancel"))
                 {
                     await connection.TrySendAsync(Wire.Cancel(id)).ConfigureAwait(false);
                 }
@@ -297,11 +290,9 @@ public sealed class StationGodClient : IAsyncDisposable
 
     // ---- connecting -----------------------------------------------------------------------------------------------
 
-    /// <summary>Connects now if not connected; the protocol the game speaks, or null when it could not be reached.</summary>
-    public async Task<ProtocolVersion?> ConnectAsync(CancellationToken cancellation = default) =>
-        await ConnectionAsync(cancellation).ConfigureAwait(false) is Connecting.Connected connected
-            ? connected.Connection.Version
-            : null;
+    /// <summary>Connects now if not connected; false when the game could not be reached.</summary>
+    public async Task<bool> ConnectAsync(CancellationToken cancellation = default) =>
+        await ConnectionAsync(cancellation).ConfigureAwait(false) is Connecting.Connected;
 
     private async Task<Connecting> ConnectionAsync(CancellationToken cancellation)
     {
@@ -348,7 +339,6 @@ public sealed class StationGodClient : IAsyncDisposable
         lock (_gate)
         {
             _connection = connection;
-            Protocol = connection.Version;
             Welcome = connection.Welcome;
             worldChanged = connection.WorldId != null && _lastWorldId != null && connection.WorldId != _lastWorldId;
             if (connection.WorldId != null)
@@ -360,7 +350,7 @@ public sealed class StationGodClient : IAsyncDisposable
             open = _subscriptions.Where(subscription => !subscription.IsClosed).ToArray();
         }
 
-        if (connection.Welcome is { } welcome && Wire.Child(welcome, "server") is { } server &&
+        if (Wire.Child(connection.Welcome, "server") is { } server &&
             Wire.Text(server, "game_state") is { } state)
         {
             GameState = state;
@@ -385,14 +375,15 @@ public sealed class StationGodClient : IAsyncDisposable
             }
         }
 
-        if (connection.Version == ProtocolVersion.Version2 && connection.Features.Contains("subscriptions"))
+        if (connection.Features.Contains("subscriptions"))
         {
             _ = Task.Run(() => CallCoreAsync("subscribe", JsonSerializer.SerializeToElement(new { topic = "world" }), null,
                 null, null, CancellationToken.None), CancellationToken.None);
         }
     }
 
-    // The mod's catalogue when its hash differs from the one in use; the built-in one on version 1 or when the fetch fails.
+    // The mod's catalogue when its hash differs from the one in use; the built-in one when the welcome names none or the
+    // fetch fails.
     private async Task UseCatalogueAsync(GameConnection connection, CancellationToken cancellation)
     {
         GameCatalogue chosen = _options.BuiltInCatalogue;
@@ -432,18 +423,7 @@ public sealed class StationGodClient : IAsyncDisposable
 
     private void OnMessage(GameConnection connection, JsonElement message)
     {
-        string? type = Wire.Text(message, "type");
-        if (connection.Version == ProtocolVersion.Version1)
-        {
-            if (type == null)
-            {
-                OnReply(connection, message);
-            }
-
-            return;
-        }
-
-        switch (type)
+        switch (Wire.Text(message, "type"))
         {
             case "reply":
                 OnReply(connection, message);
@@ -462,18 +442,10 @@ public sealed class StationGodClient : IAsyncDisposable
         string? id = Wire.Child(message, "id") is { } given
             ? given.ValueKind == JsonValueKind.String ? given.GetString() : given.GetRawText()
             : null;
-        PendingCall? call = null;
-        if (id != null)
+        if (id != null && connection.Pending.TryGetValue(id, out PendingCall? call))
         {
-            connection.Pending.TryGetValue(id, out call);
+            call.Reply(connection, message);
         }
-        else if (connection.Version == ProtocolVersion.Version1 && connection.Pending.Count == 1)
-        {
-            // A version-1 error that could not read the request's id belongs to the one call in flight.
-            call = connection.Pending.Values.FirstOrDefault();
-        }
-
-        call?.Reply(connection, message);
     }
 
     private void OnEvent(GameConnection connection, JsonElement message)

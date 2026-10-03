@@ -1,5 +1,5 @@
 """One connection to the mod: the transport (pipe or TCP), line framing, the TCP shared secret, the hello / welcome
-exchange with the fall back to version 1, and the reader thread that hands every line from the server to the client.
+exchange, and the reader thread that hands every line from the server to the client.
 
 The connection knows nothing about retrying; client.py decides that when on_closed reports what was in flight.
 """
@@ -14,7 +14,7 @@ from .errors import GameError, TooOld, Unauthorized, Unreachable, game_error
 
 log = logging.getLogger("stationgod")
 
-LIBRARY_VERSION = "0.1.0"
+LIBRARY_VERSION = "0.2.0"
 LIBRARY = f"stationgod-py/{LIBRARY_VERSION}"
 FEATURES = ["shape", "shape.paths", "subscriptions", "cancel"]
 HANDSHAKE_TIMEOUT_S = 10.0  # how long the server may take to answer the secret or hello
@@ -137,20 +137,19 @@ def encode(message):
 # ---- the connection ---------------------------------------------------------------------------------------------
 
 class Connection:
-    """A signed-in connection. version is 1 or 2; welcome is the welcome message (None on version 1). After start(),
-    the reader thread calls on_message(connection, message, size) for every line and on_closed(connection) once when
-    the connection ends, whoever ended it."""
+    """A signed-in connection; welcome is the server's welcome message. After start(), the reader thread calls
+    on_message(connection, message, size) for every line and on_closed(connection) once when the connection ends,
+    whoever ended it."""
 
-    def __init__(self, stream, lines, target, version, welcome=None):
+    def __init__(self, stream, lines, target, welcome):
         self.stream = stream
         self.lines = lines
         self.target = target
-        self.version = version
-        self.welcome = welcome or None
-        self.features = frozenset((welcome or {}).get("features") or [])
-        limits = (welcome or {}).get("limits") or {}
-        self.max_in_flight = int(limits.get("max_in_flight") or 16) if version == 2 else 1
-        world = ((welcome or {}).get("server") or {}).get("world") or {}
+        self.welcome = welcome
+        self.features = frozenset(welcome.get("features") or [])
+        limits = welcome.get("limits") or {}
+        self.max_in_flight = int(limits.get("max_in_flight") or 16)
+        world = (welcome.get("server") or {}).get("world") or {}
         self.world = world if world else None
         self.world_id = world.get("id")
         self.goodbye = None
@@ -233,20 +232,14 @@ def _read_with_timeout(stream, lines, timeout, what):
     return message if isinstance(message, dict) else {}
 
 
-def open_connection(target, *, protocol="auto", client=None, secret=None, connect_timeout=1.0,
-                    handshake_timeout=HANDSHAKE_TIMEOUT_S):
-    """Connects. Over TCP the shared secret goes first; after it TCP talks as the pipe does. protocol "auto" sends hello
-    and falls back to version 1 when an old mod answers it as a request; "v2" refuses such a mod with TooOld; "v1" speaks
-    version 1 from the start."""
-    if protocol not in ("auto", "v1", "v2"):
-        raise ValueError(f"protocol must be 'auto', 'v1' or 'v2', not {protocol!r}")
+def open_connection(target, *, client=None, secret=None, connect_timeout=1.0, handshake_timeout=HANDSHAKE_TIMEOUT_S):
+    """Connects. Over TCP the shared secret goes first; after it TCP talks as the pipe does. Sends hello offering
+    protocol 2 and needs a welcome."""
     stream = target.open(connect_timeout)
     lines = _Lines(stream)
     try:
         if target.kind == "tcp":
             _sign_in(target, stream, lines, secret, handshake_timeout)
-        if protocol == "v1":
-            return Connection(stream, lines, target, 1)
         hello = {"type": "hello", "protocol": [2],
                  "client": {"name": client or "stationgod-py", "version": LIBRARY_VERSION, "library": LIBRARY},
                  "features": FEATURES}
@@ -254,14 +247,8 @@ def open_connection(target, *, protocol="auto", client=None, secret=None, connec
         answer = _read_with_timeout(stream, lines, handshake_timeout, "hello")
         if answer is None:
             raise Unreachable(f"{target.describe()} closed the connection after hello")
-        if "type" not in answer:
-            # An old mod read hello as a version-1 request with no method (protocol.md, Old clients).
-            if protocol == "v2":
-                raise TooOld(f"{target.describe()} speaks only protocol version 1 (a StationGodMCP from before "
-                             "version 2); this client needs version 2")
-            return Connection(stream, lines, target, 1)
         if answer.get("type") == "welcome":
-            return Connection(stream, lines, target, 2, answer)
+            return Connection(stream, lines, target, answer)
         if answer.get("type") == "reply" and answer.get("ok") is False:
             error = game_error(answer.get("error"))
             if error.code == "unsupported_protocol":

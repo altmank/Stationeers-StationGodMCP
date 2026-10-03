@@ -18,8 +18,8 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Shaping in the mod: fields (single names as the sidecar's, and paths), limit, max_bytes, the version-1 reading
-/// that never refuses, and the sidecar handing fields to the mod and not applying them a second time.
+/// Shaping in the mod: fields (single names as the reference FieldSelection's, and paths), limit, max_bytes, the
+/// lenient reading that never refuses, and the sidecar handing fields to the mod and not applying them a second time.
 /// </summary>
 public sealed class ShapingTests
 {
@@ -227,7 +227,7 @@ public sealed class ShapingTests
     }
 
     [Fact]
-    public void VersionOneIgnoresWhatItCannotUse()
+    public void TheLenientReadingIgnoresWhatItCannotUse()
     {
         ShapeRequest shape = ShapeRequest.Lenient(JObject.Parse(
             """{"fields":[],"limit":{"a":-1,"b":100001,"c":2.5,"d":"3","e":3.0,"f":1e2},"max_bytes":10,"unknown":true}"""))!;
@@ -242,18 +242,11 @@ public sealed class ShapingTests
     [Fact]
     public void TheEnvelopeIsLeftAloneAndMarkedShaped()
     {
-        ReplyView reply = new ReplyView("r7", ShapingChecks.Parse("""{"things":[{"a":1,"b":2}],"count":1}"""), 0.5).AsShaped();
+        CallReplyView reply = CallReplyView.Of("r7", ShapingChecks.Parse("""{"things":[{"a":1,"b":2}],"count":1}"""), true, 0.5, 0.25, 3);
 
         string text = ApiJson.WriteShaped(ApiJson.Fresh(), reply, ShapingChecks.Fields(new[] { "a" }), ShapingRoot.Envelope).Json;
 
-        Assert.Equal("""{"id":"r7","ok":true,"result":{"things":[{"a":1}],"count":1},"elapsed_ms":0.5,"shaped":true}""", text);
-    }
-
-    [Fact]
-    public void AReplyWithoutShapeHasNoMark()
-    {
-        Assert.Equal("""{"id":null,"ok":true,"result":{},"elapsed_ms":1.0}""",
-            ApiJson.WriteFresh(new ReplyView(null, new JObject(), 1.0)));
+        Assert.Equal("""{"type":"reply","id":"r7","ok":true,"shaped":true,"result":{"things":[{"a":1}],"count":1},"elapsed_ms":0.5,"queue_ms":0.25,"frame":3}""", text);
     }
 
     [Fact]
@@ -290,7 +283,7 @@ public sealed class ShapingTests
 
     private static async Task<(string Forwarded, JsonElement Result)> CallThroughSidecar(string arguments, string result, bool shaped)
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok(result, shaped));
 
         string? line = await Program.HandleMcpMessageAsync(

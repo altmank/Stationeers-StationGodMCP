@@ -17,39 +17,23 @@ using StationGodMCP.Client;
 
 namespace StationGodMCP.Tests.Sidecar;
 
-/// <summary>Which protocol the fake mod speaks: today's (an old mod), or version 2 beside it as the mod will.</summary>
-internal enum FakeProtocol
-{
-    OldMod,
-    Version2
-}
-
-/// <summary>One call the fake mod received, with builders for its reply in the version it came in.</summary>
-internal sealed record FakeCall(int Connection, int Version, JsonElement Id, string Method, JsonElement Params, JsonElement? Shape,
+/// <summary>One call the fake mod received, with builders for its reply.</summary>
+internal sealed record FakeCall(int Connection, JsonElement Id, string Method, JsonElement Params, JsonElement? Shape,
     JsonElement Message)
 {
-    public string Ok(string resultJson, bool shaped = false)
-    {
-        string mark = shaped ? ",\"shaped\":true" : "";
-        return Version == 2
-            ? "{\"type\":\"reply\",\"id\":" + Id.GetRawText() + ",\"ok\":true" + mark + ",\"result\":" + resultJson +
-              ",\"elapsed_ms\":0.1,\"queue_ms\":0.2,\"frame\":7}"
-            : "{\"id\":" + Id.GetRawText() + ",\"ok\":true,\"result\":" + resultJson + mark + ",\"elapsed_ms\":0.1}";
-    }
+    public string Ok(string resultJson, bool shaped = false) =>
+        "{\"type\":\"reply\",\"id\":" + Id.GetRawText() + ",\"ok\":true" + (shaped ? ",\"shaped\":true" : "") +
+        ",\"result\":" + resultJson + ",\"elapsed_ms\":0.1,\"queue_ms\":0.2,\"frame\":7}";
 
-    public string Error(string code, string message)
-    {
-        string error = JsonSerializer.Serialize(new { code, message });
-        return Version == 2
-            ? "{\"type\":\"reply\",\"id\":" + Id.GetRawText() + ",\"ok\":false,\"error\":" + error + "}"
-            : "{\"id\":" + Id.GetRawText() + ",\"ok\":false,\"error\":" + error + "}";
-    }
+    public string Error(string code, string message) =>
+        "{\"type\":\"reply\",\"id\":" + Id.GetRawText() + ",\"ok\":false,\"error\":" +
+        JsonSerializer.Serialize(new { code, message }) + "}";
 }
 
 /// <summary>
-/// An in-process fake of the mod's listener, on a real overlapped named pipe or loopback TCP: today's protocol (hello
-/// answered as a request with no method) or version 2 (hello, welcome, calls answered out of order, events pushed);
-/// over TCP the shared secret comes first. Every line it receives is kept; Answer decides each
+/// An in-process fake of the mod's listener, on a real overlapped named pipe or loopback TCP: hello, welcome, calls
+/// answered out of order, events pushed; a first line that is not hello closes the connection; over TCP the shared
+/// secret comes first. Every line it receives is kept; Answer decides each
 /// call's reply, null for none.
 /// </summary>
 internal sealed class FakeGame : IAsyncDisposable
@@ -62,9 +46,8 @@ internal sealed class FakeGame : IAsyncDisposable
     private readonly string? _pipeName;
     private int _connections;
 
-    private FakeGame(FakeProtocol protocol, string? pipeName, TcpListener? listener)
+    private FakeGame(string? pipeName, TcpListener? listener)
     {
-        Protocol = protocol;
         _pipeName = pipeName;
         _listener = listener;
         Target = pipeName != null
@@ -72,8 +55,6 @@ internal sealed class FakeGame : IAsyncDisposable
             : new GameTarget.Tcp("127.0.0.1", ((IPEndPoint)listener!.LocalEndpoint).Port);
         _ = Task.Run(AcceptAsync);
     }
-
-    public FakeProtocol Protocol { get; }
 
     public GameTarget Target { get; }
 
@@ -99,14 +80,13 @@ internal sealed class FakeGame : IAsyncDisposable
 
     public int OpenConnections => _peers.Count;
 
-    public static FakeGame OnPipe(FakeProtocol protocol) =>
-        new(protocol, "StationGodMCP-fake-" + Guid.NewGuid().ToString("N"), null);
+    public static FakeGame OnPipe() => new("StationGodMCP-fake-" + Guid.NewGuid().ToString("N"), null);
 
-    public static FakeGame OnTcp(FakeProtocol protocol)
+    public static FakeGame OnTcp()
     {
         TcpListener listener = new(IPAddress.Loopback, 0);
         listener.Start();
-        return new FakeGame(protocol, null, listener);
+        return new FakeGame(null, listener);
     }
 
     public IEnumerable<FakeCall> CallsTo(string method) => Calls.Where(call => call.Method == method);
@@ -120,10 +100,10 @@ internal sealed class FakeGame : IAsyncDisposable
         }
     }
 
-    /// <summary>Sends an event line to every version-2 connection.</summary>
+    /// <summary>Sends an event line to every welcomed connection.</summary>
     public async Task PushAsync(string eventJson)
     {
-        foreach (Peer peer in _peers.Values.Where(peer => peer.Version == 2))
+        foreach (Peer peer in _peers.Values.Where(peer => peer.Welcomed))
         {
             await peer.WriteAsync(eventJson);
         }
@@ -224,13 +204,12 @@ internal sealed class FakeGame : IAsyncDisposable
         }
 
         bool isHello = hello.TryGetProperty("type", out JsonElement type) && type.ValueEquals("hello");
-        if (Protocol == FakeProtocol.OldMod || !isHello)
+        if (!isHello)
         {
-            await ServeVersionOneAsync(peer, hello);
             return;
         }
 
-        peer.Version = 2;
+        peer.Welcomed = true;
         string features = string.Join(",", Features.Select(feature => $"\"{feature}\""));
         await peer.WriteAsync(
             $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":91,"protocol_methods":3},"limits":{"max_in_flight":{{MaxInFlight}}},"features":[{{features}}]}""");
@@ -242,7 +221,7 @@ internal sealed class FakeGame : IAsyncDisposable
                 continue;
             }
 
-            FakeCall call = CallOf(peer, 2, message);
+            FakeCall call = CallOf(peer, message);
             _ = Task.Run(async () =>
             {
                 string? reply = call.Method == "catalogue"
@@ -256,29 +235,9 @@ internal sealed class FakeGame : IAsyncDisposable
         }
     }
 
-    // One request, one reply, in order; a line with no method is answered as the old mod answers hello.
-    private async Task ServeVersionOneAsync(Peer peer, JsonElement? first)
+    private FakeCall CallOf(Peer peer, JsonElement message)
     {
-        peer.Version = 1;
-        JsonElement? message = first ?? await ReadAsync(peer);
-        while (message is { } request)
-        {
-            if (!request.TryGetProperty("method", out JsonElement method) || method.ValueKind != JsonValueKind.String)
-            {
-                await peer.WriteAsync("""{"id":null,"ok":false,"error":{"code":"method_not_found","message":"Unknown method ''."}}""");
-            }
-            else if (await Answer(CallOf(peer, 1, request)) is { } reply)
-            {
-                await peer.WriteAsync(reply);
-            }
-
-            message = await ReadAsync(peer);
-        }
-    }
-
-    private FakeCall CallOf(Peer peer, int version, JsonElement message)
-    {
-        FakeCall call = new(peer.Number, version, message.GetProperty("id"), message.GetProperty("method").GetString()!,
+        FakeCall call = new(peer.Number, message.GetProperty("id"), message.GetProperty("method").GetString()!,
             message.TryGetProperty("params", out JsonElement parameters) ? parameters : JsonDocument.Parse("{}").RootElement,
             message.TryGetProperty("shape", out JsonElement shape) ? shape : null, message);
         Calls.Enqueue(call);
@@ -307,7 +266,7 @@ internal sealed class FakeGame : IAsyncDisposable
 
         public StreamReader Reader { get; } = new(stream, new UTF8Encoding(false), false, 4096, leaveOpen: true);
 
-        public int Version { get; set; }
+        public bool Welcomed { get; set; }
 
         public string Client { get; set; } = "anonymous";
 

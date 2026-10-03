@@ -233,7 +233,7 @@ internal sealed class GoodbyeView
     public string Reason { get; }
 }
 
-/// <summary>The server's version-2 messages as lines, written with the mod's serialiser settings on any thread.</summary>
+/// <summary>The server's messages as lines, written with the mod's serialiser settings on any thread.</summary>
 internal static class Wire
 {
     internal static string Line(object message) => ApiJson.WriteFresh(message);

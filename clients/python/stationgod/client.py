@@ -114,13 +114,10 @@ class PendingCall:
 class Client(_methods.Methods):
     """A connection to StationGod. Safe to use from several threads."""
 
-    def __init__(self, pipe=DEFAULT_PIPE, host=None, port=DEFAULT_PORT, client=None, protocol="auto",
+    def __init__(self, pipe=DEFAULT_PIPE, host=None, port=DEFAULT_PORT, client=None,
                  secret_env="STATIONGODMCP_SECRET", connect_timeout=None, output_dir=None, check_arguments=True):
-        if protocol not in ("auto", "v1", "v2"):
-            raise ValueError("protocol must be 'auto', 'v1' or 'v2'")
         self._target = TcpTarget(host, port) if host else PipeTarget(pipe)
         self.client_name = client
-        self._protocol_option = protocol
         self._secret_env = secret_env
         self._connect_timeout = connect_timeout if connect_timeout is not None else (3.0 if host else 1.0)
         self._output_dir = output_dir
@@ -142,7 +139,6 @@ class Client(_methods.Methods):
         self._reconnecting = False
         self._closed = False
         self._welcome = None
-        self._version = None
         self.world = None
         self.game_state = None
         self.on_call = None     # on_call(method, ms, reply_bytes, elapsed_ms, queue_ms): a metering hook
@@ -152,13 +148,8 @@ class Client(_methods.Methods):
 
     @property
     def welcome(self):
-        """The last welcome message (None on version 1)."""
+        """The last welcome message (None before the first connection)."""
         return self._welcome
-
-    @property
-    def protocol(self):
-        """1 or 2 once connected, else None."""
-        return self._version
 
     @property
     def features(self):
@@ -248,7 +239,7 @@ class Client(_methods.Methods):
     def _submit(self, call):
         while True:
             conn = self._connection()
-            if conn.version == 2 and self.check_arguments and not call.checked:
+            if self.check_arguments and not call.checked:
                 problems = self.catalogue.check(call.method, call.params)
                 if problems:
                     raise InvalidArgument("invalid_argument", " ".join(p["problem"] for p in problems),
@@ -281,11 +272,6 @@ class Client(_methods.Methods):
             return
 
     def _message(self, conn, call):
-        if conn.version == 1:
-            message = {"id": call.id, "method": call.method, "params": call.params}
-            if call.shape:
-                message["shape"] = call.shape  # an old mod ignores it; a new one shapes on version 1 too
-            return message
         message = {"type": "call", "id": call.id, "method": call.method, "params": call.params}
         if call.shape and "shape" in conn.features:
             message["shape"] = call.shape
@@ -328,7 +314,7 @@ class Client(_methods.Methods):
                     del candidate.pending[call.id]
                     self._slots.notify_all()
                     conn = candidate
-        if conn is not None and conn.version == 2 and "cancel" in conn.features and conn.alive:
+        if conn is not None and "cancel" in conn.features and conn.alive:
             try:
                 conn.send({"type": "cancel", "id": call.id})
             except OSError:
@@ -347,8 +333,8 @@ class Client(_methods.Methods):
                 if self._closed:
                     raise Unreachable("the client is closed")
                 conn = open_connection(
-                    self._target, protocol=self._protocol_option, client=self.client_name,
-                    secret=read_secret(self._secret_env), connect_timeout=self._connect_timeout)
+                    self._target, client=self.client_name, secret=read_secret(self._secret_env),
+                    connect_timeout=self._connect_timeout)
                 adopted = self._adopt(conn)
         if adopted is not None:
             self._after_adopt(conn, adopted)
@@ -360,10 +346,7 @@ class Client(_methods.Methods):
         conn.start(self._on_message, self._on_closed)
         with self._lock:
             self._conn = conn
-            self._version = conn.version
             self._welcome = conn.welcome
-        if conn.version != 2:
-            return False
         self._load_catalogue(conn)
         changed = self._last_world_id is not None and conn.world_id != self._last_world_id
         self._last_world_id = conn.world_id
@@ -397,7 +380,7 @@ class Client(_methods.Methods):
                     self._subscribe(sub)
                 except StationGodError as error:
                     self._drop_subscription(sub, f"refused on resubscribe: {error}")
-        if conn.version == 2 and "subscriptions" in conn.features:
+        if "subscriptions" in conn.features:
             self._start("subscribe", {"topic": "world"}, hook=self._note_world_subscription, internal=True)
 
     def _note_world_subscription(self, conn, reply):
@@ -485,23 +468,18 @@ class Client(_methods.Methods):
 
     def _on_message(self, conn, message, size):
         kind = message.get("type")
-        if conn.version == 2:
-            if kind == "reply":
-                self._on_reply(conn, message, size)
-            elif kind == "event":
-                self._on_event(conn, message)
-            elif kind == "goodbye":
-                conn.goodbye = message.get("reason")
-                log.info("stationgod: the server said goodbye: %s", conn.goodbye)
-        elif kind is None:
+        if kind == "reply":
             self._on_reply(conn, message, size)
+        elif kind == "event":
+            self._on_event(conn, message)
+        elif kind == "goodbye":
+            conn.goodbye = message.get("reason")
+            log.info("stationgod: the server said goodbye: %s", conn.goodbye)
 
     def _on_reply(self, conn, message, size):
         call_id = message.get("id")
         with self._lock:
             call = conn.pending.pop(str(call_id), None) if call_id is not None else None
-            if call is None and call_id is None and conn.version == 1 and len(conn.pending) == 1:
-                call = conn.pending.popitem()[1]   # a version-1 error that could not read the request's id
             if call is not None:
                 self._slots.notify_all()
         if call is None:
@@ -587,8 +565,8 @@ class Client(_methods.Methods):
         """Subscribes to device values (protocol.md, Subscriptions). Raises SubscriptionRefused when the mod refuses
         it (subscription_limit) and TooOld on a server without subscriptions; in both cases poll read_devices."""
         conn = self._connection()
-        if conn.version != 2 or "subscriptions" not in conn.features:
-            raise TooOld("this server has no subscriptions (version 1, or 'subscriptions' not in welcome.features); "
+        if "subscriptions" not in conn.features:
+            raise TooOld("this server has no subscriptions ('subscriptions' not in welcome.features); "
                          "poll read_devices instead")
         request = {name: value for name, value in (("topic", topic), ("items", items), ("include", include),
                                                     ("gateway_id", gateway_id), ("interval_s", interval_s))
@@ -655,7 +633,7 @@ class Client(_methods.Methods):
         for call in requeued:
             call.finish(error=Unreachable("the client was closed", maybe_ran=False))
         if conn is not None:
-            if conn.version == 2 and conn.alive:
+            if conn.alive:
                 try:
                     conn.send({"type": "bye"})
                 except OSError:

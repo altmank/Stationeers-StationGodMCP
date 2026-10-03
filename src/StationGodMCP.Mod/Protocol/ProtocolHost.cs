@@ -5,7 +5,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using StationGodMCP.Pure.Catalogue;
-using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Protocol;
 
@@ -13,7 +12,6 @@ namespace StationGodMCP.Protocol;
 internal sealed class ProtocolSettings
 {
     internal const int DefaultFirstLineTimeoutMilliseconds = 10000;
-    internal const int DefaultLineTimeoutMilliseconds = 30000;
     internal const int DefaultMaxPipeConnections = 32;
     internal const int MinimumPipeConnections = 1;
     internal const int DefaultMaxReplyBytes = 16777216;
@@ -24,7 +22,6 @@ internal sealed class ProtocolSettings
     internal const int MaximumPipeConnections = 254;
 
     internal ProtocolSettings(int maxPipeConnections, int firstLineTimeoutMilliseconds = DefaultFirstLineTimeoutMilliseconds,
-        int lineTimeoutMilliseconds = DefaultLineTimeoutMilliseconds, bool protocol2 = true,
         int maxReplyBytes = DefaultMaxReplyBytes, int pingAfterMilliseconds = DefaultPingAfterMilliseconds,
         int slowClientMilliseconds = DefaultSlowClientMilliseconds, bool strictArguments = true)
     {
@@ -33,8 +30,6 @@ internal sealed class ProtocolSettings
         SlowClientMilliseconds = slowClientMilliseconds;
         MaxPipeConnections = maxPipeConnections;
         FirstLineTimeoutMilliseconds = firstLineTimeoutMilliseconds;
-        LineTimeoutMilliseconds = lineTimeoutMilliseconds;
-        Protocol2 = protocol2;
         MaxReplyBytes = maxReplyBytes;
     }
 
@@ -43,31 +38,25 @@ internal sealed class ProtocolSettings
     /// <summary>A connection that has sent no complete line by then is closed.</summary>
     internal int FirstLineTimeoutMilliseconds { get; }
 
-    /// <summary>A version-1 request not started by then is answered game_timeout.</summary>
-    internal int LineTimeoutMilliseconds { get; }
-
-    /// <summary>Whether a first line that is a hello starts version 2 ([Server] Protocol2); false serves version 1 only.</summary>
-    internal bool Protocol2 { get; }
-
-    /// <summary>The largest reply version 2 sends (limits.max_reply_bytes).</summary>
+    /// <summary>The largest reply sent (limits.max_reply_bytes).</summary>
     internal int MaxReplyBytes { get; }
 
-    /// <summary>A version-2 connection that has been sent nothing for this long gets a ping event.</summary>
+    /// <summary>A connection that has been sent nothing for this long gets a ping event.</summary>
     internal int PingAfterMilliseconds { get; }
 
-    /// <summary>A version-2 client that takes no line for this long is closed (goodbye slow_client).</summary>
+    /// <summary>A client that takes no line for this long is closed (goodbye slow_client).</summary>
     internal int SlowClientMilliseconds { get; }
 
     /// <summary>
-    /// Whether version-2 calls are checked against the catalogue in full ([Server] StrictArguments): every argument's
-    /// name at any depth, type, range, enum, pattern and the required ones, and the shape. Version 1 is never.
+    /// Whether calls are checked against the catalogue in full ([Server] StrictArguments): every argument's name at any
+    /// depth, type, range, enum, pattern and the required ones, and the shape.
     /// </summary>
     internal bool StrictArguments { get; }
 }
 
 /// <summary>
 /// What every connection shares: the settings, the queue to the main thread, the deadline watch, the catalogue, the
-/// choice of protocol from a connection's first line, and the list of open connections.
+/// session for a new connection, and the list of open connections.
 /// </summary>
 internal sealed class ProtocolHost
 {
@@ -93,7 +82,7 @@ internal sealed class ProtocolHost
 
     internal ProtocolSettings Settings { get; }
 
-    /// <summary>The mod's one deadline timer, shared with the TCP and synchronous pipe paths.</summary>
+    /// <summary>The mod's one deadline timer, shared by the pipe and TCP.</summary>
     internal DeadlineWatch Deadlines { get; }
 
     /// <summary>The embedded catalogue; null when it did not load (every call is then answered internal_error).</summary>
@@ -123,15 +112,12 @@ internal sealed class ProtocolHost
     /// <summary>A queued call answered without running (cancelled) stops holding its place.</summary>
     internal void Withdraw(QueuedCall call) => _calls.Withdraw(call);
 
-    /// <summary>The protocol a connection speaks, from its first line: a hello starts version 2, anything else version 1.</summary>
-    internal Session SessionFor(Connection connection, string firstLine) =>
-        connection.Transport == "pipe" ? AfterSignIn(connection, firstLine) : new SecretGateSession(connection, this);
+    /// <summary>A new connection's session: over TCP the shared secret comes first; then the protocol, hello first.</summary>
+    internal Session SessionFor(Connection connection) =>
+        connection.Transport == "pipe" ? AfterSignIn(connection) : new SecretGateSession(connection, this);
 
-    /// <summary>The protocol after any sign-in: a hello starts version 2, anything else version 1.</summary>
-    internal Session AfterSignIn(Connection connection, string firstLine) =>
-        Settings.Protocol2 && FirstLine.StartsVersion2(firstLine)
-            ? new CallSession(connection, this)
-            : new LineSession(connection, this);
+    /// <summary>The protocol after any sign-in.</summary>
+    internal Session AfterSignIn(Connection connection) => new CallSession(connection, this);
 
     /// <summary>The listener stopped.</summary>
     internal void Retire()
@@ -148,8 +134,8 @@ internal sealed class ProtocolHost
     }
 
     /// <summary>
-    /// Ends every connection: version 2 ones get their unstarted calls answered shutting_down and a goodbye with the
-    /// reason; then waits up to the given time for them to end, and closes any still open.
+    /// Ends every connection: each gets its unstarted calls answered shutting_down and a goodbye with the reason; then
+    /// waits up to the given time for them to end, and closes any still open.
     /// </summary>
     internal void CloseAll(string reason, int waitMilliseconds)
     {

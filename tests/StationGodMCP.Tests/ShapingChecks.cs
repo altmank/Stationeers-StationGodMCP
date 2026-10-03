@@ -16,7 +16,7 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// The mod's shaping held to two references: with nothing to leave out it writes exactly what the serialiser writes,
-/// and its single-name fields give what the sidecar's FieldSelection gives, compared as parsed JSON with key order.
+/// and its single-name fields give what the reference FieldSelection gives, compared as parsed JSON with key order.
 /// </summary>
 internal static class ShapingChecks
 {
@@ -26,14 +26,14 @@ internal static class ShapingChecks
     internal static ShapedText Mod(object? value, ShapeRequest shape) =>
         ApiJson.WriteShaped(ApiJson.Fresh(), value, shape, ShapingRoot.Result);
 
-    /// <summary>The mod's text for a JSON reply with fields, read leniently as a version-1 shape.</summary>
+    /// <summary>The mod's text for a JSON reply with fields, read leniently.</summary>
     internal static string ModFields(string reply, IEnumerable<string> fields) =>
         Mod(Parse(reply), Fields(fields)).Json;
 
     internal static ShapeRequest Fields(IEnumerable<string> fields) =>
         ShapeRequest.Lenient(new JObject { ["fields"] = new JArray(new List<string>(fields).ToArray()) })!;
 
-    /// <summary>The sidecar's text for the same reply and fields.</summary>
+    /// <summary>The reference's text for the same reply and fields.</summary>
     internal static string Sidecar(string reply, IEnumerable<string> fields)
     {
         using JsonDocument names = JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(fields));
@@ -53,7 +53,7 @@ internal static class ShapingChecks
         Assert.Equal(serialised, Mod(view, Nothing).Json);
         if (view != null)
         {
-            ReplyView envelope = new ReplyView("w1", view, 1.25);
+            CallReplyView envelope = CallReplyView.Of("w1", view, false, 1.25, 0.5, 1);
             Assert.Equal(JsonConvert.SerializeObject(envelope, ApiJson.Settings),
                 ApiJson.WriteShaped(ApiJson.Fresh(), envelope, Nothing, ShapingRoot.Envelope).Json);
         }

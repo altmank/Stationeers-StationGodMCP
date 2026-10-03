@@ -1,12 +1,5 @@
 namespace StationGodMCP.Client;
 
-/// <summary>Which protocol to speak: version 2 with the fall back to version 1, or version 1 from the start.</summary>
-public enum ProtocolChoice
-{
-    Auto,
-    Version1
-}
-
 /// <summary>
 /// How a client connects. Over TCP the shared secret is read from an environment variable, never given as a value, so
 /// it does not show in process lists.
@@ -19,8 +12,6 @@ public sealed record ClientOptions(GameTarget Target)
     public string? ClientName { get; init; }
 
     public string SecretVariable { get; init; } = DefaultSecretVariable;
-
-    public ProtocolChoice Protocol { get; init; } = ProtocolChoice.Auto;
 
     /// <summary>Null for the target's default: 1 second for the pipe, 3 for TCP.</summary>
     public TimeSpan? ConnectTimeout { get; init; }

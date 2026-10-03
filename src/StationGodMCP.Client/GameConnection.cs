@@ -3,15 +3,8 @@ using System.Text.Json;
 
 namespace StationGodMCP.Client;
 
-/// <summary>The protocol a connection speaks: version 2, or today's version 1 with one call at a time.</summary>
-public enum ProtocolVersion
-{
-    Version1 = 1,
-    Version2 = 2
-}
-
 /// <summary>
-/// One signed-in connection: its protocol, what its welcome said, the calls waiting for a reply on it, and its reader.
+/// One signed-in connection: what its welcome said, the calls waiting for a reply on it, and its reader.
 /// It knows nothing about resending; the client decides that when the connection reports that it ended.
 /// </summary>
 internal sealed class GameConnection
@@ -20,14 +13,13 @@ internal sealed class GameConnection
     private readonly CancellationTokenSource _closing = new();
     private int _closed;
 
-    internal GameConnection(GameTarget target, LineChannel channel, ProtocolVersion version, JsonElement? welcome)
+    internal GameConnection(GameTarget target, LineChannel channel, JsonElement welcome)
     {
         Target = target;
         _channel = channel;
-        Version = version;
         Welcome = welcome;
         HashSet<string> features = new(StringComparer.Ordinal);
-        if (welcome is { } message && Wire.Child(message, "features") is { ValueKind: JsonValueKind.Array } listed)
+        if (Wire.Child(welcome, "features") is { ValueKind: JsonValueKind.Array } listed)
         {
             foreach (JsonElement feature in listed.EnumerateArray())
             {
@@ -39,30 +31,26 @@ internal sealed class GameConnection
         }
 
         Features = features;
-        int inFlight = welcome is { } hello && Wire.Child(hello, "limits") is { } limits &&
+        int inFlight = Wire.Child(welcome, "limits") is { } limits &&
                        Wire.Child(limits, "max_in_flight") is { ValueKind: JsonValueKind.Number } limit &&
                        limit.TryGetInt32(out int count) && count > 0
             ? count
             : 16;
-        Slots = new SemaphoreSlim(version == ProtocolVersion.Version2 ? inFlight : 1);
-        World = welcome is { } greeting && Wire.Child(greeting, "server") is { } server ? Wire.Child(server, "world") : null;
-        CatalogueHash = welcome is { } greeted && Wire.Child(greeted, "catalogue") is { } catalogue
-            ? Wire.Text(catalogue, "hash")
-            : null;
+        Slots = new SemaphoreSlim(inFlight);
+        World = Wire.Child(welcome, "server") is { } server ? Wire.Child(server, "world") : null;
+        CatalogueHash = Wire.Child(welcome, "catalogue") is { } catalogue ? Wire.Text(catalogue, "hash") : null;
     }
 
     internal GameTarget Target { get; }
 
-    internal ProtocolVersion Version { get; }
-
-    internal JsonElement? Welcome { get; }
+    internal JsonElement Welcome { get; }
 
     internal IReadOnlySet<string> Features { get; }
 
-    /// <summary>One slot per call in flight: max_in_flight on version 2, one on version 1.</summary>
+    /// <summary>One slot per call in flight: welcome's max_in_flight.</summary>
     internal SemaphoreSlim Slots { get; }
 
-    /// <summary>welcome.server.world: {id, save, epoch}; null on version 1.</summary>
+    /// <summary>welcome.server.world: {id, save, epoch}; null when the welcome has none.</summary>
     internal JsonElement? World { get; }
 
     internal string? WorldId => World is { } world ? Wire.Text(world, "id") : null;
