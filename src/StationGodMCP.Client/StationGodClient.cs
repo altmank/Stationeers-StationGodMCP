@@ -551,22 +551,6 @@ public sealed class StationGodClient : IAsyncDisposable
             }
         }
 
-        if (connection.Goodbye == "revoked")
-        {
-            Subscription[] open;
-            lock (_gate)
-            {
-                open = [.. _subscriptions];
-            }
-
-            foreach (Subscription subscription in open)
-            {
-                Drop(subscription, "revoked");
-            }
-
-            return;
-        }
-
         if (reconnect && Interlocked.Exchange(ref _reconnecting, 1) == 0)
         {
             _ = Task.Run(ReconnectAsync);
