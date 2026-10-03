@@ -186,7 +186,7 @@ All under `[Performance]` in the mod's config, read at load, as `RequestBudgetMs
 `mod_info.runtime` gains:
 
 - `lanes`: per lane, calls served, frames it ran in, the longest wait in frames, budget stops;
-- `connections`: per connection, `client_id`, key name, transport, level, calls in flight and served, subscriptions
+- `connections`: per connection, `client_id`, the name from `hello`, transport, calls in flight and served, subscriptions
   and their values, bytes sent;
 - `subscriptions`: count, values, mean and maximum sampling time per frame, events sent and merged, late
   subscriptions;

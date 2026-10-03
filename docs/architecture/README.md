@@ -6,7 +6,7 @@ in plain words. The other pages hold the exact rules:
 
 | Page | What it holds |
 | --- | --- |
-| [protocol.md](protocol.md) | The wire protocol: framing, versions, messages, errors, shaping, subscriptions, sign-in and permissions, pipe and TCP, and how today's clients keep working. |
+| [protocol.md](protocol.md) | The wire protocol: framing, versions, messages, errors, shaping, subscriptions, pipe and TCP, and how today's clients keep working. |
 | [catalogue.md](catalogue.md) | The method catalogue: its format, where it lives, how it is kept true to the code, and who reads it. |
 | [scheduling.md](scheduling.md) | How the game's main thread is shared between clients, what requests cost today, and the limits on subscriptions. |
 | [clients.md](clients.md) | The Python library, the C# client inside the sidecar, where `output_file` lives, and moving every existing client over. |
@@ -48,8 +48,7 @@ The owner asked for one proper interface rather than another patch on the side.
 
 The mod becomes the one authority. It speaks one versioned protocol, the same on the pipe and over TCP, and every
 method it offers is described in one machine-readable catalogue. The mod checks every request against that catalogue
-and shapes every reply as it writes it, for every caller. Each connection signs in to a permission level (read,
-write or cheat) that the mod enforces. The mod shares its main thread fairly between a dashboard's small tick reads
+and shapes every reply as it writes it, for every caller. The mod shares its main thread fairly between a dashboard's small tick reads
 and an agent's heavy survey, and it can push changed values to a client instead of being polled. The sidecar shrinks
 to a translator between MCP and this protocol, with its tool list taken from the catalogue. Official client
 libraries for Python and C# handle connecting, reconnecting and the few things that must happen on the caller's own
@@ -71,7 +70,7 @@ fix in a stage of its own before anything else depends on it.
 (`scripts/*.py`, for example `print_queue.py:223`, `smelter.py:2068`), reading devices with one `read_devices` call
 per gateway per tick (`runner.py:491-528`). It keeps one pipe connection (`transport.py:55-110`). In the new design
 it uses the Python library, can ask the mod to push the values that changed, gets its reads in a reserved slice of
-each frame, and signs in at a level that cannot use cheat tools.
+each frame.
 
 **Scripts.** Watchers, the flight log, coolant and burn watchers and the layout solver: thirteen CheatEngineExpert
 scripts build the dashboard's `PipeTransport` (for example `Cheats/Stationeers/tools/rocket/flight_log.py:10`,
@@ -85,34 +84,26 @@ the strict checks refuse none of them.
 
 **The headless test server beside the live game.** It already uses its own pipe name, `StationGodMCP-Test`
 (StationeersTestServer `testserver.json`), and its `client()` refuses any pipe that does not prove it is the test one
-(`tsclient.py:90-101`). That stays. The test server has its own config folder, so its own keys and access settings,
-and the libraries name the key's environment variable after the pipe, so a process set up for one game never offers
-its key to the other.
+(`tsclient.py:90-101`). That stays.
 
 **Remote hosting.** The game runs on another machine while the owner plays on it as a client, and agents reach it
 over a private network. The TCP listener exists today, with one shared secret sent in plain text, and it stays off
 without that secret (`src/StationGodMCP.Mod/StationGodTcpServer.cs:174-229`; `src/StationGodMCP.Mod/StationGodMod.cs:243-250`).
-In the new design TCP speaks exactly the same protocol as the pipe, each client has its own key and level, and the
-key is never sent over the wire, only a proof that the client holds it. The old shared secret keeps working for old
-sidecars; whether it may still reach cheat tools is a question for the owner below. The connection is still not encrypted, so the design expects a private
-network or a VPN. The owner, playing as a client, approves cheats through the game's own `serverrun` command, which
-forwards a console command from a client to the host when both share the game's server secret (game decompile
-`Util.Commands/ServerRunCommand.cs`, `Util.Commands/ServerRunCommandMessage.cs:15-36`). One gap remains; see *What
-this design does not solve*.
+In the new design a TCP client still sends the shared secret first, and after it the connection speaks exactly the
+same protocol as the pipe. The connection is still not encrypted, so the design expects a private network or a VPN.
+One gap remains; see *What this design does not solve*.
 
 **Workshop players.** Install the mod, unpack the sidecar, register it with the agent: the same three steps as
-today (README "Install in short"). A local connection without a key gets the level the owner configures; what that
-default should be is a question for the owner below.
+today (README "Install in short").
 
 **Large replies.** Shaping moves into the mod, so a caller that asks for four keys gets four keys, over the pipe or
 TCP alike, and the game does not format or send the rest. `output_file` stays on the caller's machine, because with a
 remote game the file must land next to the agent, not next to the game. The sidecar also gains a safety net: a reply
 larger than an agent can sensibly read goes to a file on its own.
 
-**Cheat-level tools.** Today every client can do everything; the README calls the mod "a cheat-level tool" with "no
-per-user permissions" (README "Safety"). In the new design every method has a class in the catalogue (read, write or
-cheat; dry runs count as reads) and the mod refuses a method above the connection's level. A cheat call also needs a
-time-limited OK the owner gives in the game.
+**Cheat-level tools.** Every client can call every method. Each method has a class in the catalogue (read, write or
+cheat; dry runs count as reads), as information: the libraries resend only reads after a broken connection, the
+scheduler orders writes, and agents tell the owner when a tool is a cheat, and ask first.
 
 **Multiplayer.** The mod listens only on the host (`src/StationGodMCP.Mod/StationGodMod.cs:100-104`;
 `docs/install.md:141`), and that stays so. A player who is not the host reaches the mod through the host's TCP
@@ -168,25 +159,12 @@ test project cannot compile (`tests/StationGodMCP.Tests/StationGodMCP.Tests.cspr
 handlers to the catalogue: the method list, every argument name the handlers read, ranges, reply views where they are
 declared, and error codes. Details: [catalogue.md](catalogue.md).
 
-### Permission levels per connection, from keys the owner issues
+### No permission system
 
-Each connection gets a level when it signs in: read, write or cheat. A key in a small file next to the mod's config
-names a client, its level, and any single methods it is allowed beyond its level. A local connection without a key
-gets a configured level. Remote connections need a key, or the old shared secret, whose level is a question for
-the owner below.
-
-Cheat needs more than a key. Even a key whose level is cheat uses cheat tools only while the owner has approved it in
-the game, for a limited time, with a console command: typed in the host's console, the dedicated server's console, or
-from the owner's client through `serverrun`. The approval names one connection or one key, so arming one agent does
-not arm every agent. The mod refuses these commands when they arrive through its own `run_console_command`, so no
-connection can approve itself or extend its own time. Keys are never printed to the game's console, which
-`read_console` returns to any reader (`src/StationGodMCP.Mod/Api/ReadConsole.cs:10`); they are made by the sidecar
-program on the host and written straight to the keys file.
-
-An honest limit belongs here. On the owner's own machine an agent with a shell runs as the same Windows user as the
-dashboard, can read any key file and can talk to the pipe directly. Levels stop mistakes and an agent following its
-instructions, not a determined local program. The in-game approval is the part an agent cannot reach. Details:
-[protocol.md](protocol.md), *Sign-in and permissions*.
+No permission system (LU, 2026-10-02): every connection can call every method; agents tell LU when a tool is a cheat,
+and LU approves cheats per request. A design with keys, levels and an in-game approval for cheats was built and
+removed. Over TCP the shared secret is the only sign-in, and the catalogue's read, write and cheat classes stay as
+information.
 
 ### Fair scheduling by lanes
 
@@ -231,13 +209,10 @@ finds it by path if that install is missing, so a script started from another in
 ## What changes for each kind of client
 
 **Agents through the sidecar.** Tool names and arguments stay the same; `fields` and `output_file` work as before,
-`fields` now also over a remote game without shipping the unwanted keys, and with dotted paths. A tool the
-connection's level does not allow answers `permission_denied` with the level it needs. Very large replies arrive as a
-file pointer even without `output_file`.
+`fields` now also over a remote game without shipping the unwanted keys, and with dotted paths. Very large replies arrive as a file pointer even without `output_file`.
 
 **The dashboard.** Its transport becomes the Python library, on today's protocol first. Card reads move from polling
-to subscriptions, with polling kept as the fallback. It gets its own key. Cards that use tools the owner classes as
-cheat need a decision (see *Questions for the owner*).
+to subscriptions, with polling kept as the fallback.
 
 **Scripts using the dashboard's `PipeTransport`.** No edits: `PipeTransport`, `GameError` and `GameUnreachable`
 keep their names and behaviour. A script that wants shaping passes `fields`. Scripts are run with `py -3.12`.
@@ -245,8 +220,7 @@ keep their names and behaviour. A script that wants shaping passes `fields`. Scr
 **Test-server tools.** `tsclient` keeps `Client`, `client()`, `ModError`, `Unreachable` and `config()`, and its refusal
 to touch anything but the test pipe.
 
-**Workshop players.** Nothing to do, unless the owner chooses a stricter default for keyless connections; then players
-who use cheat tools change one setting.
+**Workshop players.** Nothing to do.
 
 **Anything written against today's pipe protocol.** Keeps working: a connection that does not say `hello` is served as
 today, until the owner decides to switch the old protocol off.
@@ -284,30 +258,6 @@ creating items, and write means anything a player can do by hand or with a chip,
 - Write: `move_item`, `trader_buy`, `trader_sell`, `vault_deposit`, `vault_withdraw`, logic writes, chip programming,
   labels, paint, and building tools on real runs.
 - Read: everything else, and every dry run.
-
-One consequence to weigh: the dashboard's smelter writes its watchdog's limits with `write_memory`
-(StationeersScriptDashboard `scripts/smelter.py:2639`). With `write_memory` as cheat, that card needs a grant for that
-one method or loses the action. `write_memory` writes a chip's stack as the chip's own `put` does, so classing it as
-write is the alternative. The other tools the dashboard uses (`move_item`, the vault and trader tools, `label`,
-`paint`) stay write under this recommendation (`scripts/locker_sort.py:577-944`, `scripts/ore_to_vault.py:35`,
-`scripts/smelter.py:1850`, `scripts/traders.py:388-665`).
-
-**What a local connection without a key may do.** Options: cheat (today's behaviour; a Workshop install keeps working
-as it does), write (agents stay off cheat tools by default, but players lose `move_gas` and the console tool until
-they make a key or change a setting), or read. Recommended: write.
-
-**How the owner says yes to cheats.** Options: a standing key with cheat level (simple, but every agent started with
-it can cheat at any time), or a time-limited approval in the game for one connection or one key. Recommended: the
-time-limited approval in the game.
-
-**Whether the old shared TCP secret may still reach cheat tools.** It travels in plain text, so anyone who can
-watch the network between an old remote sidecar and the host learns it. Option A caps it at write: safe, but an old
-remote sidecar loses `move_gas`, the console tool and the other cheat tools until it moves to keys. Option B keeps
-cheat on it until the old protocol is switched off: nothing breaks, and the exposure stays as it is today.
-Recommended: A, but only if no old remote sidecar is in use. To check: is `[Remote MCP] Enabled` true in the game's
-or server's `BepInEx\config\net.xceled.stationeers.stationgodmcp.cfg`; does any agent registration pass `--host`;
-and, once the new mod runs, does its log show any legacy TCP sign-in. If all three say no, A costs nothing. Until the
-owner decides, B ships.
 
 **When to switch the old protocol off.** It keeps every existing client alive during the move. Recommended: after
 every client in the owner's repositories has moved, plus one clean release on the new protocol; then on the owner's

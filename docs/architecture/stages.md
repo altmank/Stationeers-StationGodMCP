@@ -5,7 +5,7 @@
 Fifteen stages, each small enough to build, test and ship on its own, each leaving every existing client working.
 They are ordered by what they give for what they risk: shaping first, because it helps every client at once and
 touches one well-tested path; then the catalogue, which everything later reads; then the pipe I/O that version 2
-needs, proved on its own; then the new protocol in three steps, permissions, the libraries, the moves, and last the
+needs, proved on its own; then the new protocol in three steps, the libraries, the moves, and last the
 parts that only pay once the rest is in place.
 
 | Stage | What | Builds on | Implemented by |
@@ -15,8 +15,8 @@ parts that only pay once the rest is in place.
 | 3 | Full-duplex pipes, version 1 only (spike) | none | zoran-dotnet-developer (mod), general agent (Python pipe module and duplex probe) |
 | 4 | Protocol version 2: hello, calls in flight, order, cancel, events | 2, 3 | zoran-dotnet-developer, general agent for the probe |
 | 5 | Strict argument checking on version 2 | 4 | zoran-dotnet-developer |
-| 6 | Sign-in, permissions, and version 2 over TCP | 4 | zoran-dotnet-developer |
-| 7 | The Python library | 3, 4 (6 for keys) | general agent |
+| 6 | Protocol 2 over TCP with the shared secret | 4 | zoran-dotnet-developer |
+| 7 | The Python library | 3, 4 | general agent |
 | 8 | Existing Python clients onto the library, lenient first | 7 | general agent |
 | 9 | The sidecar as a thin adapter on the C# client | 5, 6 | zoran-dotnet-developer |
 | 10 | Fair scheduling by lanes | 4 | zoran-dotnet-developer, general agent for the load script |
@@ -274,10 +274,9 @@ between loopback TCP for local clients and a version 2 without pushes.
 
 ## Stage 4: protocol version 2
 
-**Scope.** On the stage-3 connections: the first-line classifier; `hello` and `welcome` (anonymous only; every
-version-2 pipe connection gets today's level), with `server.instance_id` and `server.world`; `call`, `reply` with `type`,
-`shaped`, `queue_ms` and `frame`; up to 16 calls in flight per connection; `duplicate_id`; deadlines and `cancel`; the
-per-connection ordering rule; taking calls from each connection in turn (a simple round-robin in the dispatcher; lanes
+**Scope.** On the stage-3 connections: the first-line classifier; `hello` and `welcome` (anonymous only), with
+`server.instance_id` and `server.world`; `call`, `reply` with `type`, `shaped`, `queue_ms` and `frame`; up to 16 calls
+in flight per connection; `duplicate_id`; deadlines and `cancel`; the per-connection ordering rule; taking calls from each connection in turn (a simple round-robin in the dispatcher; lanes
 come in stage 10); the `catalogue` protocol method; `ping`, `world_changed` and `goodbye`; the slow-client rule; request
 size limit; `mod_info` connections. Argument checking stays as on version 1 (names only) until stage 5. A setting
 `[Server] Protocol2` (default true) turns version 2 off.
@@ -316,11 +315,9 @@ parsing, first-line classifier, call ordering), `src/StationGodMCP.Mod/Pure/Worl
 
 **As built.** Where the code needed a choice the text above leaves open:
 - A first line is version 2 when it is a JSON object whose `type` is `hello` (`Pure/Protocol/ClientMessage.cs`,
-  `FirstLine`); messages are parsed on the connection's reader thread into a closed set (hello, auth, call, cancel,
-  bye, or a refusal that says what to answer). Until stage 6 a hello with `auth: "key"`, or any hello over TCP, is
-  answered `unauthorized` and closed; every keyless pipe connection gets today's level (`cheat`, standing).
-- A call with a bad `id`, an unknown key, an unknown `type`, a second hello, `auth` without a challenge, or a line
-  that is not a JSON object gets a `protocol_error` reply (null id, `data.line_start`), then `goodbye`
+  `FirstLine`); messages are parsed on the connection's reader thread into a closed set (hello, call, cancel, bye, or
+  a refusal that says what to answer). Until stage 6 any hello over TCP is answered `unauthorized` and closed.
+- A call with a bad `id`, an unknown key, an unknown `type`, a second hello, or a line that is not a JSON object gets a `protocol_error` reply (null id, `data.line_start`), then `goodbye`
   `protocol_error`, and closes. A call without `method` gets `method_not_found`, and `params` that is not an object, a
   `deadline_ms` outside 100 to 600,000 or a key given twice get `invalid_argument`, all with the call's id; the
   connection stays open.
@@ -348,7 +345,7 @@ parsing, first-line classifier, call ordering), `src/StationGodMCP.Mod/Pure/Worl
   line sent. The optional idle close is not built. When the host leaves its world, waiting calls are answered
   `shutting_down` and clients get `goodbye` `world_unloaded`; when the mod stops, `goodbye` `shutting_down`.
 - `mod_info` `runtime.connections` lists each open connection: `client_id`, `client`, `label` (the hello's name),
-  `transport`, `protocol`, `level`, `in_flight`, `served`, `bytes_sent`; absent on the synchronous pipe.
+  `transport`, `protocol`, `in_flight`, `served`, `bytes_sent`; absent on the synchronous pipe.
 - Live (test server, fixtures): checks 1 to 5 passed (welcome as specified with `dedicated` true and `save`
   `fixround`; 16 answered once each and `b16` refused `too_many_in_flight`; the read after `write_logic` Setting 7
   answered 7 in the same frame, restored; the cancelled `game_clock` answered `cancelled`). Check 6 (a restart gives a
@@ -386,99 +383,36 @@ today.
   selector whose first name is not a reply list is not refused: it is reported in `fields_unmatched`, as on version 1.
 - Live (test server): not run; the owner's game was running (owner's TODO).
 
-## Stage 6: sign-in, permissions, and version 2 over TCP
+## Stage 6: protocol 2 over TCP with the shared secret
 
-**Scope.** The *Sign-in and permissions* part of [protocol.md](protocol.md): the clients file and its reload; the
-challenge and HMAC proof with the 10-second sign-in limit; levels, class rules from the catalogue, grants; armed and
-standing cheat; the `stationgod allow`, `deny` and `clients` console commands, with arming per `client_id` or per key
-name, refused while `run_console_command` runs and refused by `run_console_command` itself; `[Access]
-AnonymousPipeLevel`, `AnonymousCheat`, `LegacyPipeLevel`, `LegacyTcpLevel` (shipped defaults keep today's behaviour on
-the pipe; legacy TCP keeps cheat until the owner chooses option A, see the overview); version 2 over TCP with keys, `[Server] MaxTcpConnections` 8, the listener
-starting with a secret or a TCP key; `goodbye revoked`; `cheat_armed` and `cheat_disarmed` events. The sidecar program
-gains `key new`. A test-only setting `[Access] AllowArmingFromToolConsole` (default false; documented as never to be set
-on a played game) lets the dedicated test server, which has no console a tester can type into, be armed through
-`run_console_command`.
+**Scope.** The *Signing in over TCP* part of [protocol.md](protocol.md): every TCP connection first sends the shared
+secret, `{"type":"auth","secret":...}` against `[Remote MCP] Secret`, answered `{"ok":true}` or `unauthorized` and
+closed; after it the connection talks exactly as a pipe connection, so a `hello` starts version 2 and anything else
+version 1. `[Server] MaxTcpConnections` 8, counted apart from the pipe's; the listener starts when `Enabled` holds and
+the secret is set; each sign-in is logged with the client's address.
 
 **Files.** `src/StationGodMCP.Mod/StationGodTcpServer.cs`, `src/StationGodMCP.Mod/StationGodMod.cs`
-(`RemoteSettings.Load`, access settings), `src/StationGodMCP.Mod/Protocol/` (sign-in),
-`src/StationGodMCP.Mod/Pure/Access/` (clients file, levels, permission decision, HMAC proof, arming with an injected
-clock; new), `src/StationGodMCP.Mod/Api/Shared/Game/StationGodCommands.cs` (new), `src/StationGodMCP.Mod/Api/RunConsoleCommand.cs`
-(the refusal and the flag), `src/StationGodMCP.Server/Program.cs` (`key new`); docs: README *Safety*,
-`docs/configuration.md` (*Access*, the clients file), `docs/install.md` (remote access with keys, `serverrun` for an
-owner playing as a client), CHANGELOG.
+(`RemoteSettings.Load`), `src/StationGodMCP.Mod/Protocol/` (the TCP acceptor and the secret gate); docs: README
+*Safety*, `docs/configuration.md`, `docs/install.md` (remote access), CHANGELOG.
 
 **Acceptance, offline.**
-- The permission decision for every combination of level, class, grant, armed or standing, and the class rules:
-  `place_cables` with no `dry_run` is read, with `dry_run: false` write; `place_structure` with `free: true` and
-  `dry_run: false` cheat; `move_gas` with `dry_run: true` read; `plant_genes` without `genes` read.
-- HMAC proof vectors: a fixed key, nonce text, client and transport give a fixed hex string (shared with the Python
-  tests); `auth.client` unlike `hello.client.name` is `unauthorized`; a sign-in not finished in 10 seconds is closed.
-- The clients file: a short key, an unknown level, a duplicate name and a bad transport each disable only that client,
-  logged by name and fingerprint, never the key.
-- Arming: by `client_id` arms one connection, by key name all of that key's; expiry on time; `run_console_command
-  "stationgod allow x"` refused with `permission_denied`; the command itself refusing while the tool's flag is set.
-- TCP: with a TCP key and no secret the listener starts; legacy sign-in is refused then; with a secret, legacy TCP
-  gets `LegacyTcpLevel` (cheat by default, write when so set), logs a warning at load and logs each legacy sign-in.
-- `key new` writes a valid entry and prints the key only to its own output.
+- A right secret gets `{"ok":true}`; a wrong or missing one gets `unauthorized` and the connection closes.
+- After the secret, a `hello` gets `welcome` with `transport` tcp, and any other first line is answered as version 1.
+- The listener starts only with `Enabled` and a secret; a ninth TCP connection is closed at once.
 
-**Acceptance, live (test server).** The test server's own config folder holds its clients file; restore it and the
-config afterwards.
-1. On the host: `StationGodMCP.Server.exe key new probe-read read --config "<StationeersTestServer>/server/BepInEx/config"`,
-   and the same for `probe-write write` and `probe-cheat cheat`. Then `py -3.12 mcp.py read_console '{}'` shows no key.
-2. `py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test --client probe-read --key-env K call read_logic ...`
-   succeeds; `write_logic` gives `permission_denied` with `required` write; `place_cables` without `dry_run` succeeds;
-   with `dry_run: false, confirm: true` gives `permission_denied`.
-3. With `probe-write`: `write_logic` succeeds (restore the value); `move_gas` with `dry_run: false` gives
-   `permission_denied` with `required` cheat.
-4. With `probe-cheat`: `move_gas` with `dry_run: true` succeeds; a real `move_gas` of 1 mol between two fixture canisters
-   gives `cheat_not_armed`. `py -3.12 mcp.py console 'stationgod allow probe-cheat 1'` prints a refusal (the default
-   forbids arming through the tool).
-5. Set `AllowArmingFromToolConsole = true` in the test server's config, restart, connect `probe-cheat` again, read its
-   `client_id`, and run `py -3.12 mcp.py console 'stationgod allow <client_id> 1'`: the probe receives `cheat_armed`, the
-   real `move_gas` succeeds, a second `probe-cheat` connection is still not armed; after a minute the first receives
-   `cheat_disarmed`. Move the gas back, set the switch back to false.
-6. TCP: set `[Remote MCP] Enabled = true`, `BindAddress = 127.0.0.1`, `Port = 18765`, give `probe-read` the `tcp`
-   transport, no secret, restart; the probe over TCP gets `welcome` with `transport` tcp; a wrong key gets
-   `unauthorized`. Then set a `Secret` and restart: today's sidecar with `--host 127.0.0.1 --port 18765` and
-   `STATIONGODMCP_SECRET` answers `mod_info` and the log shows its legacy sign-in; with `LegacyTcpLevel = write`,
-   `run_console_command` through it is `permission_denied`. Restore.
+**Acceptance, live (test server).** Set `[Remote MCP] Enabled = true`, `BindAddress = 127.0.0.1`, `Port = 18765` and a
+`Secret`, restart: the new sidecar with `--host 127.0.0.1 --port 18765` and `STATIONGODMCP_SECRET` answers `mod_info`
+with `welcome` `transport` tcp; a wrong secret gets `unauthorized`; today's sidecar answers `mod_info` too; the log
+shows each sign-in with its address. Restore the config.
 
-**Risk.** Medium: a mistake could lock clients out. Every shipped default keeps today's behaviour; option A for
-legacy TCP, if the owner chooses it, is the one deliberate break and gets its own CHANGELOG note.
+**Risk.** Low: the pipe is untouched, and TCP keeps today's first line.
 
 **As built.** Where the code needed a choice the text above leaves open:
-- The owner's decisions, applied: the catalogue's classes as recommended (cheat: `run_console_command`, `move_gas`,
-  `write_memory`, free placement, gene edits, `paste_blueprint` except its status; write: item moves, trading, the
-  vault, logic, chips, labels, paint, building); `AnonymousPipeLevel` `write`; cheat needs the time-limited OK in the
-  game; legacy TCP keeps cheat (option B) until version 1 retires.
-- `LegacyPipeLevel` defaults to `cheat`, not to `AnonymousPipeLevel`: at write, today's sidecar (`move_gas`, the
-  console), the dashboard (the smelter's `write_memory`) and the scripts would lose tools, and every existing client
-  must keep working until stage 15. A legacy client's cheat, on the pipe and over TCP, needs no approval, as today. A
-  dashboard moved to protocol 2 keeps its `write_memory` with the key `key new dashboard write --grants write_memory`,
-  without standing cheat (the owner's rule: every cheat needs his OK), so each `write_memory` of its smelter watchdog
-  waits for `stationgod allow`.
-- Keys: the fingerprint is the first 8 hex digits of the SHA-256 of the key's bytes. An entry's defaults: no grants,
-  cheat `armed`, transports `pipe`. A name given twice disables every entry of that name.
-- The level check runs on the reader thread after the argument check; a method the catalogue does not have goes to
-  the main thread (`method_not_found`). A version-1 line is parsed on the reader thread only when its connection's
-  level is below standing cheat, so today's clients pay nothing.
-- A key whose new entry gives less (a lower level, a grant or a transport gone, standing cheat made armed) or is gone
-  revokes its connections; a key that gives more applies to new connections.
-- `stationgod allow` takes a connection only if it is at cheat level and not standing, and a key name only at cheat
-  level; minutes are clamped to 1 to 240. `cheat_armed` and `cheat_disarmed` go out at once on allow and deny, and
-  within a second when an approval runs out (the main thread checks every second). `stationgod clients` also answers
-  from `run_console_command`, which only reads; allow and deny refuse there. `run_console_command` refuses
-  `stationgod` (any case, with or without leading dashes) with `permission_denied`, unless the test-only
-  `AllowArmingFromToolConsole` is set.
-- The whole sign-in has the first-line time from connecting (10 s); past it, `protocol_error`, `goodbye`, close.
-- TCP: `StationGodTcpServer` is replaced by `Protocol/TcpAcceptor.cs`, which hands each socket to the same
-  connection and sessions as the pipe: a hello must sign in with a key allowed on `tcp`; any other first line is the
-  old sign-in at `LegacyTcpLevel`, refused without a `Secret`. A ninth TCP connection is closed at once. TCP starts once
-  `Enabled` holds and there is a secret or a TCP key; the check runs every frame, so a key added later starts it.
-- `key new` writes into `--config` or the game's `BepInEx\config` (from `STATIONEERS_DIR`, else the Steam folder),
-  refuses a name already there unless `--replace`, and writes through a temporary file.
-- The synchronous pipe (`[Server] OverlappedPipes = false`) is the 1.10 code and applies no levels.
-- Live (test server): not run; the owner's game was running (owner's TODO).
+- TCP: `StationGodTcpServer` is replaced by `Protocol/TcpAcceptor.cs`, which hands each socket to the same connection
+  and sessions as the pipe, behind `SecretGateSession`. A ninth TCP connection is closed at once.
+- The secret is compared in fixed time. The first line, on either transport, must arrive within 10 seconds of
+  connecting; otherwise the connection closes.
+- The synchronous pipe (`[Server] OverlappedPipes = false`) is the 1.10 code.
 
 ## Stage 7: the Python library
 
@@ -498,7 +432,6 @@ it to the release assets. No mod change.
   applied locally, only to replies not marked `shaped`, with results equal to the sidecar's on the shared fixtures.
 - Output files: every fixture in `clients/fixtures/output_file`; pruning keeps 200 and the newest; a failed write
   answers inline with `output_file_error`.
-- HMAC vectors equal the mod's; the default key variable for `StationGodMCP-Test` is `STATIONGOD_KEY_STATIONGODMCP_TEST`.
 - `iterate` walks pages by `x-paging` until `has_more` is false.
 - Subscriptions: `SubscriptionRefused` and `TooOld` raised where they should be; resubscribe after a reconnect only with
   the same `world.id`.
@@ -554,7 +487,7 @@ strict path; the dry run catches regressions before any write.
 **Scope.** `src/StationGodMCP.Client` (net8) per [clients.md](clients.md); `ReplyShaping`, `FieldSelection`,
 `OutputFolder` and `ArgumentCheck` move there (`ArgumentCheck` used only for the version-1 fallback); the sidecar keeps
 MCP and uses one persistent version-2 connection; `tools/list` from the catalogue with the full schemas, `listChanged:
-true` and `notifications/tools/list_changed` on a catalogue change; the inline size limit; `--client`, `--key-env`,
+true` and `notifications/tools/list_changed` on a catalogue change; the inline size limit; `--client`,
 `--inline-limit-kb`.
 
 **Files.** `src/StationGodMCP.Client/**` (new), `src/StationGodMCP.Server/*`, `StationGodMCP.sln`,
@@ -577,7 +510,7 @@ true` and `notifications/tools/list_changed` on a catalogue change; the inline s
    results as parsed JSON, apart from times and frame numbers.
 2. A script that writes five `tools/call` lines to the sidecar without waiting gets five answers; `mod_info` shows one
    connection for the sidecar.
-3. The sidecar started with `--host 127.0.0.1 --port 18765 --client probe-read --key-env K` against the test server's
+3. The sidecar started with `--host 127.0.0.1 --port 18765` and `STATIONGODMCP_SECRET` against the test server's
    TCP (stage 6 config) answers `mod_info`.
 
 **Risk.** Medium: every agent call goes through it. The recorded comparison and the version-1 fallback limit the damage;
@@ -713,12 +646,11 @@ keys are equal and `mod_info.runtime` `handler_ms` mean is lower without it.
 ## Stage 15: switching the old protocol off
 
 **Scope.** Only after the owner decides (overview, *Questions for the owner*); the recommendation is after every client
-in the owner's repositories has moved plus one clean release on version 2. First `[Access] LegacyPipeLevel = none` and
-`LegacyTcpLevel = none` in the owner's own config; one release later, those defaults in the shipped mod, with a
-change-log note that stays in the Workshop change log for several versions; later still, removing the version-1 code
+in the owner's repositories has moved plus one clean release on version 2. First a setting that refuses version 1, turned on in the
+owner's own config; one release later, on by default in the shipped mod, with a change-log note that stays in the Workshop change log for several versions; later still, removing the version-1 code
 path, the sidecar's `ArgumentCheck` and `sample_logic` loop, and the dashboard's `transport_v1.py`.
 
-**Acceptance.** Live: on the test server with the legacy levels at `none`, a version-1 line gets `unauthorized` and the
-connection closes; the library, the sidecar and every migrated client work.
+**Acceptance.** Live: on the test server with version 1 refused, a version-1 line is refused and the connection
+closes; the library, the sidecar and every migrated client work.
 
 **Risk.** Breaks any client not moved. That is why it is last and the owner's call.

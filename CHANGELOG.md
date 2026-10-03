@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- **The method catalogue (new).** Every tool's description, argument schema, permission class, cost class and reply
-  keys now live in one file, `catalogue.json`, built from `catalogue/` and embedded in both the mod and the sidecar.
+- **The method catalogue (new).** Every tool's description, argument schema, class (read, write or cheat), cost
+  class and reply keys now live in one file, `catalogue.json`, built from `catalogue/` and embedded in both the mod and
+  the sidecar.
   The sidecar's tool list comes from it, and so do the argument names the mod accepts from pipe clients (it replaces
   `tool-arguments.json`). Tools, descriptions and argument names are unchanged; tool schemas now also carry the
   integer bounds the mod already enforced (`minimum`, `maximum`), and the tool list is in name order.
@@ -34,27 +35,21 @@
   cannot use (not an object, an unknown key, a selector that is not a name, more than 256 selectors, a `limit` on a
   key that is not one of the reply's lists, values out of range) is `invalid_shape`. Version 1 is checked as before;
   `[Server] StrictArguments = false` checks version 2 the same way.
-- **Keys, levels and the owner's OK for cheats (new).** Clients of protocol 2 sign in with a key from
-  `BepInEx\config\net.xceled.stationeers.stationgodmcp.clients.json` (a proof over a challenge; the key never crosses
-  the wire), made with `StationGodMCP.Server key new <name> <level>`. Each connection has a level, read, write or
-  cheat; a call above it is refused `permission_denied`, and a cheat call also needs the owner's `stationgod allow
-  <client id or key> [minutes]` in the game's console (`cheat_not_armed` until then; `cheat_armed` and
-  `cheat_disarmed` events), which `run_console_command` cannot run. A key removed or lowered disconnects its clients
-  (`goodbye revoked`). Without a key a local connection gets `[Access] AnonymousPipeLevel`, write. Clients of the old
-  protocol keep full access by default (`[Access] LegacyPipeLevel`, `LegacyTcpLevel`). Protocol 2 also works over TCP,
-  with a key, at most `[Server] MaxTcpConnections` (8) at once; TCP listens once there is a secret or a TCP key, and
-  the log records each old shared-secret sign-in with its address.
+- **Protocol 2 over TCP.** A TCP client still sends the shared `[Remote MCP] Secret` first; after it the connection
+  talks exactly as over the pipe, so a `hello` starts version 2 and anything else version 1. At most
+  `[Server] MaxTcpConnections` (8) TCP connections at once, counted apart from the pipe's; the log records each TCP
+  sign-in with its address.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
 - **Python client library (new).** `clients/python` (`stationgod`, Python 3.12): connect to the pipe or TCP, call any
   method by its catalogue name with `fields`, `limit` and `output_file`, page through paged methods, run several calls
-  at once, reconnect, and subscribe; it signs in with a key when given one and falls back to the old protocol on an
+  at once, reconnect, and subscribe; it sends the shared secret over TCP and falls back to the old protocol on an
   older mod.
 - **The sidecar runs on a C# client library.** One connection to the game, kept open, with the agent's calls sent over
   it as they come; the tool list comes from the game's catalogue, and the agent is told when it changes. A reply over
-  200 KB without `output_file` goes to a file on its own (`auto_output_file: true`; `--inline-limit-kb`). New options
-  `--client` and `--key-env` sign in with a key; `--host` no longer needs the secret to start. A call that never
-  reached the game, or a read whose connection broke, is sent again once; a write that may have run is not.
+  200 KB without `output_file` goes to a file on its own (`auto_output_file: true`; `--inline-limit-kb`). New option
+  `--client` names the sidecar in `hello`. A call that never reached the game, or a read whose connection broke, is
+  sent again once; a write that may have run is not.
 - **Fair sharing of the game's frame.** Calls are sorted into a light and a heavy lane by what the method's recent
   calls cost per item (surveys, plans and building jobs are always heavy). Each frame runs light calls with clients
   taking turns, then at most one heavy call; a heavy call passed over 10 frames runs even over budget. New

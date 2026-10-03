@@ -4,7 +4,7 @@
 
 Two official client libraries speak the protocol: one in Python for the dashboard, scripts and test tools, one in C#
 inside the sidecar. Both live in this repository. They own the things a caller should not have to get right on their
-own: connecting and signing in, sending several calls at once, reconnecting, resending only what is safe, walking
+own: connecting, sending several calls at once, reconnecting, resending only what is safe, walking
 pages, keeping subscriptions alive, and writing output files on the caller's machine. This page gives their
 interfaces, the exact rules for output files, and the steps that move each existing client over.
 
@@ -18,12 +18,10 @@ Connect timeouts: 1 second for the pipe (the dashboard's today, `transport.py:56
 today, `Program.cs:25`). A busy pipe is retried until the timeout and a missing one too, telling the two apart in the
 message (`transport.py:120-139`).
 
-**Keys.** Optionally a client name and a key. The key is read from an environment variable, never from an argument, so
-it does not show in process lists, as the sidecar's secret today (`docs/configuration.md`). The variable's default name
-depends on the target, so a process set up for the live game never offers its key to the test server or the other way
-round: `STATIONGOD_KEY_<PIPE>` for a pipe and `STATIONGOD_KEY_<HOST>_<PORT>` for TCP, with every character that is not
-a letter or digit replaced by `_` and letters in upper case (`STATIONGOD_KEY_STATIONGODMCP`,
-`STATIONGOD_KEY_STATIONGODMCP_TEST`). A caller may name another variable.
+**The TCP secret.** Over TCP the library sends the shared secret first ([protocol.md](protocol.md), *Signing in over
+TCP*). The secret is read from an environment variable, never from an argument, so it does not show in process lists,
+as the sidecar's today (`docs/configuration.md`): `STATIONGODMCP_SECRET` unless the caller names another. A pipe
+connection needs nothing. Optionally a client name, sent in `hello` and shown in `mod_info`.
 
 **Negotiating.** With `protocol="auto"` (the default), send `hello` with protocol `[2]`; if the answer is version 2,
 use it; if it is the old mod's `method_not_found` with a null id, fall back to version 1 on the same connection
@@ -135,14 +133,13 @@ clients/fixtures/       shared with the C# tests
 ```python
 import stationgod
 
-game = stationgod.connect()                                   # local pipe StationGodMCP, no key
+game = stationgod.connect()                                   # local pipe StationGodMCP
 game = stationgod.connect(pipe="StationGodMCP-Test")          # the test server
-game = stationgod.connect(pipe="StationGodMCP", client="dashboard")            # key from STATIONGOD_KEY_STATIONGODMCP
-game = stationgod.connect(host="10.8.0.2", port=8765, client="agents", key_env="MY_KEY")
+game = stationgod.connect(pipe="StationGodMCP", client="dashboard")            # named in hello and mod_info
+game = stationgod.connect(host="10.8.0.2", port=8765, secret_env="MY_SECRET")  # TCP, secret from MY_SECRET
 game = stationgod.connect(protocol="v1")                      # today's protocol, lenient checking
 
-game.welcome            # the welcome message as a dict (server.pipe_name, server.world, level, limits, ...)
-game.level              # "read", "write" or "cheat"
+game.welcome            # the welcome message as a dict (server.pipe_name, server.world, limits, ...)
 
 # Any method, keyword arguments as the catalogue names them; fields, output_file, limit and max_bytes are shaping.
 health = game.call("thing_health", reference_ids=ids, fields=["reference_id", "damage_ratio", "is_broken"])
@@ -173,7 +170,7 @@ Errors:
 
 | Exception | When |
 | --- | --- |
-| `stationgod.GameError(code, message, data)` | The mod answered with an error. Subclasses for codes callers often branch on: `PermissionDenied`, `CheatNotArmed`, `InvalidArgument`, `NotFound` (`thing_not_found`, `device_not_found`, ...), `SubscriptionRefused` (`subscription_limit`). |
+| `stationgod.GameError(code, message, data)` | The mod answered with an error. Subclasses for codes callers often branch on: `InvalidArgument`, `NotFound` (`thing_not_found`, `device_not_found`, ...), `SubscriptionRefused` (`subscription_limit`). |
 | `stationgod.Unreachable(message, maybe_ran)` | No answer: no pipe, the connection broke, or no reply in time. `maybe_ran` is true when the call was written and is not a read. |
 | `stationgod.TooOld(message)` | The server cannot do what was asked: a feature not in `welcome.features` (subscriptions on an old mod), or a method it does not have. |
 
@@ -195,7 +192,7 @@ dashboard's runner already has that path.
 
 ### As built in stage 7
 
-The library follows the owner's rule that it stays a thin client: connecting, negotiating, signing in, the resend
+The library follows the owner's rule that it stays a thin client: connecting, negotiating, the resend
 rule, subscription bookkeeping and output files, plus what is generated from the catalogue. Everything else is the
 mod's. Where the build differs from the text above, or the protocol left a choice open, this records it.
 
@@ -215,13 +212,13 @@ mod's. Where the build differs from the text above, or the protocol left a choic
 - `limit` given as an object is `shape.limit`; given as an integer it is the method's own argument.
 - The class rules are evaluated only for the resend rule, never to refuse a call.
 
-**Negotiating and signing in.**
+**Negotiating.**
+- Over TCP the shared secret goes first, from the environment variable `secret_env` (default `STATIONGODMCP_SECRET`,
+  as the sidecar's); without it, or when the server refuses it, the library raises `Unauthorized`. After it TCP talks
+  as the pipe does.
 - `hello` always carries `client` (`name`: the given client name or `stationgod-py`; `version`; `library`
-  `stationgod-py/<version>`) and `features`. It carries `auth: "key"` only when a client name is given and its key
-  variable is set; a name without a key connects anonymously under that name.
-- Any first answer without a `type` key means an old mod. On the pipe the library speaks version 1 on the same
-  connection. On TCP, where the old mod closes after its refused sign-in, it reconnects with the legacy secret from the
-  environment variable `secret_env` (default `STATIONGODMCP_SECRET`, as the sidecar's) and otherwise raises `TooOld`.
+  `stationgod-py/<version>`) and `features`.
+- Any first answer without a `type` key means an old mod, and the library speaks version 1 on the same connection.
 - A version-1 connection has one call in flight. Replies are matched by the echoed `id`; a version-1 reply with a null
   id goes to the one call in flight.
 - `close()` sends `bye` on version 2.
@@ -253,8 +250,7 @@ mod's. Where the build differs from the text above, or the protocol left a choic
 The fake mod in `tests/fakemod.py` speaks both versions over loopback TCP and a real overlapped pipe. The live tests
 run when `STATIONGOD_LIVE_PIPE` names the test server's pipe and refuse the default one. The shared fixtures are
 `clients/fixtures/output_file/*.json` (the argument, the result as it came back, the expected file name or name
-pattern, pointer without its path and byte count, and file content; or the expected error) and
-`clients/fixtures/hmac/vectors.json`. A pointer's `summary` limit counts the compact JSON text of each value.
+pattern, pointer without its path and byte count, and file content; or the expected error). A pointer's `summary` limit counts the compact JSON text of each value.
 
 ## The C# client and the sidecar
 
@@ -263,7 +259,7 @@ pattern, pointer without its path and byte count, and file content; or the expec
 A new project, `src/StationGodMCP.Client` (net8, no dependencies), referenced by the sidecar and the tests. It holds:
 
 - `StationGodConnection`: one pipe (`NamedPipeClientStream` with `PipeOptions.Asynchronous`, as the sidecar opens it
-  today, `Program.cs:225`) or TCP connection; `hello`, sign-in, a reader loop that completes a `TaskCompletionSource`
+  today, `Program.cs:225`) or TCP connection; the TCP secret, `hello`, a reader loop that completes a `TaskCompletionSource`
   per call id, one write lock, events to subscribers.
 - `StationGodClient`: `CallAsync(method, JsonElement parameters, Shape? shape, CancellationToken)` returning a sealed
   result type (a reply or an error, `return-result-not-exception` in the owner's C# rules); reconnect and the resend
@@ -299,11 +295,8 @@ The sidecar becomes MCP on one side and `StationGodClient` on the other:
   loop (`Program.cs:332-455`) until the old protocol is switched off.
 - One connection for the life of the sidecar, opened at the first call (an agent session usually starts before the game,
   so connecting at `initialize` would fail for nothing).
-- Options: today's `--pipe`, `--host`, `--port`, `--output-dir`; `--secret-env` keeps its meaning for a version-1 server;
-  new `--client <name>`, `--key-env <VAR>` (default as above) and `--inline-limit-kb`.
-- A second use of the same program, run by the owner on the host: `StationGodMCP.Server.exe key new <name> <level>
-  [--config <BepInEx config folder>]` adds a client with a fresh key to the clients file and prints the key once to this
-  terminal ([protocol.md](protocol.md), *Keys*).
+- Options: today's `--pipe`, `--host`, `--port`, `--output-dir`, `--secret-env`; new `--client <name>` and
+  `--inline-limit-kb`.
 
 `game_unavailable` keeps its two messages, no pipe answered versus the game took the call and did not reply in time
 (`Program.cs:222-310`; README, tool errors).
@@ -311,25 +304,23 @@ The sidecar becomes MCP on one side and `StationGodClient` on the other:
 ### As built in stage 9
 
 The owner's rule for this stage was the same as for the Python library: the client stays thin (connecting,
-negotiating, signing in, the resend rule, subscription bookkeeping, output files) and the sidecar only translates.
+negotiating, the resend rule, subscription bookkeeping, output files) and the sidecar only translates.
 Where the build differs from the text above, or the text left a choice open, this records it.
 
 **The client.**
 - `src/StationGodMCP.Client` (net8, no dependencies, warnings as errors) embeds `catalogue.json`; the sidecar no longer
   embeds its own copy and builds its tools from the client's.
 - `StationGodClient.CallAsync(method, params, shape, deadlineMs, cancellation)` returns a `CallOutcome`: `Answered`
-  (result and the `shaped` mark), `Refused` (the error object, the mod's or the sign-in's) or `NoAnswer` (message,
+  (result and the `shaped` mark), `Refused` (the error object, the mod's or the TCP secret's) or `NoAnswer` (message,
   `MaybeRan`, `WorldChanged`). `SubscribeAsync` returns `Subscribed`, `Unsupported` (version 1, or no `subscriptions`
   feature) or `Failed`. The client raises `CatalogueChanged`, `WorldChanged` and `EventReceived`, and keeps `Protocol`,
-  `Welcome`, `World` and `GameState`. `GameTarget` is `Pipe` or `Tcp`, each with its default key variable; `KeyProof`
-  makes the proof; `GameCatalogue` answers the hash, the effective class, `ResendSafe` and `Duration`.
-- It follows the Python library's resolutions: an old mod is any first answer without a `type` key; over TCP the client
-  then reconnects with the legacy secret, and without one answers `unauthorized` naming the variable (there is no
-  separate "too old" outcome); the hash is the text `sha256:<lowercase hex>`, fetched once per hash, with the built-in
-  catalogue kept when the fetch fails and used on version 1; the world-changed event fires once per new `world.id`,
+  `Welcome`, `World` and `GameState`. `GameTarget` is `Pipe` or `Tcp`; `GameCatalogue` answers the hash, the
+  effective class, `ResendSafe` and `Duration`.
+- It follows the Python library's resolutions: over TCP the shared secret goes first, and without it the client answers
+  `unauthorized` naming the variable; an old mod is any first answer without a `type` key; the hash is the text
+  `sha256:<lowercase hex>`, fetched once per hash, with the built-in catalogue kept when the fetch fails and used on version 1; the world-changed event fires once per new `world.id`,
   from the event or from a welcome after a reconnect, and closes every subscription; a `game_state` event is read from
-  its `game_state` key; `deadline_ms` is sent only when given; `hello` names the given client or `stationgod-cs`, and
-  offers a key only when a client name is given and its variable is set.
+  its `game_state` key; `deadline_ms` is sent only when given; `hello` names the given client or `stationgod-cs`.
 - Each call carries its own resend rule instead of a shared requeue: a call never written is tried on the next
   connection; a written read without `x-effects` is sent once more; a call waiting to be sent again keeps trying to
   connect with the backoff until its time runs out, and is not sent into another world. Each try gets a fresh id. The
@@ -356,13 +347,10 @@ Where the build differs from the text above, or the text left a choice open, thi
   the end of input the sidecar waits for its calls in flight, then says `bye` on version 2.
 - The inline limit compares the UTF-8 bytes of the result's JSON text. A pointer written by it carries
   `auto_output_file: true`; a write that fails answers inline with `output_file_error` and no flag.
-- `--host` no longer needs the secret at start: a version-2 server signs in with a key, and the secret is asked for
-  only when an old mod over TCP needs it.
-- `key new` is stage 6's and not part of this stage.
 
 **Tests.** `tests/StationGodMCP.Tests/Sidecar/`: `FakeGame` (an in-process game on a real overlapped pipe or loopback
-TCP, speaking the old protocol or version 2 with the key challenge, calls answered out of order, events pushed),
-`ClientTests` and `SidecarTranscriptTests`. The output-file fixtures and HMAC vectors are the shared ones, and the
+TCP, speaking the old protocol or version 2, calls answered out of order, events pushed),
+`ClientTests` and `SidecarTranscriptTests`. The output-file fixtures are the shared ones, and the
 built-in hash is checked against the one the Python generator wrote into `_methods.py`. The live checks have not run:
 the owner's game was running when this stage was built.
 
@@ -399,13 +387,9 @@ whole, in one step (the owner's standing rule for this repository).
    cards and the scripts below make (method and the params their code builds), plus synthetic calls the validator must
    refuse. Each refusal is fixed in the card or the catalogue first. Only then does the wrapper switch to
    `protocol="auto"`.
-4. **Key.** Make a `dashboard` key at write level with the one grant its smelter watchdog needs, and no standing
-   cheat (`StationGodMCP.Server.exe key new dashboard write --grants write_memory`; each `write_memory` then waits for
-   the owner's `stationgod allow`, his rule for every cheat), put it in `STATIONGOD_KEY_STATIONGODMCP` for the
-   dashboard's process, and pass `client="dashboard"`. New `__main__` options
-   `--pipe`, `--game-host`, `--game-port` (the existing `--port` is the dashboard's own web port,
-   `stationscript/__main__.py:20`), `--client`, `--key-env`. Cards that use tools the owner classes as cheat need the
-   owner's decision first (overview, *Questions for the owner*).
+4. **Name and target.** Pass `client="dashboard"`, so the dashboard's connection is named in `mod_info`. New
+   `__main__` options `--pipe`, `--game-host`, `--game-port` (the existing `--port` is the dashboard's own web port,
+   `stationscript/__main__.py:20`) and `--client`.
 5. **Reads by subscription** (after the mod has subscriptions). The runner's `_read` (`runner.py:491-528`) makes one
    `read_devices` call per gateway per card tick, split further when a gateway's items pass one call's bounds
    (`runner.py:512`; `stationscript/station.py:62-74`). With subscriptions available (`"subscriptions"` in
@@ -437,7 +421,7 @@ Thirteen CheatEngineExpert scripts under `Cheats/Stationeers/tools` construct `P
 `power/finish_when_printed.py`, `rocket/burn_watch.py`, `rocket/flight_log.py`, `rocket/oxidiser_watch.py`,
 `rocket_rebuild/rb.py`, `smelt_batch.py` and `sort_storage.py`. They reach the dashboard's package by adding its folder
 to `sys.path` (for example `rocket/flight_log.py:3-4`, `layout_solver/game.py:11-12`). After dashboard step 2 they run
-on the library unchanged, on version 1 with lenient checking, at the anonymous pipe level, and are started with
+on the library unchanged, on version 1 with lenient checking, and are started with
 `py -3.12`. They use the dashboard's vendored copy of the library (*As built in stage 8* above). Optional
 follow-ups, each its own small change: `fields` on `burn_watch.py`'s `thing_health` scan and `oxidiser_watch.py`'s
 `find_things` pages.
@@ -454,11 +438,6 @@ The leak test drives the test server through `tsclient`, using `client()`, `ensu
 already copies the new sidecar into the test server's `sidecar` folder. LiveCheck is a plugin inside the server, not a
 client (TerraformingReloaded `tools/LiveCheck/Watch.cs:19`), and is untouched.
 
-The test server has its own config folder, so its own clients file and access settings; testers use the anonymous
-pipe there at cheat level with standing cheat, as today.
-
 ### Agents
 
-Nothing to do in their registrations. Agents that should not cheat by default get `--client agents` with a
-cheat-level key whose cheat the owner approves in game when wanted, once the owner has answered the questions in the
-overview.
+Nothing to do in their registrations. Agents tell the owner when a tool is a cheat and ask before using it.

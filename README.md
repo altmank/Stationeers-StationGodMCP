@@ -114,8 +114,8 @@ message then carry the prefab name instead (`StructureCrewUmbilicalDoor`), the s
 
 ## Configuration
 
-A single local game needs none. The settings cover the local pipe's name, remote access over TCP, keys, and how much
-of each frame the mod may spend: [docs/configuration.md](docs/configuration.md).
+A single local game needs none. The settings cover the local pipe's name, remote access over TCP, and how much of
+each frame the mod may spend: [docs/configuration.md](docs/configuration.md).
 
 The game stays smooth while several clients call at once. The mod answers within a per-frame budget
 (`[Performance] RequestBudgetMs`), clients take turns, quick calls go first, and at most one heavy call (a survey, a
@@ -131,12 +131,10 @@ them changes instead of reading them every tick. The protocol itself is in
 
 ## Safety
 
-- **It can cheat, and you decide who may.** Every tool has a class: read, write (what a player or a chip can do: logic,
-  chips, labels, paint, item moves, trading, building) or cheat (what no player can: `move_gas`, `write_memory`, the
-  console, free placement, gene edits, blueprint pastes). Clients of the current protocol get a level from a key you
-  issue, or `[Access] AnonymousPipeLevel` (write) without one, and a cheat call also needs your OK in the game:
-  `stationgod allow <client>` in the console. Clients of the old protocol, which today's sidecar and scripts speak,
-  keep full access until it is switched off (`[Access] LegacyPipeLevel`). There is no general undo: save first.
+- **It can cheat.** Every tool has a class: read, write (what a player or a chip can do: logic, chips, labels, paint,
+  item moves, trading, building) or cheat (what no player can: `move_gas`, `write_memory`, the console, free
+  placement, gene edits, blueprint pastes). Every connection can call every tool; the class is there so an agent can
+  tell you when a tool is a cheat and ask first. There is no general undo: save first.
 - **Host only.** The mod runs on the game that hosts; its changes reach other players through the game's own sync.
   Every player who joins needs the same version, because the StationGod Gateway is a new structure.
 - **The building tools refuse rather than guess.** They never make materials, never delete a pipe network's
@@ -145,8 +143,8 @@ them changes instead of reading them every tick. The protocol itself is in
   wall or frame in a way that opens a room. Every job that changes pipe networks checks their contents before and
   after (`gas_check`) and stops further pipe jobs if anything went missing, until the world is reloaded or the user
   agrees to accept the loss (`acknowledge_gas_lost`).
-- **Remote access is not encrypted.** Over TCP a key is proved without being sent, but everything after the sign-in,
-  and the old shared secret, travels in plain text: use a private network or a VPN.
+- **Remote access is not encrypted.** Over TCP the shared secret keeps out anyone without it, but the secret and
+  everything after it travel in plain text: use a private network or a VPN.
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
   tools that need it, which answer `game_changed`; `mod_info` lists them.
 
