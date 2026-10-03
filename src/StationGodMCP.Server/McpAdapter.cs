@@ -172,7 +172,7 @@ internal sealed class McpAdapter : IAsyncDisposable
 
         CallOutcome outcome;
         IReadOnlyList<string> unparsed = [];
-        if (tools.RunInSidecar.Contains(tool))
+        if (tools.RunInSidecar.Contains(tool) || SampleLogic.RunsHere(tool, _client.Protocol))
         {
             outcome = await SampleLogic.RunAsync(call.Forwarded,
                 reads => _client.CallAsync("read_logic_many", reads), CancellationToken.None).ConfigureAwait(false);

@@ -29,7 +29,7 @@
         "type": "number",
         "minimum": 0.05,
         "maximum": 5,
-        "description": "Least time between samples; defaults to 0.5 seconds. At most 120 samples may be requested. Each sample is a round trip to the game's main thread, so a short interval on a busy or slow game yields fewer samples than asked; sample_count says how many were taken."
+        "description": "Least time between samples; defaults to 0.5 seconds. At most 120 samples may be requested. The game takes each sample in the first frame at or after it is due, so an interval shorter than a frame yields fewer samples than asked; sample_count says how many were taken."
       }
     },
     "required": ["targets"],
@@ -48,6 +48,5 @@
     }
   },
   "x-shaping": "lists",
-  "x-duration": {"param": "duration_seconds", "max_s": 30},
-  "x-runs-in": "sidecar"
+  "x-duration": {"param": "duration_seconds", "max_s": 30}
 }

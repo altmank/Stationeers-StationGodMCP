@@ -10,6 +10,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
+using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Subscriptions;
 using Xunit;
 
@@ -150,7 +151,7 @@ public sealed class SubscriptionWireTests
     [Fact]
     public async Task ASubscriptionOverALimitIsRefusedWithItsData()
     {
-        using PipeRig rig = Rig(new SubscriptionHub(_reader, new SubscriptionLimits(1, 8192, 1.5)));
+        using PipeRig rig = Rig(new SubscriptionHub(_reader, NoLogic.Instance, new SubscriptionLimits(1, 8192, 1.5)));
         using V2Client client = await V2Client.Connect(rig);
         Assert.True((bool)Call(rig, client, "1", "subscribe", DeviceParams())["ok"]!);
 
@@ -168,7 +169,7 @@ public sealed class SubscriptionWireTests
     [Fact]
     public async Task SubscriptionsOffRefusesEverySubscribe()
     {
-        using PipeRig rig = Rig(new SubscriptionHub(_reader, SubscriptionLimits.From(0, 4)));
+        using PipeRig rig = Rig(new SubscriptionHub(_reader, NoLogic.Instance, SubscriptionLimits.From(0, 4)));
         using V2Client client = await V2Client.Connect(rig);
 
         JObject refused = Call(rig, client, "1", "subscribe", DeviceParams());
@@ -242,7 +243,7 @@ public sealed class SubscriptionWireTests
         ["interval_s"] = 1
     };
 
-    private SubscriptionHub Hub() => new SubscriptionHub(_reader, SubscriptionLimits.Default);
+    private SubscriptionHub Hub() => new SubscriptionHub(_reader, NoLogic.Instance, SubscriptionLimits.Default);
 
     private PipeRig Rig(SubscriptionHub? hub = null) =>
         new PipeRig(mainThread: false, subscriptions: hub ?? Hub(), tick: () => new SamplingTick(_frame, _gameTimeS));
@@ -274,6 +275,15 @@ public sealed class SubscriptionWireTests
         }
 
         throw new TimeoutException($"no reply to {method}");
+    }
+
+    /// <summary>No sample_logic in these tests.</summary>
+    private sealed class NoLogic : ILogicSampleReader<BatchItemView>
+    {
+        internal static readonly NoLogic Instance = new NoLogic();
+
+        public LogicSampleRead Read(StationGodMCP.Pure.Sampling.SampleLogicArguments arguments, List<BatchItemView> into) =>
+            throw new InvalidOperationException("No sample_logic here.");
     }
 
     /// <summary>One device whose On value the test sets.</summary>

@@ -331,7 +331,9 @@ internal sealed class CallSession : Session
         CallProfile profile = method != null
             ? new CallProfile(method.Name, effective, method.CostAt(call.Params))
             : CallProfiles.Of(null, call.Method, call.Params);
-        ProtocolCall queued = new ProtocolCall(request, profile, call.DeadlineMs, _connection, Answered);
+        // A method that runs for a while (x-duration: sample_logic) gets that long added to its deadline.
+        int deadlineMs = call.DeadlineMs + (method?.DurationMs(call.Params) ?? 0);
+        ProtocolCall queued = new ProtocolCall(request, profile, deadlineMs, _connection, Answered);
         lock (_sync)
         {
             if (_inFlight.Count >= MaxInFlight)

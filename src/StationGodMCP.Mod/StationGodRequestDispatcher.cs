@@ -38,7 +38,9 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     /// <summary>The per-frame counters mod_info reports.</summary>
     internal static DispatchStats Stats { get; } = new DispatchStats();
 
-    /// <summary>subscribe and unsubscribe, and the closing of their connections; null before the mod has loaded.</summary>
+    /// <summary>
+    /// subscribe, unsubscribe and sample_logic, and the closing of their connections; null before the mod has loaded.
+    /// </summary>
     internal SubscriptionHub? Subscriptions { get; set; }
 
     public void Submit(QueuedCall call)
@@ -71,6 +73,11 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     {
         try
         {
+            if (Subscriptions != null && call.Profile.Method == SubscriptionHub.SampleLogicMethod)
+            {
+                return Subscriptions.StartSampleLogic(call, queueWaitMs);
+            }
+
             HandledRequest handled = ApiHost.Handle(call.Json, queueWaitMs);
             return new CallOutcome(handled.Json, handled.Method);
         }
@@ -90,6 +97,11 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
                 return new CallOutcome(Subscriptions.Run(call, queueWaitMs), call.Request.Method);
             }
 
+            if (Subscriptions != null && call.Request.Method == SubscriptionHub.SampleLogicMethod)
+            {
+                return Subscriptions.StartSampleLogic(call, queueWaitMs);
+            }
+
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);
             return new CallOutcome(handled.Json, handled.Method);
         }
@@ -102,15 +114,15 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     /// <summary>
     /// One version-1 request from a thread that waits for its answer (the synchronous pipe): queued as any call, then
-    /// waited for.
+    /// waited for. A method that runs for a while (x-duration: sample_logic) is waited for that much longer.
     /// </summary>
     internal string Dispatch(string requestJson, int timeoutMilliseconds)
     {
         WaitedAnswer answer = new WaitedAnswer();
-        LineCall call = new LineCall(requestJson, timeoutMilliseconds, null, answer.Set,
-            CallProfiles.OfLine(ApiHost.CatalogueFile, requestJson));
+        CallProfile profile = CallProfiles.OfLine(ApiHost.CatalogueFile, requestJson, out int durationMs);
+        LineCall call = new LineCall(requestJson, timeoutMilliseconds + durationMs, null, answer.Set, profile);
         Submit(call);
-        if (!answer.Wait(timeoutMilliseconds + DispatchGraceMilliseconds) && call.State.TryDrop())
+        if (!answer.Wait(timeoutMilliseconds + durationMs + DispatchGraceMilliseconds) && call.State.TryDrop())
         {
             answer.Set(call.TimeoutReply(), null);
         }

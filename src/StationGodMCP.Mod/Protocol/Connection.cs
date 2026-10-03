@@ -14,6 +14,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Access;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Protocol;
 
@@ -486,12 +487,13 @@ internal sealed class LineSession : Session
 
         // Not disposed: the main thread or the deadline watch may still set it after this connection gave up waiting.
         ManualResetEventSlim answered = new ManualResetEventSlim(false);
-        LineCall call = new LineCall(line, _host.Settings.LineTimeoutMilliseconds, _connection, (reply, method) =>
+        CallProfile profile = CallProfiles.OfLine(_host.Catalogue, line, out int durationMs);
+        LineCall call = new LineCall(line, _host.Settings.LineTimeoutMilliseconds + durationMs, _connection, (reply, method) =>
         {
             _connection.Send(reply, method);
             _connection.Served();
             answered.Set();
-        }, CallProfiles.OfLine(_host.Catalogue, line));
+        }, profile);
         _host.Submit(call);
         while (!answered.Wait(500))
         {

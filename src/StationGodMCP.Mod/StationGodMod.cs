@@ -87,7 +87,7 @@ public sealed class StationGodMod : ModBehaviour
             PerformanceSettings.Load(configuration);
             _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
-                SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
+                Subscriptions.ReadLogicManyReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
             _dispatcher.Subscriptions = _subscriptions;
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
@@ -133,7 +133,8 @@ public sealed class StationGodMod : ModBehaviour
         try
         {
             WorldStores.Tick();
-            _subscriptions?.BeginFrame(new SamplingTick(Time.frameCount, Time.time));
+            _subscriptions?.BeginFrame(new SamplingTick(Time.frameCount, Time.time),
+                new Pure.Sampling.RealTimeTick(Time.frameCount, SinceLoad.Elapsed.TotalSeconds, DateTimeOffset.UtcNow));
             PublishFacts();
             _subscriptions?.ObserveGameState(GameManager.GameState.ToString());
             if (!NetworkManager.IsServer)

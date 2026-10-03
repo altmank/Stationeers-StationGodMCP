@@ -196,7 +196,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task SampleLogicIsAnsweredByTheSidecarWhileTheCatalogueSaysSo()
+    public async Task SampleLogicIsAnsweredByTheSidecarForAnOldMod()
     {
         await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
         int reads = 0;
@@ -216,7 +216,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task SampleLogicGoesToTheModOnceItsCatalogueRunsItThere()
+    public async Task SampleLogicGoesToAVersion2Mod()
     {
         await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
         JsonObject catalogue = JsonNode.Parse(GameCatalogue.BuiltIn.Document.GetRawText())!.AsObject();
