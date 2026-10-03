@@ -193,8 +193,21 @@ internal sealed class CallSession : Session
 
         CatalogueMethod? method = null;
         _host.Catalogue?.Catalogue.TryGet(call.Method, out method);
+        ShapeRequest? shape;
+        if (_host.Settings.StrictArguments)
+        {
+            if (!Checked(call, method, out shape))
+            {
+                return;
+            }
+        }
+        else
+        {
+            shape = ShapeRequest.Lenient(call.Shape);
+        }
+
         bool isWrite = method != null && method.ClassAt(call.Params) != MethodClass.Read;
-        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, ShapeRequest.Lenient(call.Shape));
+        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape);
         ProtocolCall queued = new ProtocolCall(request, isWrite, call.DeadlineMs, _connection, Answered);
         lock (_sync)
         {
@@ -216,6 +229,50 @@ internal sealed class CallSession : Session
         }
 
         _host.Submit(queued);
+    }
+
+    // Version 2's full check, before anything is queued: the shape (invalid_shape), then the params against the
+    // method's schema (invalid_argument with every problem and its path). A method the catalogue does not have is left
+    // to the main thread, which answers method_not_found as on version 1.
+    private bool Checked(ClientMessage.Call call, CatalogueMethod? method, out ShapeRequest? shape)
+    {
+        List<string> shapeProblems = new List<string>();
+        shape = ShapeRequest.Strict(call.Shape, method?.ReplyLists, shapeProblems);
+        if (shapeProblems.Count > 0)
+        {
+            List<Dictionary<string, string>> listed = new List<Dictionary<string, string>>(shapeProblems.Count);
+            foreach (string problem in shapeProblems)
+            {
+                listed.Add(new Dictionary<string, string> { ["path"] = "shape", ["problem"] = problem });
+            }
+
+            _connection.Send(Wire.Refusal(call.Id, "invalid_shape", string.Join(" ", shapeProblems),
+                new Dictionary<string, object> { ["problems"] = listed }));
+            return false;
+        }
+
+        if (method == null || method.RunsInSidecar)
+        {
+            return true;
+        }
+
+        List<SchemaProblem> problems = method.Check(call.Params);
+        if (problems.Count == 0)
+        {
+            return true;
+        }
+
+        List<Dictionary<string, string>> found = new List<Dictionary<string, string>>(problems.Count);
+        List<string> sentences = new List<string>(problems.Count);
+        foreach (SchemaProblem problem in problems)
+        {
+            found.Add(new Dictionary<string, string> { ["path"] = problem.Path, ["problem"] = problem.Problem });
+            sentences.Add(problem.Problem);
+        }
+
+        _connection.Send(Wire.Refusal(call.Id, "invalid_argument", string.Join(" ", sentences),
+            new Dictionary<string, object> { ["problems"] = found }));
+        return false;
     }
 
     // The protocol method catalogue: the embedded file itself, answered here without the main thread.

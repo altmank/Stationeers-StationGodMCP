@@ -92,6 +92,119 @@ internal sealed class ShapeRequest
 
     private static int? LenientMaxBytes(JToken? token) => WholeNumber(token, MinimumMaxBytes, MaximumMaxBytes);
 
+    /// <summary>The most selectors a version-2 shape may list.</summary>
+    internal const int MaximumSelectors = 256;
+
+    /// <summary>
+    /// The version-2 reading, which refuses what it cannot use: a shape that is not an object, a key other than fields,
+    /// limit and max_bytes, fields that is not 1 to 256 strings each following the selector grammar, a limit naming a
+    /// key that is not one of the reply's lists (replyLists, from the catalogue) or outside 0 to 100,000, a max_bytes
+    /// outside 1,024 to 16,777,216. Null with the problems added when it refuses; null without problems when there is
+    /// no shape.
+    /// </summary>
+    internal static ShapeRequest? Strict(JToken? token, ICollection<string>? replyLists, List<string> problems)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+        {
+            return null;
+        }
+
+        if (!(token is JObject shape))
+        {
+            problems.Add("shape must be an object.");
+            return null;
+        }
+
+        foreach (JProperty property in shape.Properties())
+        {
+            if (property.Name != "fields" && property.Name != "limit" && property.Name != "max_bytes")
+            {
+                problems.Add($"shape has no key '{property.Name}'; it takes fields, limit and max_bytes.");
+            }
+        }
+
+        FieldSelectors? fields = StrictFields(shape["fields"], problems);
+        IReadOnlyDictionary<string, int> limits = StrictLimits(shape["limit"], replyLists, problems);
+        int? maxBytes = null;
+        JToken? given = shape["max_bytes"];
+        if (given != null && given.Type != JTokenType.Null)
+        {
+            maxBytes = WholeNumber(given, MinimumMaxBytes, MaximumMaxBytes);
+            if (maxBytes == null)
+            {
+                problems.Add($"shape.max_bytes must be an integer from {MinimumMaxBytes} to {MaximumMaxBytes}.");
+            }
+        }
+
+        return problems.Count == 0 ? new ShapeRequest(fields, limits, maxBytes) : null;
+    }
+
+    private static FieldSelectors? StrictFields(JToken? token, List<string> problems)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+        {
+            return null;
+        }
+
+        if (!(token is JArray array) || array.Count == 0 || array.Count > MaximumSelectors)
+        {
+            problems.Add($"shape.fields must be an array of 1 to {MaximumSelectors} selectors.");
+            return null;
+        }
+
+        List<FieldSelector> selectors = new List<FieldSelector>(array.Count);
+        foreach (JToken item in array)
+        {
+            FieldSelector? selector = item.Type == JTokenType.String ? FieldSelector.Parse((string)item!) : null;
+            if (selector == null || selector is FieldSelector.Unparsed)
+            {
+                problems.Add($"shape.fields: {item.ToString(Formatting.None)} is not a selector (names of letters, digits " +
+                             "and '_', joined by dots).");
+                continue;
+            }
+
+            selectors.Add(selector);
+        }
+
+        return FieldSelectors.Of(selectors);
+    }
+
+    private static IReadOnlyDictionary<string, int> StrictLimits(JToken? token, ICollection<string>? replyLists,
+        List<string> problems)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+        {
+            return NoLimits;
+        }
+
+        if (!(token is JObject limits))
+        {
+            problems.Add("shape.limit must be an object of list names and counts.");
+            return NoLimits;
+        }
+
+        Dictionary<string, int> kept = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (JProperty property in limits.Properties())
+        {
+            if (replyLists != null && !replyLists.Contains(property.Name))
+            {
+                problems.Add($"shape.limit: '{property.Name}' is not a list of this method's reply.");
+                continue;
+            }
+
+            if (WholeNumber(property.Value, 0, MaximumLimit) is int limit)
+            {
+                kept[property.Name] = limit;
+            }
+            else
+            {
+                problems.Add($"shape.limit.{property.Name} must be an integer from 0 to {MaximumLimit}.");
+            }
+        }
+
+        return kept;
+    }
+
     /// <summary>An integer in range, also written as 3.0 or 1e2; null otherwise.</summary>
     internal static int? WholeNumber(JToken? token, int minimum, int maximum)
     {

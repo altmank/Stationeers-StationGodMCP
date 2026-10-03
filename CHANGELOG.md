@@ -28,6 +28,12 @@
   connection in turn. Every other client is served exactly as before. `mod_info` `runtime.connections` lists the
   open connections. `[Server] Protocol2 = false` turns version 2 off. The protocol is in
   `docs/architecture/protocol.md`.
+- **Version 2 checks every call in full.** Before a version-2 call is queued, its arguments are checked against the
+  method's catalogue entry: names at every depth, types, ranges, enums, patterns and required arguments. A refusal is
+  `invalid_argument` with `data.problems`, each `{path, problem}` (`limit`, `items[0].logic`). A `shape` version 2
+  cannot use (not an object, an unknown key, a selector that is not a name, more than 256 selectors, a `limit` on a
+  key that is not one of the reply's lists, values out of range) is `invalid_shape`. Version 1 is checked as before;
+  `[Server] StrictArguments = false` checks version 2 the same way.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
 

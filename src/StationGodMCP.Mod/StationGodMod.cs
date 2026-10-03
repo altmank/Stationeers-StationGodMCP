@@ -186,7 +186,8 @@ public sealed class StationGodMod : ModBehaviour
             try
             {
                 ProtocolHost host = new ProtocolHost(
-                    new ProtocolSettings(_server.MaxPipeConnections, protocol2: _server.Protocol2), _dispatcher, Deadlines,
+                    new ProtocolSettings(_server.MaxPipeConnections, protocol2: _server.Protocol2,
+                        strictArguments: _server.StrictArguments), _dispatcher, Deadlines,
                     ApiHost.CatalogueFile);
                 PipeListener listener = new PipeListener(Pipe.Value, host);
                 listener.Start();
@@ -382,15 +383,16 @@ internal sealed class ServerSettings
 {
     private const string Section = "Server";
 
-    private ServerSettings(int maxPipeConnections, bool overlappedPipes, bool protocol2)
+    private ServerSettings(int maxPipeConnections, bool overlappedPipes, bool protocol2, bool strictArguments)
     {
         MaxPipeConnections = maxPipeConnections;
         OverlappedPipes = overlappedPipes;
         Protocol2 = protocol2;
+        StrictArguments = strictArguments;
     }
 
     internal static ServerSettings Defaults { get; } =
-        new ServerSettings(ProtocolSettings.DefaultMaxPipeConnections, true, true);
+        new ServerSettings(ProtocolSettings.DefaultMaxPipeConnections, true, true, true);
 
     internal int MaxPipeConnections { get; }
 
@@ -398,6 +400,9 @@ internal sealed class ServerSettings
 
     /// <summary>Whether a client may speak protocol version 2 (hello) on the overlapped pipe.</summary>
     internal bool Protocol2 { get; }
+
+    /// <summary>Whether version-2 calls are checked against the catalogue in full.</summary>
+    internal bool StrictArguments { get; }
 
     internal static ServerSettings Load(ConfigFile configuration)
     {
@@ -413,6 +418,10 @@ internal sealed class ServerSettings
         ConfigEntry<bool> protocol2 = configuration.Bind(Section, "Protocol2", true,
             "Let clients speak protocol version 2 (a first line of type hello: several calls in flight, cancel, events). " +
             "false answers every connection with version 1 only, as before. Restart the game to apply.");
+        ConfigEntry<bool> strict = configuration.Bind(Section, "StrictArguments", true,
+            "Check version-2 calls against the method catalogue in full (names at every depth, types, ranges, enums, " +
+            "patterns, required arguments, the shape) before they run. false checks them as version 1 does (top-level " +
+            "names only). Version 1 is never checked in full. Restart the game to apply.");
         int maximum = connections.Value;
         if (maximum < ProtocolSettings.MinimumPipeConnections || maximum > ProtocolSettings.MaximumPipeConnections)
         {
@@ -421,7 +430,7 @@ internal sealed class ServerSettings
             maximum = ProtocolSettings.DefaultMaxPipeConnections;
         }
 
-        return new ServerSettings(maximum, overlapped.Value, protocol2.Value);
+        return new ServerSettings(maximum, overlapped.Value, protocol2.Value, strict.Value);
     }
 }
 
