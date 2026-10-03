@@ -243,7 +243,8 @@ public sealed class StationGodClient : IAsyncDisposable
             string line = Wire.Call(connection.Version, connection.Features, id, method, parameters, shape, deadlineMs);
             if (!await connection.TrySendAsync(line).ConfigureAwait(false))
             {
-                return new Attempt.NotWritten();
+                // A write that failed part way may still have reached the game: only a safe call is sent again.
+                return new Attempt.Broken();
             }
 
             Task<CallEnd> ended = call.Ended;
