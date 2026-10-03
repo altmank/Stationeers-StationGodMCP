@@ -2487,7 +2487,7 @@
         }
       },
       "x-views": ["PaintColorsView", "BatchResultView"],
-      "x-shaping": "none"
+      "x-shaping": "lists"
     },
     {
       "name": "paste_blueprint",

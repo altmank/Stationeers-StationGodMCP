@@ -46,5 +46,5 @@
     }
   },
   "x-views": ["PaintColorsView", "BatchResultView"],
-  "x-shaping": "none"
+  "x-shaping": "lists"
 }

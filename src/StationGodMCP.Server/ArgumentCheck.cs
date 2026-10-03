@@ -34,15 +34,25 @@ internal static class ArgumentCheck
     /// </summary>
     internal static IReadOnlyList<string> Unsendable(JsonElement arguments) => Malformed(arguments, string.Empty);
 
-    /// <summary>What is wrong with only the named arguments (the sidecar's own: fields, output_file); empty when nothing is.</summary>
+    /// <summary>
+    /// What is wrong with only the named arguments (the sidecar's own: fields, omit, output_file, file arguments);
+    /// empty when nothing is. One the tool's schema does not declare is refused, as the mod refuses its own unknown
+    /// arguments: a tool whose reply stays small takes none of them.
+    /// </summary>
     internal static IReadOnlyList<string> ProblemsOf(JsonElement schema, JsonElement arguments, IEnumerable<string> names) =>
         arguments.ValueKind != JsonValueKind.Object
             ? []
             : names.Where(name => IsGiven(arguments, name))
                 .SelectMany(name => Malformed(arguments.GetProperty(name), name) is { Count: > 0 } malformed
                     ? malformed
-                    : Check(PropertySchema(schema, name), arguments.GetProperty(name), name))
+                    : Declares(schema, name)
+                        ? Check(PropertySchema(schema, name), arguments.GetProperty(name), name)
+                        : [$"Argument '{name}' is not taken by this tool (its reply stays small)."])
                 .ToList();
+
+    private static bool Declares(JsonElement schema, string name) =>
+        schema.ValueKind == JsonValueKind.Object && schema.TryGetProperty("properties", out JsonElement properties) &&
+        properties.ValueKind == JsonValueKind.Object && properties.TryGetProperty(name, out _);
 
     // The tool's required arguments that are absent or null (null is an omitted property).
     private static List<string> Missing(JsonElement schema, JsonElement arguments)
