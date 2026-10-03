@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Server;
+using StationGodMCP.Tests.Sidecar;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -259,8 +260,7 @@ public sealed class ShapingTests
     public async Task TheSidecarSendsFieldsAsShapeAndKeepsAShapedReply()
     {
         (string forwarded, JsonElement result) = await CallThroughSidecar(
-            """{"kind":"structure","fields":["things.position.x"]}""",
-            """{"id":"x","ok":true,"shaped":true,"result":{"things":[{"position":{"x":1}}]}}""");
+            """{"kind":"structure","fields":["things.position.x"]}""", """{"things":[{"position":{"x":1}}]}""", shaped: true);
 
         using JsonDocument request = JsonDocument.Parse(forwarded);
         Assert.Equal("""{"kind":"structure"}""", request.RootElement.GetProperty("params").GetRawText());
@@ -268,47 +268,37 @@ public sealed class ShapingTests
         Assert.Equal("""{"things":[{"position":{"x":1}}]}""", result.GetRawText());
     }
 
+    // The mod owns shaping: a reply it did not mark shaped is passed on as it came, never shaped a second time here.
     [Fact]
-    public async Task AnOldModsReplyIsShapedByTheSidecar()
+    public async Task AnUnshapedReplyIsPassedOnAsItCame()
     {
         (_, JsonElement result) = await CallThroughSidecar(
-            """{"kind":"structure","fields":["reference_id"]}""",
-            """{"id":"x","ok":true,"result":{"things":[{"reference_id":"1","position":{"x":1}}]}}""");
+            """{"kind":"structure","fields":["reference_id"]}""", """{"things":[{"reference_id":"1","position":{"x":1}}]}""",
+            shaped: false);
 
-        Assert.Equal("""{"things":[{"reference_id":"1"}]}""", result.GetRawText());
+        Assert.Equal("""{"things":[{"reference_id":"1","position":{"x":1}}]}""", result.GetRawText());
     }
 
     [Fact]
     public async Task NoShapeIsSentWithoutFields()
     {
-        (string forwarded, _) = await CallThroughSidecar(
-            """{"kind":"structure"}""", """{"id":"x","ok":true,"result":{"things":[]}}""");
+        (string forwarded, _) = await CallThroughSidecar("""{"kind":"structure"}""", """{"things":[]}""", shaped: false);
 
         using JsonDocument request = JsonDocument.Parse(forwarded);
         Assert.False(request.RootElement.TryGetProperty("shape", out _));
     }
 
-    private static async Task<(string Forwarded, JsonElement Result)> CallThroughSidecar(string arguments, string answer)
+    private static async Task<(string Forwarded, JsonElement Result)> CallThroughSidecar(string arguments, string result, bool shaped)
     {
-        string pipeName = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
-        await using NamedPipeServerStream server = new(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous);
-        string? forwarded = null;
-        Task game = Task.Run(async () =>
-        {
-            await server.WaitForConnectionAsync();
-            using StreamReader reader = new(server, new UTF8Encoding(false), false, 4096, leaveOpen: true);
-            using StreamWriter writer = new(server, new UTF8Encoding(false), 4096, leaveOpen: true) { AutoFlush = true, NewLine = "\n" };
-            forwarded = await reader.ReadLineAsync();
-            await writer.WriteLineAsync(answer);
-        });
+        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
+        game.Answer = call => Task.FromResult<string?>(call.Ok(result, shaped));
 
         string? line = await Program.HandleMcpMessageAsync(
             $$$"""{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_things","arguments":{{{arguments}}}}}""",
-            Program.GameTransportSettings.ForPipe(pipeName));
-        await game;
+            new Program.GameTransportSettings(game.Target));
         using JsonDocument reply = JsonDocument.Parse(line!);
-        return (forwarded!, reply.RootElement.GetProperty("result").GetProperty("structuredContent").Clone());
+        return (Assert.Single(game.CallsTo("find_things")).Message.GetRawText(),
+            reply.RootElement.GetProperty("result").GetProperty("structuredContent").Clone());
     }
 
     private static string MixedCase(string name)

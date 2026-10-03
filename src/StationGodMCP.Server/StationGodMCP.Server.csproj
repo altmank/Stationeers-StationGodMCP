@@ -17,7 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The method catalogue the tools come from (the repository root's catalogue.json, assembled from catalogue/). -->
-    <EmbeddedResource Include="..\..\catalogue.json" LogicalName="StationGodMCP.catalogue.json" />
+    <!-- The protocol client. It embeds the method catalogue the tools come from (the repository root's catalogue.json,
+         assembled from catalogue/). -->
+    <ProjectReference Include="..\StationGodMCP.Client\StationGodMCP.Client.csproj" />
   </ItemGroup>
 </Project>

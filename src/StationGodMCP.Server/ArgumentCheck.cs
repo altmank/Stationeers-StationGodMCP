@@ -29,6 +29,16 @@ internal static class ArgumentCheck
             _ => ["The arguments must be a JSON object."]
         };
 
+    /// <summary>What is wrong with only the named arguments (the sidecar's own: fields, output_file); empty when nothing is.</summary>
+    internal static IReadOnlyList<string> ProblemsOf(JsonElement schema, JsonElement arguments, IEnumerable<string> names) =>
+        arguments.ValueKind != JsonValueKind.Object
+            ? []
+            : names.Where(name => IsGiven(arguments, name))
+                .SelectMany(name => Malformed(arguments.GetProperty(name), name) is { Count: > 0 } malformed
+                    ? malformed
+                    : Check(PropertySchema(schema, name), arguments.GetProperty(name), name))
+                .ToList();
+
     // The tool's required arguments that are absent or null (null is an omitted property).
     private static List<string> Missing(JsonElement schema, JsonElement arguments)
     {

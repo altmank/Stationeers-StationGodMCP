@@ -1,47 +1,67 @@
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using StationGodMCP.Client;
 
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// The MCP tools, from the method catalogue the sidecar was built with (catalogue.json, embedded): every method whose
-/// x-mcp is not hidden becomes a tool with its name and description, its params as inputSchema (plus the sidecar's
-/// own output_file and fields when its x-shaping is lists), and annotations that call it read only exactly when its
-/// class is read and no x-class-when gives it another. The server's name and instructions come from the catalogue too.
+/// The MCP tools a method catalogue gives: every method whose x-mcp is not hidden becomes a tool with its name and
+/// description, its params as inputSchema (plus the sidecar's own output_file and fields when its x-shaping is lists),
+/// and annotations that call it read only exactly when its class is read and no x-class-when gives it another. The
+/// server's name and instructions come from the catalogue too. The sidecar starts with the catalogue it was built with
+/// and switches to the mod's when the mod's hash differs.
 /// </summary>
-internal static class ToolCatalogue
+internal sealed record ToolSet(
+    JsonElement Tools,
+    IReadOnlyDictionary<string, JsonElement> InputSchemas,
+    IReadOnlySet<string> Names,
+    IReadOnlySet<string> SmallReplies,
+    IReadOnlySet<string> RunInSidecar,
+    string ServerName,
+    string Instructions)
 {
-    internal const string Resource = "StationGodMCP.catalogue.json";
-
     private const string OutputFileDescription = "Reply to a JSON file, answer a pointer (server instructions).";
 
     private const string FieldsDescription = "Keys kept per top-level list entry; a dotted name is a path into one list (things.position.x).";
 
-    private static readonly Lazy<Loaded> State = new(() => Load(ReadResource()));
+    private static readonly Lazy<ToolSet> Embedded = new(() => From(GameCatalogue.BuiltIn.Document, fallback: null));
 
-    /// <summary>The tools/list array.</summary>
-    internal static JsonElement Tools => State.Value.Tools;
+    /// <summary>The tools of the catalogue the sidecar was built with.</summary>
+    internal static ToolSet BuiltIn => Embedded.Value;
 
-    /// <summary>Every tool's input schema as tools/list publishes it, by name: what ArgumentCheck holds calls to.</summary>
-    internal static IReadOnlyDictionary<string, JsonElement> InputSchemas => State.Value.InputSchemas;
+    /// <summary>The tools a catalogue gives; a catalogue without a server section keeps the built-in name and instructions.</summary>
+    internal static ToolSet From(JsonElement catalogue) => From(catalogue, BuiltIn);
 
-    internal static IReadOnlySet<string> Names => State.Value.Names;
-
-    /// <summary>Tools whose replies stay small (x-shaping none): they take no output_file or fields.</summary>
-    internal static IReadOnlySet<string> SmallReplies => State.Value.SmallReplies;
-
-    internal static string ServerName => State.Value.ServerName;
-
-    internal static string Instructions => State.Value.Instructions;
-
-    /// <summary>The embedded catalogue's exact bytes, as text.</summary>
-    internal static string ReadResource()
+    private static ToolSet From(JsonElement catalogue, ToolSet? fallback)
     {
-        using Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(Resource) ??
-                              throw new InvalidOperationException($"The sidecar was built without {Resource}.");
-        using StreamReader reader = new(stream);
-        return reader.ReadToEnd();
+        JsonObject document = JsonObject.Create(catalogue)!;
+        JsonElement tools = JsonSerializer.SerializeToElement(ToolsOf(document));
+        Dictionary<string, JsonElement> schemas = new(StringComparer.Ordinal);
+        foreach (JsonElement tool in tools.EnumerateArray())
+        {
+            schemas.Add(tool.GetProperty("name").GetString()!, tool.GetProperty("inputSchema"));
+        }
+
+        HashSet<string> small = new(StringComparer.Ordinal);
+        HashSet<string> sidecar = new(StringComparer.Ordinal);
+        foreach (JsonNode? method in document["methods"]!.AsArray())
+        {
+            string name = (string)method!["name"]!;
+            if ((string?)method["x-shaping"] == "none")
+            {
+                small.Add(name);
+            }
+
+            if ((string?)method["x-runs-in"] == "sidecar")
+            {
+                sidecar.Add(name);
+            }
+        }
+
+        JsonObject? server = document["server"] as JsonObject;
+        return new ToolSet(tools, schemas, new HashSet<string>(schemas.Keys, StringComparer.Ordinal), small, sidecar,
+            (string?)server?["name"] ?? fallback?.ServerName ?? "StationGodMCP",
+            (string?)server?["instructions"] ?? fallback?.Instructions ?? string.Empty);
     }
 
     /// <summary>The tools a catalogue gives, as tools/list publishes them.</summary>
@@ -60,12 +80,12 @@ internal static class ToolCatalogue
             if ((string?)method["x-shaping"] == "lists")
             {
                 JsonObject properties = inputSchema["properties"]!.AsObject();
-                properties[ReplyShaping.OutputFileArgument] = new JsonObject
+                properties[SidecarArguments.OutputFileArgument] = new JsonObject
                 {
                     ["type"] = new JsonArray("boolean", "string"),
                     ["description"] = OutputFileDescription
                 };
-                properties[ReplyShaping.FieldsArgument] = new JsonObject
+                properties[SidecarArguments.FieldsArgument] = new JsonObject
                 {
                     ["type"] = "array",
                     ["minItems"] = 1,
@@ -92,36 +112,26 @@ internal static class ToolCatalogue
 
         return tools;
     }
+}
 
-    private static Loaded Load(string json)
-    {
-        JsonObject catalogue = JsonNode.Parse(json)!.AsObject();
-        JsonElement tools = JsonSerializer.SerializeToElement(ToolsOf(catalogue));
-        Dictionary<string, JsonElement> schemas = new(StringComparer.Ordinal);
-        foreach (JsonElement tool in tools.EnumerateArray())
-        {
-            schemas.Add(tool.GetProperty("name").GetString()!, tool.GetProperty("inputSchema"));
-        }
+/// <summary>The built-in tool set, by the names the tests and the first tools/list use.</summary>
+internal static class ToolCatalogue
+{
+    /// <summary>The tools/list array.</summary>
+    internal static JsonElement Tools => ToolSet.BuiltIn.Tools;
 
-        HashSet<string> small = new(StringComparer.Ordinal);
-        foreach (JsonNode? method in catalogue["methods"]!.AsArray())
-        {
-            if ((string?)method!["x-shaping"] == "none")
-            {
-                small.Add((string)method["name"]!);
-            }
-        }
+    /// <summary>Every tool's input schema as tools/list publishes it, by name: what ArgumentCheck holds calls to.</summary>
+    internal static IReadOnlyDictionary<string, JsonElement> InputSchemas => ToolSet.BuiltIn.InputSchemas;
 
-        JsonObject server = catalogue["server"]!.AsObject();
-        return new Loaded(tools, schemas, new HashSet<string>(schemas.Keys, StringComparer.Ordinal), small,
-            (string)server["name"]!, (string)server["instructions"]!);
-    }
+    internal static IReadOnlySet<string> Names => ToolSet.BuiltIn.Names;
 
-    private sealed record Loaded(
-        JsonElement Tools,
-        Dictionary<string, JsonElement> InputSchemas,
-        HashSet<string> Names,
-        HashSet<string> SmallReplies,
-        string ServerName,
-        string Instructions);
+    /// <summary>Tools whose replies stay small (x-shaping none): they take no output_file or fields.</summary>
+    internal static IReadOnlySet<string> SmallReplies => ToolSet.BuiltIn.SmallReplies;
+
+    internal static string ServerName => ToolSet.BuiltIn.ServerName;
+
+    internal static string Instructions => ToolSet.BuiltIn.Instructions;
+
+    /// <summary>The tools a catalogue gives, as tools/list publishes them.</summary>
+    internal static JsonArray ToolsOf(JsonObject catalogue) => ToolSet.ToolsOf(catalogue);
 }

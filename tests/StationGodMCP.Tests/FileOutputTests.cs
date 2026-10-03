@@ -6,15 +6,19 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using StationGodMCP.Client;
 using StationGodMCP.Server;
+using StationGodMCP.Tests.Sidecar;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// 1.9.0 output_file and fields: the sidecar's own answer to a large reply, for every tool that can give one, written
-/// once for all of them (ReplyShaping, OutputFolder) and never sent to the game.
+/// output_file and fields: the sidecar's own arguments on every tool that can give a large reply. fields goes to the
+/// mod as shape.fields; output_file never reaches the game and is written by the client library (OutputChoice,
+/// OutputFolder), to the rules every client shares (clients/fixtures/output_file).
 /// </summary>
 public sealed class FileOutputTests : IDisposable
 {
@@ -82,25 +86,23 @@ public sealed class FileOutputTests : IDisposable
     [Fact]
     public void NeitherArgumentIsSentToTheGame()
     {
-        (ReplyShaping shaping, JsonElement forwarded) = ReplyShaping.Take(Json(
+        SidecarArguments call = SidecarArguments.Take(Json(
             """{"prefab_contains":"Ore","output_file":"ores","fields":["reference_id"," position "]}"""));
 
-        Assert.Equal("""{"prefab_contains":"Ore"}""", forwarded.GetRawText());
-        Assert.Equal(new[] { "reference_id", "position" }, shaping.Fields!.Names);
-        Assert.Equal("ores.json", Assert.IsType<OutputTarget.Named>(shaping.Output).Name.Value);
+        Assert.Equal("""{"prefab_contains":"Ore"}""", call.Forwarded.GetRawText());
+        Assert.Equal("""["reference_id"," position "]""", call.Fields!.Value.GetRawText());
+        Assert.Equal("ores.json", Assert.IsType<OutputTarget.Named>(Assert.IsType<OutputChoice.ToFile>(call.Output).Target).Name);
     }
 
     [Fact]
     public void FalseAnswersInTheReply()
     {
-        (ReplyShaping shaping, _) = ReplyShaping.Take(Json("""{"output_file":false}"""));
-
-        Assert.Null(shaping.Output);
+        Assert.IsType<OutputChoice.Inline>(SidecarArguments.Take(Json("""{"output_file":false}""")).Output);
     }
 
     [Theory]
     [InlineData("../escape")]
-    [InlineData("a\\b")]
+    [InlineData("a\b")]
     [InlineData("C:x")]
     [InlineData(".hidden")]
     [InlineData("a..b")]
@@ -108,10 +110,20 @@ public sealed class FileOutputTests : IDisposable
     [InlineData("name with spaces")]
     public void AFileNameMustStayInTheFolder(string name)
     {
-        ToolFailure refused = Assert.Throws<ToolFailure>(() =>
-            ReplyShaping.Take(Json(JsonSerializer.Serialize(new { output_file = name }))));
+        Assert.IsType<OutputChoice.Refused>(OutputChoice.Of(Json(JsonSerializer.Serialize(name))));
+    }
 
-        Assert.Equal("invalid_argument", refused.Code);
+    /// <summary>Every shared fixture, as the Python library runs them: the file name, the pointer, the file's content.</summary>
+    [Fact]
+    public void EverySharedFixture()
+    {
+        string[] fixtures = Directory.GetFiles(SharedFixtures, "*.json");
+        Assert.True(fixtures.Length > 5);
+        foreach (string path in fixtures)
+        {
+            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
+            RunFixture(Path.GetFileName(path), document.RootElement);
+        }
     }
 
     [Fact]
@@ -151,7 +163,7 @@ public sealed class FileOutputTests : IDisposable
         JsonElement reply = Json(
             $$$"""{"count":2,"total":270,"has_more":false,"things":[{"a":1},{"a":2}],"local_player":{"name":"LU"},"preflight":{"text":"{{{big}}}"}}""");
 
-        JsonElement pointer = folder.Write("find_things", new OutputTarget.Named(OutputFileNameOf("ores")), reply);
+        JsonElement pointer = folder.Write("find_things", new OutputTarget.Named("ores.json"), reply);
 
         string path = pointer.GetProperty("output_file").GetString()!;
         Assert.Equal(Path.Combine(folder.Path, "ores.json"), path);
@@ -199,7 +211,7 @@ public sealed class FileOutputTests : IDisposable
         string other = Path.Combine(_folder, "notes.txt");
         File.WriteAllText(other, "kept: not ours");
 
-        folder.Write("find_things", new OutputTarget.Named(OutputFileNameOf("fresh")), Json("{}"));
+        folder.Write("find_things", new OutputTarget.Named("fresh.json"), Json("{}"));
 
         Assert.Equal(OutputFolder.MaximumFiles, Directory.GetFiles(_folder, "*.json").Length);
         Assert.True(File.Exists(Path.Combine(_folder, "fresh.json")));
@@ -238,31 +250,17 @@ public sealed class FileOutputTests : IDisposable
     [Fact]
     public async Task ACallWithBothWritesTheShapedReplyAndForwardsNeither()
     {
-        string pipeName = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
-        await using NamedPipeServerStream server = new(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous);
-        string? forwarded = null;
-        Task game = Task.Run(async () =>
-        {
-            await server.WaitForConnectionAsync();
-            using StreamReader reader = new(server, new UTF8Encoding(false), false, 4096, leaveOpen: true);
-            using StreamWriter writer = new(server, new UTF8Encoding(false), 4096, leaveOpen: true)
-            {
-                AutoFlush = true,
-                NewLine = "\n"
-            };
-            forwarded = await reader.ReadLineAsync();
-            await writer.WriteLineAsync(
-                """{"id":"x","ok":true,"result":{"count":2,"things":[{"reference_id":"1","prefab_name":"ItemDirtyOre","position":{"x":1}},{"reference_id":"2","prefab_name":"ItemDirtyOre","position":{"x":2}}]}}""");
-        });
+        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
+        game.Answer = call => Task.FromResult<string?>(call.Ok(
+            """{"count":2,"things":[{"reference_id":"1","position":{"x":1}},{"reference_id":"2","position":{"x":2}}]}""", shaped: true));
 
         string? line = await Program.HandleMcpMessageAsync(
             """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_things","arguments":{"prefab_contains":"ItemDirtyOre","fields":["reference_id","position"],"output_file":"ore"}}}""",
-            Program.GameTransportSettings.ForPipe(pipeName), new OutputFolder(_folder));
-        await game;
+            new Program.GameTransportSettings(game.Target), new OutputFolder(_folder));
 
-        using JsonDocument request = JsonDocument.Parse(forwarded!);
-        Assert.Equal("""{"prefab_contains":"ItemDirtyOre"}""", request.RootElement.GetProperty("params").GetRawText());
+        FakeCall forwarded = Assert.Single(game.CallsTo("find_things"));
+        Assert.Equal("""{"prefab_contains":"ItemDirtyOre"}""", forwarded.Params.GetRawText());
+        Assert.Equal("""{"fields":["reference_id","position"]}""", forwarded.Shape!.Value.GetRawText());
         using JsonDocument reply = JsonDocument.Parse(line!);
         JsonElement pointer = reply.RootElement.GetProperty("result").GetProperty("structuredContent");
         Assert.Equal(2, pointer.GetProperty("counts").GetProperty("things").GetInt32());
@@ -280,8 +278,52 @@ public sealed class FileOutputTests : IDisposable
             Assert.Single(ArgumentCheck.Problems(Program.InputSchemas["find_things"], document.RootElement)));
     }
 
-    private static OutputFileName OutputFileNameOf(string name) =>
-        Assert.IsType<OutputTarget.Named>(OutputTarget.Of(Json(JsonSerializer.Serialize(name)))).Name;
+    private static string SharedFixtures =>
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "clients", "fixtures", "output_file"));
+
+    private void RunFixture(string name, JsonElement fixture)
+    {
+        JsonElement? given = fixture.TryGetProperty("output_file", out JsonElement value) ? value : null;
+        OutputChoice choice = OutputChoice.Of(given);
+        if (fixture.TryGetProperty("expected_error", out _))
+        {
+            Assert.True(choice is OutputChoice.Refused, name);
+            return;
+        }
+
+        if (fixture.TryGetProperty("expected_inline", out _))
+        {
+            Assert.True(choice is OutputChoice.Inline, name);
+            return;
+        }
+
+        string folder = Path.Combine(_folder, Path.GetFileNameWithoutExtension(name));
+        JsonElement pointer = new OutputFolder(folder).Write(fixture.GetProperty("method").GetString()!,
+            Assert.IsType<OutputChoice.ToFile>(choice).Target, fixture.GetProperty("result"));
+
+        string written = pointer.GetProperty("output_file").GetString()!;
+        Assert.Equal(Path.GetFullPath(folder), Path.GetDirectoryName(written));
+        string fileName = Path.GetFileName(written);
+        if (fixture.TryGetProperty("expected_file_name", out JsonElement expectedName))
+        {
+            Assert.Equal(expectedName.GetString(), fileName);
+        }
+        else
+        {
+            Assert.Matches(fixture.GetProperty("expected_file_name_pattern").GetString()!, fileName);
+        }
+
+        Assert.Equal(new FileInfo(written).Length, pointer.GetProperty("bytes").GetInt64());
+        using JsonDocument file = JsonDocument.Parse(File.ReadAllText(written));
+        Assert.True(JsonNode.DeepEquals(JsonNode.Parse(fixture.GetProperty("expected_file").GetRawText()),
+            JsonNode.Parse(file.RootElement.GetRawText())), name);
+        JsonObject withoutPath = JsonNode.Parse(pointer.GetRawText())!.AsObject();
+        withoutPath.Remove("output_file");
+        withoutPath.Remove("bytes");
+        JsonObject expected = JsonNode.Parse(fixture.GetProperty("expected_pointer").GetRawText())!.AsObject();
+        Assert.True(JsonNode.DeepEquals(expected, withoutPath), $"{name}: {withoutPath.ToJsonString()}");
+        Assert.Equal(expected.Select(pair => pair.Key), withoutPath.Select(pair => pair.Key));
+    }
 
     private static JsonElement Json(string text)
     {
