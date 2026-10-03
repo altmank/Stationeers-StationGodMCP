@@ -308,6 +308,64 @@ The sidecar becomes MCP on one side and `StationGodClient` on the other:
 `game_unavailable` keeps its two messages, no pipe answered versus the game took the call and did not reply in time
 (`Program.cs:222-310`; README, tool errors).
 
+### As built in stage 9
+
+The owner's rule for this stage was the same as for the Python library: the client stays thin (connecting,
+negotiating, signing in, the resend rule, subscription bookkeeping, output files) and the sidecar only translates.
+Where the build differs from the text above, or the text left a choice open, this records it.
+
+**The client.**
+- `src/StationGodMCP.Client` (net8, no dependencies, warnings as errors) embeds `catalogue.json`; the sidecar no longer
+  embeds its own copy and builds its tools from the client's.
+- `StationGodClient.CallAsync(method, params, shape, deadlineMs, cancellation)` returns a `CallOutcome`: `Answered`
+  (result and the `shaped` mark), `Refused` (the error object, the mod's or the sign-in's) or `NoAnswer` (message,
+  `MaybeRan`, `WorldChanged`). `SubscribeAsync` returns `Subscribed`, `Unsupported` (version 1, or no `subscriptions`
+  feature) or `Failed`. The client raises `CatalogueChanged`, `WorldChanged` and `EventReceived`, and keeps `Protocol`,
+  `Welcome`, `World` and `GameState`. `GameTarget` is `Pipe` or `Tcp`, each with its default key variable; `KeyProof`
+  makes the proof; `GameCatalogue` answers the hash, the effective class, `ResendSafe` and `Duration`.
+- It follows the Python library's resolutions: an old mod is any first answer without a `type` key; over TCP the client
+  then reconnects with the legacy secret, and without one answers `unauthorized` naming the variable (there is no
+  separate "too old" outcome); the hash is the text `sha256:<lowercase hex>`, fetched once per hash, with the built-in
+  catalogue kept when the fetch fails and used on version 1; the world-changed event fires once per new `world.id`,
+  from the event or from a welcome after a reconnect, and closes every subscription; a `game_state` event is read from
+  its `game_state` key; `deadline_ms` is sent only when given; `hello` names the given client or `stationgod-cs`, and
+  offers a key only when a client name is given and its variable is set.
+- Each call carries its own resend rule instead of a shared requeue: a call never written is tried on the next
+  connection; a written read without `x-effects` is sent once more; a call waiting to be sent again keeps trying to
+  connect with the backoff until its time runs out, and is not sent into another world. Each try gets a fresh id. The
+  client's own reconnect loop runs only while subscriptions are open.
+- Connect timeouts are the text's: 1 second for the pipe (the old sidecar waited 3) and 3 for TCP. The "no pipe
+  answered" message keeps its wording with the new number.
+- The client never shapes a reply. `FieldSelection` did not move into it.
+
+**The sidecar.**
+- `ReplyShaping` and `OutputFolder` are gone from it. `output_file` is the client's (`OutputChoice`, `OutputTarget`,
+  `OutputFolder`), checked against the shared fixtures. A reply from the mod is passed on as it came, marked `shaped`
+  or not: the mod owns shaping, so against a mod older than stage 1 `fields` is ignored rather than applied here. This
+  replaces "fields applied locally" in stage 9's acceptance. `FieldSelection` stays in the sidecar only for the one reply
+  it builds itself, `sample_logic`, and as the reference the mod's shaping tests compare against.
+- `ArgumentCheck` stays in the sidecar, not the client, since it checks MCP schemas. It runs until a connection has said
+  version 2: on version 1 and before the first connection, so a bad argument is still refused with no game running. On
+  version 2 only the sidecar's own `fields` and `output_file` are checked here, and the arguments go to the mod as given.
+- On version 2 the sidecar sends only the `fields` selectors that follow the grammar (trimmed, each once) and adds the
+  others to the reply's `fields_unmatched` itself, so no selector accepted today is refused. If none follows the grammar,
+  no shape is sent and the reply comes whole with all of them unmatched.
+- `sample_logic` runs in the sidecar while the catalogue in use marks it `x-runs-in: sidecar`, and is forwarded once
+  the mod's catalogue does not, so stage 12 needs no sidecar change.
+- MCP messages are handled as they arrive, several at once; each response or notification is written as one line. At
+  the end of input the sidecar waits for its calls in flight, then says `bye` on version 2.
+- The inline limit compares the UTF-8 bytes of the result's JSON text. A pointer written by it carries
+  `auto_output_file: true`; a write that fails answers inline with `output_file_error` and no flag.
+- `--host` no longer needs the secret at start: a version-2 server signs in with a key, and the secret is asked for
+  only when an old mod over TCP needs it.
+- `key new` is stage 6's and not part of this stage.
+
+**Tests.** `tests/StationGodMCP.Tests/Sidecar/`: `FakeGame` (an in-process game on a real overlapped pipe or loopback
+TCP, speaking the old protocol or version 2 with the key challenge, calls answered out of order, events pushed),
+`ClientTests` and `SidecarTranscriptTests`. The output-file fixtures and HMAC vectors are the shared ones, and the
+built-in hash is checked against the one the Python generator wrote into `_methods.py`. The live checks have not run:
+the owner's game was running when this stage was built.
+
 ## Moving existing clients over
 
 Order: the library first, then the clients that import it indirectly through the dashboard's transport, then the
