@@ -1080,7 +1080,8 @@ internal static class PlacePlanner
 
     private static void Source(PlacePlan plan)
     {
-        Human human = Human.LocalHuman;
+        PlayerOrigin player = PlayerOrigin.Current();
+        Human? human = player.Player;
         plan.Owner = human != null ? human.OwnerClientId : 0UL;
         if (plan.Arguments.Free)
         {
@@ -1103,7 +1104,7 @@ internal static class PlacePlanner
 
         if (human == null)
         {
-            plan.Problem("no_local_player", "There is no local player to take materials from; pass from_id.");
+            plan.Problem("no_local_player", $"{player.Absence} Nothing to take materials from; pass from_id.");
             return;
         }
 

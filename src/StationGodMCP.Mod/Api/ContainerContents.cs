@@ -11,7 +11,7 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// container_contents: a thing's slots (Thing.Slots, organ slots left out) and what is in each (Slot.Get), following
-/// occupants' own slots down to depth levels. reference_id may be "player" for the local player. Read only.
+/// occupants' own slots down to depth levels. reference_id may be "player" for the player. Read only.
 /// </summary>
 internal static class ContainerContentsApi
 {

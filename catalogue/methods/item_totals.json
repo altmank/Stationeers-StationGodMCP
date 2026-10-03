@@ -23,7 +23,7 @@
       "near_player_m": {
         "type": "number",
         "exclusiveMinimum": 0,
-        "description": "Only items whose outermost holder is within this many metres of the local player."
+        "description": "Only items whose outermost holder is within this many metres of the player."
       },
       "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Item types returned, default 200."},
       "holders_limit": {

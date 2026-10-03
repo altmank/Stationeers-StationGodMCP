@@ -19,7 +19,7 @@ internal sealed class RoomsView
 
     public int Count => Rooms.Count;
 
-    /// <summary>The room the local player stands in; null outside a room or without a player.</summary>
+    /// <summary>The room the player stands in; null outside a room or without a player.</summary>
     public string? LocalPlayerRoomId { get; }
 }
 

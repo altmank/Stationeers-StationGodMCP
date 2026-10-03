@@ -11,11 +11,7 @@
         "description": "Case-insensitive substring of the container's prefab name, e.g. 'Locker', 'Crate'."
       },
       "name_contains": {"type": "string", "description": "Case-insensitive substring of the container's display name (its label)."},
-      "near_player_m": {
-        "type": "number",
-        "exclusiveMinimum": 0,
-        "description": "Only containers within this many metres of the local player."
-      },
+      "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Only containers within this many metres of the player."},
       "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Containers per page, default 100."},
       "offset": {"type": "integer", "minimum": 0, "description": "Containers to skip, for paging.", "maximum": 2147483647}
     },
@@ -42,6 +38,6 @@
     "limit": "limit",
     "total": "total",
     "has_more": "has_more",
-    "order": "nearest the local player first (no position last), then prefab name, then the order found"
+    "order": "nearest the player first (no position last), then prefab name, then the order found"
   }
 }

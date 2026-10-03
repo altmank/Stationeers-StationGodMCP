@@ -13,7 +13,7 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// Who and what a refund can go to, resolved when the plan is made: the route (refund_to), the source (from_id, else
-/// the local player), the player whose inventory takes items (from_id when it is a player, else the local player),
+/// the player), the player whose inventory takes items (from_id when it is a player, else the player),
 /// each container a chain names, and where the pieces stood (the ground when there is no holder at all).
 /// </summary>
 internal sealed class RefundReceivers
@@ -35,7 +35,7 @@ internal sealed class RefundReceivers
 
     internal RefundRoute Route { get; }
 
-    /// <summary>from_id, else the local player; null when neither exists or the tool needs no source.</summary>
+    /// <summary>from_id, else the player; null when neither exists or the tool needs no source.</summary>
     internal Thing? From { get; }
 
     internal Human? Player { get; }
@@ -55,7 +55,7 @@ internal sealed class RefundReceivers
     internal static RefundReceivers Resolve(RefundRoute route, Thing? from, bool fromNamed, Vector3? pieceGround,
         List<GuardFinding> findings)
     {
-        Human? player = from is Human human ? human : Human.LocalHuman;
+        Human? player = from is Human human ? human : PlayerOrigin.Current().Player;
         List<RefundTarget> usable = new List<RefundTarget>();
         Dictionary<long, Thing> containers = new Dictionary<long, Thing>();
         List<string> skipped = new List<string>();

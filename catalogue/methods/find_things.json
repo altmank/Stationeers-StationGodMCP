@@ -42,7 +42,7 @@
       "near_player_m": {
         "type": "number",
         "exclusiveMinimum": 0,
-        "description": "Only things (or their outermost holder) within this many metres of the local player."
+        "description": "Only things (or their outermost holder) within this many metres of the player."
       },
       "location": {
         "type": "string",
@@ -75,6 +75,6 @@
     "limit": "limit",
     "total": "total",
     "has_more": "has_more",
-    "order": "nearest the local player first (no position last), then prefab name, then reference id"
+    "order": "nearest the player first (no position last), then prefab name, then reference id"
   }
 }

@@ -7,7 +7,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>ignition_risk: the air at the local player and every burnable thing they carry.</summary>
+/// <summary>ignition_risk: the air at the player and every burnable thing they carry.</summary>
 internal sealed class IgnitionRiskView
 {
     internal IgnitionRiskView(LocalPlayerView? player, IgnitionCellView? cell, List<CarriedIgnitionView> items,

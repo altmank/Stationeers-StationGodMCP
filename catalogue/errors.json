@@ -126,7 +126,7 @@
     "origin": "tool"
   },
   "no_camera": {
-    "description": "near: there is no player camera to look from (a dedicated server has none); pass near.",
+    "description": "near: there is no player camera to look from (a dedicated server has none: a remote player's camera stays on their own machine); pass near.",
     "origin": "tool"
   },
   "no_credit_card": {"description": "Refused with no_credit_card.", "origin": "tool"},
@@ -145,7 +145,10 @@
   "no_genes": {"description": "<…> has no gene set yet.", "origin": "tool"},
   "no_kit": {"description": "No coil or kit places <…> pieces.", "origin": "tool"},
   "no_line_shader": {"description": "This build of the game has no built-in shader to draw lines with.", "origin": "tool"},
-  "no_local_player": {"description": "There is no local player in this game (a dedicated server has none).", "origin": "tool"},
+  "no_local_player": {
+    "description": "There is no player: no local player (a dedicated server) and no connected, living player in the world, or several (named), so which one is the player is ambiguous.",
+    "origin": "tool"
+  },
   "no_network": {"description": "<name>: <prefab_name> <id> is on no network.", "origin": "tool"},
   "no_programmable_chip": {
     "description": "Device <reference_id> (<prefab_name>) keeps its memory on a programmable chip and has none installed.",

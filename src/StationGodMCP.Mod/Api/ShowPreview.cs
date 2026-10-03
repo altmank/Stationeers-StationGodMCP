@@ -47,7 +47,8 @@ internal static class ShowPreviewApi
 
         if (Look.Basis(out _) == null)
         {
-            throw ApiErrors.Refused("no_camera", "There is no player camera to draw for (a dedicated server has none).");
+            throw ApiErrors.Refused("no_camera", "There is no player camera to draw for (a dedicated server has " +
+                                                 "none: a remote player's camera stays on their own machine).");
         }
 
         if (!Previews.CanDraw)

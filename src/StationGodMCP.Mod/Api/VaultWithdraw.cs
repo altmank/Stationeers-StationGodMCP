@@ -88,7 +88,7 @@ internal static class VaultWithdrawApi
         }
     }
 
-    // to_id, else the local player.
+    // to_id, else the player.
     private static Thing Holder(Args args)
     {
         ThingId? id = args.OptionalThingId("to_id");

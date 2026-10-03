@@ -10,7 +10,7 @@
       "reference_id": {"type": "string", "description": "The trader contact (trader_contacts / trader_inventory reference_id)."},
       "credit_card_id": {
         "type": "string",
-        "description": "The credit card; default the one the local player carries, as the trade window uses."
+        "description": "The credit card; default the one the player carries, as the trade window uses."
       },
       "items": {
         "type": "array",

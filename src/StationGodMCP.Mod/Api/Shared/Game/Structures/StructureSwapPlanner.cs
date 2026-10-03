@@ -312,7 +312,7 @@ internal static class StructureSwapPlanner
             $"{Names.Of(from)} ({from.PrefabName} {from.ReferenceId})", null), from);
     }
 
-    // from_id, else the local player; with neither, a swap that charges nothing and whose refund_to is a chain goes on
+    // from_id, else the player; with neither, a swap that charges nothing and whose refund_to is a chain goes on
     // without one (the chain skips inventory, source and storage and ends on the ground where the first piece stood).
     private static Thing? Source(StructureSwapPlan plan, bool needsPlayer)
     {
@@ -329,15 +329,15 @@ internal static class StructureSwapPlanner
             return null;
         }
 
-        Human human = Human.LocalHuman;
-        if (human == null && needsPlayer)
+        PlayerOrigin player = PlayerOrigin.Current();
+        if (player.Player == null && needsPlayer)
         {
             plan.Problem("no_local_player",
-                "There is no local player to take materials from (or, with refund_to source, to give the refund to); " +
-                "pass from_id.");
+                $"{player.Absence} Nothing to take materials from (or, with refund_to source, to give the refund " +
+                "to); pass from_id.");
         }
 
-        return human == null ? null : human;
+        return player.Player;
     }
 
     private static string Describe(List<StructureSlot>? slots)

@@ -40,7 +40,7 @@
       "confirm": {"$ref": "defs/confirm.json"},
       "from_id": {
         "type": "string",
-        "description": "The thing whose inventory gives the coils or kits. Default the local player; with neither, a run that takes no coils and whose refund_to is not the single word source goes ahead, else no_local_player."
+        "description": "The thing whose inventory gives the coils or kits. Default the player; with neither, a run that takes no coils and whose refund_to is not the single word source goes ahead, else no_local_player."
       },
       "skip_unmatched": {"$ref": "defs/skip_unmatched.json"},
       "refund": {

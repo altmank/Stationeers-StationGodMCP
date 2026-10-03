@@ -78,7 +78,7 @@
       "confirm": {"$ref": "defs/confirm.json"},
       "from_id": {
         "type": "string",
-        "description": "The thing whose inventory gives the coils or kits needed and takes the refund. Default the local player; with neither, a run that takes no coils (removing dead ends, merging straights) and whose refund_to is not the single word source goes ahead, the refund following refund_to (the ground where the first piece stood at the end), else no_local_player."
+        "description": "The thing whose inventory gives the coils or kits needed and takes the refund. Default the player; with neither, a run that takes no coils (removing dead ends, merging straights) and whose refund_to is not the single word source goes ahead, the refund following refund_to (the ground where the first piece stood at the end), else no_local_player."
       },
       "skip_unmatched": {"$ref": "defs/skip_unmatched.json"},
       "refund": {

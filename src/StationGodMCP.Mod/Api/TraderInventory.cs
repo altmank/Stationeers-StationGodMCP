@@ -28,7 +28,7 @@ namespace StationGodMCP.Api;
 /// many units it would accept from what you hold (HeldGoods: what trader_sell would take, with the trader's own
 /// conditions applied, so a "Box of ..." line counts only the boxes whose contents it accepts) and, while the trader
 /// is landed, sellable is the trade window's own count (TradeDataHelper.GetSellItemQuantity: the pad network's vending
-/// machines and the local player, or the pad network's gas in units).
+/// machines and the player, or the pad network's gas in units).
 /// </summary>
 internal static class TraderInventoryApi
 {
@@ -134,8 +134,8 @@ internal sealed class HeldGoods
     }
 
     /// <summary>
-    /// Whose inventory counts: the given card's holder, as trader_sell takes goods from it, else the local player
-    /// (who carries the card the trade window uses). Null on a server with no local player: pads only.
+    /// Whose inventory counts: the given card's holder, as trader_sell takes goods from it, else the player
+    /// (PlayerOrigin: who carries the card the trade window uses). Null without a player: pads only.
     /// </summary>
     internal static ITradableInventory? Holder(ThingId? cardId)
     {
@@ -146,8 +146,7 @@ internal sealed class HeldGoods
             return SellCard.HolderOf(card);
         }
 
-        Human human = Human.LocalHuman;
-        return human != null ? human : null;
+        return PlayerOrigin.Current().Player;
     }
 
     internal static List<LandingPadNetwork> EveryPadNetwork()

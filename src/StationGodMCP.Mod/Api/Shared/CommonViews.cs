@@ -58,7 +58,7 @@ internal sealed class ColorView
     public string? Name { get; }
 }
 
-/// <summary>The local player, where there is one (a dedicated server has none).</summary>
+/// <summary>The player as PlayerOrigin resolves it: the local player, else a dedicated server's one player.</summary>
 internal sealed class LocalPlayerView
 {
     internal LocalPlayerView(ThingId referenceId, string? displayName, PositionView position)

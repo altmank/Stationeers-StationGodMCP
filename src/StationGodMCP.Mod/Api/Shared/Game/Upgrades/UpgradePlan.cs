@@ -63,7 +63,7 @@ internal sealed class UpgradeRequest
 
     internal PieceSelection Selection { get; }
 
-    /// <summary>The thing coils are taken from; null for the local player.</summary>
+    /// <summary>The thing coils are taken from; null for the player.</summary>
     internal ThingId? From { get; }
 
     internal bool SkipUnmatched { get; }
@@ -438,7 +438,7 @@ internal static class UpgradePlanner
             $"{Names.Of(from)} ({from.PrefabName} {from.ReferenceId})", null), from);
     }
 
-    // from_id, else the local player; with neither, a job that takes no coils and whose refund_to is a chain goes on
+    // from_id, else the player; with neither, a job that takes no coils and whose refund_to is a chain goes on
     // without one (the chain skips inventory, source and storage and ends on the ground where the first piece stood).
     private static Thing? Source(UpgradePlan plan, UpgradeRequest request, bool needsPlayer)
     {
@@ -455,14 +455,14 @@ internal static class UpgradePlanner
             return null;
         }
 
-        Human human = Human.LocalHuman;
-        if (human == null && needsPlayer)
+        PlayerOrigin player = PlayerOrigin.Current();
+        if (player.Player == null && needsPlayer)
         {
             plan.Problem("no_local_player",
-                "There is no local player to take coils from (or, with refund_to source, to give the refund to); " +
+                $"{player.Absence} Nothing to take coils from (or, with refund_to source, to give the refund to); " +
                 "pass from_id.");
         }
 
-        return human == null ? null : human;
+        return player.Player;
     }
 }

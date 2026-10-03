@@ -14,7 +14,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// ignition_risk: whether the things the local player carries would catch fire in the air they are in. Read only.
+/// ignition_risk: whether the things the player carries would catch fire in the air they are in. Read only.
 ///
 /// The game's rule (CODE Thing.ShouldIgnite, DynamicThing.OnFireTick, both run per fire tick): see IgnitionRule. Each
 /// carried thing is judged on its own DynamicThing.WorldAtmosphere, the air its fire tick reads: a slot marked
@@ -35,7 +35,8 @@ internal static class IgnitionRiskApi
     internal static IgnitionRiskView Handle(Args args)
     {
         bool includePrefabs = args.OptionalBool("include_prefabs") ?? false;
-        Human? human = Human.LocalHuman;
+        PlayerOrigin origin = PlayerOrigin.Current();
+        Human? human = origin.Player;
         List<CarriedIgnitionView> items = new List<CarriedIgnitionView>();
         IgnitionCellView? cell = null;
         if (human != null)
@@ -44,7 +45,7 @@ internal static class IgnitionRiskApi
             Walk(human, human, items);
         }
 
-        return new IgnitionRiskView(PlayerOrigin.Current().View, cell, items, includePrefabs ? Prefabs() : null);
+        return new IgnitionRiskView(origin.View, cell, items, includePrefabs ? Prefabs() : null);
     }
 
     private static IgnitionCellView? CellOf(Human human)

@@ -45,11 +45,7 @@
         "type": "string",
         "description": "Filter form: inside this holder at any depth (a backpack, a locker, a player)."
       },
-      "near_player_m": {
-        "type": "number",
-        "exclusiveMinimum": 0,
-        "description": "Filter form: within this many metres of the local player."
-      },
+      "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Filter form: within this many metres of the player."},
       "kind": {
         "type": "string",
         "enum": ["any", "ingot", "ore", "ice"],
