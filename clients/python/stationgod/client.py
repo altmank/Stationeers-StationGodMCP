@@ -116,8 +116,8 @@ class Client(_methods.Methods):
 
     def __init__(self, pipe=DEFAULT_PIPE, host=None, port=DEFAULT_PORT, client=None, protocol="auto",
                  secret_env="STATIONGODMCP_SECRET", connect_timeout=None, output_dir=None, check_arguments=True):
-        if protocol not in ("auto", "v1"):
-            raise ValueError("protocol must be 'auto' or 'v1'")
+        if protocol not in ("auto", "v1", "v2"):
+            raise ValueError("protocol must be 'auto', 'v1' or 'v2'")
         self._target = TcpTarget(host, port) if host else PipeTarget(pipe)
         self.client_name = client
         self._protocol_option = protocol
