@@ -55,7 +55,7 @@ internal sealed class PipeListener : IDisposable
 
     public void Dispose() => ShutDown("shutting_down");
 
-    /// <summary>Stops listening and ends every connection, telling version-2 clients the reason.</summary>
+    /// <summary>Stops listening and ends every connection, telling each client the reason.</summary>
     internal void ShutDown(string reason)
     {
         if (_stopping)

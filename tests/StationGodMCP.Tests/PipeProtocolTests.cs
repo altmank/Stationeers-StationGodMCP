@@ -9,6 +9,7 @@ using System.IO.Pipes;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Sampling;
@@ -19,8 +20,8 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The overlapped pipe on a real Windows named pipe in this process: version 1 unchanged byte for byte, reading and
-/// writing at once at both ends, the first-line and request timeouts, and the instance limit.
+/// The overlapped pipe on a real Windows named pipe in this process: line framing, reading and writing at once at both
+/// ends, the first-line and call timeouts, and the instance limit.
 /// </summary>
 public sealed class PipeProtocolTests
 {
@@ -81,44 +82,7 @@ public sealed class PipeProtocolTests
     public void TheShippedLimitsAreTodays()
     {
         Assert.Equal(10000, ProtocolSettings.DefaultFirstLineTimeoutMilliseconds);
-        Assert.Equal(30000, ProtocolSettings.DefaultLineTimeoutMilliseconds);
         Assert.Equal(32, ProtocolSettings.DefaultMaxPipeConnections);
-    }
-
-    [Fact]
-    public async Task VersionOneTranscriptsReplayByteForByte()
-    {
-        using PipeRig rig = new PipeRig();
-        string[] requests =
-        {
-            """{"id":"1","method":"game_clock","params":{}}""",
-            "",
-            """{"id":"2","method":"read_logic","params":{"reference_id":"501","logic_type":"Setting"}}""",
-            "   ",
-            """{"id":"café","method":"find_things","params":{"prefab_contains":"☃"}}""",
-            "not json at all"
-        };
-        using NamedPipeClientStream client = await rig.ConnectAsync();
-        StringBuilder sent = new StringBuilder();
-        foreach (string request in requests)
-        {
-            sent.Append(request).Append(request.Length % 2 == 0 ? "\r\n" : "\n");
-        }
-
-        byte[] bytes = new UTF8Encoding(false).GetBytes(sent.ToString());
-        await client.WriteAsync(bytes, 0, bytes.Length);
-
-        StringBuilder expected = new StringBuilder();
-        foreach (string request in requests)
-        {
-            if (!string.IsNullOrWhiteSpace(request))
-            {
-                expected.Append(FakeMod.ReplyTo(request)).Append('\n');
-            }
-        }
-
-        Assert.Equal(expected.ToString(), await ReadExactly(client, Encoding.UTF8.GetByteCount(expected.ToString())));
-        Assert.Equal(4, rig.Mod.Ran);
     }
 
     [Fact]
@@ -148,11 +112,11 @@ public sealed class PipeProtocolTests
         Assert.False(pendingRead.IsCompleted);
 
         Stopwatch watch = Stopwatch.StartNew();
-        byte[] request = Encoding.UTF8.GetBytes("""{"id":"d","method":"game_clock"}""" + "\n");
-        await client.WriteAsync(request, 0, request.Length);
+        byte[] hello = Encoding.UTF8.GetBytes(Hello + "\n");
+        await client.WriteAsync(hello, 0, hello.Length);
         int read = await pendingRead;
 
-        Assert.Equal(FakeMod.ReplyTo("""{"id":"d","method":"game_clock"}""") + "\n", Encoding.UTF8.GetString(buffer, 0, read));
+        Assert.StartsWith("""{"type":"welcome",""", Encoding.UTF8.GetString(buffer, 0, read));
         Assert.True(watch.ElapsedMilliseconds < 100, $"{watch.ElapsedMilliseconds} ms");
     }
 
@@ -167,42 +131,38 @@ public sealed class PipeProtocolTests
         Assert.Equal(0, await silent.ReadAsync(buffer, 0, buffer.Length));
         Assert.InRange(watch.ElapsedMilliseconds, 200, 3000);
 
-        using NamedPipeClientStream next = await rig.ConnectAsync();
-        await Send(next, """{"id":"n","method":"game_clock"}""");
-        Assert.Equal(FakeMod.ReplyTo("""{"id":"n","method":"game_clock"}"""), await ReadLineAsync(next));
+        using V2Client next = await V2Client.Connect(rig);
+        Assert.True((bool)next.Call("n", "game_clock", new JObject())["ok"]!);
     }
 
     [Fact]
-    public async Task ACallNotStartedByItsDeadlineIsAnsweredGameTimeoutAndNeverRuns()
+    public async Task BlankLinesDoNotStopTheFirstLineTimeout()
     {
-        using PipeRig rig = new PipeRig(lineMs: 300, mainThread: false);
+        using PipeRig rig = new PipeRig(maxConnections: 1, firstLineMs: 300);
         using NamedPipeClientStream client = await rig.ConnectAsync();
+        byte[] blank = Encoding.UTF8.GetBytes("\n\r\n  \n");
+        await client.WriteAsync(blank, 0, blank.Length);
+        byte[] buffer = new byte[16];
 
         Stopwatch watch = Stopwatch.StartNew();
-        await Send(client, """{"id":"t1","method":"game_clock"}""");
-        string reply = await ReadLineAsync(client);
-
-        Assert.Equal("""{"id":"t1","ok":false,"error":{"code":"game_timeout","message":"The Stationeers main thread did not process the request within 0 seconds."}}""", reply);
-        Assert.InRange(watch.ElapsedMilliseconds, 250, 2000);
-        rig.Mod.RunPending();
-        Assert.Equal(0, rig.Mod.Ran);
+        Assert.Equal(0, await client.ReadAsync(buffer, 0, buffer.Length));
+        Assert.InRange(watch.ElapsedMilliseconds, 100, 3000);
     }
 
     [Fact]
     public async Task ACallStartedJustBeforeItsDeadlineIsAnsweredWithItsResultOnly()
     {
-        using PipeRig rig = new PipeRig(lineMs: 400, mainThread: false);
-        using NamedPipeClientStream client = await rig.ConnectAsync();
-        await Send(client, """{"id":"late","method":"game_clock"}""");
+        using PipeRig rig = new PipeRig(mainThread: false);
+        using V2Client client = await V2Client.Connect(rig);
+        client.Send("""{"type":"call","id":"late","method":"game_clock","params":{},"deadline_ms":400}""");
         await Task.Delay(300);
 
         rig.Mod.RunPending(holdMs: 400);
-        string reply = await ReadLineAsync(client);
-        byte[] more = new byte[64];
-        Task<int> extra = client.ReadAsync(more, 0, more.Length);
+        JObject reply = client.Next();
 
-        Assert.Equal(FakeMod.ReplyTo("""{"id":"late","method":"game_clock"}"""), reply);
-        Assert.False(extra.Wait(500), "a second answer arrived");
+        Assert.Equal("late", (string?)reply["id"]);
+        Assert.True((bool)reply["ok"]!);
+        Assert.Null(client.NextOrNull(500));
         Assert.Equal(1, rig.Mod.Ran);
     }
 
@@ -210,12 +170,11 @@ public sealed class PipeProtocolTests
     public async Task PastTheLimitAClientWaitsUntilAConnectionCloses()
     {
         using PipeRig rig = new PipeRig(maxConnections: 3);
-        List<NamedPipeClientStream> held = new List<NamedPipeClientStream>();
+        List<V2Client> held = new List<V2Client>();
         for (int index = 0; index < 3; index++)
         {
-            NamedPipeClientStream client = await rig.ConnectAsync();
-            await Send(client, $$"""{"id":"h{{index}}","method":"game_clock"}""");
-            await ReadLineAsync(client);
+            V2Client client = await V2Client.Connect(rig);
+            client.Call($"h{index}", "game_clock", new JObject());
             held.Add(client);
         }
 
@@ -224,15 +183,18 @@ public sealed class PipeProtocolTests
 
         held[0].Dispose();
         await waiting.ConnectAsync(5000);
-        await Send(waiting, """{"id":"w","method":"game_clock"}""");
-        Assert.Equal(FakeMod.ReplyTo("""{"id":"w","method":"game_clock"}"""), await ReadLineAsync(waiting));
+        using V2Client next = new V2Client(waiting);
+        next.Hello("waiting");
+        Assert.Equal("welcome", (string?)next.Next()["type"]);
+        Assert.True((bool)next.Call("w", "game_clock", new JObject())["ok"]!);
 
-        waiting.Dispose();
-        foreach (NamedPipeClientStream client in held)
+        foreach (V2Client client in held)
         {
             client.Dispose();
         }
     }
+
+    private const string Hello = """{"type":"hello","protocol":[2],"client":{"name":"pipe-test","version":"1"}}""";
 
     private static bool Feed(LineFramer framer, string text, List<string> lines)
     {
@@ -262,25 +224,6 @@ public sealed class PipeProtocolTests
             line.Add(one[0]);
         }
     }
-
-    private static async Task<string> ReadExactly(Stream stream, int count)
-    {
-        byte[] buffer = new byte[count];
-        int offset = 0;
-        using CancellationTokenSource timeout = new CancellationTokenSource(5000);
-        while (offset < count)
-        {
-            int read = await stream.ReadAsync(buffer, offset, count - offset, timeout.Token);
-            if (read == 0)
-            {
-                break;
-            }
-
-            offset += read;
-        }
-
-        return Encoding.UTF8.GetString(buffer, 0, offset);
-    }
 }
 
 /// <summary>A pipe listener with a fake mod behind it, on a pipe name of its own.</summary>
@@ -290,7 +233,7 @@ internal sealed class PipeRig : IDisposable
     private readonly PipeListener _listener;
     private readonly BlockingCollection<Connection> _connected = new BlockingCollection<Connection>();
 
-    internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, int lineMs = 30000, bool mainThread = true,
+    internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, bool mainThread = true,
         ProtocolSettings? settings = null, SubscriptionHub? subscriptions = null,
         Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null)
     {
@@ -306,13 +249,10 @@ internal sealed class PipeRig : IDisposable
                 : call.Request.Method == SubscriptionHub.SampleLogicMethod
                     ? subscriptions.StartSampleLogic(call, queueMs)
                     : null;
-            Mod.LineHook = (call, queueMs) => call.Profile.Method == SubscriptionHub.SampleLogicMethod
-                ? subscriptions.StartSampleLogic(call, queueMs)
-                : null;
             Mod.ClosedHook = subscriptions.Closed;
         }
 
-        Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs, lineMs), Mod, _deadlines,
+        Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs), Mod, _deadlines,
             TestCatalogue.File.Value, subscriptions: subscriptions);
         _listener = new PipeListener(Name, Host);
         _listener.Connected += connection => _connected.Add(connection);
@@ -343,9 +283,9 @@ internal sealed class PipeRig : IDisposable
     }
 }
 
-//// <summary>
+/// <summary>
 /// Stands in for the dispatcher: a "main thread" that runs frames of the lane scheduler and answers each call with a
-/// reply made from its line, or (mainThread false) runs no frame until a test says so. Hooks let a test start calls
+/// reply made from its method and params, or (mainThread false) runs no frame until a test says so. Hooks let a test start calls
 /// that go on over later frames (Deferred) and give the lane its samples.
 /// </summary>
 internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
@@ -382,10 +322,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     /// <summary>The sample lane each frame runs first; null for none.</summary>
     internal ISampleLane? Samples { get; set; }
 
-    /// <summary>Before a version-1 line runs: its outcome when the hook took it (answered or deferred) instead.</summary>
-    internal Func<LineCall, double, CallOutcome?>? LineHook { get; set; }
-
-    /// <summary>Before a version-2 call runs: its outcome when the hook took it (answered or deferred) instead.</summary>
+    /// <summary>Before a call runs: its outcome when the hook took it (answered or deferred) instead.</summary>
     internal Func<ProtocolCall, double, CallOutcome?>? CallHook { get; set; }
 
     /// <summary>Connections closed, in order.</summary>
@@ -399,9 +336,6 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
 
     /// <summary>Called (on the connection's reader thread) when a connection ends.</summary>
     internal Action<object>? ClosedHook { get; set; }
-
-    internal static string ReplyTo(string line) =>
-        "{\"echo\":" + Newtonsoft.Json.JsonConvert.ToString(line) + ",\"ok\":true}";
 
     public void Submit(QueuedCall call)
     {
@@ -420,22 +354,10 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         _added.Release();
     }
 
-    public CallOutcome RunLine(LineCall call, double queueWaitMs)
-    {
-        Interlocked.Increment(ref _ran);
-        Hold();
-        if (LineHook?.Invoke(call, queueWaitMs) is CallOutcome taken)
-        {
-            return taken;
-        }
-
-        return new CallOutcome(ReplyTo(call.Json), null);
-    }
-
-    /// <summary>The ids of version-2 calls in the order the fake main thread ran them.</summary>
+    /// <summary>The ids of calls in the order the fake main thread ran them.</summary>
     internal ConcurrentQueue<string> RunOrder { get; } = new ConcurrentQueue<string>();
 
-    /// <summary>A version-2 call is answered with its method and params as result, after params.hold_ms if given.</summary>
+    /// <summary>A call is answered with its method and params as result, after params.hold_ms if given.</summary>
     public CallOutcome RunCall(ProtocolCall queued, double queueWaitMs)
     {
         Interlocked.Increment(ref _ran);

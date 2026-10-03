@@ -15,6 +15,7 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
 {
     internal const string FieldsArgument = "fields";
     internal const string OutputFileArgument = "output_file";
+    internal const string UnmatchedKey = "fields_unmatched";
 
     internal static readonly string[] Names = [FieldsArgument, OutputFileArgument];
 
@@ -33,19 +34,18 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
     }
 
     /// <summary>
-    /// The shape to send. On version 2 the mod refuses a selector that does not follow the grammar (invalid_shape),
-    /// where the sidecar has always reported it in fields_unmatched; so on version 2 only the selectors that parse are
-    /// sent, trimmed and each once, and the rest are added to the reply's fields_unmatched here (Unparsed). Version 1, or
-    /// a connection not made yet, gets fields as given: the mod's version-1 reading never refuses a selector.
+    /// The shape to send. The mod refuses a selector that does not follow the grammar (invalid_shape), where the
+    /// sidecar has always reported it in fields_unmatched; so only the selectors that parse are sent, trimmed and each
+    /// once, and the rest are added to the reply's fields_unmatched here (Unparsed).
     /// </summary>
-    internal (JsonElement? Shape, IReadOnlyList<string> Unparsed) ShapeFor(ProtocolVersion? protocol)
+    internal (JsonElement? Shape, IReadOnlyList<string> Unparsed) Shape()
     {
         if (Fields is not { } fields)
         {
             return (null, []);
         }
 
-        if (protocol != ProtocolVersion.Version2 || fields.ValueKind != JsonValueKind.Array)
+        if (fields.ValueKind != JsonValueKind.Array)
         {
             return (JsonSerializer.SerializeToElement(new { fields }), []);
         }
@@ -74,14 +74,14 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
         }
 
         JsonObject shaped = JsonObject.Create(reply)!;
-        JsonArray unmatched = shaped[FieldSelection.UnmatchedKey] as JsonArray ?? [];
-        shaped.Remove(FieldSelection.UnmatchedKey);
+        JsonArray unmatched = shaped[UnmatchedKey] as JsonArray ?? [];
+        shaped.Remove(UnmatchedKey);
         foreach (string selector in unparsed)
         {
             unmatched.Add(selector);
         }
 
-        shaped[FieldSelection.UnmatchedKey] = unmatched;
+        shaped[UnmatchedKey] = unmatched;
         return JsonSerializer.SerializeToElement(shaped);
     }
 

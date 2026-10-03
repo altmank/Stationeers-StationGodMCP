@@ -17,8 +17,8 @@ namespace StationGodMCP.Tests.Sidecar;
 
 /// <summary>
 /// MCP transcripts through the sidecar against an in-process fake game: the tool list from the catalogue and its
-/// change, arguments checked by the mod on version 2 and by the sidecar on version 1, fields sent as shape and never
-/// applied again, output files and the inline limit, sample_logic, and several calls over one connection.
+/// change, arguments checked by the mod (the sidecar checks only its own), fields sent as shape and never applied
+/// again, output files and the inline limit, sample_logic, and several calls over one connection.
 /// </summary>
 public sealed class SidecarTranscriptTests : IDisposable
 {
@@ -59,7 +59,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     [Fact]
     public async Task AnotherCatalogueChangesTheToolsAndTellsTheAgent()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.CatalogueHash = "sha256:" + new string('c', 64);
         game.CatalogueJson = ClientTests.CatalogueWithout("weather");
         ConcurrentQueue<string> notices = new();
@@ -82,7 +82,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     [Fact]
     public async Task OnVersionTwoABadArgumentIsTheModsToRefuse()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Method == "move_item"
             ? call.Error("invalid_argument", "Unknown argument 'quantty'; did you mean 'quantity'?")
             : call.Ok("{}"));
@@ -96,33 +96,9 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task OnVersionOneTheSidecarChecksArgumentsAndSendsNothingBad()
-    {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
-        await using McpAdapter sidecar = Sidecar(game.Target);
-        await sidecar.HandleAsync(Call(1, "game_clock", "{}"));
-
-        JsonElement result = Result(await sidecar.HandleAsync(Call(2, "move_item", """{"reference_id":"1","quantty":2}""")));
-
-        AssertError(result, "invalid_argument");
-        Assert.Empty(game.CallsTo("move_item"));
-    }
-
-    [Fact]
-    public async Task OnVersionOneAWholeNumberIsSentAsAnInteger()
-    {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
-        await using McpAdapter sidecar = Sidecar(game.Target);
-
-        await sidecar.HandleAsync(Call(1, "connections", """{"reference_id":"1","limit":5.0}"""));
-
-        Assert.Equal("""{"reference_id":"1","limit":5}""", Assert.Single(game.CallsTo("connections")).Params.GetRawText());
-    }
-
-    [Fact]
     public async Task FieldsGoAsShapeAndAShapedReplyIsKeptAsItCame()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok("""{"things":[{"position":{"x":1}}]}""", shaped: true));
         await using McpAdapter sidecar = Sidecar(game.Target);
 
@@ -137,7 +113,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     [Fact]
     public async Task OnVersionTwoASelectorTheModWouldRefuseIsReportedUnmatched()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Method == "find_things"
             ? call.Ok("""{"things":[{"reference_id":"1"}]}""", shaped: true)
             : call.Ok("{}"));
@@ -155,7 +131,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     [Fact]
     public async Task ALargeReplyGoesToAFileOnItsOwn()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         string big = "[" + string.Join(",", Enumerable.Range(0, 3000).Select(n => $$"""{"reference_id":"{{n}}","prefab_name":"{{new string('x', 80)}}"}""")) + "]";
         game.Answer = call => Task.FromResult<string?>(call.Ok($$"""{"count":3000,"things":{{big}}}"""));
         await using McpAdapter sidecar = Sidecar(game.Target);
@@ -171,7 +147,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     [Fact]
     public async Task AnInlineLimitOfZeroKeepsEveryReplyInline()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         string big = new('x', 300 * 1024);
         game.Answer = call => Task.FromResult<string?>(call.Ok($$"""{"text":"{{big}}"}"""));
         await using McpAdapter sidecar = new(new SidecarOptions(new ClientOptions(game.Target), new OutputFolder(_folder), 0));
@@ -185,7 +161,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     [Fact]
     public async Task AnErrorIsNeverWrittenToAFile()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Error("thing_not_found", "No thing with reference id 9."));
         await using McpAdapter sidecar = Sidecar(game.Target);
 
@@ -196,29 +172,9 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task SampleLogicIsAnsweredByTheSidecarForAnOldMod()
+    public async Task SampleLogicGoesToTheMod()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
-        int reads = 0;
-        game.Answer = call => Task.FromResult<string?>(call.Method == "read_logic_many"
-            ? call.Ok($$"""{"gateway_id":"world","results":[{"index":0,"value":{{System.Threading.Interlocked.Increment(ref reads) / 2}}}]}""")
-            : call.Ok("{}"));
-        await using McpAdapter sidecar = Sidecar(game.Target);
-
-        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "sample_logic",
-            """{"targets":[{"reference_id":"1","logic_type":"On"}],"duration_seconds":0.3,"interval_seconds":0.1,"fields":["elapsed_seconds"]}""")))
-            .GetProperty("structuredContent");
-
-        Assert.Empty(game.CallsTo("sample_logic"));
-        Assert.True(game.CallsTo("read_logic_many").Count() >= 3);
-        Assert.Equal(game.CallsTo("read_logic_many").Count(), result.GetProperty("sample_count").GetInt32());
-        Assert.All(result.GetProperty("changes").EnumerateArray(), change => Assert.False(change.TryGetProperty("readings", out _)));
-    }
-
-    [Fact]
-    public async Task SampleLogicAsTheFirstCallStillGoesToAVersion2Mod()
-    {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok("""{"sample_count":3,"changes":[]}"""));
         await using McpAdapter sidecar = Sidecar(game.Target);
 
@@ -230,32 +186,9 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task SampleLogicGoesToAVersion2Mod()
-    {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
-        JsonObject catalogue = JsonNode.Parse(GameCatalogue.BuiltIn.Document.GetRawText())!.AsObject();
-        foreach (JsonNode? method in catalogue["methods"]!.AsArray())
-        {
-            method!.AsObject().Remove("x-runs-in");
-        }
-
-        game.CatalogueHash = "sha256:" + new string('d', 64);
-        game.CatalogueJson = catalogue.ToJsonString();
-        game.Answer = call => Task.FromResult<string?>(call.Ok("""{"sample_count":3,"changes":[]}"""));
-        await using McpAdapter sidecar = Sidecar(game.Target);
-        await sidecar.HandleAsync(Call(1, "game_clock", "{}"));
-
-        JsonElement result = Result(await sidecar.HandleAsync(Call(2, "sample_logic", """{"targets":[{"reference_id":"1","logic_type":"On"}]}""")));
-
-        Assert.Equal(3, result.GetProperty("structuredContent").GetProperty("sample_count").GetInt32());
-        Assert.Single(game.CallsTo("sample_logic"));
-        Assert.Empty(game.CallsTo("read_logic_many"));
-    }
-
-    [Fact]
     public async Task FiveToolCallsAreAnsweredOverOneConnection()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnPipe();
         TaskCompletionSource allArrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
         game.Answer = async call =>
         {
@@ -288,7 +221,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     [Fact]
     public async Task TheSidecarSignsInOverTcpWithTheSharedSecret()
     {
-        await using FakeGame game = FakeGame.OnTcp(FakeProtocol.Version2);
+        await using FakeGame game = FakeGame.OnTcp();
         GameTarget.Tcp target = (GameTarget.Tcp)game.Target;
         SidecarOptions options = Assert.IsType<SidecarOptions.Parsed.Valid>(SidecarOptions.Parse(
             ["--host", "127.0.0.1", "--port", target.Port.ToString(), "--client", "probe-read"],

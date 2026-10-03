@@ -21,7 +21,7 @@ namespace StationGodMCP.Tests.Sampling;
 /// <summary>
 /// sample_logic in the mod, over a real pipe with the lane scheduler's frames run by the test: the call starts a run
 /// whose samples are taken in the subscription lane on the real clock, and is answered when its last sample is taken,
-/// on version 2 and on version 1; invalid arguments are answered at once; a closed connection drops its run; and the
+/// invalid arguments are answered at once; a closed connection drops its run; and the
 /// call's deadline and every wait for it grow by its duration.
 /// </summary>
 public sealed class SampleLogicWireTests
@@ -130,37 +130,6 @@ public sealed class SampleLogicWireTests
     }
 
     [Fact]
-    public async Task VersionOneGetsTodaysEnvelope()
-    {
-        SubscriptionHub hub = Hub();
-        using PipeRig rig = Rig(hub);
-        using NamedPipeClientStream pipe = await rig.ConnectAsync();
-        byte[] line = Encoding.UTF8.GetBytes(new JObject
-        {
-            ["id"] = "v1", ["method"] = "sample_logic",
-            ["params"] = new JObject
-            {
-                ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-                ["duration_seconds"] = 0.1, ["interval_seconds"] = 0.1
-            }
-        }.ToString(Formatting.None) + "\n");
-        await pipe.WriteAsync(line, 0, line.Length);
-        WaitUntil(() => hub.SampleLogicRuns == 1, rig, atS: 0.0);
-        Frame(rig, 0.0);
-        Frame(rig, 0.1);
-
-        byte[] buffer = new byte[65536];
-        Task<int> read = pipe.ReadAsync(buffer, 0, buffer.Length);
-        Assert.True(read.Wait(5000));
-        JObject reply = JObject.Parse(Encoding.UTF8.GetString(buffer, 0, read.Result).Trim());
-
-        Assert.Equal("v1", (string?)reply["id"]);
-        Assert.True((bool)reply["ok"]!);
-        Assert.Null(reply["type"]);
-        Assert.Equal(2, (int)reply["result"]!["sample_count"]!);
-    }
-
-    [Fact]
     public async Task AClosedConnectionDropsItsRun()
     {
         SubscriptionHub hub = Hub();
@@ -194,10 +163,6 @@ public sealed class SampleLogicWireTests
         Assert.Equal(30000, method.DurationMs(new JObject()));
         Assert.True(TestCatalogue.File.Value.Catalogue.TryGet("read_logic", out CatalogueMethod? read));
         Assert.Equal(0, read!.DurationMs(new JObject()));
-
-        CallProfiles.OfLine(TestCatalogue.File.Value,
-            """{"id":"1","method":"sample_logic","params":{"targets":[],"duration_seconds":12.5}}""", out int lineMs);
-        Assert.Equal(12500, lineMs);
     }
 
     [Fact]

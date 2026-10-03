@@ -11,9 +11,10 @@ using StationGodMCP.Pure.Shaping;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// Version 2 on one connection: hello and welcome, then calls by id, several in flight, answered in any order and
-/// matched by id; cancel; events. Lines are parsed and checked here, on the connection's reader thread; only the
-/// methods themselves run on the main thread.
+/// The protocol on one connection: hello and welcome, then calls by id, several in flight, answered in any order and
+/// matched by id; cancel; events. The first message must be hello; anything else is a protocol error that closes the
+/// connection. Lines are parsed and checked here, on the connection's reader thread; only the methods themselves run
+/// on the main thread.
 /// </summary>
 internal sealed class CallSession : Session
 {
@@ -40,8 +41,6 @@ internal sealed class CallSession : Session
         _connection = connection;
         _host = host;
     }
-
-    internal override int Protocol => 2;
 
     internal override int? MaximumLineBytes => MaxRequestBytes;
 
@@ -72,6 +71,14 @@ internal sealed class CallSession : Session
         }
 
         ClientMessage message = ClientMessage.Parse(line);
+        // Before hello only a hello may come; a refusal that closes the connection keeps its own reason.
+        if (_hello == null && !(message is ClientMessage.Hello) &&
+            !(message is ClientMessage.Refused refusal && refusal.Closes))
+        {
+            Refuse(ClientMessage.Refused.Protocol("The first message must be hello.", line));
+            return;
+        }
+
         switch (message)
         {
             case ClientMessage.Refused refused:
@@ -82,9 +89,6 @@ internal sealed class CallSession : Session
                 break;
             case ClientMessage.Hello _:
                 Refuse(ClientMessage.Refused.Protocol("hello was already answered.", line));
-                break;
-            case ClientMessage.Call _ when !_welcomed:
-                Refuse(ClientMessage.Refused.Protocol("A call before welcome.", line));
                 break;
             case ClientMessage.Call call:
                 Accept(call);
@@ -228,9 +232,9 @@ internal sealed class CallSession : Session
         _host.Submit(queued);
     }
 
-    // Version 2's full check, before anything is queued: the shape (invalid_shape), then the params against the
-    // method's schema (invalid_argument with every problem and its path). A method the catalogue does not have is left
-    // to the main thread, which answers method_not_found as on version 1.
+    // The full check, before anything is queued: the shape (invalid_shape), then the params against the method's
+    // schema (invalid_argument with every problem and its path). A method the catalogue does not have is left to the
+    // main thread, which answers method_not_found.
     private bool Checked(ClientMessage.Call call, CatalogueMethod? method, out ShapeRequest? shape)
     {
         List<string> shapeProblems = new List<string>();
@@ -248,7 +252,7 @@ internal sealed class CallSession : Session
             return false;
         }
 
-        if (method == null || method.RunsInSidecar)
+        if (method == null)
         {
             return true;
         }

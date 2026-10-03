@@ -1,8 +1,6 @@
 #nullable enable
 
 using System;
-using System.Text;
-using System.Threading;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -13,19 +11,16 @@ using StationGodMCP.Pure.Scheduling;
 namespace StationGodMCP;
 
 /// <summary>
-/// Hands calls from the connections to the main thread and their answers back. Connections (and the synchronous pipe's
-/// listener threads, through Dispatch) post a call to the scheduler's inbox; StationGodMod.Update runs one frame of
-/// the lane scheduler on the main thread, where the game's objects may be used (ApiHost.Handle, ApiHost.HandleCall):
-/// the subscription lane's samples, light calls round-robin across connections within the frame's budget, then at most
-/// one heavy call (scheduling.md). Each answer goes straight to its call's Deliver: no thread waits on the main thread.
-/// A call the main thread does not reach before its deadline is answered game_timeout by the DeadlineWatch (or by the
-/// scheduler when it meets it) unrun; a call it has started is always answered with its result.
+/// Hands calls from the connections to the main thread and their answers back. Connections post a call to the
+/// scheduler's inbox; StationGodMod.Update runs one frame of the lane scheduler on the main thread, where the game's
+/// objects may be used (ApiHost.HandleCall): the subscription lane's samples, light calls round-robin across
+/// connections within the frame's budget, then at most one heavy call (scheduling.md). Each answer goes straight to its
+/// call's Deliver: no thread waits on the main thread. A call the main thread does not reach before its deadline is
+/// answered game_timeout by the DeadlineWatch (or by the scheduler when it meets it) unrun; a call it has started is
+/// always answered with its result.
 /// </summary>
 internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 {
-    /// <summary>How much longer than its deadline Dispatch waits for an answer the watch must already have given.</summary>
-    private const int DispatchGraceMilliseconds = 5000;
-
     private readonly ICallScheduler _requests;
     private readonly DeadlineWatch _deadlines;
 
@@ -69,25 +64,6 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         Stats.Frame(outcome.Served, outcome.SpentMs, outcome.BudgetStopped);
     }
 
-    public CallOutcome RunLine(LineCall call, double queueWaitMs)
-    {
-        try
-        {
-            if (Subscriptions != null && call.Profile.Method == SubscriptionHub.SampleLogicMethod)
-            {
-                return Subscriptions.StartSampleLogic(call, queueWaitMs);
-            }
-
-            HandledRequest handled = ApiHost.Handle(call.Json, queueWaitMs);
-            return new CallOutcome(handled.Json, handled.Method);
-        }
-        catch (Exception exception)
-        {
-            // ApiHost.Handle answers every tool and serializer error itself; this is the error reply failing too.
-            return Failed(exception);
-        }
-    }
-
     public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
         try
@@ -107,53 +83,10 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         }
         catch (Exception exception)
         {
-            // As in RunLine: the error reply itself failed.
-            return Failed(exception);
+            // ApiHost.HandleCall answers every tool and serializer error itself; this is the error reply failing too.
+            return new CallOutcome(
+                ApiHost.Serialize(CallReplyView.Refused(call.Request.Id, new ErrorView("internal_error", exception.Message))),
+                null);
         }
-    }
-
-    /// <summary>
-    /// One version-1 request from a thread that waits for its answer (the synchronous pipe): queued as any call, then
-    /// waited for. A method that runs for a while (x-duration: sample_logic) is waited for that much longer.
-    /// </summary>
-    internal string Dispatch(string requestJson, int timeoutMilliseconds)
-    {
-        WaitedAnswer answer = new WaitedAnswer();
-        CallProfile profile = CallProfiles.OfLine(ApiHost.CatalogueFile, requestJson, out int durationMs);
-        LineCall call = new LineCall(requestJson, timeoutMilliseconds + durationMs, null, answer.Set, profile);
-        Submit(call);
-        if (!answer.Wait(timeoutMilliseconds + durationMs + DispatchGraceMilliseconds) && call.State.TryDrop())
-        {
-            answer.Set(call.TimeoutReply(), null);
-        }
-
-        answer.Wait(Timeout.Infinite);
-        // Counted here, off the main thread, from the text the listener is about to write.
-        MethodStats.RecordReply(answer.Method, Encoding.UTF8.GetByteCount(answer.Reply!));
-        return answer.Reply!;
-    }
-
-    private static CallOutcome Failed(Exception exception) =>
-        new CallOutcome(ApiHost.Serialize(new ErrorReplyView(null, new ErrorView("internal_error", exception.Message), null)),
-            null);
-
-    private sealed class WaitedAnswer
-    {
-        // Not disposed, on purpose: a ManualResetEventSlim makes a kernel event only when its WaitHandle is asked for,
-        // and only Wait(int) and Set are used here.
-        private readonly ManualResetEventSlim _done = new ManualResetEventSlim(false);
-
-        internal string? Reply { get; private set; }
-
-        internal string? Method { get; private set; }
-
-        internal void Set(string reply, string? method)
-        {
-            Reply = reply;
-            Method = method;
-            _done.Set();
-        }
-
-        internal bool Wait(int milliseconds) => _done.Wait(milliseconds);
     }
 }

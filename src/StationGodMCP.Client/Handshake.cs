@@ -15,10 +15,8 @@ internal abstract record Connecting
 }
 
 /// <summary>
-/// Opening a connection (protocol.md, Versions and negotiation; Old clients). Over TCP the shared secret goes first;
-/// after it TCP talks as the pipe does. With ProtocolChoice.Auto the client sends hello offering version 2; any first
-/// answer without a type key is an old mod, which read hello as a version-1 request, and the same connection goes on in
-/// version 1.
+/// Opening a connection (protocol.md, Versions and negotiation). Over TCP the shared secret goes first; after it TCP
+/// talks as the pipe does. The client sends hello offering version 2 and needs a welcome.
 /// </summary>
 internal static class Handshake
 {
@@ -38,9 +36,7 @@ internal static class Handshake
             Connecting? signIn = target is GameTarget.Tcp
                 ? await SecretAsync(options, channel, cancellation).ConfigureAwait(false)
                 : null;
-            outcome = signIn ?? (options.Protocol == ProtocolChoice.Version1
-                ? new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version1, null))
-                : await HelloAsync(options, channel, cancellation).ConfigureAwait(false));
+            outcome = signIn ?? await HelloAsync(options, channel, cancellation).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is IOException or ObjectDisposedException ||
                                           exception is OperationCanceledException && !cancellation.IsCancellationRequested)
@@ -66,14 +62,9 @@ internal static class Handshake
             return Unreachable(((Answer.Missing)answer).Why);
         }
 
-        if (!message.TryGetProperty("type", out _))
-        {
-            return new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version1, null));
-        }
-
         return Wire.Text(message, "type") switch
         {
-            "welcome" => new Connecting.Connected(new GameConnection(target, channel, ProtocolVersion.Version2, message)),
+            "welcome" => new Connecting.Connected(new GameConnection(target, channel, message)),
             "reply" when Wire.Child(message, "error") is { } error => new Connecting.Failed(new CallOutcome.Refused(error)),
             _ => Unreachable($"{target.Description} answered hello unexpectedly: {Shorten(message)}")
         };

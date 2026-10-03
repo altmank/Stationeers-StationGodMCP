@@ -3,7 +3,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Scheduling;
@@ -32,7 +31,7 @@ internal interface ICallScheduler
 /// <summary>
 /// The lane scheduler (scheduling.md): listener threads post calls to a concurrent inbox; each frame the main thread
 /// sorts what arrived into FrameScheduler's lanes and runs the frame. A connection's place in the rounds is its
-/// Connection object; calls without one (the synchronous pipe) share one place. A call the scheduler refuses beyond
+/// Connection object; calls without one share one place. A call the scheduler refuses beyond
 /// max_in_flight is answered too_many_in_flight unrun.
 /// </summary>
 internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
@@ -156,8 +155,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
 /// <summary>
 /// A call's profile from the catalogue, worked out on the thread that received it. A method the catalogue does not
-/// know (answered method_not_found on the main thread) is an instant read. Version-1 lines keep today's order: each
-/// one is ordered like a write, whatever its class, so the lines of one connection run one after another.
+/// know (answered method_not_found on the main thread) is an instant read.
 /// </summary>
 internal static class CallProfiles
 {
@@ -167,31 +165,5 @@ internal static class CallProfiles
         return catalogue?.Catalogue.TryGet(method, out entry) == true && entry != null
             ? CallProfile.Of(entry, parameters)
             : new CallProfile(method, MethodClass.Read, new CallCost(CostClass.Instant, 1));
-    }
-
-    internal static CallProfile OfLine(CatalogueFile? catalogue, string line) => OfLine(catalogue, line, out _);
-
-    /// <summary>A line's profile, and the milliseconds its method runs for at its params (x-duration; 0 for most).</summary>
-    internal static CallProfile OfLine(CatalogueFile? catalogue, string line, out int durationMs)
-    {
-        string method = string.Empty;
-        JObject? parameters = null;
-        try
-        {
-            JObject request = JObject.Parse(line);
-            method = request["method"]?.Type == JTokenType.String ? (string)request["method"]! : string.Empty;
-            parameters = request["params"] as JObject;
-        }
-        catch (JsonReaderException)
-        {
-            // A line that is not JSON: the main thread answers it, as an instant call.
-        }
-
-        CallProfile profile = Of(catalogue, method, parameters);
-        CatalogueMethod? entry = null;
-        durationMs = catalogue?.Catalogue.TryGet(method, out entry) == true && entry != null
-            ? entry.DurationMs(parameters)
-            : 0;
-        return new CallProfile(profile.Method, MethodClass.Write, new CallCost(profile.Cost, profile.Items));
     }
 }

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Update the mod and the sidecar together.** The old protocol (one request line, one reply line) is gone: every
+  connection now starts with a `hello`, and anything else as the first line (after the shared secret over TCP) is
+  answered `protocol_error` and closed. A sidecar or script from before this version cannot talk to this mod, and this
+  sidecar cannot talk to an older mod. `[Server] Protocol2` and `[Server] OverlappedPipes` are gone, and so is the
+  synchronous pipe: off Windows only TCP serves. The Python library's `protocol` option is gone.
 - **The method catalogue (new).** Every tool's description, argument schema, class (read, write or cheat), cost
   class and reply keys now live in one file, `catalogue.json`, built from `catalogue/` and embedded in both the mod and
   the sidecar.
@@ -14,7 +19,7 @@
   `limit` (keep the first entries of a list, `shape_truncated` says how many there were) and `max_bytes`
   (`reply_too_large` with the sizes instead of a larger reply); the reply then carries `"shaped": true`. Every
   `fields` value that worked before gives the same result; a selector that is not a name is listed in
-  `fields_unmatched`, as an unknown name is. A sidecar talking to an older mod still applies `fields` itself.
+  `fields_unmatched`, as an unknown name is.
 - **`fields` saves the game's work too.** A key that costs the game real work is not worked out at all when `fields`
   leaves it out; the reply is the same as before. The first is `thing_health`'s `networks` in a scan, a network's
   pieces and a list of ids (`fields: ["reference_id", "damage_ratio"]` no longer walks every structure's ends). The
@@ -23,32 +28,30 @@
   up to `[Server] MaxPipeConnections` connections (32 by default, was 4); a client past the limit waits until one
   closes. Requests answer exactly as before. A request the game has started is now always answered with its result,
   even when it finishes after 30 seconds; one not started within 30 seconds is still answered `game_timeout` and never
-  runs. `[Server] OverlappedPipes = false` brings back the synchronous pipe.
-- **Protocol version 2 on the pipe (new).** A client whose first line is a `hello` speaks version 2: a `welcome` with
+  runs.
+- **Protocol version 2 on the pipe (new).** A client starts with a `hello` and gets a `welcome` with
   its connection id, the server's identity and world (`instance_id`, a `world.id` new on every world load), the
   catalogue's hash and the limits; then `call` messages by id, up to 16 in flight per connection, answered in any
   order (`reply` with `shaped`, `elapsed_ms`, `queue_ms`, `frame`), `cancel`, `deadline_ms`, a `ping` after 30 s of
   silence, `world_changed`, and `goodbye`. A call that changes the world waits for the connection's earlier calls,
   and later calls wait for it. The protocol method `catalogue` answers the whole catalogue. Calls are taken from each
-  connection in turn. Every other client is served exactly as before. `mod_info` `runtime.connections` lists the
-  open connections. `[Server] Protocol2 = false` turns version 2 off. The protocol is in
+  connection in turn. `mod_info` `runtime.connections` lists the open connections. The protocol is in
   `docs/architecture/protocol.md`.
-- **Version 2 checks every call in full.** Before a version-2 call is queued, its arguments are checked against the
+- **Every call is checked in full.** Before a call is queued, its arguments are checked against the
   method's catalogue entry: names at every depth, types, ranges, enums, patterns and required arguments. A refusal is
-  `invalid_argument` with `data.problems`, each `{path, problem}` (`limit`, `items[0].logic`). A `shape` version 2
+  `invalid_argument` with `data.problems`, each `{path, problem}` (`limit`, `items[0].logic`). A `shape` the mod
   cannot use (not an object, an unknown key, a selector that is not a name, more than 256 selectors, a `limit` on a
-  key that is not one of the reply's lists, values out of range) is `invalid_shape`. Version 1 is checked as before;
-  `[Server] StrictArguments = false` checks version 2 the same way.
+  key that is not one of the reply's lists, values out of range) is `invalid_shape`. `[Server] StrictArguments =
+  false` checks top-level argument names only.
 - **Protocol 2 over TCP.** A TCP client still sends the shared `[Remote MCP] Secret` first; after it the connection
-  talks exactly as over the pipe, so a `hello` starts version 2 and anything else version 1. At most
+  talks exactly as over the pipe, `hello` first. At most
   `[Server] MaxTcpConnections` (8) TCP connections at once, counted apart from the pipe's; the log records each TCP
   sign-in with its address.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
 - **Python client library (new).** `clients/python` (`stationgod`, Python 3.12): connect to the pipe or TCP, call any
   method by its catalogue name with `fields`, `limit` and `output_file`, page through paged methods, run several calls
-  at once, reconnect, and subscribe; it sends the shared secret over TCP and falls back to the old protocol on an
-  older mod.
+  at once, reconnect, and subscribe; it sends the shared secret over TCP.
 - **The sidecar runs on a C# client library.** One connection to the game, kept open, with the agent's calls sent over
   it as they come; the tool list comes from the game's catalogue, and the agent is told when it changes. A reply over
   200 KB without `output_file` goes to a file on its own (`auto_output_file: true`; `--inline-limit-kb`). New option
@@ -68,8 +71,7 @@
   connection does not hold). welcome lists the `subscriptions` feature and the limits.
 - **`sample_logic` runs in the game.** It keeps its arguments, limits and reply, and now takes each sample in the
   first frame it is due, on the real clock, instead of one round trip per sample; the call answers when its last
-  sample is taken. Every wait for it, in the mod and the clients, grows by its `duration_seconds`. A sidecar talking to
-  an older mod still samples it itself.
+  sample is taken. Every wait for it, in the mod and the clients, grows by its `duration_seconds`.
 
 ## 1.10.0
 

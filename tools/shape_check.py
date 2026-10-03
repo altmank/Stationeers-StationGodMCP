@@ -1,6 +1,6 @@
 """Check the mod's shaping against a live game: the same call with and without `shape`, compared.
 
-Sends version-1 request lines on the pipe named on the command line: once unshaped, once with `shape.fields`. Passes
+Sends calls on one connection to the pipe named on the command line: once unshaped, once with `shape.fields`. Passes
 when the shaped reply carries "shaped": true and equals the unshaped reply projected here by the same rules (key order
 included), and, with --max-ratio, when it is at most that fraction of the unshaped reply's bytes. Read only: it calls
 only the method named (plus find_things for --ids-from-find) and writes nothing anywhere. Pause the world first, so
@@ -15,53 +15,43 @@ both reads see the same state.
     py -3.12 tools/shape_check.py --self-test
 """
 import argparse
-import ctypes
+import itertools
 import json
-import msvcrt
 import os
 import re
 import sys
-import time
-from ctypes import wintypes
 
-GENERIC_READ = 0x80000000
-GENERIC_WRITE = 0x40000000
-OPEN_EXISTING = 3
-INVALID_HANDLE_VALUE = wintypes.HANDLE(-1).value
-ERROR_PIPE_BUSY = 231
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "clients", "python"))
+from stationgod.connection import PipeTarget, encode, open_connection  # noqa: E402
+
 NAME = re.compile(r"^[A-Za-z0-9_]+$")
 
-_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-_CreateFileW = _kernel32.CreateFileW
-_CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
-                         wintypes.DWORD, wintypes.HANDLE]
-_CreateFileW.restype = wintypes.HANDLE
 
+class RawCalls:
+    """One protocol-2 connection on the named pipe (hello and welcome through the Python library in clients/python),
+    then each call line written and its reply line read here, as text, one call at a time."""
 
-def call_raw(pipe_name, request, timeout=10.0):
-    """One request line, one reply line; returns the reply's text."""
-    path = "\\\\.\\pipe\\" + pipe_name
-    deadline = time.monotonic() + timeout
-    while True:
-        handle = _CreateFileW(path, GENERIC_READ | GENERIC_WRITE, 0, None, OPEN_EXISTING, 0, None)
-        if handle != INVALID_HANDLE_VALUE:
-            break
-        if time.monotonic() >= deadline:
-            raise SystemExit(f"no answer on {path} ({ctypes.get_last_error()})")
-        time.sleep(0.05)
-    with open(msvcrt.open_osfhandle(handle, os.O_RDWR | os.O_BINARY), "r+b", buffering=0) as pipe:
-        pipe.write((json.dumps(request) + "\n").encode("utf-8"))
-        reply = bytearray()
-        while not reply.endswith(b"\n"):
-            chunk = pipe.read(1 << 20)
-            if not chunk:
-                raise SystemExit("the game closed the pipe without replying")
-            reply += chunk
-    return reply.decode("utf-8")
+    def __init__(self, pipe_name, client):
+        self._connection = open_connection(PipeTarget(pipe_name), client=client, connect_timeout=10.0)
+        self._ids = itertools.count(1)
+
+    def text(self, method, params, shape=None):
+        call_id = str(next(self._ids))
+        message = {"type": "call", "id": call_id, "method": method, "params": params}
+        if shape:
+            message["shape"] = shape
+        self._connection.stream.write(encode(message))
+        while True:
+            line = self._connection.lines.next()
+            if line is None:
+                raise SystemExit(f"{method}: the game closed the connection without replying")
+            reply = json.loads(line)
+            if reply.get("type") == "reply" and reply.get("id") == call_id:
+                return line.decode("utf-8")
 
 
 def project(reply, selectors):
-    """The reply with the selectors applied by the version-1 rules (protocol.md, Shaping)."""
+    """The reply with the selectors applied by the lenient rules (protocol.md, Shaping)."""
     selectors = list(dict.fromkeys(s.strip() for s in selectors))
     if not isinstance(reply, dict):
         return reply
@@ -148,16 +138,16 @@ def ordered_equal(a, b):
 
 
 def run(pipe, method, params, fields, max_ratio):
-    plain_text = call_raw(pipe, {"id": "plain", "method": method, "params": params})
-    shaped_text = call_raw(pipe, {"id": "shaped", "method": method, "params": params, "shape": {"fields": fields}})
+    plain_text = pipe.text(method, params)
+    shaped_text = pipe.text(method, params, {"fields": fields})
     plain, shaped = json.loads(plain_text), json.loads(shaped_text)
     if not plain.get("ok") or not shaped.get("ok"):
         raise SystemExit(f"error reply: {plain.get('error') or shaped.get('error')}")
     problems = []
     if shaped.get("shaped") is not True:
         problems.append("the shaped reply is not marked shaped: true")
-    if "shaped" in plain:
-        problems.append("the unshaped reply carries a shaped mark")
+    if plain.get("shaped") is not False:
+        problems.append("the unshaped reply is not marked shaped: false")
     expected = project(plain["result"], fields)
     if not ordered_equal(expected, shaped["result"]):
         problems.append("the shaped result differs from the unshaped result projected here")
@@ -199,14 +189,15 @@ def main():
     if not (args.pipe and args.method and args.fields):
         parser.error("--pipe, --method and --fields are required")
     params = json.loads(args.params)
+    calls = RawCalls(args.pipe, "shape-check")
     if args.ids_from_find:
         filters = {}
         for pair in args.ids_from_find.split(","):
             key, value = pair.split("=", 1)
             filters[key] = int(value) if value.isdigit() else value
-        found = json.loads(call_raw(args.pipe, {"id": "find", "method": "find_things", "params": filters}))
+        found = json.loads(calls.text("find_things", filters))
         params["reference_ids"] = [thing["reference_id"] for thing in found["result"]["things"]]
-    return 0 if run(args.pipe, args.method, params, args.fields.split(","), args.max_ratio) else 1
+    return 0 if run(calls, args.method, params, args.fields.split(","), args.max_ratio) else 1
 
 
 if __name__ == "__main__":

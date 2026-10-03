@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace StationGodMCP.Server;
 
@@ -10,11 +9,11 @@ namespace StationGodMCP.Server;
 /// number its enum does not list (strings compared as the mod compares them: trimmed, ignoring case), an array with
 /// fewer or more entries than minItems and maxItems allow, a tool's required argument left out, a key given twice in
 /// one object (JSON parsers keep the last one silently), and a number past a double's range (1e309). An integer may be
-/// written as any JSON number with no fraction (3.0, 1e2, 1e19), as JSON Schema's integer allows; Normalised rewrites
-/// those within a long's range as integers for the mod, which reads integer tokens only (one past it goes as given, and
-/// the mod refuses it with the argument's range). Numeric ranges stay with the mod, which words them per tool, and so
-/// do the required fields of an array's entries: a batch answers a bad entry by itself. JSON null is an omitted
-/// property, as the mod reads it. The mod itself stays lenient for pipe clients (e.g. ids as JSON integers).
+/// written as any JSON number with no fraction (3.0, 1e2, 1e19), as JSON Schema's integer allows. Numeric ranges
+/// stay with the mod, which words them per tool, and so do the required fields of an array's entries: a batch answers
+/// a bad entry by itself. JSON null is an omitted property, as the mod reads it. The sidecar checks with it only what
+/// cannot be sent as written (Unsendable) and its own arguments (ProblemsOf); the mod checks the rest against its
+/// catalogue.
 /// </summary>
 internal static class ArgumentCheck
 {
@@ -28,6 +27,12 @@ internal static class ArgumentCheck
                 : [.. Missing(schema, arguments), .. Check(schema, arguments, string.Empty)],
             _ => ["The arguments must be a JSON object."]
         };
+
+    /// <summary>
+    /// What cannot be sent to the mod as written, at any depth: a key given twice (JSON parsers keep the last one
+    /// silently) or a number past a double's range; empty when nothing is.
+    /// </summary>
+    internal static IReadOnlyList<string> Unsendable(JsonElement arguments) => Malformed(arguments, string.Empty);
 
     /// <summary>What is wrong with only the named arguments (the sidecar's own: fields, output_file); empty when nothing is.</summary>
     internal static IReadOnlyList<string> ProblemsOf(JsonElement schema, JsonElement arguments, IEnumerable<string> names) =>
@@ -58,13 +63,6 @@ internal static class ArgumentCheck
     private static bool IsGiven(JsonElement arguments, string name) =>
         arguments.ValueKind == JsonValueKind.Object && arguments.TryGetProperty(name, out JsonElement value) &&
         value.ValueKind != JsonValueKind.Null;
-
-    /// <summary>
-    /// The arguments as the mod should get them: every number where the schema asks for an integer written as one
-    /// (3.0 and 1e2 as 3 and 100). Call it on arguments Problems passed.
-    /// </summary>
-    internal static JsonElement Normalised(JsonElement schema, JsonElement arguments) =>
-        JsonSerializer.SerializeToElement(Normalise(schema, arguments));
 
     /// <summary>The first key given twice in this object (not below it), or null.</summary>
     internal static string? RepeatedKey(JsonElement value)
@@ -100,59 +98,6 @@ internal static class ArgumentCheck
     private static bool IsWhole(JsonElement number) =>
         number.TryGetInt64(out _) ||
         (number.TryGetDouble(out double value) && double.IsFinite(value) && Math.Floor(value) == value);
-
-    // A JSON number with no fraction, as the integer it is; null for a fraction or past a long's range.
-    private static long? WholeNumber(JsonElement number)
-    {
-        if (number.TryGetInt64(out long exact))
-        {
-            return exact;
-        }
-
-        const double LongRange = 9.2e18;
-        return number.TryGetDouble(out double value) && double.IsFinite(value) && Math.Floor(value) == value &&
-               Math.Abs(value) < LongRange
-            ? (long)value
-            : null;
-    }
-
-    private static JsonNode? Normalise(JsonElement schema, JsonElement value)
-    {
-        if (schema.ValueKind == JsonValueKind.Object && Alternatives(schema) is { } branches)
-        {
-            JsonElement taken = branches.FirstOrDefault(branch => Check(branch, value, string.Empty).Count == 0);
-            return Normalise(taken, value);
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.Number when AsksForInteger(schema) && WholeNumber(value) is { } whole => JsonValue.Create(whole),
-            JsonValueKind.Object => NormaliseObject(schema, value),
-            JsonValueKind.Array => new JsonArray(value.EnumerateArray()
-                .Select(item => Normalise(ItemsOf(schema), item)).ToArray()),
-            _ => JsonNode.Parse(value.GetRawText())
-        };
-    }
-
-    private static JsonObject NormaliseObject(JsonElement schema, JsonElement value)
-    {
-        JsonObject normalised = new();
-        foreach (JsonProperty property in value.EnumerateObject())
-        {
-            normalised[property.Name] = Normalise(PropertySchema(schema, property.Name), property.Value);
-        }
-
-        return normalised;
-    }
-
-    private static bool AsksForInteger(JsonElement schema)
-    {
-        string[] names = TypeNames(schema);
-        return names.Contains("integer") && !names.Contains("number");
-    }
-
-    private static JsonElement ItemsOf(JsonElement schema) =>
-        schema.ValueKind == JsonValueKind.Object && schema.TryGetProperty("items", out JsonElement items) ? items : default;
 
     private static JsonElement PropertySchema(JsonElement schema, string name)
     {

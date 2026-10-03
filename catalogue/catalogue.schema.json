@@ -125,12 +125,7 @@
         "x-read-by": {"type": "object", "additionalProperties": {"type": "string"}},
         "deprecated": {"type": "boolean"},
         "deprecated_aliases": {"type": "object", "additionalProperties": {"type": "string"}},
-        "errors": {"type": "array", "items": {"type": "string"}},
-        "x-runs-in": {
-          "enum": ["mod", "sidecar"],
-          "default": "mod",
-          "description": "Where the method runs: the mod (default), or the sidecar while it still does (sample_logic until stage 12)."
-        }
+        "errors": {"type": "array", "items": {"type": "string"}}
       }
     }
   }

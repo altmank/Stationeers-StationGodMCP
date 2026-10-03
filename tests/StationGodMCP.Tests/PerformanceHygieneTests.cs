@@ -272,10 +272,10 @@ public sealed class PerformanceHygieneTests
 
     public static IEnumerable<object[]> Replies()
     {
-        yield return new object[] { new ReplyView("7", new ChuteSummaryView(0), 1.25) };
-        yield return new object[] { new ReplyView(null, new { value = double.NaN, high = double.PositiveInfinity, low = double.NegativeInfinity, at = 0.1f }, 0.5) };
-        yield return new object[] { new ErrorReplyView("7", new ErrorView("game_timeout", "t \"quoted\" °C"), null) };
-        yield return new object[] { new ReplyView("x", new { id = new ThingId(123456789012), ids = new List<ThingId> { new ThingId(1), new ThingId(2) }, map = new Dictionary<string, double> { ["Oxygen"] = 1.79, ["CamelKey"] = 2 } }, 0.01) };
+        yield return new object[] { CallReplyView.Of("7", new ChuteSummaryView(0), false, 1.25, 0.5, 9) };
+        yield return new object[] { CallReplyView.Of(null, new { value = double.NaN, high = double.PositiveInfinity, low = double.NegativeInfinity, at = 0.1f }, false, 0.5, 0, 1) };
+        yield return new object[] { CallReplyView.Refused("7", new ErrorView("game_timeout", "t \"quoted\" °C")) };
+        yield return new object[] { CallReplyView.Of("x", new { id = new ThingId(123456789012), ids = new List<ThingId> { new ThingId(1), new ThingId(2) }, map = new Dictionary<string, double> { ["Oxygen"] = 1.79, ["CamelKey"] = 2 } }, false, 0.01, 0, 1) };
         yield return new object[] { new LogicTypeView(65535, null) };
         yield return new object[] { RuntimeWireTests.EmptyRuntime() };
     }

@@ -11,7 +11,7 @@ public abstract record SubscribeOutcome
 
     public sealed record Subscribed(Subscription Subscription) : SubscribeOutcome;
 
-    /// <summary>Version 1, or 'subscriptions' not in welcome.features: poll read_devices with the same items.</summary>
+    /// <summary>'subscriptions' not in welcome.features: poll read_devices with the same items.</summary>
     public sealed record Unsupported(string Message) : SubscribeOutcome;
 
     /// <summary>Refused (subscription_limit: poll instead) or no answer.</summary>

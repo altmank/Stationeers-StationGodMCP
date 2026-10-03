@@ -7,13 +7,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
-using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
-using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Protocol;
 
@@ -72,8 +69,8 @@ internal static class ProtocolLog
 }
 
 /// <summary>
-/// One client connection. A reader thread reads lines and hands them to the connection's session, which the first
-/// line chooses (version 1 or 2); a writer thread writes whatever is queued for the client, in order, so replies and
+/// One client connection. A reader thread reads lines and hands them to the connection's session (behind the shared
+/// secret over TCP); a writer thread writes whatever is queued for the client, in order, so replies and
 /// events are written while a read waits. The reader owns the connection's life: when it ends it stops the writer,
 /// waits for it, and frees the transport.
 /// </summary>
@@ -115,7 +112,7 @@ internal sealed class Connection
 
     internal string Transport => _transport.Kind;
 
-    /// <summary>The protocol the first line chose; null before it.</summary>
+    /// <summary>The connection's session; null before its first line.</summary>
     internal Session? Session => _session;
 
     /// <summary>Set once the reader has ended and the transport is freed.</summary>
@@ -239,7 +236,13 @@ internal sealed class Connection
             {
                 if (_session == null)
                 {
-                    _session = _host.SessionFor(this, line);
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        // Blank lines are ignored, and do not stop the first-line timeout.
+                        continue;
+                    }
+
+                    _session = _host.SessionFor(this);
                     framer.MaximumLineBytes = _session.MaximumLineBytes;
                 }
 
@@ -383,11 +386,11 @@ internal sealed class Connection
     }
 }
 
-/// <summary>What a connection does with each line after the first one chose the protocol.</summary>
+/// <summary>What a connection does with each line it reads.</summary>
 internal abstract class Session
 {
-    /// <summary>1 or 2.</summary>
-    internal abstract int Protocol { get; }
+    /// <summary>The protocol version spoken (mod_info).</summary>
+    internal int Protocol => 2;
 
     /// <summary>The longest line accepted; null for no limit.</summary>
     internal virtual int? MaximumLineBytes => null;
@@ -438,55 +441,9 @@ internal abstract class Session
 }
 
 /// <summary>
-/// Version 1: one request line, one reply line, in order. Each request waits for its answer before the next line is
-/// taken, as the listener thread waited before.
-/// </summary>
-internal sealed class LineSession : Session
-{
-    private readonly Connection _connection;
-    private readonly ProtocolHost _host;
-
-    internal LineSession(Connection connection, ProtocolHost host)
-    {
-        _connection = connection;
-        _host = host;
-    }
-
-    internal override int Protocol => 1;
-
-    internal override void OnLine(string line)
-    {
-        if (string.IsNullOrWhiteSpace(line))
-        {
-            return;
-        }
-
-        // Not disposed: the main thread or the deadline watch may still set it after this connection gave up waiting.
-        ManualResetEventSlim answered = new ManualResetEventSlim(false);
-        CallProfile profile = CallProfiles.OfLine(_host.Catalogue, line, out int durationMs);
-        LineCall call = new LineCall(line, _host.Settings.LineTimeoutMilliseconds + durationMs, _connection, (reply, method) =>
-        {
-            _connection.Send(reply, method);
-            _connection.Served();
-            answered.Set();
-        }, profile);
-        _host.Submit(call);
-        while (!answered.Wait(500))
-        {
-            if (_connection.IsStopping)
-            {
-                return;
-            }
-        }
-    }
-
-    internal override void ShutDown(string reason) => _connection.Close();
-}
-
-/// <summary>
 /// TCP: the first line must be the shared-secret sign-in {"type": "auth", "secret": ...}, compared in fixed time with
-/// [Remote MCP] Secret. After it the connection talks exactly as a pipe connection: a hello starts version 2, anything
-/// else version 1. Each sign-in is logged with the client's address.
+/// [Remote MCP] Secret. After it the connection talks exactly as a pipe connection, hello first. Each sign-in is logged
+/// with the client's address.
 /// </summary>
 internal sealed class SecretGateSession : Session
 {
@@ -500,8 +457,6 @@ internal sealed class SecretGateSession : Session
         _connection = connection;
         _host = host;
     }
-
-    internal override int Protocol => _inner?.Protocol ?? 1;
 
     internal override int? MaximumLineBytes => _inner?.MaximumLineBytes;
 
@@ -527,7 +482,7 @@ internal sealed class SecretGateSession : Session
 
         if (_signedIn)
         {
-            _inner = _host.AfterSignIn(_connection, line);
+            _inner = _host.AfterSignIn(_connection);
             _inner.OnLine(line);
             return;
         }

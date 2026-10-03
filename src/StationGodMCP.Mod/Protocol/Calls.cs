@@ -5,8 +5,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 using Newtonsoft.Json.Linq;
-using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Shaping;
@@ -16,7 +14,7 @@ namespace StationGodMCP.Protocol;
 /// <summary>
 /// One request on its way to the main thread. Its CallState makes sure it is answered once: by the main thread with
 /// its result after running it, or without running by the deadline watch, a cancel or a shutdown. The answer goes to
-/// Deliver, which hands it to whoever waits for it (a connection's outbound queue, or a waiting listener thread).
+/// Deliver, which hands it to its connection's outbound queue.
 /// </summary>
 internal abstract class QueuedCall
 {
@@ -113,14 +111,11 @@ internal readonly struct CallOutcome
 /// <summary>Runs calls on the main thread (StationGodRequestDispatcher, through ApiHost).</summary>
 internal interface ICallRunner
 {
-    /// <summary>A version-1 request line, answered with today's envelope.</summary>
-    CallOutcome RunLine(LineCall call, double queueWaitMs);
-
-    /// <summary>A version-2 call, answered with a reply message.</summary>
+    /// <summary>A call, answered with a reply message.</summary>
     CallOutcome RunCall(ProtocolCall call, double queueWaitMs);
 }
 
-/// <summary>A version-2 call as the main thread runs it: id, method, params and shape, already read.</summary>
+/// <summary>A call as the main thread runs it: id, method, params and shape, already read.</summary>
 internal sealed class CallRequest
 {
     internal CallRequest(string id, string method, JObject? parameters, ShapeRequest? shape)
@@ -141,11 +136,12 @@ internal sealed class CallRequest
 }
 
 /// <summary>
-/// A version-2 call in flight on a connection. Answers it never ran for (timeout, cancel, shutdown) are reply messages
+/// A call in flight on a connection. Answers it never ran for (timeout, cancel, shutdown) are reply messages
 /// without elapsed_ms or frame.
 /// </summary>
 internal sealed class ProtocolCall : QueuedCall
 {
+    internal const string TimeoutCode = "game_timeout";
     internal const string CancelledCode = "cancelled";
     internal const string ShuttingDownCode = "shutting_down";
 
@@ -166,7 +162,7 @@ internal sealed class ProtocolCall : QueuedCall
 
     internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunCall(this, queueWaitMs);
 
-    internal override string TimeoutReply() => Wire.Refusal(Request.Id, LineCall.TimeoutCode,
+    internal override string TimeoutReply() => Wire.Refusal(Request.Id, TimeoutCode,
         "The call was not started before its deadline; it did not run.");
 
     internal override string RefusalReply(string code, string message) => Wire.Refusal(Request.Id, code, message);
@@ -189,54 +185,6 @@ internal interface ICallQueue
 
     /// <summary>The connection ended: its waiting calls are dropped, and what it had going on the main thread ends.</summary>
     void Closed(object source);
-}
-
-/// <summary>A version-1 request line: one request, one reply, today's envelope.</summary>
-internal sealed class LineCall : QueuedCall
-{
-    internal const string TimeoutCode = "game_timeout";
-
-    private readonly Action<string, string?> _deliver;
-    private readonly int _timeoutMilliseconds;
-    private readonly object? _source;
-
-    internal LineCall(string json, int timeoutMilliseconds, object? source, Action<string, string?> deliver,
-        CallProfile profile)
-        : base(DeadlineAfter(timeoutMilliseconds), profile)
-    {
-        Json = json;
-        _timeoutMilliseconds = timeoutMilliseconds;
-        _source = source;
-        _deliver = deliver;
-    }
-
-    internal string Json { get; }
-
-    internal override object? Source => _source;
-
-    internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunLine(this, queueWaitMs);
-
-    internal override string TimeoutReply() => ApiJson.WriteFresh(new ErrorReplyView(ReadRequestId(Json),
-        new ErrorView(TimeoutCode, "The Stationeers main thread did not process the request within " +
-                                   $"{_timeoutMilliseconds / 1000} seconds."), null));
-
-    internal override string RefusalReply(string code, string message) =>
-        ApiJson.WriteFresh(new ErrorReplyView(ReadRequestId(Json), new ErrorView(code, message), null));
-
-    internal override void Deliver(string reply, string? method) => _deliver(reply, method);
-
-    private static string? ReadRequestId(string json)
-    {
-        try
-        {
-            return JObject.Parse(json).Value<string>("id");
-        }
-        catch (Exception)
-        {
-            // JObject.Parse on a line that is not JSON, or an id that is not a string: the reply has no id to echo.
-            return null;
-        }
-    }
 }
 
 /// <summary>

@@ -48,7 +48,7 @@ internal sealed class ShapeRequest
     internal bool Wants(string list, string key) => Fields == null || Fields.EntryNodeFor(list).Child(key) != null;
 
     /// <summary>
-    /// The version-1 reading, which never refuses: null when there is no shape object; inside it, a selector that does
+    /// The lenient reading ([Server] StrictArguments false), which never refuses: null when there is no shape object; inside it, a selector that does
     /// not parse is kept only to be reported unmatched, and a limit, a max_bytes or a key it cannot use is ignored.
     /// </summary>
     internal static ShapeRequest? Lenient(JToken? token)
@@ -100,11 +100,11 @@ internal sealed class ShapeRequest
 
     private static int? LenientMaxBytes(JToken? token) => WholeNumber(token, MinimumMaxBytes, MaximumMaxBytes);
 
-    /// <summary>The most selectors a version-2 shape may list.</summary>
+    /// <summary>The most selectors a shape may list.</summary>
     internal const int MaximumSelectors = 256;
 
     /// <summary>
-    /// The version-2 reading, which refuses what it cannot use: a shape that is not an object, a key other than fields,
+    /// The strict reading, which refuses what it cannot use: a shape that is not an object, a key other than fields,
     /// limit and max_bytes, fields that is not 1 to 256 strings each following the selector grammar, a limit naming a
     /// key that is not one of the reply's lists (replyLists, from the catalogue) or outside 0 to 100,000, a max_bytes
     /// outside 1,024 to 16,777,216. Null with the problems added when it refuses; null without problems when there is

@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// One version-2 message from a client, parsed on its connection's reader thread: hello, call, cancel or bye, or
+/// One message from a client, parsed on its connection's reader thread: hello, call, cancel or bye, or
 /// a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are fixed; an
 /// unknown one is a protocol error, so a client cannot believe the server read something it ignored.
 /// </summary>
@@ -330,32 +330,5 @@ internal abstract class ClientMessage
         internal static Refused Protocol(string message, string line) =>
             new Refused("protocol_error", message, null, true,
                 new Dictionary<string, string> { ["line_start"] = line.Length <= LineStartLength ? line : line.Substring(0, LineStartLength) });
-    }
-}
-
-/// <summary>
-/// Which protocol a connection speaks, from its first line: an object whose type is "hello" starts version 2; anything
-/// else (a request object, an empty object, a line that is not JSON) is a version-1 request and is answered as today.
-/// </summary>
-internal static class FirstLine
-{
-    internal static bool StartsVersion2(string line)
-    {
-        if (line.IndexOf("hello", StringComparison.Ordinal) < 0)
-        {
-            return false;
-        }
-
-        try
-        {
-            using JsonTextReader reader = new JsonTextReader(new StringReader(line)) { DateParseHandling = DateParseHandling.None };
-            JToken token = JToken.ReadFrom(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Ignore });
-            return token is JObject message && message["type"]?.Type == JTokenType.String && (string)message["type"]! == "hello";
-        }
-        catch (JsonReaderException)
-        {
-            // Not JSON: a version-1 line, which version 1 answers as it always has.
-            return false;
-        }
     }
 }

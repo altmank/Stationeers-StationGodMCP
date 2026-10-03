@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Runs;
@@ -19,8 +18,8 @@ using StationGodMCP.Pure.Shaping;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// Every method by name, and one request in and one reply out. Requests run on the main thread, one at a time
-/// (StationGodRequestDispatcher.ProcessPendingRequests). A refusal is the tool's ApiException; a game member this
+/// Every method by name, and one call in and one reply out. Calls run on the main thread, one at a time
+/// (StationGodRequestDispatcher.RunCall). A refusal is the tool's ApiException; a game member this
 /// build no longer has is game_changed; anything else is internal_error, logged.
 /// </summary>
 internal static class ApiHost
@@ -124,46 +123,28 @@ internal static class ApiHost
         };
 
     /// <summary>
-    /// One version-1 request line: its reply as JSON text, and the method it named when that is a known one (for the
-    /// reply size the listener records). The handler's time (parse to reply object) goes into the reply's elapsed_ms;
-    /// it, the serialisation's time and the queue wait go into MethodStats.
-    /// </summary>
-    internal static HandledRequest Handle(string requestJson, double queueWaitMs)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        Answer answer = RunLine(requestJson, watch);
-        return Finish(answer, queueWaitMs, static (ref Answer done) => SerializeLine(ref done));
-    }
-
-    /// <summary>
-    /// One version-2 call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame). Arguments
-    /// are checked as on version 1 (names only); the result is shaped by the call's shape, and a reply larger than
-    /// max_reply_bytes (or the shape's max_bytes) is answered reply_too_large.
+    /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame). Top-level argument
+    /// names are checked here (with StrictArguments the full check already ran on the connection's thread); the result
+    /// is shaped by the call's
+    /// shape, and a reply larger than max_reply_bytes (or the shape's max_bytes) is answered reply_too_large.
     /// </summary>
     internal static HandledRequest HandleCall(CallRequest call, double queueWaitMs, long frame)
     {
         Stopwatch watch = Stopwatch.StartNew();
         Answer answer = Run(call.Id, call.Method, call.Params, call.Shape, watch);
         double queueMs = Math.Round(queueWaitMs, ElapsedDecimals);
-        return Finish(answer, queueWaitMs, (ref Answer done) => SerializeCall(ref done, queueMs, frame));
-    }
-
-    private delegate string ReplyWriter(ref Answer answer);
-
-    private static HandledRequest Finish(Answer answer, double queueWaitMs, ReplyWriter write)
-    {
         long serializeStarted = Stopwatch.GetTimestamp();
         string json;
         try
         {
-            json = write(ref answer);
+            json = SerializeCall(ref answer, queueMs, frame);
         }
         catch (Exception exception)
         {
             // The serializer failing on a tool's reply object: answered internal_error, as any tool failure is.
             StationGodMod.LogWarning($"API reply could not be serialised: {exception}");
             answer = answer.Failed(new ErrorView("internal_error", exception.Message));
-            json = write(ref answer);
+            json = SerializeCall(ref answer, queueMs, frame);
         }
 
         double serializeMs = MillisecondsSince(serializeStarted);
@@ -171,35 +152,7 @@ internal static class ApiHost
         return new HandledRequest(json, MethodStats.Counted(answer.Method));
     }
 
-    /// <summary>
-    /// Today's envelope; with a shape, the shaped reply, or reply_too_large (unshaped, with the list lengths) when it
-    /// is larger than the shape's max_bytes.
-    /// </summary>
-    private static string SerializeLine(ref Answer answer)
-    {
-        if (!answer.Ok)
-        {
-            return Serialize(new ErrorReplyView(answer.RequestId, answer.Error!, answer.HandlerMs));
-        }
-
-        ReplyView reply = new ReplyView(answer.RequestId, answer.Result!, answer.HandlerMs);
-        if (answer.Shape == null)
-        {
-            return Serialize(reply);
-        }
-
-        ShapedText shaped = ApiJson.WriteShaped(reply.AsShaped(), answer.Shape);
-        int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
-        if (answer.Shape.MaxBytes is int limit && bytes > limit)
-        {
-            answer = answer.Failed(ReplyTooLarge.Of(bytes, limit, shaped.Outcome));
-            return Serialize(new ErrorReplyView(answer.RequestId, answer.Error!, answer.HandlerMs));
-        }
-
-        return shaped.Json;
-    }
-
-    /// <summary>The version-2 reply message: always written through the shaping writer, which also counts the lists.</summary>
+    /// <summary>The reply message: always written through the shaping writer, which also counts the lists.</summary>
     private static string SerializeCall(ref Answer answer, double queueMs, long frame)
     {
         if (!answer.Ok)
@@ -221,31 +174,8 @@ internal static class ApiHost
         return shaped.Json;
     }
 
-    /// <summary>The largest reply version 2 sends (limits.max_reply_bytes).</summary>
+    /// <summary>The largest reply sent (limits.max_reply_bytes).</summary>
     internal const int MaxReplyBytes = 16777216;
-
-    private static Answer RunLine(string requestJson, Stopwatch watch)
-    {
-        string? requestId = null;
-        string? method = null;
-        try
-        {
-            JObject request = ParseRequest(requestJson);
-            requestId = request.Value<string>("id");
-            method = request.Value<string>("method");
-            return Run(requestId, method, request["params"] as JObject, ShapeRequest.Lenient(request["shape"]), watch);
-        }
-        catch (ApiException exception)
-        {
-            return Answer.Failure(requestId, method, new ErrorView(exception.Code, exception.Message), Elapsed(watch));
-        }
-        catch (Exception exception)
-        {
-            // An id or method that is not a string (Value<string> on an object): answered as any failure is.
-            StationGodMod.LogWarning($"API request failed: {exception}");
-            return Answer.Failure(requestId, method, new ErrorView("internal_error", exception.Message), Elapsed(watch));
-        }
-    }
 
     private static Answer Run(string? requestId, string? method, JObject? parameters, ShapeRequest? shape, Stopwatch watch)
     {
@@ -294,7 +224,7 @@ internal static class ApiHost
     /// <summary>Loads the embedded catalogue now (at mod start), so the log says at once whether it loaded.</summary>
     internal static void Prepare() => _ = Declared.Value;
 
-    /// <summary>The embedded catalogue file (its text and hash for version 2); null when it did not load.</summary>
+    /// <summary>The embedded catalogue file (its text and hash for welcome); null when it did not load.</summary>
     internal static CatalogueFile? CatalogueFile => Declared.Value.File;
 
     private static LoadedCatalogue LoadCatalogue()
@@ -345,28 +275,6 @@ internal static class ApiHost
             new LoadedCatalogue(arguments, file, null);
 
         internal static LoadedCatalogue Failed(string problem) => new LoadedCatalogue(null, null, problem);
-    }
-
-    // A key given twice would otherwise let the last one win silently (a write aimed at the wrong device).
-    private static readonly JsonLoadSettings RequestLoad = new JsonLoadSettings
-    {
-        DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error
-    };
-
-    // A line Newtonsoft cannot read, e.g. a number past a double's range (1e309) or a key given twice, is a bad
-    // request, not a bug in a tool: the reply says invalid_argument rather than internal_error.
-    private static JObject ParseRequest(string requestJson)
-    {
-        try
-        {
-            return JObject.Parse(requestJson, RequestLoad);
-        }
-        catch (JsonReaderException exception)
-        {
-            throw ApiErrors.InvalidArgument(
-                "The request is not JSON the mod accepts (every number must be finite and no key may be given " +
-                $"twice): {exception.Message}");
-        }
     }
 
     /// <summary>A reply as JSON text, through the one shared serializer: main thread only.</summary>

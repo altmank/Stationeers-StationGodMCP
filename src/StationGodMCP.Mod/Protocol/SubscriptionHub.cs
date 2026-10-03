@@ -16,7 +16,7 @@ namespace StationGodMCP.Protocol;
 
 /// <summary>
 /// The subscription lane's work on the wire (protocol.md, Subscriptions; sample_logic): subscribe and unsubscribe as
-/// version-2 calls run on the main thread, the engine's samples, and its events into each connection's outbound queue,
+/// calls run on the main thread, the engine's samples, and its events into each connection's outbound queue,
 /// where an update waits as its subscription's UpdateSlot and is written by the connection's writer thread; and
 /// sample_logic, whose call starts a LogicSampler run and is answered when the run's last sample is taken. The lane
 /// takes sample_logic samples first, then subscription samples, one at a time. Main thread only, apart from Closed,
@@ -152,35 +152,14 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     }
 
     /// <summary>
-    /// sample_logic on version 2: invalid arguments are answered at once; otherwise a run starts, its first sample is
+    /// sample_logic: invalid arguments are answered at once; otherwise a run starts, its first sample is
     /// due now, and the call is answered when the run ends.
     /// </summary>
     internal CallOutcome StartSampleLogic(ProtocolCall call, double queueWaitMs)
     {
         CallRequest request = call.Request;
         return Start(call, request.Params,
-            new SampleLogicCall(call, request.Id, request.Shape, Math.Round(queueWaitMs, 2), version2: true));
-    }
-
-    /// <summary>sample_logic on version 1: as on version 2, answered in today's envelope.</summary>
-    internal CallOutcome StartSampleLogic(LineCall call, double queueWaitMs)
-    {
-        string? id = null;
-        JObject? parameters = null;
-        ShapeRequest? shape = null;
-        try
-        {
-            JObject request = JObject.Parse(call.Json);
-            id = request["id"]?.Type == JTokenType.String ? (string)request["id"]! : null;
-            parameters = request["params"] as JObject;
-            shape = ShapeRequest.Lenient(request["shape"]);
-        }
-        catch (Newtonsoft.Json.JsonReaderException)
-        {
-            // The line named sample_logic when its profile was read, so it parses; one that does not has no params.
-        }
-
-        return Start(call, parameters, new SampleLogicCall(call, id, shape, Math.Round(queueWaitMs, 2), version2: false));
+            new SampleLogicCall(call, request.Id, request.Shape, Math.Round(queueWaitMs, 2)));
     }
 
     void ISampleLogicEvents<BatchItemView>.Finished(SampleLogicRun<BatchItemView> run,
@@ -304,16 +283,14 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         private readonly string? _id;
         private readonly ShapeRequest? _shape;
         private readonly double _queueMs;
-        private readonly bool _version2;
         private readonly Stopwatch _since = Stopwatch.StartNew();
 
-        internal SampleLogicCall(QueuedCall call, string? id, ShapeRequest? shape, double queueMs, bool version2)
+        internal SampleLogicCall(QueuedCall call, string? id, ShapeRequest? shape, double queueMs)
         {
             Call = call;
             _id = id;
             _shape = shape;
             _queueMs = queueMs;
-            _version2 = version2;
         }
 
         internal QueuedCall Call { get; }
@@ -325,21 +302,10 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         internal string Reply(object? result, ErrorView? error, long frame)
         {
             double elapsedMs = Elapsed(_since);
-            if (_version2)
-            {
-                return result == null
-                    ? ApiJson.WriteShared(CallReplyView.Failed(_id, error!, elapsedMs, _queueMs, frame))
-                    : ApiJson.WriteShaped(CallReplyView.Of(_id, result, _shape != null, elapsedMs, _queueMs, frame),
-                        _shape ?? ShapeRequest.None).Json;
-            }
-
-            if (result == null)
-            {
-                return ApiJson.WriteShared(new ErrorReplyView(_id, error!, elapsedMs));
-            }
-
-            ReplyView reply = new ReplyView(_id, result, elapsedMs);
-            return _shape == null ? ApiJson.WriteShared(reply) : ApiJson.WriteShaped(reply.AsShaped(), _shape).Json;
+            return result == null
+                ? ApiJson.WriteShared(CallReplyView.Failed(_id, error!, elapsedMs, _queueMs, frame))
+                : ApiJson.WriteShaped(CallReplyView.Of(_id, result, _shape != null, elapsedMs, _queueMs, frame),
+                    _shape ?? ShapeRequest.None).Json;
         }
     }
 

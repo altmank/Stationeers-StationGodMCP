@@ -7,60 +7,7 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// A reply: the request's id, ok true, the tool's result, the main-thread time it took, and shaped: true when the
-/// request's shape was applied to the result.
-/// </summary>
-internal sealed class ReplyView
-{
-    internal ReplyView(string? id, object result, double elapsedMs, bool shaped = false)
-    {
-        Id = id;
-        Result = result;
-        ElapsedMs = elapsedMs;
-        Shaped = shaped ? true : null;
-    }
-
-    // Serialised as given: an id is the client's, and null must still be sent.
-    [JsonProperty(NullValueHandling = NullValueHandling.Include)]
-    public string? Id { get; }
-
-    public bool Ok => true;
-
-    public object Result { get; }
-
-    public double ElapsedMs { get; }
-
-    /// <summary>Written only when true, so a reply without shape is byte for byte as before.</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public bool? Shaped { get; }
-
-    internal ReplyView AsShaped() => new ReplyView(Id, Result, ElapsedMs, shaped: true);
-}
-
-/// <summary>A refused or failed request: the request's id, ok false, the error, and the time it took.</summary>
-internal sealed class ErrorReplyView
-{
-    internal ErrorReplyView(string? id, ErrorView error, double? elapsedMs)
-    {
-        Id = id;
-        Error = error;
-        ElapsedMs = elapsedMs;
-    }
-
-    [JsonProperty(NullValueHandling = NullValueHandling.Include)]
-    public string? Id { get; }
-
-    public bool Ok => false;
-
-    public ErrorView Error { get; }
-
-    /// <summary>Null when the request never reached a tool (the pipe's own timeout).</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public double? ElapsedMs { get; }
-}
-
-/// <summary>
-/// A version-2 reply: type reply, the call's id, ok, shaped (on a result: whether the call's shape was applied), the
+/// A reply: type reply, the call's id, ok, shaped (on a result: whether the call's shape was applied), the
 /// result or the error, and, when the call reached a handler, its main-thread time, its wait in the queue and the frame
 /// it ran in.
 /// </summary>

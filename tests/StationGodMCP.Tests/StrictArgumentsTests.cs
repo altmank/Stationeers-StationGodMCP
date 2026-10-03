@@ -13,9 +13,8 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Stage 5: version-2 calls are checked against the catalogue in full before anything runs; version 1 stays as it
-/// was (names only, on the main thread), and a shape version 2 cannot use is invalid_shape where version 1 reports
-/// fields_unmatched.
+/// Stage 5: calls are checked against the catalogue in full before anything runs, and a shape that cannot be used is
+/// invalid_shape; with StrictArguments off the lenient reading reports it in fields_unmatched instead.
 /// </summary>
 public sealed class StrictArgumentsTests
 {
@@ -46,19 +45,6 @@ public sealed class StrictArgumentsTests
         Assert.All(problems, problem => Assert.False(string.IsNullOrEmpty((string?)problem["problem"])));
         Assert.Null(reply["elapsed_ms"]);
         Assert.Equal(0, rig.Mod.Ran);
-    }
-
-    [Theory]
-    [MemberData(nameof(Cases))]
-    public async Task VersionOneLeavesEveryCaseToTheMainThreadAsBefore(string method, string arguments, bool accepted)
-    {
-        _ = accepted;
-        using PipeRig rig = new PipeRig();
-        using V2Client client = await V2Client.Open(rig);
-        string line = new JObject { ["id"] = "1", ["method"] = method, ["params"] = JToken.Parse(arguments) }.ToString(Formatting.None);
-        client.Send(line);
-
-        Assert.Equal(JObject.Parse(FakeMod.ReplyTo(line)), client.Next());
     }
 
     [Fact]
@@ -141,7 +127,7 @@ public sealed class StrictArgumentsTests
     }
 
     [Fact]
-    public void VersionOneReportsWhatVersionTwoRefuses()
+    public void TheLenientReadingReportsWhatTheStrictOneRefuses()
     {
         ShapeRequest? lenient = ShapeRequest.Lenient(JObject.Parse("""{"fields":["prefab-name","x"],"limit":{"count":1}}"""));
         List<string> problems = new List<string>();
@@ -156,7 +142,7 @@ public sealed class StrictArgumentsTests
     }
 
     [Fact]
-    public async Task WithStrictArgumentsOffVersionTwoChecksAsVersionOne()
+    public async Task WithStrictArgumentsOffOnlyNamesAreChecked()
     {
         using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, strictArguments: false));
         using V2Client client = await V2Client.Connect(rig);

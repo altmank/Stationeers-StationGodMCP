@@ -69,8 +69,8 @@ Microsoft's signed `dotnet` host instead.
 **Why outside the mod folder:** StationeersLaunchPad loads every DLL it finds in an enabled mod's folder. Extracted
 there, the sidecar's DLLs would be taken for game plugins. That is also why they ship zipped.
 
-When the mod updates, extract the new sidecar over the old one and restart your agent. The sidecar and the mod
-should be the same version: the tool list lives in the sidecar, the tools themselves in the mod.
+When the mod updates, extract the new sidecar over the old one and restart your agent. The sidecar and the mod must
+be the same version: they speak one protocol, and a sidecar from another version cannot talk to the mod.
 
 ## 3. Register the sidecar with your agent
 

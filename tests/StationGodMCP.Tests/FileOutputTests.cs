@@ -250,7 +250,7 @@ public sealed class FileOutputTests : IDisposable
     [Fact]
     public async Task ACallWithBothWritesTheShapedReplyAndForwardsNeither()
     {
-        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
+        await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok(
             """{"count":2,"things":[{"reference_id":"1","position":{"x":1}},{"reference_id":"2","position":{"x":2}}]}""", shaped: true));
 
