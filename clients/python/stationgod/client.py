@@ -558,9 +558,6 @@ class Client(_methods.Methods):
             self._slots.notify_all()
             for key in [key for key in self._by_server_id if key[0] == id(conn)]:
                 self._by_server_id.pop(key)._detach()
-        if conn.goodbye == "revoked":
-            for sub in list(self._subscriptions):
-                self._drop_subscription(sub, "revoked")
         if not self._closed and self._needs_connection():
             self._ensure_reconnecting()
 

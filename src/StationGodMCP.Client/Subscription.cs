@@ -21,7 +21,7 @@ public abstract record SubscribeOutcome
 /// <summary>
 /// One device subscription (clients.md, Subscriptions in the library). The request is kept: after a reconnect into the
 /// same world the client subscribes again with it and State becomes the new first reading; into another world, or when
-/// the mod ends it, it closes and EndReason says why (closed, world_changed, revoked, limit, or a refusal on
+/// the mod ends it, it closes and EndReason says why (closed, world_changed, limit, or a refusal on
 /// resubscribing).
 /// </summary>
 public sealed class Subscription : IAsyncDisposable

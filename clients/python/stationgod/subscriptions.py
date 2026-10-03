@@ -22,7 +22,7 @@ class Subscription:
         self.game_time_s = None
         self.interval_s = None
         self.closed = False
-        self.end_reason = None      # why it closed: closed, world_changed, revoked, limit, or a refusal on resubscribe
+        self.end_reason = None      # why it closed: closed, world_changed, limit, or a refusal on resubscribe
         self._updates = 0
         self._condition = threading.Condition()
         self._callbacks = []
