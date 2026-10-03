@@ -17,6 +17,7 @@ using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Access;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Pure.Subscriptions;
 using UnityEngine;
 
 namespace StationGodMCP;
@@ -46,6 +47,7 @@ public sealed class StationGodMod : ModBehaviour
     private TcpAcceptor? _tcpListener;
     private RemoteSettings? _remote;
     private ServerSettings _server = ServerSettings.Defaults;
+    private SubscriptionHub? _subscriptions;
     private float _nextClientsCheck;
     private float _nextCheatCheck;
 
@@ -84,6 +86,9 @@ public sealed class StationGodMod : ModBehaviour
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
             _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
+            _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
+                SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
+            _dispatcher.Subscriptions = _subscriptions;
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
@@ -128,7 +133,9 @@ public sealed class StationGodMod : ModBehaviour
         try
         {
             WorldStores.Tick();
+            _subscriptions?.BeginFrame(new SamplingTick(Time.frameCount, Time.time));
             PublishFacts();
+            _subscriptions?.ObserveGameState(GameManager.GameState.ToString());
             if (!NetworkManager.IsServer)
             {
                 StopServers("world_unloaded");
@@ -147,7 +154,7 @@ public sealed class StationGodMod : ModBehaviour
                 StartTcpServer(_remote);
             }
 
-            _dispatcher.RunFrame(HeldTickJobs.HoldsTick, null);
+            _dispatcher.RunFrame(HeldTickJobs.HoldsTick, _subscriptions);
             HeldTickJobs.Tick();
             Previews.Tick();
             Highlights.Tick();
@@ -244,7 +251,7 @@ public sealed class StationGodMod : ModBehaviour
                 ProtocolHost host = new ProtocolHost(
                     new ProtocolSettings(_server.MaxPipeConnections, protocol2: _server.Protocol2,
                         strictArguments: _server.StrictArguments), _dispatcher, Deadlines,
-                    ApiHost.CatalogueFile, Access);
+                    ApiHost.CatalogueFile, Access, subscriptions: _subscriptions);
                 PipeListener listener = new PipeListener(Pipe.Value, host);
                 listener.Start();
                 _pipeListener = listener;
@@ -279,6 +286,11 @@ public sealed class StationGodMod : ModBehaviour
         ServerFacts.Current = new ServerFacts(Version, Pipe.Value, Application.isBatchMode, world, state.ToString());
         if (entered)
         {
+            if (worldId.Length > 0)
+            {
+                _subscriptions?.WorldChanged(worldId);
+            }
+
             foreach (StationGodMCP.Protocol.Connection connection in Access.Connections())
             {
                 connection.Session?.OnWorldChanged(world);
@@ -299,7 +311,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxTcpConnections, protocol2: true, strictArguments: _server.StrictArguments),
-                _dispatcher, Deadlines, ApiHost.CatalogueFile, Access, remote.Secret);
+                _dispatcher, Deadlines, ApiHost.CatalogueFile, Access, remote.Secret, _subscriptions);
             server = new TcpAcceptor(remote.BindAddress, remote.Port, _server.MaxTcpConnections, host);
             server.Start();
             _tcpListener = server;

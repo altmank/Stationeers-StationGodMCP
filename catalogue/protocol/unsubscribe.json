@@ -1,0 +1,15 @@
+{
+  "name": "unsubscribe",
+  "description": "End one of this connection's subscriptions; unknown_subscription when it holds no such id.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {"subscription": {"type": "string", "description": "The id subscribe gave, such as \"s3\"."}},
+    "required": ["subscription"],
+    "additionalProperties": false
+  },
+  "reply": {"type": "object", "properties": {"subscription": {"type": "string"}, "ended": {"type": "boolean"}}},
+  "x-shaping": "none",
+  "x-mcp": "hidden"
+}

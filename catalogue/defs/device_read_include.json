@@ -1,0 +1,5 @@
+{
+  "type": "array",
+  "items": {"type": "string", "enum": ["clock"]},
+  "description": "clock: add the game clock, as game_clock reads it, in the same frame."
+}

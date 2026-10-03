@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:f6b608fd883b8fa9b67a87773594980b632b517ae2d3dcd80402a59fbdb192c5'
+CATALOGUE_HASH = 'sha256:f42f21fb6de925f42a6212b4d787fc0cc39190dcb7c5a811d6f47638d06782e5'
 MOD_VERSION = '1.10.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -25,6 +25,24 @@ TABLE = {'catalogue': {'class': 'read',
                'required': [],
                'shaping': 'none',
                'protocol': True},
+ 'subscribe': {'class': 'read',
+               'class_when': [],
+               'effects': [],
+               'paging': None,
+               'duration': None,
+               'params': ['topic', 'gateway_id', 'include', 'items', 'interval_s'],
+               'required': [],
+               'shaping': 'none',
+               'protocol': True},
+ 'unsubscribe': {'class': 'read',
+                 'class_when': [],
+                 'effects': [],
+                 'paging': None,
+                 'duration': None,
+                 'params': ['subscription'],
+                 'required': ['subscription'],
+                 'shaping': 'none',
+                 'protocol': True},
  'atmosphere_contents': {'class': 'read',
                          'class_when': [],
                          'effects': [],
@@ -1407,25 +1425,7 @@ TABLE = {'catalogue': {'class': 'read',
                   'params': ['gateway_id', 'reference_id', 'start_address', 'values'],
                   'required': ['reference_id', 'start_address', 'values'],
                   'shaping': 'none',
-                  'protocol': False},
- 'subscribe': {'class': 'read',
-               'class_when': [],
-               'effects': [],
-               'paging': None,
-               'duration': None,
-               'params': ['topic', 'items', 'include', 'gateway_id', 'interval_s'],
-               'required': [],
-               'shaping': 'none',
-               'protocol': True},
- 'unsubscribe': {'class': 'read',
-                 'class_when': [],
-                 'effects': [],
-                 'paging': None,
-                 'duration': None,
-                 'params': ['subscription'],
-                 'required': ['subscription'],
-                 'shaping': 'none',
-                 'protocol': True}}
+                  'protocol': False}}
 
 
 class Methods:

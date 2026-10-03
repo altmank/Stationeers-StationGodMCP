@@ -111,7 +111,7 @@ internal sealed class CountBudget : ISamplingBudget
     public bool MayTakeAnother() => _left-- > 0;
 }
 
-internal sealed class ScriptedWorldIds : IWorldIdSource
+internal sealed class ScriptedWorldIds
 {
     private byte _next;
 

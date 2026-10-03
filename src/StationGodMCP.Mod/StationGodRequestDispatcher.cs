@@ -38,6 +38,9 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     /// <summary>The per-frame counters mod_info reports.</summary>
     internal static DispatchStats Stats { get; } = new DispatchStats();
 
+    /// <summary>subscribe and unsubscribe, and the closing of their connections; null before the mod has loaded.</summary>
+    internal SubscriptionHub? Subscriptions { get; set; }
+
     public void Submit(QueuedCall call)
     {
         _deadlines.Watch(call);
@@ -46,7 +49,11 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     public void Withdraw(QueuedCall call) => _requests.Withdraw(call);
 
-    public void Closed(object source) => _requests.Close(source);
+    public void Closed(object source)
+    {
+        _requests.Close(source);
+        Subscriptions?.Closed(source);
+    }
 
     /// <summary>One frame of the scheduler, on the main thread; its outcome goes to mod_info's counters.</summary>
     internal void RunFrame(bool jobHoldsTick, ISampleLane? samples)
@@ -78,6 +85,11 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     {
         try
         {
+            if (Subscriptions != null && SubscriptionHub.Handles(call.Request.Method))
+            {
+                return new CallOutcome(Subscriptions.Run(call, queueWaitMs), call.Request.Method);
+            }
+
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);
             return new CallOutcome(handled.Json, handled.Method);
         }

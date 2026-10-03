@@ -221,32 +221,10 @@ public sealed class SubscriptionPartsTests
     // ---- world identity ----
 
     [Fact]
-    public void AWorldGetsANewIdEachTimeItFinishesLoading()
+    public void AWorldIdIsTheOneWorldScopeGave()
     {
-        WorldIdentity identity = new WorldIdentity(new ScriptedWorldIds());
-        Assert.False(identity.TryGetCurrent(out _));
-
-        Assert.False(identity.Observe(false));
-        Assert.True(identity.Observe(true));
-        identity.TryGetCurrent(out WorldId first);
-        Assert.False(identity.Observe(true));
-        Assert.False(identity.Observe(false));
-        identity.TryGetCurrent(out WorldId stillFirst);
-        Assert.True(identity.Observe(true));
-        identity.TryGetCurrent(out WorldId second);
-
-        Assert.Equal(first, stillFirst);
-        Assert.NotEqual(first, second);
-    }
-
-    [Fact]
-    public void RandomWorldIdsAreSixteenHexDigitsAndDiffer()
-    {
-        RandomWorldIds source = new RandomWorldIds();
-        WorldId a = source.Next();
-        WorldId b = source.Next();
-
-        Assert.Matches("^[0-9a-f]{16}$", a.Value);
-        Assert.NotEqual(a, b);
+        Assert.Equal("3b9e1a40c2d84f6e", WorldId.Of("3b9e1a40c2d84f6e").Value);
+        Assert.Equal(WorldId.Of("3b9e1a40c2d84f6e"), WorldId.Of("3b9e1a40c2d84f6e"));
+        Assert.Throws<System.ArgumentException>(() => WorldId.Of(string.Empty));
     }
 }
