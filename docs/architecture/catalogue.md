@@ -3,9 +3,9 @@
 [Back to the overview](README.md)
 
 The catalogue is the one description of everything the mod offers: every method, its arguments with types, ranges
-and descriptions, the shape of its reply, its permission class and its cost class, plus the error codes and the text
-the sidecar gives agents. The mod checks requests against it, the sidecar turns it into MCP tools, and the Python
-library reads it to decide what is safe to resend and how to page. This page says what it looks like, where it lives,
+and descriptions, the shape of its reply, its class (read, write or cheat) and its cost class, plus the error codes
+and the text the sidecar gives agents. The mod checks requests against it, the sidecar turns it into MCP tools, and
+the Python library reads it to decide what is safe to resend and how to page. This page says what it looks like, where it lives,
 how it stays true to the code, and who reads it.
 
 ## Where it comes from today
@@ -210,7 +210,7 @@ A method entry, abridged, for `thing_health`:
 
 ### What each part means
 
-`class` and `x-class-when` give the permission class (see [protocol.md](protocol.md), *Sign-in and permissions*).
+`class` and `x-class-when` give the method's class (see [protocol.md](protocol.md), *Method classes*).
 Rules are tried in order; the first whose `when` matches gives the class; if none matches, `class` applies. A `when`
 matches when every argument it names matches its matcher (and, with `any_of`, at least one of those also matches).
 Matchers: `equals` (JSON equality after the same trimming and case folding the mod applies to words), `in` (equals one
@@ -267,9 +267,10 @@ may be written with a zero fraction or an exponent (`3.0`, `1e2`), as the sideca
 
 ## Method classes and costs
 
-Which tools are cheat is the owner's decision (overview, *Questions for the owner*). The catalogue ships the
-recommendation below; until the owner answers, the shipped defaults for keyless and old connections keep every tool
-reachable, so the classes change nothing for them.
+Which tools are cheat is the owner's decision (overview, *Questions for the owner*); the catalogue ships the
+recommendation below. The class is information, not a permission: every connection can call every method. The
+libraries use it to resend only reads, the scheduler to order writes, and agents to tell the owner when a tool is a
+cheat.
 
 | Class | Methods |
 | --- | --- |
@@ -278,8 +279,7 @@ reachable, so the classes change nothing for them.
 | cheat | `run_console_command`, `move_gas`, `write_memory`, `plant_genes` when it edits, `paste_blueprint` when it pastes or undoes, `place_structure` with `free: true` |
 
 The read list is exactly the tools the sidecar marks read-only today (`Program.cs:2161-2175`, `readOnly: true`); the
-others are its 33 non-read-only tools. `write_memory` is cheat under the recommendation; its alternative, write, is in
-the overview, because the dashboard's smelter uses it.
+others are its 33 non-read-only tools. `write_memory` is cheat under the recommendation.
 
 The argument rules that make this exact (the defaults are the handlers' own, in `src/StationGodMCP.Mod/Api/`: `PlaceRuns.cs:163-164`,
 `Shared/BuildArgs.cs:584`, `Shared/StructureSwapArgs.cs:147`, `UpgradeNetwork.cs:153`, `UndoJob.cs:35`,
