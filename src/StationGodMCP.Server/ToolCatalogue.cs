@@ -6,7 +6,8 @@ namespace StationGodMCP.Server;
 
 /// <summary>
 /// The MCP tools a method catalogue gives: every method whose x-mcp is not hidden becomes a tool with its name and
-/// description, its params as inputSchema (plus the sidecar's own output_file and fields when its x-shaping is lists),
+/// description, its params as inputSchema (plus the sidecar's own output_file, fields and omit when its x-shaping is
+/// lists, and its x-file-arguments, each making the argument it fills optional),
 /// and annotations that call it read only exactly when its class is read and no x-class-when gives it another. The
 /// server's name and instructions come from the catalogue too. The sidecar starts with the catalogue it was built with
 /// and switches to the mod's when the mod's hash differs.
@@ -17,11 +18,16 @@ internal sealed record ToolSet(
     IReadOnlySet<string> Names,
     IReadOnlySet<string> SmallReplies,
     string ServerName,
-    string Instructions)
+    string Instructions,
+    IReadOnlyDictionary<string, IReadOnlyList<FileArgument>> FileArguments)
 {
     private const string OutputFileDescription = "Reply to a JSON file, answer a pointer (server instructions).";
 
-    private const string FieldsDescription = "Keys kept per top-level list entry; a dotted name is a path into one list (things.position.x).";
+    private const string FieldsDescription =
+        "Keys kept in each entry of the reply's lists; a dotted name is a path read from each entry (occupant.prefab_name) or from one list's entries (things.position.x).";
+
+    private const string OmitDescription =
+        "Keys left out of the reply, as paths from its top (source, runtime.registers; through a list each entry: members.position).";
 
     private static readonly Lazy<ToolSet> Embedded = new(() => From(GameCatalogue.BuiltIn.Document, fallback: null));
 
@@ -42,19 +48,30 @@ internal sealed record ToolSet(
         }
 
         HashSet<string> small = new(StringComparer.Ordinal);
+        Dictionary<string, IReadOnlyList<FileArgument>> files = new(StringComparer.Ordinal);
         foreach (JsonNode? method in document["methods"]!.AsArray())
         {
-            if ((string?)method!["x-shaping"] == "none")
+            string name = (string)method!["name"]!;
+            if ((string?)method["x-shaping"] == "none")
             {
-                small.Add((string)method["name"]!);
+                small.Add(name);
+            }
+
+            if (Server.FileArguments.Of(method.AsObject()) is { Count: > 0 } declared)
+            {
+                files.Add(name, declared);
             }
         }
 
         JsonObject? server = document["server"] as JsonObject;
         return new ToolSet(tools, schemas, new HashSet<string>(schemas.Keys, StringComparer.Ordinal), small,
             (string?)server?["name"] ?? fallback?.ServerName ?? "StationGodMCP",
-            (string?)server?["instructions"] ?? fallback?.Instructions ?? string.Empty);
+            (string?)server?["instructions"] ?? fallback?.Instructions ?? string.Empty, files);
     }
+
+    /// <summary>The tool's file arguments; empty when it has none.</summary>
+    internal IReadOnlyList<FileArgument> FileArgumentsOf(string tool) =>
+        FileArguments.TryGetValue(tool, out IReadOnlyList<FileArgument>? files) ? files : [];
 
     /// <summary>The tools a catalogue gives, as tools/list publishes them.</summary>
     internal static JsonArray ToolsOf(JsonObject catalogue)
@@ -84,6 +101,32 @@ internal sealed record ToolSet(
                     ["items"] = new JsonObject { ["type"] = "string" },
                     ["description"] = FieldsDescription
                 };
+                properties[SidecarArguments.OmitArgument] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["minItems"] = 1,
+                    ["items"] = new JsonObject { ["type"] = "string" },
+                    ["description"] = OmitDescription
+                };
+            }
+
+            foreach (FileArgument file in Server.FileArguments.Of(method))
+            {
+                inputSchema["properties"]![file.Name] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = file.Description
+                };
+                if (inputSchema["required"] is JsonArray required)
+                {
+                    for (int index = required.Count - 1; index >= 0; index--)
+                    {
+                        if ((string?)required[index] == file.Into)
+                        {
+                            required.RemoveAt(index);
+                        }
+                    }
+                }
             }
 
             bool readOnly = (string?)method["class"] == "read" && method["x-class-when"] == null;

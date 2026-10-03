@@ -94,7 +94,7 @@ The `welcome` message:
     "max_values_per_subscription": 1024,
     "min_subscription_interval_s": 0.5
   },
-  "features": ["shape", "shape.paths", "subscriptions", "cancel"]
+  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel"]
 }
 ```
 
@@ -242,6 +242,7 @@ skips building them (below).
 | Key | Type | Meaning |
 | --- | --- | --- |
 | `fields` | array of selector strings, at least 1 | Which keys to keep in the entries of the reply's lists. |
+| `omit` | array of selector strings, at least 1 | Which keys to leave out, as paths from the reply's top (feature `shape.omit`). |
 | `limit` | object: list name to integer 0-100000 | Keep at most this many entries of that top-level list. |
 | `max_bytes` | integer 1024-16777216 | Refuse to send a reply larger than this (`reply_too_large`). |
 
@@ -263,12 +264,12 @@ A selector with one name, such as `reference_id`, means what `fields` means toda
 (`ReplyShaping.cs:55-98`): in every object entry of every top-level list of the reply, keep that key. It does not touch
 top-level keys that are not lists, nor entries that are not objects.
 
-A selector with two or more names, such as `results.damage_ratio` or `things.position.x`, applies only to the
-top-level list named by its first name. Inside each object entry of that list it keeps the path given by the rest:
-the key named by the second name, and, if there is a third, only that key inside the second's object value, and so on.
-A path through a value that is a list applies to every object entry of that list. A list named by a path selector is
-projected only by path selectors that name it and by single-name selectors. A selector whose first name is not a
-top-level list of the reply matches nothing.
+A selector with two or more names is a path, read two ways. From each object entry of every top-level list:
+`occupant.prefab_name` keeps the key `occupant` of each entry and, inside its object value, only `prefab_name`, and so
+on at any depth. And, when its first name is a top-level list, from that list's entries: `things.position.x` keeps
+`position.x` of each `things` entry. A path through a value that is a list applies to every object entry of that list
+(`held_in.reference_id`). A list named by the first name of a path is projected by the paths that name it, the paths
+read from each entry and the single-name selectors.
 
 When several selectors keep the same key at the same place, the key is kept with the union of what they keep below
 it; a selector that names a key without going deeper keeps that key's whole value.
@@ -284,6 +285,13 @@ name with `-`, an empty string after trimming, a stray dot) is not sent but list
 sidecar, as an unknown name is. Sent to the mod, such a selector is `invalid_shape`, as is a `shape` with an unknown
 key or more than 256 selectors; with `[Server] StrictArguments = false` the mod reads a shape leniently instead and
 lists such a selector in `fields_unmatched`.
+
+`omit` leaves keys out instead of keeping them. Each selector is a path from the reply's top-level object: `source`
+leaves out the key `source`, `runtime.registers` leaves `registers` out of the object `runtime`; a list on the way
+applies the rest of the path to each of its object entries (`members.position`). `omit` reaches top-level keys that are
+not lists, which `fields` never touches, and wins over `fields` where both name a key. The mod adds `omit_unmatched`,
+an array of every `omit` selector that left nothing out (a path below an omitted key counts as applied), to the reply's
+top-level object. Selectors that do not follow the grammar are treated as for `fields`, reported in `omit_unmatched`.
 
 Errors are never shaped: an error reply is always whole.
 
@@ -562,7 +570,7 @@ that meets an older mod gets that mod's answer to `hello`, which is no `welcome`
 
 ```text
 -> {"type":"hello","protocol":[2],"client":{"name":"agents","version":"1.12.0","library":"stationgod-cs/1.12.0"}}
-<- {"type":"welcome","protocol":2,"client_id":"c9","client":"anonymous","server":{...},"catalogue":{...},"limits":{...},"features":["shape","shape.paths","subscriptions","cancel"]}
+<- {"type":"welcome","protocol":2,"client_id":"c9","client":"anonymous","server":{...},"catalogue":{...},"limits":{...},"features":["shape","shape.paths","shape.omit","subscriptions","cancel"]}
 -> {"type":"call","id":"a1","method":"grid_survey","params":{"room_id":"r12"},"shape":{"fields":["devices.reference_id","devices.prefab_name"]}}
 -> {"type":"call","id":"a2","method":"game_clock","params":{}}
 <- {"type":"reply","id":"a2","ok":true,"shaped":false,"result":{"game_time_s":84211.5,"paused":false,"time_of_day_ratio":0.41,"days_past":12},"elapsed_ms":0.02,"queue_ms":9.8,"frame":81301}

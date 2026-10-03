@@ -101,10 +101,14 @@ get the same checks: a filter misspelt as `prefab` for `prefab_contains` is refu
 answered or the game took the request but did not reply in time (it may still have run).
 
 **Large replies.** Every tool that can answer a lot (lists, surveys, plans, dry runs, job polls, rocket forecasts,
-chip sources) takes two shaping arguments. `fields: ["reference_id", "position"]` keeps only those keys in each entry
-of the reply's top-level lists (a name no entry has comes back in `fields_unmatched`). A dotted name is a path into
-one list: `things.position.x` keeps only `x` inside `position` in each entry of `things`, and dictionary keys keep
-their case (`results.logic.Temperature`). The mod applies `fields` while it writes the reply, so the keys left out
+chip sources) takes three shaping arguments. `fields: ["reference_id", "position"]` keeps only those keys in each
+entry of the reply's top-level lists (a name no entry has comes back in `fields_unmatched`). A dotted name is a path
+read from each entry, through nested objects and lists at any depth (`occupant.prefab_name`, `held_in.reference_id`),
+or from one list when it starts with that list's name: `things.position.x` keeps only `x` inside `position` in each
+entry of `things`; dictionary keys keep their case (`results.logic.Temperature`). `omit: ["source",
+"runtime.registers"]` leaves keys out wherever a path from the top of the reply reaches them, top-level keys included
+(a list on the way applies the rest to each entry: `members.position`; a path that left nothing out comes back in
+`omit_unmatched`). The mod applies `fields` and `omit` while it writes the reply, so the keys left out
 are never formatted or sent, over the pipe or TCP alike. Where a key costs the game real work, the mod does not
 even work it out when `fields` leaves it out: `thing_health`'s `networks`, the networks of every structure listed.
 `output_file: true`, or a file name such as `"ores"`, writes the whole reply as indented JSON to a file and answers a

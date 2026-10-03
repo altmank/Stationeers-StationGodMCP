@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:c07d104ec9adc8d9a48ba532542131f0a3e1bff09789acef9820b9c69cf1dcca'
+CATALOGUE_HASH = 'sha256:c6dcfb94d0454c8798551a850b03c09a2f54745ea627bffa572a3fc3b30f1759'
 MOD_VERSION = '1.13.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -1178,7 +1178,7 @@ TABLE = {'catalogue': {'class': 'read',
                    'effects': [],
                    'paging': None,
                    'duration': None,
-                   'params': ['gateway_id', 'reference_id', 'source'],
+                   'params': ['gateway_id', 'reference_id', 'source', 'include_source'],
                    'required': ['reference_id', 'source'],
                    'shaping': 'none',
                    'protocol': False},
@@ -1954,12 +1954,12 @@ class Methods:
         """
         return self.call('set_ic_pins', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'pins': pins, 'allow_off_network': allow_off_network}, **options)
 
-    def set_ic_source(self, *, gateway_id: str | None = None, reference_id: str | None = None, source: str | None = None, **options) -> dict:
+    def set_ic_source(self, *, gateway_id: str | None = None, reference_id: str | None = None, source: str | None = None, include_source: bool | None = None, **options) -> dict:
         """Write source to the programmable chip of a visible circuit holder, as the IC editor's export does.
 
-        Class: write. Arguments: gateway_id, reference_id (required), source (required).
+        Class: write. Arguments: gateway_id, reference_id (required), source (required), include_source.
         """
-        return self.call('set_ic_source', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'source': source}, **options)
+        return self.call('set_ic_source', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'source': source, 'include_source': include_source}, **options)
 
     def show_preview(self, *, placements: list | None = None, prefab: str | int | None = None, at: object | None = None, rotation: list | None = None, facing: str | None = None, up: str | None = None, face: str | None = None, orient: dict | None = None, above_floor_m: float | None = None, build_state: object | None = None, allow_door_keepout: bool | None = None, cells: list | None = None, boxes: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, xray: bool | None = None, **options) -> dict:
         """Draw in-game wire boxes for a planned layout (1.4.3+), on the player's screen only (other players see nothing; never the game's construction cursor; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod: drawn_on names the player): the same placement fields as pl...

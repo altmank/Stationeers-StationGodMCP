@@ -107,6 +107,9 @@ internal sealed class SelectorNode
 
     internal bool HasChildren => _children != null;
 
+    internal IEnumerable<SelectorNode> Children =>
+        _children != null ? _children.Values : (IEnumerable<SelectorNode>)Array.Empty<SelectorNode>();
+
     internal IReadOnlyList<int>? Ends => _ends;
 
     internal SelectorNode? Child(string key) =>
@@ -124,6 +127,51 @@ internal sealed class SelectorNode
         return child;
     }
 
+    /// <summary>The node at first.rest..., made as needed.</summary>
+    internal SelectorNode AddPath(string first, IReadOnlyList<string> rest)
+    {
+        SelectorNode current = Add(first);
+        foreach (string key in rest)
+        {
+            current = current.Add(key);
+        }
+
+        return current;
+    }
+
+    /// <summary>Each single name and each whole path (its first name included) below this node, read from here.</summary>
+    internal void AddEach(FieldSelector[] selectors)
+    {
+        for (int index = 0; index < selectors.Length; index++)
+        {
+            switch (selectors[index])
+            {
+                case FieldSelector.Name name:
+                    Add(name.Key).EndHere(index);
+                    break;
+                case FieldSelector.Path path:
+                    AddPath(path.List, path.Keys).EndHere(index);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>The selectors, repeats (by text) dropped, first one kept, as the sidecar does.</summary>
+    internal static FieldSelector[] Distinct(IReadOnlyList<FieldSelector> given)
+    {
+        List<FieldSelector> distinct = new List<FieldSelector>(given.Count);
+        HashSet<string> texts = new HashSet<string>(StringComparer.Ordinal);
+        foreach (FieldSelector selector in given)
+        {
+            if (texts.Add(selector.Text))
+            {
+                distinct.Add(selector);
+            }
+        }
+
+        return distinct.ToArray();
+    }
+
     internal void EndHere(int selector)
     {
         Whole = true;
@@ -134,7 +182,9 @@ internal sealed class SelectorNode
 
 /// <summary>
 /// shape.fields parsed: the selectors in the order given, without repeats, and per top-level list the node that
-/// says what to keep in each of its entries. A list named by no path keeps the single names only.
+/// says what to keep in each of its entries. Every entry of every list is matched against the single names and against
+/// each path read from the entry itself (occupant.prefab_name keeps prefab_name of each entry's occupant, at any
+/// depth); a path whose first name is a top-level list is also read from that list's entries (things.position.x).
 /// </summary>
 internal sealed class FieldSelectors
 {
@@ -160,19 +210,9 @@ internal sealed class FieldSelectors
     /// <summary>The selectors, repeats (by text) dropped, first one kept, as the sidecar does.</summary>
     internal static FieldSelectors Of(IReadOnlyList<FieldSelector> given)
     {
-        List<FieldSelector> distinct = new List<FieldSelector>(given.Count);
-        HashSet<string> texts = new HashSet<string>(StringComparer.Ordinal);
-        foreach (FieldSelector selector in given)
-        {
-            if (texts.Add(selector.Text))
-            {
-                distinct.Add(selector);
-            }
-        }
-
-        FieldSelector[] selectors = distinct.ToArray();
+        FieldSelector[] selectors = SelectorNode.Distinct(given);
         SelectorNode singleNames = new SelectorNode();
-        AddSingleNames(singleNames, selectors);
+        singleNames.AddEach(selectors);
         Dictionary<string, SelectorNode> byList = new Dictionary<string, SelectorNode>(StringComparer.Ordinal);
         for (int index = 0; index < selectors.Length; index++)
         {
@@ -181,7 +221,7 @@ internal sealed class FieldSelectors
                 if (!byList.TryGetValue(path.List, out SelectorNode node))
                 {
                     node = new SelectorNode();
-                    AddSingleNames(node, selectors);
+                    node.AddEach(selectors);
                     byList.Add(path.List, node);
                 }
 
@@ -197,15 +237,34 @@ internal sealed class FieldSelectors
 
         return new FieldSelectors(selectors, singleNames, byList);
     }
+}
 
-    private static void AddSingleNames(SelectorNode node, FieldSelector[] selectors)
+/// <summary>
+/// shape.omit parsed: paths read from the reply's root, each naming a key to leave out wherever the path reaches it
+/// (source; runtime.registers; a list on the way applies the rest to each of its entries: members.position). Selectors
+/// are kept in the order given, without repeats; Root is the tree the writer walks.
+/// </summary>
+internal sealed class OmitSelectors
+{
+    private readonly FieldSelector[] _selectors;
+
+    private OmitSelectors(FieldSelector[] selectors, SelectorNode root)
     {
-        for (int index = 0; index < selectors.Length; index++)
-        {
-            if (selectors[index] is FieldSelector.Name name)
-            {
-                node.Add(name.Key).EndHere(index);
-            }
-        }
+        _selectors = selectors;
+        Root = root;
+    }
+
+    internal int Count => _selectors.Length;
+
+    internal FieldSelector this[int index] => _selectors[index];
+
+    internal SelectorNode Root { get; }
+
+    internal static OmitSelectors Of(IReadOnlyList<FieldSelector> given)
+    {
+        FieldSelector[] selectors = SelectorNode.Distinct(given);
+        SelectorNode root = new SelectorNode();
+        root.AddEach(selectors);
+        return new OmitSelectors(selectors, root);
     }
 }

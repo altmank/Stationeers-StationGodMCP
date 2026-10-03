@@ -26,7 +26,7 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
 | `get_ic_source` | Read the program. | `reference_id` |
-| `set_ic_source` | Write the program, as the IC editor's export does. | `reference_id`, `source` |
+| `set_ic_source` | Write the program, as the IC editor's export does. | `reference_id`, `source` or `source_file`, `include_source` |
 | `get_ic_status` | Current line, registers, stack, aliases, defines, jump tags, power and pause state, errors, and pins `d0` to `d5`; for Lua, compile state, last error and print log. | `reference_id`, `stack_start`, `stack_count` (default 64), `log_lines` (default 20) |
 | `control_ic_execution` | Pause, step one instruction, resume (IC10); restart (Lua). | `reference_id`, `action`: `pause`, `step`, `resume`, `restart` |
 | `resolve_ic_selectors` | What a chip's `db` and `d0`... pins and its aliases point at, and the prefab and name-hash selector (`lbn`, `sbn`) of each device on its data network. | `reference_id`, `target_reference_ids` |
@@ -60,9 +60,12 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
   unreachable device it is how many other devices that pair would read. An id that is not a device is
   `device_not_found`.
 - A register or stack value that is not finite reads as a string: `"NaN"`, `"Infinity"`, `"-Infinity"`.
-- `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it. `include_source: false`
-  leaves the program out (`source` null, `source_length` still its length), for polling a chip's log or state without
-  reading a long Lua source every time.
+- `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it. The program is left out
+  (`source` null, `source_length` still its length) unless `include_source: true`, so polling a chip's log or state
+  never reads a long Lua source; `get_ic_source` reads the program alone (with `output_file` for a long one). The same
+  goes for `set_ic_source`'s reply: it echoes the stored program only with `include_source: true`.
+- `source_file` (MCP only) instead of `source`: an absolute path, on the machine the MCP server runs on, to a UTF-8
+  text file whose text is written as the source. A 60 KB Lua hub then never passes through the agent's context.
 - A holder with no chip: `get_ic_status` answers only `has_chip: false`, the holder and its pins (no `housing`, power
   or runtime fields); the other tools refuse with `no_programmable_chip`, `resolve_ic_selectors` too. Arguments are
   checked before the chip, so a bad `action` or `source`, or a malformed id in `target_reference_ids`, is
@@ -78,6 +81,7 @@ Load a program and check it, `set_ic_source` then `get_ic_status`:
 
 - `set_ic_source` writes Lua the way the IC editor's export does. There is no IC10 line or byte limit; the tool takes up
   to 262144 characters (`source_too_large` above that).
+- `get_ic_status`'s `runtime` (registers, stack, aliases, defines, jump tags) is IC10's; for a Lua chip it is null.
 - StationeersLua compiles on a worker thread, so the reply usually shows `lua.compiling: true`. Call `get_ic_status`
   until it is false, then read `lua.running` and `lua.last_error`. No separate restart is needed.
 - `lua` in the replies: `compiling`, `has_runtime`, `init_complete` (module code done, `tick(dt)` running), `running`,

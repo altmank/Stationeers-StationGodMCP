@@ -30,6 +30,10 @@ internal static class ShapingChecks
     internal static string ModFields(string reply, IEnumerable<string> fields) =>
         Mod(Parse(reply), Fields(fields)).Json;
 
+    /// <summary>The mod's text for a JSON reply with omit, read leniently.</summary>
+    internal static string ModOmit(string reply, IEnumerable<string> omit) =>
+        Mod(Parse(reply), ShapeRequest.Lenient(new JObject { ["omit"] = new JArray(new List<string>(omit).ToArray()) })!).Json;
+
     internal static ShapeRequest Fields(IEnumerable<string> fields) =>
         ShapeRequest.Lenient(new JObject { ["fields"] = new JArray(new List<string>(fields).ToArray()) })!;
 

@@ -68,7 +68,7 @@ internal sealed class FakeGame : IAsyncDisposable
     /// <summary>What the catalogue method answers.</summary>
     public string CatalogueJson { get; set; } = GameCatalogue.BuiltIn.Document.GetRawText();
 
-    public List<string> Features { get; set; } = ["shape", "shape.paths", "subscriptions", "cancel"];
+    public List<string> Features { get; set; } = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel"];
 
     public int MaxInFlight { get; set; } = 16;
 

@@ -13,8 +13,8 @@ namespace StationGodMCP.Api;
 /// set_ic_source: replace the source of the chip in a circuit holder as the IC editor's export does
 /// (ICircuitHolder.SetSourceCode). An IC10 chip compiles at once and restarts at line 0; a Lua chip compiles on a
 /// worker thread (ChipProgram), so the reply may still say compiling. An IC10 source is stored with LF line ends and
-/// as ASCII, and the reply's warnings say so, and when it passes the in-game editor's limits (Ic10Source). Sends the
-/// chip to clients. Writes.
+/// as ASCII, and the reply's warnings say so, and when it passes the in-game editor's limits (Ic10Source). The reply
+/// echoes the stored source only with include_source true: the caller sent it. Sends the chip to clients. Writes.
 /// </summary>
 internal static class SetIcSourceApi
 {
@@ -23,10 +23,12 @@ internal static class SetIcSourceApi
         DeviceScope scope = Devices.Scope(args);
         IcTarget ic = Devices.RequireCircuitHolder(scope, args);
         string source = args.String("source");
+        bool includeSource = args.OptionalBool("include_source") ?? false;
         ProgrammableChip chip = ic.RequireChip();
         ChipProgram program = ChipProgram.Of(chip);
         List<SourceNote> notes = program.Write(ic, chip, source);
-        return new IcSourceSetView(IcRuntime.PlaceOf(scope, ic), program.Describe(ic, chip, 0),
+        IcChip written = program.Describe(ic, chip, 0);
+        return new IcSourceSetView(IcRuntime.PlaceOf(scope, ic), includeSource ? written : written.WithoutSource(),
             IcRuntime.State(chip), notes);
     }
 }

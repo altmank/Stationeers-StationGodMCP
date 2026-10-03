@@ -36,7 +36,7 @@ public sealed class CostlySkippingTests
     [InlineData("results.networks.id", false, true)]
     [InlineData("reference_id", false, false)]
     [InlineData("Networks", false, false)]
-    [InlineData("networks.kind", false, false)]
+    [InlineData("networks.kind", true, true)]
     [InlineData("things", false, false)]
     [InlineData("networks-x", false, false)]
     [InlineData("things.position.x", false, false)]

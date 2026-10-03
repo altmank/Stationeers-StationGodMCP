@@ -266,7 +266,7 @@ internal sealed class IcStatusView
 
     public bool HasChip => true;
 
-    /// <summary>The chip's source; null with include_source false (source_length still counts it).</summary>
+    /// <summary>The chip's source with include_source true; null otherwise (source_length still counts it).</summary>
     public string? Source { get; }
 
     public double LineNumber { get; }
@@ -289,7 +289,8 @@ internal sealed class IcStatusView
 
     public List<IcPinView> Pins { get; }
 
-    public IcRuntimeView Runtime { get; }
+    /// <summary>The IC10 runtime; null for a Lua chip, which has no registers, stack or line to report.</summary>
+    public IcRuntimeView? Runtime { get; }
 
     /// <summary>ic10 or lua.</summary>
     public string Language { get; }
@@ -307,7 +308,7 @@ internal sealed class IcStatusView
 
 internal sealed class IcRuntimeParts
 {
-    internal IcRuntimeParts(List<IcPinView> pins, IcRuntimeView runtime)
+    internal IcRuntimeParts(List<IcPinView> pins, IcRuntimeView? runtime)
     {
         Pins = pins;
         Runtime = runtime;
@@ -315,7 +316,7 @@ internal sealed class IcRuntimeParts
 
     internal List<IcPinView> Pins { get; }
 
-    internal IcRuntimeView Runtime { get; }
+    internal IcRuntimeView? Runtime { get; }
 }
 
 internal sealed class IcHolderView

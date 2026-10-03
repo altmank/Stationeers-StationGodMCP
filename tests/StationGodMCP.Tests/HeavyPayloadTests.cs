@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Newtonsoft.Json.Linq;
@@ -117,6 +118,24 @@ public sealed class HeavyPayloadTests
 
         Assert.Equal(JTokenType.Null, json["source"]!.Type);
         Assert.Equal(22000, (int)json["source_length"]!);
+    }
+
+    [Fact]
+    public void ALuaHubChipsDefaultStatusCarriesNeitherItsSourceNorAnIc10Runtime()
+    {
+        string source = "-- hub" + Environment.NewLine + new string('x', 60000);
+        IcChip chip = new IcChip(IcChip.Lua, Chip, source, null).WithoutSource();
+        string written = WireCheck.New(new IcStatusView(
+            new IcPlace("world", new ThingId(300), new ThingView(new ThingId(300), "StructureConsole", "Console")),
+            chip, new ChipState(0.0, false, "", "None", "OK"), new IcHolderView("computer_board", true, true, true),
+            new IcRuntimeParts(new List<IcPinView>(), null)));
+        JObject json = JObject.Parse(written);
+
+        Assert.DoesNotContain("xxxxxxxxxx", written);
+        Assert.Equal(JTokenType.Null, json["source"]!.Type);
+        Assert.Equal(JTokenType.Null, json["runtime"]!.Type);
+        Assert.Equal(source.Length, (int)json["source_length"]!);
+        Assert.True(written.Length < 2048, $"{written.Length} bytes");
     }
 
     [Fact]

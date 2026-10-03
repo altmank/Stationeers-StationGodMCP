@@ -89,6 +89,15 @@ class Version2Cases:
         self.assertIsInstance(raised.exception, stationgod.GameError)
         self.assertEqual("method_not_found", raised.exception.code)
 
+    def test_omit_is_passed_as_shape_omit(self):
+        mod = self.mod()
+        mod.handlers["get_ic_status"] = lambda params: {"reference_id": "300", "pins": []}
+        game = self.client(mod)
+        game.call("get_ic_status", reference_id="300", omit=["source", "runtime.registers"])
+        call = mod.calls("get_ic_status")[0]
+        self.assertEqual({"omit": ["source", "runtime.registers"]}, call["shape"])
+        self.assertEqual({"reference_id": "300"}, call["params"])
+
     def test_shaping_is_passed_to_the_mod_and_the_reply_is_not_reshaped(self):
         mod = self.mod()
         mod.handlers["thing_health"] = lambda params: {"results": [{"reference_id": "1", "damage_ratio": 0.0,

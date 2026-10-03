@@ -8,8 +8,9 @@ using Newtonsoft.Json.Linq;
 namespace StationGodMCP.Pure.Shaping;
 
 /// <summary>
-/// A request's shape: which keys to keep in the reply's list entries (fields), how many entries to keep of named
-/// top-level lists (limit), and the largest reply the caller accepts (max_bytes).
+/// A request's shape: which keys to keep in the reply's list entries (fields), which keys to leave out anywhere in the
+/// reply (omit), how many entries to keep of named top-level lists (limit), and the largest reply the caller accepts
+/// (max_bytes).
 /// </summary>
 internal sealed class ShapeRequest
 {
@@ -22,15 +23,20 @@ internal sealed class ShapeRequest
     /// <summary>Nothing to leave out: every key and entry is written.</summary>
     internal static readonly ShapeRequest None = new ShapeRequest(null, NoLimits, null);
 
-    internal ShapeRequest(FieldSelectors? fields, IReadOnlyDictionary<string, int> limits, int? maxBytes)
+    internal ShapeRequest(FieldSelectors? fields, IReadOnlyDictionary<string, int> limits, int? maxBytes,
+        OmitSelectors? omit = null)
     {
         Fields = fields;
         Limits = limits;
         MaxBytes = maxBytes;
+        Omit = omit;
     }
 
     /// <summary>Null when no fields were given: every entry is kept whole.</summary>
     internal FieldSelectors? Fields { get; }
+
+    /// <summary>Null when no omit was given: no key is left out by path.</summary>
+    internal OmitSelectors? Omit { get; }
 
     internal IReadOnlyDictionary<string, int> Limits { get; }
 
@@ -48,6 +54,12 @@ internal sealed class ShapeRequest
     internal bool Wants(string list, string key) => Fields == null || Fields.EntryNodeFor(list).Child(key) != null;
 
     /// <summary>
+    /// Whether omit leaves out the top-level key: a handler may skip building a costly part the written reply would
+    /// drop anyway.
+    /// </summary>
+    internal bool Omits(string key) => Omit?.Root.Child(key)?.Whole == true;
+
+    /// <summary>
     /// The lenient reading ([Server] StrictArguments false), which never refuses: null when there is no shape object; inside it, a selector that does
     /// not parse is kept only to be reported unmatched, and a limit, a max_bytes or a key it cannot use is ignored.
     /// </summary>
@@ -58,10 +70,13 @@ internal sealed class ShapeRequest
             return null;
         }
 
-        return new ShapeRequest(LenientFields(shape["fields"]), LenientLimits(shape["limit"]), LenientMaxBytes(shape["max_bytes"]));
+        List<FieldSelector>? fields = LenientSelectors(shape["fields"]);
+        List<FieldSelector>? omit = LenientSelectors(shape["omit"]);
+        return new ShapeRequest(fields != null ? FieldSelectors.Of(fields) : null, LenientLimits(shape["limit"]),
+            LenientMaxBytes(shape["max_bytes"]), omit != null ? OmitSelectors.Of(omit) : null);
     }
 
-    private static FieldSelectors? LenientFields(JToken? token)
+    private static List<FieldSelector>? LenientSelectors(JToken? token)
     {
         if (!(token is JArray array) || array.Count == 0)
         {
@@ -76,7 +91,7 @@ internal sealed class ShapeRequest
                 : FieldSelector.NotText(item.ToString(Formatting.None)));
         }
 
-        return FieldSelectors.Of(selectors);
+        return selectors;
     }
 
     private static IReadOnlyDictionary<string, int> LenientLimits(JToken? token)
@@ -105,7 +120,8 @@ internal sealed class ShapeRequest
 
     /// <summary>
     /// The strict reading, which refuses what it cannot use: a shape that is not an object, a key other than fields,
-    /// limit and max_bytes, fields that is not 1 to 256 strings each following the selector grammar, a limit naming a
+    /// omit, limit and max_bytes, fields or omit that is not 1 to 256 strings each following the selector grammar, a
+    /// limit naming a
     /// key that is not one of the reply's lists (replyLists, from the catalogue) or outside 0 to 100,000, a max_bytes
     /// outside 1,024 to 16,777,216. Null with the problems added when it refuses; null without problems when there is
     /// no shape.
@@ -125,13 +141,17 @@ internal sealed class ShapeRequest
 
         foreach (JProperty property in shape.Properties())
         {
-            if (property.Name != "fields" && property.Name != "limit" && property.Name != "max_bytes")
+            if (property.Name != "fields" && property.Name != "omit" && property.Name != "limit" &&
+                property.Name != "max_bytes")
             {
-                problems.Add($"shape has no key '{property.Name}'; it takes fields, limit and max_bytes.");
+                problems.Add($"shape has no key '{property.Name}'; it takes fields, omit, limit and max_bytes.");
             }
         }
 
-        FieldSelectors? fields = StrictFields(shape["fields"], problems);
+        List<FieldSelector>? fieldSelectors = StrictSelectors(shape["fields"], "fields", problems);
+        List<FieldSelector>? omitSelectors = StrictSelectors(shape["omit"], "omit", problems);
+        FieldSelectors? fields = fieldSelectors != null ? FieldSelectors.Of(fieldSelectors) : null;
+        OmitSelectors? omit = omitSelectors != null ? OmitSelectors.Of(omitSelectors) : null;
         IReadOnlyDictionary<string, int> limits = StrictLimits(shape["limit"], replyLists, problems);
         int? maxBytes = null;
         JToken? given = shape["max_bytes"];
@@ -144,10 +164,10 @@ internal sealed class ShapeRequest
             }
         }
 
-        return problems.Count == 0 ? new ShapeRequest(fields, limits, maxBytes) : null;
+        return problems.Count == 0 ? new ShapeRequest(fields, limits, maxBytes, omit) : null;
     }
 
-    private static FieldSelectors? StrictFields(JToken? token, List<string> problems)
+    private static List<FieldSelector>? StrictSelectors(JToken? token, string key, List<string> problems)
     {
         if (token == null || token.Type == JTokenType.Null)
         {
@@ -156,7 +176,7 @@ internal sealed class ShapeRequest
 
         if (!(token is JArray array) || array.Count == 0 || array.Count > MaximumSelectors)
         {
-            problems.Add($"shape.fields must be an array of 1 to {MaximumSelectors} selectors.");
+            problems.Add($"shape.{key} must be an array of 1 to {MaximumSelectors} selectors.");
             return null;
         }
 
@@ -166,15 +186,15 @@ internal sealed class ShapeRequest
             FieldSelector? selector = item.Type == JTokenType.String ? FieldSelector.Parse((string)item!) : null;
             if (selector == null || selector is FieldSelector.Unparsed)
             {
-                problems.Add($"shape.fields: {item.ToString(Formatting.None)} is not a selector (names of letters, digits " +
-                             "and '_', joined by dots).");
+                problems.Add($"shape.{key}: {item.ToString(Formatting.None)} is not a selector (names of letters, " +
+                             "digits and '_', joined by dots).");
                 continue;
             }
 
             selectors.Add(selector);
         }
 
-        return FieldSelectors.Of(selectors);
+        return selectors;
     }
 
     private static IReadOnlyDictionary<string, int> StrictLimits(JToken? token, ICollection<string>? replyLists,
@@ -240,15 +260,20 @@ internal sealed class ShapeRequest
 
 /// <summary>
 /// What shaping saw while writing one reply: the length of every top-level list before any cut, which of them limit
-/// cut, and which selectors matched a key.
+/// cut, which fields selectors matched a key, and which omit selectors left one out.
 /// </summary>
 internal sealed class ShapeOutcome
 {
     private readonly bool[] _matched;
+    private readonly bool[] _omitted;
     private readonly List<KeyValuePair<string, int>> _lists = new List<KeyValuePair<string, int>>();
     private readonly List<KeyValuePair<string, int>> _cut = new List<KeyValuePair<string, int>>();
 
-    internal ShapeOutcome(int selectors) => _matched = new bool[selectors];
+    internal ShapeOutcome(int selectors, int omitSelectors = 0)
+    {
+        _matched = new bool[selectors];
+        _omitted = new bool[omitSelectors];
+    }
 
     /// <summary>At least one object entry of a top-level list was written.</summary>
     internal bool AnyEntry { get; private set; }
@@ -260,6 +285,21 @@ internal sealed class ShapeOutcome
     internal IReadOnlyList<KeyValuePair<string, int>> Cut => _cut;
 
     internal bool Matched(int selector) => _matched[selector];
+
+    internal bool Omitted(int selector) => _omitted[selector];
+
+    internal void Omit(IReadOnlyList<int>? selectors)
+    {
+        if (selectors == null)
+        {
+            return;
+        }
+
+        foreach (int selector in selectors)
+        {
+            _omitted[selector] = true;
+        }
+    }
 
     internal void Match(IReadOnlyList<int>? selectors)
     {
@@ -275,6 +315,16 @@ internal sealed class ShapeOutcome
     }
 
     internal void SawEntry() => AnyEntry = true;
+
+    /// <summary>Every omit selector ending at or below node: the key it names is left out with node's.</summary>
+    internal void OmitBelow(SelectorNode node)
+    {
+        Omit(node.Ends);
+        foreach (SelectorNode child in node.Children)
+        {
+            OmitBelow(child);
+        }
+    }
 
     internal void SawList(string name, int length, int limit)
     {

@@ -200,6 +200,7 @@ A method entry, abridged, for `thing_health`:
         "x-needs-mod": {"type": "array", "items": {"enum": ["StationeersLua", "BlueprintMod", "IngotVault", "TerraformingReloaded"]}},
         "x-mcp": {"enum": ["tool", "hidden"], "default": "tool"},
         "x-read-by": {"type": "object", "additionalProperties": {"type": "string"}},
+        "x-file-arguments": {"type": "object", "additionalProperties": {"type": "object", "properties": {"into": {}, "description": {}}}},
         "deprecated": {"type": "boolean"},
         "deprecated_aliases": {"type": "object", "additionalProperties": {"type": "string"}},
         "errors": {"type": "array", "items": {"type": "string"}}
@@ -246,7 +247,10 @@ reply parts the handler skips when `fields` leaves them out. `x-duration` names 
 long-running method takes and its maximum. `x-job` marks a method that starts building jobs and names its polling
 argument. `x-needs-mod` lists optional mods a method needs. `x-mcp: "hidden"` keeps a method out of the MCP tool list
 (protocol methods). `x-read-by` names a parameter that the handler's own files do not read through `Args`, and the
-file that reads it (shared code, or raw JSON access). `deprecated_aliases` maps old argument names to new ones.
+file that reads it (shared code, or raw JSON access). `x-file-arguments` names MCP-only arguments the sidecar reads: a
+path on its machine whose UTF-8 text it sends as the argument `into` (set_ic_source `source_file` into `source`), so a
+large text never passes through the agent; the tool's schema gains the argument and `into` stops being required there,
+while the mod's own parameters stay as declared. `deprecated_aliases` maps old argument names to new ones.
 
 `shared_reply_keys` declares, once, the keys the mod adds to replies outside the methods' own views:
 `resolved_networks` for methods that take network handles and `gas_hold` for methods that may touch pipe networks

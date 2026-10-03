@@ -17,7 +17,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from stationgod import _methods, pipe  # noqa: E402
 
-DEFAULT_FEATURES = ["shape", "shape.paths", "subscriptions", "cancel"]
+DEFAULT_FEATURES = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel"]
 
 
 class FakeError(Exception):

@@ -10,7 +10,7 @@ namespace StationGodMCP.Server;
 /// The sidecar: MCP on one side, the StationGod client on the other, over one connection for the life of the sidecar,
 /// opened at the first call (an agent session usually starts before the game). tools/list comes from the catalogue;
 /// when the mod's catalogue differs from the built-in one, the tools switch to it and the agent is told
-/// (notifications/tools/list_changed). tools/call takes out the sidecar's own arguments (fields, output_file), sends
+/// (notifications/tools/list_changed). tools/call reads file arguments (x-file-arguments), takes out the sidecar's own arguments (fields, omit, output_file), sends
 /// the call, writes the reply to a file when asked or when it is larger than the inline limit, and wraps the result or
 /// error in the one MCP result shape (ToolReplies). The sidecar checks only what cannot be sent as written and its own
 /// arguments; the rest are the mod's to check.
@@ -150,12 +150,22 @@ internal sealed class McpAdapter : IAsyncDisposable
             ? value.Clone()
             : NoArguments;
 
+        IReadOnlyList<FileArgument> files = tools.FileArgumentsOf(tool);
         IReadOnlyList<string> problems = ArgumentCheck.Unsendable(arguments) is { Count: > 0 } unsendable
             ? unsendable
-            : ArgumentCheck.ProblemsOf(schema, arguments, SidecarArguments.Names);
+            : ArgumentCheck.ProblemsOf(schema, arguments, SidecarArguments.Names.Concat(files.Select(file => file.Name)));
         if (problems.Count > 0)
         {
             return ToolReplies.Error(ToolFailure.InvalidArgument, string.Join(" ", problems));
+        }
+
+        switch (FileArguments.Read(arguments, files))
+        {
+            case FileRead.Refused refusedFile:
+                return ToolReplies.Error(ToolFailure.InvalidArgument, refusedFile.Message);
+            case FileRead.Ready ready:
+                arguments = ready.Arguments;
+                break;
         }
 
         SidecarArguments call = SidecarArguments.Take(arguments);
@@ -164,7 +174,7 @@ internal sealed class McpAdapter : IAsyncDisposable
             return ToolReplies.Error(ToolFailure.InvalidArgument, refused.Message);
         }
 
-        (JsonElement? shape, IReadOnlyList<string> unparsed) = call.Shape();
+        (JsonElement? shape, Unparsed unparsed) = call.Shape();
         CallOutcome outcome = await _client.CallAsync(tool, call.Forwarded, shape).ConfigureAwait(false);
 
         return outcome.Match(

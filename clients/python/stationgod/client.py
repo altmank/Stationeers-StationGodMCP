@@ -29,7 +29,7 @@ DEFAULT_DEADLINE_MS = 30000
 REPLY_GRACE_S = 5.0
 BACKOFF_FIRST_S = 0.1
 BACKOFF_MAX_S = 5.0
-OPTIONS = ("fields", "output_file", "max_bytes", "deadline_ms", "shape")
+OPTIONS = ("fields", "omit", "output_file", "max_bytes", "deadline_ms", "shape")
 
 
 class _Call:
@@ -179,7 +179,7 @@ class Client(_methods.Methods):
 
     def call(self, method, /, **params):
         """Calls method with params as the catalogue names them and returns its result. Options: fields (sent as
-        shape.fields), limit given as a dict ({"things": 20}, sent as shape.limit; an integer limit is the method's own
+        shape.fields), omit (shape.omit: keys left out by path from the reply's top), limit given as a dict ({"things": 20}, sent as shape.limit; an integer limit is the method's own
         argument), max_bytes (shape.max_bytes), shape (a whole shape object), deadline_ms, and output_file (written
         here, never sent). None means omitted."""
         return self.call_async(method, **params).result()
@@ -195,7 +195,7 @@ class Client(_methods.Methods):
             options["limit"] = params.pop("limit")
         params = {name: value for name, value in params.items() if value is not None}
         shape = dict(options.get("shape") or {})
-        for name in ("fields", "limit", "max_bytes"):
+        for name in ("fields", "omit", "limit", "max_bytes"):
             if options.get(name) is not None:
                 shape[name] = options[name]
         deadline_ms = options.get("deadline_ms")

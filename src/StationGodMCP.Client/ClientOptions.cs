@@ -49,5 +49,5 @@ public static class Library
     public static string Name => $"stationgod-cs/{Version}";
 
     /// <summary>The features this library understands, sent in hello.</summary>
-    public static IReadOnlyList<string> Features { get; } = ["shape", "shape.paths", "subscriptions", "cancel"];
+    public static IReadOnlyList<string> Features { get; } = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel"];
 }

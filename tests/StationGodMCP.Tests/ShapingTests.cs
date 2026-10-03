@@ -119,6 +119,121 @@ public sealed class ShapingTests
     }
 
     [Fact]
+    public void APathReadFromEachEntryReachesANestedObject()
+    {
+        string shaped = ShapingChecks.ModFields(
+            """{"slots":[{"index":0,"type":"Tool","occupant":{"reference_id":"9","prefab_name":"ItemDrill","quantity":1}},{"index":1,"type":"Tool","occupant":null}]}""",
+            new[] { "index", "occupant.prefab_name" });
+
+        Assert.Equal("""{"slots":[{"index":0,"occupant":{"prefab_name":"ItemDrill"}},{"index":1,"occupant":null}]}""", shaped);
+    }
+
+    [Fact]
+    public void APathReadFromEachEntryWalksAnyDepthAndThroughLists()
+    {
+        string shaped = ShapingChecks.ModFields(
+            """{"vaults":[{"id":"1","stock":{"rows":[{"ore":"Iron","grams":{"total":5,"by_slot":[1,4]}},{"ore":"Gold","grams":{"total":2}}]}}]}""",
+            new[] { "stock.rows.grams.total" });
+
+        Assert.Equal("""{"vaults":[{"stock":{"rows":[{"grams":{"total":5}},{"grams":{"total":2}}]}}]}""", shaped);
+    }
+
+    [Fact]
+    public void AnEntryPathReachesIntoANestedListOfEachEntry()
+    {
+        string shaped = ShapingChecks.ModFields(
+            """{"items":[{"reference_id":"1","held_in":[{"reference_id":"5","prefab_name":"ItemBackpack"},{"reference_id":"9","prefab_name":"Human"}]}]}""",
+            new[] { "reference_id", "held_in.reference_id" });
+
+        Assert.Equal("""{"items":[{"reference_id":"1","held_in":[{"reference_id":"5"},{"reference_id":"9"}]}]}""", shaped);
+    }
+
+    [Fact]
+    public void AnEntryPathAndAListPathTogether()
+    {
+        string shaped = ShapingChecks.ModFields(
+            """{"things":[{"reference_id":"1","position":{"x":1,"y":2},"held_in":{"reference_id":"5","name":"Locker"}}]}""",
+            new[] { "things.position.x", "held_in.name" });
+
+        Assert.Equal("""{"things":[{"position":{"x":1},"held_in":{"name":"Locker"}}]}""", shaped);
+    }
+
+    [Fact]
+    public void AnEntryPathNoEntryHasIsUnmatched()
+    {
+        string shaped = ShapingChecks.ModFields(
+            """{"slots":[{"index":0,"occupant":{"prefab_name":"A"}}]}""", new[] { "index", "occupant.colour" });
+
+        Assert.Equal("""{"slots":[{"index":0,"occupant":{}}],"fields_unmatched":["occupant.colour"]}""", shaped);
+    }
+
+    [Fact]
+    public void OmitDropsTopLevelKeysAndNestedPaths()
+    {
+        string reply = """{"reference_id":"5","source":"print(1)","source_length":8,"runtime":{"registers":[{"index":0,"value":0}],"register_count":18,"stack":{"values":[1,2]}},"lua":{"running":true,"log":{"lines":["a"]}},"pins":[{"index":0,"reference_id":"7"}]}""";
+
+        Assert.Equal(
+            """{"reference_id":"5","source_length":8,"runtime":{"register_count":18},"lua":{"running":true},"pins":[{"index":0,"reference_id":"7"}]}""",
+            ShapingChecks.ModOmit(reply, new[] { "source", "runtime.registers", "runtime.stack", "lua.log" }));
+    }
+
+    [Fact]
+    public void OmitThroughAListAppliesToEachEntry()
+    {
+        string reply = """{"count":2,"members":[{"reference_id":"1","position":{"x":1},"display_name":"Cable"},{"reference_id":"2","position":{"x":2}}]}""";
+
+        Assert.Equal("""{"count":2,"members":[{"reference_id":"1","display_name":"Cable"},{"reference_id":"2"}]}""",
+            ShapingChecks.ModOmit(reply, new[] { "members.position" }));
+    }
+
+    [Fact]
+    public void OmitNamesWhatMatchedNothing()
+    {
+        string reply = """{"source":"x","runtime":{"registers":[]}}""";
+
+        Assert.Equal("""{"omit_unmatched":["sourc"]}""",
+            ShapingChecks.ModOmit(reply, new[] { "source", "sourc", "runtime", "runtime.registers", "runtime.stack" }));
+    }
+
+    [Fact]
+    public void OmitWinsOverFields()
+    {
+        ShapeRequest shape = ShapeRequest.Lenient(JObject.Parse("""{"fields":["a","b"],"omit":["things.b","total"]}"""))!;
+
+        Assert.Equal("""{"things":[{"a":1}]}""",
+            ShapingChecks.Mod(ShapingChecks.Parse("""{"total":1,"things":[{"a":1,"b":2,"c":3}]}"""), shape).Json);
+    }
+
+    [Fact]
+    public void OmitInTheEnvelopeAppliesToTheResultOnly()
+    {
+        CallReplyView reply = CallReplyView.Of("r8", ShapingChecks.Parse("""{"id":"x","source":"long"}"""), true, 0.5, 0.25, 3);
+        ShapeRequest shape = ShapeRequest.Lenient(JObject.Parse("""{"omit":["source","id"]}"""))!;
+
+        string text = ApiJson.WriteShaped(ApiJson.Fresh(), reply, shape, ShapingRoot.Envelope).Json;
+
+        Assert.Equal("""{"type":"reply","id":"r8","ok":true,"shaped":true,"result":{},"elapsed_ms":0.5,"queue_ms":0.25,"frame":3}""", text);
+    }
+
+    [Fact]
+    public void TheStrictReadingTakesOmitAndRefusesABadOne()
+    {
+        List<string> problems = new List<string>();
+        ShapeRequest? good = ShapeRequest.Strict(JObject.Parse("""{"omit":["source","runtime.registers"]}"""), null, problems);
+
+        Assert.Empty(problems);
+        Assert.Equal(2, good!.Omit!.Count);
+        Assert.True(good.Omits("source"));
+        Assert.False(good.Omits("runtime"));
+
+        Assert.Null(ShapeRequest.Strict(JObject.Parse("""{"omit":["a-b"]}"""), null, problems));
+        Assert.Contains(problems, problem => problem.StartsWith("shape.omit:", StringComparison.Ordinal));
+        problems.Clear();
+        Assert.Null(ShapeRequest.Strict(JObject.Parse("""{"omit":[]}"""), null, problems));
+        Assert.Contains("shape.omit must be an array of 1 to 256 selectors.", problems);
+    }
+
+    [Fact]
     public void TwoSelectorsOnOneKeyKeepTheUnion()
     {
         string reply = """{"things":[{"position":{"x":1,"y":2,"z":3},"id":"1"}]}""";

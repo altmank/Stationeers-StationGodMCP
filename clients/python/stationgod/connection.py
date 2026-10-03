@@ -16,7 +16,7 @@ log = logging.getLogger("stationgod")
 
 LIBRARY_VERSION = "0.2.0"
 LIBRARY = f"stationgod-py/{LIBRARY_VERSION}"
-FEATURES = ["shape", "shape.paths", "subscriptions", "cancel"]
+FEATURES = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel"]
 HANDSHAKE_TIMEOUT_S = 10.0  # how long the server may take to answer the secret or hello
 
 

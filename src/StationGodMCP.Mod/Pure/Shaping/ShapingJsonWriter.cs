@@ -18,15 +18,16 @@ internal enum ShapingRoot
 
 /// <summary>
 /// A JsonWriter between the serialiser and the real writer that applies a ShapeRequest while the reply is written:
-/// keys that fields leaves out and entries past a limit are not forwarded, so they are never formatted or sent. The
-/// serialiser still reads every property; only formatting and sending are saved. At the end of the reply object it
-/// adds fields_unmatched and shape_truncated. With nothing to leave out it forwards every token unchanged, so the
+/// keys that fields leaves out or omit names, and entries past a limit, are not forwarded, so they are never formatted
+/// or sent. The serialiser still reads every property; only formatting and sending are saved. At the end of the reply
+/// object it adds fields_unmatched, omit_unmatched and shape_truncated. With nothing to leave out it forwards every token unchanged, so the
 /// output is byte for byte the real writer's.
 /// </summary>
 internal sealed class ShapingJsonWriter : JsonWriter
 {
     internal const string ResultKey = "result";
     internal const string UnmatchedKey = "fields_unmatched";
+    internal const string OmitUnmatchedKey = "omit_unmatched";
     internal const string TruncatedKey = "shape_truncated";
 
     private readonly JsonWriter _inner;
@@ -39,8 +40,10 @@ internal sealed class ShapingJsonWriter : JsonWriter
     {
         _inner = inner;
         _shape = shape;
-        Outcome = new ShapeOutcome(shape.Fields?.Count ?? 0);
-        _pending = new Pending(root == ShapingRoot.Envelope ? Role.Envelope : Role.Result, null, null);
+        Outcome = new ShapeOutcome(shape.Fields?.Count ?? 0, shape.Omit?.Count ?? 0);
+        _pending = root == ShapingRoot.Envelope
+            ? new Pending(Role.Envelope, null, null)
+            : new Pending(Role.Result, null, null, shape.Omit?.Root);
         AutoCompleteOnClose = false;
         CloseOutput = false;
     }
@@ -367,15 +370,16 @@ internal sealed class ShapingJsonWriter : JsonWriter
     // the same way).
     private bool Scalar()
     {
-        Role role = Resolve(Token.Scalar, out _, out _);
+        Role role = Resolve(Token.Scalar, out _, out _, out _);
         base.WriteNull();
         return role != Role.Skip;
     }
 
     private Frame Open(Token token)
     {
-        Role role = Resolve(token, out SelectorNode? node, out string? list);
-        Frame frame = new Frame(role, token == Token.Array, node, list, list != null ? _shape.LimitOf(list) : int.MaxValue);
+        Role role = Resolve(token, out SelectorNode? node, out string? list, out SelectorNode? omit);
+        Frame frame = new Frame(role, token == Token.Array, node, list, list != null ? _shape.LimitOf(list) : int.MaxValue,
+            omit);
         if (_depth == _frames.Length)
         {
             Array.Resize(ref _frames, _depth * 2);
@@ -389,7 +393,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
     private Frame Pop() => _frames[--_depth];
 
     /// <summary>The role of the value now starting, from the pending property (in an object) or the array's rules.</summary>
-    private Role Resolve(Token token, out SelectorNode? node, out string? list)
+    private Role Resolve(Token token, out SelectorNode? node, out string? list, out SelectorNode? omit)
     {
         list = null;
         if (_depth == 0 || !_frames[_depth - 1].IsArray)
@@ -398,6 +402,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
             _pending = default;
             node = pending.Node;
             list = pending.List;
+            omit = pending.Omit;
             return pending.Role switch
             {
                 Role.Envelope => token == Token.Object ? Role.Envelope : Role.Pass,
@@ -415,6 +420,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
 
         ref Frame array = ref _frames[_depth - 1];
         int index = array.Count++;
+        omit = array.Omit;
         switch (array.Role)
         {
             case Role.Skip:
@@ -443,13 +449,35 @@ internal sealed class ShapingJsonWriter : JsonWriter
     private bool Name(string name)
     {
         Frame frame = _frames[_depth - 1];
+        SelectorNode? omit = frame.Role == Role.Skip ? null : frame.Omit?.Child(name);
+        if (omit is { Whole: true })
+        {
+            Outcome.OmitBelow(omit);
+            if (frame.Role == Role.Entry)
+            {
+                Outcome.Match(frame.Node!.Child(name)?.Ends);
+            }
+
+            _pending = new Pending(Role.Skip, null, null);
+            return false;
+        }
+
+        bool emit = Decide(frame, name);
+        _pending = _pending.WithOmit(omit);
+        return emit;
+    }
+
+    private bool Decide(Frame frame, string name)
+    {
         switch (frame.Role)
         {
             case Role.Skip:
                 _pending = new Pending(Role.Skip, null, null);
                 return false;
             case Role.Envelope:
-                _pending = new Pending(name == ResultKey ? Role.Result : Role.Pass, null, null);
+                _pending = name == ResultKey
+                    ? new Pending(Role.Result, null, null, _shape.Omit?.Root)
+                    : new Pending(Role.Pass, null, null);
                 return true;
             case Role.Result:
                 _pending = new Pending(Role.ResultValue, null, name);
@@ -508,6 +536,33 @@ internal sealed class ShapingJsonWriter : JsonWriter
             }
         }
 
+        OmitSelectors? omit = _shape.Omit;
+        if (omit != null)
+        {
+            bool opened = false;
+            for (int index = 0; index < omit.Count; index++)
+            {
+                if (Outcome.Omitted(index))
+                {
+                    continue;
+                }
+
+                if (!opened)
+                {
+                    _inner.WritePropertyName(OmitUnmatchedKey);
+                    _inner.WriteStartArray();
+                    opened = true;
+                }
+
+                _inner.WriteValue(omit[index].Text);
+            }
+
+            if (opened)
+            {
+                _inner.WriteEndArray();
+            }
+        }
+
         IReadOnlyList<KeyValuePair<string, int>> cut = Outcome.Cut;
         if (cut.Count > 0)
         {
@@ -525,12 +580,18 @@ internal sealed class ShapingJsonWriter : JsonWriter
 
     private readonly struct Pending
     {
-        internal Pending(Role role, SelectorNode? node, string? list)
+        internal Pending(Role role, SelectorNode? node, string? list, SelectorNode? omit = null)
         {
             Role = role;
             Node = node;
             List = list;
+            Omit = omit;
         }
+
+        /// <summary>What omit still leaves out below the value now starting; null when nothing.</summary>
+        internal SelectorNode? Omit { get; }
+
+        internal Pending WithOmit(SelectorNode? omit) => omit == null ? this : new Pending(Role, Node, List, omit);
 
         internal Role Role { get; }
 
@@ -541,15 +602,19 @@ internal sealed class ShapingJsonWriter : JsonWriter
 
     private struct Frame
     {
-        internal Frame(Role role, bool isArray, SelectorNode? node, string? list, int limit)
+        internal Frame(Role role, bool isArray, SelectorNode? node, string? list, int limit, SelectorNode? omit)
         {
             Role = role;
             IsArray = isArray;
             Node = node;
             List = list;
             Limit = limit;
+            Omit = omit;
             Count = 0;
         }
+
+        /// <summary>What omit leaves out below this object, or in each entry of this array.</summary>
+        internal SelectorNode? Omit { get; }
 
         internal Role Role { get; }
 

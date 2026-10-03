@@ -24,10 +24,10 @@ internal sealed class CallSession : Session
     internal const string AnonymousClient = "anonymous";
 
     /// <summary>What welcome lists in features: what this server does beyond the basics.</summary>
-    internal static readonly string[] Features = { "shape", "shape.paths", "cancel" };
+    internal static readonly string[] Features = { "shape", "shape.paths", "shape.omit", "cancel" };
 
     /// <summary>The features with subscriptions, when the server has them.</summary>
-    internal static readonly string[] FeaturesWithSubscriptions = { "shape", "shape.paths", "subscriptions", "cancel" };
+    internal static readonly string[] FeaturesWithSubscriptions = { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel" };
 
     private readonly Connection _connection;
     private readonly ProtocolHost _host;
