@@ -2,20 +2,11 @@ using System.Text.Json;
 
 namespace StationGodMCP.Server;
 
-/// <summary>
-/// A tool call the sidecar answers with an error itself (a bad argument, the game out of reach): the code and message
-/// become the same {code, message} error object the mod gives.
-/// </summary>
-internal sealed class ToolFailure(string code, string message) : Exception(message)
+/// <summary>The error codes the sidecar answers with itself: a bad argument, the game out of reach.</summary>
+internal static class ToolFailure
 {
     internal const string InvalidArgument = "invalid_argument";
     internal const string GameUnavailable = "game_unavailable";
-
-    internal string Code { get; } = code;
-
-    internal static ToolFailure Argument(string message) => new(InvalidArgument, message);
-
-    internal static ToolFailure Unavailable(string message) => new(GameUnavailable, message);
 }
 
 /// <summary>
@@ -31,6 +22,7 @@ internal static class ToolReplies
         isError
     };
 
-    internal static object Failure(ToolFailure failure) =>
-        Of(JsonSerializer.SerializeToElement(new { code = failure.Code, message = failure.Message }), isError: true);
+    /// <summary>An error the sidecar answers itself, in the same {code, message} object the mod gives.</summary>
+    internal static object Error(string code, string message) =>
+        Of(JsonSerializer.SerializeToElement(new { code, message }), isError: true);
 }

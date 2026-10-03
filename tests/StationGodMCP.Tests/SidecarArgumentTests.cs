@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using StationGodMCP.Server;
+using StationGodMCP.Tests.Sidecar;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -210,19 +211,11 @@ public sealed class SidecarReplyTests
     [Fact]
     public async Task TheGamesOwnErrorHasTheSameEnvelope()
     {
-        string pipeName = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
-        await using NamedPipeServerStream server = new(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-        Task game = Task.Run(async () =>
-        {
-            await server.WaitForConnectionAsync();
-            using StreamReader reader = new(server, new UTF8Encoding(false), false, 4096, leaveOpen: true);
-            using StreamWriter writer = new(server, new UTF8Encoding(false), 4096, leaveOpen: true) { AutoFlush = true, NewLine = "\n" };
-            await reader.ReadLineAsync();
-            await writer.WriteLineAsync("""{"id":"x","ok":false,"error":{"code":"thing_not_found","message":"No thing with reference id 9."}}""");
-        });
+        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.OldMod);
+        game.Answer = call => Task.FromResult<string?>(call.Error("thing_not_found", "No thing with reference id 9."));
 
-        JsonElement result = Result(await Handle(Call(4, "describe_device", """{"reference_id":"9"}"""), Program.GameTransportSettings.ForPipe(pipeName)));
-        await game;
+        JsonElement result = Result(await Handle(Call(4, "describe_device", """{"reference_id":"9"}"""),
+            new Program.GameTransportSettings(game.Target)));
 
         AssertError(result, "thing_not_found");
     }

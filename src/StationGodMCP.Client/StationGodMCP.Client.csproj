@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The C# client of the StationGod protocol (docs/architecture/clients.md): connecting over a pipe or TCP, version 2
+    with the fall back to version 1, signing in, one connection with several calls in flight, resending only what the
+    catalogue calls safe, subscriptions, and output_file on the caller's machine. No dependencies.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>StationGodMCP.Client</AssemblyName>
+    <RootNamespace>StationGodMCP.Client</RootNamespace>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StationGodMCP.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The method catalogue the client was built with (the repository root's catalogue.json, assembled from
+         catalogue/); its hash is SHA-256 of these exact bytes. -->
+    <EmbeddedResource Include="..\..\catalogue.json" LogicalName="StationGodMCP.catalogue.json" />
+  </ItemGroup>
+</Project>
