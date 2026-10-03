@@ -211,3 +211,46 @@ tests:
   first out, as today.
 
 The live checks on the test server are in [stages.md](stages.md) (stage 10).
+
+## As built: scheduling core
+
+The pure part of stage 10 is in `src/StationGodMCP.Mod/Pure/Scheduling/`, tested in
+`tests/StationGodMCP.Tests/Scheduling/`. It has no Unity, game or thread code; the clock, the calls and the
+subscription samples are injected.
+
+- `FrameScheduler<TCall>`: `Open()` and `Close(connection)`; `Enqueue(connection, call, profile, deadlineMs)`, which
+  sorts the call into its lane and answers `Admission` (queued in a lane, or refused `TooManyInFlight` or
+  `ConnectionClosed`); `Cancel(connection, call)`; `RunFrame(jobHoldsTick, sampleLane)`, which runs the three steps
+  above and answers a `FrameOutcome` (samples, light and heavy calls, expired calls, milliseconds spent, budget stop).
+  Main thread only; a frame allocates nothing.
+- `ICallRunner<TCall>` runs a call (handler, serialising, hand-off to the outbound queue) or answers `game_timeout`
+  for an expired one; `ISampleLane` runs the next due sample; `IMonotonicClock` gives milliseconds
+  (`StopwatchClock` in the mod).
+- `CallProfile.Of(catalogueMethod, arguments)`: the method, its effective class (which decides its order on its
+  connection) and its cost with its `per_item` count. `CostPredictor` decides the lane.
+- `SchedulerSettings`: the four `[Performance]` values and `max_in_flight`; `SharesFor(jobHoldsTick)` gives the frame's
+  budget and the subscription share; `SubscriptionAdmissionCapMsPerSecond` is the global limit subscription admission
+  checks against (22.5 ms a second with the defaults).
+
+Where the text above leaves a choice open:
+
+- A method with no history is light; its first call is what the prediction learns from. The average per item is the
+  total time of the last 32 calls over their total items, kept per method and per cost class, so `thing_health` by
+  ids and by one id do not share a history. A call with an empty item list counts as one item.
+- Turns: a connection joins the back of a lane's round when its first call in that lane arrives, goes to the back
+  after its turn while it still has calls there, and leaves when it has none. Connections with one call each are
+  therefore served first come, first served, at any budget.
+- The heavy lane runs the oldest call that may start once it has been passed over in `HeavyMaxWaitFrames` frames,
+  and otherwise takes turns across connections while the frame is under budget. One heavy call a frame means a burst
+  of heavy calls under always-busy light work runs one a frame from the bound on: a call waits at most
+  `HeavyMaxWaitFrames` frames plus one for each older heavy call still waiting.
+- At most 64 light calls a frame, as today's 64 requests, so an unlimited budget still bounds a frame.
+- An expired call is answered when a lane's search meets it; one queued behind a waiting write is met once the write
+  has run.
+- The scheduler refuses a connection's call beyond `max_in_flight` waiting, as a second guard behind the transport's
+  own check.
+- The order of samples (oldest due first, round-robin across connections) belongs to the `ISampleLane`; the
+  scheduler gives the lane its share and the first-sample rule.
+
+Not in this part: the dispatcher wiring, the `[Performance]` settings binding, `mod_info.runtime.lanes`, and
+subscription admission.
