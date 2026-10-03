@@ -1,16 +1,17 @@
 """Probe protocol version 2 on a live mod, message by message (stages 4 to 6 of docs/architecture/stages.md).
 
 Raw protocol: it writes the lines itself, so it can do what a well-behaved library would not (17 calls at once, a cancel
-straight after a call). Uses the overlapped pipe module of the Python library in clients/python and its key proof;
-TCP with --host and --port. Every check prints what it saw as JSON and exits 0 when it passed.
+straight after a call). Uses the overlapped pipe module of the Python library in clients/python;
+TCP with --host and --port signs in with the shared secret from --secret-env (default STATIONGODMCP_SECRET) first. Every check prints what it saw as JSON and exits 0 when it passed.
 
     py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test hello
     py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test burst --method game_clock --count 16
     py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test order --device <id with a writable Setting>
     py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test cancel --survey '{"min": [x,y,z], "max": [x,y,z]}'
     py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test strict --method connections --params '{...}'
-    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test --client probe-read --key-env K call read_logic '{...}'
-    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test --client probe-cheat --key-env K hold --seconds 90
+    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test call read_logic '{...}'
+    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test hold --seconds 90
+    py -3.12 tools/protocol_probe.py --host 127.0.0.1 --port 18765 hello
 
 The default pipe name (the owner's game) is refused unless --allow-default-pipe is given; nothing here writes to the
 world except order, which restores the Setting it changed.
@@ -26,7 +27,6 @@ import queue
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "clients", "python"))
 from stationgod import pipe  # noqa: E402
-from stationgod.connection import proof  # noqa: E402
 
 
 class Probe:
@@ -90,16 +90,18 @@ class Probe:
 
     def hello(self):
         message = {"type": "hello", "protocol": [2], "client": {"name": self.args.client or "protocol-probe", "version": "1"}}
-        key = os.environ.get(self.args.key_env) if self.args.key_env else None
-        if key:
-            message["auth"] = "key"
+        if self.transport == "tcp":
+            signed_in = self.sign_in()
+            if signed_in.get("ok") is not True:
+                return signed_in
         self.send(message)
-        answer = self.next()
-        if answer.get("type") == "challenge":
-            self.send({"type": "auth", "client": self.args.client,
-                       "proof": proof(key, answer["nonce"], self.args.client, self.transport)})
-            answer = self.next()
-        return answer
+        return self.next()
+
+    def sign_in(self):
+        """TCP: the shared secret is the first line; the server answers {"ok": true} or unauthorized and closes."""
+        secret_env = getattr(self.args, "secret_env", None) or "STATIONGODMCP_SECRET"
+        self.send({"type": "auth", "secret": os.environ.get(secret_env, "")})
+        return self.next()
 
     def call(self, call_id, method, params=None, **extra):
         message = {"type": "call", "id": call_id, "method": method, "params": params or {}}
@@ -236,7 +238,7 @@ def main():
     parser.add_argument("--host")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--client")
-    parser.add_argument("--key-env")
+    parser.add_argument("--secret-env", default="STATIONGODMCP_SECRET")
     parser.add_argument("--allow-default-pipe", action="store_true")
     parser.add_argument("check", choices=sorted(CHECKS))
     parser.add_argument("method_arg", nargs="?")
