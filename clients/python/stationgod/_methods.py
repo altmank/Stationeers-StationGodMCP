@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:c6dcfb94d0454c8798551a850b03c09a2f54745ea627bffa572a3fc3b30f1759'
+CATALOGUE_HASH = 'sha256:5a20f964a790dd932bda3cf7bf076b3300ccd2f152af16b8a3dea0192c2a6dc5'
 MOD_VERSION = '1.13.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -128,6 +128,10 @@ TABLE = {'catalogue': {'class': 'read',
                             'kind',
                             'prefab_contains',
                             'open_ends_only',
+                            'min',
+                            'max',
+                            'near',
+                            'radius_m',
                             'limit',
                             'offset'],
                  'required': [],
@@ -1478,12 +1482,12 @@ class Methods:
         """
         return self.call('clean_pipes', **{'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
-    def connections(self, *, reference_id: str | None = None, network_id: str | dict | None = None, kind: str | None = None, prefab_contains: str | None = None, open_ends_only: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+    def connections(self, *, reference_id: str | None = None, network_id: str | dict | None = None, kind: str | None = None, prefab_contains: str | None = None, open_ends_only: bool | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
         """How pipes, cables and chutes connect, read from the game's own connection ends and networks.
 
-        Class: read. Arguments: reference_id, network_id, kind, prefab_contains, open_ends_only, limit, offset.
+        Class: read. Arguments: reference_id, network_id, kind, prefab_contains, open_ends_only, min, max, near, radius_m, limit, offset.
         """
-        return self.call('connections', **{'reference_id': reference_id, 'network_id': network_id, 'kind': kind, 'prefab_contains': prefab_contains, 'open_ends_only': open_ends_only, 'limit': limit, 'offset': offset}, **options)
+        return self.call('connections', **{'reference_id': reference_id, 'network_id': network_id, 'kind': kind, 'prefab_contains': prefab_contains, 'open_ends_only': open_ends_only, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'limit': limit, 'offset': offset}, **options)
 
     def consumables(self, **options) -> dict:
         """Every food and drink in the world wherever it is (carried, stored, on the ground, inside boxes and packages), with its holders and location like find_items.

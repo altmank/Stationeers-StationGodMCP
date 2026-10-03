@@ -15,6 +15,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -56,7 +57,8 @@ internal static class ConnectionsApi
 
         if (thing)
         {
-            args.Reject("reference_id", "kind", "limit", "offset", "prefab_contains", "open_ends_only");
+            args.Reject("reference_id", "kind", "limit", "offset", "prefab_contains", "open_ends_only", "min", "max",
+                "near", "radius_m");
             return EndsReader.Read(GameLookup.RequireThing(args.ThingId("reference_id")));
         }
 
@@ -444,7 +446,8 @@ internal static class NetworkReader
         List<KeptMember> kept = new List<KeptMember>(members.All.Count);
         foreach (Thing member in members.All)
         {
-            if (!filter.KeepsPrefab(member.PrefabName))
+            if (!filter.KeepsPrefab(member.PrefabName) ||
+                !filter.KeepsPosition(new Vec3(member.Position.x, member.Position.y, member.Position.z)))
             {
                 continue;
             }

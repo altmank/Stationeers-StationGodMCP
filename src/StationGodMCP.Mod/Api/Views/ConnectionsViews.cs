@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 
+using StationGodMCP.Pure;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>connections for a thing: its connection ends and what is attached at each.</summary>
@@ -151,32 +153,39 @@ internal sealed class NetworkMembersView
 /// <summary>
 /// connections' network-form filters: prefab_contains (a case-insensitive part of the prefab name) and open_ends_only
 /// (only members with an end of the network's kind that nothing is attached at: a run's loose ends, a device port left
-/// unjoined). Both are applied before paging, so total counts the members kept.
+/// unjoined), and an area (min and max, or near with radius_m: only members whose position lies in it). All are applied
+/// before paging, so total counts the members kept.
 /// </summary>
 internal sealed class NetworkMemberFilter
 {
-    private NetworkMemberFilter(string? prefabContains, bool openEndsOnly)
+    private NetworkMemberFilter(string? prefabContains, bool openEndsOnly, PointArea area)
     {
         PrefabContains = prefabContains;
         OpenEndsOnly = openEndsOnly;
+        Area = area;
     }
 
-    internal static NetworkMemberFilter None { get; } = new NetworkMemberFilter(null, false);
+    internal static NetworkMemberFilter None { get; } = new NetworkMemberFilter(null, false, PointArea.Anywhere);
 
     internal string? PrefabContains { get; }
 
     internal bool OpenEndsOnly { get; }
 
+    /// <summary>Where a member must stand (AreaArgs: min/max box, or near with radius_m); anywhere by default.</summary>
+    internal PointArea Area { get; }
+
     internal static NetworkMemberFilter Parse(Args args)
     {
         string? prefab = args.OptionalString("prefab_contains")?.Trim();
         return new NetworkMemberFilter(string.IsNullOrEmpty(prefab) ? null : prefab,
-            args.OptionalBool("open_ends_only") ?? false);
+            args.OptionalBool("open_ends_only") ?? false, AreaArgs.Parse(args));
     }
 
     internal bool KeepsPrefab(string? prefabName) =>
         PrefabContains == null ||
         (prefabName != null && prefabName.IndexOf(PrefabContains, System.StringComparison.OrdinalIgnoreCase) >= 0);
+
+    internal bool KeepsPosition(Vec3 position) => Area.Contains(position);
 }
 
 internal sealed class NetworkMemberView
