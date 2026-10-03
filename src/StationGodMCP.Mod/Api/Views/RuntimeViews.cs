@@ -16,8 +16,9 @@ namespace StationGodMCP.Api.Views;
 internal sealed class RuntimeView
 {
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
-        MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift)
+        MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift, List<ConnectionView>? connections = null)
     {
+        Connections = connections;
         UptimeS = Math.Round(uptimeS, 1);
         WorldEpoch = worldEpoch;
         RequestBudgetMs = budget.Unlimited ? null : budget.LimitMs;
@@ -48,6 +49,49 @@ internal sealed class RuntimeView
 
     /// <summary>Per method and argument name, reads of a name the method's catalogue entry does not declare.</summary>
     public List<CatalogueDriftView> CatalogueDrift { get; }
+
+    /// <summary>The overlapped pipe's open connections; absent on the synchronous pipe.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public List<ConnectionView>? Connections { get; }
+}
+
+/// <summary>
+/// One open connection: the server's id for it, the key's name (anonymous without a key), the name the client gave
+/// itself, transport, protocol (null before its first line), level, calls in flight and answered, bytes sent.
+/// </summary>
+internal sealed class ConnectionView
+{
+    internal ConnectionView(string clientId, string? client, string? label, string transport, int? protocol, string? level,
+        int inFlight, long served, long bytesSent)
+    {
+        ClientId = clientId;
+        Client = client;
+        Label = label;
+        Transport = transport;
+        Protocol = protocol;
+        Level = level;
+        InFlight = inFlight;
+        Served = served;
+        BytesSent = bytesSent;
+    }
+
+    public string ClientId { get; }
+
+    public string? Client { get; }
+
+    public string? Label { get; }
+
+    public string Transport { get; }
+
+    public int? Protocol { get; }
+
+    public string? Level { get; }
+
+    public int InFlight { get; }
+
+    public long Served { get; }
+
+    public long BytesSent { get; }
 }
 
 /// <summary>One undeclared argument name a method's handler read since the mod loaded, and how often.</summary>

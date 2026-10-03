@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:d031843753441022f18961d708b80c083f76690fea908cbc6af486a268de0acd'
+CATALOGUE_HASH = 'sha256:f6b608fd883b8fa9b67a87773594980b632b517ae2d3dcd80402a59fbdb192c5'
 MOD_VERSION = '1.10.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -16,7 +16,16 @@ READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections'
  'sample_logic', 'solar_aim', 'thing_health', 'trader_contacts', 'trader_inventory', 'vault_contents', 'wall_map',
  'water_sources', 'weather'])
 
-TABLE = {'atmosphere_contents': {'class': 'read',
+TABLE = {'catalogue': {'class': 'read',
+               'class_when': [],
+               'effects': [],
+               'paging': None,
+               'duration': None,
+               'params': [],
+               'required': [],
+               'shaping': 'none',
+               'protocol': True},
+ 'atmosphere_contents': {'class': 'read',
                          'class_when': [],
                          'effects': [],
                          'paging': None,
@@ -1399,15 +1408,6 @@ TABLE = {'atmosphere_contents': {'class': 'read',
                   'required': ['reference_id', 'start_address', 'values'],
                   'shaping': 'none',
                   'protocol': False},
- 'catalogue': {'class': 'read',
-               'class_when': [],
-               'effects': [],
-               'paging': None,
-               'duration': None,
-               'params': [],
-               'required': [],
-               'shaping': 'none',
-               'protocol': True},
  'subscribe': {'class': 'read',
                'class_when': [],
                'effects': [],

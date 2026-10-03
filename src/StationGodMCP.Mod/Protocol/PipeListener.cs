@@ -53,8 +53,16 @@ internal sealed class PipeListener : IDisposable
                          $"(overlapped, up to {_host.Settings.MaxPipeConnections} connections).");
     }
 
-    public void Dispose()
+    public void Dispose() => ShutDown("shutting_down");
+
+    /// <summary>Stops listening and ends every connection, telling version-2 clients the reason.</summary>
+    internal void ShutDown(string reason)
     {
+        if (_stopping)
+        {
+            return;
+        }
+
         _stopping = true;
         Kernel32.SetEvent(_stop);
         if (_thread != null && _thread.IsAlive)
@@ -62,7 +70,7 @@ internal sealed class PipeListener : IDisposable
             _thread.Join(StopWaitMilliseconds);
         }
 
-        _host.CloseAll(StopWaitMilliseconds);
+        _host.CloseAll(reason, StopWaitMilliseconds);
         _host.ConnectionEnded -= OnConnectionEnded;
         if (_thread == null || !_thread.IsAlive)
         {

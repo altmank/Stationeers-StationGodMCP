@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Protocol;
 
@@ -34,6 +35,12 @@ internal abstract class QueuedCall
 
     /// <summary>The connection it came from, for taking calls from each connection in turn; null for none.</summary>
     internal virtual object? Source => null;
+
+    /// <summary>
+    /// Whether its effective class is write or cheat, for the order rule (CallOrder): such a call starts only after
+    /// every earlier call of its connection is answered, and holds back every later one.
+    /// </summary>
+    internal virtual bool IsWrite => true;
 
     /// <summary>Runs the call on the main thread, through the game-side runner.</summary>
     internal abstract CallOutcome Run(ICallRunner runner, double queueWaitMs);
@@ -70,6 +77,70 @@ internal interface ICallRunner
 {
     /// <summary>A version-1 request line, answered with today's envelope.</summary>
     CallOutcome RunLine(string requestJson, double queueWaitMs);
+
+    /// <summary>A version-2 call, answered with a reply message.</summary>
+    CallOutcome RunCall(CallRequest call, double queueWaitMs);
+}
+
+/// <summary>A version-2 call as the main thread runs it: id, method, params and shape, already read.</summary>
+internal sealed class CallRequest
+{
+    internal CallRequest(string id, string method, JObject? parameters, ShapeRequest? shape)
+    {
+        Id = id;
+        Method = method;
+        Params = parameters;
+        Shape = shape;
+    }
+
+    internal string Id { get; }
+
+    internal string Method { get; }
+
+    internal JObject? Params { get; }
+
+    internal ShapeRequest? Shape { get; }
+}
+
+/// <summary>
+/// A version-2 call in flight on a connection. Answers it never ran for (timeout, cancel, shutdown) are reply messages
+/// without elapsed_ms or frame.
+/// </summary>
+internal sealed class ProtocolCall : QueuedCall
+{
+    internal const string CancelledCode = "cancelled";
+    internal const string ShuttingDownCode = "shutting_down";
+
+    private readonly Action<ProtocolCall, string, string?> _deliver;
+    private readonly object _source;
+    private readonly bool _isWrite;
+
+    internal ProtocolCall(CallRequest request, bool isWrite, int deadlineMilliseconds, object source,
+        Action<ProtocolCall, string, string?> deliver) : base(DeadlineAfter(deadlineMilliseconds))
+    {
+        Request = request;
+        _isWrite = isWrite;
+        _source = source;
+        _deliver = deliver;
+    }
+
+    internal CallRequest Request { get; }
+
+    internal override object? Source => _source;
+
+    internal override bool IsWrite => _isWrite;
+
+    internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunCall(Request, queueWaitMs);
+
+    internal override string TimeoutReply() => Wire.Refusal(Request.Id, LineCall.TimeoutCode,
+        "The call was not started before its deadline; it did not run.");
+
+    internal string CancelledReply() => Wire.Refusal(Request.Id, CancelledCode, "Cancelled before it started; it did not run.");
+
+    internal string ShuttingDownReply() => Wire.Refusal(Request.Id, ShuttingDownCode,
+        "The mod is stopping or the world is unloading; the call was not started.");
+
+    internal override void Deliver(string reply, string? method) => _deliver(this, reply, method);
 }
 
 /// <summary>Where calls wait for the main thread.</summary>

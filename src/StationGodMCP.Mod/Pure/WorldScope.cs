@@ -11,7 +11,8 @@ namespace StationGodMCP.Pure;
 /// request runs, with whether a world is running; the first frame after a running world is left (a save loads, a new
 /// game starts, the menu opens) starts a new epoch and clears every store, so no request of the next world sees a
 /// paused chip, a print record, a job or a flight log of the last one. A store whose Clear throws is reported and the
-/// others are still cleared.
+/// others are still cleared. The first frame a world runs gives it a new random id (WorldId): the world's identity
+/// for clients, which a game restart or a save load always changes.
 /// </summary>
 internal sealed class WorldScope
 {
@@ -20,6 +21,12 @@ internal sealed class WorldScope
 
     /// <summary>Counts the worlds left since the mod loaded: 0 until the first one is left.</summary>
     internal long Epoch { get; private set; }
+
+    /// <summary>The running world's id (16 hex digits), new each time a world starts running; empty before the first.</summary>
+    internal string WorldId { get; private set; } = string.Empty;
+
+    /// <summary>Whether the last Observe was the first frame of a running world.</summary>
+    internal bool Entered { get; private set; }
 
     internal IReadOnlyList<(string Name, Action Clear)> Stores => _stores;
 
@@ -32,6 +39,12 @@ internal sealed class WorldScope
     internal List<(string Name, Exception Failure)> Observe(bool worldRunning)
     {
         bool left = _inWorld && !worldRunning;
+        Entered = !_inWorld && worldRunning;
+        if (Entered)
+        {
+            WorldId = Guid.NewGuid().ToString("N").Substring(0, 16);
+        }
+
         _inWorld = worldRunning;
         return left ? ClearAll() : NoFailures;
     }

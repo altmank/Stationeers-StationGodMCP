@@ -59,6 +59,63 @@ internal sealed class ErrorReplyView
     public double? ElapsedMs { get; }
 }
 
+/// <summary>
+/// A version-2 reply: type reply, the call's id, ok, shaped (on a result: whether the call's shape was applied), the
+/// result or the error, and, when the call reached a handler, its main-thread time, its wait in the queue and the frame
+/// it ran in.
+/// </summary>
+internal sealed class CallReplyView
+{
+    private CallReplyView(string? id, bool ok, bool? shaped, object? result, ErrorView? error, double? elapsedMs,
+        double? queueMs, long? frame)
+    {
+        Id = id;
+        Ok = ok;
+        Shaped = shaped;
+        Result = result;
+        Error = error;
+        ElapsedMs = elapsedMs;
+        QueueMs = queueMs;
+        Frame = frame;
+    }
+
+    public string Type => "reply";
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+    public string? Id { get; }
+
+    public bool Ok { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Shaped { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public object? Result { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ErrorView? Error { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? ElapsedMs { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? QueueMs { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public long? Frame { get; }
+
+    internal static CallReplyView Of(string? id, object result, bool shaped, double elapsedMs, double queueMs, long frame) =>
+        new CallReplyView(id, true, shaped, result, null, elapsedMs, queueMs, frame);
+
+    /// <summary>An error from a handler: with its times and frame.</summary>
+    internal static CallReplyView Failed(string? id, ErrorView error, double elapsedMs, double queueMs, long frame) =>
+        new CallReplyView(id, false, null, null, error, elapsedMs, queueMs, frame);
+
+    /// <summary>An error for a call that never reached a handler (refused, timed out, cancelled).</summary>
+    internal static CallReplyView Refused(string? id, ErrorView error) =>
+        new CallReplyView(id, false, null, null, error, null, null, null);
+}
+
 /// <summary>game_clock: the game's clock, for clients that must count game time.</summary>
 internal sealed class GameClockView
 {

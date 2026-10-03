@@ -19,6 +19,15 @@
   closes. Requests answer exactly as before. A request the game has started is now always answered with its result,
   even when it finishes after 30 seconds; one not started within 30 seconds is still answered `game_timeout` and never
   runs. `[Server] OverlappedPipes = false` brings back the synchronous pipe.
+- **Protocol version 2 on the pipe (new).** A client whose first line is a `hello` speaks version 2: a `welcome` with
+  its connection id, the server's identity and world (`instance_id`, a `world.id` new on every world load), the
+  catalogue's hash and the limits; then `call` messages by id, up to 16 in flight per connection, answered in any
+  order (`reply` with `shaped`, `elapsed_ms`, `queue_ms`, `frame`), `cancel`, `deadline_ms`, a `ping` after 30 s of
+  silence, `world_changed`, and `goodbye`. A call that changes the world waits for the connection's earlier calls,
+  and later calls wait for it. The protocol method `catalogue` answers the whole catalogue. Calls are taken from each
+  connection in turn. Every other client is served exactly as before. `mod_info` `runtime.connections` lists the
+  open connections. `[Server] Protocol2 = false` turns version 2 off. The protocol is in
+  `docs/architecture/protocol.md`.
 - **`mod_info` `runtime.catalogue_drift` (new).** Argument names a tool's code read that its catalogue entry does not
   declare, per method; it should stay empty.
 

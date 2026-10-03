@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -22,11 +23,19 @@ internal interface IByteTransport : IDisposable
     /// </summary>
     int Read(byte[] buffer, int timeoutMilliseconds);
 
-    /// <summary>Writes all count bytes; false when the connection is gone, Cancel was called, or the time ran out.</summary>
-    bool Write(byte[] buffer, int count, int timeoutMilliseconds);
+    /// <summary>Writes all count bytes within timeoutMilliseconds (negative: no limit).</summary>
+    WriteResult Write(byte[] buffer, int count, int timeoutMilliseconds);
 
     /// <summary>Wakes a waiting Read or Write; safe from any thread, more than once, and after Dispose.</summary>
     void Cancel();
+}
+
+/// <summary>How a write ended.</summary>
+internal enum WriteResult
+{
+    Written,
+    Closed,
+    TimedOut
 }
 
 /// <summary>The log lines the protocol layer writes; the mod points them at its log, tests at nothing.</summary>
@@ -45,13 +54,16 @@ internal static class ProtocolLog
 }
 
 /// <summary>
-/// One client connection. A reader thread reads lines and hands them to the connection's session (version 1 today);
-/// a writer thread writes whatever is queued for the client, in order, so replies are written while a read waits.
-/// The reader owns the connection's life: when it ends it stops the writer, waits for it, and frees the transport.
+/// One client connection. A reader thread reads lines and hands them to the connection's session, which the first
+/// line chooses (version 1 or 2); a writer thread writes whatever is queued for the client, in order, so replies and
+/// events are written while a read waits. The reader owns the connection's life: when it ends it stops the writer,
+/// waits for it, and frees the transport.
 /// </summary>
 internal sealed class Connection
 {
     private const int ReadChunk = 65536;
+    private const int FlushMilliseconds = 2000;
+    private const int GoodbyeWriteMilliseconds = 1000;
     private static int _lastId;
 
     private readonly IByteTransport _transport;
@@ -62,6 +74,10 @@ internal sealed class Connection
     private Thread? _reader;
     private Thread? _writer;
     private volatile bool _stopping;
+    private volatile bool _ending;
+    private volatile Session? _session;
+    private long _served;
+    private long _bytesSent;
 
     internal Connection(IByteTransport transport, ProtocolHost host)
     {
@@ -75,10 +91,18 @@ internal sealed class Connection
 
     internal string Transport => _transport.Kind;
 
+    /// <summary>The protocol the first line chose; null before it.</summary>
+    internal Session? Session => _session;
+
     /// <summary>Set once the reader has ended and the transport is freed.</summary>
     internal WaitHandle Stopped => _stopped.WaitHandle;
 
     internal bool IsStopping => _stopping;
+
+    /// <summary>Calls answered on this connection (mod_info).</summary>
+    internal long ServedCount => Interlocked.Read(ref _served);
+
+    internal long BytesSent => Interlocked.Read(ref _bytesSent);
 
     internal void Start()
     {
@@ -99,11 +123,21 @@ internal sealed class Connection
         _outboundReady.Release();
     }
 
-    /// <summary>Ends the connection: pending reads and writes are woken, and the reader frees it.</summary>
+    /// <summary>Counts one call answered.</summary>
+    internal void Served() => Interlocked.Increment(ref _served);
+
+    /// <summary>Ends the connection now: pending reads and writes are woken, and the reader frees it.</summary>
     internal void Close()
     {
         _stopping = true;
         _transport.Cancel();
+        _outboundReady.Release();
+    }
+
+    /// <summary>Ends the connection once what is queued has been written (a goodbye, a last refusal).</summary>
+    internal void EndGracefully()
+    {
+        _ending = true;
         _outboundReady.Release();
     }
 
@@ -133,6 +167,11 @@ internal sealed class Connection
         }
         finally
         {
+            if (_ending)
+            {
+                _writer.Join(FlushMilliseconds);
+            }
+
             Close();
             _writer.Join();
             _transport.Dispose();
@@ -146,30 +185,38 @@ internal sealed class Connection
         LineFramer framer = new LineFramer();
         List<string> lines = new List<string>();
         byte[] buffer = new byte[ReadChunk];
-        Session? session = null;
         long firstLineBy = QueuedCall.DeadlineAfter(_host.Settings.FirstLineTimeoutMilliseconds);
-        while (!_stopping)
+        while (!_stopping && !_ending)
         {
-            int timeout = session == null ? RemainingMilliseconds(firstLineBy) : -1;
+            int timeout = _session == null ? RemainingMilliseconds(firstLineBy) : -1;
             int read = _transport.Read(buffer, timeout);
             if (read <= 0)
             {
                 return;
             }
 
-            framer.Feed(buffer, read, lines);
+            bool fits = framer.Feed(buffer, read, lines);
             foreach (string line in lines)
             {
-                session ??= _host.SessionFor(this, line);
+                if (_session == null)
+                {
+                    _session = _host.SessionFor(this, line);
+                    framer.MaximumLineBytes = _session.MaximumLineBytes;
+                }
 
-                session.OnLine(line);
-                if (_stopping)
+                _session.OnLine(line);
+                if (_stopping || _ending)
                 {
                     return;
                 }
             }
 
             lines.Clear();
+            if (!fits || framer.Overflowed)
+            {
+                _session?.OnOverflow();
+                return;
+            }
         }
     }
 
@@ -183,11 +230,17 @@ internal sealed class Connection
     {
         UTF8Encoding utf8 = new UTF8Encoding(false);
         byte[] bytes = new byte[4096];
+        long lastWrite = Stopwatch.GetTimestamp();
         try
         {
             while (true)
             {
-                _outboundReady.Wait();
+                Session? session = _session;
+                bool pings = session != null && session.Pings;
+                int wait = pings
+                    ? Math.Max(0, _host.Settings.PingAfterMilliseconds - (int)QueuedCall.MillisecondsSince(lastWrite))
+                    : Timeout.Infinite;
+                bool signalled = _outboundReady.Wait(wait);
                 if (_stopping)
                 {
                     return;
@@ -195,7 +248,17 @@ internal sealed class Connection
 
                 if (!_outbound.TryDequeue(out Outgoing message))
                 {
-                    continue;
+                    if (_ending)
+                    {
+                        return;
+                    }
+
+                    if (signalled || !pings)
+                    {
+                        continue;
+                    }
+
+                    message = new Outgoing(Wire.Line(new EventView("ping")), null);
                 }
 
                 int count = utf8.GetMaxByteCount(message.Line.Length) + 1;
@@ -206,11 +269,20 @@ internal sealed class Connection
 
                 int length = utf8.GetBytes(message.Line, 0, message.Line.Length, bytes, 0);
                 bytes[length++] = (byte)'\n';
-                if (!_transport.Write(bytes, length, -1))
+                WriteResult written = _transport.Write(bytes, length, session?.WriteTimeoutMilliseconds ?? -1);
+                if (written == WriteResult.TimedOut)
+                {
+                    SlowClient(session!, utf8);
+                    return;
+                }
+
+                if (written != WriteResult.Written)
                 {
                     return;
                 }
 
+                lastWrite = Stopwatch.GetTimestamp();
+                Interlocked.Add(ref _bytesSent, length);
                 ProtocolLog.ReplyWritten(message.Method, length);
             }
         }
@@ -226,6 +298,16 @@ internal sealed class Connection
         {
             Close();
         }
+    }
+
+    // A client that has not taken a line for the write timeout: its unstarted calls are dropped, it is told why if it
+    // can still take a line, and it is closed.
+    private void SlowClient(Session session, UTF8Encoding utf8)
+    {
+        session.OnSlowClient();
+        byte[] goodbye = utf8.GetBytes(Wire.Line(new GoodbyeView("slow_client")) + "\n");
+        _transport.Write(goodbye, goodbye.Length, GoodbyeWriteMilliseconds);
+        ProtocolLog.Info($"Connection {ClientId} closed: it took nothing for {session.WriteTimeoutMilliseconds / 1000} s.");
     }
 
     private readonly struct Outgoing
@@ -245,7 +327,49 @@ internal sealed class Connection
 /// <summary>What a connection does with each line after the first one chose the protocol.</summary>
 internal abstract class Session
 {
+    /// <summary>1 or 2.</summary>
+    internal abstract int Protocol { get; }
+
+    /// <summary>The longest line accepted; null for no limit.</summary>
+    internal virtual int? MaximumLineBytes => null;
+
+    /// <summary>Whether the writer sends ping after 30 s of silence.</summary>
+    internal virtual bool Pings => false;
+
+    /// <summary>How long one line may take to be written before the client is judged too slow; negative for no limit.</summary>
+    internal virtual int WriteTimeoutMilliseconds => -1;
+
+    /// <summary>The key's name, anonymous, or null where the protocol has none.</summary>
+    internal virtual string? Client => null;
+
+    /// <summary>The name the client gave itself (hello.client.name).</summary>
+    internal virtual string? Label => null;
+
+    internal virtual string? Level => null;
+
+    internal virtual int InFlight => 0;
+
     internal abstract void OnLine(string line);
+
+    /// <summary>A line passed MaximumLineBytes: the connection ends after this.</summary>
+    internal virtual void OnOverflow()
+    {
+    }
+
+    /// <summary>The server is stopping or leaving the world: tell the client why, then end.</summary>
+    internal virtual void ShutDown(string reason)
+    {
+    }
+
+    /// <summary>The client took nothing for WriteTimeoutMilliseconds: drop what has not started.</summary>
+    internal virtual void OnSlowClient()
+    {
+    }
+
+    /// <summary>A world finished loading.</summary>
+    internal virtual void OnWorldChanged(WorldFacts world)
+    {
+    }
 }
 
 /// <summary>
@@ -263,6 +387,10 @@ internal sealed class LineSession : Session
         _host = host;
     }
 
+    internal override int Protocol => 1;
+
+    internal override string Level => "cheat";
+
     internal override void OnLine(string line)
     {
         if (string.IsNullOrWhiteSpace(line))
@@ -275,6 +403,7 @@ internal sealed class LineSession : Session
         LineCall call = new LineCall(line, _host.Settings.LineTimeoutMilliseconds, _connection, (reply, method) =>
         {
             _connection.Send(reply, method);
+            _connection.Served();
             answered.Set();
         });
         _host.Submit(call);
@@ -286,4 +415,6 @@ internal sealed class LineSession : Session
             }
         }
     }
+
+    internal override void ShutDown(string reason) => _connection.Close();
 }

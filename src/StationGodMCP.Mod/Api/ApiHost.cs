@@ -13,6 +13,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api;
@@ -123,28 +124,46 @@ internal static class ApiHost
         };
 
     /// <summary>
-    /// One request: its reply as JSON text, and the method it named when that is a known one (for the reply size the
-    /// listener records). The handler's time (parse to reply object) goes into the reply's elapsed_ms; it, the
-    /// serialisation's time and the queue wait go into MethodStats.
+    /// One version-1 request line: its reply as JSON text, and the method it named when that is a known one (for the
+    /// reply size the listener records). The handler's time (parse to reply object) goes into the reply's elapsed_ms;
+    /// it, the serialisation's time and the queue wait go into MethodStats.
     /// </summary>
     internal static HandledRequest Handle(string requestJson, double queueWaitMs)
     {
         Stopwatch watch = Stopwatch.StartNew();
-        Answer answer = Run(requestJson, watch);
+        Answer answer = RunLine(requestJson, watch);
+        return Finish(answer, queueWaitMs, static (ref Answer done) => SerializeLine(ref done));
+    }
+
+    /// <summary>
+    /// One version-2 call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame). Arguments
+    /// are checked as on version 1 (names only); the result is shaped by the call's shape, and a reply larger than
+    /// max_reply_bytes (or the shape's max_bytes) is answered reply_too_large.
+    /// </summary>
+    internal static HandledRequest HandleCall(CallRequest call, double queueWaitMs, long frame)
+    {
+        Stopwatch watch = Stopwatch.StartNew();
+        Answer answer = Run(call.Id, call.Method, call.Params, call.Shape, watch);
+        double queueMs = Math.Round(queueWaitMs, ElapsedDecimals);
+        return Finish(answer, queueWaitMs, (ref Answer done) => SerializeCall(ref done, queueMs, frame));
+    }
+
+    private delegate string ReplyWriter(ref Answer answer);
+
+    private static HandledRequest Finish(Answer answer, double queueWaitMs, ReplyWriter write)
+    {
         long serializeStarted = Stopwatch.GetTimestamp();
         string json;
         try
         {
-            json = answer.Shape != null && answer.Reply is ReplyView reply
-                ? SerializeShaped(ref answer, reply, answer.Shape)
-                : Serialize(answer.Reply);
+            json = write(ref answer);
         }
         catch (Exception exception)
         {
             // The serializer failing on a tool's reply object: answered internal_error, as any tool failure is.
             StationGodMod.LogWarning($"API reply could not be serialised: {exception}");
             answer = answer.Failed(new ErrorView("internal_error", exception.Message));
-            json = Serialize(answer.Reply);
+            json = write(ref answer);
         }
 
         double serializeMs = MillisecondsSince(serializeStarted);
@@ -153,23 +172,59 @@ internal static class ApiHost
     }
 
     /// <summary>
-    /// The shaped reply, or reply_too_large (unshaped, with the list lengths) when it is larger than the shape's
-    /// max_bytes.
+    /// Today's envelope; with a shape, the shaped reply, or reply_too_large (unshaped, with the list lengths) when it
+    /// is larger than the shape's max_bytes.
     /// </summary>
-    private static string SerializeShaped(ref Answer answer, ReplyView reply, ShapeRequest shape)
+    private static string SerializeLine(ref Answer answer)
     {
-        ShapedText shaped = ApiJson.WriteShaped(reply.AsShaped(), shape);
+        if (!answer.Ok)
+        {
+            return Serialize(new ErrorReplyView(answer.RequestId, answer.Error!, answer.HandlerMs));
+        }
+
+        ReplyView reply = new ReplyView(answer.RequestId, answer.Result!, answer.HandlerMs);
+        if (answer.Shape == null)
+        {
+            return Serialize(reply);
+        }
+
+        ShapedText shaped = ApiJson.WriteShaped(reply.AsShaped(), answer.Shape);
         int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
-        if (shape.MaxBytes is int limit && bytes > limit)
+        if (answer.Shape.MaxBytes is int limit && bytes > limit)
         {
             answer = answer.Failed(ReplyTooLarge.Of(bytes, limit, shaped.Outcome));
-            return Serialize(answer.Reply);
+            return Serialize(new ErrorReplyView(answer.RequestId, answer.Error!, answer.HandlerMs));
         }
 
         return shaped.Json;
     }
 
-    private static Answer Run(string requestJson, Stopwatch watch)
+    /// <summary>The version-2 reply message: always written through the shaping writer, which also counts the lists.</summary>
+    private static string SerializeCall(ref Answer answer, double queueMs, long frame)
+    {
+        if (!answer.Ok)
+        {
+            return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame));
+        }
+
+        ShapeRequest shape = answer.Shape ?? ShapeRequest.None;
+        ShapedText shaped = ApiJson.WriteShaped(
+            CallReplyView.Of(answer.RequestId, answer.Result!, answer.Shape != null, answer.HandlerMs, queueMs, frame), shape);
+        int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
+        int limit = Math.Min(shape.MaxBytes ?? MaxReplyBytes, MaxReplyBytes);
+        if (bytes > limit)
+        {
+            answer = answer.Failed(ReplyTooLarge.Of(bytes, limit, shaped.Outcome));
+            return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame));
+        }
+
+        return shaped.Json;
+    }
+
+    /// <summary>The largest reply version 2 sends (limits.max_reply_bytes).</summary>
+    internal const int MaxReplyBytes = 16777216;
+
+    private static Answer RunLine(string requestJson, Stopwatch watch)
     {
         string? requestId = null;
         string? method = null;
@@ -178,7 +233,24 @@ internal static class ApiHost
             JObject request = ParseRequest(requestJson);
             requestId = request.Value<string>("id");
             method = request.Value<string>("method");
-            ShapeRequest? shape = ShapeRequest.Lenient(request["shape"]);
+            return Run(requestId, method, request["params"] as JObject, ShapeRequest.Lenient(request["shape"]), watch);
+        }
+        catch (ApiException exception)
+        {
+            return Answer.Failure(requestId, method, new ErrorView(exception.Code, exception.Message), Elapsed(watch));
+        }
+        catch (Exception exception)
+        {
+            // An id or method that is not a string (Value<string> on an object): answered as any failure is.
+            StationGodMod.LogWarning($"API request failed: {exception}");
+            return Answer.Failure(requestId, method, new ErrorView("internal_error", exception.Message), Elapsed(watch));
+        }
+    }
+
+    private static Answer Run(string? requestId, string? method, JObject? parameters, ShapeRequest? shape, Stopwatch watch)
+    {
+        try
+        {
             DeclaredArguments declared = Declared.Value.Arguments ??
                                          throw ApiErrors.Refused("internal_error", Declared.Value.Problem!);
             if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
@@ -186,7 +258,6 @@ internal static class ApiHost
                 throw ApiErrors.Refused("method_not_found", $"Unknown StationGodMCP method '{method}'.");
             }
 
-            JObject? parameters = request["params"] as JObject;
             declared.Check(method, parameters);
             ArgumentNames? names = declared.NamesOf(method);
             ResolvedNetworks.Begin();
@@ -194,22 +265,21 @@ internal static class ApiHost
             object result = ResolvedNetworks.Attach(handler(names != null ? new Args(parameters, names) : new Args(parameters)),
                 ResolvedNetworks.Take());
             result = GasHoldReply.Attach(result, GasHoldReply.Take());
-            double elapsed = Elapsed(watch);
-            return new Answer(requestId, method, new ReplyView(requestId, result, elapsed), true, elapsed, shape);
+            return Answer.Success(requestId, method, result, Elapsed(watch), shape);
         }
         catch (ApiException exception)
         {
-            return Failed(requestId, method, watch, exception.Code, exception.Message);
+            return Answer.Failure(requestId, method, new ErrorView(exception.Code, exception.Message), Elapsed(watch));
         }
         catch (GameChangedException exception)
         {
-            return Failed(requestId, method, watch, ApiErrors.GameChangedCode, exception.Message);
+            return Answer.Failure(requestId, method, new ErrorView(ApiErrors.GameChangedCode, exception.Message), Elapsed(watch));
         }
         catch (Exception exception)
         {
             // The request boundary: a bug in any tool's game calls must answer the client, not break the pipe.
             StationGodMod.LogWarning($"API request failed: {exception}");
-            return Failed(requestId, method, watch, "internal_error", exception.Message);
+            return Answer.Failure(requestId, method, new ErrorView("internal_error", exception.Message), Elapsed(watch));
         }
     }
 
@@ -222,6 +292,9 @@ internal static class ApiHost
     /// <summary>Loads the embedded catalogue now (at mod start), so the log says at once whether it loaded.</summary>
     internal static void Prepare() => _ = Declared.Value;
 
+    /// <summary>The embedded catalogue file (its text and hash for version 2); null when it did not load.</summary>
+    internal static CatalogueFile? CatalogueFile => Declared.Value.File;
+
     private static LoadedCatalogue LoadCatalogue()
     {
         try
@@ -232,12 +305,14 @@ internal static class ApiHost
                 return LoadedCatalogue.Failed($"The mod's DLL has no {CatalogueResource}: the build is broken.");
             }
 
-            using StreamReader reader = new StreamReader(stream);
-            Catalogue catalogue = Catalogue.Load(reader.ReadToEnd());
+            using MemoryStream bytes = new MemoryStream();
+            stream.CopyTo(bytes);
+            byte[] raw = bytes.ToArray();
+            Catalogue catalogue = Catalogue.Load(new System.Text.UTF8Encoding(false).GetString(raw));
             ArgumentDrift.FirstMiss = static (method, name) =>
                 StationGodMod.LogWarning($"Catalogue drift: {method} read the argument '{name}', which its catalogue entry does not declare.");
             StationGodMod.Log($"Catalogue loaded: {catalogue.MethodCount} methods, mod version {catalogue.ModVersion}.");
-            return LoadedCatalogue.Of(new DeclaredArguments(catalogue));
+            return LoadedCatalogue.Of(new DeclaredArguments(catalogue), new CatalogueFile(raw, catalogue));
         }
         catch (CatalogueException exception)
         {
@@ -247,9 +322,10 @@ internal static class ApiHost
 
     private sealed class LoadedCatalogue
     {
-        private LoadedCatalogue(DeclaredArguments? arguments, string? problem)
+        private LoadedCatalogue(DeclaredArguments? arguments, CatalogueFile? file, string? problem)
         {
             Arguments = arguments;
+            File = file;
             Problem = problem;
             if (problem != null)
             {
@@ -259,11 +335,14 @@ internal static class ApiHost
 
         internal DeclaredArguments? Arguments { get; }
 
+        internal CatalogueFile? File { get; }
+
         internal string? Problem { get; }
 
-        internal static LoadedCatalogue Of(DeclaredArguments arguments) => new LoadedCatalogue(arguments, null);
+        internal static LoadedCatalogue Of(DeclaredArguments arguments, CatalogueFile file) =>
+            new LoadedCatalogue(arguments, file, null);
 
-        internal static LoadedCatalogue Failed(string problem) => new LoadedCatalogue(null, problem);
+        internal static LoadedCatalogue Failed(string problem) => new LoadedCatalogue(null, null, problem);
     }
 
     // A key given twice would otherwise let the last one win silently (a write aimed at the wrong device).
@@ -294,13 +373,6 @@ internal static class ApiHost
     /// <summary>A reply as JSON text from a listener thread (game_timeout, the TCP handshake).</summary>
     internal static string SerializeOffMainThread(object reply) => ApiJson.WriteFresh(reply);
 
-    private static Answer Failed(string? requestId, string? method, Stopwatch watch, string code, string message)
-    {
-        double elapsed = Elapsed(watch);
-        return new Answer(requestId, method, new ErrorReplyView(requestId, new ErrorView(code, message), elapsed),
-            false, elapsed);
-    }
-
     private static double MillisecondsSince(long timestamp) =>
         (Stopwatch.GetTimestamp() - timestamp) * 1000.0 / Stopwatch.Frequency;
 
@@ -308,15 +380,17 @@ internal static class ApiHost
     internal static double Elapsed(Stopwatch watch) => Math.Round(watch.Elapsed.TotalMilliseconds, ElapsedDecimals);
 }
 
-/// <summary>A request's outcome before serialisation: the reply object and what MethodStats records of it.</summary>
+/// <summary>A request's outcome before serialisation: its result or error, and what MethodStats records of it.</summary>
 internal sealed class Answer
 {
-    internal Answer(string? requestId, string? method, object reply, bool ok, double handlerMs, ShapeRequest? shape = null)
+    private Answer(string? requestId, string? method, bool ok, object? result, ErrorView? error, double handlerMs,
+        ShapeRequest? shape)
     {
         RequestId = requestId;
         Method = method;
-        Reply = reply;
         Ok = ok;
+        Result = result;
+        Error = error;
         HandlerMs = handlerMs;
         Shape = shape;
     }
@@ -325,17 +399,26 @@ internal sealed class Answer
 
     internal string? Method { get; }
 
-    internal object Reply { get; }
-
     internal bool Ok { get; }
+
+    /// <summary>The tool's reply object when Ok.</summary>
+    internal object? Result { get; }
+
+    /// <summary>The error when not Ok.</summary>
+    internal ErrorView? Error { get; }
 
     internal double HandlerMs { get; }
 
     /// <summary>The request's shape, applied when the reply is serialised; errors are never shaped.</summary>
     internal ShapeRequest? Shape { get; }
 
-    internal Answer Failed(ErrorView error) =>
-        new Answer(RequestId, Method, new ErrorReplyView(RequestId, error, HandlerMs), false, HandlerMs);
+    internal static Answer Success(string? requestId, string? method, object result, double handlerMs, ShapeRequest? shape) =>
+        new Answer(requestId, method, true, result, null, handlerMs, shape);
+
+    internal static Answer Failure(string? requestId, string? method, ErrorView error, double handlerMs) =>
+        new Answer(requestId, method, false, null, error, handlerMs, null);
+
+    internal Answer Failed(ErrorView error) => Failure(RequestId, Method, error, HandlerMs);
 }
 
 /// <summary>A handled request's reply text, and its method when that is a known one (null otherwise).</summary>

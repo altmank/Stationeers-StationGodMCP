@@ -23,6 +23,12 @@ internal static class WorldStores
     /// <summary>Worlds left since the mod loaded.</summary>
     internal static long Epoch => Scope.Epoch;
 
+    /// <summary>The running world's id, new each time a world starts running.</summary>
+    internal static string WorldId => Scope.WorldId;
+
+    /// <summary>Whether this frame is the first of a running world.</summary>
+    internal static bool Entered => Scope.Entered;
+
     /// <summary>The registered stores' names, in clearing order.</summary>
     internal static List<string> Names()
     {

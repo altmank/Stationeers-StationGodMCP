@@ -6,6 +6,7 @@ using System.Reflection;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
 using UnityEngine.Profiling;
 
@@ -43,7 +44,27 @@ internal static class ModInfoApi
     private static RuntimeView Runtime() =>
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
-            Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot());
+            Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections());
+
+    private static List<ConnectionView>? Connections()
+    {
+        ProtocolHost? host = StationGodMod.Connections;
+        if (host == null)
+        {
+            return null;
+        }
+
+        List<ConnectionView> views = new List<ConnectionView>();
+        foreach (Connection connection in host.Open)
+        {
+            Session? session = connection.Session;
+            views.Add(new ConnectionView(connection.ClientId, session?.Client, session?.Label, connection.Transport,
+                session?.Protocol, session?.Level, session?.InFlight ?? 0, connection.ServedCount, connection.BytesSent));
+        }
+
+        views.Sort(static (left, right) => string.CompareOrdinal(left.ClientId, right.ClientId));
+        return views;
+    }
 
     // Unity's Mono (Boehm collector): one generation; the Profiler sizes answer 0 where the build does not report them.
     private static MemoryView Memory()

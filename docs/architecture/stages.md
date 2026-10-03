@@ -314,6 +314,47 @@ parsing, first-line classifier, call ordering), `src/StationGodMCP.Mod/Pure/Worl
 
 **Risk.** Medium: new message handling on proven I/O. Version 1 keeps its path, and the setting turns version 2 off.
 
+**As built.** Where the code needed a choice the text above leaves open:
+- A first line is version 2 when it is a JSON object whose `type` is `hello` (`Pure/Protocol/ClientMessage.cs`,
+  `FirstLine`); messages are parsed on the connection's reader thread into a closed set (hello, auth, call, cancel,
+  bye, or a refusal that says what to answer). Until stage 6 a hello with `auth: "key"`, or any hello over TCP, is
+  answered `unauthorized` and closed; every keyless pipe connection gets today's level (`cheat`, standing).
+- A call with a bad `id`, an unknown key, an unknown `type`, a second hello, `auth` without a challenge, or a line
+  that is not a JSON object gets a `protocol_error` reply (null id, `data.line_start`), then `goodbye`
+  `protocol_error`, and closes. A call without `method` gets `method_not_found`, and `params` that is not an object, a
+  `deadline_ms` outside 100 to 600,000 or a key given twice get `invalid_argument`, all with the call's id; the
+  connection stays open.
+- `welcome.limits` lists `max_in_flight`, `max_request_bytes` and `max_reply_bytes`; the subscription limits come
+  with subscriptions (stage 11). `features` is `shape`, `shape.paths`, `cancel`. `world.save` is the game's
+  `XmlSaveLoad.Instance.CurrentStationName` (CODE), `dedicated` is Unity's batch mode, `game_state` the
+  `GameManager.GameState` name. The main thread publishes these as a snapshot when they change (`ServerFacts`), so no
+  connection thread touches a game object. `world.id` is new the first frame a world runs (`WorldScope`).
+- The protocol method `catalogue` is answered on the reader thread with the embedded catalogue as compact JSON (the
+  file itself is indented; the hash is of the file's bytes). Protocol methods have their own sources,
+  `catalogue/protocol/<method>.json`, assembled into `protocol_methods`; test 2 holds them to the protocol layer's
+  table (`ProtocolMethods.Names`).
+- Every ok reply carries `shaped` (false without a shape). Version-2 replies are always written through the shaping
+  writer, which counts the top-level lists, so a reply over 16 MiB is `reply_too_large` with `counts`. Answers for
+  calls that never ran (`game_timeout`, `cancelled`, `shutting_down`, refusals) carry no `elapsed_ms`, `queue_ms` or
+  `frame`.
+- The dispatcher takes calls through `ICallScheduler`; stage 4's `RoundRobinScheduler` takes one call per connection
+  per round and, within a connection, the earliest call the order rule (`CallOrder`) lets start. Because the main
+  thread runs one call to its answer before taking the next, the rule comes down to each connection's calls in
+  order; it matters once lanes take a later call first (stage 10). A call's effective class comes from the
+  catalogue's class rules at its params; an unknown method counts as a read. Version-1 lines, the TCP listener and the
+  synchronous pipe share the same ring.
+- A version-2 line not taken by the client within 35 seconds (one write) closes the connection: its unstarted calls
+  are dropped, a `goodbye` `slow_client` is tried for a second, then it closes. `ping` follows 30 seconds without a
+  line sent. The optional idle close is not built. When the host leaves its world, waiting calls are answered
+  `shutting_down` and clients get `goodbye` `world_unloaded`; when the mod stops, `goodbye` `shutting_down`.
+- `mod_info` `runtime.connections` lists each open connection: `client_id`, `client`, `label` (the hello's name),
+  `transport`, `protocol`, `level`, `in_flight`, `served`, `bytes_sent`; absent on the synchronous pipe.
+- Live (test server, fixtures): checks 1 to 5 passed (welcome as specified with `dedicated` true and `save`
+  `fixround`; 16 answered once each and `b16` refused `too_many_in_flight`; the read after `write_logic` Setting 7
+  answered 7 in the same frame, restored; the cancelled `game_clock` answered `cancelled`). Check 6 (a restart gives a
+  new `instance_id` and `world.id`) and the library's live tests were not run: the owner's game started and the
+  watchdog stopped the server; they are in the owner's TODO.
+
 ## Stage 5: strict checking on version 2
 
 **Scope.** Version-2 calls are checked against the catalogue in full ([catalogue.md](catalogue.md), *The schema

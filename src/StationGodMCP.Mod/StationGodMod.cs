@@ -10,6 +10,9 @@ using HarmonyLib;
 using StationeersMods.Interface;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared.Game;
+using Assets.Scripts;
+using Assets.Scripts.GridSystem;
+using Assets.Scripts.Serialization;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -31,9 +34,13 @@ public sealed class StationGodMod : ModBehaviour
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
-    private readonly StationGodRequestDispatcher _dispatcher = new StationGodRequestDispatcher(Deadlines);
+    private readonly StationGodRequestDispatcher _dispatcher =
+        new StationGodRequestDispatcher(Deadlines, new RoundRobinScheduler());
     private Harmony? _harmony;
-    private IDisposable? _pipeServer;
+    private PipeListener? _pipeListener;
+    private StationGodPipeServer? _synchronousPipe;
+    private GameState? _publishedState;
+    private string _publishedWorld = string.Empty;
     private StationGodTcpServer? _tcpServer;
     private RemoteSettings? _remote;
     private ServerSettings _server = ServerSettings.Defaults;
@@ -43,6 +50,9 @@ public sealed class StationGodMod : ModBehaviour
 
     /// <summary>The local pipe's name, read once at load ([Pipe] Name, STATIONGODMCP_PIPE_NAME).</summary>
     internal static PipeName Pipe { get; private set; } = PipeName.Default;
+
+    /// <summary>The overlapped pipe's connections while it listens (mod_info connections); null otherwise.</summary>
+    internal static ProtocolHost? Connections { get; private set; }
 
     public override void OnLoaded(ContentHandler contentHandler)
     {
@@ -106,13 +116,17 @@ public sealed class StationGodMod : ModBehaviour
         try
         {
             WorldStores.Tick();
+            PublishFacts();
             if (!NetworkManager.IsServer)
             {
-                StopServers();
+                StopServers("world_unloaded");
                 return;
             }
 
-            _pipeServer ??= StartPipe();
+            if (_pipeListener == null && _synchronousPipe == null)
+            {
+                StartPipe();
+            }
 
             if (_remote != null && _remote.Enabled && _tcpServer == null)
             {
@@ -141,7 +155,7 @@ public sealed class StationGodMod : ModBehaviour
     private void OnDestroy()
     {
         Prefab.OnPrefabsLoaded -= RegisterPrefabs;
-        StopServers();
+        StopServers("shutting_down");
         GatewayRegistry.Clear();
         IcExecutionController.Clear();
         HeldTickJobs.Abandon();
@@ -150,26 +164,35 @@ public sealed class StationGodMod : ModBehaviour
         _harmony?.UnpatchSelf();
     }
 
-    private void StopServers()
+    // reason goes to version-2 clients in their goodbye: world_unloaded when the host leaves the world, shutting_down
+    // when the mod stops.
+    private void StopServers(string reason)
     {
-        _pipeServer?.Dispose();
-        _pipeServer = null;
+        _pipeListener?.ShutDown(reason);
+        _pipeListener = null;
+        Connections = null;
+        _synchronousPipe?.Dispose();
+        _synchronousPipe = null;
         _tcpServer?.Dispose();
         _tcpServer = null;
     }
 
     // The overlapped pipe (one reader and one writer per connection), unless [Server] OverlappedPipes is off, the
     // platform is not Windows, or the Windows calls it needs are missing: then today's synchronous pipe.
-    private IDisposable StartPipe()
+    private void StartPipe()
     {
         if (_server.OverlappedPipes && Environment.OSVersion.Platform == PlatformID.Win32NT)
         {
             try
             {
-                ProtocolHost host = new ProtocolHost(new ProtocolSettings(_server.MaxPipeConnections), _dispatcher, Deadlines);
+                ProtocolHost host = new ProtocolHost(
+                    new ProtocolSettings(_server.MaxPipeConnections, protocol2: _server.Protocol2), _dispatcher, Deadlines,
+                    ApiHost.CatalogueFile);
                 PipeListener listener = new PipeListener(Pipe.Value, host);
                 listener.Start();
-                return listener;
+                _pipeListener = listener;
+                Connections = host;
+                return;
             }
             catch (Exception exception) when (exception is DllNotFoundException || exception is EntryPointNotFoundException)
             {
@@ -177,9 +200,36 @@ public sealed class StationGodMod : ModBehaviour
             }
         }
 
-        StationGodPipeServer server = new StationGodPipeServer(Pipe.Value, _dispatcher);
-        server.Start();
-        return server;
+        _synchronousPipe = new StationGodPipeServer(Pipe.Value, _dispatcher);
+        _synchronousPipe.Start();
+    }
+
+    // What welcome says about the server, published when it changes; a world that starts running is announced to every
+    // version-2 connection.
+    private void PublishFacts()
+    {
+        GameState state = GameManager.GameState;
+        string worldId = WorldStores.WorldId;
+        if (state == _publishedState && worldId == _publishedWorld)
+        {
+            return;
+        }
+
+        bool entered = worldId != _publishedWorld;
+        _publishedState = state;
+        _publishedWorld = worldId;
+        WorldFacts world = new WorldFacts(worldId, SaveName(), WorldStores.Epoch);
+        ServerFacts.Current = new ServerFacts(Version, Pipe.Value, Application.isBatchMode, world, state.ToString());
+        if (entered)
+        {
+            Connections?.WorldChanged(world);
+        }
+    }
+
+    private static string? SaveName()
+    {
+        string? name = XmlSaveLoad.Instance != null ? XmlSaveLoad.Instance.CurrentStationName : null;
+        return string.IsNullOrEmpty(name) ? null : name;
     }
 
     private void StartTcpServer(RemoteSettings remote)
@@ -332,18 +382,22 @@ internal sealed class ServerSettings
 {
     private const string Section = "Server";
 
-    private ServerSettings(int maxPipeConnections, bool overlappedPipes)
+    private ServerSettings(int maxPipeConnections, bool overlappedPipes, bool protocol2)
     {
         MaxPipeConnections = maxPipeConnections;
         OverlappedPipes = overlappedPipes;
+        Protocol2 = protocol2;
     }
 
     internal static ServerSettings Defaults { get; } =
-        new ServerSettings(ProtocolSettings.DefaultMaxPipeConnections, true);
+        new ServerSettings(ProtocolSettings.DefaultMaxPipeConnections, true, true);
 
     internal int MaxPipeConnections { get; }
 
     internal bool OverlappedPipes { get; }
+
+    /// <summary>Whether a client may speak protocol version 2 (hello) on the overlapped pipe.</summary>
+    internal bool Protocol2 { get; }
 
     internal static ServerSettings Load(ConfigFile configuration)
     {
@@ -356,6 +410,9 @@ internal sealed class ServerSettings
         ConfigEntry<bool> overlapped = configuration.Bind(Section, "OverlappedPipes", true,
             "Serve the pipe with overlapped I/O (reading and writing at once on each connection). false goes back to " +
             "the synchronous pipe of version 1.10 (four connections). Restart the game to apply.");
+        ConfigEntry<bool> protocol2 = configuration.Bind(Section, "Protocol2", true,
+            "Let clients speak protocol version 2 (a first line of type hello: several calls in flight, cancel, events). " +
+            "false answers every connection with version 1 only, as before. Restart the game to apply.");
         int maximum = connections.Value;
         if (maximum < ProtocolSettings.MinimumPipeConnections || maximum > ProtocolSettings.MaximumPipeConnections)
         {
@@ -364,7 +421,7 @@ internal sealed class ServerSettings
             maximum = ProtocolSettings.DefaultMaxPipeConnections;
         }
 
-        return new ServerSettings(maximum, overlapped.Value);
+        return new ServerSettings(maximum, overlapped.Value, protocol2.Value);
     }
 }
 
