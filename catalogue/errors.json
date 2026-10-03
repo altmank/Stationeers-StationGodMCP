@@ -88,6 +88,10 @@
   },
   "invalid_color": {"description": "Empty color.", "origin": "tool"},
   "invalid_destination": {"description": "<…> is <…> or inside it.", "origin": "tool"},
+  "invalid_downlink": {
+    "description": "<downlink_id> is no downlink this uplink can follow: a built, logic readable Logic Rocket Downlink.",
+    "origin": "tool"
+  },
   "invalid_logic_type": {"description": "Refused with invalid_logic_type.", "origin": "tool"},
   "invalid_prefab": {"description": "Refused with invalid_prefab.", "origin": "tool"},
   "invalid_shape": {"description": "Version 2 only: shape is malformed. Nothing ran.", "origin": "protocol"},
@@ -213,6 +217,7 @@
   "not_ready": {"description": "The world grid is not loaded.", "origin": "tool"},
   "not_solar_panel": {"description": "Reference id <id> is not a solar panel.", "origin": "tool"},
   "not_sold": {"description": "The trader does not <…> <…>.", "origin": "tool"},
+  "not_uplink": {"description": "<display_name> (<reference_id>) is not a Logic Rocket Uplink.", "origin": "tool"},
   "not_vault_material": {"description": "<…> is not something the vault imports: it keeps ingots, ores and ices only.", "origin": "tool"},
   "not_wanted": {"description": "The trader wants only <wanted> more<after>.", "origin": "tool"},
   "nothing_to_move": {"description": "The source holds none of the requested gases.", "origin": "tool"},

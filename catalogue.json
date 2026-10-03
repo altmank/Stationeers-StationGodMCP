@@ -95,6 +95,10 @@
     },
     "invalid_color": {"description": "Empty color.", "origin": "tool"},
     "invalid_destination": {"description": "<…> is <…> or inside it.", "origin": "tool"},
+    "invalid_downlink": {
+      "description": "<downlink_id> is no downlink this uplink can follow: a built, logic readable Logic Rocket Downlink.",
+      "origin": "tool"
+    },
     "invalid_logic_type": {"description": "Refused with invalid_logic_type.", "origin": "tool"},
     "invalid_prefab": {"description": "Refused with invalid_prefab.", "origin": "tool"},
     "invalid_shape": {"description": "Version 2 only: shape is malformed. Nothing ran.", "origin": "protocol"},
@@ -220,6 +224,7 @@
     "not_ready": {"description": "The world grid is not loaded.", "origin": "tool"},
     "not_solar_panel": {"description": "Reference id <id> is not a solar panel.", "origin": "tool"},
     "not_sold": {"description": "The trader does not <…> <…>.", "origin": "tool"},
+    "not_uplink": {"description": "<display_name> (<reference_id>) is not a Logic Rocket Uplink.", "origin": "tool"},
     "not_vault_material": {"description": "<…> is not something the vault imports: it keeps ingots, ores and ices only.", "origin": "tool"},
     "not_wanted": {"description": "The trader wants only <wanted> more<after>.", "origin": "tool"},
     "nothing_to_move": {"description": "The source holds none of the requested gases.", "origin": "tool"},
@@ -1185,7 +1190,7 @@
     },
     {
       "name": "describe_device",
-      "description": "Describe one network device and dynamically enumerate every vanilla logic type it reports as readable or writable. A device in a rocket also gets rocket {network_id, name, state, dry_mass_kg, hull_pieces, internals} (1.6.0+); a rocket umbilical (gas, power, chute, crew; male or socket) gets umbilical {role, open, partner, partner_distance, search}: the partner the game holds and the game's partner search replayed now (found, partner_distance, how, and per column why it stopped: a device between, a non-matching umbilical, one not facing back).",
+      "description": "Describe one network device and dynamically enumerate every vanilla logic type it reports as readable or writable. A device in a rocket also gets rocket {network_id, name, state, dry_mass_kg, hull_pieces, internals} (1.6.0+); a rocket umbilical (gas, power, chute, crew; male or socket) gets umbilical {role, open, partner, partner_distance, search}: the partner the game holds and the game's partner search replayed now (found, partner_distance, how, and per column why it stopped: a device between, a non-matching umbilical, one not facing back). A Logic Rocket Uplink gets uplink (1.14.0+) {downlink ({reference_id, prefab_name, display_name, rocket} of the Logic Rocket Downlink it follows, rocket as above or null; null when it follows none), connected (its data connection is live: on, powered, built, and the downlink on a data network), choices (every downlink it may follow, as a screwdriver press steps through them: built and logic readable)}; set_uplink changes it. Mod logic types without an enum name are read and written by numeric id (1.14.0+: this note is no longer repeated in every reply).",
       "class": "read",
       "cost": "instant",
       "params": {
@@ -1206,9 +1211,9 @@
           "device": {"type": "object"},
           "rocket": {"type": ["object", "null"]},
           "umbilical": {"type": ["object", "null"]},
+          "uplink": {"type": ["object", "null"]},
           "logic_types": {"type": "array"},
-          "logic_type_count": {"type": "integer"},
-          "note": {"type": "string"}
+          "logic_type_count": {"type": "integer"}
         }
       },
       "x-views": ["DescribeDeviceView"],
@@ -6006,6 +6011,34 @@
           "description": "Instead of source: an absolute path on the MCP server's machine to a UTF-8 text file (up to 1 MiB) whose text is sent as source."
         }
       },
+      "x-shaping": "none"
+    },
+    {
+      "name": "set_uplink",
+      "description": "Point a Logic Rocket Uplink at a Logic Rocket Downlink (1.14.0+), as screwdriver presses on the uplink's first button do: the uplink then reads the downlink's data network (its rocket's devices). Only a downlink a press could select is taken: built and logic readable (describe_device on the uplink lists them in uplink.choices); anything else is refused invalid_downlink. The host sends the change to clients. Returns uplink, previous_downlink (pass its reference_id to set it back; null when it followed none) and link (the uplink's link now, as describe_device's uplink). Refused: not_uplink (reference_id is not a Logic Rocket Uplink), invalid_downlink, not_host (a multiplayer client), device_not_found. Writes.",
+      "class": "write",
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {
+          "gateway_id": {
+            "type": "string",
+            "description": "Optional filter. Omit, or pass 'world', for any device in the world (an empty string counts as omitted; spaces around an id are ignored); a StationGod Gateway id from list_gateways limits the call to devices on that gateway's data networks. Refused with gateway_not_found when no StationGod Gateway has that id, and with gateway_unavailable when the gateway cannot scope a call now; the message names why: incomplete (not fully built) or no_data_network (no data cable on either port)."
+          },
+          "reference_id": {"type": "string", "description": "The Logic Rocket Uplink."},
+          "downlink_id": {
+            "type": "string",
+            "description": "The Logic Rocket Downlink to follow, from describe_device's uplink.choices."
+          }
+        },
+        "required": ["reference_id", "downlink_id"],
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {"uplink": {"type": "object"}, "previous_downlink": {"type": ["object", "null"]}, "link": {"type": "object"}}
+      },
+      "x-views": ["UplinkSetView"],
       "x-shaping": "none"
     },
     {

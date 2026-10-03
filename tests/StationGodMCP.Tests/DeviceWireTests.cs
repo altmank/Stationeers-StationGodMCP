@@ -67,9 +67,7 @@ public sealed class DeviceWireTests
             {
                 new { id = (ushort)6, name = "Pressure", readable = true, writable = false }
             },
-            logic_type_count = 1,
-            note = "Custom mod logic types can be accessed by numeric ID even when they do not have a discoverable " +
-                "enum name."
+            logic_type_count = 1
         };
         WireCheck.Same(old, new DescribeDeviceView(NewDevice(),
             new List<LogicAccessView> { new LogicAccessView(new LogicTypeView(6, "Pressure"), true, false) }));

@@ -20,7 +20,8 @@ memory, but for any device in the world at once and without a chip.
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
 | `list_devices` | Every device in the world, or on one gateway's networks. | `name_contains`, `prefab_hash`, `gateway_id` |
-| `describe_device` | One device and every logic type it can read or write; for a rocket's device its rocket, for an umbilical its pairing (see *Rockets and umbilicals*). | `reference_id` |
+| `describe_device` | One device and every logic type it can read or write; for a rocket's device its rocket, for an umbilical its pairing, for a Logic Rocket Uplink its downlink (see *Rockets and umbilicals*). | `reference_id` |
+| `set_uplink` | Point a Logic Rocket Uplink at a downlink, as a screwdriver would. | `reference_id`, `downlink_id` |
 | `read_logic` | Read one logic value. | `reference_id`, `logic_type` |
 | `write_logic` | Write one logic value; the reply reads it back at once (`current_value`). | `reference_id`, `logic_type`, `value` |
 | `read_logic_many` | Up to 256 reads in one call; each gets its own result or error. | `reads: [{reference_id, logic_type}]` |
@@ -110,6 +111,12 @@ among its `devices`:
   `partner_distance`, `how` (from where, which way, how many columns) and, per column, why it stopped. The male one
   searches up to 14 small cells along its front, in its own column and two to its right; the socket one column. A
   partner must be the matching kind, face back (dot 0.9 or more), and have no other device between.
+
+On a Logic Rocket Uplink `describe_device` adds `uplink`: the Logic Rocket Downlink it follows (`downlink`, with that
+downlink's `rocket`; null when it follows none), `connected` (its data connection is live: on, powered, built, and
+the downlink on a data network) and `choices`, every downlink it may follow: those a screwdriver press on the uplink
+steps through, built and logic readable. `set_uplink` (`reference_id`, `downlink_id`) points it at one of them, as
+those presses would; anything else is refused `invalid_downlink`. Its reply's `previous_downlink` sets it back.
 
 ## Reading back what you wrote
 

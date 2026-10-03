@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:28cc2b5cc7885f3cc0baebf64f6c35083d9948f10af9500bf74c62c0cd21d98b'
+CATALOGUE_HASH = 'sha256:f1e1174e8fc541e922bc3d63fe1083d6e5603d2d0745633ea6417b49717cde5d'
 MOD_VERSION = '1.13.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -1186,6 +1186,15 @@ TABLE = {'catalogue': {'class': 'read',
                    'required': ['reference_id', 'source'],
                    'shaping': 'none',
                    'protocol': False},
+ 'set_uplink': {'class': 'write',
+                'class_when': [],
+                'effects': [],
+                'paging': None,
+                'duration': None,
+                'params': ['gateway_id', 'reference_id', 'downlink_id'],
+                'required': ['reference_id', 'downlink_id'],
+                'shaping': 'none',
+                'protocol': False},
  'show_preview': {'class': 'read',
                   'class_when': [],
                   'effects': ['display'],
@@ -1964,6 +1973,13 @@ class Methods:
         Class: write. Arguments: gateway_id, reference_id (required), source (required), include_source.
         """
         return self.call('set_ic_source', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'source': source, 'include_source': include_source}, **options)
+
+    def set_uplink(self, *, gateway_id: str | None = None, reference_id: str | None = None, downlink_id: str | None = None, **options) -> dict:
+        """Point a Logic Rocket Uplink at a Logic Rocket Downlink (1.14.0+), as screwdriver presses on the uplink's first button do: the uplink then reads the downlink's data network (its rocket's devices).
+
+        Class: write. Arguments: gateway_id, reference_id (required), downlink_id (required).
+        """
+        return self.call('set_uplink', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'downlink_id': downlink_id}, **options)
 
     def show_preview(self, *, placements: list | None = None, prefab: str | int | None = None, at: object | None = None, rotation: list | None = None, facing: str | None = None, up: str | None = None, face: str | None = None, orient: dict | None = None, above_floor_m: float | None = None, build_state: object | None = None, allow_door_keepout: bool | None = None, cells: list | None = None, boxes: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, xray: bool | None = None, **options) -> dict:
         """Draw in-game wire boxes for a planned layout (1.4.3+), on the player's screen only (other players see nothing; never the game's construction cursor; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod: drawn_on names the player): the same placement fields as pl...

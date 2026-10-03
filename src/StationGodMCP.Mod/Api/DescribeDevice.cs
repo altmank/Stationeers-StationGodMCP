@@ -11,7 +11,8 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// describe_device: a device and every logic type it reads or writes (ILogicable.CanLogicRead, CanLogicWrite), each
-/// LogicType value once. Read only.
+/// LogicType value once; its rocket, an umbilical's pairing, and a Logic Rocket Uplink's downlink (DataLinks). Read
+/// only.
 /// </summary>
 internal static class DescribeDeviceApi
 {
@@ -31,6 +32,6 @@ internal static class DescribeDeviceApi
         }
 
         return new DescribeDeviceView(Devices.ViewOf(device, scope), types, RocketReadings.PartOf(device.Thing),
-            RocketReadings.UmbilicalOf(device.Thing));
+            RocketReadings.UmbilicalOf(device.Thing), DataLinks.UplinkOf(device.Thing));
     }
 }

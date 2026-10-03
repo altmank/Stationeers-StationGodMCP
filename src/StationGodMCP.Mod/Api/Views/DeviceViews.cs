@@ -175,17 +175,15 @@ internal sealed class DevicesView
 /// <summary>describe_device: a device and every logic type it reads or writes.</summary>
 internal sealed class DescribeDeviceView
 {
-    private const string NoteText =
-        "Custom mod logic types can be accessed by numeric ID even when they do not have a discoverable enum name.";
-
     internal DescribeDeviceView(DeviceView device, List<LogicAccessView> logicTypes, RocketPartView? rocket = null,
-        UmbilicalView? umbilical = null)
+        UmbilicalView? umbilical = null, UplinkView? uplink = null)
     {
         Device = device;
         LogicTypes = logicTypes;
         LogicTypeCount = logicTypes.Count;
         Rocket = rocket;
         Umbilical = umbilical;
+        Uplink = uplink;
     }
 
     public DeviceView Device { get; }
@@ -198,11 +196,13 @@ internal sealed class DescribeDeviceView
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public UmbilicalView? Umbilical { get; }
 
+    /// <summary>A Logic Rocket Uplink's downlink and the ones it may follow; absent for any other device.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public UplinkView? Uplink { get; }
+
     public List<LogicAccessView> LogicTypes { get; }
 
     public int LogicTypeCount { get; }
-
-    public string Note => NoteText;
 }
 
 internal sealed class LogicAccessView
