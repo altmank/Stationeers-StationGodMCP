@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Entities;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
 
@@ -20,6 +21,15 @@ internal sealed class ResolvedAt
         Point = point;
         How = how;
         FaceOutward = faceOutward;
+    }
+
+    /// <summary>The player's view it was read from (crosshair, player frame, a face); null when none was read.</summary>
+    internal ViewSourceView? View { get; private set; }
+
+    internal ResolvedAt Seen(ViewSourceView? view)
+    {
+        View = view;
+        return this;
     }
 
     internal Metres Point { get; }
@@ -42,30 +52,30 @@ internal static class AtResolver
 {
     private const double ReachM = 10.0;
 
-    internal static ResolvedAt Resolve(AtArg at, GridFacts facts, string name)
+    internal static ResolvedAt Resolve(AtArg at, GridFacts facts, string name, CameraUse camera)
     {
         switch (at)
         {
             case AtArg.Absolute absolute:
                 return new ResolvedAt(absolute.Point, "as given", null);
             case AtArg.Relative relative:
-                return Relative(new Args(relative.Spec), facts, name);
+                return Relative(new Args(relative.Spec), facts, name, camera).Seen(camera.Source);
             default:
                 throw ApiErrors.InvalidArgument($"{name} cannot be read.");
         }
     }
 
-    private static ResolvedAt Relative(Args spec, GridFacts facts, string name)
+    private static ResolvedAt Relative(Args spec, GridFacts facts, string name, CameraUse camera)
     {
         if (spec.OptionalBool("on_face_i_look_at") ?? false)
         {
-            return OnFace(spec, name);
+            return OnFace(spec, name, camera);
         }
 
         if ((spec.OptionalBool("crosshair") ?? false) && !spec.Has("relative_to"))
         {
-            Hit hit = Crosshair(name);
-            Vec3 offset = OffsetIn(spec, PlayerFrame(spec, name), hit.Point);
+            Hit hit = Crosshair(name, camera);
+            Vec3 offset = OffsetIn(spec, PlayerFrame(spec, name, camera), hit.Point);
             return new ResolvedAt(ToMetres(offset), $"the crosshair's hit {hit.Point}" + OffsetText(spec),
                 hit.Outward);
         }
@@ -78,7 +88,7 @@ internal static class AtResolver
         if (reference.Type == JTokenType.String && reference.Value<string>()!.Trim().ToLowerInvariant() == "player")
         {
             Human human = PlayerOrigin.RequireHuman();
-            Frame3 frame = FrameOf(spec, "player", null, name);
+            Frame3 frame = FrameOf(spec, "player", null, name, camera);
             Vec3 origin = Bodies.V(human.Position);
             return new ResolvedAt(ToMetres(OffsetIn(spec, frame, origin)),
                 $"the player at {origin} in the {frame.Name} frame" + OffsetText(spec), null);
@@ -86,8 +96,8 @@ internal static class AtResolver
 
         if (reference.Type == JTokenType.String && reference.Value<string>()!.Trim().ToLowerInvariant() == "crosshair")
         {
-            Hit hit = Crosshair(name);
-            Frame3 frame = FrameOf(spec, "player", null, name);
+            Hit hit = Crosshair(name, camera);
+            Frame3 frame = FrameOf(spec, "player", null, name, camera);
             return new ResolvedAt(ToMetres(OffsetIn(spec, frame, hit.Point)),
                 $"the crosshair's hit {hit.Point} in the {frame.Name} frame" + OffsetText(spec), hit.Outward);
         }
@@ -99,7 +109,7 @@ internal static class AtResolver
                 : throw ApiErrors.InvalidArgument(
                     $"{name}.relative_to must be \"player\", \"crosshair\", a reference id or {{reference_id}}.");
         Thing thing = GameLookup.RequireThing(id);
-        Frame3 thingFrame = FrameOf(spec, "target", thing, name);
+        Frame3 thingFrame = FrameOf(spec, "target", thing, name, camera);
         Vec3 start = Bodies.V(thing.ThingTransformPosition);
         if (anchor != BodyAnchor.Origin)
         {
@@ -112,16 +122,16 @@ internal static class AtResolver
             $"{thingFrame.Name} frame" + OffsetText(spec), null);
     }
 
-    private static ResolvedAt OnFace(Args spec, string name)
+    private static ResolvedAt OnFace(Args spec, string name, CameraUse camera)
     {
-        Hit hit = Crosshair(name);
+        Hit hit = Crosshair(name, camera);
         if (!hit.Outward.HasValue || hit.Plane == null)
         {
             throw ApiErrors.Refused("no_face", $"{name}: the look ray hits {hit.Point}, which is not on a 2 m face " +
                                                "plane; look straight at a wall, floor or ceiling.");
         }
 
-        ViewBasis basis = Look.Basis(out _) ?? throw NoCamera(name);
+        ViewBasis basis = camera.Require(name).Basis;
         (GridStep right, GridStep up) = RelativeMath.FaceAxes(hit.Outward.Value, basis.LevelForward, basis.LevelRight);
         Vec3 point = hit.Point + Vec3.Of(right) * (spec.OptionalDouble("along_right_m") ?? 0.0) +
                      Vec3.Of(up) * (spec.OptionalDouble("along_up_m") ?? 0.0);
@@ -132,7 +142,8 @@ internal static class AtResolver
     }
 
     /// <summary>A named facing as an axis: toward_player, away_from_player, out_of_face, into_room.</summary>
-    internal static GridStep Facing(NamedFacing named, ResolvedAt at, GridFacts facts, string name, out string how)
+    internal static GridStep Facing(NamedFacing named, ResolvedAt at, GridFacts facts, string name, CameraUse camera,
+        out string how)
     {
         Vec3 point = new Vec3(at.Point.X, at.Point.Y, at.Point.Z);
         switch (named.Word)
@@ -149,7 +160,7 @@ internal static class AtResolver
             }
             case "out_of_face":
             {
-                GridStep? outward = at.FaceOutward ?? Crosshair(name).Outward;
+                GridStep? outward = at.FaceOutward ?? Crosshair(name, camera).Outward;
                 if (!outward.HasValue)
                 {
                     throw ApiErrors.Refused("no_face", $"{name}: out_of_face needs a face: look at a wall, floor or " +
@@ -232,21 +243,12 @@ internal static class AtResolver
         internal FacePlane? Plane { get; }
     }
 
-    private static Hit Crosshair(string name)
+    private static Hit Crosshair(string name, CameraUse camera)
     {
-        if (!Look.HasCamera)
-        {
-            throw NoCamera(name);
-        }
-
-        CursorManager cursor = CursorManager.Instance;
-        if (cursor == null || !Look.Cast(cursor, ReachM, out RaycastHit hit))
-        {
-            throw ApiErrors.Refused("no_crosshair_hit", $"{name}: the look ray hits nothing within {ReachM} m.");
-        }
-
-        Vec3 point = Bodies.V(hit.point);
-        GridStep? outward = ViewBasis.Along(Bodies.V(hit.normal), 10.0);
+        CameraHit hit = camera.Require(name).HitWithin(ReachM) ??
+                        throw ApiErrors.Refused("no_crosshair_hit", $"{name}: the look ray hits nothing within {ReachM} m.");
+        Vec3 point = hit.Point;
+        GridStep? outward = ViewBasis.Along(hit.Normal, 10.0);
         FacePlane? plane = null;
         if (outward.HasValue)
         {
@@ -261,7 +263,7 @@ internal static class AtResolver
     }
 
     // The frame a relative at is measured in: player (level, snapped), world, or the target's own turn.
-    private static Frame3 FrameOf(Args spec, string fallback, Thing? target, string name)
+    private static Frame3 FrameOf(Args spec, string fallback, Thing? target, string name, CameraUse camera)
     {
         string frame = (spec.OptionalString("frame") ?? fallback).Trim().ToLowerInvariant();
         switch (frame)
@@ -269,7 +271,7 @@ internal static class AtResolver
             case "world":
                 return Frame3.World;
             case "player":
-                return PlayerFrame(spec, name);
+                return PlayerFrame(spec, name, camera);
             case "target":
                 if (target == null)
                 {
@@ -290,9 +292,9 @@ internal static class AtResolver
         }
     }
 
-    private static Frame3 PlayerFrame(Args spec, string name)
+    private static Frame3 PlayerFrame(Args spec, string name, CameraUse camera)
     {
-        ViewBasis basis = Look.Basis(out _) ?? throw NoCamera(name);
+        ViewBasis basis = camera.Require(name).Basis;
         bool moves = (spec.OptionalDouble("right_m") ?? 0.0) != 0.0 || (spec.OptionalDouble("forward_m") ?? 0.0) != 0.0;
         if (basis.Ambiguous && moves)
         {
@@ -337,8 +339,18 @@ internal static class AtResolver
 
     private static ApiException Ambiguous(string name, string why) =>
         ApiErrors.Refused("ambiguous_axis", $"{name}: {why}; give a world axis or frame world instead.");
+}
 
-    private static ApiException NoCamera(string name) =>
-        ApiErrors.Refused("no_camera", $"{name}: there is no player camera (a dedicated server has none: a remote " +
-                                       "player's camera stays on their own machine).");
+/// <summary>
+/// The player's camera for one request, read the first time a step needs it (PlayerView: no_view or view_stale when
+/// there is none to trust), and the view it was, for the reply.
+/// </summary>
+internal sealed class CameraUse
+{
+    private CameraView? _camera;
+
+    internal CameraView Require(string name) => _camera ??= PlayerView.Current().Require(name);
+
+    /// <summary>The view read; null when no step needed one.</summary>
+    internal ViewSourceView? Source => _camera?.Source;
 }

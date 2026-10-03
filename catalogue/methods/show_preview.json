@@ -1,6 +1,6 @@
 {
   "name": "show_preview",
-  "description": "Draw in-game wire boxes for a planned layout (1.4.3+), on your screen only (other players see nothing; never the game's construction cursor): the same placement fields as place_structure (placements, or prefab and at, with rotation/facing/face/orient/above_floor_m...) are dry-run and each placement's footprint (green, red when it has a problem), render box (white) and port joining cells (cyan, red when blocked) drawn; cells [[x, y, z], ...] (up to 512, yellow 0.5 m cubes, e.g. a planned route's waypoints or cells) and boxes [{min, max, color red|green|white|cyan|yellow}] (up to 64) too. seconds (default 30, max 300); a new call replaces the last unless keep: true; clear: true only removes them. xray: true (1.7.0+) draws every box through walls, frames and terrain (depth test off; see highlight); without it walls and frames hide the lines. Returns shown, cleared, seconds, dry_run (place_structure's own dry run of the placements) and notes. Changes nothing in the world. Needs a player camera (not on a dedicated server).",
+  "description": "Draw in-game wire boxes for a planned layout (1.4.3+), on the player's screen only (other players see nothing; never the game's construction cursor; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod: drawn_on names the player): the same placement fields as place_structure (placements, or prefab and at, with rotation/facing/face/orient/above_floor_m...) are dry-run and each placement's footprint (green, red when it has a problem), render box (white) and port joining cells (cyan, red when blocked) drawn; cells [[x, y, z], ...] (up to 512, yellow 0.5 m cubes, e.g. a planned route's waypoints or cells) and boxes [{min, max, color red|green|white|cyan|yellow}] (up to 64) too. seconds (default 30, max 300); a new call replaces the last unless keep: true; clear: true only removes them. xray: true (1.7.0+) draws every box through walls, frames and terrain (depth test off; see highlight); without it walls and frames hide the lines. Returns shown, cleared, seconds, dry_run (place_structure's own dry run of the placements), notes, and drawn_on and view {source local|remote, age_s} when another player's game drew them. Changes nothing in the world. Needs the player's screen: no_view without one (the player's view (1.12.0+) is this game's own camera, or on a dedicated server the view the player's own StationGod sends (StationGod is optional on a player's machine; without it these calls refuse)).",
   "class": "read",
   "cost": "instant",
   "x-effects": ["display"],
@@ -42,7 +42,9 @@
       "cleared": {"type": "integer"},
       "seconds": {"type": "number"},
       "dry_run": {"type": ["object", "null"]},
-      "notes": {"type": "array"}
+      "notes": {"type": "array"},
+      "drawn_on": {"type": ["string", "null"]},
+      "view": {"type": ["object", "null"]}
     }
   },
   "x-views": ["ShowPreviewView"],

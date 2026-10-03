@@ -52,6 +52,10 @@ that passes its requests to the game.
 The mod and the sidecar must be the same version: when the mod updates, extract the new sidecar too. A sidecar from
 another version cannot talk to the mod.
 
+Players who join a game or a dedicated server do not need the mod. With it, their game shares where they look, so
+the agent's camera tools (`looking_at`, placing at the crosshair, `highlight`, `show_preview`...) work for them on a
+dedicated server too, and highlights are drawn on their screen.
+
 Full steps, Codex, dedicated servers and multiplayer: **[docs/install.md](docs/install.md)**.
 
 ## First steps

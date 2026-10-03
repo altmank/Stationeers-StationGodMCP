@@ -97,11 +97,31 @@ internal sealed class ViewAxesView
     public string Look { get; }
 }
 
+/// <summary>
+/// Whose camera a reply read: this game's own (local, age 0) or the one a client's StationGod reported (remote), and
+/// how old that report was when the call ran.
+/// </summary>
+internal sealed class ViewSourceView
+{
+    internal ViewSourceView(string source, double ageS)
+    {
+        Source = source;
+        AgeS = System.Math.Round(ageS, 1);
+    }
+
+    /// <summary>local or remote.</summary>
+    public string Source { get; }
+
+    public double AgeS { get; }
+}
+
 /// <summary>looking_at's view: the camera's eye, basis, heading and pitch, snapped axes and the camera mode.</summary>
 internal sealed class LookView
 {
-    internal LookView(Vec3 eye, ViewBasis basis, bool thirdPerson, bool seated)
+    internal LookView(Vec3 eye, ViewBasis basis, bool thirdPerson, bool seated, ViewSourceView? source = null)
     {
+        Source = source?.Source ?? "local";
+        AgeS = source?.AgeS ?? 0.0;
         Eye = PointView.Of(eye);
         Forward = VectorView.Of(basis.Forward);
         Right = VectorView.Of(basis.Right);
@@ -136,6 +156,12 @@ internal sealed class LookView
     public bool ThirdPerson { get; }
 
     public bool Seated { get; }
+
+    /// <summary>local (this game's camera) or remote (reported by the player's own StationGod).</summary>
+    public string Source { get; }
+
+    /// <summary>Seconds since the view was taken (0 for local).</summary>
+    public double AgeS { get; }
 }
 
 /// <summary>An offset in a thing's own frame: metres to its right, up and forward from its origin.</summary>

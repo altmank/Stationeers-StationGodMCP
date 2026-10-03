@@ -12,8 +12,10 @@ namespace StationGodMCP.Api.Views;
 internal sealed class HighlightView
 {
     internal HighlightView(List<HighlightTargetView> targets, int cleared, double seconds, string renderer,
-        List<string> notes)
+        List<string> notes, string? drawnOn = null, ViewSourceView? view = null)
     {
+        DrawnOn = drawnOn;
+        View = view;
         Targets = targets;
         Cleared = cleared;
         Seconds = seconds;
@@ -32,6 +34,14 @@ internal sealed class HighlightView
     public string Renderer { get; }
 
     public List<string> Notes { get; }
+
+    /// <summary>The player whose game drew them, when that is not this game (a client of a dedicated server).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? DrawnOn { get; }
+
+    /// <summary>The player's view distances were measured from: local or remote and its age.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ViewSourceView? View { get; }
 }
 
 /// <summary>One target: its kind, colour and label, what it drew, and where it is from the camera.</summary>

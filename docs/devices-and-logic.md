@@ -134,7 +134,10 @@ among its `devices`:
   and `axes`: the world axes nearest your **level** forward, right and up (and back, left, down), so "forward" runs
   along the floor whether you look up or down; `look` is the axis of the look itself. `ambiguous` is true within 10
   degrees of a diagonal, where forward and right could be either axis. Third person and seats are handled as the
-  game's own cursor handles them.
+  game's own cursor handles them. `source` is `local` (this game's camera) or `remote` (1.12.0+: on a dedicated
+  server, the view the player's own StationGod shares, read on their game the same way), with `age_s`, the seconds
+  since it was taken. Without a view the call refuses `no_view`, saying why (see
+  [install: multiplayer](install.md#multiplayer)).
 - `hit`: the first surface on the look ray up to `max_distance_m` (default 10 m, beyond the game's 3 m reach): the
   point, its normal and `face` axis, the `face_plane` it lies on (`z=668`; within 0.3 m of the plane, so the top of a floor plate counts, 1.4.4+), the 2 m cell on your side, the small cell a
   mounted piece would stand in, that cell's `support` character (as `grid_survey`: `x` a door's keep-out, `g` a

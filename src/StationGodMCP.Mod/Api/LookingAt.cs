@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.RemoteView;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -26,9 +27,10 @@ namespace StationGodMCP.Api;
 /// CursorThing.GetInteractable(CursorManager.Instance.CursorTargetCollider), the button, switch, port or slot under the
 /// crosshair; null when that collider is none of those.
 ///
-/// view is the camera the cursor's ray starts from (Look), and hit casts that same ray on the cursor's layers
+/// view is the camera the cursor's ray starts from, and hit casts that same ray on the cursor's layers
 /// (CursorManager.CursorHitMask) up to max_distance_m, so it also finds a wall or floor past the game's 3 m reach, and
-/// reads the grid where it lands.
+/// reads the grid where it lands. The camera is the player's (PlayerView): this game's own, or on a dedicated server
+/// the view the player's StationGod sent, read there the same way.
 /// </summary>
 internal static class LookingAtApi
 {
@@ -41,59 +43,47 @@ internal static class LookingAtApi
     internal static LookingAtView Handle(Args args)
     {
         PlayerOrigin origin = PlayerOrigin.Current();
-        CursorManager cursor = CursorManager.Instance;
         double reach = args.OptionalPositiveDouble("max_distance_m") ?? DefaultReachM;
         if (reach > MaximumReachM)
         {
             throw ApiErrors.InvalidArgument($"max_distance_m is at most {MaximumReachM}.");
         }
 
-        Thing? thing = cursor != null ? cursor.FoundThing : null;
-        if (thing != null && thing.IsBeingDestroyed)
-        {
-            thing = null;
-        }
-
-        LookView? view = Look.Current();
-        LookHitView? hit = cursor != null && view != null ? HitOf(cursor, reach, thing) : null;
-        if (cursor == null || thing == null)
+        CameraView camera = PlayerView.Current().Require("looking_at");
+        Thing? thing = camera.Target;
+        LookView view = new LookView(camera.Eye, camera.Basis, camera.ThirdPerson, camera.Seated, camera.Source);
+        CameraHit? found = camera.HitWithin(reach);
+        LookHitView? hit = found != null ? HitOf(found, thing) : null;
+        if (thing == null)
         {
             return new LookingAtView(origin.View, null, null, view, hit);
         }
 
-        Interactable? interactable = cursor.CursorTargetCollider != null
-            ? thing.GetInteractable(cursor.CursorTargetCollider)
-            : null;
+        Interactable? interactable = camera.Interactable;
         return new LookingAtView(origin.View, TargetOf(thing, origin, view),
             interactable != null ? InteractableOf(interactable) : null, view, hit);
     }
 
-    private static LookHitView? HitOf(CursorManager cursor, double reach, Thing? target)
+    private static LookHitView HitOf(CameraHit hit, Thing? target)
     {
-        if (!Look.Cast(cursor, reach, out RaycastHit hit))
-        {
-            return null;
-        }
-
-        Vec3 point = Bodies.V(hit.point);
-        Vec3 normal = Bodies.V(hit.normal).Normalized;
+        Vec3 point = hit.Point;
+        Vec3 normal = hit.Normal.Normalized;
         GridStep? face = ViewBasis.Along(normal, FaceDegrees);
         string? plane = face.HasValue
             ? FacePlane.Near(face.Value.Axis, point[face.Value.Axis], MountRect.OnPlaneM)?.ToString()
             : null;
 
-        GridCell small = Look.SmallCellAt(point);
-        GridCell large = SmallCellCode.LargeOf(Look.SmallCellAt(point + normal * 0.3));
+        GridCell small = ViewChangeRule.SmallCellOf(point);
+        GridCell large = SmallCellCode.LargeOf(ViewChangeRule.SmallCellOf(point + normal * 0.3));
         GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
         OpeningZone zone = facts.Opening(small);
         string support = zone.IsDoor ? "x"
             : zone.IsWindow ? "g"
             : CellSupports.Code(facts.Support(small), facts.Visibility(small)).ToString();
-        Thing? hitThing = hit.transform != null ? hit.transform.GetComponentInParent<Thing>() : null;
-        return new LookHitView(point, hit.distance, normal, face?.Name, plane,
+        return new LookHitView(point, hit.DistanceM, normal, face?.Name, plane,
             GameLookup.ViewOf(PieceShapes.CentreOf(large)), PointView.OfCell(small), support,
-            hitThing != null ? GameLookup.ViewOf(hitThing) : null,
-            target != null ? Bodies.Local(target, hit.point) : null);
+            hit.Thing != null ? GameLookup.ViewOf(hit.Thing) : null,
+            target != null ? Bodies.Local(target, Bodies.U(point)) : null);
     }
 
     private static LookingAtTargetView TargetOf(Thing thing, PlayerOrigin origin, LookView? view) =>
@@ -140,56 +130,4 @@ internal static class LookingAtApi
         return new LookingAtInteractableView(interactable.Action.ToString(), Text.Plain(interactable.DisplayName),
             Text.Plain(interactable.ContextualName), interactable.State, slotView);
     }
-}
-
-/// <summary>
-/// The camera as the cursor's ray sees it: InputHelpers.GetCameraRay (CameraController.CameraOrigin, moved up to the
-/// player in third person as the game's own ray is, and MainCameraForward) with the camera's up
-/// (CameraController.CurrentCamera). Null before the camera exists (a dedicated server has none).
-/// </summary>
-internal static class Look
-{
-    internal static LookView? Current()
-    {
-        ViewBasis? basis = Basis(out Vector3 eye);
-        if (basis == null)
-        {
-            return null;
-        }
-
-        Human? human = PlayerOrigin.Local();
-        bool seated = human != null && human.MovementController != null &&
-                      human.MovementController.ControlMode == MovementController.Mode.Seated;
-        return new LookView(Bodies.V(eye), basis, CameraController.IsThirdPerson, seated);
-    }
-
-    internal static ViewBasis? Basis(out Vector3 eye)
-    {
-        eye = Vector3.zero;
-        if (CameraController.Instance == null || CameraController.CurrentCamera == null)
-        {
-            return null;
-        }
-
-        Ray ray = InputHelpers.GetCameraRay();
-        eye = ray.origin;
-        return ViewBasis.Of(Bodies.V(ray.direction), Bodies.V(CameraController.CurrentCamera.transform.up));
-    }
-
-    /// <summary>Whether there is a player camera to look through (a dedicated server has none).</summary>
-    internal static bool HasCamera => CameraController.Instance != null && CameraController.CurrentCamera != null;
-
-    /// <summary>The look ray cast on the cursor's layers; false when it hits nothing within reach.</summary>
-    internal static bool Cast(CursorManager cursor, double reach, out RaycastHit hit)
-    {
-        hit = default;
-        return CameraController.Instance != null && CameraController.CurrentCamera != null &&
-               Physics.Raycast(InputHelpers.GetCameraRay(), out hit, (float)reach, cursor.CursorHitMask);
-    }
-
-    /// <summary>The small cell (decimetres, multiples of 5) nearest a point in metres.</summary>
-    internal static GridCell SmallCellAt(Vec3 point) =>
-        new GridCell(Half(point.X), Half(point.Y), Half(point.Z));
-
-    private static int Half(double metres) => (int)System.Math.Round(metres * 2.0) * 5;
 }

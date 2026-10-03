@@ -123,7 +123,7 @@ internal static class BuildReports
             placement.ResolvedAt != null && placement.At.HasValue
                 ? new ResolvedPlacementView(new PointView(placement.At.Value.X, placement.At.Value.Y,
                         placement.At.Value.Z), AtHow(placement) + (placement.AboveFloorHow ?? string.Empty),
-                    placement.ResolvedFacing, placement.ResolvedFacingHow)
+                    placement.ResolvedFacing, placement.ResolvedFacingHow, placement.View)
                 : null);
     }
 

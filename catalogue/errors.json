@@ -125,10 +125,6 @@
     "description": "<name> (<id>) holds no gas or liquid: it has no internal atmosphere, is not a pipe or a landing pad piece, is connected to no pipe network and has nothing with an atmosphere in its slots.",
     "origin": "tool"
   },
-  "no_camera": {
-    "description": "near: there is no player camera to look from (a dedicated server has none: a remote player's camera stays on their own machine); pass near.",
-    "origin": "tool"
-  },
   "no_credit_card": {"description": "Refused with no_credit_card.", "origin": "tool"},
   "no_crosshair_hit": {"description": "near: the look ray hits nothing within 20 m; pass near.", "origin": "tool"},
   "no_cursor": {"description": "The game has no placement cursor for <prefab_name>.", "origin": "tool"},
@@ -166,6 +162,10 @@
   "no_save_folder": {"description": "No save is loaded, so there is no folder for the CSV.", "origin": "tool"},
   "no_slots": {"description": "<…> has no slots.", "origin": "tool"},
   "no_target": {"description": "The rocket stands on its pad with no target: give 'to' (a node's name or code).", "origin": "tool"},
+  "no_view": {
+    "description": "<name>: there is no player view to read or screen to draw on, and why: no player, this game has no camera yet, or the player plays on another machine whose game sends no view (StationGod is optional there; sharing it needs StationGod 1.12.0 or later speaking the same view protocol) or one this server cannot read.",
+    "origin": "tool"
+  },
   "no_world": {"description": "No world is loaded.", "origin": "tool"},
   "no_xray_material": {
     "description": "Neither the T-Ray SPU's material nor a built-in shader to draw through walls with was found.",
@@ -327,6 +327,10 @@
   "vault_not_ready": {"description": "<…> has no store yet.", "origin": "tool"},
   "vault_unpowered": {
     "description": "<…> (<reference_id>) is <…>; the vault neither imports nor vends then. Nothing was changed.",
+    "origin": "tool"
+  },
+  "view_stale": {
+    "description": "<name>: the view the player's game last sent is stale (they stand more than 0.3 m from where it was taken, or it is over 5 s old and they moved since): their game stopped sending it.",
     "origin": "tool"
   },
   "would_burst": {

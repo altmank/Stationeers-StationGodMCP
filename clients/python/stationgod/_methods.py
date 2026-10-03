@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:fae5f9d9bcdb55b5c976827b438e08da86fe69c9a749bb382360b09c72ce65b7'
-MOD_VERSION = '1.11.0'
+CATALOGUE_HASH = 'sha256:bdb11096cece3c047b640745546f4e77ca34180b9b12a95e49d314af748b8f96'
+MOD_VERSION = '1.12.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -1577,7 +1577,7 @@ class Methods:
         return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'compact': compact, 'limit': limit, 'offset': offset}, **options)
 
     def highlight(self, *, targets: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, **options) -> dict:
-        """Show the player where things are, through walls, frames and terrain (1.7.0+), on this game's screen only (other players see nothing; nothing in the world changes): targets [{...}] (up to 64), each exactly one of reference_id, reference_ids (up to 1024 things: devices, pieces, items, anything with...
+        """Show the player where things are, through walls, frames and terrain (1.7.0+), on the player's screen only (other players see nothing; nothing in the world changes; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod): targets [{...}] (up to 64), each exactly on...
 
         Class: read. Arguments: targets, seconds, keep, clear.
         """
@@ -1654,7 +1654,7 @@ class Methods:
         return self.call('list_gateways', **options)
 
     def looking_at(self, *, max_distance_m: float | None = None, **options) -> dict:
-        """What the local player's crosshair is on: the game's own CursorManager.CursorThing, the thing its interaction ray (3 m from the camera) hits this frame.
+        """What the player's crosshair is on: the game's own CursorManager.CursorThing, the thing its interaction ray (3 m from the camera) hits this frame.
 
         Class: read. Arguments: max_distance_m.
         """
@@ -1941,7 +1941,7 @@ class Methods:
         return self.call('set_ic_source', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'source': source}, **options)
 
     def show_preview(self, *, placements: list | None = None, prefab: str | int | None = None, at: object | None = None, rotation: list | None = None, facing: str | None = None, up: str | None = None, face: str | None = None, orient: dict | None = None, above_floor_m: float | None = None, build_state: object | None = None, allow_door_keepout: bool | None = None, cells: list | None = None, boxes: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, xray: bool | None = None, **options) -> dict:
-        """Draw in-game wire boxes for a planned layout (1.4.3+), on your screen only (other players see nothing; never the game's construction cursor): the same placement fields as place_structure (placements, or prefab and at, with rotation/facing/face/orient/above_floor_m...) are dry-run and each placeme...
+        """Draw in-game wire boxes for a planned layout (1.4.3+), on the player's screen only (other players see nothing; never the game's construction cursor; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod: drawn_on names the player): the same placement fields as pl...
 
         Class: read. Arguments: placements, prefab, at, rotation, facing, up, face, orient, above_floor_m, build_state, allow_door_keepout, cells, boxes, seconds, keep, clear, xray.
         """
