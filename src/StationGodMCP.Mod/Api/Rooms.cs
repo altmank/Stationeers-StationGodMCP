@@ -44,7 +44,7 @@ internal static class RoomsApi
             throw ApiErrors.Refused("not_ready", "The room or atmospherics controller is not loaded.");
         }
 
-        Room? playerRoom = RoomOf(Human.LocalHuman, rooms);
+        Room? playerRoom = RoomOf(PlayerOrigin.Current().Player, rooms);
         List<Room> chosen = only.HasValue ? new List<Room> { RequireRoom(only.Value, rooms) } : LiveRooms();
         Dictionary<long, List<ThingView>>? devices = includeDevices ? DevicesByRoom(rooms) : null;
         List<RoomView> views = new List<RoomView>(chosen.Count);

@@ -15,7 +15,7 @@ using UnityEngine;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// player_vitals: the local player's hunger and thirst. Read only.
+/// player_vitals: the player's hunger and thirst. Read only.
 ///
 /// The rates copy Human.LifeNutrition and Human.LifeDehydrate, which run once per game tick
 /// (GameManager.GameTickSpeedSeconds) from AtmosphericsManager.LifeTicksTick through Entity.OnLifeTick.

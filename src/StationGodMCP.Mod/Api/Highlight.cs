@@ -37,7 +37,8 @@ internal static class HighlightApi
         if (!Look.HasCamera)
         {
             throw ApiErrors.Refused("no_camera",
-                "There is no player camera to draw for (a dedicated server has none).");
+                "There is no player camera to draw for (a dedicated server has none: a remote player's camera " +
+                "stays on their own machine).");
         }
 
         if (XRay.MeshMaterial == null)

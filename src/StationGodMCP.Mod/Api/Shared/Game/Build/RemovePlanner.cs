@@ -70,7 +70,7 @@ internal sealed class RemovePlan
 
     internal List<BuildIssueView> Warnings { get; } = new List<BuildIssueView>();
 
-    /// <summary>The source a refund uses (from_id, else the local player); null with refund_to ground or none.</summary>
+    /// <summary>The source a refund uses (from_id, else the player); null with refund_to ground or none.</summary>
     internal Thing? From { get; set; }
 
     /// <summary>Where the refund goes (refund_to resolved); null until planned.</summary>
@@ -999,11 +999,12 @@ internal static class RemovePlanner
             return;
         }
 
-        Human human = Human.LocalHuman;
+        PlayerOrigin player = PlayerOrigin.Current();
+        Human? human = player.Player;
         if (human == null && route.NeedsHolder)
         {
             plan.Problems.Add(new BuildIssueView("no_local_player",
-                "There is no local player to give the refund to; pass from_id, or refund_to ground or none."));
+                $"{player.Absence} Nothing to give the refund to; pass from_id, or refund_to ground or none."));
             return;
         }
 

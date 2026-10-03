@@ -90,7 +90,7 @@ internal sealed class StructureSwapArguments
     /// <summary>Only pieces of these prefabs are selected; null selects every piece in scope.</summary>
     internal List<string>? FromPrefabs { get; }
 
-    /// <summary>The thing materials come from and refunds go to; null for the local player.</summary>
+    /// <summary>The thing materials come from and refunds go to; null for the player.</summary>
     internal ThingId? From { get; }
 
     /// <summary>Whether anything is given back (refund_to not none, refund not false).</summary>

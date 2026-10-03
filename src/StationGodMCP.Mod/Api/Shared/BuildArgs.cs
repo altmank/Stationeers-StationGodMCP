@@ -164,7 +164,7 @@ internal sealed class PlaceArguments
 
     internal List<PlacementArgs> Placements { get; }
 
-    /// <summary>The thing materials come from; null for the local player.</summary>
+    /// <summary>The thing materials come from; null for the player.</summary>
     internal ThingId? From { get; }
 
     /// <summary>Place without materials (creative worlds only).</summary>

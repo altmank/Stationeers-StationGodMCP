@@ -339,5 +339,6 @@ internal static class AtResolver
         ApiErrors.Refused("ambiguous_axis", $"{name}: {why}; give a world axis or frame world instead.");
 
     private static ApiException NoCamera(string name) =>
-        ApiErrors.Refused("no_camera", $"{name}: there is no player camera (a dedicated server has none).");
+        ApiErrors.Refused("no_camera", $"{name}: there is no player camera (a dedicated server has none: a remote " +
+                                       "player's camera stays on their own machine).");
 }

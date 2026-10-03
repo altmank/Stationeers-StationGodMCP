@@ -58,7 +58,7 @@
       "confirm": {"$ref": "defs/confirm.json"},
       "from_id": {
         "type": "string",
-        "description": "The thing whose inventory gives the coils or kits and takes the refund. Default the local player."
+        "description": "The thing whose inventory gives the coils or kits and takes the refund. Default the player."
       },
       "refund": {
         "type": "boolean",

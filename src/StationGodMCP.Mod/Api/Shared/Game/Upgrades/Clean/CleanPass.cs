@@ -300,7 +300,7 @@ internal sealed class EndCleanupGoal : SwapGoal
     private const string CostNote =
         "Coils or kits are charged as the coil's or kit's own merge placement charges pieces placed over others " +
         "(MultiMergeConstructor.Construct: the new pieces' entry quantity less the old ones'). A split costs more " +
-        "than it gives back; the shortfall is taken from the source's inventory (from_id, default the local player) " +
+        "than it gives back; the shortfall is taken from the source's inventory (from_id, default the player) " +
         "and the run is refused with not_enough_coils when it holds too few. Nothing is ever made for free. A merge " +
         "or a removal gives back: with refund, as deconstruction gives it, made at the source.";
 

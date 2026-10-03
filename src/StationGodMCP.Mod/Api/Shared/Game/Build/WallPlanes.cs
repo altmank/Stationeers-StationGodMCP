@@ -88,7 +88,8 @@ internal sealed class PlaneView
             if (!Look.HasCamera)
             {
                 throw ApiErrors.Refused("no_camera",
-                    "looking: there is no player camera to look from (a dedicated server has none).");
+                    "looking: there is no player camera to look from (a dedicated server has none: a remote " +
+                    "player's camera stays on their own machine).");
             }
 
             CursorManager cursor = CursorManager.Instance;

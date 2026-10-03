@@ -1,7 +1,21 @@
 # Changelog
 
-## Unreleased
+## 1.11.0
 
+2026-10-03. The player on a dedicated server; protocol version 2 only. 91 tools.
+
+- **The player on a dedicated server.** Everything that means "the player" now finds one on a dedicated server: the
+  local player when the game has one (single player and a hosted game behave exactly as before), else the one
+  connected, living player in the world. That covers `player_vitals`, `container_contents` `"player"`, the
+  `local_player` key and `near_player_m` of `find_things`, `find_items`, `item_totals`, `list_containers`,
+  `outer_frames`, `thing_health` and the other distance-sorted tools, `rooms`' player room, `ignition_risk`, the
+  default `from_id` of the build, removal, upgrade, replace and clean tools, `vault_withdraw`'s default `to_id`, the
+  trader tools' default card and holder, and the player as a placement point or facing (`relative_to`, `near`,
+  `orient`, `toward_player`; the `player` frame follows the camera, so on a dedicated server pass `frame: world`).
+  With no player connected, or several, those calls still refuse `no_local_player`, and the message now says which
+  (none connected, or how many and their names). The camera and screen tools (`looking_at`, `crosshair`,
+  `on_face_i_look_at`, the `player` frame, `highlight`, `show_preview`) stay the local player's: a remote player's
+  camera is not on the server.
 - **Update the mod and the sidecar together.** The old protocol (one request line, one reply line) is gone: every
   connection now starts with a `hello`, and anything else as the first line (after the shared secret over TCP) is
   answered `protocol_error` and closed. A sidecar or script from before this version cannot talk to this mod, and this

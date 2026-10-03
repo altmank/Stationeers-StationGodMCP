@@ -39,7 +39,7 @@
       "confirm": {"$ref": "defs/confirm.json"},
       "from_id": {
         "type": "string",
-        "description": "The thing whose inventory gives the materials and takes the refund. Default the local player; with neither, a swap that charges nothing and whose refund_to is not the single word source goes ahead, the refund following refund_to (the ground where the first piece stood at the end), else no_local_player."
+        "description": "The thing whose inventory gives the materials and takes the refund. Default the player; with neither, a swap that charges nothing and whose refund_to is not the single word source goes ahead, the refund following refund_to (the ground where the first piece stood at the end), else no_local_player."
       },
       "skip_unmatched": {
         "type": "boolean",

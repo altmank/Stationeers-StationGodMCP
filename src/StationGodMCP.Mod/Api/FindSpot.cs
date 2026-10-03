@@ -185,7 +185,8 @@ internal static class FindSpotApi
             if (!Look.HasCamera)
             {
                 throw ApiErrors.Refused("no_camera",
-                    "near: there is no player camera to look from (a dedicated server has none); pass near.");
+                    "near: there is no player camera to look from (a dedicated server has none: a remote " +
+                    "player's camera stays on their own machine); pass near.");
             }
 
             CursorManager cursor = CursorManager.Instance;

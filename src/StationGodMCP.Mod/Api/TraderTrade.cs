@@ -316,7 +316,7 @@ internal static class TradeSession
         return "no trader is landed";
     }
 
-    // The card given, or the one the local player carries (Human.GetCreditCard), as the trade window picks it.
+    // The card given, or the one the player carries (Human.GetCreditCard), as the trade window picks it.
     internal static CreditCard RequireCard(ThingId? id)
     {
         if (id.HasValue)
@@ -329,22 +329,23 @@ internal static class TradeSession
             return given;
         }
 
-        Human human = Human.LocalHuman;
+        PlayerOrigin player = PlayerOrigin.Current();
+        Human? human = player.Player;
         CreditCard? carried = human != null ? human.GetCreditCard() : null;
         if (carried == null)
         {
             throw ApiErrors.Refused("no_credit_card", human != null
-                ? "The local player carries no credit card; pass credit_card_id."
-                : "There is no local player to carry a credit card (a dedicated server); pass credit_card_id.");
+                ? $"The player ({human.DisplayName}) carries no credit card; pass credit_card_id."
+                : $"{player.Absence} No player carries a credit card; pass credit_card_id.");
         }
 
         return carried!;
     }
 
-    // DifficultySetting.RespawnStressTradePenalty while the local player has respawn stress, else 1 (TradeItem).
+    // DifficultySetting.RespawnStressTradePenalty while the player has respawn stress, else 1 (TradeItem).
     private static float StressPenalty()
     {
-        Human human = Human.LocalHuman;
+        Human? human = PlayerOrigin.Current().Player;
         return human != null && human.ExperiencingRespawnStress && DifficultySetting.Current != null
             ? (float)DifficultySetting.Current.RespawnStressTradePenalty
             : 1f;

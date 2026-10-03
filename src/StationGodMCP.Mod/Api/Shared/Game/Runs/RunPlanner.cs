@@ -676,7 +676,8 @@ internal static class RunPlanner
             return null;
         }
 
-        Human human = Human.LocalHuman;
+        PlayerOrigin player = PlayerOrigin.Current();
+        Human? human = player.Player;
         if (human == null && !SourceRule.NeedsSource(builds, plan.Request.Options.RefundTo.NeedsHolder))
         {
             // A refund_to chain on a dedicated server skips inventory and gives to what else it names.
@@ -685,13 +686,13 @@ internal static class RunPlanner
 
         if (human == null && SourceRule.NoLocalPlayer(plan.Request.Tool) == GuardLevel.Warning)
         {
-            plan.Warnings.Add(new LayoutIssue("no_local_player", "There is no local player (a dedicated server); the " +
-                                                                 "refund is an estimate, and a real removal takes " +
-                                                                 "from_id to receive it.", null, null));
+            plan.Warnings.Add(new LayoutIssue("no_local_player", $"{player.Absence} The refund is an estimate, and a " +
+                                                                 "real removal takes from_id to receive it.", null,
+                null));
         }
         else if (human == null)
         {
-            plan.Problem("no_local_player", $"There is no local player {role}; pass from_id.");
+            plan.Problem("no_local_player", $"{player.Absence} No player {role}; pass from_id.");
         }
 
         return human;

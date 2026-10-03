@@ -1,6 +1,6 @@
 {
   "name": "container_contents",
-  "description": "Show the slots of any one thing in the world and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the local player's whole inventory. Works whether or not the thing is on a data network. position and distance_m are where the thing is in the world: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Read only; no gateway is needed.",
+  "description": "Show the slots of any one thing in the world and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Works whether or not the thing is on a data network. position and distance_m are where the thing is in the world: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Read only; no gateway is needed.",
   "class": "read",
   "cost": "instant",
   "params": {
@@ -8,7 +8,7 @@
     "properties": {
       "reference_id": {
         "type": "string",
-        "description": "Reference ID of any thing (from find_items, list_containers or list_devices), or 'player' for the local player."
+        "description": "Reference ID of any thing (from find_items, list_containers or list_devices), or 'player' for the player."
       },
       "depth": {
         "type": "integer",

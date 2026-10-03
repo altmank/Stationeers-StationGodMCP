@@ -233,7 +233,7 @@ internal sealed class LineOutcomes
 /// <summary>
 /// What a sale can take, as the game's sell finds it: the goods on the pad network's vending machines and in the card
 /// holder's inventory (TradeDataHelper.HandleSellItem; the trade window's own count, GetSellItemQuantity, reads the
-/// local player instead, which is the card holder only when the card is theirs), and the pad network's gas.
+/// player instead, which is the card holder only when the card is theirs), and the pad network's gas.
 /// </summary>
 internal sealed class SellStock
 {

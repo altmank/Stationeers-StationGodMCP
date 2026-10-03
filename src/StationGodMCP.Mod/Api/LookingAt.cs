@@ -157,7 +157,7 @@ internal static class Look
             return null;
         }
 
-        Human human = Human.LocalHuman;
+        Human? human = PlayerOrigin.Local();
         bool seated = human != null && human.MovementController != null &&
                       human.MovementController.ControlMode == MovementController.Mode.Seated;
         return new LookView(Bodies.V(eye), basis, CameraController.IsThirdPerson, seated);

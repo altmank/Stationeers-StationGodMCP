@@ -119,7 +119,7 @@ internal static class DeepMinerSpotsApi
                 result.SearchedRadius, result.Truncated), spots, beacons);
     }
 
-    // at, else the local player.
+    // at, else the player.
     private static Vector3 Centre(Args args)
     {
         if (args.Has("at"))

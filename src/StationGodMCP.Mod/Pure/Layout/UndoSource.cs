@@ -6,7 +6,7 @@ namespace StationGodMCP.Pure;
 
 /// <summary>
 /// Where a place or remove job took its materials and put its refund, as its request named them: from_id (null: the
-/// local player), free (place_structure without materials), refund_to (a single word or a chain of targets) and
+/// player), free (place_structure without materials), refund_to (a single word or a chain of targets) and
 /// refund (the run tools' refund flag).
 /// </summary>
 internal sealed class JobSource
@@ -48,7 +48,7 @@ internal sealed class UndoSource
         Notes = notes;
     }
 
-    /// <summary>Every call's from_id; null leaves it out (the local player).</summary>
+    /// <summary>Every call's from_id; null leaves it out (the player).</summary>
     internal long? FromId { get; }
 
     /// <summary>The removals' refund_to; null leaves it out (each tool's default chain).</summary>
@@ -63,7 +63,7 @@ internal sealed class UndoSource
         if (fromId.HasValue)
         {
             notes.Add($"from_id {fromId.Value}: the caller's source pays and takes the refunds (instead of " +
-                      (job.FromId.HasValue ? $"the job's own, {job.FromId.Value})." : "the local player)."));
+                      (job.FromId.HasValue ? $"the job's own, {job.FromId.Value})." : "the player)."));
         }
         else if (job.FromId.HasValue)
         {

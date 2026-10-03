@@ -226,7 +226,7 @@ internal abstract class RefundRoute
     }
 }
 
-/// <summary>What from_id is for a refund: not passed (the local player stands in), passed but naming no thing, or found.</summary>
+/// <summary>What from_id is for a refund: not passed (the player stands in), passed but naming no thing, or found.</summary>
 internal enum RefundFrom
 {
     Absent,
@@ -245,7 +245,7 @@ internal sealed class RefundReach
         From = from;
     }
 
-    /// <summary>A player whose inventory takes items (from_id a player, else the local player).</summary>
+    /// <summary>A player whose inventory takes items (from_id a player, else the player).</summary>
     internal bool Player { get; }
 
     /// <summary>from_id is a stack (a coil, a sheet stack) that can be topped up.</summary>
@@ -253,7 +253,7 @@ internal sealed class RefundReach
 
     /// <summary>
     /// A holder with a slot a refund could go into: from_id's own or those of the container it is stored in, else the
-    /// local player's.
+    /// player's.
     /// </summary>
     internal bool Storage { get; }
 
@@ -330,7 +330,7 @@ internal static class RefundChainRule
     }
 
     /// <summary>
-    /// Whether a job with no from_id needs a local player: it takes materials (charge above zero), or its refund_to is
+    /// Whether a job with no from_id needs a player: it takes materials (charge above zero), or its refund_to is
     /// the single word source. A chain skips what is missing and ends on the ground.
     /// </summary>
     internal static bool NeedsPlayer(int charge, RefundRoute route) => charge > 0 || route.NeedsHolder;

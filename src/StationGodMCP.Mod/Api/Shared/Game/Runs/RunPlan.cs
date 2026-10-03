@@ -152,7 +152,7 @@ internal sealed class RunOptions
 
     internal EditAllowance Allow { get; }
 
-    /// <summary>The thing coils are taken from and given back to; null for the local player.</summary>
+    /// <summary>The thing coils are taken from and given back to; null for the player.</summary>
     internal ThingId? From { get; }
 
     /// <summary>Whether anything is given back (refund_to not none, refund not false).</summary>

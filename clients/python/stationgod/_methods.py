@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:3378db10b7f683d78740d9904516f677bce2b13e0a58c33e094a2e5120784708'
-MOD_VERSION = '1.10.0'
+CATALOGUE_HASH = 'sha256:fae5f9d9bcdb55b5c976827b438e08da86fe69c9a749bb382360b09c72ce65b7'
+MOD_VERSION = '1.11.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -213,8 +213,8 @@ TABLE = {'catalogue': {'class': 'read',
                            'limit': 'limit',
                            'total': 'total',
                            'has_more': 'has_more',
-                           'order': 'nearest the local player first (no position last), then by name, loose items '
-                                    'before stock, then reference id'},
+                           'order': 'nearest the player first (no position last), then by name, loose items before '
+                                    'stock, then reference id'},
                 'duration': None,
                 'params': ['prefab_contains',
                            'name_contains',
@@ -254,7 +254,7 @@ TABLE = {'catalogue': {'class': 'read',
                             'limit': 'limit',
                             'total': 'total',
                             'has_more': 'has_more',
-                            'order': 'nearest the local player first (no position last), then prefab name, then '
+                            'order': 'nearest the player first (no position last), then prefab name, then '
                                      'reference id'},
                  'duration': None,
                  'params': ['name_contains',
@@ -415,8 +415,8 @@ TABLE = {'catalogue': {'class': 'read',
                                 'limit': 'limit',
                                 'total': 'total',
                                 'has_more': 'has_more',
-                                'order': 'nearest the local player first (no position last), then prefab name, '
-                                         'then the order found'},
+                                'order': 'nearest the player first (no position last), then prefab name, then the '
+                                         'order found'},
                      'duration': None,
                      'params': ['prefab_contains', 'name_contains', 'near_player_m', 'limit', 'offset'],
                      'required': [],
@@ -507,7 +507,7 @@ TABLE = {'catalogue': {'class': 'read',
                              'limit': 'limit',
                              'total': 'total',
                              'has_more': 'has_more',
-                             'order': 'nearest the local player first, then reference id'},
+                             'order': 'nearest the player first, then reference id'},
                   'duration': None,
                   'params': ['near_player_m', 'include_inner', 'limit', 'offset'],
                   'required': [],
@@ -1479,7 +1479,7 @@ class Methods:
         return self.call('consumables', **options)
 
     def container_contents(self, *, reference_id: str | None = None, depth: int | None = None, **options) -> dict:
-        """Show the slots of any one thing in the world and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the local player's whole inventory.
+        """Show the slots of any one thing in the world and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory.
 
         Class: read. Arguments: reference_id (required), depth.
         """
@@ -1584,7 +1584,7 @@ class Methods:
         return self.call('highlight', **{'targets': targets, 'seconds': seconds, 'keep': keep, 'clear': clear}, **options)
 
     def ignition_risk(self, *, include_prefabs: bool | None = None, **options) -> dict:
-        """Whether the things the local player carries would catch fire, by the game's own fire rule.
+        """Whether the things the player carries would catch fire, by the game's own fire rule.
 
         Class: read. Arguments: include_prefabs.
         """
@@ -1787,7 +1787,7 @@ class Methods:
         return self.call('plants', **{'reference_id': reference_id, 'include_unplanted': include_unplanted}, **options)
 
     def player_vitals(self, **options) -> dict:
-        """The local player's hunger and thirst: nutrition and hydration now and their capacities, food quality and its multiplier, mood, sleeping, brain online, helmet closed, the temperature thirst depends on right now and where it is taken (suit, room or world), the difficulty's hunger rate, hydration ra...
+        """The player's hunger and thirst: nutrition and hydration now and their capacities, food quality and its multiplier, mood, sleeping, brain online, helmet closed, the temperature thirst depends on right now and where it is taken (suit, room or world), the difficulty's hunger rate, hydration rate and...
 
         Class: read.
         """

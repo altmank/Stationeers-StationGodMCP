@@ -154,14 +154,14 @@ internal static class PlacementRule
         CubeRotation.Reachable(x ? (mounted ? 2 : 1) : 0, y ? 1 : 0, z ? 1 : 0).Contains(rotation);
 }
 
-/// <summary>Where a run's coils come from and go back to, when the game has no local player to hold them.</summary>
+/// <summary>Where a run's coils come from and go back to, when the game has no player to hold them.</summary>
 internal static class SourceRule
 {
     /// <summary>The read-only removal planner: nothing is taken or given, its refund is an estimate.</summary>
     internal const string PlanRemoval = "plan_removal";
 
     /// <summary>
-    /// How a missing local player (a dedicated server) with no from_id counts: a problem for a tool that takes or gives
+    /// How a missing player with no from_id counts: a problem for a tool that takes or gives
     /// items, only a warning for plan_removal, which prices the refund and moves nothing.
     /// </summary>
     internal static GuardLevel NoLocalPlayer(string tool) =>
