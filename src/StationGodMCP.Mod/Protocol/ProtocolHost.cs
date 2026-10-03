@@ -26,8 +26,9 @@ internal sealed class ProtocolSettings
     internal ProtocolSettings(int maxPipeConnections, int firstLineTimeoutMilliseconds = DefaultFirstLineTimeoutMilliseconds,
         int lineTimeoutMilliseconds = DefaultLineTimeoutMilliseconds, bool protocol2 = true,
         int maxReplyBytes = DefaultMaxReplyBytes, int pingAfterMilliseconds = DefaultPingAfterMilliseconds,
-        int slowClientMilliseconds = DefaultSlowClientMilliseconds)
+        int slowClientMilliseconds = DefaultSlowClientMilliseconds, bool strictArguments = true)
     {
+        StrictArguments = strictArguments;
         PingAfterMilliseconds = pingAfterMilliseconds;
         SlowClientMilliseconds = slowClientMilliseconds;
         MaxPipeConnections = maxPipeConnections;
@@ -56,6 +57,12 @@ internal sealed class ProtocolSettings
 
     /// <summary>A version-2 client that takes no line for this long is closed (goodbye slow_client).</summary>
     internal int SlowClientMilliseconds { get; }
+
+    /// <summary>
+    /// Whether version-2 calls are checked against the catalogue in full ([Server] StrictArguments): every argument's
+    /// name at any depth, type, range, enum, pattern and the required ones, and the shape. Version 1 is never.
+    /// </summary>
+    internal bool StrictArguments { get; }
 }
 
 /// <summary>

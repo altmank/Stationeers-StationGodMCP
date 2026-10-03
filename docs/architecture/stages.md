@@ -376,6 +376,16 @@ today.
 
 **Risk.** Low: version 1, which every existing client speaks, is untouched.
 
+**As built.** Where the code needed a choice the text above leaves open:
+- The check runs on the connection's reader thread before the call is queued, so a refused call costs the main thread
+  nothing and its reply has no `elapsed_ms`. The shape is checked first (`invalid_shape`), then the params
+  (`invalid_argument`); both list every problem in `data.problems` as `{path, problem}` and join the sentences in
+  `message`. Shape problems carry the path `shape`. A method the catalogue does not have, and `sample_logic` (answered
+  by the sidecar), are left to the main thread, which answers as on version 1.
+- `limit` may name only a key the method's `reply` describes as a list (`CatalogueMethod.ReplyLists`). A path
+  selector whose first name is not a reply list is not refused: it is reported in `fields_unmatched`, as on version 1.
+- Live (test server): not run; the owner's game was running (owner's TODO).
+
 ## Stage 6: sign-in, permissions, and version 2 over TCP
 
 **Scope.** The *Sign-in and permissions* part of [protocol.md](protocol.md): the clients file and its reload; the

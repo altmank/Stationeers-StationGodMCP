@@ -118,8 +118,9 @@ internal sealed class CatalogueMethod
 
     private CatalogueMethod(string name, MethodClass defaultClass, List<CatalogueRule> classRules, CostClass defaultCost,
         List<CatalogueRule> costRules, SchemaNode parameters, bool listsShaped, bool hidden, bool runsInSidecar,
-        List<string> effects)
+        List<string> effects, HashSet<string> replyLists)
     {
+        ReplyLists = replyLists;
         Name = name;
         DefaultClass = defaultClass;
         _classRules = classRules;
@@ -159,6 +160,9 @@ internal sealed class CatalogueMethod
 
     /// <summary>x-effects: display, server_state, files; a method with any is never resent automatically.</summary>
     internal List<string> Effects { get; }
+
+    /// <summary>The reply's top-level keys that are lists (reply properties whose type includes array): what limit may name.</summary>
+    internal HashSet<string> ReplyLists { get; }
 
     /// <summary>The class at these arguments: the first class rule that matches, else the method's class.</summary>
     internal MethodClass ClassAt(JObject? arguments)
@@ -223,7 +227,46 @@ internal sealed class CatalogueMethod
             (string?)method["x-shaping"] == "lists",
             (string?)method["x-mcp"] == "hidden",
             (string?)method["x-runs-in"] == "sidecar",
-            effects);
+            effects,
+            ReplyListsOf(method["reply"]));
+    }
+
+    private static HashSet<string> ReplyListsOf(JToken? reply)
+    {
+        HashSet<string> lists = new HashSet<string>(StringComparer.Ordinal);
+        if (reply?["properties"] is JObject properties)
+        {
+            foreach (JProperty property in properties.Properties())
+            {
+                if (NamesArray(property.Value["type"]))
+                {
+                    lists.Add(property.Name);
+                }
+            }
+        }
+
+        return lists;
+    }
+
+    private static bool NamesArray(JToken? type)
+    {
+        if (type?.Type == JTokenType.String)
+        {
+            return (string)type! == "array";
+        }
+
+        if (type is JArray types)
+        {
+            foreach (JToken name in types)
+            {
+                if (name.Type == JTokenType.String && (string)name! == "array")
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>The problems with a call's arguments against params; empty when it passes.</summary>

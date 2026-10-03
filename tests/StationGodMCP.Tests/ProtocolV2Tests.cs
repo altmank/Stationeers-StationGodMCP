@@ -74,7 +74,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public async Task ACallIsAnsweredByIdWithTheReplyEnvelope()
     {
-        using PipeRig rig = new PipeRig();
+        using PipeRig rig = Loose();
         using V2Client client = await V2Client.Connect(rig);
 
         JObject reply = client.Call("a1", "game_clock", new JObject { ["x"] = 1 });
@@ -200,7 +200,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public async Task CancelDropsACallNotStartedAndNothingElse()
     {
-        using PipeRig rig = new PipeRig(mainThread: false);
+        using PipeRig rig = Loose(mainThread: false);
         using V2Client client = await V2Client.Connect(rig);
         client.Send(Call("c1", "game_clock"));
         client.Send("""{"type":"cancel","id":"c1"}""");
@@ -401,7 +401,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public async Task AReplyOfSixteenMegabytesReachesAReadingClient()
     {
-        using PipeRig rig = new PipeRig();
+        using PipeRig rig = Loose();
         using V2Client client = await V2Client.Connect(rig);
 
         JObject reply = client.Call("big", "game_clock", new JObject { ["reply_bytes"] = 16 * 1024 * 1024 - 4096 }, 20000);
@@ -412,7 +412,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public async Task AClientThatReadsNothingIsClosedAsSlow()
     {
-        using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, slowClientMilliseconds: 1000));
+        using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, slowClientMilliseconds: 1000, strictArguments: false));
         using V2Client client = await V2Client.Connect(rig);
         client.StopReading();
         for (int index = 0; index < 4; index++)
@@ -446,6 +446,10 @@ public sealed class ProtocolV2Tests
         Assert.NotEqual(first, scope.WorldId);
         Assert.NotEqual(ServerFacts.RandomHex(8), ServerFacts.RandomHex(8));
     }
+
+    // The fake mod's own params (hold_ms, reply_bytes) are no method's arguments: these rigs check calls as version 1.
+    private static PipeRig Loose(bool mainThread = true) =>
+        new PipeRig(mainThread: mainThread, settings: new ProtocolSettings(32, strictArguments: false));
 
     private static string Call(string id, string method, JObject? parameters = null) =>
         new JObject { ["type"] = "call", ["id"] = id, ["method"] = method, ["params"] = parameters ?? new JObject() }
