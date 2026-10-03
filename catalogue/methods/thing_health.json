@@ -102,15 +102,85 @@
       "pipe_burst": {"type": ["string", "null"]},
       "position": {"type": "object"},
       "distance_m": {"type": ["number", "null"]},
-      "networks": {"type": ["array", "null"]},
-      "results": {"type": "array"},
+      "networks": {
+        "type": ["array", "null"],
+        "items": {"type": "object", "properties": {"kind": {"type": "string"}, "id": {"type": "string"}}}
+      },
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "index": {"type": "integer"},
+            "ok": {"type": "boolean"},
+            "error": {"type": "object"},
+            "reference_id": {"type": "string"},
+            "prefab_name": {"type": ["string", "null"]},
+            "display_name": {"type": ["string", "null"]},
+            "custom_name": {"type": ["string", "null"]},
+            "condition": {"type": "string"},
+            "kind": {"type": "string"},
+            "type": {"type": "string"},
+            "damage_state": {"type": "string"},
+            "damage_state_class": {"type": ["string", "null"]},
+            "max_damage": {"type": ["number", "null"]},
+            "total_damage": {"type": ["number", "null"]},
+            "damage_ratio": {"type": ["number", "null"]},
+            "health_percent": {"type": ["integer", "null"]},
+            "band": {"type": ["string", "null"]},
+            "damage": {"type": ["object", "null"]},
+            "is_broken": {"type": "boolean"},
+            "broken_build_state": {"type": ["boolean", "null"]},
+            "being_destroyed": {"type": "boolean"},
+            "pipe_burst": {"type": ["string", "null"]},
+            "position": {"type": "object"},
+            "distance_m": {"type": ["number", "null"]},
+            "networks": {
+              "type": ["array", "null"],
+              "items": {"type": "object", "properties": {"kind": {"type": "string"}, "id": {"type": "string"}}}
+            }
+          }
+        }
+      },
       "count": {"type": "integer"},
       "success_count": {"type": "integer"},
       "error_count": {"type": "integer"},
       "network_id": {"type": "string"},
       "pieces": {"type": "integer"},
       "damaged_only": {"type": "boolean"},
-      "things": {"type": "array"},
+      "things": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "reference_id": {"type": "string"},
+            "prefab_name": {"type": ["string", "null"]},
+            "display_name": {"type": ["string", "null"]},
+            "custom_name": {"type": ["string", "null"]},
+            "condition": {"type": "string"},
+            "kind": {"type": "string"},
+            "type": {"type": "string"},
+            "damage_state": {"type": "string"},
+            "damage_state_class": {"type": ["string", "null"]},
+            "max_damage": {"type": ["number", "null"]},
+            "total_damage": {"type": ["number", "null"]},
+            "damage_ratio": {"type": ["number", "null"]},
+            "health_percent": {"type": ["integer", "null"]},
+            "band": {"type": ["string", "null"]},
+            "damage": {"type": ["object", "null"]},
+            "is_broken": {"type": "boolean"},
+            "broken_build_state": {"type": ["boolean", "null"]},
+            "being_destroyed": {"type": "boolean"},
+            "pipe_burst": {"type": ["string", "null"]},
+            "position": {"type": "object"},
+            "distance_m": {"type": ["number", "null"]},
+            "networks": {
+              "type": ["array", "null"],
+              "items": {"type": "object", "properties": {"kind": {"type": "string"}, "id": {"type": "string"}}}
+            }
+          }
+        }
+      },
       "total": {"type": "integer"},
       "offset": {"type": "integer"},
       "limit": {"type": "integer"},
@@ -123,6 +193,7 @@
     }
   },
   "x-views": ["HealthView", "BatchResultView", "HealthNetworkView", "HealthScanView"],
+  "x-entry-views": {"results": ["HealthItemView", "BatchErrorView"]},
   "x-shaping": "lists",
   "x-paging": {
     "list": "things",
@@ -132,5 +203,6 @@
     "has_more": "has_more",
     "order": "worst first: broken, then highest damage ratio, then highest total damage, then lowest reference id"
   },
+  "x-costly": [{"list": "things", "key": "networks"}, {"list": "results", "key": "networks"}],
   "deprecated_aliases": {"min_ratio": "min_damage_ratio"}
 }

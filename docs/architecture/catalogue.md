@@ -177,6 +177,7 @@ A method entry, abridged, for `thing_health`:
         "params": {"$ref": "#/$defs/schema"},
         "reply": {"$ref": "#/$defs/schema"},
         "x-views": {"type": "array", "items": {"type": "string"}},
+        "x-entry-views": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
         "x-shaping": {"enum": ["lists", "none"]},
         "x-paging": {
           "type": "object", "additionalProperties": false, "required": ["list", "offset", "limit", "order"],
@@ -418,9 +419,24 @@ Where the code disagreed with the text above, the build followed the code; this 
   (`GasHoldRule`'s verdicts, `RunKind.ShortageCode`). A tool code's description is the message at its first refusal
   site, interpolations shown as `<name>`; the protocol codes come from protocol.md's table, and the sidecar's
   `game_unavailable` is a `client` code. Methods do not list their own `errors` yet.
-- **Not filled yet** (all optional): `area`, `since`, per-method `errors`, `x-costly` (stage 14).
+- **Not filled yet** (all optional): `area`, `since`, per-method `errors`.
 - **The mod.** It loads the catalogue when it starts and logs `Catalogue loaded: N methods`; a catalogue that does not
   load is logged as an error and every request is answered `internal_error` naming the problem. The drift counter is
   `mod_info.runtime.catalogue_drift`, a list of `{method, argument, reads}`, and the first read of each pair is logged.
 - **The bootstrap** (`STATIONGOD_BOOTSTRAP_CATALOGUE=1`) ran once and was deleted with `ToolDefinitions`, which it read.
 - **Tests** validate `catalogue.json` against `catalogue.schema.json` with JsonSchema.Net, a test-only package.
+
+## As built in stage 14
+
+- **Entry schemas.** A list in `reply` may describe its entries (`items` with `properties`); test 5 then holds them
+  to the views the list holds, as deep as the items describe (`things[].networks[]` too): the same keys, and the same
+  ones lists. A list's views come from its element type in the `x-views` classes. A batch's element type is abstract
+  (`BatchItemView`), so the method names its entry views in the new optional `x-entry-views`, keyed by the list's path
+  (`{"results": ["HealthItemView", "BatchErrorView"]}`); entry views are not top-level views, which is why they do not
+  go in `x-views`.
+- **`x-costly` test.** Each part names a list of the reply whose entry schema describes the key, and the handler's own
+  file asks `Shape.Wants` about exactly the declared parts, both names literal or const strings. Only the handler's
+  own file counts: the files one level down are shared (`grid_survey` reaches `ThingHealth.cs`), so an ask there
+  cannot be told apart by method.
+- The mod reads neither `x-costly` nor `x-entry-views`; the handlers ask with literals and the tests hold the two
+  together. `thing_health` is the one method with entry schemas and `x-costly` so far.

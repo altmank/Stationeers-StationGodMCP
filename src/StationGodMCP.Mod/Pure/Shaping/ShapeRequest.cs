@@ -40,6 +40,14 @@ internal sealed class ShapeRequest
     internal int LimitOf(string list) => Limits.TryGetValue(list, out int limit) ? limit : int.MaxValue;
 
     /// <summary>
+    /// Whether the written reply keeps key in the object entries of the top-level list of that name: always without
+    /// fields; with fields, when a single name or a path through that list reaches the key. A handler may skip
+    /// building a costly part (the catalogue's x-costly) this answers false for, because the writer would leave it
+    /// out anyway.
+    /// </summary>
+    internal bool Wants(string list, string key) => Fields == null || Fields.EntryNodeFor(list).Child(key) != null;
+
+    /// <summary>
     /// The version-1 reading, which never refuses: null when there is no shape object; inside it, a selector that does
     /// not parse is kept only to be reported unmatched, and a limit, a max_bytes or a key it cannot use is ignored.
     /// </summary>

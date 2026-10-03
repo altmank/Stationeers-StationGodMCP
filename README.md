@@ -98,7 +98,8 @@ chip sources) takes two shaping arguments. `fields: ["reference_id", "position"]
 of the reply's top-level lists (a name no entry has comes back in `fields_unmatched`). A dotted name is a path into
 one list: `things.position.x` keeps only `x` inside `position` in each entry of `things`, and dictionary keys keep
 their case (`results.logic.Temperature`). The mod applies `fields` while it writes the reply, so the keys left out
-are never formatted or sent, over the pipe or TCP alike.
+are never formatted or sent, over the pipe or TCP alike. Where a key costs the game real work, the mod does not
+even work it out when `fields` leaves it out: `thing_health`'s `networks`, the networks of every structure listed.
 `output_file: true`, or a file name such as `"ores"`, writes the whole reply as indented JSON to a file and answers a
 small pointer instead: `{output_file (the full path), bytes, tool, counts (each list's length), summary (the short
 top-level values), in_file_only}`. Files go to `%LOCALAPPDATA%\StationGodMCP\output` on the machine the sidecar runs

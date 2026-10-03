@@ -46,6 +46,10 @@ namespace StationGodMCP.Api;
 /// broken first, then worst first, paged; broken things are listed whatever their (healed) numbers say, and
 /// broken_only lists only them. The scan leaves out things being destroyed, indestructible damage states, entities
 /// (see player_vitals) and organs.
+///
+/// A structure's networks walk its open ends, the costly part of a reading (the catalogue's x-costly): the list forms
+/// read them only when the call's fields keep networks in that list, since the writer would drop them otherwise. The
+/// one-thing form answers at the top level, which fields do not shape, so it always reads them.
 /// </summary>
 internal static class ThingHealthApi
 {
@@ -56,19 +60,19 @@ internal static class ThingHealthApi
         switch (HealthRequest.Parse(args))
         {
             case HealthRequest.One one:
-                return HealthReader.Read(GameLookup.RequireThing(one.Id), PlayerOrigin.Current());
+                return HealthReader.Read(GameLookup.RequireThing(one.Id), PlayerOrigin.Current(), withNetworks: true);
             case HealthRequest.Many many:
-                return ReadMany(many.Ids);
+                return ReadMany(many.Ids, args.Shape.Wants("results", "networks"));
             case HealthRequest.Network network:
-                return ReadNetwork(network);
+                return ReadNetwork(network, args.Shape.Wants("things", "networks"));
             case HealthRequest.Scan scan:
-                return HealthScanner.Scan(scan);
+                return HealthScanner.Scan(scan, args.Shape.Wants("things", "networks"));
             default:
                 throw ApiErrors.InvalidArgument("Unknown thing_health form.");
         }
     }
 
-    private static HealthNetworkView ReadNetwork(HealthRequest.Network request)
+    private static HealthNetworkView ReadNetwork(HealthRequest.Network request, bool withNetworks)
     {
         UpgradeFamily family = request.Kind switch
         {
@@ -93,14 +97,14 @@ internal static class ThingHealthApi
         List<HealthView> views = new List<HealthView>(page.Items.Count);
         foreach (Thing thing in page.Items)
         {
-            views.Add(HealthReader.Read(thing, origin));
+            views.Add(HealthReader.Read(thing, origin, withNetworks));
         }
 
         return new HealthNetworkView(id, family.NetworkKind, pieces.Count, request.DamagedOnly,
             Slice<HealthView>.Page(views, request.Page, page.Total));
     }
 
-    private static BatchResultView ReadMany(JArray ids)
+    private static BatchResultView ReadMany(JArray ids, bool withNetworks)
     {
         PlayerOrigin origin = PlayerOrigin.Current();
         BatchBuilder batch = new BatchBuilder(ids.Count);
@@ -117,7 +121,7 @@ internal static class ThingHealthApi
             }
             else
             {
-                batch.Succeeded(new HealthItemView(index, HealthReader.Read(thing, origin)));
+                batch.Succeeded(new HealthItemView(index, HealthReader.Read(thing, origin, withNetworks)));
             }
         }
 
@@ -275,7 +279,8 @@ internal static class HealthReader
     private const int RatioDecimals = 4;
     private const float FullHealthPercent = 100f;
 
-    internal static HealthView Read(Thing thing, PlayerOrigin origin)
+    /// <summary>withNetworks false leaves networks out (null), as if the thing had none to list.</summary>
+    internal static HealthView Read(Thing thing, PlayerOrigin origin, bool withNetworks)
     {
         IndestructableDamageState damage = thing.DamageState;
         DamageReading reading = ReadDamage(damage);
@@ -291,7 +296,7 @@ internal static class HealthReader
         return new HealthView(
             GameLookup.ViewOf(thing), KindOf(thing), thing.GetType().Name, reading, flags,
             GameLookup.ViewOf(place), origin.DistanceTo(place), Labels.CustomNameOf(thing),
-            thing is Structure ? EndsReader.NetworksOf(thing) : null);
+            withNetworks && thing is Structure ? EndsReader.NetworksOf(thing) : null);
     }
 
     private static string KindOf(Thing thing) => thing is Structure ? "structure" : thing is Item ? "item" : "other";
@@ -338,7 +343,7 @@ internal static class HealthReader
 /// <summary>thing_health's scan over OcclusionManager.AllThings.</summary>
 internal static class HealthScanner
 {
-    internal static HealthScanView Scan(HealthRequest.Scan scan)
+    internal static HealthScanView Scan(HealthRequest.Scan scan, bool withNetworks)
     {
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(scan.NearPlayerM.HasValue);
         List<Thing> things = Pools.Snapshot(OcclusionManager.AllThings);
@@ -360,7 +365,7 @@ internal static class HealthScanner
 
         rows.Sort(static (a, b) => HealthRow.WorstFirst(a, b));
         Slice<HealthRow> rowPage = Slice<HealthRow>.Of(rows, scan.Page);
-        return new HealthScanView(ReadPage(rowPage, scan.Page, origin), structures, broken, things.Count,
+        return new HealthScanView(ReadPage(rowPage, scan.Page, origin, withNetworks), structures, broken, things.Count,
             scan.MinDamageRatio, origin.View);
     }
 
@@ -396,12 +401,13 @@ internal static class HealthScanner
         return ranked;
     }
 
-    private static Slice<HealthView> ReadPage(Slice<HealthRow> rows, PageRequest page, PlayerOrigin origin)
+    private static Slice<HealthView> ReadPage(Slice<HealthRow> rows, PageRequest page, PlayerOrigin origin,
+        bool withNetworks)
     {
         List<HealthView> views = new List<HealthView>(rows.Items.Count);
         foreach (HealthRow row in rows.Items)
         {
-            views.Add(HealthReader.Read(row.Thing, origin));
+            views.Add(HealthReader.Read(row.Thing, origin, withNetworks));
         }
 
         return Slice<HealthView>.Page(views, page, rows.Total);

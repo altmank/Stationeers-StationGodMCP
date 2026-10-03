@@ -5,13 +5,15 @@ using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Shared;
 
 /// <summary>
 /// A request's parameters with typed getters. JSON null means absent everywhere. A value of the wrong type is
 /// invalid_argument, naming the argument; a getter never guesses. A request's own parameters know their method's
-/// declared names (the catalogue), and a name read that is not one of them counts in ArgumentDrift.
+/// declared names (the catalogue), and a name read that is not one of them counts in ArgumentDrift. Shape is the
+/// call's shape, which a handler asks before building a reply part it declares costly.
 /// </summary>
 internal sealed class Args
 {
@@ -24,24 +26,34 @@ internal sealed class Args
     {
     }
 
+    /// <summary>A request's parameters with the shape its reply is written through.</summary>
+    internal Args(JObject? parameters, ShapeRequest shape)
+        : this(parameters, string.Empty, null, shape)
+    {
+    }
+
     /// <summary>A nested object's parameters; path (e.g. "items[3]") prefixes every name an error message gives.</summary>
     internal Args(JObject? parameters, string path)
         : this(parameters, path, null)
     {
     }
 
-    /// <summary>A request's parameters, held to its method's declared argument names.</summary>
-    internal Args(JObject? parameters, ArgumentNames declared)
-        : this(parameters, string.Empty, declared)
+    /// <summary>A request's parameters, held to its method's declared argument names, with its reply's shape.</summary>
+    internal Args(JObject? parameters, ArgumentNames declared, ShapeRequest shape)
+        : this(parameters, string.Empty, declared, shape)
     {
     }
 
-    private Args(JObject? parameters, string path, ArgumentNames? declared)
+    private Args(JObject? parameters, string path, ArgumentNames? declared = null, ShapeRequest? shape = null)
     {
         _parameters = parameters ?? new JObject();
         _path = path;
         _declared = declared;
+        Shape = shape ?? ShapeRequest.None;
     }
+
+    /// <summary>The call's shape; ShapeRequest.None (every part wanted) when the call has none.</summary>
+    internal ShapeRequest Shape { get; }
 
     internal bool Has(string name) => Token(name) != null;
 
@@ -239,7 +251,7 @@ internal sealed class Args
     {
         JObject copy = (JObject)_parameters.DeepClone();
         copy[name] = value.DeepClone();
-        return new Args(copy, _path, _declared);
+        return new Args(copy, _path, _declared, Shape);
     }
 
     // The name as an error message gives it: with the nested object's path in front.
