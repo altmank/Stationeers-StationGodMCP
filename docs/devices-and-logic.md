@@ -122,8 +122,9 @@ among its `devices`:
 - `read_memory` and `write_memory` check the whole range against the device's `stack_size` before touching it: an
   address past the end is refused (`invalid_argument`) and nothing is written. An IC Housing or suit with no chip has
   no memory to read (`no_programmable_chip`).
-- `sample_logic`'s `interval_seconds` is the least time between samples. Each sample is a round trip to the game's main
-  thread, so a short interval on a busy or slow game gives fewer samples than asked; `sample_count` says how many.
+- `sample_logic`'s `interval_seconds` is the least time between samples. The game takes each sample in the first frame
+  at or after it is due, on the real clock (a paused game is still sampled), so an interval shorter than a frame gives
+  fewer samples than asked; `sample_count` says how many. The call answers when its last sample is taken.
 
 ## Where you look (1.4.3+)
 

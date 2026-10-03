@@ -35,6 +35,12 @@ internal static class KeyCommand
             string key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(KeyBytes));
             Write(path, entry, key, args.Contains("--replace"));
             output.WriteLine($"Key for '{entry.Name}' ({entry.Level}, {string.Join(",", entry.Transports)}) written to {path}.");
+            if (entry.Cheat == "standing")
+            {
+                output.WriteLine("Standing cheat: this key's cheat calls run without your OK in the game. A granted cheat " +
+                                 "method (the dashboard's write_memory) does not need it.");
+            }
+
             output.WriteLine("The key, shown only now; give it to the client in its key variable (for the pipe");
             output.WriteLine($"StationGodMCP that is STATIONGOD_KEY_STATIONGODMCP):");
             output.WriteLine(key);
@@ -45,6 +51,8 @@ internal static class KeyCommand
             error.WriteLine(exception.Message);
             error.WriteLine("Usage: StationGodMCP.Server key new <name> <read|write|cheat> [--config <BepInEx config folder>] " +
                             "[--transports pipe,tcp] [--cheat armed|standing] [--grants method,method] [--replace]");
+            error.WriteLine("Example, the dashboard: key new dashboard write --grants write_memory (its write_memory then " +
+                            "waits for stationgod allow; never give it --cheat standing).");
             return 2;
         }
     }

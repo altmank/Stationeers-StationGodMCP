@@ -454,8 +454,9 @@ legacy TCP, if the owner chooses it, is the one deliberate break and gets its ow
 - `LegacyPipeLevel` defaults to `cheat`, not to `AnonymousPipeLevel`: at write, today's sidecar (`move_gas`, the
   console), the dashboard (the smelter's `write_memory`) and the scripts would lose tools, and every existing client
   must keep working until stage 15. A legacy client's cheat, on the pipe and over TCP, needs no approval, as today. A
-  dashboard moved to protocol 2 keeps its `write_memory` with a key such as `key new dashboard write --grants
-  write_memory --cheat standing`.
+  dashboard moved to protocol 2 keeps its `write_memory` with the key `key new dashboard write --grants write_memory`,
+  without standing cheat (the owner's rule: every cheat needs his OK), so each `write_memory` of its smelter watchdog
+  waits for `stationgod allow`.
 - Keys: the fingerprint is the first 8 hex digits of the SHA-256 of the key's bytes. An entry's defaults: no grants,
   cheat `armed`, transports `pipe`. A name given twice disables every entry of that name.
 - The level check runs on the reader thread after the argument check; a method the catalogue does not have goes to
@@ -605,6 +606,10 @@ heavy calls and a longest wait of at most 10 frames; B's calls all complete; A's
 **Risk.** Medium: a scheduling mistake shows as latency or a stuck lane, not as a crash. The waiting bound and the
 "first call always runs" rule keep every lane moving.
 
+**As built.** The core in [scheduling.md](scheduling.md), *As built: scheduling core*; the wiring in *As built: the
+wiring* there. `mod_info.runtime.lanes` is not built (no stage adds measuring or recording systems), so the live check
+reads `queue_ms` from the replies and `runtime.frames`; `tools/lane_check.py` is not written.
+
 ## Stage 11: subscriptions
 
 **Scope.** [protocol.md](protocol.md), *Subscriptions*: `subscribe` and `unsubscribe`, topics `devices` and `world`,
@@ -637,6 +642,9 @@ shared read path), `catalogue/methods/subscribe.json`, `unsubscribe.json`, `src/
 
 **Risk.** Medium: new main-thread work. Admission limits its cost, and `SubscriptionBudgetMs = 0` turns it off.
 
+**As built.** [protocol.md](protocol.md), *As built: subscription core* and *As built: the wiring of subscriptions and
+sample_logic*. `mod_info.runtime.subscriptions` (live check 5) is not built, for the same rule as stage 10's lanes.
+
 ## Stage 12: sample_logic in the mod
 
 **Scope.** `sample_logic` becomes a mod method with today's arguments, limits, clock and reply
@@ -662,6 +670,10 @@ also completes.
 
 **Risk.** Low to medium: a long-running call on the request path; the extended timeouts are the risky part and are
 tested on both protocols.
+
+**As built.** The sampler in [protocol.md](protocol.md), *As built: subscription core*; its wiring, the deadlines and
+the sidecar's fallback in *As built: the wiring of subscriptions and sample_logic*. The C# client and the Python
+library already added `x-duration` to their waits.
 
 ## Stage 13: dashboard reads by subscription
 

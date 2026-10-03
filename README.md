@@ -103,8 +103,10 @@ are never formatted or sent, over the pipe or TCP alike.
 small pointer instead: `{output_file (the full path), bytes, tool, counts (each list's length), summary (the short
 top-level values), in_file_only}`. Files go to `%LOCALAPPDATA%\StationGodMCP\output` on the machine the sidecar runs
 on (the agent's), or the folder given with `--output-dir`; a named file is overwritten, and files older than 7 days or
-beyond the newest 200 are deleted. Errors always come back in the reply. Run replies are compact by default: a
-confirmed run answers its job and a `preflight_summary`, and network device lists are counts unless asked for.
+beyond the newest 200 are deleted. A reply larger than 200 KB that did not ask for `output_file` is written to a file
+on its own and answered with the pointer, marked `auto_output_file: true` (`--inline-limit-kb` changes the size).
+Errors always come back in the reply. Run replies are compact by default: a confirmed run answers its job and a
+`preflight_summary`, and network device lists are counts unless asked for.
 
 Things are named by `display_name`, the game's own name (the label, else the localised name). Where the game has no
 English name for a prefab it shows a placeholder such as `<N:EN:StructureCrewUmbilicalDoor>`; `display_name` and every
@@ -112,8 +114,20 @@ message then carry the prefab name instead (`StructureCrewUmbilicalDoor`), the s
 
 ## Configuration
 
-A single local game needs none. The settings cover the local pipe's name and remote access over TCP:
-[docs/configuration.md](docs/configuration.md).
+A single local game needs none. The settings cover the local pipe's name, remote access over TCP, keys, and how much
+of each frame the mod may spend: [docs/configuration.md](docs/configuration.md).
+
+The game stays smooth while several clients call at once. The mod answers within a per-frame budget
+(`[Performance] RequestBudgetMs`), clients take turns, quick calls go first, and at most one heavy call (a survey, a
+plan, a building job) runs per frame.
+
+## Your own programs
+
+Scripts and dashboards can talk to the game directly, without an agent, through the Python client library in
+`clients/python` (`py -3.12 -m pip install -e clients/python`), which speaks the mod's current protocol: several calls
+at once on one connection, reconnecting, and **subscriptions**, which push a set of device values each time one of
+them changes instead of reading them every tick. The protocol itself is in
+[docs/architecture/protocol.md](docs/architecture/protocol.md).
 
 ## Safety
 

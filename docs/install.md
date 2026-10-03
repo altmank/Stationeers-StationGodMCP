@@ -195,7 +195,7 @@ Clients that speak the current protocol (the Python client library, and the side
 with a key you make on the host, outside the game:
 
 ```powershell
-& "$env:LOCALAPPDATA\StationGodMCP\server\StationGodMCP.Server.exe" key new dashboard write
+& "$env:LOCALAPPDATA\StationGodMCP\server\StationGodMCP.Server.exe" key new dashboard write --grants write_memory
 & "$env:LOCALAPPDATA\StationGodMCP\server\StationGodMCP.Server.exe" key new agents cheat --transports pipe,tcp
 ```
 
@@ -203,8 +203,10 @@ Each command adds the key to `BepInEx\config\net.xceled.stationeers.stationgodmc
 for another game or a dedicated server) and prints it once, in that terminal only; give it to the client in its key
 variable (`STATIONGOD_KEY_<PIPE NAME>`, for the default pipe `STATIONGOD_KEY_STATIONGODMCP`). The mod reads the file
 again within seconds of a change; a client whose key was removed or lowered is disconnected. Options: `--grants
-method,...` allows single methods beyond the level, `--cheat standing` lets a cheat key work without your approval,
-`--replace` replaces a key of that name.
+method,...` allows single methods beyond the level (a granted cheat method still needs your OK below), `--cheat
+standing` lets a cheat key work without your approval, `--replace` replaces a key of that name. The dashboard's key is
+write with only `write_memory` granted, for its smelter watchdog, and never standing: each time the watchdog needs to
+write memory, you approve the dashboard in the game.
 
 A key at cheat level still needs your OK for each cheat tool, for a while, in the game's console:
 

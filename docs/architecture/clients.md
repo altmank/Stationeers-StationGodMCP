@@ -399,8 +399,10 @@ whole, in one step (the owner's standing rule for this repository).
    cards and the scripts below make (method and the params their code builds), plus synthetic calls the validator must
    refuse. Each refusal is fixed in the card or the catalogue first. Only then does the wrapper switch to
    `protocol="auto"`.
-4. **Key.** Make a `dashboard` key at write level on the host (`StationGodMCP.Server.exe key new dashboard write`), put
-   it in `STATIONGOD_KEY_STATIONGODMCP` for the dashboard's process, and pass `client="dashboard"`. New `__main__` options
+4. **Key.** Make a `dashboard` key at write level with the one grant its smelter watchdog needs, and no standing
+   cheat (`StationGodMCP.Server.exe key new dashboard write --grants write_memory`; each `write_memory` then waits for
+   the owner's `stationgod allow`, his rule for every cheat), put it in `STATIONGOD_KEY_STATIONGODMCP` for the
+   dashboard's process, and pass `client="dashboard"`. New `__main__` options
    `--pipe`, `--game-host`, `--game-port` (the existing `--port` is the dashboard's own web port,
    `stationscript/__main__.py:20`), `--client`, `--key-env`. Cards that use tools the owner classes as cheat need the
    owner's decision first (overview, *Questions for the owner*).
@@ -419,6 +421,15 @@ whole, in one step (the owner's standing rule for this repository).
    the card's tests in `tests/`.
 7. **Metrics.** `stationscript/metrics.py` shows mod time and queue time beside the round trip per method.
 
+#### As built in stage 8: the library is vendored
+
+The dashboard does not find the library at run time. It carries a copy, `stationscript/_vendor/stationgod`, pinned to
+one commit of this repository, named with its branch and library version in `stationscript/_vendor/SOURCE.txt`, which
+also gives the steps to refresh it. Step 2's search is not built: there is no `STATIONGOD_CLIENT_PATH`, no sibling
+checkout fallback, no `pip install` needed, and no `stationscript/transport_v1.py`; the wrapper imports the vendored copy
+and nothing else, so the library's version is the one committed with the dashboard. The scripts below get the same copy
+through the dashboard's package, whatever interpreter starts them.
+
 ### Scripts that use the dashboard's transport
 
 Thirteen CheatEngineExpert scripts under `Cheats/Stationeers/tools` construct `PipeTransport`: `arc_smelt.py`,
@@ -427,7 +438,7 @@ Thirteen CheatEngineExpert scripts under `Cheats/Stationeers/tools` construct `P
 `rocket_rebuild/rb.py`, `smelt_batch.py` and `sort_storage.py`. They reach the dashboard's package by adding its folder
 to `sys.path` (for example `rocket/flight_log.py:3-4`, `layout_solver/game.py:11-12`). After dashboard step 2 they run
 on the library unchanged, on version 1 with lenient checking, at the anonymous pipe level, and are started with
-`py -3.12`. Started from another interpreter, the wrapper's path fallback still finds the library's sources. Optional
+`py -3.12`. They use the dashboard's vendored copy of the library (*As built in stage 8* above). Optional
 follow-ups, each its own small change: `fields` on `burn_watch.py`'s `thing_health` scan and `oxidiser_watch.py`'s
 `find_things` pages.
 

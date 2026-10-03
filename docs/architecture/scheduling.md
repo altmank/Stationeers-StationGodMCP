@@ -253,4 +253,28 @@ Where the text above leaves a choice open:
   scheduler gives the lane its share and the first-sample rule.
 
 Not in this part: the dispatcher wiring, the `[Performance]` settings binding, `mod_info.runtime.lanes`, and
-subscription admission.
+subscription admission. The wiring and the binding are below; subscription admission is the subscription core's
+([protocol.md](protocol.md), *As built: subscription core*).
+
+## As built: the wiring
+
+- `Protocol/CallScheduler.cs`: `ICallScheduler` is the dispatcher's hook (`Add`, `Withdraw`, `Close` from any thread,
+  `RunFrame` on the main thread), and `LaneScheduler` implements it over `FrameScheduler<QueuedCall>`. Connections post
+  calls, cancels and their own end to a `ConcurrentQueue`; each `RunFrame` first takes that inbox into the scheduler
+  (`Enqueue`, `Cancel`, `Close`), then runs the frame. A connection's place in the rounds is keyed by its `Connection`;
+  the synchronous pipe's calls, which have none, share one place.
+- Each call's `CallProfile` is made on the thread that received it (`CallSession.Accept` from the catalogue entry it
+  already looked up; `CallProfiles.OfLine` for a version-1 line). A method the catalogue does not know is an instant
+  read. A version-1 line is always ordered like a write, whatever its class, so a version-1 connection's lines and the
+  synchronous pipe's run one after another as before.
+- The reader thread's own `max_in_flight` check (16) stays first; the scheduler's is the second guard and answers
+  `too_many_in_flight` unrun.
+- `StationGodMod.Update` calls `RunFrame(HeldTickJobs.HoldsTick, subscriptionHub)` where `ProcessPendingRequests` was;
+  `DispatchStats` gets each `FrameOutcome` (served, milliseconds, budget stop, expired calls).
+- A runner may leave a call running (`CallOutcome.Deferred`) and answer it later with `QueuedCall.Finish`;
+  `sample_logic` does.
+- `[Performance] SubscriptionBudgetMs`, `HeavyThresholdMs` and `HeavyMaxWaitFrames` are bound at load with
+  `RequestBudgetMs` into `SchedulerSettings`; `max_in_flight` is `CallSession.MaxInFlight`.
+- `mod_info.runtime.lanes` and `runtime.subscriptions` are not built: the owner's rule is that no stage adds measuring
+  or recording systems. `runtime.frames` keeps its counters, now fed from the scheduler.
+- `RoundRobinScheduler` and `CallOrder` are gone; the order rule lives in `FrameScheduler`.
