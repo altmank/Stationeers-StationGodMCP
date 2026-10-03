@@ -110,6 +110,7 @@ internal sealed class ProtocolHost
     internal void Ended(Connection connection)
     {
         _open.TryRemove(connection, out _);
+        _calls.Closed(connection);
         ConnectionEnded?.Invoke(connection);
     }
 
@@ -119,6 +120,9 @@ internal sealed class ProtocolHost
         Deadlines.Watch(call);
         _calls.Submit(call);
     }
+
+    /// <summary>A queued call answered without running (cancelled) stops holding its place.</summary>
+    internal void Withdraw(QueuedCall call) => _calls.Withdraw(call);
 
     /// <summary>The protocol a connection speaks, from its first line: a hello starts version 2, anything else version 1.</summary>
     internal Session SessionFor(Connection connection, string firstLine)

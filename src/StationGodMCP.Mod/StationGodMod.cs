@@ -16,6 +16,7 @@ using Assets.Scripts.Serialization;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Access;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
 
 namespace StationGodMCP;
@@ -35,8 +36,8 @@ public sealed class StationGodMod : ModBehaviour
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
-    private readonly StationGodRequestDispatcher _dispatcher =
-        new StationGodRequestDispatcher(Deadlines, new RoundRobinScheduler());
+    private StationGodRequestDispatcher _dispatcher =
+        new StationGodRequestDispatcher(Deadlines, new LaneScheduler(SchedulerSettings.Default));
     private Harmony? _harmony;
     private PipeListener? _pipeListener;
     private StationGodPipeServer? _synchronousPipe;
@@ -82,6 +83,7 @@ public sealed class StationGodMod : ModBehaviour
             RegisterConsoleCommand();
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
+            _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
@@ -145,8 +147,7 @@ public sealed class StationGodMod : ModBehaviour
                 StartTcpServer(_remote);
             }
 
-            _dispatcher.ProcessPendingRequests(
-                FrameBudget.For(PerformanceSettings.RequestBudgetMs, HeldTickJobs.HoldsTick));
+            _dispatcher.RunFrame(HeldTickJobs.HoldsTick, null);
             HeldTickJobs.Tick();
             Previews.Tick();
             Highlights.Tick();
@@ -563,20 +564,26 @@ internal static class AccessSettingsFile
 }
 
 /// <summary>
-/// [Performance] RequestBudgetMs: the main-thread milliseconds one frame may spend on requests (FrameBudget). Read once
-/// at load; a negative or unreadable value falls back to the default with a warning.
+/// [Performance]: the main-thread milliseconds one frame may spend on requests (FrameBudget), the subscription lane's
+/// share of them, and the heavy lane's threshold and waiting bound (SchedulerSettings). Read once at load; a negative
+/// or unreadable value falls back to its default with a warning.
 /// </summary>
 internal static class PerformanceSettings
 {
+    private const string Section = "Performance";
+
     /// <summary>The configured budget; 0 = unlimited.</summary>
     internal static double RequestBudgetMs { get; private set; } = FrameBudget.DefaultMs;
 
+    /// <summary>The frame scheduler's settings, from every [Performance] value.</summary>
+    internal static SchedulerSettings Scheduler { get; private set; } = SchedulerSettings.Default;
+
     internal static void Load(ConfigFile configuration)
     {
-        ConfigEntry<double> budget = configuration.Bind("Performance", "RequestBudgetMs", FrameBudget.DefaultMs,
-            "Main-thread milliseconds one frame may spend answering requests; the rest wait for the next frame, in " +
-            "order. The first request of a frame always runs. 0 = unlimited. While a job holds the game tick the " +
-            $"budget is at most {FrameBudget.JobHeldMs} ms. Restart the game to apply.");
+        ConfigEntry<double> budget = configuration.Bind(Section, "RequestBudgetMs", FrameBudget.DefaultMs,
+            "Main-thread milliseconds one frame may spend answering requests; the rest wait for the next frame. The " +
+            "first request of a frame always runs. 0 = unlimited. While a job holds the game tick the budget is at " +
+            $"most {FrameBudget.JobHeldMs} ms. Restart the game to apply.");
         double? configured = FrameBudget.Configured(budget.Value);
         if (configured == null)
         {
@@ -585,6 +592,36 @@ internal static class PerformanceSettings
         }
 
         RequestBudgetMs = configured ?? FrameBudget.DefaultMs;
+        double subscriptions = NonNegative(configuration.Bind(Section, "SubscriptionBudgetMs",
+            SchedulerSettings.DefaultSubscriptionBudgetMs,
+            "Main-thread milliseconds of each frame for subscription and sample_logic samples, taken out of the same " +
+            "frame and at most half of RequestBudgetMs. The first due sample of a frame always runs. 0 turns " +
+            "subscriptions off. Restart the game to apply."), SchedulerSettings.DefaultSubscriptionBudgetMs);
+        double heavy = NonNegative(configuration.Bind(Section, "HeavyThresholdMs", SchedulerSettings.DefaultHeavyThresholdMs,
+            "A call predicted to take longer than this on the main thread waits in the heavy lane, which runs at most " +
+            "one call a frame. Restart the game to apply."), SchedulerSettings.DefaultHeavyThresholdMs);
+        ConfigEntry<int> wait = configuration.Bind(Section, "HeavyMaxWaitFrames", SchedulerSettings.DefaultHeavyMaxWaitFrames,
+            "A heavy call passed over this many frames runs even when the frame is over budget. Restart the game to apply.");
+        int frames = wait.Value >= 0 ? wait.Value : SchedulerSettings.DefaultHeavyMaxWaitFrames;
+        if (wait.Value < 0)
+        {
+            StationGodMod.LogWarning(
+                $"Ignoring invalid [Performance] HeavyMaxWaitFrames {wait.Value}; using {SchedulerSettings.DefaultHeavyMaxWaitFrames}.");
+        }
+
+        Scheduler = new SchedulerSettings(RequestBudgetMs, subscriptions, heavy, frames, Protocol.CallSession.MaxInFlight);
+    }
+
+    private static double NonNegative(ConfigEntry<double> entry, double fallback)
+    {
+        if (entry.Value >= 0.0 && !double.IsInfinity(entry.Value) && !double.IsNaN(entry.Value))
+        {
+            return entry.Value;
+        }
+
+        StationGodMod.LogWarning(
+            $"Ignoring invalid [{entry.Definition.Section}] {entry.Definition.Key} {entry.Value}; using {fallback}.");
+        return fallback;
     }
 }
 

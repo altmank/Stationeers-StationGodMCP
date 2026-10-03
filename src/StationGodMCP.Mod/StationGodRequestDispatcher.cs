@@ -1,8 +1,6 @@
 #nullable enable
 
 using System;
-using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using StationGodMCP.Api;
@@ -10,23 +8,21 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP;
 
 /// <summary>
-/// Hands calls from the connections to the main thread and their answers back. Connections (and the TCP and old pipe
-/// listener threads, through Dispatch) queue a call; StationGodMod.Update drains the queue on the main thread, where the
-/// game's objects may be used (ApiHost.Handle, ApiHost.HandleCall), in the order the scheduler gives (ICallScheduler:
-/// each connection in turn, keeping each connection's order rule), within the frame's request budget (FrameBudget: the
-/// first request of a frame always runs). Each answer goes straight to its call's Deliver: no thread waits on the main
-/// thread. A call the main thread does not reach before its deadline is answered game_timeout by the DeadlineWatch and
-/// skipped here unrun; a call it has started is always answered with its result.
+/// Hands calls from the connections to the main thread and their answers back. Connections (and the synchronous pipe's
+/// listener threads, through Dispatch) post a call to the scheduler's inbox; StationGodMod.Update runs one frame of
+/// the lane scheduler on the main thread, where the game's objects may be used (ApiHost.Handle, ApiHost.HandleCall):
+/// the subscription lane's samples, light calls round-robin across connections within the frame's budget, then at most
+/// one heavy call (scheduling.md). Each answer goes straight to its call's Deliver: no thread waits on the main thread.
+/// A call the main thread does not reach before its deadline is answered game_timeout by the DeadlineWatch (or by the
+/// scheduler when it meets it) unrun; a call it has started is always answered with its result.
 /// </summary>
 internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 {
-    /// <summary>At most this many requests per frame, so a flood cannot stall the game.</summary>
-    private const int RequestsPerFrame = 64;
-
     /// <summary>How much longer than its deadline Dispatch waits for an answer the watch must already have given.</summary>
     private const int DispatchGraceMilliseconds = 5000;
 
@@ -48,77 +44,59 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         _requests.Add(call);
     }
 
-    internal void ProcessPendingRequests(FrameBudget budget)
+    public void Withdraw(QueuedCall call) => _requests.Withdraw(call);
+
+    public void Closed(object source) => _requests.Close(source);
+
+    /// <summary>One frame of the scheduler, on the main thread; its outcome goes to mod_info's counters.</summary>
+    internal void RunFrame(bool jobHoldsTick, ISampleLane? samples)
     {
-        long frameStarted = Stopwatch.GetTimestamp();
-        int taken = 0;
-        int served = 0;
-        bool budgetStopped = false;
-        while (taken < RequestsPerFrame)
+        FrameOutcome outcome = _requests.RunFrame(jobHoldsTick, samples, this);
+        for (int expired = 0; expired < outcome.ExpiredCalls; expired++)
         {
-            if (!budget.MayServeAnother(served, MillisecondsSince(frameStarted)))
-            {
-                budgetStopped = !_requests.IsEmpty;
-                break;
-            }
-
-            if (!_requests.TryTake(out QueuedCall? next) || next == null)
-            {
-                break;
-            }
-
-            QueuedCall call = next;
-
-            taken++;
-            if (!call.State.TryStart())
-            {
-                // Already answered (its deadline passed): not run, and not charged to the budget.
-                Stats.Expired();
-                continue;
-            }
-
-            CallOutcome outcome;
-            try
-            {
-                outcome = call.Run(this, MillisecondsSince(call.ReceivedAt));
-            }
-            catch (Exception exception)
-            {
-                // ApiHost.Handle answers every tool and serializer error itself; this is the error reply failing too.
-                outcome = new CallOutcome(ApiHost.Serialize(
-                    new ErrorReplyView(null, new ErrorView("internal_error", exception.Message), null)), null);
-            }
-
-            served++;
-            if (call.State.TryFinish())
-            {
-                call.Deliver(outcome.Reply, outcome.Method);
-            }
+            Stats.Expired();
         }
 
-        Stats.Frame(served, MillisecondsSince(frameStarted), budgetStopped);
+        Stats.Frame(outcome.Served, outcome.SpentMs, outcome.BudgetStopped);
     }
 
-    public CallOutcome RunLine(string requestJson, double queueWaitMs)
+    public CallOutcome RunLine(LineCall call, double queueWaitMs)
     {
-        HandledRequest handled = ApiHost.Handle(requestJson, queueWaitMs);
-        return new CallOutcome(handled.Json, handled.Method);
+        try
+        {
+            HandledRequest handled = ApiHost.Handle(call.Json, queueWaitMs);
+            return new CallOutcome(handled.Json, handled.Method);
+        }
+        catch (Exception exception)
+        {
+            // ApiHost.Handle answers every tool and serializer error itself; this is the error reply failing too.
+            return Failed(exception);
+        }
     }
 
-    public CallOutcome RunCall(CallRequest call, double queueWaitMs)
+    public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
-        HandledRequest handled = ApiHost.HandleCall(call, queueWaitMs, UnityEngine.Time.frameCount);
-        return new CallOutcome(handled.Json, handled.Method);
+        try
+        {
+            HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);
+            return new CallOutcome(handled.Json, handled.Method);
+        }
+        catch (Exception exception)
+        {
+            // As in RunLine: the error reply itself failed.
+            return Failed(exception);
+        }
     }
 
     /// <summary>
-    /// One version-1 request from a thread that waits for its answer (the TCP listener, the synchronous pipe): queued
-    /// as any call, then waited for.
+    /// One version-1 request from a thread that waits for its answer (the synchronous pipe): queued as any call, then
+    /// waited for.
     /// </summary>
     internal string Dispatch(string requestJson, int timeoutMilliseconds)
     {
         WaitedAnswer answer = new WaitedAnswer();
-        LineCall call = new LineCall(requestJson, timeoutMilliseconds, null, answer.Set);
+        LineCall call = new LineCall(requestJson, timeoutMilliseconds, null, answer.Set,
+            CallProfiles.OfLine(ApiHost.CatalogueFile, requestJson));
         Submit(call);
         if (!answer.Wait(timeoutMilliseconds + DispatchGraceMilliseconds) && call.State.TryDrop())
         {
@@ -131,8 +109,9 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         return answer.Reply!;
     }
 
-    private static double MillisecondsSince(long timestamp) =>
-        (Stopwatch.GetTimestamp() - timestamp) * 1000.0 / Stopwatch.Frequency;
+    private static CallOutcome Failed(Exception exception) =>
+        new CallOutcome(ApiHost.Serialize(new ErrorReplyView(null, new ErrorView("internal_error", exception.Message), null)),
+            null);
 
     private sealed class WaitedAnswer
     {

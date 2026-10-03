@@ -16,6 +16,7 @@ using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -133,52 +134,132 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
-    public void TheOrderRule()
-    {
-        Assert.True(CallOrder.MayStart(isWrite: false, earlierUnanswered: 3, earlierUnansweredWrites: 0));
-        Assert.False(CallOrder.MayStart(isWrite: false, earlierUnanswered: 1, earlierUnansweredWrites: 1));
-        Assert.False(CallOrder.MayStart(isWrite: true, earlierUnanswered: 1, earlierUnansweredWrites: 0));
-        Assert.True(CallOrder.MayStart(isWrite: true, earlierUnanswered: 0, earlierUnansweredWrites: 0));
-    }
-
-    [Fact]
     public void EachConnectionGetsATurnPerRound()
     {
-        RoundRobinScheduler scheduler = new RoundRobinScheduler();
+        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        List<string> order = new List<string>();
         object a = new object();
         object b = new object();
         for (int index = 0; index < 16; index++)
         {
-            scheduler.Add(new TestCall(a, $"a{index}", isWrite: false));
+            scheduler.Add(new TestCall(a, $"a{index}", isWrite: false, order));
         }
 
-        scheduler.Add(new TestCall(b, "b0", isWrite: false));
+        scheduler.Add(new TestCall(b, "b0", isWrite: false, order));
 
-        List<string> order = new List<string>();
-        while (scheduler.TryTake(out QueuedCall? call) && call != null)
-        {
-            order.Add(((TestCall)call).Name);
-        }
+        FrameOutcome outcome = scheduler.RunFrame(false, null, new NoRunner());
 
         Assert.Equal(new[] { "a0", "b0", "a1" }, order.Take(3));
         Assert.Equal(17, order.Count);
-        Assert.True(scheduler.IsEmpty);
+        Assert.Equal(17, outcome.LightCalls);
     }
 
     [Fact]
-    public void ATimedOutWriteHoldsNothingBack()
+    public void ACancelledWriteHoldsNothingBack()
     {
-        RoundRobinScheduler scheduler = new RoundRobinScheduler();
+        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        List<string> order = new List<string>();
         object a = new object();
-        TestCall write = new TestCall(a, "w", isWrite: true);
+        TestCall write = new TestCall(a, "w", isWrite: true, order);
         scheduler.Add(write);
-        scheduler.Add(new TestCall(a, "r", isWrite: false));
-        Assert.True(write.State.TryDrop());
+        scheduler.Add(new TestCall(a, "r", isWrite: false, order));
+        Assert.True(write.Drop("cancelled"));
+        scheduler.Withdraw(write);
 
-        Assert.True(scheduler.TryTake(out QueuedCall? first));
-        Assert.Same(write, first);
-        Assert.True(scheduler.TryTake(out QueuedCall? second));
-        Assert.Equal("r", ((TestCall)second!).Name);
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal(new[] { "r" }, order);
+    }
+
+    [Fact]
+    public void AWriteWaitsForTheEarlierReadsOfItsConnection()
+    {
+        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        List<string> order = new List<string>();
+        object a = new object();
+        scheduler.Add(new TestCall(a, "r1", isWrite: false, order));
+        scheduler.Add(new TestCall(a, "w", isWrite: true, order));
+        scheduler.Add(new TestCall(a, "r2", isWrite: false, order));
+
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal(new[] { "r1", "w", "r2" }, order);
+    }
+
+    [Fact]
+    public void ACallOverMaxInFlightIsRefusedUnrun()
+    {
+        LaneScheduler scheduler = new LaneScheduler(new SchedulerSettings(4, 1.5, 1, 10, 2));
+        List<string> order = new List<string>();
+        object a = new object();
+        TestCall[] calls = Enumerable.Range(0, 3).Select(index => new TestCall(a, $"c{index}", false, order)).ToArray();
+        foreach (TestCall call in calls)
+        {
+            scheduler.Add(call);
+        }
+
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal(new[] { "c0", "c1" }, order);
+        Assert.Equal("refused too_many_in_flight", calls[2].Answer);
+    }
+
+    [Fact]
+    public void AClosedConnectionsCallsDoNotRun()
+    {
+        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        List<string> order = new List<string>();
+        object a = new object();
+        object b = new object();
+        scheduler.Add(new TestCall(a, "a0", false, order));
+        scheduler.Add(new TestCall(b, "b0", false, order));
+        scheduler.Close(a);
+
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal(new[] { "b0" }, order);
+    }
+
+    [Fact]
+    public void AHeavyCallRunsAfterTheLightOnes()
+    {
+        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        List<string> order = new List<string>();
+        object a = new object();
+        object b = new object();
+        scheduler.Add(new TestCall(a, "survey", false, order, CostClass.World));
+        scheduler.Add(new TestCall(b, "read", false, order));
+
+        FrameOutcome outcome = scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal(new[] { "read", "survey" }, order);
+        Assert.Equal(1, outcome.LightCalls);
+        Assert.Equal(1, outcome.HeavyCalls);
+    }
+
+    [Fact]
+    public void TheSampleLaneRunsFirst()
+    {
+        LaneScheduler scheduler = new LaneScheduler(SchedulerSettings.Default);
+        List<string> order = new List<string>();
+        scheduler.Add(new TestCall(new object(), "read", false, order));
+
+        FrameOutcome outcome = scheduler.RunFrame(false, new OneSample(order), new NoRunner());
+
+        Assert.Equal(new[] { "sample", "read" }, order);
+        Assert.Equal(1, outcome.Samples);
+    }
+
+    [Fact]
+    public void AV1LineIsOrderedWhateverItsClass()
+    {
+        CallProfile profile = CallProfiles.OfLine(TestCatalogue.File.Value,
+            """{"id":"1","method":"read_logic","params":{"reference_id":"1","logic_type":"On"}}""");
+
+        Assert.True(profile.IsOrdered);
+        Assert.Equal("read_logic", profile.Method);
+        Assert.False(CallProfiles.Of(TestCatalogue.File.Value, "read_logic", new JObject()).IsOrdered);
+        Assert.Equal(CostClass.World, CallProfiles.Of(TestCatalogue.File.Value, "grid_survey", new JObject()).Cost);
     }
 
     [Fact]
@@ -458,32 +539,66 @@ public sealed class ProtocolV2Tests
     private sealed class TestCall : QueuedCall
     {
         private readonly object _source;
-        private readonly bool _isWrite;
+        private readonly List<string>? _ran;
 
-        internal TestCall(object source, string name, bool isWrite) : base(DeadlineAfter(60000))
+        internal TestCall(object source, string name, bool isWrite, List<string>? ran = null,
+            CostClass cost = CostClass.Instant)
+            : base(DeadlineAfter(60000), new CallProfile(name, isWrite ? MethodClass.Write : MethodClass.Read,
+                new CallCost(cost, 1)))
         {
             _source = source;
             Name = name;
-            _isWrite = isWrite;
+            _ran = ran;
         }
 
         internal string Name { get; }
 
+        internal string? Answer { get; private set; }
+
         internal override object? Source => _source;
 
-        internal override bool IsWrite => _isWrite;
-
-        internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => new CallOutcome(Name, null);
+        internal override CallOutcome Run(ICallRunner runner, double queueWaitMs)
+        {
+            _ran?.Add(Name);
+            return new CallOutcome(Name, null);
+        }
 
         internal override string TimeoutReply() => "timeout";
 
-        internal override void Deliver(string reply, string? method)
+        internal override string RefusalReply(string code, string message) => "refused " + code;
+
+        internal override void Deliver(string reply, string? method) => Answer = reply;
+    }
+
+    private sealed class NoRunner : ICallRunner
+    {
+        public CallOutcome RunLine(LineCall call, double queueWaitMs) => throw new InvalidOperationException();
+
+        public CallOutcome RunCall(ProtocolCall call, double queueWaitMs) => throw new InvalidOperationException();
+    }
+
+    private sealed class OneSample : ISampleLane
+    {
+        private readonly List<string> _order;
+        private bool _taken;
+
+        internal OneSample(List<string> order) => _order = order;
+
+        public bool RunNextDueSample()
         {
+            if (_taken)
+            {
+                return false;
+            }
+
+            _taken = true;
+            _order.Add("sample");
+            return true;
         }
     }
 }
 
-/// <summary>A version-2 test client on a real pipe: a reader task collects every line the server sends.</summary>
+// <summary>A version-2 test client on a real pipe: a reader task collects every line the server sends.</summary>
 internal sealed class V2Client : IDisposable
 {
     private readonly Stream _pipe;

@@ -450,7 +450,7 @@ internal sealed class LineSession : Session
             _connection.Send(reply, method);
             _connection.Served();
             answered.Set();
-        });
+        }, CallProfiles.OfLine(_host.Catalogue, line));
         _host.Submit(call);
         while (!answered.Wait(500))
         {
