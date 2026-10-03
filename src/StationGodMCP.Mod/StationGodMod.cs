@@ -41,7 +41,7 @@ public sealed class StationGodMod : ModBehaviour
     private Harmony? _harmony;
     private PipeListener? _pipeListener;
     private bool _pipeUnavailable;
-    private GameState? _publishedState;
+    private string? _publishedState;
     private string _publishedWorld = string.Empty;
     private TcpAcceptor? _tcpListener;
     private RemoteSettings? _remote;
@@ -149,7 +149,7 @@ public sealed class StationGodMod : ModBehaviour
             _subscriptions?.BeginFrame(new SamplingTick(Time.frameCount, Time.time),
                 new Pure.Sampling.RealTimeTick(Time.frameCount, SinceLoad.Elapsed.TotalSeconds, DateTimeOffset.UtcNow));
             PublishFacts();
-            _subscriptions?.ObserveGameState(GameManager.GameState.ToString());
+            _subscriptions?.ObserveGameState(ReportedGameState());
             if (!NetworkManager.IsServer)
             {
                 StopServers("world_unloaded");
@@ -244,7 +244,7 @@ public sealed class StationGodMod : ModBehaviour
     // connection.
     private void PublishFacts()
     {
-        GameState state = GameManager.GameState;
+        string state = ReportedGameState();
         string worldId = WorldStores.WorldId;
         if (state == _publishedState && worldId == _publishedWorld)
         {
@@ -255,7 +255,7 @@ public sealed class StationGodMod : ModBehaviour
         _publishedState = state;
         _publishedWorld = worldId;
         WorldFacts world = new WorldFacts(worldId, SaveName(), WorldStores.Epoch);
-        ServerFacts.Current = new ServerFacts(Version, Pipe.Value, Application.isBatchMode, world, state.ToString());
+        ServerFacts.Current = new ServerFacts(Version, Pipe.Value, Application.isBatchMode, world, state);
         if (entered)
         {
             if (worldId.Length > 0)
@@ -269,6 +269,12 @@ public sealed class StationGodMod : ModBehaviour
             }
         }
     }
+
+    // The game never sets GameState.Paused (CODE: no assignment of it); a pause only sets WorldManager.IsGamePaused.
+    private static string ReportedGameState() =>
+        GameManager.GameState == GameState.Running && WorldManager.IsGamePaused
+            ? nameof(GameState.Paused)
+            : GameManager.GameState.ToString();
 
     private static string? SaveName()
     {
