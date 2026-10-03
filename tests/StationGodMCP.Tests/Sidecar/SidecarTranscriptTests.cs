@@ -216,6 +216,20 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
+    public async Task SampleLogicAsTheFirstCallStillGoesToAVersion2Mod()
+    {
+        await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);
+        game.Answer = call => Task.FromResult<string?>(call.Ok("""{"sample_count":3,"changes":[]}"""));
+        await using McpAdapter sidecar = Sidecar(game.Target);
+
+        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "sample_logic", """{"targets":[{"reference_id":"1","logic_type":"On"}]}""")));
+
+        Assert.Equal(3, result.GetProperty("structuredContent").GetProperty("sample_count").GetInt32());
+        Assert.Single(game.CallsTo("sample_logic"));
+        Assert.Empty(game.CallsTo("read_logic_many"));
+    }
+
+    [Fact]
     public async Task SampleLogicGoesToAVersion2Mod()
     {
         await using FakeGame game = FakeGame.OnPipe(FakeProtocol.Version2);

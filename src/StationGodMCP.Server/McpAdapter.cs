@@ -150,6 +150,12 @@ internal sealed class McpAdapter : IAsyncDisposable
             ? value.Clone()
             : NoArguments;
 
+        if (tool == SampleLogic.Method && _client.Protocol is null)
+        {
+            // Where sample_logic runs depends on the game's protocol: learn it before the first one is answered.
+            await _client.ConnectAsync().ConfigureAwait(false);
+        }
+
         bool modChecks = _client.Protocol == ProtocolVersion.Version2;
         IReadOnlyList<string> problems = modChecks
             ? ArgumentCheck.ProblemsOf(schema, arguments, SidecarArguments.Names)
