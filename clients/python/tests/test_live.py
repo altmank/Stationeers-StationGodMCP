@@ -43,8 +43,10 @@ class LiveTests(unittest.TestCase):
 
     def test_iterate_gives_the_ids_of_one_large_call(self):
         # Pause the world first (py -3.12 mcp.py console pause true) or this can differ by things that came or went.
-        paged = [thing["reference_id"] for thing in self.game.iterate("find_things", kind="structure", page_size=100)]
-        whole = self.game.call("find_things", kind="structure", limit=5000)
+        whole = self.game.call("find_things", kind="structure", limit=500)
+        if whole["has_more"]:
+            self.skipTest("more structures than one call's limit (500) answers")
+        paged = [thing["reference_id"] for thing in self.game.iterate("find_things", kind="structure", page_size=20)]
         self.assertEqual([thing["reference_id"] for thing in whole["things"]], paged)
 
     def test_output_file_writes_a_readable_file_and_a_pointer(self):
