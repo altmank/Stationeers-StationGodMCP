@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <!-- Built beside the sidecar, outside the source tree: StationeersLaunchPad scans enabled mod folders recursively
+         for DLLs. Its own folder under the sidecar's root, so the two projects never share obj. -->
+    <StationGodServerRoot Condition="'$(StationGodServerRoot)' == ''">$(LOCALAPPDATA)\StationGodMCP\build</StationGodServerRoot>
+    <BaseOutputPath>$(StationGodServerRoot)\client\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(StationGodServerRoot)\client\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>
