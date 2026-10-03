@@ -4385,7 +4385,7 @@
     },
     {
       "name": "read_console",
-      "description": "Read the most recent lines from the in-game console, oldest first, including command output, Unity errors and their stack traces. No gateway is needed.",
+      "description": "Read the most recent lines from the in-game console, oldest first, including command output, Unity errors and their stack traces. On a dedicated server (1.14.0+), the last 500 lines the game wrote to the server's own console since the mod loaded. No gateway is needed.",
       "class": "read",
       "cost": "instant",
       "params": {
@@ -5781,7 +5781,7 @@
     },
     {
       "name": "run_console_command",
-      "description": "Run any Stationeers console command on the game's main thread and return the console lines it printed. No gateway is needed. This is unrestricted: the console can spawn and delete things, teleport players, start storms, change world settings and quit the game, and nothing here is undoable. Scope refusals ('requires creative mode', 'not in game') and bad arguments come back as red output lines rather than as a call error. On a network client some commands only queue a request to the host; run_simulation reports which case applies. Output covers only what the command itself printed: lines a background thread logged at the same moment (Unity mirrors errors into the console from any thread) are reported as concurrent_log_lines and can be read with read_console. Commands that finish on a background task (save, load, new, file, reset, log, difficulty, exportworld, upnp, steam) return before printing anything: the reply sets completes_asynchronously and output_complete=false, and an empty output then proves nothing at all. Never report such a command as succeeded on the strength of this call; read_console a moment later and quote what it printed.",
+      "description": "Run any Stationeers console command on the game's main thread and return the console lines it printed. No gateway is needed. This is unrestricted: the console can spawn and delete things, teleport players, start storms, change world settings and quit the game, and nothing here is undoable. Scope refusals ('requires creative mode', 'not in game') and bad arguments come back as red output lines rather than as a call error. On a network client some commands only queue a request to the host; run_simulation reports which case applies. Output covers only what the command itself printed: lines a background thread logged at the same moment (Unity mirrors errors into the console from any thread) are reported as concurrent_log_lines and can be read with read_console. Commands that finish on a background task (save, load, new, file, reset, log, difficulty, exportworld, upnp, steam) return before printing anything: the reply sets completes_asynchronously and output_complete=false, and an empty output then proves nothing at all. Never report such a command as succeeded on the strength of this call; read_console a moment later and quote what it printed. On a dedicated server (1.14.0+) the output is captured too: the lines the game would write to the server's own console window. thing spawn <prefab> [amount] spawns amount FULL STACKS (OnServer.SpawnDynamicThingMaxStack once per count): 'thing spawn ItemIronIngot 1' gives one stack of the prefab's maximum, not one ingot.",
       "class": "cheat",
       "cost": "instant",
       "params": {

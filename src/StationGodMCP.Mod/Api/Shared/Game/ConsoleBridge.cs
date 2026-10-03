@@ -9,6 +9,7 @@ using System.Threading;
 using Assets.Scripts;
 using HarmonyLib;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using Util.Commands;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -23,6 +24,11 @@ namespace StationGodMCP.Api.Shared.Game;
 /// main-thread hop (ConsoleWindow.LogMessage), so index arithmetic over the buffer is a race.
 /// Appends that arrive on another thread during a capture are counted, not captured, so they
 /// can never be passed off as the command's own output.
+/// A dedicated (batch-mode) server keeps no buffer: ConsoleWindow.Print writes the line to its system
+/// console and returns before any ConsoleLine is set, and PrintBlock, PrintSegmentedBlock and
+/// PrintSegmentedBlockRaw fall through to Print there (ConsoleWindow.cs, IsBatchMode branches). A
+/// Harmony prefix on that Print sees each batch-mode line, captures it as above, and keeps it in
+/// BatchLines, which read_console reads on such a server.
 /// </summary>
 internal static class ConsoleBridge
 {
@@ -71,25 +77,16 @@ internal static class ConsoleBridge
 
     private static readonly Dictionary<Type, bool> AsynchronyByType = new Dictionary<Type, bool>();
 
+    /// <summary>The lines a batch-mode server printed, newest last.</summary>
+    private static readonly ConsoleRing<ConsoleLineView> BatchLines =
+        new ConsoleRing<ConsoleLineView>(MaximumConsoleLines);
+
     /// <summary>False on a network client, where several commands only queue a request.</summary>
     internal static bool RunSimulation => GameManager.RunSimulation;
 
     internal static void NoteAppend(ConsoleLine line)
     {
-        int owner = Volatile.Read(ref _captureThreadId);
-        if (owner == 0)
-        {
-            return;
-        }
-
-        if (Thread.CurrentThread.ManagedThreadId != owner)
-        {
-            Interlocked.Increment(ref _concurrentWrites);
-            return;
-        }
-
-        _capturedTotal++;
-        if (Captured.Count >= MaximumConsoleLines)
+        if (!CapturingHere())
         {
             return;
         }
@@ -103,6 +100,37 @@ internal static class ConsoleBridge
             // ConsoleWindow.GetConsoleColor and the line's text, read inside the game's own print path
             // (ConsoleLine.Set): losing a captured line is survivable; throwing out of the postfix is not.
         }
+    }
+
+    /// <summary>A line ConsoleWindow.Print is about to write to a batch-mode server's system console.</summary>
+    internal static void NoteBatchPrint(string? output, ConsoleColor color)
+    {
+        ConsoleLineView line = new ConsoleLineView(DateTime.Now.ToString("HH:mm:ss"), color.ToString(), output);
+        BatchLines.Add(line);
+        if (CapturingHere())
+        {
+            Captured.Add(line);
+        }
+    }
+
+    // Counts a line printed during a capture: on another thread as concurrent, on this one as the command's own.
+    // True when the line is to be kept: on this thread, below the line cap.
+    private static bool CapturingHere()
+    {
+        int owner = Volatile.Read(ref _captureThreadId);
+        if (owner == 0)
+        {
+            return false;
+        }
+
+        if (Thread.CurrentThread.ManagedThreadId != owner)
+        {
+            Interlocked.Increment(ref _concurrentWrites);
+            return false;
+        }
+
+        _capturedTotal++;
+        return Captured.Count < MaximumConsoleLines;
     }
 
     /// <summary>Resolves the registry key exactly the way CommandLine.Process does.</summary>
@@ -201,10 +229,15 @@ internal static class ConsoleBridge
         return command != null && command.RequiresGameManagerIsInitialized && !GameManager.IsInitialized;
     }
 
-    /// <summary>False when the console never fills its buffer, as on a batch-mode server.</summary>
+    /// <summary>
+    /// Whether printed lines can be read: on a batch-mode server through the Print prefix, once it is patched;
+    /// otherwise from the console's buffer, once it has one.
+    /// </summary>
     internal static bool CanCapture()
     {
-        return !GameManager.IsBatchMode && ConsoleWindow.IsInitialised && BufferLength() > 0;
+        return GameManager.IsBatchMode
+            ? ConsoleBatchPrintPatch.Patched
+            : ConsoleWindow.IsInitialised && BufferLength() > 0;
     }
 
     internal static void Echo(string command)
@@ -258,6 +291,11 @@ internal static class ConsoleBridge
     /// </summary>
     internal static List<ConsoleLineView> ReadRecent(int maximumLines)
     {
+        if (GameManager.IsBatchMode)
+        {
+            return BatchLines.Recent(maximumLines);
+        }
+
         List<ConsoleLineView> lines = new List<ConsoleLineView>();
         ConsoleLine[]? buffer = ConsoleWindow.ConsoleBuffer;
         if (buffer == null)
@@ -339,6 +377,54 @@ internal static class ConsoleBridge
         {
             // ConsoleWindow.GetConsoleColor threw for a colour it cannot map.
             return null;
+        }
+    }
+}
+
+/// <summary>
+/// ConsoleWindow.Print(string, ConsoleColor, bool, bool, bool): on a batch-mode server, every console line, before
+/// the game timestamps it and writes it to the system console.
+/// </summary>
+[HarmonyPatch(typeof(ConsoleWindow), nameof(ConsoleWindow.Print),
+    new[] { typeof(string), typeof(ConsoleColor), typeof(bool), typeof(bool), typeof(bool) })]
+internal static class ConsoleBatchPrintPatch
+{
+    /// <summary>Set once Harmony has prepared the prefix for its target.</summary>
+    internal static bool Patched { get; private set; }
+
+    private static void Prepare(MethodBase? original)
+    {
+        if (original != null)
+        {
+            Patched = true;
+        }
+    }
+
+    // Harmony passes the exception that stopped the patch, if any: then nothing is captured.
+    private static Exception? Cleanup(MethodBase? original, Exception? exception)
+    {
+        if (exception != null)
+        {
+            Patched = false;
+        }
+
+        return exception;
+    }
+
+    private static void Prefix(string output, ConsoleColor color)
+    {
+        if (!GameManager.IsBatchMode)
+        {
+            return;
+        }
+
+        try
+        {
+            ConsoleBridge.NoteBatchPrint(output, color);
+        }
+        catch (Exception)
+        {
+            // A line lost to the capture is survivable; an exception out of the game's print path is not.
         }
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "read_console",
-  "description": "Read the most recent lines from the in-game console, oldest first, including command output, Unity errors and their stack traces. No gateway is needed.",
+  "description": "Read the most recent lines from the in-game console, oldest first, including command output, Unity errors and their stack traces. On a dedicated server (1.14.0+), the last 500 lines the game wrote to the server's own console since the mod loaded. No gateway is needed.",
   "class": "read",
   "cost": "instant",
   "params": {

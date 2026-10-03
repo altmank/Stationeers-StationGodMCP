@@ -11,7 +11,8 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// run_console_command: run a console command as if typed (CommandLine.Process) and return the lines it printed on
-/// the main thread while it ran (ConsoleBridge). A command the registry does not know (CommandLine.CommandsMap), or one
+/// the main thread while it ran (ConsoleBridge; on a dedicated server, the lines ConsoleWindow.Print sends to its
+/// system console). A command the registry does not know (CommandLine.CommandsMap), or one
 /// the console would only queue for later (RequiresGameManagerIsInitialized before GameManager.IsInitialized), is
 /// refused. Writes: the command does whatever it does.
 /// </summary>
@@ -20,8 +21,9 @@ internal static class RunConsoleCommandApi
     private const int DefaultOutputLines = 100;
 
     private const string NoCapture =
-        "The console buffer is not filled in this build, so nothing could be captured. This is not evidence that " +
-        "the command printed nothing or that it succeeded.";
+        "The console's printed lines cannot be read here (no console buffer yet, or on a dedicated server the " +
+        "patch on ConsoleWindow.Print did not apply; the log says which), so nothing could be captured. This is " +
+        "not evidence that the command printed nothing or that it succeeded.";
 
     private const string Silent =
         "This command runs to completion before it returns and it printed nothing. Most such commands report what " +
