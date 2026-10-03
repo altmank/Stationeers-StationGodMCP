@@ -340,7 +340,7 @@ public sealed class ClientTests
 
         await game.PushAsync("""{"type":"event","event":"world_changed","world":{"id":"world-2","save":"x","epoch":1}}""");
         await game.PushAsync("""{"type":"event","event":"world_changed","world":{"id":"world-2","save":"x","epoch":1}}""");
-        await game.PushAsync("""{"type":"event","event":"game_state","game_state":"Paused"}""");
+        await game.PushAsync("""{"type":"event","event":"game_state","subscription":"s1","state":"Paused"}""");
 
         await Eventually(() => client.GameState == "Paused");
         Assert.Equal(["world-2"], worlds);
