@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Protocol;
@@ -19,10 +20,11 @@ namespace StationGodMCP.Protocol;
 /// </summary>
 internal abstract class QueuedCall
 {
-    protected QueuedCall(long deadlineAt)
+    protected QueuedCall(long deadlineAt, CallProfile profile)
     {
         ReceivedAt = Stopwatch.GetTimestamp();
         DeadlineAt = deadlineAt;
+        Profile = profile;
     }
 
     internal CallState State { get; } = new CallState();
@@ -37,10 +39,14 @@ internal abstract class QueuedCall
     internal virtual object? Source => null;
 
     /// <summary>
-    /// Whether its effective class is write or cheat, for the order rule (CallOrder): such a call starts only after
-    /// every earlier call of its connection is answered, and holds back every later one.
+    /// Its method, effective class and cost at its arguments, worked out on the thread that received it. The class
+    /// decides its order on its connection (a write or cheat call starts only after every earlier call of its
+    /// connection is answered, and holds back every later one); the cost decides its lane.
     /// </summary>
-    internal virtual bool IsWrite => true;
+    internal CallProfile Profile { get; }
+
+    /// <summary>Whether it is held to the order of a write call.</summary>
+    internal bool IsWrite => Profile.IsOrdered;
 
     /// <summary>Runs the call on the main thread, through the game-side runner.</summary>
     internal abstract CallOutcome Run(ICallRunner runner, double queueWaitMs);
@@ -48,8 +54,32 @@ internal abstract class QueuedCall
     /// <summary>The game_timeout answer, built on any thread.</summary>
     internal abstract string TimeoutReply();
 
+    /// <summary>A refusal of a call that did not run (too_many_in_flight), built on any thread.</summary>
+    internal abstract string RefusalReply(string code, string message);
+
     /// <summary>Hands an answer on. Called once, by whoever won the call's state.</summary>
     internal abstract void Deliver(string reply, string? method);
+
+    /// <summary>Answers a call that ran with its result; only the run that started it delivers.</summary>
+    internal void Finish(string reply, string? method)
+    {
+        if (State.TryFinish())
+        {
+            Deliver(reply, method);
+        }
+    }
+
+    /// <summary>Answers a call that did not run; false when something answered it first.</summary>
+    internal bool Drop(string reply)
+    {
+        if (!State.TryDrop())
+        {
+            return false;
+        }
+
+        Deliver(reply, null);
+        return true;
+    }
 
     internal static long DeadlineAfter(int milliseconds) =>
         Stopwatch.GetTimestamp() + (long)(milliseconds * (double)Stopwatch.Frequency / 1000.0);
@@ -58,7 +88,10 @@ internal abstract class QueuedCall
         (Stopwatch.GetTimestamp() - timestamp) * 1000.0 / Stopwatch.Frequency;
 }
 
-/// <summary>A call's answer from the main thread: the reply line and the known method it named, if any.</summary>
+/// <summary>
+/// A call's answer from the main thread: the reply line and the known method it named, if any. Deferred when the call
+/// goes on over later frames (sample_logic): its runner answers it with QueuedCall.Finish once it ends.
+/// </summary>
 internal readonly struct CallOutcome
 {
     internal CallOutcome(string reply, string? method)
@@ -66,6 +99,11 @@ internal readonly struct CallOutcome
         Reply = reply;
         Method = method;
     }
+
+    /// <summary>The call is still running: nothing to deliver now.</summary>
+    internal static CallOutcome Deferred => default;
+
+    internal bool IsDeferred => Reply == null;
 
     internal string Reply { get; }
 
@@ -76,10 +114,10 @@ internal readonly struct CallOutcome
 internal interface ICallRunner
 {
     /// <summary>A version-1 request line, answered with today's envelope.</summary>
-    CallOutcome RunLine(string requestJson, double queueWaitMs);
+    CallOutcome RunLine(LineCall call, double queueWaitMs);
 
     /// <summary>A version-2 call, answered with a reply message.</summary>
-    CallOutcome RunCall(CallRequest call, double queueWaitMs);
+    CallOutcome RunCall(ProtocolCall call, double queueWaitMs);
 }
 
 /// <summary>A version-2 call as the main thread runs it: id, method, params and shape, already read.</summary>
@@ -113,13 +151,11 @@ internal sealed class ProtocolCall : QueuedCall
 
     private readonly Action<ProtocolCall, string, string?> _deliver;
     private readonly object _source;
-    private readonly bool _isWrite;
 
-    internal ProtocolCall(CallRequest request, bool isWrite, int deadlineMilliseconds, object source,
-        Action<ProtocolCall, string, string?> deliver) : base(DeadlineAfter(deadlineMilliseconds))
+    internal ProtocolCall(CallRequest request, CallProfile profile, int deadlineMilliseconds, object source,
+        Action<ProtocolCall, string, string?> deliver) : base(DeadlineAfter(deadlineMilliseconds), profile)
     {
         Request = request;
-        _isWrite = isWrite;
         _source = source;
         _deliver = deliver;
     }
@@ -128,12 +164,12 @@ internal sealed class ProtocolCall : QueuedCall
 
     internal override object? Source => _source;
 
-    internal override bool IsWrite => _isWrite;
-
-    internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunCall(Request, queueWaitMs);
+    internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunCall(this, queueWaitMs);
 
     internal override string TimeoutReply() => Wire.Refusal(Request.Id, LineCall.TimeoutCode,
         "The call was not started before its deadline; it did not run.");
+
+    internal override string RefusalReply(string code, string message) => Wire.Refusal(Request.Id, code, message);
 
     internal string CancelledReply() => Wire.Refusal(Request.Id, CancelledCode, "Cancelled before it started; it did not run.");
 
@@ -143,10 +179,16 @@ internal sealed class ProtocolCall : QueuedCall
     internal override void Deliver(string reply, string? method) => _deliver(this, reply, method);
 }
 
-/// <summary>Where calls wait for the main thread.</summary>
+/// <summary>Where calls wait for the main thread. Every member may be called from any thread.</summary>
 internal interface ICallQueue
 {
     void Submit(QueuedCall call);
+
+    /// <summary>A queued call was answered without running (cancelled): it stops holding a place.</summary>
+    void Withdraw(QueuedCall call);
+
+    /// <summary>The connection ended: its waiting calls are dropped, and what it had going on the main thread ends.</summary>
+    void Closed(object source);
 }
 
 /// <summary>A version-1 request line: one request, one reply, today's envelope.</summary>
@@ -158,8 +200,9 @@ internal sealed class LineCall : QueuedCall
     private readonly int _timeoutMilliseconds;
     private readonly object? _source;
 
-    internal LineCall(string json, int timeoutMilliseconds, object? source, Action<string, string?> deliver)
-        : base(DeadlineAfter(timeoutMilliseconds))
+    internal LineCall(string json, int timeoutMilliseconds, object? source, Action<string, string?> deliver,
+        CallProfile profile)
+        : base(DeadlineAfter(timeoutMilliseconds), profile)
     {
         Json = json;
         _timeoutMilliseconds = timeoutMilliseconds;
@@ -171,11 +214,14 @@ internal sealed class LineCall : QueuedCall
 
     internal override object? Source => _source;
 
-    internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunLine(Json, queueWaitMs);
+    internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunLine(this, queueWaitMs);
 
     internal override string TimeoutReply() => ApiJson.WriteFresh(new ErrorReplyView(ReadRequestId(Json),
         new ErrorView(TimeoutCode, "The Stationeers main thread did not process the request within " +
                                    $"{_timeoutMilliseconds / 1000} seconds."), null));
+
+    internal override string RefusalReply(string code, string message) =>
+        ApiJson.WriteFresh(new ErrorReplyView(ReadRequestId(Json), new ErrorView(code, message), null));
 
     internal override void Deliver(string reply, string? method) => _deliver(reply, method);
 

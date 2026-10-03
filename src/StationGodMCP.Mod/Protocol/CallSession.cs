@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Access;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Protocol;
@@ -322,7 +323,10 @@ internal sealed class CallSession : Session
         }
 
         CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape);
-        ProtocolCall queued = new ProtocolCall(request, effective != MethodClass.Read, call.DeadlineMs, _connection, Answered);
+        CallProfile profile = method != null
+            ? new CallProfile(method.Name, effective, method.CostAt(call.Params))
+            : CallProfiles.Of(null, call.Method, call.Params);
+        ProtocolCall queued = new ProtocolCall(request, profile, call.DeadlineMs, _connection, Answered);
         lock (_sync)
         {
             if (_inFlight.Count >= MaxInFlight)
@@ -433,9 +437,9 @@ internal sealed class CallSession : Session
             _inFlight.TryGetValue(id, out call);
         }
 
-        if (call != null && call.State.TryDrop())
+        if (call != null && call.Drop(call.CancelledReply()))
         {
-            call.Deliver(call.CancelledReply(), null);
+            _host.Withdraw(call);
         }
     }
 

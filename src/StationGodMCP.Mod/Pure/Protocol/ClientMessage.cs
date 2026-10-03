@@ -375,17 +375,6 @@ internal abstract class ClientMessage
 }
 
 /// <summary>
-/// The order rule on one connection: a write or cheat call starts only after every earlier call is answered, and no
-/// call starts while an earlier write or cheat call is unanswered; reads may pass reads.
-/// </summary>
-internal static class CallOrder
-{
-    /// <summary>Whether a call may start, given the connection's earlier calls still unanswered.</summary>
-    internal static bool MayStart(bool isWrite, int earlierUnanswered, int earlierUnansweredWrites) =>
-        isWrite ? earlierUnanswered == 0 : earlierUnansweredWrites == 0;
-}
-
-/// <summary>
 /// Which protocol a connection speaks, from its first line: an object whose type is "hello" starts version 2; anything
 /// else (a request object, an empty object, a line that is not JSON) is a version-1 request and is answered as today.
 /// </summary>

@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -326,29 +327,33 @@ internal sealed class PipeRig : IDisposable
     }
 }
 
-/// <summary>
-/// Stands in for the dispatcher: a "main thread" that takes calls in order and answers each with a reply made from
-/// its line, or (mainThread false) never takes them until a test says so.
+//// <summary>
+/// Stands in for the dispatcher: a "main thread" that runs frames of the lane scheduler and answers each call with a
+/// reply made from its line, or (mainThread false) runs no frame until a test says so. Hooks let a test start calls
+/// that go on over later frames (Deferred) and give the lane its samples.
 /// </summary>
 internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
 {
-    private readonly RoundRobinScheduler _calls = new RoundRobinScheduler();
+    private readonly LaneScheduler _calls;
     private readonly SemaphoreSlim _added = new SemaphoreSlim(0);
     private readonly Thread? _thread;
     private readonly DeadlineWatch _deadlines;
+    private readonly object _frame = new object();
     private volatile bool _stopped;
     private int _ran;
+    private int _holdMs;
 
-    internal FakeMod(bool mainThread, DeadlineWatch deadlines)
+    internal FakeMod(bool mainThread, DeadlineWatch deadlines, SchedulerSettings? settings = null)
     {
         _deadlines = deadlines;
+        _calls = new LaneScheduler(settings ?? SchedulerSettings.Default);
         if (mainThread)
         {
             _thread = new Thread(() =>
             {
                 while (!_stopped)
                 {
-                    _added.Wait(50);
+                    _added.Wait(20);
                     RunPending();
                 }
             }) { IsBackground = true };
@@ -357,6 +362,18 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     }
 
     internal int Ran => Volatile.Read(ref _ran);
+
+    /// <summary>The sample lane each frame runs first; null for none.</summary>
+    internal ISampleLane? Samples { get; set; }
+
+    /// <summary>Before a version-2 call runs: true when the hook took it (answered or deferred) instead.</summary>
+    internal Func<ProtocolCall, double, CallOutcome?>? CallHook { get; set; }
+
+    /// <summary>Connections closed, in order.</summary>
+    internal ConcurrentQueue<object> ClosedSources { get; } = new ConcurrentQueue<object>();
+
+    /// <summary>Called on the main thread at the end of each frame.</summary>
+    internal Action? AfterFrame { get; set; }
 
     internal static string ReplyTo(string line) =>
         "{\"echo\":" + Newtonsoft.Json.JsonConvert.ToString(line) + ",\"ok\":true}";
@@ -368,20 +385,37 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         _added.Release();
     }
 
-    public CallOutcome RunLine(string requestJson, double queueWaitMs)
+    public void Withdraw(QueuedCall call) => _calls.Withdraw(call);
+
+    public void Closed(object source)
+    {
+        _calls.Close(source);
+        ClosedSources.Enqueue(source);
+        _added.Release();
+    }
+
+    public CallOutcome RunLine(LineCall call, double queueWaitMs)
     {
         Interlocked.Increment(ref _ran);
-        return new CallOutcome(ReplyTo(requestJson), null);
+        Hold();
+        return new CallOutcome(ReplyTo(call.Json), null);
     }
 
     /// <summary>The ids of version-2 calls in the order the fake main thread ran them.</summary>
     internal ConcurrentQueue<string> RunOrder { get; } = new ConcurrentQueue<string>();
 
     /// <summary>A version-2 call is answered with its method and params as result, after params.hold_ms if given.</summary>
-    public CallOutcome RunCall(CallRequest call, double queueWaitMs)
+    public CallOutcome RunCall(ProtocolCall queued, double queueWaitMs)
     {
         Interlocked.Increment(ref _ran);
+        CallRequest call = queued.Request;
         RunOrder.Enqueue(call.Id);
+        Hold();
+        if (CallHook?.Invoke(queued, queueWaitMs) is CallOutcome taken)
+        {
+            return taken;
+        }
+
         int hold = call.Params?.Value<int?>("hold_ms") ?? 0;
         if (hold > 0)
         {
@@ -406,29 +440,50 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         return new CallOutcome(reply, call.Method);
     }
 
-    /// <summary>Takes every queued call now, holding each started one for holdMs before answering.</summary>
-    internal void RunPending(int holdMs = 0)
+    /// <summary>
+    /// Runs frames until one serves nothing, holding each started call for holdMs before answering; returns the
+    /// frames' outcomes.
+    /// </summary>
+    internal List<FrameOutcome> RunPending(int holdMs = 0)
     {
-        while (_calls.TryTake(out QueuedCall? call) && call != null)
+        List<FrameOutcome> frames = new List<FrameOutcome>();
+        lock (_frame)
         {
-            RunOne(call, holdMs);
+            _holdMs = holdMs;
+            while (true)
+            {
+                FrameOutcome outcome = RunFrame();
+                frames.Add(outcome);
+                if (outcome.Served == 0 && outcome.ExpiredCalls == 0)
+                {
+                    break;
+                }
+            }
+
+            _holdMs = 0;
+        }
+
+        return frames;
+    }
+
+    /// <summary>One frame, as StationGodMod.Update runs it.</summary>
+    internal FrameOutcome RunFrame(bool jobHoldsTick = false)
+    {
+        lock (_frame)
+        {
+            FrameOutcome outcome = _calls.RunFrame(jobHoldsTick, Samples, this);
+            AfterFrame?.Invoke();
+            return outcome;
         }
     }
 
     public void Dispose() => _stopped = true;
 
-    private void RunOne(QueuedCall call, int holdMs)
+    private void Hold()
     {
-        if (!call.State.TryStart())
+        if (_holdMs > 0)
         {
-            return;
-        }
-
-        Thread.Sleep(holdMs);
-        CallOutcome outcome = call.Run(this, 0);
-        if (call.State.TryFinish())
-        {
-            call.Deliver(outcome.Reply, outcome.Method);
+            Thread.Sleep(_holdMs);
         }
     }
 }
