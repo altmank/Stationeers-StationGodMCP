@@ -37,8 +37,8 @@ internal static class KeyCommand
             output.WriteLine($"Key for '{entry.Name}' ({entry.Level}, {string.Join(",", entry.Transports)}) written to {path}.");
             if (entry.Cheat == "standing")
             {
-                output.WriteLine("Standing cheat: this key's cheat calls run without your OK in the game. A granted cheat " +
-                                 "method (the dashboard's write_memory) does not need it.");
+                output.WriteLine("Standing cheat: this key's cheat calls run without your OK in the game. The dashboard's " +
+                                 "key never gets it: its granted write_memory waits for your OK.");
             }
 
             output.WriteLine("The key, shown only now; give it to the client in its key variable (for the pipe");

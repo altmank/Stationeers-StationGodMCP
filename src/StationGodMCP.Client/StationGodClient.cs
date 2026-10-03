@@ -297,6 +297,12 @@ public sealed class StationGodClient : IAsyncDisposable
 
     // ---- connecting -----------------------------------------------------------------------------------------------
 
+    /// <summary>Connects now if not connected; the protocol the game speaks, or null when it could not be reached.</summary>
+    public async Task<ProtocolVersion?> ConnectAsync(CancellationToken cancellation = default) =>
+        await ConnectionAsync(cancellation).ConfigureAwait(false) is Connecting.Connected connected
+            ? connected.Connection.Version
+            : null;
+
     private async Task<Connecting> ConnectionAsync(CancellationToken cancellation)
     {
         GameConnection? current = _connection;
