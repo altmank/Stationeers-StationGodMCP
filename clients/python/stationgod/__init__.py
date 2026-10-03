@@ -17,7 +17,7 @@ from .subscriptions import Subscription
 def connect(pipe="StationGodMCP", host=None, port=8765, client=None, protocol="auto", **options):
     """Connects now and returns the Client. pipe names the local pipe; host and port choose TCP instead (the shared
     secret is read from the environment variable secret_env, default STATIONGODMCP_SECRET). client is the name sent in
-    hello. protocol "v1" speaks today's protocol from the start. Other options: secret_env, connect_timeout,
+    hello. protocol "v1" speaks today's protocol from the start; "v2" refuses a mod that has only that one (TooOld). Other options: secret_env, connect_timeout,
     output_dir, check_arguments."""
     return Client(pipe=pipe, host=host, port=port, client=client, protocol=protocol, **options).open()
 

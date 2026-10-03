@@ -236,9 +236,10 @@ def _read_with_timeout(stream, lines, timeout, what):
 def open_connection(target, *, protocol="auto", client=None, secret=None, connect_timeout=1.0,
                     handshake_timeout=HANDSHAKE_TIMEOUT_S):
     """Connects. Over TCP the shared secret goes first; after it TCP talks as the pipe does. protocol "auto" sends hello
-    and falls back to version 1 when an old mod answers it as a request; "v1" speaks version 1 from the start."""
-    if protocol not in ("auto", "v1"):
-        raise ValueError(f"protocol must be 'auto' or 'v1', not {protocol!r}")
+    and falls back to version 1 when an old mod answers it as a request; "v2" refuses such a mod with TooOld; "v1" speaks
+    version 1 from the start."""
+    if protocol not in ("auto", "v1", "v2"):
+        raise ValueError(f"protocol must be 'auto', 'v1' or 'v2', not {protocol!r}")
     stream = target.open(connect_timeout)
     lines = _Lines(stream)
     try:
@@ -255,6 +256,9 @@ def open_connection(target, *, protocol="auto", client=None, secret=None, connec
             raise Unreachable(f"{target.describe()} closed the connection after hello")
         if "type" not in answer:
             # An old mod read hello as a version-1 request with no method (protocol.md, Old clients).
+            if protocol == "v2":
+                raise TooOld(f"{target.describe()} speaks only protocol version 1 (a StationGodMCP from before "
+                             "version 2); this client needs version 2")
             return Connection(stream, lines, target, 1)
         if answer.get("type") == "welcome":
             return Connection(stream, lines, target, 2, answer)

@@ -66,6 +66,21 @@ class OldModOverPipe(FakeModCase):
         self.assertTrue(raised.exception.maybe_ran)
         self.assertEqual(1, len(mod.calls("write_logic")))
 
+    def test_protocol_v2_refuses_the_old_mod_and_sends_nothing_after_hello(self):
+        mod = self.mod(version=1)
+        game = self.client(mod, protocol="v2")
+        for _ in range(2):
+            with self.assertRaisesRegex(stationgod.TooOld, "only protocol version 1"):
+                game.call("game_clock")
+        self.assertEqual(["hello", "hello"], [message.get("type") for message in mod.received])
+        self.assertIsNone(game.protocol)
+
+    def test_protocol_v2_speaks_version_2(self):
+        mod = self.mod(version=2)
+        game = self.client(mod, protocol="v2")
+        self.assertEqual(84211.5, game.call("game_clock")["game_time_s"])
+        self.assertEqual(2, game.protocol)
+
     def test_protocol_v1_sends_no_hello(self):
         mod = self.mod(version=2)
         game = self.client(mod, protocol="v1")
