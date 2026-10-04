@@ -29,7 +29,8 @@ internal sealed class RunOutcome
 /// The two steps of a confirmed run, each in one frame while the game tick is held. Removals first: each piece is
 /// destroyed as a player's deconstruction does (OnServer.Destroy; Cable.OnDestroy and Pipe.OnDestroy rebuild the
 /// networks from its neighbours), except that where the forecast keeps its network whole (nothing splits), the piece
-/// leaves the network first (UpgradeFamily.Leave), so the network keeps its id and a pipe network its contents.
+/// leaves the network first (UpgradeFamily.Leave), so the network keeps its id and a pipe network its contents. A
+/// chute never leaves first (NetworkLeaveRule): Chute.OnDestroy rebuilds its neighbours' networks whatever was done.
 /// Then, once Unity has destroyed them, the build: every changed piece is replaced as the kit's merge does (the new
 /// piece built into the old one's cell, put into its network, the old one leaves and is destroyed), then every new
 /// piece is built as a coil's placement builds it (Constructor.SpawnConstruct; Cable.OnRegistered and
@@ -63,7 +64,8 @@ internal static class RunBuilder
             try
             {
                 IReferencable? network = family.NetworkOf(removal.Piece);
-                if (network != null && !rebuilt.Contains(network.ReferenceId))
+                if (network != null &&
+                    NetworkLeaveRule.LeavesFirst(family.OnDestroyRebuilds, !rebuilt.Contains(network.ReferenceId)))
                 {
                     family.Leave(removal.Piece, new List<SmallGrid>(), network);
                 }

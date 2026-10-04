@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.14.1
+
+2026-10-03. Fixes to chute removal and safety checks on item moves and material use.
+
+- **Removing chute pieces that touch each other no longer leaves a broken link.** `remove_structure`, `remove_chutes`,
+  `place_chutes` with `remove_ids` and `clean_chutes` took each chute piece out of its network before removing it.
+  When two removed pieces touched, the game's own chute clean-up then failed (a `Chute.OnDestroy` error in the
+  console). The removed piece stayed in its grid cell, and the chute beside it kept a link to it, so later edits
+  there were refused with `connectivity_model_mismatch`. Chutes are now removed the way a player takes them down. A
+  link left by an earlier removal clears when the world is saved and loaded again.
+- **`move_item` never replaces what a slot holds.** As before, it joins only a stack of the same item with room for
+  the whole stack, or takes an empty slot. It now also checks the slot again just before the move, and refuses if
+  anything changed (`slot_occupied`). `to_slot: "auto"` now leaves an Ingot Vault's display slots alone when it looks
+  for a stack to join, as it already did for empty slots (the vault drops what is in them when it redraws its store).
+  If the game fails to put part of a split stack into the slot, that part goes back onto the stack it came from,
+  instead of being left in the world.
+- **Building takes exactly what it needs.** Every builder (`place_structure`, the place, replace, upgrade and clean
+  tools) takes exactly the quantity each build state needs, splitting the last stack. If a stack ever loses more than
+  its share, the build stops with an error naming that stack.
+
 ## 1.14.0
 
 2026-10-03. Small default replies everywhere; fixes found on a dedicated server. 93 tools.

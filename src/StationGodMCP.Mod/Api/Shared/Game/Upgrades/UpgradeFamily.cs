@@ -101,6 +101,9 @@ internal abstract class UpgradeFamily
     /// </summary>
     internal abstract void Leave(SmallGrid old, List<SmallGrid> replacements, IReferencable network);
 
+    /// <summary>What the family's piece's own OnDestroy does to its neighbours' networks (NetworkLeaveRule).</summary>
+    internal virtual NeighbourRebuild OnDestroyRebuilds => NeighbourRebuild.WhenItHadANetwork;
+
     /// <summary>The replacement's rating, for the report: MaxVoltage in W, or MaxPressure in kPa.</summary>
     internal abstract double RatingOf(Structure structure);
 

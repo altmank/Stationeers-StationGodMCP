@@ -96,6 +96,9 @@ internal sealed class ChuteFamily : UpgradeFamily
         }
     }
 
+    // Chute.OnDestroy rebuilds every connected chute's network, with no null check on it, before base.OnDestroy.
+    internal override NeighbourRebuild OnDestroyRebuilds => NeighbourRebuild.Always;
+
     internal override double RatingOf(Structure structure) => 0.0;
 
     internal override bool Holds(SmallCell cell, SmallGrid piece) => cell.Chute == piece;

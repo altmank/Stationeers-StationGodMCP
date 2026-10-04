@@ -37,6 +37,8 @@ namespace StationGodMCP.Api;
 /// an item may be taken out of a hidden slot (that is how one put there by mistake is rescued). A part of a stack
 /// cannot join another stack: the game has no call that merges part of one without first making a new stack in an
 /// empty slot.
+/// The slot is read again right before the game call (SlotOccupancy.StillSafe): a move never replaces, drops or
+/// destroys what a slot holds.
 ///
 /// Planting (CODE, HydroponicsUtils.PlantInHand, as a player plants from the hand): a seed or plant into a grower's
 /// plant slot (IGrower.PlantToFertiliserSlotMapping) is not moved there. One unit is used off the stack
@@ -530,76 +532,70 @@ internal static class MovePlanner
             : ApiErrors.Refused("slot_refuses",
                 $"{SlotAccess.Label(slot)} does not take {Names.Of(item)}: {SlotAccess.WhyRefused(item, slot)}.");
 
-    // Slot.CanMerge, for the whole stack only, and only when all of it fits under Stackable.MaxQuantity.
+    // Slot.CanMerge, for the whole stack only, and only when all of it fits under Stackable.MaxQuantity
+    // (SlotOccupancy.JoinRefusal).
     private static ApiException? MergeRefusal(ItemMove move, DynamicThing item, Slot slot, int quantity,
         out Stackable? mergeInto)
     {
         mergeInto = null;
-        if (!move.Merge)
+        SlotOccupant occupant = SlotOccupants.Of(slot, item)!.Value;
+        int whole = item is Stackable stack ? stack.Quantity : 1;
+        switch (SlotOccupancy.JoinRefusal(occupant, quantity, quantity >= whole, move.Merge))
         {
-            return ApiErrors.Refused("slot_occupied",
-                $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} "
-                + "does not join it.");
+            case OccupantRefusal.MergeOff:
+                return ApiErrors.Refused("slot_occupied",
+                    $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} "
+                    + "does not join it.");
+            case OccupantRefusal.CannotJoin:
+                return ApiErrors.Refused("slot_occupied",
+                    $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, which {Names.Of(item)} cannot join.");
+            case OccupantRefusal.PartialMerge:
+                return ApiErrors.Refused(
+                    "partial_merge", "Part of a stack can only go into an empty slot; the game has no partial merge.");
+            case OccupantRefusal.StackFull:
+                return ApiErrors.Refused(
+                    "stack_full",
+                    $"{Names.Of(slot.Get())} holds {occupant.Quantity} of {occupant.MaxQuantity}; "
+                    + $"{quantity} more do not fit.");
+            default:
+                mergeInto = (Stackable)slot.Get();
+                return null;
         }
-
-        Stackable? occupant = slot.Get() as Stackable;
-        if (occupant == null || !(item is Stackable stack) || !Slot.CanMerge(item, slot))
-        {
-            return ApiErrors.Refused("slot_occupied",
-                $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, which {Names.Of(item)} cannot join.");
-        }
-
-        if (quantity < stack.Quantity)
-        {
-            return ApiErrors.Refused(
-                "partial_merge", "Part of a stack can only go into an empty slot; the game has no partial merge.");
-        }
-
-        if (occupant.Quantity + quantity > occupant.MaxQuantity)
-        {
-            return ApiErrors.Refused(
-                "stack_full",
-                $"{Names.Of(occupant)} holds {occupant.Quantity} of {occupant.MaxQuantity}; "
-                + $"{quantity} more do not fit.");
-        }
-
-        mergeInto = occupant;
-        return null;
     }
 
     // A matching stack first (when merging is allowed and the whole stack moves), then the first empty slot that
-    // takes the item.
+    // takes the item (SlotOccupancy.PickAuto); any other occupied slot is passed over.
     private static ApiException? AutoSlot(ItemMove move, DynamicThing item, Thing target, int quantity,
         out Slot? slot, out Stackable? mergeInto)
     {
-        for (int index = 0; index < target.Slots.Count && move.Merge; index++)
-        {
-            Slot candidate = target.Slots[index];
-            if (candidate != null && candidate != item.ParentSlot && candidate.Get() != null &&
-                SlotAccess.AutoPicks(candidate) && GrowerSlotRule.AutoMerges(GrowerSlots.KindOf(target, candidate)) &&
-                MergeRefusal(move, item, candidate, quantity, out mergeInto) == null)
-            {
-                slot = candidate;
-                return null;
-            }
-        }
-
-        mergeInto = null;
         int usable = IsVaultDisplaySlot(target, VaultDisplaySlotsStart)
             ? System.Math.Min(VaultDisplaySlotsStart, target.Slots.Count)
             : target.Slots.Count;
-        for (int index = 0; index < usable; index++)
+        List<AutoSlotCandidate> candidates = new List<AutoSlotCandidate>(target.Slots.Count);
+        for (int index = 0; index < target.Slots.Count; index++)
         {
             Slot candidate = target.Slots[index];
-            if (candidate != null && candidate.Get() == null && AutoTakesNew(item, target, candidate))
+            if (candidate == null || candidate == item.ParentSlot)
             {
-                slot = candidate;
-                return null;
+                continue;
             }
+
+            SlotOccupant? occupant = SlotOccupants.Of(candidate, item);
+            // A vault's display slots only show its store; a stack merged there would go with the slot.
+            bool usableSlot = index < usable;
+            bool merges = usableSlot && occupant.HasValue && SlotAccess.AutoPicks(candidate) &&
+                          GrowerSlotRule.AutoMerges(GrowerSlots.KindOf(target, candidate));
+            bool takesNew = usableSlot && !occupant.HasValue && AutoTakesNew(item, target, candidate);
+            candidates.Add(new AutoSlotCandidate(index, occupant, merges, takesNew));
         }
 
-        slot = null;
-        return ApiErrors.Refused("no_free_slot", $"{Names.Of(target)} has no slot that takes {Names.Of(item)}.");
+        int whole = item is Stackable stack ? stack.Quantity : 1;
+        AutoSlotPick pick = SlotOccupancy.PickAuto(candidates, quantity, quantity >= whole, move.Merge);
+        slot = pick.Found ? target.Slots[pick.Index] : null;
+        mergeInto = pick.Merges ? (Stackable)slot!.Get() : null;
+        return pick.Found
+            ? null
+            : ApiErrors.Refused("no_free_slot", $"{Names.Of(target)} has no slot that takes {Names.Of(item)}.");
     }
 
     // A grower's plant or fertiliser slot is taken by the grower rules, hidden or not (a plant into a plant slot,
@@ -648,6 +644,14 @@ internal sealed class MovePlan
         ThingId itemId = new ThingId(Item.ReferenceId);
         ThingId? merged = MergeInto != null ? new ThingId(MergeInto.ReferenceId) : (ThingId?)null;
         int mergedBefore = MergeInto != null ? MergeInto.Quantity : 0;
+        if (!SlotOccupancy.StillSafe(SlotOccupants.Of(Slot, Item), merged?.Value, Quantity))
+        {
+            DynamicThing? now = Slot.Get();
+            throw ApiErrors.Refused(now != null ? "slot_occupied" : "move_failed",
+                $"{SlotAccess.Label(Slot)} now holds {(now != null ? Names.Of(now) : "nothing")}, not what the move "
+                + "was checked against; nothing was moved (a move never replaces what a slot holds).");
+        }
+
         try
         {
             DynamicThing landed = Perform();
@@ -691,12 +695,28 @@ internal sealed class MovePlan
         Stackable stack = (Stackable)Item;
         int before = stack.Quantity;
         Stackable made = stack.SplitStack(Quantity, Slot);
-        if (made == null || Slot.Get() != made || stack.Quantity != before - Quantity)
+        if (made != null && Slot.Get() == made && stack.Quantity == before - Quantity)
         {
-            throw Failed();
+            return made;
         }
 
-        return made;
+        PutBack(stack, made, before);
+        throw Failed();
+    }
+
+    // Stackable.SplitStack takes the part off the source before it makes the new stack; a stack the slot then refuses
+    // is left in the world at the origin (OnServer.Create: MoveToSlotOrWorld), and one the game did not make is gone.
+    // Either way the part goes back onto the source, so a failed split loses nothing.
+    private static void PutBack(Stackable source, Stackable? made, int before)
+    {
+        if (made != null && !made.IsBeingDestroyed && made.ParentSlot == null)
+        {
+            OnServer.Merge(source, made);
+        }
+        else if (made == null)
+        {
+            source.AddQuantity(before - source.Quantity);
+        }
     }
 
     // HydroponicsUtils.PlantInHand: the genes of the unit used, one unit off the stack, a new plant made in the slot.
@@ -739,6 +759,24 @@ internal sealed class MovePlan
             $"The game did not put {Names.Of(Item)} into slot {Slot.SlotIndex} of {Names.Of(Target)}"
             + (thrown == null ? "" : $" (it threw {thrown.GetType().Name}: {thrown.Message})")
             + "; read the slots before retrying.");
+}
+
+/// <summary>What a slot holds, for SlotOccupancy: null when empty.</summary>
+internal static class SlotOccupants
+{
+    internal static SlotOccupant? Of(Slot slot, DynamicThing moving)
+    {
+        DynamicThing? occupant = slot.Get();
+        if (occupant == null)
+        {
+            return null;
+        }
+
+        return occupant is Stackable stack
+            ? new SlotOccupant(stack.ReferenceId, stack.Quantity, stack.MaxQuantity,
+                moving is Stackable && Slot.CanMerge(moving, slot))
+            : new SlotOccupant(occupant.ReferenceId, 1, 1, false);
+    }
 }
 
 /// <summary>
