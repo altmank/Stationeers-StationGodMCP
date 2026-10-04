@@ -2,9 +2,13 @@
   "name": "describe_prefab",
   "summary": "What a buildable prefab is before it stands anywhere, in its own frame: placement kind, the turns it takes, its cells, render box, ports, visual top and controls side. Read only.",
   "help": {
-    "text": "Its own frame is unturned, x right, y up, z forward, origin snapped as the cursor snaps it. Returns prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells, render_box, grid_box, ports [{index, type, role, flow, at, outward}], visual_up, reversible_flow, has_cursor and controls.",
-    "keys": "prefab_name, prefab_hash, display_name, build_states, runtime_type, placement, grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells [{x, y, z}], render_box {min, max, size}, grid_box {min, max, size}, ports [{index, type, role, flow, at, outward}], visual_up {local, lying_allowed, source, verified}, reversible_flow {logic_type, value, reason}, has_cursor, controls {local, votes, considered, source, fallback}.",
+    "text": "Its own frame is unturned, x right, y up, z forward, origin snapped as the cursor snaps it. Returns prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells, render_box, grid_box, ports [{index, type, role, flow, at, outward}], visual_up, reversible_flow, has_cursor, controls and, for a rocket engine, engine (topic engine).",
+    "keys": "prefab_name, prefab_hash, display_name, build_states, runtime_type, placement, grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells [{x, y, z}], render_box {min, max, size}, grid_box {min, max, size}, ports [{index, type, role, flow, at, outward}], visual_up {local, lying_allowed, source, verified}, reversible_flow {logic_type, value, reason}, has_cursor, controls {local, votes, considered, source, fallback}, engine {name, max_thrust_n, feed, inputs, ...}.",
     "topics": {
+      "engine": {
+        "summary": "A rocket engine's load-time thrust and its feed.",
+        "text": "engine {name, max_thrust_n (its thrust on its own test fuel at full throttle, as the game fills it at load), max_exhaust_velocity_ms, specific_impulse_s, max_fuel_flow_rate (what that test burn drew in a tick), efficiency (25 is 100 %) and efficiency_percent, mass_kg, chamber_volume_l, feed (pumped_gas, pressure_fed_gas, pumped_liquid or pressure_fed_liquid), inputs [{input, role, pipe, pipe_max_kpa}], and the feed's limits: max_moles_per_tick (pumped gas), litres_per_tick (pumped liquid), max_pressure_per_tick_kpa and flow_rate_min_l/max_l (pressure fed)}. rocket_forecast flies a design with real fuel."
+      },
       "visual_up": {
         "summary": "visual_up and controls.",
         "text": "visual_up {local (the axis that reads as its top), lying_allowed, source, verified (true when seen live or forced by the game; false: a guess, or source ASSUMED for a prefab that builds any way up)}. controls {local (the axis its slots, buttons and switches face), votes, considered, source, fallback (true: no control sits clearly on one side, so forward +z stands in)}, left out for anything with no controls. reversible_flow: turbo volume pumps, whose Mode 0 and 1 move gas opposite ways."
@@ -45,7 +49,8 @@
       "visual_up": {"type": "object"},
       "reversible_flow": {"type": ["object", "null"]},
       "has_cursor": {"type": "boolean"},
-      "controls": {"type": ["object", "null"]}
+      "controls": {"type": ["object", "null"]},
+      "engine": {"type": ["object", "null"]}
     }
   },
   "x-views": ["DescribePrefabView"],

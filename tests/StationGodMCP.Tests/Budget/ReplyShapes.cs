@@ -122,7 +122,7 @@ internal static class ReplyShapes
         shapes["describe_prefab"] = new[]
         {
             S<DescribePrefabView>().List("DescribePrefabView.AllowedRotations", 24).List("DescribePrefabView.SmallCells", 16)
-                .List("DescribePrefabView.Ports", 4)
+                .List("DescribePrefabView.Ports", 4).List("PrefabEngineView.Inputs", 2)
         };
         shapes["dish_aim"] = new[] { S<DishAimView>() };
         shapes["feed_paths"] = new[]

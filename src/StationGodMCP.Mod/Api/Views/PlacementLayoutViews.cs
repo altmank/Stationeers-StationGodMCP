@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Rockets;
 
 namespace StationGodMCP.Api.Views;
 
@@ -324,8 +325,10 @@ internal sealed class DescribePrefabView
     internal DescribePrefabView(PlacementPrefabView prefab, string runtimeType, string placement, float gridSizeM,
         bool smallGrid, string rotationAxes, List<OrientationView> allowedRotations, List<PointView> smallCells,
         BoxView renderBox, BoxView? gridBox, List<PrefabPortView> ports, VisualUpView visualUp,
-        ModeFlipView? reversibleFlow, bool hasCursor, ControlFaceView? controls = null)
+        ModeFlipView? reversibleFlow, bool hasCursor, ControlFaceView? controls = null,
+        PrefabEngineView? engine = null)
     {
+        Engine = engine;
         Controls = controls;
         PrefabName = prefab.PrefabName;
         PrefabHash = prefab.PrefabHash;
@@ -392,6 +395,137 @@ internal sealed class DescribePrefabView
     /// <summary>The side its slots, buttons and switches face; left out for what has none and is no device.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ControlFaceView? Controls { get; }
+
+    /// <summary>A rocket engine's load-time performance and feed; left out for anything else.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public PrefabEngineView? Engine { get; }
+}
+
+/// <summary>
+/// A rocket engine prefab as the game fills it when it loads (RocketEngineBase.CalculateMaxThrust: its own combustion
+/// on its test fuel) and its class's feed: the numbers a rocket design needs before one is built.
+/// </summary>
+internal sealed class PrefabEngineView
+{
+    internal PrefabEngineView(string name, EnginePerformance performance, EngineDesign? design)
+    {
+        Name = name;
+        MaxThrustN = RocketRound.Of(performance.MaxThrustN, 0);
+        MaxExhaustVelocityMs = RocketRound.Of(performance.MaxExhaustVelocityMs, 1);
+        SpecificImpulseS = RocketRound.Of(performance.SpecificImpulseS, 1);
+        MaxFuelFlowRate = RocketRound.Of(performance.MaxFuelFlowRate, 4);
+        Efficiency = performance.Efficiency;
+        EfficiencyPercent = RocketRound.Of(performance.EfficiencyPercent, 1);
+        MassKg = performance.MassKg;
+        ChamberVolumeL = performance.ChamberVolumeL;
+        Feed = design?.Feed;
+        Inputs = design?.Inputs.ConvertAll(static input => new EngineInputView(input));
+        MaxMolesPerTick = design?.MaxMolesPerTick;
+        LitresPerTick = design?.LitresPerTick;
+        MaxPressurePerTickKpa = design?.MaxPressurePerTickKpa;
+        FlowRateMinL = design?.FlowRateMinL;
+        FlowRateMaxL = design?.FlowRateMaxL;
+    }
+
+    public string Name { get; }
+
+    /// <summary>The prefab's thrust on its own test fuel at full throttle, filled when the game loads.</summary>
+    public double MaxThrustN { get; }
+
+    public double MaxExhaustVelocityMs { get; }
+
+    /// <summary>Max exhaust velocity over 9.8.</summary>
+    public double SpecificImpulseS { get; }
+
+    /// <summary>What the test burn drew in one tick.</summary>
+    public double MaxFuelFlowRate { get; }
+
+    /// <summary>The class's efficiency factor in the exhaust velocity (25 is 100 %).</summary>
+    public float Efficiency { get; }
+
+    public double EfficiencyPercent { get; }
+
+    /// <summary>What it adds to the rocket's mass.</summary>
+    public float MassKg { get; }
+
+    public float ChamberVolumeL { get; }
+
+    /// <summary>pumped_gas, pressure_fed_gas, pumped_liquid or pressure_fed_liquid; null for an unknown class.</summary>
+    public string? Feed { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<EngineInputView>? Inputs { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? MaxMolesPerTick { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? LitresPerTick { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? MaxPressurePerTickKpa { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? FlowRateMinL { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? FlowRateMaxL { get; }
+}
+
+/// <summary>An engine prefab's load-time numbers, read from the live prefab.</summary>
+internal sealed class EnginePerformance
+{
+    internal EnginePerformance(double maxThrustN, double maxExhaustVelocityMs, double specificImpulseS,
+        double maxFuelFlowRate, float efficiency, double efficiencyPercent, float massKg, float chamberVolumeL)
+    {
+        MaxThrustN = maxThrustN;
+        MaxExhaustVelocityMs = maxExhaustVelocityMs;
+        SpecificImpulseS = specificImpulseS;
+        MaxFuelFlowRate = maxFuelFlowRate;
+        Efficiency = efficiency;
+        EfficiencyPercent = efficiencyPercent;
+        MassKg = massKg;
+        ChamberVolumeL = chamberVolumeL;
+    }
+
+    internal double MaxThrustN { get; }
+
+    internal double MaxExhaustVelocityMs { get; }
+
+    internal double SpecificImpulseS { get; }
+
+    internal double MaxFuelFlowRate { get; }
+
+    internal float Efficiency { get; }
+
+    internal double EfficiencyPercent { get; }
+
+    internal float MassKg { get; }
+
+    internal float ChamberVolumeL { get; }
+}
+
+/// <summary>One engine input: what it carries and the pipe it takes.</summary>
+internal sealed class EngineInputView
+{
+    internal EngineInputView(EngineInput input)
+    {
+        Input = input.Input;
+        Role = input.Role;
+        Pipe = input.Pipe;
+        PipeMaxKpa = input.PipeMaxKpa.HasValue ? RocketRound.Of(input.PipeMaxKpa.Value, 1) : null;
+    }
+
+    public int Input { get; }
+
+    public string Role { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Pipe { get; }
+
+    /// <summary>The pipe rating a pressure-fed draw is scaled against; left out where the feed ignores it.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? PipeMaxKpa { get; }
 }
 
 /// <summary>

@@ -3,12 +3,14 @@
 using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Rockets;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -65,7 +67,24 @@ internal static class DescribePrefabApi
                 ? new ModeFlipView("Mode", 1, "Mode 0 (Right) and 1 (Left) move gas opposite ways through it")
                 : null,
             cursor != null,
-            PrefabControls.Of(prefab) is ControlFace controls ? new ControlFaceView(controls) : null);
+            PrefabControls.Of(prefab) is ControlFace controls ? new ControlFaceView(controls) : null,
+            EngineOf(prefab));
+    }
+
+    // A rocket engine's numbers as the game filled them at load (OnPrefabLoad runs CalculateMaxThrust on the prefab).
+    private static PrefabEngineView? EngineOf(Structure prefab)
+    {
+        if (!(prefab is RocketEngineBase engine))
+        {
+            return null;
+        }
+
+        string className = engine.GetType().Name;
+        return new PrefabEngineView(EngineSpecs.NameOf(className),
+            new EnginePerformance(engine.MaxThrust, engine.MaxExhaustVelocity, engine.SpecificImpulse,
+                engine.MaxFuelFlowRate, engine.EngineEfficiency, engine.EfficiencyPercent, engine.MassContribution,
+                engine.internalVolume),
+            EngineDesign.Of(className));
     }
 
     // The turns the cursor can give a grid-placed prefab; every turn for the others (the cursor check decides).

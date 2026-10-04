@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.19.1
+
+- **`describe_prefab` reports a rocket engine's numbers**: `engine` with the thrust, exhaust velocity, specific
+  impulse and fuel flow the game fills in when it loads (the prefab file holds 0), efficiency, mass and chamber
+  volume, read from the live prefab, plus its feed (`pumped_gas`, `pressure_fed_gas`, `pumped_liquid`,
+  `pressure_fed_liquid`), each input's role and pipe rating, and the feed's limits per tick.
+
 ## 1.19.0
 
 - **`from_id` takes a list.** The place, upgrade, clean and replace tools (and the route planners, which pass it on)

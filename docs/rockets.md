@@ -41,6 +41,9 @@ recorder for the flight itself. All four only read the game. No gateway is neede
   away). `transfer_battery_j` does the same for charge.
 - **Payloads.** `deploy_payload` at the planet's orbit drops the payloads' mass (200 kg each) for the rest of the trip;
   `payload_kg` tries a payload the rocket does not carry yet.
+- **Before building.** `describe_prefab` on an engine prefab gives `engine`: its thrust, exhaust velocity, specific
+  impulse and fuel flow on its own test fuel as the game fills them at load, efficiency, mass, chamber volume, its
+  feed and each input's role and pipe rating, and the feed's per-tick limits.
 
 ## Mining
 

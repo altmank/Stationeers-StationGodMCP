@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:11e05b520e0f0852cc6722bb5d8137dae7bb25477192d2fdb8ddfbce6de65e66'
-MOD_VERSION = '1.19.0'
+CATALOGUE_HASH = 'sha256:a084eea3a2ebd57488e94e871ce53ab7694102f1f8b1b87b2369fffc2f6d0457'
+MOD_VERSION = '1.19.1'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
