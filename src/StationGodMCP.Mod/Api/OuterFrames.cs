@@ -70,6 +70,7 @@ internal static class OuterFramesApi
             views.Add(row.ToView());
         }
 
+        page.Note("frames", views.Count, rows.Total);
         return new OuterFramesView(Slice<FrameView>.Page(views, page, rows.Total), census.TotalFrames,
             census.TotalOuter, includeInner, origin.View);
     }

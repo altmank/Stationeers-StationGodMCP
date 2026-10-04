@@ -1,0 +1,55 @@
+{
+  "description": "The reply's truncated notice is carried whole into the pointer, never counted or left to the file.",
+  "method": "find_things",
+  "output_file": "truncated",
+  "result": {
+    "count": 8,
+    "things": [
+      {
+        "a": 1
+      }
+    ],
+    "truncated": [
+      {
+        "list": "things",
+        "returned": 8,
+        "total": 412,
+        "more": "pass limit (max 500) or offset 8 x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x"
+      }
+    ]
+  },
+  "expected_file_name": "truncated.json",
+  "expected_pointer": {
+    "tool": "find_things",
+    "counts": {
+      "things": 1
+    },
+    "summary": {
+      "count": 8
+    },
+    "truncated": [
+      {
+        "list": "things",
+        "returned": 8,
+        "total": 412,
+        "more": "pass limit (max 500) or offset 8 x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x"
+      }
+    ]
+  },
+  "expected_file": {
+    "count": 8,
+    "things": [
+      {
+        "a": 1
+      }
+    ],
+    "truncated": [
+      {
+        "list": "things",
+        "returned": 8,
+        "total": 412,
+        "more": "pass limit (max 500) or offset 8 x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x"
+      }
+    ]
+  }
+}

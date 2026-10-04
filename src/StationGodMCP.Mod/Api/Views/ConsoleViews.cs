@@ -2,6 +2,10 @@
 
 using System.Collections.Generic;
 
+using StationGodMCP.Api.Shared;
+
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>One console line: its time stamp, level and text (segments and continuation lines joined).</summary>
@@ -71,7 +75,7 @@ internal sealed class ConsoleCapture
 }
 
 /// <summary>run_console_command: the command, what it printed, and how far that output can be trusted.</summary>
-internal sealed class ConsoleRunView
+internal sealed class ConsoleRunView : ITruncatingView
 {
     internal ConsoleRunView(ConsoleCommandInfo info, bool runSimulation, ConsoleCapture capture,
         List<ConsoleLineView> output, string note)
@@ -120,6 +124,10 @@ internal sealed class ConsoleRunView
     public List<ConsoleLineView> Output { get; }
 
     public string Note { get; }
+
+    public void NoteTruncations(string path) =>
+        Truncations.Capped(path + "output", Output.Count, OutputLineCount, "max_output_lines",
+            ReplyDefaults.ConsoleLinesMaximum);
 }
 
 /// <summary>read_console: the most recent console lines, oldest first.</summary>

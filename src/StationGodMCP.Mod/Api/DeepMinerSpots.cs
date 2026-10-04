@@ -17,6 +17,8 @@ using TerrainSystem;
 using Trading;
 using UnityEngine;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api;
 
 /// <summary>
@@ -103,6 +105,13 @@ internal static class DeepMinerSpotsApi
             spots.Add(view);
             beacons.Add(new MinerBeaconView(new[] { view.At.X, view.At.Y, view.At.Z },
                 $"{ores} {Math.Round(spot.Distance)} m {view.Compass}"));
+        }
+
+        if (result.Spots.Count >= count)
+        {
+            Truncations.Note("spots", result.Spots.Count, result.Spots.Count,
+                $"pass count (max {MaximumCount}); the search stopped at count spots, so more may lie farther out",
+                atLeast: true);
         }
 
         List<string> profileIds = new List<string>();

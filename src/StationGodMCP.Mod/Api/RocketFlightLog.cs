@@ -10,6 +10,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Rockets;
+using StationGodMCP.Pure.Shaping;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -97,6 +98,13 @@ internal static class RocketFlightLogApi
             rows.Add(new FlightSampleView(samples[index]));
         }
 
+        int next = page.Offset + rows.Count * every;
+        int reachable = (entry.Buffer.Count + every - 1) / every;
+        if (page.Offset > 0 || next < entry.Buffer.Count)
+        {
+            Truncations.Note("rows", rows.Count, reachable,
+                $"pass limit (max {page.Maximum}), every, or offset {next} (offset counts samples)", false);
+        }
         return View(entry, rows, page.Offset, every);
     }
 

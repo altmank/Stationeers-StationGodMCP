@@ -7,20 +7,28 @@ namespace StationGodMCP.Api.Shared;
 /// <summary>Which page of a world-sized list to return: offset and limit, with the tool's default and cap.</summary>
 internal sealed class PageRequest
 {
-    private PageRequest(int offset, int limit)
+    private PageRequest(int offset, int limit, int maximum)
     {
         Offset = offset;
         Limit = limit;
+        Maximum = maximum;
     }
 
     internal int Offset { get; }
 
     internal int Limit { get; }
 
+    /// <summary>The largest limit the tool takes.</summary>
+    internal int Maximum { get; }
+
     internal static PageRequest From(Args args, int defaultLimit, int maximumLimit) =>
         new PageRequest(
             args.OptionalInt("offset", 0, int.MaxValue) ?? 0,
-            args.OptionalInt("limit", 1, maximumLimit) ?? defaultLimit);
+            args.OptionalInt("limit", 1, maximumLimit) ?? defaultLimit, maximumLimit);
+
+    /// <summary>Notes the reply's list (its JSON key) as cut when this page holds fewer than the total.</summary>
+    internal void Note(string list, int returned, int total) =>
+        Pure.Shaping.Truncations.Page(list, Offset, returned, total, Maximum);
 }
 
 /// <summary>One page of an already sorted list, with the list's total and whether more follows.</summary>

@@ -5,6 +5,8 @@ using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>find_items: one page of the items that match, nearest first.</summary>
@@ -249,7 +251,7 @@ internal sealed class PrefabQuantityView
 }
 
 /// <summary>container_contents: a thing's slots, and what is in each, a few levels deep.</summary>
-internal sealed class ContainerContentsView
+internal sealed class ContainerContentsView : ITruncatingView
 {
     internal ContainerContentsView(ThingView thing, PositionView position, double? distanceM, List<SlotView> slots)
     {
@@ -272,6 +274,37 @@ internal sealed class ContainerContentsView
     public double? DistanceM { get; }
 
     public List<SlotView> Slots { get; }
+
+    public void NoteTruncations(string path)
+    {
+        int shown = 0;
+        int hidden = 0;
+        Count(Slots, ref shown, ref hidden);
+        if (hidden > 0)
+        {
+            Truncations.Note(path + "slots (nested past depth)", shown, shown + hidden,
+                "pass depth (max 6), or container_contents of the occupant", atLeast: true);
+        }
+    }
+
+    // Slots shown at every depth, and the slots of occupants past the depth limit (their own nested slots unknown).
+    private static void Count(List<SlotView>? slots, ref int shown, ref int hidden)
+    {
+        if (slots == null)
+        {
+            return;
+        }
+
+        foreach (SlotView slot in slots)
+        {
+            shown++;
+            if (slot.Occupant != null)
+            {
+                hidden += slot.Occupant.SlotsNotShown ?? 0;
+                Count(slot.Occupant.Slots, ref shown, ref hidden);
+            }
+        }
+    }
 }
 
 internal sealed class SlotView

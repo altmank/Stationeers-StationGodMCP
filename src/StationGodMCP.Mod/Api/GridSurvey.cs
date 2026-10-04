@@ -79,6 +79,7 @@ internal static class GridSurveyApi
         SurveyContents contents = Contents(facts, slice.Items, sections, new SurveyFilter(filter, kinds), includeNetworks,
             includeRefund);
         string? legend = sections.Includes(SurveySection.Cells) && !compact ? Legend : null;
+        page.Note("cells", slice.Items.Count, cells.Count);
         return new GridSurveyView(Slice<SurveyCellView>.Page(views, page, cells.Count), contents, sections, legend);
     }
 

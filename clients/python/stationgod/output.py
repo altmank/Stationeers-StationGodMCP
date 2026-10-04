@@ -71,12 +71,16 @@ def write(method, name, result, directory):
 
 
 def pointer(method, path, size, result):
-    """{output_file, bytes, tool, counts, summary, in_file_only}: every top-level list's length, every other top-level
-    value whose JSON text is at most 300 characters, and the names of the rest (left out when none)."""
+    """{output_file, bytes, tool, counts, summary, in_file_only, truncated}: every top-level list's length, every other
+    top-level value whose JSON text is at most 300 characters, the names of the rest (left out when none), and the
+    reply's truncated notice whole, whatever its size."""
     counts, summary, in_file_only = {}, {}, []
+    truncated = None
     if isinstance(result, dict):
         for key, value in result.items():
-            if isinstance(value, list):
+            if key == "truncated":
+                truncated = value
+            elif isinstance(value, list):
                 counts[key] = len(value)
             elif len(json.dumps(value, ensure_ascii=False, separators=(",", ":"))) <= SUMMARY_VALUE_CHARACTERS:
                 summary[key] = value
@@ -85,6 +89,8 @@ def pointer(method, path, size, result):
     answer = {"output_file": path, "bytes": size, "tool": method, "counts": counts, "summary": summary}
     if in_file_only:
         answer["in_file_only"] = in_file_only
+    if truncated is not None:
+        answer["truncated"] = truncated
     return answer
 
 

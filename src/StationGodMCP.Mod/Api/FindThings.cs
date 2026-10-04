@@ -55,6 +55,7 @@ internal static class FindThingsApi
             views.Add(ViewOf(hit.Thing, origin));
         }
 
+        page.Note("things", views.Count, hits.Count);
         return new FindThingsView(Slice<FoundThingView>.Page(views, page, hits.Count), things.Count, origin.View);
     }
 

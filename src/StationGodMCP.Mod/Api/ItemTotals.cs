@@ -7,11 +7,13 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api;
 
 /// <summary>
 /// item_totals: the matching items summed per prefab, with where they are and the holders_limit holders with the most
-/// (default 5; 0 leaves top_holders out). Quantity is
+/// (default ReplyDefaults.ItemTotalHolders; 0 leaves top_holders out). Quantity is
 /// the stack size for IQuantity items and 1 for anything else (WorldItems.QuantityOf). Machine stock (MachineStock)
 /// adds to the same rows: fabricator stock under the ingot it ejects as, a working load under its reagent in a row of
 /// its own (prefab_name null, reagent set). Read only.
@@ -52,9 +54,19 @@ internal static class ItemTotalsApi
 
         tallies.Sort(static (a, b) => PrefabTally.LargestFirst(a, b));
         List<PrefabTotalView> totals = new List<PrefabTotalView>(Math.Min(limit, tallies.Count));
+        int holdersListed = 0;
+        int holdersFound = 0;
         for (int index = 0; index < tallies.Count && index < limit; index++)
         {
             totals.Add(tallies[index].ToView(holders));
+            holdersListed += Math.Min(holders, tallies[index].HolderCount);
+            holdersFound += tallies[index].HolderCount;
+        }
+
+        Truncations.Capped("totals", totals.Count, tallies.Count, "limit", MaximumLimit);
+        if (holders > 0)
+        {
+            Truncations.Capped("totals[].top_holders", holdersListed, holdersFound, "holders_limit", MaximumHolders);
         }
 
         return new ItemTotalsView(totals, tallies.Count, records.Count, stock.Count);
@@ -146,6 +158,9 @@ internal sealed class PrefabTally
         int byQuantity = b.Quantity.CompareTo(a.Quantity);
         return byQuantity != 0 ? byQuantity : string.CompareOrdinal(a._key, b._key);
     }
+
+    /// <summary>The outermost holders that hold some of it.</summary>
+    internal int HolderCount => _holders.Count;
 
     /// <summary>The row with its topHolders largest holders; with 0, no holder list at all.</summary>
     internal PrefabTotalView ToView(int topHolders)

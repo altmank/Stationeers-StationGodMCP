@@ -296,7 +296,7 @@ public sealed class ShapingTests
         ShapedText shaped = ShapingChecks.Mod(
             ShapingChecks.Parse("""{"count":4,"things":[{"a":1},{"a":2},{"a":3},{"a":4}],"pieces":[1,2]}"""), shape);
 
-        Assert.Equal("""{"count":4,"things":[{"a":1},{"a":2}],"pieces":[1,2],"shape_truncated":{"things":4}}""", shaped.Json);
+        Assert.Equal("""{"count":4,"things":[{"a":1},{"a":2}],"pieces":[1,2],"truncated":[{"list":"things","returned":2,"total":4,"more":"pass list_limits {\"things\": 4} (shape.limit on the pipe; max 100000)"}]}""", shaped.Json);
         Assert.Equal(new[] { new KeyValuePair<string, int>("things", 4), new KeyValuePair<string, int>("pieces", 2) },
             shaped.Outcome.Lists);
     }
@@ -306,7 +306,7 @@ public sealed class ShapingTests
     {
         ShapeRequest shape = ShapeRequest.Lenient(JObject.Parse("""{"fields":["a"],"limit":{"things":0}}"""))!;
 
-        Assert.Equal("""{"things":[],"shape_truncated":{"things":2}}""",
+        Assert.Equal("""{"things":[],"truncated":[{"list":"things","returned":0,"total":2,"more":"pass list_limits {\"things\": 2} (shape.limit on the pipe; max 100000)"}]}""",
             ShapingChecks.Mod(ShapingChecks.Parse("""{"things":[{"a":1,"b":1},{"a":2}]}"""), shape).Json);
     }
 

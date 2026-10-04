@@ -50,6 +50,11 @@ internal static class BuildReports
     {
         // A report that is not ready answers its verdict in short: the layout previews only with verbose.
         bool layouts = plan.Ready || plan.Arguments.Detail.LayoutsWhenRefused;
+        if (!layouts)
+        {
+            Pure.Shaping.Truncations.Note("placements[].layout", 0, plan.Placements.Count,
+                "pass verbose: true (a report that is not ready leaves the layout previews out)");
+        }
         List<PlacementView> placements = new List<PlacementView>(plan.Placements.Count);
         foreach (PlannedPlacement placement in plan.Placements)
         {

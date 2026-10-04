@@ -114,7 +114,7 @@ public sealed class OutputFolder(string path)
         : Default;
 
     /// <summary>
-    /// Writes the reply and answers the pointer {output_file, bytes, tool, counts, summary, in_file_only}. A write that
+    /// Writes the reply and answers the pointer {output_file, bytes, tool, counts, summary, in_file_only, truncated}. A write that
     /// fails answers the reply itself with output_file_error added: the call has run, so its reply must not be lost.
     /// </summary>
     public JsonElement Write(string method, OutputTarget target, JsonElement reply)
@@ -140,16 +140,24 @@ public sealed class OutputFolder(string path)
         }
     }
 
+    /// <summary>The reply's notice of the lists it holds back: carried whole into the pointer, whatever its size.</summary>
+    private const string TruncatedKey = "truncated";
+
     private static JsonElement Pointer(string method, string file, long bytes, JsonElement reply)
     {
         JsonObject counts = new();
         JsonObject summary = new();
         JsonArray fileOnly = new();
+        JsonNode? truncated = null;
         if (reply.ValueKind == JsonValueKind.Object)
         {
             foreach (JsonProperty property in reply.EnumerateObject())
             {
-                if (property.Value.ValueKind == JsonValueKind.Array)
+                if (property.Name == TruncatedKey)
+                {
+                    truncated = JsonNode.Parse(property.Value.GetRawText());
+                }
+                else if (property.Value.ValueKind == JsonValueKind.Array)
                 {
                     counts[property.Name] = property.Value.GetArrayLength();
                 }
@@ -175,6 +183,11 @@ public sealed class OutputFolder(string path)
         if (fileOnly.Count > 0)
         {
             pointer["in_file_only"] = fileOnly;
+        }
+
+        if (truncated != null)
+        {
+            pointer[TruncatedKey] = truncated;
         }
 
         return JsonSerializer.SerializeToElement(pointer);

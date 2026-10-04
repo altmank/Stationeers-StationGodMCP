@@ -239,7 +239,7 @@ Pipe clients can shape a reply with an optional `shape` object beside `params` i
 dotted paths, read from each list entry at any depth or from the list a path starts with; a name that matches nothing,
 or is not a name, comes back in `fields_unmatched`); `omit` as the tools' `omit` argument (paths from the reply's top,
 left out wherever they reach, top-level keys included; unused ones come back in `omit_unmatched`); `limit` keeps the
-first entries of a top-level list and adds `shape_truncated` (each cut list's length before the cut); `max_bytes`
+first entries of a top-level list and adds `truncated` (each cut list's length before the cut); `max_bytes`
 (1,024 to 16,777,216) answers `reply_too_large`, with `data` holding the reply's `bytes`, the `limit` and the length
 of every top-level list (`counts`), instead of a larger reply. A key the mod cannot use is ignored. A shaped reply's
 envelope carries `"shaped": true`; errors are never shaped. The method's own paging arguments save the game's work as

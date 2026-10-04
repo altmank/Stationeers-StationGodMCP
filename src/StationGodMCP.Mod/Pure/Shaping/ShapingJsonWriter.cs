@@ -20,7 +20,9 @@ internal enum ShapingRoot
 /// A JsonWriter between the serialiser and the real writer that applies a ShapeRequest while the reply is written:
 /// keys that fields leaves out or omit names, and entries past a limit, are not forwarded, so they are never formatted
 /// or sent. The serialiser still reads every property; only formatting and sending are saved. At the end of the reply
-/// object it adds fields_unmatched, omit_unmatched and shape_truncated. With nothing to leave out it forwards every token unchanged, so the
+/// object it adds fields_unmatched, omit_unmatched and truncated: every list held back, by the handler (its notes) or
+/// by a limit here, with how many it carries, how many there are and how to get more; an announcing writer (a call's
+/// reply) writes truncated always, empty when nothing was held back. With nothing to leave out it forwards every token unchanged, so the
 /// output is byte for byte the real writer's.
 /// </summary>
 internal sealed class ShapingJsonWriter : JsonWriter
@@ -28,7 +30,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
     internal const string ResultKey = "result";
     internal const string UnmatchedKey = "fields_unmatched";
     internal const string OmitUnmatchedKey = "omit_unmatched";
-    internal const string TruncatedKey = "shape_truncated";
+    internal const string TruncatedKey = "truncated";
 
     private readonly JsonWriter _inner;
     private readonly ShapeRequest _shape;
@@ -36,10 +38,16 @@ internal sealed class ShapingJsonWriter : JsonWriter
     private int _depth;
     private Pending _pending;
 
-    internal ShapingJsonWriter(JsonWriter inner, ShapeRequest shape, ShapingRoot root)
+    private readonly IReadOnlyList<Truncation> _notes;
+    private readonly bool _announce;
+
+    internal ShapingJsonWriter(JsonWriter inner, ShapeRequest shape, ShapingRoot root,
+        IReadOnlyList<Truncation>? notes = null, bool announce = false)
     {
         _inner = inner;
         _shape = shape;
+        _notes = notes ?? Array.Empty<Truncation>();
+        _announce = announce;
         Outcome = new ShapeOutcome(shape.Fields?.Count ?? 0, shape.Omit?.Count ?? 0);
         _pending = root == ShapingRoot.Envelope
             ? new Pending(Role.Envelope, null, null)
@@ -563,19 +571,35 @@ internal sealed class ShapingJsonWriter : JsonWriter
             }
         }
 
-        IReadOnlyList<KeyValuePair<string, int>> cut = Outcome.Cut;
-        if (cut.Count > 0)
+        List<Truncation> truncated = Truncations.Merge(_notes, Outcome.Cut, _shape);
+        if (truncated.Count == 0 && !_announce)
         {
-            _inner.WritePropertyName(TruncatedKey);
+            return;
+        }
+
+        _inner.WritePropertyName(TruncatedKey);
+        _inner.WriteStartArray();
+        foreach (Truncation entry in truncated)
+        {
             _inner.WriteStartObject();
-            foreach (KeyValuePair<string, int> list in cut)
+            _inner.WritePropertyName("list");
+            _inner.WriteValue(entry.List);
+            _inner.WritePropertyName("returned");
+            _inner.WriteValue(entry.Returned);
+            _inner.WritePropertyName("total");
+            _inner.WriteValue(entry.Total);
+            if (entry.AtLeast)
             {
-                _inner.WritePropertyName(list.Key);
-                _inner.WriteValue(list.Value);
+                _inner.WritePropertyName("at_least");
+                _inner.WriteValue(true);
             }
 
+            _inner.WritePropertyName("more");
+            _inner.WriteValue(entry.More);
             _inner.WriteEndObject();
         }
+
+        _inner.WriteEndArray();
     }
 
     private readonly struct Pending

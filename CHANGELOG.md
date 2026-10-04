@@ -13,10 +13,15 @@
   upgrade and clean reports 5 pieces per list (their networks give `device_count`, the devices only in a
   job's verification), replace reports 5; `rooms` lists devices only with `include_devices`;
   `plants` lists every plant in short unless `verbose` or one plant is asked for.
+- **Every reply says what it held back.** A reply ends with `truncated`: per list it carries only part of, the list,
+  how many it returned, how many there are, and the exact argument that gets the rest (`limit`, `offset`,
+  `holders_limit`, `max_devices`, `stack_count`, `log_lines`, `list_limits` ... with its maximum); `at_least: true`
+  where the total is a lower bound; `[]` when nothing was held back. `fields` and `omit` never remove it, and an
+  `output_file` pointer carries it. It replaces `shape_truncated`.
 - **Long lists are cut to their first entries by default** where a tool has no page of its own (`list_devices`,
   `consumables`, `feed_paths`, `rooms`, `water_sources`, `inspect_slots`, `mod_info`, `resolve_ic_selectors`,
   `ignition_risk`, `trader_inventory`, `rocket_mining_options`, a survey page's pieces and devices, an upgrade
-  report's devices). The reply names each cut list in `shape_truncated` with its full length; the new `limits`
+  report's devices). Each cut list is named in `truncated` with its full length; the new `list_limits`
   argument (`{"devices": 100}`) keeps more.
 - **Fixed explanations left the replies.** The notes of eight read tools, `how_to_get` in every machine-stock entry,
   the fixed reminders of `highlight` and `show_preview`, `describe_device`'s note and the four range numbers of
@@ -29,7 +34,7 @@
   nested objects and lists at any depth (`inspect_slots` `occupant.prefab_name`, `find_items`
   `held_in.reference_id`). `omit` leaves keys out wherever a path from the top of the reply reaches them, top-level
   keys included (`get_ic_status` `omit: ["lua.log"]`, `connections` `omit: ["members.position"]`); an unused path comes
-  back in `omit_unmatched`. A tool whose reply stays small now refuses `fields`, `omit`, `limits` and `output_file`
+  back in `omit_unmatched`. A tool whose reply stays small now refuses `fields`, `omit`, `list_limits` and `output_file`
   instead of taking them silently; `paint` (up to 256 results) takes them.
 - **Chips.** `get_ic_status` leaves the source out unless `include_source: true` (was in by default), and a Lua chip's
   `runtime` (IC10 registers and stack) is null. `set_ic_source` takes `source_file`, an absolute path on the machine
@@ -141,7 +146,7 @@
 - **Shaping in the mod.** `fields` is now applied by the mod while it writes the reply, so the keys left out are
   never formatted or sent, through the sidecar and for pipe clients alike. Dotted paths reach inside a list's entries
   (`things.position.x`, `results.logic.Temperature`). Pipe clients send it as a `shape` object beside `params`, with
-  `limit` (keep the first entries of a list, `shape_truncated` says how many there were) and `max_bytes`
+  `limit` (keep the first entries of a list, `truncated` says how many there were) and `max_bytes`
   (`reply_too_large` with the sizes instead of a larger reply); the reply then carries `"shaped": true`. Every
   `fields` value that worked before gives the same result; a selector that is not a name is listed in
   `fields_unmatched`, as an unknown name is.

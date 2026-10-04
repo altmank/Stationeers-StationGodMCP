@@ -2,6 +2,10 @@
 
 using System.Collections.Generic;
 
+using StationGodMCP.Api.Shared;
+
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
@@ -95,7 +99,7 @@ internal sealed class LuaErrorView
 }
 
 /// <summary>The last lines of a Lua chip's print() log, oldest first.</summary>
-internal sealed class LuaLogView
+internal sealed class LuaLogView : ITruncatingView
 {
     internal LuaLogView(List<string> lines, int lineCount)
     {
@@ -109,4 +113,7 @@ internal sealed class LuaLogView
     public int LineCount { get; }
 
     public bool Truncated => LineCount > Lines.Count;
+
+    public void NoteTruncations(string path) =>
+        Truncations.Capped(path + "lines", Lines.Count, LineCount, "log_lines", ReplyDefaults.LuaLogLinesMaximum);
 }

@@ -43,6 +43,7 @@ internal static class FindItemsApi
             items.Add(row.ToView());
         }
 
+        page.Note("items", items.Count, rows.Count);
         return new FindItemsView(Slice<IFoundItemView>.Page(items, page, rows.Count), origin.View);
     }
 }

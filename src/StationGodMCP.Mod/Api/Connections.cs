@@ -467,6 +467,7 @@ internal static class NetworkReader
                 GameLookup.ViewOf(member.Thing.Position), member.OpenEnds));
         }
 
+        request.Note("members", views.Count, page.Total);
         return new NetworkMembersView(new NetworkRefView(kind, id), summary,
             Slice<NetworkMemberView>.Page(views, request, page.Total), members.StructureCount,
             members.All.Count - members.StructureCount);

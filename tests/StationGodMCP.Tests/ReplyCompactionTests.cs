@@ -21,7 +21,7 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// The general means a default reply stays small: a method's x-default-limits cut its top-level lists unless the call
-/// limits them itself (the sidecar's limits), and the per-tool compact forms: a brief job log, chute items with the
+/// limits them itself (the sidecar's list_limits), and the per-tool compact forms: a brief job log, chute items with the
 /// network devices, plants in short, grid_survey kinds, mod_info's runtime methods.
 /// </summary>
 public sealed class ReplyCompactionTests
@@ -31,7 +31,7 @@ public sealed class ReplyCompactionTests
     {
         ShapeRequest shape = ShapeRequest.WithDefaultLimits(null, new Dictionary<string, int> { ["devices"] = 2 })!;
 
-        Assert.Equal("""{"devices":[1,2],"count":3,"shape_truncated":{"devices":3}}""",
+        Assert.Equal("""{"devices":[1,2],"count":3,"truncated":[{"list":"devices","returned":2,"total":3,"more":"pass list_limits {\"devices\": 3} (shape.limit on the pipe; max 100000)"}]}""",
             ShapingChecks.Mod(ShapingChecks.Parse("""{"devices":[1,2,3],"count":3}"""), shape).Json);
     }
 
@@ -72,19 +72,48 @@ public sealed class ReplyCompactionTests
     }
 
     [Fact]
-    public async Task LimitsIsSentAsShapeLimit()
+    public async Task ListLimitsIsSentAsShapeLimit()
     {
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok("""{"devices":[]}""", shaped: true));
 
         await Program.HandleMcpMessageAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_devices","arguments":{"limits":{"devices":200}}}}""",
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_devices","arguments":{"list_limits":{"devices":200}}}}""",
             new Program.GameTransportSettings(game.Target));
 
         FakeCall forwarded = Assert.Single(game.CallsTo("list_devices"));
         Assert.Equal("{}", forwarded.Params.GetRawText());
         Assert.Equal("""{"limit":{"devices":200}}""", forwarded.Shape!.Value.GetRawText());
-        Assert.True(Program.InputSchemas["list_devices"].GetProperty("properties").TryGetProperty("limits", out _));
+        Assert.True(Program.InputSchemas["list_devices"].GetProperty("properties").TryGetProperty("list_limits", out _));
+    }
+
+    [Fact]
+    public void NoMethodTakesAnArgumentTheSidecarTakesForItself()
+    {
+        foreach (JsonElement method in StationGodMCP.Client.GameCatalogue.BuiltIn.Document.GetProperty("methods").EnumerateArray())
+        {
+            JsonElement properties = method.GetProperty("params").GetProperty("properties");
+            foreach (string name in SidecarArguments.Names)
+            {
+                Assert.False(properties.TryGetProperty(name, out _),
+                    $"{method.GetProperty("name").GetString()} takes '{name}', which the sidecar would take out.");
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RocketForecastsOwnLimitsReachTheGame()
+    {
+        await using FakeGame game = FakeGame.OnPipe();
+        game.Answer = call => Task.FromResult<string?>(call.Ok("""{"legs":[]}""", shaped: false));
+
+        await Program.HandleMcpMessageAsync(
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rocket_forecast","arguments":{"to":"pad","limits":true}}}""",
+            new Program.GameTransportSettings(game.Target));
+
+        FakeCall forwarded = Assert.Single(game.CallsTo("rocket_forecast"));
+        Assert.True(forwarded.Params.GetProperty("limits").GetBoolean());
+        Assert.Null(forwarded.Shape);
     }
 
     [Fact]

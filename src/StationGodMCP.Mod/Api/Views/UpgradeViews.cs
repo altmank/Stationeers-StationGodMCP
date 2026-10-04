@@ -5,6 +5,8 @@ using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
@@ -12,7 +14,7 @@ namespace StationGodMCP.Api.Views;
 /// what, every problem found, the coils or kits it takes, the predicted connectivity and the networks' state. status is
 /// dry_run, scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
 /// </summary>
-internal sealed class UpgradeReportView
+internal sealed class UpgradeReportView : ITruncatingView
 {
     internal UpgradeReportView(UpgradeHeader header, UpgradeCounts counts, UpgradeLists lists,
         UpgradeResources resources, UpgradeConnectivityView? connectivity, UpgradeDeadEnds? deadEnds = null,
@@ -120,6 +122,25 @@ internal sealed class UpgradeReportView
     /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<string>? Notes { get; }
+
+    public void NoteTruncations(string path)
+    {
+        Truncations.Capped(path + "pieces", Pieces.Count, ToSwap, "limit", ReplyDefaults.ReportListMaximum);
+        Truncations.Capped(path + "kept_pieces", KeptPieces.Count, Kept, "limit", ReplyDefaults.ReportListMaximum);
+        Truncations.Capped(path + "unmatched_pieces", UnmatchedPieces.Count, Unmatched, "limit",
+            ReplyDefaults.ReportListMaximum);
+        if (DeadEndPieces != null && DeadEnds.HasValue)
+        {
+            Truncations.Capped(path + "dead_end_pieces", DeadEndPieces.Count, DeadEnds.Value, "limit",
+                ReplyDefaults.ReportListMaximum);
+        }
+
+        if (Redundant != null)
+        {
+            Truncations.Capped(path + "redundant.kept", Redundant.Kept.Count, Redundant.KeptCount, "limit",
+                ReplyDefaults.ReportListMaximum);
+        }
+    }
 }
 
 /// <summary>The report's identity: which tool, which target, what happened to the request.</summary>
@@ -1016,7 +1037,7 @@ internal sealed class PipeNetworkAir
 /// after it could not run: see error), gas_lost (pipe contents went missing: see gas_check), refused (nothing was
 /// changed).
 /// </summary>
-internal sealed class UpgradeJobView
+internal sealed class UpgradeJobView : ITruncatingView
 {
     internal UpgradeJobView(string jobId, string tool, string status, UpgradeReportView preflight,
         UpgradeJobResult? result)
@@ -1078,6 +1099,12 @@ internal sealed class UpgradeJobView
     public GasCheckView? GasCheck { get; }
 
     public ErrorView? Error { get; }
+
+    public void NoteTruncations(string path)
+    {
+        Preflight?.NoteTruncations(path + "preflight.");
+        FinalCheck?.NoteTruncations(path + "final_check.");
+    }
 }
 
 internal sealed class UpgradeJobResult

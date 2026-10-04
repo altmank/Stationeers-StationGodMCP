@@ -295,7 +295,7 @@ internal sealed class UpgradePlan
 /// </summary>
 internal static class UpgradePlanner
 {
-    internal const int MaximumPieces = 4096;
+    internal const int MaximumPieces = ReplyDefaults.ReportListMaximum;
 
     internal static UpgradePlan Plan(UpgradeRequest request)
     {

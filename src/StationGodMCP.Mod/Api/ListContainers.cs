@@ -47,6 +47,7 @@ internal static class ListContainersApi
             views.Add(container.ToView());
         }
 
+        page.Note("containers", views.Count, containers.Count);
         return new ListContainersView(Slice<ContainerView>.Page(views, page, containers.Count), origin.View);
     }
 }

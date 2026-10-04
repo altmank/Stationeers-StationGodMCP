@@ -5,6 +5,8 @@ using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
@@ -12,7 +14,7 @@ namespace StationGodMCP.Api.Views;
 /// the run joins, the materials, the networks before and as the edit would leave them, and every refusal. status is
 /// dry_run, scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
 /// </summary>
-internal sealed class RunReportView
+internal sealed class RunReportView : ITruncatingView
 {
     internal RunReportView(RunHeaderView header, RunCellsView cells, RunMaterialsView materials,
         RunNetworksView networks, List<RunIssueView> problems, List<RunIssueView> warnings)
@@ -99,6 +101,20 @@ internal sealed class RunReportView
     /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<string>? Notes { get; }
+
+    public void NoteTruncations(string path)
+    {
+        Truncations.Capped(path + "cells", Cells.Count, CellsTotal, "limit", Pure.RunPath.MaximumCells);
+        foreach (object network in NetworksBefore)
+        {
+            if (network is RunChuteNetworkView chute && chute.Items != null && chute.Items.Count < chute.ItemsRiding)
+            {
+                Truncations.Note(path + "networks_before[].items", chute.Items.Count, chute.ItemsRiding,
+                    "a network lists its first riding items only; grid_survey kinds [\"chute\"] gives each chute's " +
+                    "carries");
+            }
+        }
+    }
 }
 
 internal sealed class RunHeaderView
@@ -876,7 +892,7 @@ internal sealed class RunLinksView
 /// applied_with_differences (built, but a check found a difference: see verification), stopped (a step failed part
 /// way: log says what was done), applied_unchecked (built, the check could not run), refused (nothing changed).
 /// </summary>
-internal sealed class RunJobView
+internal sealed class RunJobView : ITruncatingView
 {
     private const string RefusedStatus = "refused";
 
@@ -937,6 +953,17 @@ internal sealed class RunJobView
         new RunJobView(job.JobId, job.Tool, job.Status, null,
             new RunJobResultView(job.Status == RefusedStatus ? job.FinalCheck : null, job.Log?.Brief(),
                 job.Verification, job.Error, job.GasCheck), summary);
+
+    public void NoteTruncations(string path)
+    {
+        Preflight?.NoteTruncations(path + "preflight.");
+        FinalCheck?.NoteTruncations(path + "final_check.");
+        if (Log != null && Log.Placed == null && Log.PlacedCount > 0)
+        {
+            Truncations.Note(path + "log.placed", 0, Log.PlacedCount,
+                "poll with job_id and verbose: true (log.created_ids lists every id built)");
+        }
+    }
 }
 
 internal sealed class RunJobResultView
@@ -1064,7 +1091,7 @@ internal sealed class RunVerificationView
 /// plan_cable_route and plan_pipe_route: the route found (or why none was), the arguments that build it with
 /// place_cables or place_pipes, and that tool's dry run of it.
 /// </summary>
-internal sealed class PlanRouteView
+internal sealed class PlanRouteView : ITruncatingView
 {
     internal PlanRouteView(string tool, RouteView? route, string? failure, object? placeArguments,
         RunReportView? dryRun, List<string> notes)
@@ -1097,6 +1124,8 @@ internal sealed class PlanRouteView
     public RunReportView? DryRun { get; }
 
     public List<string> Notes { get; }
+
+    public void NoteTruncations(string path) => DryRun?.NoteTruncations(path + "dry_run.");
 }
 
 internal sealed class RouteView

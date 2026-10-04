@@ -100,6 +100,7 @@ internal static class ThingHealthApi
             views.Add(HealthReader.Read(thing, origin, withNetworks));
         }
 
+        request.Page.Note("things", views.Count, page.Total);
         return new HealthNetworkView(id, family.NetworkKind, pieces.Count, request.DamagedOnly,
             Slice<HealthView>.Page(views, request.Page, page.Total));
     }
@@ -410,6 +411,7 @@ internal static class HealthScanner
             views.Add(HealthReader.Read(row.Thing, origin, withNetworks));
         }
 
+        page.Note("things", views.Count, rows.Total);
         return Slice<HealthView>.Page(views, page, rows.Total);
     }
 

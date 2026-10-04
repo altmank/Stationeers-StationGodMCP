@@ -31,4 +31,10 @@ internal static class ReplyDefaults
     internal const int VaultDepositItems = 256;
     internal const int SnapshotDevices = 2;
     internal const int RuntimeMethods = 10;
+
+    /// <summary>The largest list limit of the upgrade and clean reports.</summary>
+    internal const int ReportListMaximum = 4096;
+
+    internal const int LuaLogLinesMaximum = 200;
+    internal const int ConsoleLinesMaximum = 500;
 }

@@ -50,6 +50,7 @@ internal static class NetworkSnapshotApi
                 Values(device, requested ?? LogicTypes.Readable(device))));
         }
 
+        Pure.Shaping.Truncations.Capped("devices", snapshots.Count, matches.Count, "max_devices", MaximumDevices);
         return new NetworkSnapshotView(scope.Id, snapshots, matches.Count);
     }
 

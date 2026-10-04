@@ -303,8 +303,20 @@ JSON, key order included, on the test fixtures described in [stages.md](stages.m
 `limit: {"things": 20}` keeps the first 20 entries of the top-level list `things` after the method has built it. This
 saves formatting and transport, not the method's own work; a method with its own paging arguments (`offset`, `limit`,
 which the catalogue marks with `x-paging`) saves both and is preferred. When `limit` cuts a list, the mod adds
-`shape_truncated: {"things": 84}` (each cut list's length before the cut) to the reply's top-level object. A `limit`
+an entry for that list to the reply's `truncated` (below). A `limit`
 naming a key that is not a top-level list is `invalid_shape` (ignored with `StrictArguments` off).
+
+### Truncation notice
+
+Every reply to a call ends with `truncated`: one entry per list the reply holds back entries of, whether the handler
+paged or capped it (`limit`, `offset`, `holders_limit`, `max_devices`, a report's `limit`, a stack window, a log tail)
+or the writer cut it (`shape.limit`, the method's `x-default-limits`):
+`{"list": "things", "returned": 8, "total": 412, "more": "pass limit (max 500) or offset 8"}`. `list` is a top-level
+key or a path (`totals[].top_holders`, `dry_run.cells`); `total` is a real count, and `at_least: true` marks a lower
+bound where counting would cost what the cut saves (a search that stopped at its count). `truncated: []` means
+nothing was held back. The writer adds it after the reply's keys, so `fields` and `omit` never remove it, and the
+`output_file` pointer carries it whole. Handlers note their cuts through `Pure.Shaping.Truncations` (or, for a view
+that caps a list it carries, `ITruncatingView`); `tests/.../Budget/TruncationNoticeTests.cs` holds every cap to it.
 
 ### Shaping before the reply is built
 

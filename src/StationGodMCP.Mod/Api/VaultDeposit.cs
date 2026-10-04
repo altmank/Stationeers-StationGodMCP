@@ -13,6 +13,8 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api;
 
 /// <summary>
@@ -226,6 +228,7 @@ internal sealed class DepositRequest
                 taken[index].Item.PrefabName));
         }
 
+        Truncations.Capped("items.results", entries.Count, taken.Count, "limit", VaultDepositApi.MaximumLimit);
         return new DepositRequest(entries, records.Count, skipped, taken.Count > limit);
     }
 }

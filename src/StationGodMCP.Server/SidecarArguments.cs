@@ -7,7 +7,7 @@ namespace StationGodMCP.Server;
 
 /// <summary>
 /// The sidecar's own arguments on every tool that can give a large reply (the catalogue's x-shaping lists), taken out
-/// before the call goes to the game. fields, omit and limits go to the mod as the call's shape.fields, shape.omit and
+/// before the call goes to the game. fields, omit and list_limits go to the mod as the call's shape.fields, shape.omit and
 /// shape.limit; the mod applies them and marks the reply shaped, and the sidecar never shapes a reply the mod sent.
 /// output_file never reaches the game: the reply is written on this machine.
 /// </summary>
@@ -16,14 +16,14 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
 {
     internal const string FieldsArgument = "fields";
     internal const string OmitArgument = "omit";
-    internal const string LimitsArgument = "limits";
+    internal const string LimitsArgument = "list_limits";
     internal const string OutputFileArgument = "output_file";
     internal const string UnmatchedKey = "fields_unmatched";
     internal const string OmitUnmatchedKey = "omit_unmatched";
 
     internal static readonly string[] Names = [FieldsArgument, OmitArgument, LimitsArgument, OutputFileArgument];
 
-    /// <summary>The arguments for the game without fields, omit, limits and output_file, and what those ask for.</summary>
+    /// <summary>The arguments for the game without fields, omit, list_limits and output_file, and what those ask for.</summary>
     internal static SidecarArguments Take(JsonElement arguments)
     {
         if (arguments.ValueKind != JsonValueKind.Object || !Names.Any(name => IsGiven(arguments, name)))

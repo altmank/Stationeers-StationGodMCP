@@ -93,6 +93,9 @@ internal sealed class SpotReasons
         _counts[key] = (reason, 1);
     }
 
+    /// <summary>How many different reasons were counted.</summary>
+    internal int Distinct => _keys.Count;
+
     internal List<(string Reason, int Count)> Top(int limit)
     {
         List<(string Reason, int Count, int Order)> all = new List<(string, int, int)>();

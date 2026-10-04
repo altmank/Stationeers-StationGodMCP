@@ -14,6 +14,8 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api;
 
 /// <summary>
@@ -137,6 +139,19 @@ internal static class FindSpotApi
             }
         }
 
+        if (checkedSpots.Count + rejected < passed.Count)
+        {
+            Truncations.Note("spots", System.Math.Min(limit, checkedSpots.Count), checkedSpots.Count + 1,
+                $"pass max_checks (max {MaximumChecks}): {passed.Count - checkedSpots.Count - rejected} spots that " +
+                "passed the geometry filter were not checked", atLeast: true);
+        }
+        else
+        {
+            Truncations.Capped("spots", System.Math.Min(limit, checkedSpots.Count), checkedSpots.Count, "limit", 20);
+        }
+
+        Truncations.Note("reasons", System.Math.Min(MaximumReasons, reasons.Distinct), reasons.Distinct,
+            "no argument lists more: the most frequent reasons are listed");
         List<(int, double)> scores = checkedSpots.ConvertAll(spot => (spot.Penalty, spot.Distance));
         List<SpotView> spots = new List<SpotView>();
         foreach (int index in SpotSearch.Rank(scores))

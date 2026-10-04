@@ -6,6 +6,8 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
@@ -14,7 +16,7 @@ namespace StationGodMCP.Api.Views;
 /// size; per frame, the requests served and the time spent on them; the Mono garbage collector's counts and heap; and
 /// the argument names handlers read that the catalogue does not declare (catalogue_drift, which should stay empty).
 /// </summary>
-internal sealed class RuntimeView
+internal sealed class RuntimeView : ITruncatingView
 {
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift, List<ConnectionView>? connections = null)
@@ -63,6 +65,10 @@ internal sealed class RuntimeView
     /// <summary>The overlapped pipe's open connections; absent on the synchronous pipe.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public List<ConnectionView>? Connections { get; }
+
+    public void NoteTruncations(string path) =>
+        Truncations.Note(path + "methods", Methods.Count, MethodCount,
+            "no argument lists more: the costliest methods are listed first");
 }
 
 /// <summary>

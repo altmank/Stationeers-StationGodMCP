@@ -54,12 +54,22 @@ has four decimals. A real reply is usually smaller.
 Adding a tool: add its shape to `ReplyShapes` (run `SG_TREE` to see its view's lists), or an exemption with the
 reason. Adding a list to a view: declare its bound, or the test fails naming it.
 
+## Nothing held back silently
+
+Every reply ends with `truncated` (protocol.md, Truncation notice): per list it holds back entries of, the list, how
+many it returned, the real total (or `at_least`), and the argument that gets the rest; `[]` when nothing was held
+back. `TruncationNoticeTests` enforces it: on the large world every list a method's `x-default-limits` cuts is named
+with its whole length, every source file that sets a default or a maximum for a list (a `ReplyDefaults` constant, a
+page) notes its cut or hands the list to a view that does (`ITruncatingView`), and the notice survives `fields`,
+`omit` and `output_file`. Opt-in parts left out by default (rooms' devices, a chip's source, report notes) are not
+truncations: the description names the switch that adds them.
+
 ## What keeps replies small
 
 - Page sizes in one place, `src/StationGodMCP.Mod/Api/Shared/ReplyDefaults.cs`, read by the handlers and the test.
 - `x-default-limits` in a method's catalogue entry: the mod keeps that many entries of a top-level list when the
-  call does not limit it, and names the list in `shape_truncated` with its full length
-  (`ShapeRequest.WithDefaultLimits`, applied in `CallSession`). The sidecar's `limits` argument lifts it.
+  call does not limit it, and names the list in `truncated` with its full length
+  (`ShapeRequest.WithDefaultLimits`, applied in `CallSession`). The sidecar's `list_limits` argument lifts it.
 - Selectors: `fields` keeps keys, read from each list entry at any depth or from a named list; `omit` drops keys by
   path from the reply's top, top-level keys included (protocol.md, Shaping).
 - Fixed explanations belong in the tool description. The read tools' notes are gone from replies; report notes and

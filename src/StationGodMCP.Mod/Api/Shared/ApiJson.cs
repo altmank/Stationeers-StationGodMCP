@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -44,14 +45,19 @@ internal static class ApiJson
     /// </summary>
     internal static ShapedText WriteShaped(object reply, ShapeRequest shape) => WriteShaped(Shared, reply, shape, ShapingRoot.Envelope);
 
+    /// <summary>A call's reply: shaped, with the handler's truncation notes, and truncated always written.</summary>
+    internal static ShapedText WriteReply(object reply, ShapeRequest shape, IReadOnlyList<Truncation> truncations) =>
+        WriteShaped(Shared, reply, shape, ShapingRoot.Envelope, truncations, announce: true);
+
     /// <summary>As WriteShaped, through the given serializer and with the result where root says.</summary>
-    internal static ShapedText WriteShaped(JsonSerializer serializer, object? value, ShapeRequest shape, ShapingRoot root)
+    internal static ShapedText WriteShaped(JsonSerializer serializer, object? value, ShapeRequest shape, ShapingRoot root,
+        IReadOnlyList<Truncation>? truncations = null, bool announce = false)
     {
         StringWriter text = new StringWriter(new StringBuilder(256), CultureInfo.InvariantCulture);
         ShapeOutcome outcome;
         using (JsonTextWriter inner = WriterLike(serializer, text))
         {
-            ShapingJsonWriter shaping = new ShapingJsonWriter(inner, shape, root);
+            ShapingJsonWriter shaping = new ShapingJsonWriter(inner, shape, root, truncations, announce);
             shaping.Formatting = serializer.Formatting;
             serializer.Serialize(shaping, value, null);
             shaping.Flush();

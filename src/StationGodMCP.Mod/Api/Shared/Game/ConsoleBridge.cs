@@ -32,7 +32,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class ConsoleBridge
 {
-    internal const int MaximumConsoleLines = 500;
+    internal const int MaximumConsoleLines = ReplyDefaults.ConsoleLinesMaximum;
 
     /// <summary>Managed thread id that armed the current capture; 0 when nothing is capturing.</summary>
     private static int _captureThreadId;

@@ -281,7 +281,7 @@ internal sealed class ProfileLandingView
 }
 
 /// <summary>Structures or terrain in the column a landing rocket sweeps (Rocket.CheckForOverlap, Rocket.cs:2320-2372).</summary>
-internal sealed class ColumnView
+internal sealed class ColumnView : ITruncatingView
 {
     internal ColumnView(bool clear, double fromY, double toY, List<ColumnBlockerView> blockers, int more)
     {
@@ -302,6 +302,10 @@ internal sealed class ColumnView
 
     /// <summary>Blockers found past the ones listed.</summary>
     public int More { get; }
+
+    public void NoteTruncations(string path) =>
+        Pure.Shaping.Truncations.Note(path + "blockers", Blockers.Count, Blockers.Count + More,
+            "no argument lists more: the lowest blockers are listed; clear them and forecast again");
 }
 
 internal sealed class ColumnBlockerView

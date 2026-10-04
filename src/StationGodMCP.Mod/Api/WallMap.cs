@@ -11,6 +11,8 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api;
 
 /// <summary>
@@ -156,9 +158,17 @@ internal static class WallMapApi
         int wide = System.Math.Max(1, (int)System.Math.Ceiling(w * 2.0 - 1e-6));
         int high = System.Math.Max(1, (int)System.Math.Ceiling(h * 2.0 - 1e-6));
         List<FreeRectView> rects = new List<FreeRectView>();
-        foreach ((int row, int column) in map.FreeRects(wide, high, spec.OptionalBool("one_section") ?? true,
-                     spec.OptionalBool("require_wall") ?? true,
-                     spec.OptionalInt("limit", 1, MaximumRects) ?? 20))
+        int limit = spec.OptionalInt("limit", 1, MaximumRects) ?? 20;
+        List<(int Row, int Column)> found = map.FreeRects(wide, high, spec.OptionalBool("one_section") ?? true,
+            spec.OptionalBool("require_wall") ?? true, limit);
+        if (found.Count >= limit)
+        {
+            Truncations.Note("free_rects", found.Count, found.Count,
+                $"pass free_rects.limit (max {MaximumRects}); the search stopped at limit, so more may fit",
+                atLeast: true);
+        }
+
+        foreach ((int row, int column) in found)
         {
             double u0 = map.U(column);
             double u1 = map.U(column + wide - 1);

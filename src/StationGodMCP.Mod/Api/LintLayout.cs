@@ -38,6 +38,7 @@ internal static class LintLayoutApi
             views.Add(new LintFindingView(ordered[index]));
         }
 
+        Pure.Shaping.Truncations.Capped("findings", views.Count, ordered.Count, "limit", MaximumLimit);
         return new LintLayoutView(described, region.Count, world.Subjects("pieces").Count,
             world.Subjects("devices").Count, world.Subjects("structures").Count, world.Doors,
             LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds);

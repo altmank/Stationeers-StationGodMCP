@@ -70,7 +70,7 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
   </Description>
   <ChangeLog>
 v1.14.0
-- Small default replies: every tool's default reply stays under 8 KB on a big base (shorter pages, long lists cut with shape_truncated and a new limits argument, fixed explanations moved into the tool descriptions). fields reaches nested keys; new omit drops any key. get_ic_status leaves the source out unless asked.
+- Small default replies: every tool's default reply stays under 8 KB on a big base (shorter pages, every reply says in truncated what it held back and how to get it, a new list_limits argument, fixed explanations moved into the tool descriptions). fields reaches nested keys; new omit drops any key. get_ic_status leaves the source out unless asked.
 - set_ic_source source_file deploys a big Lua source from a file; connections area filter; atmosphere_contents reads a Pipe Analyzer's pipe network; console output is captured on a dedicated server.
 - describe_device shows which downlink a Logic Rocket Uplink follows; new set_uplink.
 

@@ -163,8 +163,9 @@ internal static class ApiHost
         }
 
         ShapeRequest shape = answer.Shape ?? ShapeRequest.None;
-        ShapedText shaped = ApiJson.WriteShaped(
-            CallReplyView.Of(answer.RequestId, answer.Result!, answer.Shape != null, answer.HandlerMs, queueMs, frame), shape);
+        ShapedText shaped = ApiJson.WriteReply(
+            CallReplyView.Of(answer.RequestId, answer.Result!, answer.Shape != null, answer.HandlerMs, queueMs, frame), shape,
+            answer.Truncations);
         int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
         int limit = Math.Min(shape.MaxBytes ?? MaxReplyBytes, MaxReplyBytes);
         if (bytes > limit)
@@ -194,12 +195,14 @@ internal static class ApiHost
             ArgumentNames? names = declared.NamesOf(method);
             ResolvedNetworks.Begin();
             GasHoldReply.Begin();
+            Pure.Shaping.Truncations.Begin();
             ShapeRequest replyShape = shape ?? ShapeRequest.None;
-            object result = ResolvedNetworks.Attach(
-                handler(names != null ? new Args(parameters, names, replyShape) : new Args(parameters, replyShape)),
-                ResolvedNetworks.Take());
+            object handled =
+                handler(names != null ? new Args(parameters, names, replyShape) : new Args(parameters, replyShape));
+            TruncatingViews.Note(handled);
+            object result = ResolvedNetworks.Attach(handled, ResolvedNetworks.Take());
             result = GasHoldReply.Attach(result, GasHoldReply.Take());
-            return Answer.Success(requestId, method, result, Elapsed(watch), shape);
+            return Answer.Success(requestId, method, result, Elapsed(watch), shape, Pure.Shaping.Truncations.Take());
         }
         catch (ApiException exception)
         {
@@ -296,8 +299,9 @@ internal static class ApiHost
 internal sealed class Answer
 {
     private Answer(string? requestId, string? method, bool ok, object? result, ErrorView? error, double handlerMs,
-        ShapeRequest? shape)
+        ShapeRequest? shape, List<Truncation>? truncations = null)
     {
+        Truncations = truncations ?? new List<Truncation>();
         RequestId = requestId;
         Method = method;
         Ok = ok;
@@ -324,8 +328,12 @@ internal sealed class Answer
     /// <summary>The request's shape, applied when the reply is serialised; errors are never shaped.</summary>
     internal ShapeRequest? Shape { get; }
 
-    internal static Answer Success(string? requestId, string? method, object result, double handlerMs, ShapeRequest? shape) =>
-        new Answer(requestId, method, true, result, null, handlerMs, shape);
+    /// <summary>The lists the handler held back entries of (Pure.Shaping.Truncations).</summary>
+    internal List<Truncation> Truncations { get; }
+
+    internal static Answer Success(string? requestId, string? method, object result, double handlerMs, ShapeRequest? shape,
+        List<Truncation>? truncations = null) =>
+        new Answer(requestId, method, true, result, null, handlerMs, shape, truncations);
 
     internal static Answer Failure(string? requestId, string? method, ErrorView error, double handlerMs) =>
         new Answer(requestId, method, false, null, error, handlerMs, null);

@@ -186,7 +186,7 @@ internal sealed class CatalogueMethod
 
     /// <summary>
     /// x-default-limits: how many entries of a top-level list the reply keeps when the call's shape sets no limit for
-    /// it; the writer cuts the rest and says so in shape_truncated. Empty for most methods.
+    /// it; the writer cuts the rest and says so in truncated. Empty for most methods.
     /// </summary>
     internal IReadOnlyDictionary<string, int> DefaultLimits { get; private set; } = NoLimits;
 

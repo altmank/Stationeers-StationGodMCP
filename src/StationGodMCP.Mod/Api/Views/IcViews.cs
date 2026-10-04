@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
@@ -455,7 +457,7 @@ internal sealed class RegisterView
     public double Value { get; }
 }
 
-internal sealed class StackWindowView
+internal sealed class StackWindowView : ITruncatingView
 {
     internal StackWindowView(int size, int startAddress, List<double> values)
     {
@@ -472,6 +474,15 @@ internal sealed class StackWindowView
     public List<double> Values { get; }
 
     public int Count { get; }
+
+    public void NoteTruncations(string path)
+    {
+        if (Values.Count < Size)
+        {
+            Truncations.Note(path + "values", Values.Count, Size,
+                $"pass stack_start (now {StartAddress}) and stack_count (max {Size})");
+        }
+    }
 }
 
 /// <summary>An alias the chip's alias instruction made: a register or device and its index.</summary>

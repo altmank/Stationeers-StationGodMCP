@@ -27,7 +27,7 @@ internal sealed record ToolSet(
         "Keys kept in each entry of the reply's lists; a dotted name is a path read from each entry (occupant.prefab_name) or from one list's entries (things.position.x).";
 
     private const string LimitsDescription =
-        "Entries kept per top-level list, {list: count}; lifts a list's default cut (shape_truncated names the full length).";
+        "Entries kept per top-level list, {list: count}; lifts a list's default cut (truncated names the full length).";
 
     private const string OmitDescription =
         "Keys left out of the reply, as paths from its top (source, runtime.registers; through a list each entry: members.position).";

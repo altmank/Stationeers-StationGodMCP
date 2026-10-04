@@ -56,7 +56,7 @@ internal static class ReplyShapes
         ["grid_survey"] =
             "A page lists everything in its cells, and a dense base holds 30 pieces in one 2 m cell, so a page runs past " +
             "the budget however few cells it has. It is read a page at a time when routing; the default page is 8 " +
-            "cells with at most 40 pieces and 20 devices (shape_truncated says what was cut), and kinds, network_ids, " +
+            "cells with at most 40 pieces and 20 devices (truncated says what was cut), and kinds, network_ids, " +
             "sections and compact narrow it.",
         ["rocket_status"] =
             "Every rocket in full is about 7 KB (fuel lines, engines, power devices); four rockets pass the budget. " +

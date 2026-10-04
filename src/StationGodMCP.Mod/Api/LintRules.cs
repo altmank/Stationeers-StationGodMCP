@@ -141,6 +141,7 @@ internal static class LintRulesApi
         GameLintWorld world = GameLintWorld.Audit(Around(at ?? Where(reference!.Value)));
         LintContext context = new LintContext(world);
         List<LintExplainView> explained = new List<LintExplainView>();
+        int matched = 0;
         IReadOnlyList<ILintObject> subjects = world.Subjects(rule.Select.Set);
         if (rule.Select.IsPairs)
         {
@@ -148,7 +149,7 @@ internal static class LintRulesApi
             {
                 foreach (ILintObject b in subjects)
                 {
-                    if (a.Key.CompareTo(b.Key) < 0 && Names(a, b, reference, other) && explained.Count < MaximumExplained)
+                    if (a.Key.CompareTo(b.Key) < 0 && Names(a, b, reference, other) && ++matched <= MaximumExplained)
                     {
                         LintSubjectRef pair = new LintSubjectRef(a, b);
                         explained.Add(new LintExplainView(rule.Id, pair.Describe, LintEngine.Judge(rule, pair, context, true, true)));
@@ -160,13 +161,16 @@ internal static class LintRulesApi
         {
             foreach (ILintObject subject in subjects)
             {
-                if (Matches(subject, reference, port, at) && explained.Count < MaximumExplained)
+                if (Matches(subject, reference, port, at) && ++matched <= MaximumExplained)
                 {
                     explained.Add(new LintExplainView(rule.Id, subject.Describe,
                         LintEngine.Judge(rule, new LintSubjectRef(subject), context, true, true)));
                 }
             }
         }
+
+        Pure.Shaping.Truncations.Note("explained", explained.Count, matched,
+            "name one subject: other_id for a pair, port for one port of a device");
 
         if (explained.Count == 0)
         {

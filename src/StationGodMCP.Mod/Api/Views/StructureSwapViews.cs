@@ -5,6 +5,8 @@ using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Shaping;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
@@ -12,7 +14,7 @@ namespace StationGodMCP.Api.Views;
 /// before and after, the materials, the rooms around the pieces, and every problem found. status is dry_run,
 /// scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
 /// </summary>
-internal sealed class StructureSwapReportView
+internal sealed class StructureSwapReportView : ITruncatingView
 {
     internal StructureSwapReportView(UpgradeHeader header, UpgradeCounts counts, StructureSwapLists lists,
         StructureSwapResources resources)
@@ -90,6 +92,14 @@ internal sealed class StructureSwapReportView
     /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<string>? Notes { get; }
+
+    public void NoteTruncations(string path)
+    {
+        Truncations.Capped(path + "pieces", Pieces.Count, ToSwap, "limit", StructureSwapArgs.MaximumPieces);
+        Truncations.Capped(path + "kept_pieces", KeptPieces.Count, Kept, "limit", StructureSwapArgs.MaximumPieces);
+        Truncations.Capped(path + "unmatched_pieces", UnmatchedPieces.Count, Unmatched, "limit",
+            StructureSwapArgs.MaximumPieces);
+    }
 }
 
 internal sealed class StructureSwapLists
@@ -432,7 +442,7 @@ internal sealed class StructureRoomView
 /// stopped (a swap failed part way: swapped lists what was done, stopped_at why and whether the piece was restored),
 /// applied_unchecked (swapped, but a check could not run: see error), refused (nothing was changed).
 /// </summary>
-internal sealed class StructureSwapJobView
+internal sealed class StructureSwapJobView : ITruncatingView
 {
     internal StructureSwapJobView(string jobId, string tool, string status, StructureSwapReportView preflight,
         StructureSwapJobResult? result)
@@ -488,6 +498,12 @@ internal sealed class StructureSwapJobView
     public StructureRoomCheckView? RoomCheck { get; }
 
     public ErrorView? Error { get; }
+
+    public void NoteTruncations(string path)
+    {
+        Preflight?.NoteTruncations(path + "preflight.");
+        FinalCheck?.NoteTruncations(path + "final_check.");
+    }
 }
 
 internal sealed class StructureSwapJobResult
