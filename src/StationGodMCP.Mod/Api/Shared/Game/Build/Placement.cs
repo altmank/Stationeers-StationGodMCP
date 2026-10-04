@@ -123,7 +123,8 @@ internal sealed class BuildCatalogue
 
         return _kitBuilt.Contains(prefab.PrefabHash)
             ? null
-            : $"No loaded kit builds {prefab.PrefabName} (no Constructor or MultiConstructor lists it).";
+            : $"No loaded kit builds {prefab.PrefabName} (no Constructor or MultiConstructor lists it)." +
+              KitBuiltNames.HintFor(prefab, _kitBuilt);
     }
 
     private static Thing? ByName(string name)

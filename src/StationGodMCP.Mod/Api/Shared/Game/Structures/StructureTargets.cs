@@ -69,6 +69,7 @@ internal sealed class StructureTargets
 
         return _kitPlaced.Contains(prefab.PrefabHash)
             ? null
-            : $"No loaded kit builds {prefab.PrefabName} (no MultiConstructor lists it).";
+            : $"No loaded kit builds {prefab.PrefabName} (no MultiConstructor lists it)." +
+              Build.KitBuiltNames.HintFor(prefab, _kitPlaced);
     }
 }

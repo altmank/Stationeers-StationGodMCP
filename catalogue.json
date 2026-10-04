@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.18.0",
+  "mod_version": "1.18.1",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -88,7 +88,7 @@
           },
           "output_file": {
             "summary": "output_file: the whole reply as a file, answered by a pointer.",
-            "text": "output_file: true, or a file name (letters, digits, - _ . and no folders), writes the whole reply as indented JSON and answers a pointer {output_file (the full path), bytes, tool, counts (each top-level list's length), summary (the short top-level values), in_file_only (keys too large to repeat), truncated}. The folder is %LOCALAPPDATA%\\StationGodMCP\\output unless the server runs with --output-dir or STATIONGODMCP_OUTPUT_DIR. Files older than 7 days, and beyond the newest 200, are deleted; a named file is overwritten. A reply larger than the server's inline limit is written to a file the same way (auto_output_file)."
+            "text": "output_file: true, or a file name (letters, digits, - _ . and no folders: a path is refused), writes the whole reply as indented JSON and answers a pointer {output_file (the full path), bytes, tool, counts (each top-level list's length), summary (the short top-level values), in_file_only (keys too large to repeat), truncated}. The folder is %LOCALAPPDATA%\\StationGodMCP\\output unless the server runs with --output-dir or STATIONGODMCP_OUTPUT_DIR. Files older than 7 days, and beyond the newest 200, are deleted; a named file is overwritten. A reply larger than the server's inline limit is written to a file the same way (auto_output_file)."
           }
         }
       },

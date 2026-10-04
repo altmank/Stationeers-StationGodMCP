@@ -37,7 +37,9 @@ public abstract record OutputChoice
             ? new ToFile(new OutputTarget.Named(name.EndsWith(Extension, StringComparison.OrdinalIgnoreCase) ? name : name + Extension))
             : new Refused(
                 $"Argument 'output_file' must be true or a plain file name (letters, digits, '-', '_' and '.', at most " +
-                $"{MaximumLength} characters, not starting with '.', no folders); '{given}' is not.");
+                $"{MaximumLength} characters, not starting with '.', no folders); '{given}' is not. The file goes in " +
+                @"the output folder, %LOCALAPPDATA%\StationGodMCP\output unless the server runs with --output-dir or " +
+                "STATIONGODMCP_OUTPUT_DIR; the pointer's output_file gives the full path.");
     }
 
     private static bool IsAllowed(char character) =>

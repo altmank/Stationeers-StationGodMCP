@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.18.1
+
+- **`output_file` with a path** is refused naming where the file goes: the output folder
+  (`%LOCALAPPDATA%\StationGodMCP\output` unless the server runs with `--output-dir` or `STATIONGODMCP_OUTPUT_DIR`).
+- **A prefab no kit builds** (`describe_prefab`, `place_structure`, the replace tools) names the buildable prefabs
+  whose name holds it: `StructurePipeOneWayValve` points to `StructurePipeOneWayValveLever`.
+
 ## 1.18.0
 
 Fixes for tools that confused agents working on a fuel plant.
