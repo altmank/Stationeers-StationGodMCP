@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Assets.Scripts;
+using Assets.Scripts.GridSystem;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
@@ -38,6 +39,20 @@ internal abstract class PieceSelection
         }
 
         internal List<ThingId> Ids { get; }
+    }
+
+    /// <summary>Every piece standing in a small cell of a box (both corners included).</summary>
+    internal sealed class Box : PieceSelection
+    {
+        internal Box(GridCell min, GridCell max)
+        {
+            Min = min;
+            Max = max;
+        }
+
+        internal GridCell Min { get; }
+
+        internal GridCell Max { get; }
     }
 }
 
@@ -206,12 +221,14 @@ internal sealed class SwapPrice
 /// <summary>A clean tool's reason for a swap: the operation, the first old piece's ends, the connected ones.</summary>
 internal sealed class CleanDetail
 {
-    internal CleanDetail(string operation, List<string> ends, List<string> connectedEnds, int? round = null)
+    internal CleanDetail(string operation, List<string> ends, List<string> connectedEnds, int? round = null,
+        string? why = null)
     {
         Operation = operation;
         Ends = ends;
         ConnectedEnds = connectedEnds;
         Round = round;
+        Why = why;
     }
 
     /// <summary>simplify_junction, split_long_straight, merge_straights or remove_dead_end.</summary>
@@ -223,6 +240,9 @@ internal sealed class CleanDetail
 
     /// <summary>For a removal: its round (1 for a stub now, 2 for one the first round leaves, ...).</summary>
     internal int? Round { get; }
+
+    /// <summary>clean_chutes' removals: why the piece serves no path (orphan, no_consumer, no_source).</summary>
+    internal string? Why { get; }
 }
 
 /// <summary>A member left as it is, and why.</summary>
@@ -268,6 +288,9 @@ internal sealed class UpgradePlan
 
     /// <summary>What remove_redundant removed and kept, with why; null when it was not asked for.</summary>
     internal RedundancyRecord? Redundancy { get; set; }
+
+    /// <summary>clean_chutes: pieces the run would change that carry an item, left as they are; null otherwise.</summary>
+    internal List<RidingChute>? Riding { get; set; }
 
     internal List<UpgradeProblemView> Problems { get; } = new List<UpgradeProblemView>();
 
@@ -346,6 +369,8 @@ internal static class UpgradePlanner
                 return Capped(family.NetworkMembers(network.Id));
             case PieceSelection.Pieces pieces:
                 return Capped(Listed(family, pieces.Ids, plan));
+            case PieceSelection.Box box:
+                return Capped(InBox(family, box));
             default:
                 throw ApiErrors.InvalidArgument("Pass network_id or reference_ids.");
         }
@@ -356,6 +381,32 @@ internal static class UpgradePlanner
             ? members
             : throw ApiErrors.Refused("too_many_pieces",
                 $"{members.Count} pieces; at most {MaximumPieces} per run. Name them with reference_ids in parts.");
+
+    // Each small cell of the box once, every piece once however many cells it fills.
+    private static List<SmallGrid> InBox(UpgradeFamily family, PieceSelection.Box box)
+    {
+        List<SmallGrid> pieces = new List<SmallGrid>();
+        HashSet<long> seen = new HashSet<long>();
+        GridController world = GridController.World;
+        for (int y = box.Min.Y; y <= box.Max.Y; y += GridStep.CellSize)
+        {
+            for (int z = box.Min.Z; z <= box.Max.Z; z += GridStep.CellSize)
+            {
+                for (int x = box.Min.X; x <= box.Max.X; x += GridStep.CellSize)
+                {
+                    SmallCell? cell = world.GetSmallCell(new Grid3(x, y, z));
+                    SmallGrid? piece = cell != null ? family.PieceIn(cell) : null;
+                    if (piece != null && !piece.IsBeingDestroyed && family.IsPiece(piece) &&
+                        seen.Add(piece.ReferenceId))
+                    {
+                        pieces.Add(piece);
+                    }
+                }
+            }
+        }
+
+        return pieces;
+    }
 
     private static List<SmallGrid> Listed(UpgradeFamily family, List<ThingId> ids, UpgradePlan plan)
     {

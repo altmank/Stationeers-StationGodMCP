@@ -135,6 +135,8 @@
       "dead_end_pieces": {"type": ["array", "null"]},
       "loops": {"type": ["array", "null"]},
       "redundant": {"type": ["object", "null"]},
+      "riding_count": {"type": ["integer", "null"]},
+      "riding": {"type": ["array", "null"]},
       "from": {"type": ["object", "null"]},
       "coils": {"type": "array"},
       "refund_enabled": {"type": "boolean"},

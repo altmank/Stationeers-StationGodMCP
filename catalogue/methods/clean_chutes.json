@@ -1,16 +1,22 @@
 {
-  "name": "upgrade_cables",
-  "summary": "Swap cable pieces for heavy (default) or super heavy cable in place, piece for piece, as the coil's merge builds them; a whole network or chosen pieces. Dry run by default; confirm to swap.",
+  "name": "clean_chutes",
+  "summary": "Remove chute pieces no item can pass through to a consumer; a junction, overflow or splitter left with one way in and out becomes a straight or corner. Select by network_id, reference_ids or a min/max box. Pieces holding items stay. Dry run by default; confirm to run.",
   "help": {
-    "text": "Each piece's replacement is the first piece of the target coil whose cells and connection ends match the old piece exactly, at the old rotation or turned: straights, corners, junctions and long straights all map. Pieces at or above the target stay. Devices connect to any cable type.",
+    "text": "Judges whole chute networks, even when only some pieces are selected; only selected pieces change. Kit (Chute) pays and takes back; a replacement keeps paint and owner. The report is clean_cables' (target minimal): pieces lists each removal (operation remove_dead_chute, with why) and each swap (simplify_junction, with connected_ends); dead_end_pieces the dead pieces that stay, with stopped_by; kept_pieces each piece on a path left with an open end, with why; riding the pieces that hold items.",
     "topics": {
-      "report": {
-        "summary": "What the dry run reports.",
-        "text": "pieces (reference_id, prefab_name, position, rotation_deg, target_prefab_name, target_rotation_deg, rotation_kept, cost, network_id; up to limit), by_prefab (count, cost_each, cost_total, refund_each, max_power_w_before and after), kept_pieces and unmatched_pieces with reasons, coils (needed, available, stacks), refund, networks (loads, weakest cable before and after, lowest fuse, device_count), devices next to or on the pieces (first 5), connectivity, problems and ready."
+      "dead": {
+        "summary": "Which chute pieces are dead.",
+        "text": "Items move one way through a chute: a straight or corner passes them on, a junction merges its inputs into its output, an overflow or splitter sends them to its outputs. A piece serves a path when an item can reach it from a source and go on from it to a consumer. Sources: a device port that pushes items out (a sorter or stacker output, a chute bin, an inlet), a two-way rocket umbilical port, and any piece an item rides in. Consumers: a device port that takes items (a machine input, an export bin, an outlet) and two-way ports. An open end is no consumer: what leaves through it falls on the floor. why names the cause: orphan (joined to nothing), no_consumer or no_source. Devices are never removed and count by their ports whatever feeds them; a closed valve counts as open.",
+        "subtopics": {
+          "open_ends": {
+            "summary": "No end left where items fall out.",
+            "text": "A dead piece stays (stopped_by would_drop_items) when a piece or chute device that stays would push items into it, and so may the dead pieces behind it. The exception is a junction, overflow or splitter on a path: it becomes a straight or corner without that end in the same run. One with an end that already leads nowhere becomes a plain piece too; one left whole is in kept_pieces with no_plain_piece, keep_ids or item_riding. An overflow left open to spill on the floor counts as dead: spare it with keep_ids."
+          }
+        }
       },
-      "problems": {
-        "summary": "The problems a dry run can list.",
-        "text": "unmatched_pieces (no replacement; skip_unmatched leaves them), not_enough_coils, link_added, link_lost, connectivity_model_mismatch, mounted_device_turned, shape_model_mismatch, not_complete, rocket_internal, no_local_player, thing_not_found."
+      "riding": {
+        "summary": "Items riding in chutes.",
+        "text": "The game destroys an item with the chute it rides in, so a piece holding an item is never removed or replaced. riding skip (the default) leaves it, and the dead pieces it would push the item into, and runs the rest; riding refuse refuses the whole run with items_riding while any piece it would change holds one. The riding list names each piece, what it carries and what happens to it (kept or not_simplified). A dry run only reports. Let the item pass, or take it out with move_item, and run again."
       }
     },
     "shared": ["swaps", "jobs", "refunds", "networks", "truncation"]
@@ -40,17 +46,30 @@
             "additionalProperties": false
           }
         ],
-        "description": "A network, every piece of it: its id or a handle on it (see networks)."
+        "description": "A chute network, every piece of it (see networks)."
       },
-      "wait": {"$ref": "defs/wait.json"},
       "reference_ids": {
         "type": "array",
         "minItems": 1,
         "maxItems": 4096,
         "items": {"type": "string"},
-        "description": "Pieces by reference id, up to 4096; or give network_id."
+        "description": "Chute pieces to clean, up to 4096; only they change."
       },
-      "to": {"type": "string", "enum": ["heavy", "super_heavy"], "description": "heavy (default) or super_heavy."},
+      "min": {"description": "Box corner, [x, y, z] in metres; with max: every chute piece in the box."},
+      "max": {"description": "The other corner; at most a 32 m cube."},
+      "keep_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4096,
+        "items": {"type": "string"},
+        "description": "Pieces never removed or replaced; the dead pieces they would push items into stay too."
+      },
+      "riding": {
+        "type": "string",
+        "enum": ["skip", "refuse"],
+        "description": "A piece holding an item: skip leaves it and runs the rest (default); refuse refuses the run (topic riding)."
+      },
+      "wait": {"$ref": "defs/wait.json"},
       "dry_run": {"$ref": "defs/dry_run.json"},
       "confirm": {"$ref": "defs/confirm.json"},
       "from_id": {
@@ -60,15 +79,10 @@
       "skip_unmatched": {"$ref": "defs/skip_unmatched.json"},
       "refund": {
         "type": "boolean",
-        "description": "Give back what deconstructing the old pieces would. Default true; false is refund_to none."
+        "description": "Give back kits for removed pieces and cheaper replacements. Default true; false is refund_to none."
       },
       "refund_to": {"$ref": "defs/refund_to.json"},
-      "limit": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 4096,
-        "description": "Pieces listed per list; default 5. All are counted and checked."
-      },
+      "limit": {"$ref": "defs/limit.json"},
       "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
     },
     "additionalProperties": false

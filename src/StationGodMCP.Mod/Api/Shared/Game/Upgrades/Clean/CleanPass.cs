@@ -217,11 +217,15 @@ internal sealed class CleanPass
     internal void KeepFor(SmallGrid piece, string reason, string message) =>
         _keptBy[piece.ReferenceId] = new SkippedPiece(piece, reason, message);
 
-    /// <summary>A dead end left in place, reported with the reason it stays (null: no removal was asked for).</summary>
-    internal void DeadEnd(SmallGrid piece, List<PieceEnd> connected, string? stoppedBy, string? stopDetail = null)
+    /// <summary>
+    /// A dead end left in place, reported with the reason it stays (null: no removal was asked for) and what makes it
+    /// dead (default isolated or dead_end, by its connected ends).
+    /// </summary>
+    internal void DeadEnd(SmallGrid piece, List<PieceEnd> connected, string? stoppedBy, string? stopDetail = null,
+        string? reason = null)
     {
         Claim(piece);
-        string reason = connected.Count == 0 ? "isolated" : "dead_end";
+        reason ??= connected.Count == 0 ? "isolated" : "dead_end";
         Plan.DeadEnds.Add(new DeadEndPiece(piece, reason, LiveOf(piece), connected, stoppedBy, stopDetail));
     }
 
@@ -255,8 +259,8 @@ internal sealed class CleanPass
     }
 
     internal static CleanDetail Detail(string operation, PieceModel live, List<PieceEnd> connected,
-        int? round = null) =>
-        new CleanDetail(operation, EndCleanup.DirectionsOf(live.Ends), EndCleanup.DirectionsOf(connected), round);
+        int? round = null, string? why = null) =>
+        new CleanDetail(operation, EndCleanup.DirectionsOf(live.Ends), EndCleanup.DirectionsOf(connected), round, why);
 
 }
 

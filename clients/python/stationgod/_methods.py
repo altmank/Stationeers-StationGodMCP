@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:03545ae6acdb4571d35a919d3d0ddfe99aee6ce8e1940852b94fac50367d036e'
-MOD_VERSION = '1.15.0'
+CATALOGUE_HASH = 'sha256:9b5436cbd3cfac07886345074be9ccfb19e2e1a5b3c33cd6aa7480cac51fb502'
+MOD_VERSION = '1.16.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -76,6 +76,31 @@ TABLE = {'catalogue': {'class': 'read',
                              'root',
                              'wait',
                              'operations',
+                             'dry_run',
+                             'confirm',
+                             'from_id',
+                             'skip_unmatched',
+                             'refund',
+                             'refund_to',
+                             'limit',
+                             'job_id'],
+                  'required': [],
+                  'shaping': 'lists',
+                  'protocol': False},
+ 'clean_chutes': {'class': 'write',
+                  'class_when': [{'when': {'dry_run': {'absent': True}}, 'class': 'read'},
+                                 {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
+                  'effects': [],
+                  'paging': None,
+                  'duration': None,
+                  'params': ['include_notes',
+                             'network_id',
+                             'reference_ids',
+                             'min',
+                             'max',
+                             'keep_ids',
+                             'riding',
+                             'wait',
                              'dry_run',
                              'confirm',
                              'from_id',
@@ -1492,6 +1517,13 @@ class Methods:
         Class: write (other classes at some arguments). Arguments: include_notes, network_id, reference_ids, keep_ids, only_ids, older_than_id, root, wait, operations, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
         return self.call('clean_cables', **{'include_notes': include_notes, 'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
+
+    def clean_chutes(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, reference_ids: list | None = None, min: object | None = None, max: object | None = None, keep_ids: list | None = None, riding: str | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
+        """Remove chute pieces no item can pass through to a consumer; a junction, overflow or splitter left with one way in and out becomes a straight or corner.
+
+        Class: write (other classes at some arguments). Arguments: include_notes, network_id, reference_ids, min, max, keep_ids, riding, wait, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
+        """
+        return self.call('clean_chutes', **{'include_notes': include_notes, 'network_id': network_id, 'reference_ids': reference_ids, 'min': min, 'max': max, 'keep_ids': keep_ids, 'riding': riding, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
     def clean_pipes(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, reference_ids: list | None = None, keep_ids: list | None = None, only_ids: list | None = None, older_than_id: str | None = None, root: str | None = None, wait: bool | None = None, operations: list | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
         """Tidy pipe networks in place with clean_cables' operations, keeping every network's contents: removals that would empty one stop.

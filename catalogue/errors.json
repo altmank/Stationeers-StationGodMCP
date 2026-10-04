@@ -252,6 +252,11 @@
     "origin": "protocol",
     "see": {"topic": "shaping"}
   },
+  "items_riding": {
+    "description": "A chute piece the run would remove or replace holds an item, and riding is refuse. Let the item pass or take it out with move_item, or pass riding skip to leave those pieces.",
+    "origin": "tool",
+    "see": {"tool": "clean_chutes", "topic": "riding"}
+  },
   "job_not_found": {
     "description": "No job with that id is running, queued or kept. Job ids are kept for the last jobs only; start the run again if needed.",
     "origin": "tool",

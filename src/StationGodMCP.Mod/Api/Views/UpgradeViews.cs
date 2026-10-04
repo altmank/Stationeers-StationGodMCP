@@ -18,8 +18,11 @@ internal sealed class UpgradeReportView : ITruncatingView
 {
     internal UpgradeReportView(UpgradeHeader header, UpgradeCounts counts, UpgradeLists lists,
         UpgradeResources resources, UpgradeConnectivityView? connectivity, UpgradeDeadEnds? deadEnds = null,
-        List<UpgradeLoopView>? loops = null, UpgradeRedundancyView? redundant = null)
+        List<UpgradeLoopView>? loops = null, UpgradeRedundancyView? redundant = null,
+        UpgradeRidingList? riding = null)
     {
+        Riding = riding?.Pieces;
+        RidingCount = riding?.Count;
         Loops = loops;
         Redundant = redundant;
         Tool = header.Tool;
@@ -99,6 +102,13 @@ internal sealed class UpgradeReportView : ITruncatingView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public UpgradeRedundancyView? Redundant { get; }
 
+    /// <summary>clean_chutes only: pieces the run would change that carry an item, all counted, up to limit listed.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? RidingCount { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeRidingView>? Riding { get; }
+
     public ThingView? From { get; }
 
     public List<UpgradeCoilView> Coils { get; }
@@ -132,6 +142,12 @@ internal sealed class UpgradeReportView : ITruncatingView
         if (DeadEndPieces != null && DeadEnds.HasValue)
         {
             Truncations.Capped(path + "dead_end_pieces", DeadEndPieces.Count, DeadEnds.Value, "limit",
+                ReplyDefaults.ReportListMaximum);
+        }
+
+        if (Riding != null && RidingCount.HasValue)
+        {
+            Truncations.Capped(path + "riding", Riding.Count, RidingCount.Value, "limit",
                 ReplyDefaults.ReportListMaximum);
         }
 
@@ -289,6 +305,7 @@ internal sealed class UpgradePieceView
         ConnectedEnds = clean?.ConnectedEnds;
         ReplacementCount = clean?.ReplacementCount;
         Round = clean?.Extras.Round;
+        Why = clean?.Extras.Why;
         MergedReferenceIds = clean?.Extras.Merged;
         RefundCount = clean != null ? clean.Extras.Refund : (int?)null;
     }
@@ -333,6 +350,10 @@ internal sealed class UpgradePieceView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? Round { get; }
 
+    /// <summary>clean_chutes removals only: why no item reaches a consumer through it (orphan, no_consumer, no_source).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Why { get; }
+
     /// <summary>merge_straights only: every single the long piece replaces, in line order.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<ThingId>? MergedReferenceIds { get; }
@@ -345,14 +366,17 @@ internal sealed class UpgradePieceView
 /// <summary>The clean view's fields only some operations have.</summary>
 internal sealed class UpgradeCleanExtras
 {
-    internal UpgradeCleanExtras(int? round, List<ThingId>? merged, int refund)
+    internal UpgradeCleanExtras(int? round, List<ThingId>? merged, int refund, string? why = null)
     {
         Round = round;
         Merged = merged;
         Refund = refund;
+        Why = why;
     }
 
     internal int? Round { get; }
+
+    internal string? Why { get; }
 
     internal List<ThingId>? Merged { get; }
 
@@ -482,6 +506,41 @@ internal sealed class UpgradeDeadEndView
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? StoppedBy { get; }
+}
+
+/// <summary>clean_chutes' riding pieces: how many, and the first limit of them.</summary>
+internal sealed class UpgradeRidingList
+{
+    internal UpgradeRidingList(int count, List<UpgradeRidingView> pieces)
+    {
+        Count = count;
+        Pieces = pieces;
+    }
+
+    internal int Count { get; }
+
+    internal List<UpgradeRidingView> Pieces { get; }
+}
+
+/// <summary>
+/// A chute piece the run would remove or replace that has an item riding in it: the piece (dead_end_pieces or
+/// kept_pieces gives where it is), what it carries, and what the run does instead (kept: a dead piece left in place;
+/// not_simplified: a junction, overflow or splitter left whole).
+/// </summary>
+internal sealed class UpgradeRidingView
+{
+    internal UpgradeRidingView(ThingId piece, ThingView carries, string held)
+    {
+        ReferenceId = piece;
+        Carries = carries;
+        Held = held;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public ThingView Carries { get; }
+
+    public string Held { get; }
 }
 
 internal sealed class UpgradeTargetView
@@ -817,6 +876,71 @@ internal sealed class UpgradeMountedView
 
     /// <summary>Null when it cannot be predicted (the replacement is turned; the run is refused then).</summary>
     public bool? AttachedAfter { get; }
+}
+
+/// <summary>clean_chutes' counts for one chute network.</summary>
+internal sealed class ChuteNetworkCounts
+{
+    internal ChuteNetworkCounts(int pieces, int removed, int replaced, int riding)
+    {
+        Pieces = pieces;
+        Removed = removed;
+        Replaced = replaced;
+        Riding = riding;
+    }
+
+    internal int Pieces { get; }
+
+    internal int Removed { get; }
+
+    internal int Replaced { get; }
+
+    internal int Riding { get; }
+}
+
+/// <summary>
+/// A chute network a clean_chutes run touches: its pieces, how many the run removes and replaces, how many items ride
+/// in it, and its devices. After a run the game has given it a new id (renumbered_from names the old one).
+/// </summary>
+internal sealed class ChuteNetworkReportView : IListsDevices
+{
+    internal ChuteNetworkReportView(ThingId networkId, ChuteNetworkCounts counts, List<ThingView> devices,
+        ThingId? renumberedFrom = null)
+    {
+        NetworkId = networkId;
+        RenumberedFrom = renumberedFrom;
+        ChuteCount = counts.Pieces;
+        RemoveCount = counts.Removed;
+        ReplaceCount = counts.Replaced;
+        ItemsRiding = counts.Riding;
+        Devices = devices;
+        DeviceCount = devices.Count;
+    }
+
+    public ThingId NetworkId { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ThingId? RenumberedFrom { get; }
+
+    public int ChuteCount { get; }
+
+    public int RemoveCount { get; }
+
+    public int ReplaceCount { get; }
+
+    public int ItemsRiding { get; }
+
+    public int DeviceCount { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ThingView>? Devices { get; private set; }
+
+    public object WithoutDevices()
+    {
+        ChuteNetworkReportView copy = (ChuteNetworkReportView)MemberwiseClone();
+        copy.Devices = null;
+        return copy;
+    }
 }
 
 /// <summary>A cable network a swapped piece is in, before and as predicted after.</summary>

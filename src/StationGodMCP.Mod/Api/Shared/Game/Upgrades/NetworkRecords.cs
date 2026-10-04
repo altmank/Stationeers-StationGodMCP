@@ -584,3 +584,111 @@ internal sealed class PipeNetworkRecord : NetworkRecord
     private static bool Close(double a, double b) =>
         Math.Abs(a - b) <= RelativeTolerance * Math.Max(1.0, Math.Max(Math.Abs(a), Math.Abs(b)));
 }
+
+/// <summary>
+/// A chute network: how many pieces it holds, how many the run removes or replaces, how many items ride in it, and its
+/// devices. The game rebuilds a chute network from each neighbour of a removed piece (Chute.OnDestroy), so it takes a
+/// new id after the run and a removal may leave it in parts; what the run must keep is checked by the links, so after
+/// the run only each replacement's own network is.
+/// </summary>
+internal sealed class ChuteNetworkRecord : NetworkRecord
+{
+    private readonly ChuteNetwork _network;
+    private readonly int _piecesBefore;
+    private ChuteNetwork? _now;
+
+    internal ChuteNetworkRecord(ChuteNetwork network, List<PlannedSwap> swaps)
+        : base(new ThingId(network.ReferenceId), swaps, network.DeviceList, MembersOf(network))
+    {
+        _network = network;
+        _piecesBefore = MembersOf(network).Count;
+    }
+
+    internal override object Report() => ReportOf(_network, false);
+
+    private ChuteNetworkReportView ReportOf(ChuteNetwork network, bool after)
+    {
+        List<SmallGrid> pieces = MembersOf(network);
+        int riding = 0;
+        foreach (SmallGrid piece in pieces)
+        {
+            if (ChuteFamily.ItemIn(piece) != null)
+            {
+                riding++;
+            }
+        }
+
+        int removed = 0;
+        foreach (PlannedSwap swap in Swaps)
+        {
+            removed += swap.Removes ? swap.Olds.Count : 0;
+        }
+
+        return new ChuteNetworkReportView(new ThingId(network.ReferenceId),
+            new ChuteNetworkCounts(pieces.Count, removed, Swaps.Count - removed, riding), ViewsOf(network.DeviceList),
+            after ? RenumberedFrom(network) : null);
+    }
+
+    // A chute network holds nothing of its own (items ride in the pieces): nothing to refuse here.
+    internal override void AddProblems(UpgradePlan plan)
+    {
+    }
+
+    internal override object? ReportNow() => _now != null ? ReportOf(_now, true) : null;
+
+    internal override void Verify(List<UpgradeProblemView> problems, Dictionary<long, List<SmallGrid>> replacements)
+    {
+        _now = Survivor(static id => Referencable.Find<ChuteNetwork>(id), NetworkOf, replacements) as ChuteNetwork;
+        foreach (PlannedSwap swap in Swaps)
+        {
+            if (!replacements.TryGetValue(swap.GroupId, out List<SmallGrid> built))
+            {
+                continue;
+            }
+
+            foreach (SmallGrid replacement in built)
+            {
+                if (replacement != null && NetworkOf(replacement) == null)
+                {
+                    problems.Add(new UpgradeProblemView("network_changed",
+                        $"The replacement of {swap.GroupId} is on no chute network.",
+                        new ThingId(replacement.ReferenceId)));
+                }
+            }
+        }
+
+        if (_now == null && _piecesBefore + AddedMembers > 0 && AnyReplacement(replacements))
+        {
+            Missing(problems, _piecesBefore);
+        }
+    }
+
+    private bool AnyReplacement(Dictionary<long, List<SmallGrid>> replacements)
+    {
+        foreach (PlannedSwap swap in Swaps)
+        {
+            if (!swap.Removes && replacements.ContainsKey(swap.GroupId))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static IReferencable? NetworkOf(SmallGrid piece) => piece is Chute chute ? chute.ChuteNetwork : null;
+
+    private static List<SmallGrid> MembersOf(ChuteNetwork network)
+    {
+        List<SmallGrid> pieces = new List<SmallGrid>();
+        foreach (INetworkedStructure member in Runs.RunNetworks.Copy(network.StructureList))
+        {
+            if (member?.GetAsThing is SmallGrid grid && grid != null)
+            {
+                pieces.Add(grid);
+            }
+        }
+
+        return pieces;
+    }
+}

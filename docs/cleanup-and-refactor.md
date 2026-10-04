@@ -2,7 +2,7 @@
 
 [Back to the README](../README.md)
 
-Tidy a cable or pipe network in place, find out how a network reaches its devices, price a removal, and rebuild a
+Tidy a cable, pipe or chute network in place, find out how a network reaches its devices, price a removal, and rebuild a
 whole base's wiring without cutting anything off. Every tool that changes something works as described in
 [building.md](building.md#how-every-building-tool-works): dry run first, a held-tick job, materials and refunds from
 your inventory.
@@ -12,6 +12,7 @@ your inventory.
 | Tool | What it does |
 | --- | --- |
 | `clean_cables`, `clean_pipes` | Tidy a network in place with one or more operations. |
+| `clean_chutes` | Remove the chute pieces no item can pass through to a consumer, and turn junctions, overflows and splitters that lose a branch into straights or corners. |
 | `plan_removal` | What removing pieces would give back and whether it would split a network. Read only. |
 | `feed_paths` | How a network reaches each device from a root device, and which rooms each feed passes through. Read only. |
 
@@ -53,6 +54,47 @@ Tidy a network, `clean_cables`:
 
 ```json
 { "network_id": "140977", "operations": ["remove_dead_ends", "simplify_junctions"] }
+```
+
+## Cleaning a chute network
+
+`clean_chutes` follows the items. Name a whole network with `network_id`, pieces with `reference_ids`, or every chute
+in a box with `min` and `max` (corners in metres, at most a 32 m cube). The tool judges the whole networks those pieces
+are on; only the named pieces change.
+
+**Which pieces are dead.** Items move one way through a chute: a straight or corner passes them on, a junction merges
+its two inputs into its output, an overflow or splitter sends them to its outputs. A piece serves a path when an item
+can reach it from a source and go on from it to a consumer.
+
+- Sources: a device port that pushes items out (a sorter, stacker or machine output, a chute bin, an inlet), a rocket
+  chute umbilical (two-way), and any piece an item rides in.
+- Consumers: a device port that takes items in (a machine input, a chute export bin, an outlet, a vending machine) and
+  a two-way umbilical port.
+- An open end is not a consumer: what leaves through it falls on the floor.
+
+Each removed piece gives `why`: `orphan` (joined to nothing), `no_consumer` (nothing it leads to takes items) or
+`no_source` (it leads to a consumer, but nothing ever puts an item into it). Devices are never removed, and a valve
+counts as open whatever its setting.
+
+**What replaces a junction.** A junction, overflow or splitter on a path that is left with one way in and one way out
+(because its other branch is dead, or already led nowhere) becomes the straight or corner with those two ends, in the
+same run, keeping its paint. The run never leaves an end where items would fall out: a dead piece that a piece or chute
+device staying behind would push items into stays (`stopped_by: would_drop_items`) unless that piece is the junction
+being replaced. An overflow left open on purpose, to spill surplus on the floor, counts as dead; spare it with
+`keep_ids`.
+
+**Items riding in chutes.** The game destroys an item together with the chute it rides in, so a piece holding an item
+is never removed or replaced. `riding: "skip"` (the default) leaves that piece, and the dead pieces it would push the
+item into, and runs the rest; `riding: "refuse"` refuses the whole run while any piece it would change holds an item.
+The report's `riding` list names each such piece and what it carries. Let the item pass, or take it out with
+`move_item`, and run again.
+
+Dry run by default; `dry_run: false, confirm: true` runs it as a job. Kit (Chute) pays for replacements and takes
+removed pieces back. Chute networks take new ids after any removal; the run checks the links around every change
+instead.
+
+```json
+{ "network_id": {"reference_id": "171332"} }
 ```
 
 ## Removing what no device needs

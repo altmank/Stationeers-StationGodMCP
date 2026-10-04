@@ -342,6 +342,11 @@ internal static class UpgradeCheck
 
     private static void CheckDevices(List<UpgradeProblemView> problems, UpgradePlan plan)
     {
+        if (!plan.Request.Family.KeepsNetworkIds)
+        {
+            return;
+        }
+
         foreach (DeviceRecord record in plan.Links!.Devices)
         {
             Device device = record.Device;

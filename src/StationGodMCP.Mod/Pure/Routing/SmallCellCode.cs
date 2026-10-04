@@ -149,6 +149,11 @@ internal static class SmallCellCode
         return (long)((max.X - min.X) / Large + 1) * ((max.Y - min.Y) / Large + 1) * ((max.Z - min.Z) / Large + 1);
     }
 
+    /// <summary>How many small cells a box holds (both corners included, any order).</summary>
+    internal static long SmallCountIn(GridCell a, GridCell b) =>
+        (long)(System.Math.Abs(b.X - a.X) / GridStep.CellSize + 1) * (System.Math.Abs(b.Y - a.Y) / GridStep.CellSize + 1) *
+        (System.Math.Abs(b.Z - a.Z) / GridStep.CellSize + 1);
+
     private static int LargeAxis(int small) => FloorDiv(small, Large) * Large + Large / 2;
 
     private static int FloorDiv(int value, int by) => value >= 0 ? value / by : -((-value + by - 1) / by);

@@ -20,6 +20,9 @@ internal static class CleanOperationSet
     internal const string MergeStraights = "merge_straights";
     internal const string SimplifyJunctions = "simplify_junctions";
 
+    /// <summary>clean_chutes' one operation; never named in operations, so not in Order.</summary>
+    internal const string RemoveDeadChutes = "remove_dead_chutes";
+
     /// <summary>Every operation, in the order they run.</summary>
     internal static readonly string[] Order =
         { RemoveDeadEnds, RemoveLoops, RemoveRedundant, SplitLongStraights, MergeStraights, SimplifyJunctions };

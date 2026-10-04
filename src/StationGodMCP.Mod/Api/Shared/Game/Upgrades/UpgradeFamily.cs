@@ -107,6 +107,15 @@ internal abstract class UpgradeFamily
     /// <summary>Whether the cell's slot for this family's pieces holds the piece.</summary>
     internal abstract bool Holds(SmallCell cell, SmallGrid piece);
 
+    /// <summary>What stands in the cell's slot for this family's pieces; null when nothing does.</summary>
+    internal abstract SmallGrid? PieceIn(SmallCell cell);
+
+    /// <summary>
+    /// Whether the game keeps a network's id through a swap, so a device's network ids must match after it. Chute
+    /// networks are rebuilt from every neighbour of a removed piece and take new ids (Chute.OnDestroy).
+    /// </summary>
+    internal virtual bool KeepsNetworkIds => true;
+
     /// <summary>The ids of this family's networks the device is on.</summary>
     internal abstract List<long> DeviceNetworks(Device device);
 
@@ -308,6 +317,8 @@ internal sealed class CableFamily : UpgradeFamily
 
     internal override bool Holds(SmallCell cell, SmallGrid piece) => cell.Cable == piece;
 
+    internal override SmallGrid? PieceIn(SmallCell cell) => cell.Cable;
+
     internal override List<long> DeviceNetworks(Device device) => Ids(device.ConnectedCableNetworks);
 
     internal override NetworkRecord Record(IReferencable network, List<PlannedSwap> swaps) =>
@@ -446,6 +457,8 @@ internal sealed class PipeFamily : UpgradeFamily
         structure is Pipe pipe ? pipe.MaxPressure.ToDouble() : 0.0;
 
     internal override bool Holds(SmallCell cell, SmallGrid piece) => cell.Pipe == piece;
+
+    internal override SmallGrid? PieceIn(SmallCell cell) => cell.Pipe;
 
     internal override List<long> DeviceNetworks(Device device) => Ids(device.ConnectedPipeNetworks);
 

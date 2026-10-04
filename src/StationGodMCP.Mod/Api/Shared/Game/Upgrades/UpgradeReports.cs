@@ -29,7 +29,26 @@ internal static class UpgradeReports
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Coils(plan), request.Refund, RefundTotals(plan),
             Networks(plan), Refunds.Forecast(plan.Refunds, RefundItems(plan)));
         return new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(), DeadEnds(plan),
-            Loops(plan), Redundant(plan));
+            Loops(plan), Redundant(plan), Riding(plan));
+    }
+
+    private static UpgradeRidingList? Riding(UpgradePlan plan)
+    {
+        if (plan.Riding == null)
+        {
+            return null;
+        }
+
+        int count = System.Math.Min(plan.Riding.Count, plan.Request.ListLimit);
+        List<UpgradeRidingView> views = new List<UpgradeRidingView>(count);
+        for (int index = 0; index < count; index++)
+        {
+            RidingChute riding = plan.Riding[index];
+            views.Add(new UpgradeRidingView(new ThingId(riding.Piece.ReferenceId), GameLookup.ViewOf(riding.Item),
+                riding.Held));
+        }
+
+        return new UpgradeRidingList(plan.Riding.Count, views);
     }
 
     private static UpgradeRedundancyView? Redundant(UpgradePlan plan)
@@ -123,7 +142,7 @@ internal static class UpgradeReports
         }
 
         return new UpgradeCleanView(detail.Operation, detail.Ends, detail.ConnectedEnds, swap.Parts.Count,
-            new UpgradeCleanExtras(detail.Round, merged, RefundEach(plan, swap)));
+            new UpgradeCleanExtras(detail.Round, merged, RefundEach(plan, swap), detail.Why));
     }
 
     // Only a goal that finds dead ends reports them; the upgrade tools' replies keep their shape.

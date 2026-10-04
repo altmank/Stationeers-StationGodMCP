@@ -5,6 +5,7 @@ using Assets.Scripts.Objects.Electrical;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
@@ -67,6 +68,44 @@ internal static class CleanCablesApi
 internal static class CleanPipesApi
 {
     internal static object Handle(Args args) => CleanApi.Handle(args, "clean_pipes", new PipeFamily());
+}
+
+/// <summary>
+/// clean_chutes: removes every selected chute piece no item can pass through to a consumer, and turns each junction,
+/// overflow or splitter that loses a branch into the plain piece its remaining ends need (RemoveDeadChutes,
+/// ChuteCleanup). Selected by network, by piece or by box; the rest as clean_cables. Host only.
+/// </summary>
+internal static class CleanChutesApi
+{
+    internal const string Tool = "clean_chutes";
+
+    internal static object Handle(Args args)
+    {
+        if (args.Has("job_id"))
+        {
+            args.Reject("job_id", "keep_ids", "riding");
+        }
+
+        HashSet<long> keep = new HashSet<long>();
+        if (args.Has("keep_ids"))
+        {
+            foreach (ThingId id in args.ThingIds("keep_ids", UpgradePlanner.MaximumPieces))
+            {
+                keep.Add(id.Value);
+            }
+        }
+
+        List<ICleanOperation> operations = new List<ICleanOperation> { new RemoveDeadChutes(keep, Riding(args)) };
+        return UpgradeApi.Handle(args, new ChuteFamily(), new EndCleanupGoal(Tool, operations));
+    }
+
+    private static RidingPolicy Riding(Args args) =>
+        (args.OptionalString("riding") ?? "skip").Trim().ToLowerInvariant() switch
+        {
+            "skip" => RidingPolicy.Skip,
+            "refuse" => RidingPolicy.Refuse,
+            _ => throw ApiErrors.InvalidArgument("Argument 'riding' must be skip or refuse.")
+        };
 }
 
 /// <summary>The clean tools' own argument: operations, default simplify_junctions only (CleanOperationSet).</summary>
@@ -143,8 +182,8 @@ internal static class UpgradeApi
     {
         if (args.Has("job_id"))
         {
-            args.Reject("job_id", "network_id", "reference_ids", "to", "operations", "keep_ids", "only_ids",
-                "older_than_id", "root", "wait", "dry_run",
+            args.Reject("job_id", "network_id", "reference_ids", "min", "max", "to", "operations", "keep_ids",
+                "only_ids", "older_than_id", "root", "wait", "dry_run",
                 "confirm", "from_id", "skip_unmatched", "refund", "refund_to", "limit", "include_notes",
                 GasHoldVerdict.AcknowledgeArgument);
             return HeldTickJobs.Status(args.String("job_id").Trim());
@@ -179,17 +218,7 @@ internal static class UpgradeApi
 
     private static UpgradeRequest Parse(Args args, UpgradeFamily family, SwapGoal goal)
     {
-        bool network = args.Has("network_id");
-        if (network == args.Has("reference_ids"))
-        {
-            throw ApiErrors.InvalidArgument(network
-                ? "Pass network_id (from connections) or reference_ids, not both."
-                : "Pass network_id (from connections) or reference_ids.");
-        }
-
-        PieceSelection selection = network
-            ? new PieceSelection.Network(NetworkHandles.Resolve(args, "network_id", family))
-            : new PieceSelection.Pieces(args.ThingIds("reference_ids", UpgradePlanner.MaximumPieces));
+        PieceSelection selection = Selection(args, family);
         UpgradeOptions options = new UpgradeOptions(
             args.OptionalBool("skip_unmatched") ?? false,
             RefundArgs.RouteWithFlag(args),
@@ -197,4 +226,46 @@ internal static class UpgradeApi
             args.OptionalBool("include_notes") ?? false);
         return new UpgradeRequest(family, goal, selection, args.OptionalThingId("from_id"), options);
     }
+
+    // Exactly one of network_id, reference_ids, or a box (min and max: only clean_chutes lists them).
+    private static PieceSelection Selection(Args args, UpgradeFamily family)
+    {
+        bool network = args.Has("network_id");
+        bool pieces = args.Has("reference_ids");
+        bool box = args.Has("min") || args.Has("max");
+        int forms = (network ? 1 : 0) + (pieces ? 1 : 0) + (box ? 1 : 0);
+        if (forms != 1)
+        {
+            string choices = family is ChuteFamily
+                ? "network_id (from connections), reference_ids, or min and max (a box)"
+                : "network_id (from connections) or reference_ids";
+            throw ApiErrors.InvalidArgument(forms == 0 ? $"Pass {choices}." : $"Pass one of {choices}, not several.");
+        }
+
+        if (network)
+        {
+            return new PieceSelection.Network(NetworkHandles.Resolve(args, "network_id", family));
+        }
+
+        return pieces
+            ? new PieceSelection.Pieces(args.ThingIds("reference_ids", UpgradePlanner.MaximumPieces))
+            : BoxOf(args);
+    }
+
+    private static PieceSelection.Box BoxOf(Args args)
+    {
+        GridCell a = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("min") ??
+                                                       throw ApiErrors.InvalidArgument("Pass min too."), "min"));
+        GridCell b = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("max") ??
+                                                       throw ApiErrors.InvalidArgument("Pass max too."), "max"));
+        GridCell min = new GridCell(System.Math.Min(a.X, b.X), System.Math.Min(a.Y, b.Y), System.Math.Min(a.Z, b.Z));
+        GridCell max = new GridCell(System.Math.Max(a.X, b.X), System.Math.Max(a.Y, b.Y), System.Math.Max(a.Z, b.Z));
+        long cells = SmallCellCode.SmallCountIn(min, max);
+        return cells <= MaximumBoxCells
+            ? new PieceSelection.Box(min, max)
+            : throw ApiErrors.InvalidArgument(
+                $"The box holds {cells} half-metre cells; at most {MaximumBoxCells} (a 32 m cube).");
+    }
+
+    internal const long MaximumBoxCells = 262144;
 }

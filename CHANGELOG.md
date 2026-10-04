@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.16.0
+
+Chute networks get a clean-up tool. 95 tools (94 plus tool_info).
+
+- **New `clean_chutes`.** Finds the chute pieces that serve no path and removes them, by the item flow: a piece stays
+  only when an item can reach it from a source (a device port that pushes items out, a two-way umbilical port, a
+  piece an item rides in) and go on from it to a consumer (a device port that takes items in). An open end is no
+  consumer. Each removal says why: `orphan`, `no_consumer` or `no_source`. Select a network (`network_id`), pieces
+  (`reference_ids`) or every chute in a box (`min`, `max`); the whole networks are judged, only the selection changes.
+- **Junctions, overflows and splitters** on a path that are left with one way in and one way out become the straight
+  or corner with those ends in the same run (Kit (Chute), same paint and owner). The run never opens an end items
+  would fall out of: a dead piece that something staying would push items into stays (`would_drop_items`).
+- **Items riding in chutes** are never lost: a piece holding an item is neither removed nor replaced. `riding: "skip"`
+  (default) leaves it and what the item moves into; `riding: "refuse"` refuses the run (`items_riding`). The report
+  lists them in `riding` with what each carries. `keep_ids` spares pieces.
+- Dry run by default, then the usual confirmed job, polling, `refund_to` and report. Chute networks take new ids after
+  a removal, so the check after a chute run compares the links around every change rather than device network ids.
+- Upgrade and clean reports carry `riding` and `riding_count` (clean_chutes only) and each clean_chutes removal its
+  `why`.
+
 ## 1.15.0
 
 Short tool descriptions, long help on demand. 94 tools (93 plus tool_info).

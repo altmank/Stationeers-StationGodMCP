@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.15.0",
+  "mod_version": "1.16.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -645,6 +645,11 @@
       "description": "The call's shape (fields, omit, limits) is malformed. Fix it; nothing ran.",
       "origin": "protocol",
       "see": {"topic": "shaping"}
+    },
+    "items_riding": {
+      "description": "A chute piece the run would remove or replace holds an item, and riding is refuse. Let the item pass or take it out with move_item, or pass riding skip to leave those pieces.",
+      "origin": "tool",
+      "see": {"tool": "clean_chutes", "topic": "riding"}
     },
     "job_not_found": {
       "description": "No job with that id is running, queued or kept. Job ids are kept for the last jobs only; start the run again if needed.",
@@ -1656,6 +1661,182 @@
           "dead_end_pieces": {"type": ["array", "null"]},
           "loops": {"type": ["array", "null"]},
           "redundant": {"type": ["object", "null"]},
+          "riding_count": {"type": ["integer", "null"]},
+          "riding": {"type": ["array", "null"]},
+          "from": {"type": ["object", "null"]},
+          "coils": {"type": "array"},
+          "refund_enabled": {"type": "boolean"},
+          "refund": {"type": "array"},
+          "refund_plan": {"type": ["object", "null"]},
+          "networks": {"type": "array"},
+          "devices": {"type": "array"},
+          "connectivity": {"type": ["object", "null"]},
+          "notes": {"type": "array"},
+          "waiting": {"type": "integer"},
+          "message": {"type": "string"},
+          "final_check": {"type": ["object", "null"]},
+          "swapped": {"type": "array"},
+          "swapped_count": {"type": "integer"},
+          "removed": {"type": ["array", "null"]},
+          "not_swapped": {"type": "array"},
+          "stopped_at": {"type": ["object", "null"]},
+          "used": {"type": "array"},
+          "refund_delivered": {"type": "array"},
+          "refund_error": {"type": ["object", "null"]},
+          "verification": {"type": ["object", "null"]},
+          "gas_check": {"type": ["object", "null"]},
+          "error": {"type": ["object", "null"]},
+          "resolved_networks": {
+            "type": "array",
+            "description": "The network handles this request resolved, when any: {argument, given, network_id} each (a plain network id that names the network itself is not listed)."
+          }
+        }
+      },
+      "x-views": ["JobQueuedView", "UpgradeReportView", "JobBusyView", "UpgradeJobView", "JobDroppedView"],
+      "x-default-limits": {"devices": 5},
+      "x-shaping": "lists",
+      "x-job": {"poll_param": "job_id"}
+    },
+    {
+      "name": "clean_chutes",
+      "description": "Remove chute pieces no item can pass through to a consumer; a junction, overflow or splitter left with one way in and out becomes a straight or corner. Select by network_id, reference_ids or a min/max box. Pieces holding items stay. Dry run by default; confirm to run.\nMore: tool_info {tool: \"clean_chutes\"}",
+      "help": {
+        "text": "Judges whole chute networks, even when only some pieces are selected; only selected pieces change. Kit (Chute) pays and takes back; a replacement keeps paint and owner. The report is clean_cables' (target minimal): pieces lists each removal (operation remove_dead_chute, with why) and each swap (simplify_junction, with connected_ends); dead_end_pieces the dead pieces that stay, with stopped_by; kept_pieces each piece on a path left with an open end, with why; riding the pieces that hold items.",
+        "topics": {
+          "dead": {
+            "summary": "Which chute pieces are dead.",
+            "text": "Items move one way through a chute: a straight or corner passes them on, a junction merges its inputs into its output, an overflow or splitter sends them to its outputs. A piece serves a path when an item can reach it from a source and go on from it to a consumer. Sources: a device port that pushes items out (a sorter or stacker output, a chute bin, an inlet), a two-way rocket umbilical port, and any piece an item rides in. Consumers: a device port that takes items (a machine input, an export bin, an outlet) and two-way ports. An open end is no consumer: what leaves through it falls on the floor. why names the cause: orphan (joined to nothing), no_consumer or no_source. Devices are never removed and count by their ports whatever feeds them; a closed valve counts as open.",
+            "subtopics": {
+              "open_ends": {
+                "summary": "No end left where items fall out.",
+                "text": "A dead piece stays (stopped_by would_drop_items) when a piece or chute device that stays would push items into it, and so may the dead pieces behind it. The exception is a junction, overflow or splitter on a path: it becomes a straight or corner without that end in the same run. One with an end that already leads nowhere becomes a plain piece too; one left whole is in kept_pieces with no_plain_piece, keep_ids or item_riding. An overflow left open to spill on the floor counts as dead: spare it with keep_ids."
+              }
+            }
+          },
+          "riding": {
+            "summary": "Items riding in chutes.",
+            "text": "The game destroys an item with the chute it rides in, so a piece holding an item is never removed or replaced. riding skip (the default) leaves it, and the dead pieces it would push the item into, and runs the rest; riding refuse refuses the whole run with items_riding while any piece it would change holds one. The riding list names each piece, what it carries and what happens to it (kept or not_simplified). A dry run only reports. Let the item pass, or take it out with move_item, and run again."
+          }
+        },
+        "shared": ["swaps", "jobs", "refunds", "networks", "truncation"]
+      },
+      "class": "write",
+      "x-class-when": [
+        {"when": {"dry_run": {"absent": true}}, "class": "read"},
+        {"when": {"dry_run": {"equals": true}}, "class": "read"}
+      ],
+      "cost": "job",
+      "x-cost-when": [
+        {"when": {"job_id": {"present": true}}, "cost": "instant"},
+        {"when": {"dry_run": {"absent": true}}, "cost": "plan"},
+        {"when": {"dry_run": {"equals": true}}, "cost": "plan"}
+      ],
+      "params": {
+        "type": "object",
+        "properties": {
+          "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
+          "network_id": {
+            "oneOf": [
+              {"type": "string"},
+              {
+                "type": "object",
+                "properties": {
+                  "reference_id": {"type": "string", "description": "A device or piece on the network."},
+                  "port": {"type": "integer", "minimum": 0, "maximum": 64, "description": "The device's port index."}
+                },
+                "required": ["reference_id"],
+                "additionalProperties": false
+              }
+            ],
+            "description": "A chute network, every piece of it (see networks)."
+          },
+          "reference_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4096,
+            "items": {"type": "string"},
+            "description": "Chute pieces to clean, up to 4096; only they change."
+          },
+          "min": {"description": "Box corner, [x, y, z] in metres; with max: every chute piece in the box."},
+          "max": {"description": "The other corner; at most a 32 m cube."},
+          "keep_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4096,
+            "items": {"type": "string"},
+            "description": "Pieces never removed or replaced; the dead pieces they would push items into stay too."
+          },
+          "riding": {
+            "type": "string",
+            "enum": ["skip", "refuse"],
+            "description": "A piece holding an item: skip leaves it and runs the rest (default); refuse refuses the run (topic riding)."
+          },
+          "wait": {"type": "boolean", "description": "Queue behind a running job instead of answering busy (see jobs/queue)."},
+          "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
+          "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
+          "from_id": {
+            "type": "string",
+            "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
+          },
+          "skip_unmatched": {
+            "type": "boolean",
+            "description": "Leave pieces without a replacement as they are instead of refusing. Default false."
+          },
+          "refund": {
+            "type": "boolean",
+            "description": "Give back kits for removed pieces and cheaper replacements. Default true; false is refund_to none."
+          },
+          "refund_to": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "integer"},
+              {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": {"oneOf": [{"type": "string"}, {"type": "integer"}]}
+              }
+            ],
+            "description": "Where removed materials go (see refunds)."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096,
+            "description": "Pieces listed per list in the report; default 5. All are counted and checked."
+          },
+          "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
+        },
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "job_id": {"type": ["string", "null"]},
+          "tool": {"type": "string"},
+          "status": {"type": "string"},
+          "position": {"type": "integer"},
+          "running_job_id": {"type": ["string", "null"]},
+          "preflight": {},
+          "preflight_summary": {"type": ["object", "null"]},
+          "target": {"type": "string"},
+          "ready": {"type": "boolean"},
+          "problems": {"type": "array"},
+          "pieces_total": {"type": "integer"},
+          "to_swap": {"type": "integer"},
+          "kept": {"type": "integer"},
+          "unmatched": {"type": "integer"},
+          "pieces": {"type": "array"},
+          "pieces_listed": {"type": "integer"},
+          "by_prefab": {"type": "array"},
+          "kept_pieces": {"type": "array"},
+          "unmatched_pieces": {"type": "array"},
+          "dead_ends": {"type": ["integer", "null"]},
+          "dead_end_pieces": {"type": ["array", "null"]},
+          "loops": {"type": ["array", "null"]},
+          "redundant": {"type": ["object", "null"]},
+          "riding_count": {"type": ["integer", "null"]},
+          "riding": {"type": ["array", "null"]},
           "from": {"type": ["object", "null"]},
           "coils": {"type": "array"},
           "refund_enabled": {"type": "boolean"},
@@ -1861,6 +2042,8 @@
           "dead_end_pieces": {"type": ["array", "null"]},
           "loops": {"type": ["array", "null"]},
           "redundant": {"type": ["object", "null"]},
+          "riding_count": {"type": ["integer", "null"]},
+          "riding": {"type": ["array", "null"]},
           "from": {"type": ["object", "null"]},
           "coils": {"type": "array"},
           "refund_enabled": {"type": "boolean"},
@@ -8625,6 +8808,8 @@
           "dead_end_pieces": {"type": ["array", "null"]},
           "loops": {"type": ["array", "null"]},
           "redundant": {"type": ["object", "null"]},
+          "riding_count": {"type": ["integer", "null"]},
+          "riding": {"type": ["array", "null"]},
           "from": {"type": ["object", "null"]},
           "coils": {"type": "array"},
           "refund_enabled": {"type": "boolean"},
@@ -8782,6 +8967,8 @@
           "dead_end_pieces": {"type": ["array", "null"]},
           "loops": {"type": ["array", "null"]},
           "redundant": {"type": ["object", "null"]},
+          "riding_count": {"type": ["integer", "null"]},
+          "riding": {"type": ["array", "null"]},
           "from": {"type": ["object", "null"]},
           "coils": {"type": "array"},
           "refund_enabled": {"type": "boolean"},

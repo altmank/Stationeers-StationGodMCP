@@ -100,10 +100,14 @@ internal sealed class ChuteFamily : UpgradeFamily
 
     internal override bool Holds(SmallCell cell, SmallGrid piece) => cell.Chute == piece;
 
+    internal override SmallGrid? PieceIn(SmallCell cell) => cell.Chute;
+
+    internal override bool KeepsNetworkIds => false;
+
     internal override List<long> DeviceNetworks(Device device) => Ids(device.ConnectedChuteNetworks);
 
     internal override NetworkRecord Record(IReferencable network, List<PlannedSwap> swaps) =>
-        throw new NotSupportedException("Chutes have one grade; there is nothing to upgrade.");
+        new ChuteNetworkRecord((ChuteNetwork)network, swaps);
 
     internal override object Mapping(Api.Views.UpgradeMappingCount count, Structure source, Structure target) =>
         throw new NotSupportedException("Chutes have one grade; there is nothing to upgrade.");
