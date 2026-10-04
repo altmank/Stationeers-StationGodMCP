@@ -19,6 +19,11 @@ Chute networks get a clean-up tool. 95 tools (94 plus tool_info).
   a removal, so the check after a chute run compares the links around every change rather than device network ids.
 - Upgrade and clean reports carry `riding` and `riding_count` (clean_chutes only) and each clean_chutes removal its
   `why`.
+- A removed chute stays in its network until it is destroyed, as a player's deconstruction leaves it, so neighbouring
+  chutes removed in one run never leave a link to a removed piece (the 1.14.1 fix, applied to the clean tools).
+- The upgrade, clean, place and remove tools no longer read arguments they do not take (`to` on clean_cables and
+  clean_pipes, `acknowledge_gas_lost` on the cable and chute tools, `min`/`max` outside clean_chutes); the game's log
+  no longer warns that their catalogue entries leave them out.
 
 ## 1.15.0
 
@@ -46,6 +51,26 @@ Short tool descriptions, long help on demand. 94 tools (93 plus tool_info).
 - Error messages no longer cite game source files or internal method names (`not_paintable`, `manned_target`,
   `command_not_ready`).
 - The server's instructions are short and point at `tool_info`.
+
+## 1.14.1
+
+2026-10-03. Fixes to chute removal and safety checks on item moves and material use.
+
+- **Removing chute pieces that touch each other no longer leaves a broken link.** `remove_structure`, `remove_chutes`,
+  `place_chutes` with `remove_ids` and `clean_chutes` took each chute piece out of its network before removing it.
+  When two removed pieces touched, the game's own chute clean-up then failed (a `Chute.OnDestroy` error in the
+  console). The removed piece stayed in its grid cell, and the chute beside it kept a link to it, so later edits
+  there were refused with `connectivity_model_mismatch`. Chutes are now removed the way a player takes them down. A
+  link left by an earlier removal clears when the world is saved and loaded again.
+- **`move_item` never replaces what a slot holds.** As before, it joins only a stack of the same item with room for
+  the whole stack, or takes an empty slot. It now also checks the slot again just before the move, and refuses if
+  anything changed (`slot_occupied`). `to_slot: "auto"` now leaves an Ingot Vault's display slots alone when it looks
+  for a stack to join, as it already did for empty slots (the vault drops what is in them when it redraws its store).
+  If the game fails to put part of a split stack into the slot, that part goes back onto the stack it came from,
+  instead of being left in the world.
+- **Building takes exactly what it needs.** Every builder (`place_structure`, the place, replace, upgrade and clean
+  tools) takes exactly the quantity each build state needs, splitting the last stack. If a stack ever loses more than
+  its share, the build stops with an error naming that stack.
 
 ## 1.14.0
 

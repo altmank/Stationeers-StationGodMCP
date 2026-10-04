@@ -212,12 +212,21 @@ internal sealed class Args
                string.Equals(token.Value<string>(), word, System.StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Refuses arguments that belong to another form of the tool.</summary>
+    /// <summary>
+    /// Whether the method declares the argument (always, for parameters held to no catalogue entry). A reader several
+    /// methods share asks first before reading an argument only some of them take, so the read is never drift.
+    /// </summary>
+    internal bool Declares(string name) => _declared == null || _declared.Contains(name);
+
+    /// <summary>
+    /// Refuses arguments that belong to another form of the tool. A name the method does not declare is skipped:
+    /// DeclaredArguments refused it before the handler ran.
+    /// </summary>
     internal void Reject(string form, params string[] names)
     {
         foreach (string name in names)
         {
-            if (Has(name))
+            if (Declares(name) && Has(name))
             {
                 throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' does not go with {form}.");
             }

@@ -172,26 +172,37 @@ internal sealed class ItemStock
         }
     }
 
-    /// <summary>Takes up to the quantity from the stacks in order; returns how many were taken.</summary>
+    /// <summary>
+    /// Takes up to the quantity from the stacks in order (StockTake), splitting the last one used; returns how many
+    /// were taken. A stack that loses more than its part stops the build with an error naming it.
+    /// </summary>
     internal int Take(int quantity)
     {
         int taken = 0;
         foreach (Stackable stack in Stacks)
         {
-            if (taken >= quantity)
-            {
-                break;
-            }
-
-            if (stack == null || stack.IsBeingDestroyed || stack.Quantity <= 0)
+            if (stack == null || stack.IsBeingDestroyed)
             {
                 continue;
             }
 
-            int part = Math.Min(quantity - taken, stack.Quantity);
+            int part = StockTake.PartOf(quantity - taken, stack.Quantity);
+            if (part == 0)
+            {
+                continue;
+            }
+
             int before = stack.Quantity;
             stack.OnUseItem(part, null);
-            taken += before - stack.Quantity;
+            int after = stack.Quantity;
+            if (StockTake.TookTooMuch(part, before, after))
+            {
+                throw new InvalidOperationException(
+                    $"{stack.DisplayName} {stack.ReferenceId} went from {before} to {after} when {part} were taken "
+                    + "from it; nothing more was taken.");
+            }
+
+            taken += before - after;
         }
 
         return taken;

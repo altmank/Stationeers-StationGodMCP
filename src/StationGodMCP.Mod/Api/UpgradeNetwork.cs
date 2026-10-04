@@ -113,7 +113,6 @@ internal static class CleanApi
 {
     internal static object Handle(Args args, string tool, UpgradeFamily family)
     {
-        args.Reject(tool, "to");
         return UpgradeApi.Handle(args, family, new EndCleanupGoal(tool, Operations(args)));
     }
 
@@ -232,7 +231,7 @@ internal static class UpgradeApi
     {
         bool network = args.Has("network_id");
         bool pieces = args.Has("reference_ids");
-        bool box = args.Has("min") || args.Has("max");
+        bool box = args.Declares("min") && (args.Has("min") || args.Has("max"));
         int forms = (network ? 1 : 0) + (pieces ? 1 : 0) + (box ? 1 : 0);
         if (forms != 1)
         {

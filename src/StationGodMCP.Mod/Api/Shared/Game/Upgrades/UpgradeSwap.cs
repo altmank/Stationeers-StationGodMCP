@@ -21,7 +21,8 @@ namespace StationGodMCP.Api.Shared.Game.Upgrades;
 /// old piece), in an order that never leaves a gap: the replacement is built first (Thing.Create registers it on the
 /// grid in the old piece's cells and joins the network through the neighbours, Cable.OnRegistered or
 /// Pipe.OnRegistered), put into the old piece's network if placing it made a network of its own, then the old piece
-/// leaves the network and is destroyed. Coils are taken as the kit takes them (Stackable.OnUseItem). The first failure
+/// leaves the network and is destroyed. A chute removed with no replacement stays in its network and is destroyed as a
+/// player's deconstruction does (NetworkLeaveRule.SwapLeavesFirst). Coils are taken as the kit takes them (Stackable.OnUseItem). The first failure
 /// stops the loop; the log says which pieces were swapped and which piece it stopped at.
 /// </summary>
 internal static class UpgradeSwap
@@ -241,7 +242,7 @@ internal sealed class PieceSwap
         foreach (OldPiece old in _swap.Olds)
         {
             IReferencable? own = _family.NetworkOf(old.Piece);
-            if (own != null)
+            if (own != null && NetworkLeaveRule.SwapLeavesFirst(_family.OnDestroyRebuilds, Replacements.Count > 0))
             {
                 _family.Leave(old.Piece, Replacements, own);
             }

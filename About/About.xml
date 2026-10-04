@@ -77,6 +77,10 @@ v1.15.0
 - Every error says what went wrong and what to do, and names the tool_info topic that explains it (see).
 - MCP replies are written with plain JSON escaping, so they are smaller.
 
+v1.14.1
+- Fix: removing neighbouring chute pieces no longer leaves a chute linked to a removed piece.
+- move_item rechecks the slot before each move and never replaces what it holds; builders take exactly what each build state needs.
+
 v1.14.0
 - Small default replies: every tool's default reply stays under 8 KB on a big base (shorter pages, every reply says in truncated what it held back and how to get it, a new list_limits argument, fixed explanations moved into the tool descriptions). fields reaches nested keys; new omit drops any key. get_ic_status leaves the source out unless asked.
 - set_ic_source source_file deploys a big Lua source from a file; connections area filter; atmosphere_contents reads a Pipe Analyzer's pipe network; console output is captured on a dedicated server.
