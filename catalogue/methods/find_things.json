@@ -62,10 +62,8 @@
         "type": "number",
         "description": "Only items made at or after this game time (game_clock game_time_s); negative: within that many seconds back."
       },
-      "min": {
-        "description": "Box corner, [x, y, z] in metres; with max: only things whose outermost holder stands in the box."
-      },
-      "max": {"description": "The other corner of the box; with min."},
+      "min": {"description": "Box corner, [x, y, z] m; with max: only things in the box."},
+      "max": {"description": "The other box corner."},
       "near_player_m": {
         "type": "number",
         "exclusiveMinimum": 0,

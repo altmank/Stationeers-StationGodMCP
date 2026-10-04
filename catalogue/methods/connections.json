@@ -2,7 +2,7 @@
   "name": "connections",
   "summary": "How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (40 per page) with filters and a summary. Read only.",
   "help": {
-    "text": "Two forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. A big network reads best with an area and fields [\"reference_id\", \"prefab_name\"] or omit [\"members.position\"].",
+    "text": "Three forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. min and max alone: every cable, pipe and chute piece in the box with an open end, across all networks, each with its network_id and open_ends (kind narrows it; at most a 32 m cube). A big network reads best with an area and fields [\"reference_id\", \"prefab_name\"] or omit [\"members.position\"].",
     "keys": "thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, ends [{index, type, type_name, role, role_name, position, network, connected}], count, network {kind, id}, summary, members [{reference_id, prefab_name, display_name, member, position, open_ends}], structure_count, device_count, offset, limit, total, has_more, resolved_networks.",
     "topics": {
       "ends": {
@@ -44,18 +44,18 @@
       "kind": {
         "type": "string",
         "enum": ["pipe", "cable", "chute"],
-        "description": "The kind of network_id: pipe, cable or chute."
+        "description": "Kind of network_id; box form: only this kind."
       },
-      "prefab_contains": {"type": "string", "description": "Network form: only members whose prefab name holds this, any case."},
+      "prefab_contains": {"type": "string", "description": "Only members whose prefab name holds this, any case."},
       "open_ends_only": {
         "type": "boolean",
         "description": "Network form: only members with an end nothing is attached at. Default false."
       },
-      "min": {"description": "Network form: a box corner, [x, y, z] in metres; with max."},
-      "max": {"description": "Network form: the other box corner."},
+      "min": {"description": "Box corner [x, y, z]; with max. Alone: open ends in it."},
+      "max": {"description": "The other box corner."},
       "near": {"description": "Network form: a point, [x, y, z] in metres; with radius_m."},
       "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000, "description": "Network form: with near, up to 1000."},
-      "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Network form: members per page; default 40."},
+      "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Members per page; default 40, box form 25."},
       "offset": {
         "type": "integer",
         "minimum": 0,
@@ -85,7 +85,7 @@
       "has_more": {"type": "boolean"}
     }
   },
-  "x-views": ["ConnectionsView", "NetworkMembersView"],
+  "x-views": ["ConnectionsView", "NetworkMembersView", "AreaOpenEndsView"],
   "x-shaping": "lists",
   "x-paging": {
     "list": "members",
@@ -93,6 +93,6 @@
     "limit": "limit",
     "total": "total",
     "has_more": "has_more",
-    "order": "network form only: the network's pieces as the game lists them (its structure list), then its devices, each thing once"
+    "order": "network form: the network's pieces as the game lists them (its structure list), then its devices, each thing once; box form: cables, then pipes, then chutes, each by y, z, x"
   }
 }

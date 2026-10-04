@@ -111,6 +111,23 @@ internal sealed class JobPreflightSummaryView
     internal static JobPreflightSummaryView Of(PlaceReportView report) =>
         new JobPreflightSummaryView(report.Placements.Count, null, null, CodesOf(report.Warnings));
 
+    internal static JobPreflightSummaryView Of(UpgradeReportView report) =>
+        new JobPreflightSummaryView(null, report.ToSwap, report.DeadEnds, ProblemCodes(report.Problems));
+
+    internal static JobPreflightSummaryView Of(StructureSwapReportView report) =>
+        new JobPreflightSummaryView(null, report.ToSwap, null, ProblemCodes(report.Problems));
+
+    private static List<string> ProblemCodes(List<UpgradeProblemView> problems)
+    {
+        List<string> codes = new List<string>(problems.Count);
+        foreach (UpgradeProblemView problem in problems)
+        {
+            AddOnce(codes, problem.Code);
+        }
+
+        return codes;
+    }
+
     internal static JobPreflightSummaryView Of(RemoveReportView report) =>
         new JobPreflightSummaryView(null, null, report.Removals.Count, CodesOf(report.Warnings));
 
@@ -145,10 +162,35 @@ internal static class JobStartReplies
     {
         RunJobView run => RunJobView.Brief(run, summary),
         BuildJobView build => BuildJobView.Brief(build, summary),
+        UpgradeJobView upgrade => upgrade.Brief(summary),
+        StructureSwapJobView swap => swap.Brief(summary),
         JobQueuedView queued => new JobQueuedView(queued.JobId, queued.Tool, queued.Position, queued.RunningJobId,
             null, summary),
         _ => started
     };
+}
+
+/// <summary>
+/// The swap tools' replies without verbose (upgrade_*, clean_*, replace_*): a started or polled job without the
+/// preflight the dry run answered, and without the final check unless the job was refused.
+/// </summary>
+internal static class JobBrief
+{
+    internal const string RefusedStatus = "refused";
+
+    internal const string VerboseArgument = "verbose";
+
+    /// <summary>A swap job's poll as a brief poll gives it; any other view as it is.</summary>
+    internal static object Poll(object polled) => polled switch
+    {
+        UpgradeJobView upgrade => upgrade.Brief(null),
+        StructureSwapJobView swap => swap.Brief(null),
+        _ => polled
+    };
+
+    /// <summary>The reply to a confirmed swap run, in brief unless verbose.</summary>
+    internal static object Started(object started, JobPreflightSummaryView summary, bool verbose) =>
+        verbose ? started : JobStartReplies.Brief(started, summary);
 }
 
 /// <summary>A queued run that never started (the world stopped first): status refused, nothing changed.</summary>

@@ -190,8 +190,10 @@ internal sealed class NetworkMemberFilter
 
 internal sealed class NetworkMemberView
 {
-    internal NetworkMemberView(ThingView thing, string member, PositionView position, List<int>? openEnds = null)
+    internal NetworkMemberView(ThingView thing, string member, PositionView position, List<int>? openEnds = null,
+        ThingId? networkId = null)
     {
+        NetworkId = networkId;
         OpenEnds = openEnds;
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
@@ -214,6 +216,36 @@ internal sealed class NetworkMemberView
     /// <summary>With open_ends_only: the indexes (as connections lists ends) of its open ends of the network's kind.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<int>? OpenEnds { get; }
+
+    /// <summary>The box form: the network the piece is on; left out in the network form, which names it once.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ThingId? NetworkId { get; }
+}
+
+/// <summary>connections over a box: one page of the pieces of every network in it with an open end of their kind.</summary>
+internal sealed class AreaOpenEndsView
+{
+    internal AreaOpenEndsView(Slice<NetworkMemberView> page)
+    {
+        Members = page.Items;
+        Count = page.Items.Count;
+        Offset = page.Offset;
+        Limit = page.Limit;
+        Total = page.Total;
+        HasMore = page.HasMore;
+    }
+
+    public List<NetworkMemberView> Members { get; }
+
+    public int Count { get; }
+
+    public int Offset { get; }
+
+    public int Limit { get; }
+
+    public int Total { get; }
+
+    public bool HasMore { get; }
 }
 
 internal sealed class PipeSummaryView

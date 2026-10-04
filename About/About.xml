@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.17.0</Version>
+  <Version>1.18.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,10 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.18.0
+- upgrade_pipes to repair swaps burst pipes for new ones in place, keeping the contents; thing_health names why a pipe burst.
+- Swap jobs answer briefly; connections lists open ends across every network in a box.
+
 v1.17.0
 - fields works on every reply: a single-object reply (looking_at) keeps the keys named, and a wrong name is answered with the valid ones.
 - Smaller replies: empty IC pins left out; grid_survey gives a long piece's cell count and box, and occupied_only skips empty cells.
@@ -92,15 +96,15 @@ v1.14.0
 - describe_device shows which downlink a Logic Rocket Uplink follows; new set_uplink.
 
 v1.13.0
-- Rocket tools fly every rocket the game builds: all six engines by their own fuel draw (pumped and pressure fed, gas and liquid, liquid hydrazine alone), gas and liquid lines, payload drops, transfers between rockets at a node, crewed rockets (pads only) and landings on the Orbital Launch Mount.
-- New rocket_mining_options: what a rocket's miners, drill heads, gas collectors and scanners can bring home from each site, per cycle and per hour, and why not (an ice head at an ore site gets nothing yet still eats the site). rocket_forecast warns when the destination cannot be mined by the loadout.
+- Rocket tools fly every rocket the game builds: all six engines by their own fuel draw, gas and liquid lines, payload drops, transfers between rockets at a node, crewed rockets (pads only) and landings on the Orbital Launch Mount.
+- New rocket_mining_options: what a rocket's miners, drill heads, gas collectors and scanners can bring home from each site, per cycle and per hour, and why not. rocket_forecast warns when the destination cannot be mined by the loadout.
 - rocket_status: compact mode, every part's position from the engine mount (parts), and the landing check the game makes at the pad the rocket is heading for.
 
 v1.12.1
 - Fix: on a dedicated server the views of a player who rejoined an existing character (a loaded save, a reconnect) were dropped, so the camera tools refused no_view for them.
 
 v1.12.0
-- Dedicated servers: a player whose game runs StationGod shares where they look, so looking_at, crosshair placement, find_spot, wall_map looking, show_preview and highlight work for them, drawn on their screen. StationGod stays optional on players' games; without it those calls refuse no_view, saying why.
+- Dedicated servers: a player whose game runs StationGod shares where they look, so the view tools work for them. StationGod stays optional on players' games; without it those calls refuse no_view, saying why.
 - New setting [Multiplayer] ShareViews (default true).
 
 v1.11.0

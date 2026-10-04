@@ -313,6 +313,26 @@ public sealed class UpgradeWireTests
     }
 
     [Fact]
+    public void ABriefJobLeavesOutThePreflightAndTheFinalCheckUnlessRefused()
+    {
+        UpgradeReportView report = Report(new List<UpgradeProblemView>());
+        UpgradeSwapLog log = new UpgradeSwapLog();
+        UpgradeJobView applied = new UpgradeJobView("upgrade-3", "upgrade_pipes", "applied", report,
+            new UpgradeJobResult(report, log, null, null));
+        UpgradeJobView refused = new UpgradeJobView("upgrade-4", "upgrade_pipes", "refused", report,
+            new UpgradeJobResult(report, log, null, null));
+        JobPreflightSummaryView summary = new JobPreflightSummaryView(null, 3, null, new List<string>());
+
+        string brief = WireCheck.New(applied.Brief(summary));
+        Assert.DoesNotContain("\"preflight\"", brief);
+        Assert.Contains("\"preflight_summary\":{\"changed\":3,\"warnings\":[]}", brief);
+        Assert.Contains("\"final_check\":null", brief);
+        Assert.DoesNotContain("\"final_check\":null", WireCheck.New(refused.Brief(null)));
+        Assert.Contains("\"preflight\":{", WireCheck.New(applied));
+        Assert.DoesNotContain("\"preflight\"", WireCheck.New(JobBrief.Poll(applied)));
+    }
+
+    [Fact]
     public void AStoppedJobSaysWhereAndWhetherThePieceIsIntact()
     {
         UpgradeSwapLog log = new UpgradeSwapLog();

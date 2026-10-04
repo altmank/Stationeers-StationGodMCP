@@ -444,9 +444,10 @@ internal sealed class StructureRoomView
 /// </summary>
 internal sealed class StructureSwapJobView : ITruncatingView
 {
-    internal StructureSwapJobView(string jobId, string tool, string status, StructureSwapReportView preflight,
-        StructureSwapJobResult? result)
+    internal StructureSwapJobView(string jobId, string tool, string status, StructureSwapReportView? preflight,
+        StructureSwapJobResult? result, JobPreflightSummaryView? preflightSummary = null)
     {
+        PreflightSummary = preflightSummary;
         JobId = jobId;
         Tool = tool;
         Status = status;
@@ -470,11 +471,42 @@ internal sealed class StructureSwapJobView : ITruncatingView
 
     public string Status { get; }
 
-    /// <summary>The report when the run was confirmed.</summary>
-    public StructureSwapReportView Preflight { get; }
+    /// <summary>The report when the run was confirmed; verbose only (the dry run answered it already).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public StructureSwapReportView? Preflight { get; }
 
-    /// <summary>The same checks, made again once the game tick had stopped, right before the swap.</summary>
+    /// <summary>The dry run in short, in a brief reply to the run that started the job.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JobPreflightSummaryView? PreflightSummary { get; }
+
+    /// <summary>
+    /// The same checks, made again once the game tick had stopped, right before the swap: in a refused job or with
+    /// verbose; null otherwise.
+    /// </summary>
     public StructureSwapReportView? FinalCheck { get; }
+
+    /// <summary>The job without verbose: no preflight and no final check unless the job was refused.</summary>
+    internal StructureSwapJobView Brief(JobPreflightSummaryView? summary) => new StructureSwapJobView(this, summary);
+
+    private StructureSwapJobView(StructureSwapJobView full, JobPreflightSummaryView? summary)
+    {
+        JobId = full.JobId;
+        Tool = full.Tool;
+        Status = full.Status;
+        Preflight = null;
+        PreflightSummary = summary;
+        FinalCheck = full.Status == JobBrief.RefusedStatus ? full.FinalCheck : null;
+        Swapped = full.Swapped;
+        SwappedCount = full.SwappedCount;
+        NotSwapped = full.NotSwapped;
+        StoppedAt = full.StoppedAt;
+        Used = full.Used;
+        RefundDelivered = full.RefundDelivered;
+        RefundError = full.RefundError;
+        HeldCheck = full.HeldCheck;
+        RoomCheck = full.RoomCheck;
+        Error = full.Error;
+    }
 
     public List<UpgradeSwappedView> Swapped { get; }
 

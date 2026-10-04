@@ -3,6 +3,7 @@
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Structures;
+using StationGodMCP.Api.Views;
 
 namespace StationGodMCP.Api;
 
@@ -34,18 +35,25 @@ internal static class ReplaceStructuresApi
         switch (StructureSwapArgs.Parse(args, family.TargetRequired))
         {
             case StructureSwapForm.Poll poll:
-                return HeldTickJobs.Status(poll.JobId);
+                object polled = HeldTickJobs.Status(poll.JobId);
+                return (args.OptionalBool(JobBrief.VerboseArgument) ?? false) ? polled : JobBrief.Poll(polled);
             case StructureSwapForm.Run run:
                 StructureSwapRequest request = new StructureSwapRequest(family, run.Arguments);
                 StructureSwapPlan plan = StructureSwapPlanner.Plan(request);
                 if (!run.Confirmed)
                 {
+                    args.Reject("a dry run (it is for a confirmed run or a job_id poll)", JobBrief.VerboseArgument);
                     return StructureReports.Of(plan, StructureReports.DryRun, null);
                 }
 
-                return plan.Ready
-                    ? StructureJobs.Start(request, plan, args.OptionalBool("wait") ?? false)
-                    : StructureReports.Of(plan, StructureReports.Refused, null);
+                if (!plan.Ready)
+                {
+                    return StructureReports.Of(plan, StructureReports.Refused, null);
+                }
+
+                return JobBrief.Started(StructureJobs.Start(request, plan, args.OptionalBool("wait") ?? false),
+                    JobPreflightSummaryView.Of(StructureReports.Of(plan, StructureReports.DryRun, null)),
+                    args.OptionalBool(JobBrief.VerboseArgument) ?? false);
             default:
                 throw ApiErrors.InvalidArgument("Pass job_id, or reference_ids or room_id.");
         }

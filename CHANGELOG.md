@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.18.0
+
+Fixes for tools that confused agents working on a fuel plant.
+
+- **Burst pipes can be replaced in place.** `upgrade_pipes` `to: "repair"` swaps each burst pipe for a new piece of
+  its own kit, joined to the network before the burst piece leaves, so a burst pipe that is the only pipe of its
+  network keeps the contents. Upgrades and clean-ups no longer refuse burst pieces (`burst_pipe` is gone).
+- **`thing_health` says why a pipe burst**: `damage_record` lists every cause the game recorded (pressure, liquid,
+  solid). `pipe_burst` reads pressure for any burst pipe, whatever the cause.
+- **Swap jobs answer briefly.** A confirmed `upgrade_*`, `clean_*` or `replace_*` run answers `preflight_summary`
+  instead of the whole preflight, and polls leave out the preflight and the final check (kept for a refused job),
+  as the place and remove tools do; `verbose: true` gives both.
+- **`connections` over a box**: `min` and `max` alone list every cable, pipe and chute piece with an open end in the
+  box, across all networks, each with its `network_id` (25 a page).
+- **`set_ic_source` counts lines as the in-game editor does**: a trailing line end adds no line, so a 128-line file
+  ending in a newline no longer warns `over_editor_lines`.
+- The `fields` argument's description says what it keeps without restricting it to list entries.
+
 ## 1.17.0
 
 Shaping that works on every reply, and smaller replies where agents found them heavy.

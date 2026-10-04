@@ -63,6 +63,17 @@ public sealed class DevicesRound2Tests
     }
 
     [Theory]
+    [InlineData("\n")]
+    [InlineData("\n\n  \n")]
+    public void ATrailingLineEndAddsNoLine(string end)
+    {
+        string source = string.Join("\n", Enumerable.Repeat("yield", 128)) + end;
+
+        Assert.Empty(Ic10Source.Notes(source, source));
+        Assert.Equal(128, Ic10Source.EditorLines(source).Length);
+    }
+
+    [Theory]
     [InlineData(4096, false)]
     [InlineData(4097, true)]
     public void TheEditorsSizeLimitIsAWarning(int size, bool warned)

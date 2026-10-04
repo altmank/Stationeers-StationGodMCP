@@ -110,7 +110,7 @@ neighbour or a tap's trunk piece turned into a junction) and `fill`.
 | `remove_cables`, `remove_pipes`, `remove_chutes` | Remove pieces as wire cutters, a wrench or deconstruction would. |
 | `undo_job` | Undo a finished place or remove job: remove what it built, build again what it removed (1.4.3+). |
 | `upgrade_cables` | Normal cable to heavy (default) or super heavy, piece for piece, in place. |
-| `upgrade_pipes` | Normal gas and liquid pipe to insulated pipe of the same content, in place. |
+| `upgrade_pipes` | Normal gas and liquid pipe to insulated pipe of the same content, in place; `to: "repair"` swaps burst pipes for new ones. |
 | `connections` | A piece's or device's ends, or a network's members and load; see [devices-and-logic.md](devices-and-logic.md#connections-and-networks). |
 
 Grades: cables `normal`, `heavy` (default) or `super_heavy`; pipes `gas`, `liquid`, `insulated_gas` or
@@ -402,6 +402,11 @@ insulated pipe over normal pipe, so the tools rebuild each piece the way the coi
   Mounted fuses, analysers and pipe meters stay attached.
 - Cable networks keep their ids. A pipe network keeps its contents; only its volume changes by the difference between
   old and new pieces, and the run is refused if the pressure would then exceed the weakest pipe.
+- `upgrade_pipes` with `to: "repair"` swaps each burst pipe for a new piece of its own kit the same way, so a burst
+  pipe that is the only pipe of its network keeps the contents (the game itself has no repair: deconstructing it
+  empties the network). Pieces that are not burst stay. Burst pieces are swapped by the other modes too.
+- A confirmed run answers `job_id`, `status` and `preflight_summary`; polls answer the result without the preflight
+  and, unless the job was refused, without the final check. `verbose: true` gives both.
 
 Make a whole network heavy cable, `upgrade_cables` (dry run, then again with `dry_run: false, confirm: true`):
 

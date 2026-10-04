@@ -95,11 +95,11 @@
     },
     "jobs": {
       "summary": "Building jobs: dry run, confirm, polls, the queue.",
-      "text": "Building tools report a dry run by default and change nothing. A real run needs dry_run: false and confirm: true (confirm_required otherwise) and answers job_id, status and preflight_summary (counts and warning codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
+      "text": "Building tools report a dry run by default and change nothing. A real run needs dry_run: false and confirm: true (confirm_required otherwise) and answers job_id, status and preflight_summary (counts and warning or problem codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
       "subtopics": {
         "polling": {
           "summary": "job_id: poll a running or finished job.",
-          "text": "Poll with job_id alone (verbose allowed). A poll answers status and result (placed, removed, used, refunded, verification, gas_check, error); preflight and final_check are null because the real run already answered them, except that a refused job keeps final_check, which says why. verbose: true answers the whole job. job_not_found when the id is not running, queued or among the last jobs kept."
+          "text": "Poll with job_id alone (verbose allowed). A poll answers status and result (placed, removed, used, refunded, verification, gas_check, error); preflight and final_check are null or left out because the real run already answered them, except that a refused job keeps final_check, which says why. verbose: true answers the whole job. job_not_found when the id is not running, queued or among the last jobs kept."
         },
         "queue": {
           "summary": "busy, wait and the queue of real runs.",

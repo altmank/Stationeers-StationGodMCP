@@ -1163,9 +1163,10 @@ internal sealed class PipeNetworkAir
 /// </summary>
 internal sealed class UpgradeJobView : ITruncatingView
 {
-    internal UpgradeJobView(string jobId, string tool, string status, UpgradeReportView preflight,
-        UpgradeJobResult? result)
+    internal UpgradeJobView(string jobId, string tool, string status, UpgradeReportView? preflight,
+        UpgradeJobResult? result, JobPreflightSummaryView? preflightSummary = null)
     {
+        PreflightSummary = preflightSummary;
         JobId = jobId;
         Tool = tool;
         Status = status;
@@ -1190,15 +1191,51 @@ internal sealed class UpgradeJobView : ITruncatingView
 
     public string Status { get; }
 
-    /// <summary>The report when the run was confirmed.</summary>
-    public UpgradeReportView Preflight { get; }
+    /// <summary>The report when the run was confirmed; verbose only (the dry run answered it already).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public UpgradeReportView? Preflight { get; }
 
-    /// <summary>The same checks, made again once the game tick had stopped, right before the swap.</summary>
+    /// <summary>The dry run in short, in a brief reply to the run that started the job.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JobPreflightSummaryView? PreflightSummary { get; }
+
+    /// <summary>
+    /// The same checks, made again once the game tick had stopped, right before the swap: in a refused job (it holds
+    /// the problems) or with verbose; null otherwise.
+    /// </summary>
     public UpgradeReportView? FinalCheck { get; }
 
     public List<UpgradeSwappedView> Swapped { get; }
 
     public int SwappedCount { get; }
+
+    /// <summary>
+    /// The job without verbose: no preflight (with summary in short instead, on the reply that starts it) and no final
+    /// check unless the job was refused.
+    /// </summary>
+    internal UpgradeJobView Brief(JobPreflightSummaryView? summary) =>
+        new UpgradeJobView(this, summary);
+
+    private UpgradeJobView(UpgradeJobView full, JobPreflightSummaryView? summary)
+    {
+        JobId = full.JobId;
+        Tool = full.Tool;
+        Status = full.Status;
+        Preflight = null;
+        PreflightSummary = summary;
+        FinalCheck = full.Status == JobBrief.RefusedStatus ? full.FinalCheck : null;
+        Swapped = full.Swapped;
+        SwappedCount = full.SwappedCount;
+        Removed = full.Removed;
+        NotSwapped = full.NotSwapped;
+        StoppedAt = full.StoppedAt;
+        Used = full.Used;
+        RefundDelivered = full.RefundDelivered;
+        RefundError = full.RefundError;
+        Verification = full.Verification;
+        GasCheck = full.GasCheck;
+        Error = full.Error;
+    }
 
     /// <summary>Pieces the clean tools removed (remove_dead_ends); absent when none was.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

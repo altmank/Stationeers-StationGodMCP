@@ -292,7 +292,8 @@ internal static class HealthReader
             thing.IsBeingDestroyed,
             thing is Pipe pipe ? PipeBurstName(pipe.IsBurst) : null,
             HealthCondition.Of(broken, damage != null, damage != null && damage.Indestructable, reading.DamageRatio),
-            thing is Structure structure ? structure.CurrentBuildStateIndex < 0 : (bool?)null);
+            thing is Structure structure ? structure.CurrentBuildStateIndex < 0 : (bool?)null,
+            thing is Pipe recorded ? PipeDamageRecord.Causes((byte)recorded.DamageRecord) : null);
         Vector3 place = HolderChain.PlaceOf(thing).Position;
         return new HealthView(
             GameLookup.ViewOf(thing), KindOf(thing), thing.GetType().Name, reading, flags,

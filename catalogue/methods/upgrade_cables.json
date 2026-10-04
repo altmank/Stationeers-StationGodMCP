@@ -70,6 +70,7 @@
         "maximum": 4096,
         "description": "Pieces listed per list; default 5. All are counted and checked."
       },
+      "verbose": {"$ref": "defs/verbose.json"},
       "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
     },
     "additionalProperties": false

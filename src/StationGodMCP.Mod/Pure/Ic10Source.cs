@@ -24,6 +24,12 @@ internal static class Ic10Source
     /// <summary>How many long lines over_editor_line_length names; past that it counts them.</summary>
     internal const int NamedLongLines = 10;
 
+    /// <summary>
+    /// The lines the in-game editor loads: it trims the end of the source before splitting on LF, so a trailing line
+    /// end, or trailing blank lines, add no line.
+    /// </summary>
+    internal static string[] EditorLines(string stored) => stored.TrimEnd().Split('\n');
+
     /// <summary>The source with CRLF and lone CR as LF.</summary>
     internal static string WithUnixLineEnds(string source) => source.Replace("\r\n", "\n").Replace('\r', '\n');
 
@@ -67,7 +73,7 @@ internal static class Ic10Source
                 "runs that text (as it would after a save and load)."));
         }
 
-        string[] lines = stored.Split('\n');
+        string[] lines = EditorLines(stored);
         if (lines.Length > EditorMaximumLines)
         {
             notes.Add(new SourceNote("over_editor_lines",

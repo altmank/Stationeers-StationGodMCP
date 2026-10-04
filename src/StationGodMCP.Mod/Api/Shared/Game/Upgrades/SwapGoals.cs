@@ -101,7 +101,7 @@ internal abstract class GradeUpgrade : SwapGoal
         PlanSwap(context, member, target);
     }
 
-    private static void PlanSwap(PlanContext context, SmallGrid member, Kit target)
+    internal static void PlanSwap(PlanContext context, SmallGrid member, Kit target)
     {
         PieceModel live = PieceShapes.Live(member);
         if (!context.MatchesOwnPrefab(member, live))
@@ -191,6 +191,49 @@ internal sealed class PipeUpgrade : GradeUpgrade
             ? new Grade((int)target.Value, source.Content,
                 $"{target.Value} {(Pipe.ContentType)source.Content}".ToLowerInvariant())
             : null;
+    }
+}
+
+/// <summary>
+/// upgrade_pipes to repair: each burst piece becomes a new piece of its own kit with the same cells and ends, joined to
+/// the network before the burst piece leaves, so the contents stay (a burst pipe that is the only pipe of its network
+/// included). The game offers no repair for a burst pipe; a player deconstructs it and builds a new one, which empties
+/// a network of one pipe. Pieces that are not burst stay.
+/// </summary>
+internal sealed class PipeRepair : SwapGoal
+{
+    internal override string Tool => "upgrade_pipes";
+
+    internal override string Target => "repair";
+
+    internal override string NothingToSwap => "No burst pipe was found.";
+
+    internal override List<string> Notes(UpgradeFamily family) => new List<string> { family.DeviceNote, TickNote };
+
+    internal override void Classify(PlanContext context, SmallGrid member)
+    {
+        UpgradeFamily family = context.Family;
+        if (!family.IsPiece(member))
+        {
+            context.Plan.Kept.Add(PlanContext.NotAPiece(family, member));
+            return;
+        }
+
+        if (!(member is Pipe pipe) || pipe.IsBurst == Assets.Scripts.Networks.PipeBurst.None)
+        {
+            context.Plan.Kept.Add(new SkippedPiece(member, "not_burst", $"{member.PrefabName} is not burst."));
+            return;
+        }
+
+        Grade? grade = family.GradeOf(member);
+        Kit? kit = grade != null ? context.Kits.For(grade) : null;
+        if (kit == null || !kit.Places(member.PrefabHash))
+        {
+            context.Plan.Unmatched.Add(PlanContext.SpecialPiece(member, "a kit this tool places"));
+            return;
+        }
+
+        GradeUpgrade.PlanSwap(context, member, kit);
     }
 }
 
@@ -348,11 +391,6 @@ internal sealed class PlanContext
         if (member.Indestructable)
         {
             Plan.Problem("indestructible", $"{member.PrefabName} is indestructible and cannot be replaced.", member);
-        }
-
-        if (member is Pipe pipe && pipe.IsBurst != Assets.Scripts.Networks.PipeBurst.None)
-        {
-            Plan.Problem("burst_pipe", $"{member.PrefabName} is burst; repair it first.", member);
         }
 
         if ((member is Cable cable && cable.RocketNetwork != null) ||

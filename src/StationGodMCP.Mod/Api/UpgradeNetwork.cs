@@ -36,8 +36,8 @@ internal static class UpgradeCablesApi
 
 /// <summary>
 /// upgrade_pipes: replace a pipe network's normal pieces, or listed pieces, with insulated pipe of the same content
-/// (gas to insulated gas, liquid to insulated liquid), in place, keeping the network's contents. Otherwise as
-/// upgrade_cables.
+/// (gas to insulated gas, liquid to insulated liquid), in place, keeping the network's contents; to repair, replace
+/// each burst piece with a new one of its own kit (PipeRepair). Otherwise as upgrade_cables.
 /// </summary>
 internal static class UpgradePipesApi
 {
@@ -46,9 +46,12 @@ internal static class UpgradePipesApi
     private static SwapGoal Goal(Args args)
     {
         string target = (args.OptionalString("to") ?? "insulated").Trim().ToLowerInvariant();
-        return target == "insulated"
-            ? new PipeUpgrade()
-            : throw ApiErrors.InvalidArgument("Argument 'to' must be insulated.");
+        return target switch
+        {
+            "insulated" => new PipeUpgrade(),
+            "repair" => new PipeRepair(),
+            _ => throw ApiErrors.InvalidArgument("Argument 'to' must be insulated or repair.")
+        };
     }
 }
 
@@ -185,7 +188,8 @@ internal static class UpgradeApi
                 "only_ids", "older_than_id", "root", "wait", "dry_run",
                 "confirm", "from_id", "skip_unmatched", "refund", "refund_to", "limit", "include_notes",
                 GasHoldVerdict.AcknowledgeArgument);
-            return HeldTickJobs.Status(args.String("job_id").Trim());
+            object polled = HeldTickJobs.Status(args.String("job_id").Trim());
+            return (args.OptionalBool(JobBrief.VerboseArgument) ?? false) ? polled : JobBrief.Poll(polled);
         }
 
         bool dryRun = args.OptionalBool("dry_run") ?? true;
@@ -206,13 +210,19 @@ internal static class UpgradeApi
         string? acknowledge = GasHoldArgs.Acknowledgement(args);
         if (dryRun)
         {
+            args.Reject("a dry run (it is for a confirmed run or a job_id poll)", JobBrief.VerboseArgument);
             GasHold.Preview(request.Family is PipeFamily, acknowledge);
             return UpgradeReports.Of(plan, UpgradeReports.DryRun, null);
         }
 
-        return plan.Ready
-            ? UpgradeJobs.Start(request, plan, args.OptionalBool("wait") ?? false, acknowledge)
-            : UpgradeReports.Of(plan, UpgradeReports.Refused, null);
+        if (!plan.Ready)
+        {
+            return UpgradeReports.Of(plan, UpgradeReports.Refused, null);
+        }
+
+        UpgradeReportView preflight = UpgradeReports.Of(plan, UpgradeReports.DryRun, null);
+        return JobBrief.Started(UpgradeJobs.Start(request, plan, args.OptionalBool("wait") ?? false, acknowledge),
+            JobPreflightSummaryView.Of(preflight), args.OptionalBool(JobBrief.VerboseArgument) ?? false);
     }
 
     private static UpgradeRequest Parse(Args args, UpgradeFamily family, SwapGoal goal)
@@ -251,7 +261,7 @@ internal static class UpgradeApi
             : BoxOf(args);
     }
 
-    private static PieceSelection.Box BoxOf(Args args)
+    internal static PieceSelection.Box BoxOf(Args args)
     {
         GridCell a = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("min") ??
                                                        throw ApiErrors.InvalidArgument("Pass min too."), "min"));

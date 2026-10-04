@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.17.0",
+  "mod_version": "1.18.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -102,11 +102,11 @@
       },
       "jobs": {
         "summary": "Building jobs: dry run, confirm, polls, the queue.",
-        "text": "Building tools report a dry run by default and change nothing. A real run needs dry_run: false and confirm: true (confirm_required otherwise) and answers job_id, status and preflight_summary (counts and warning codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
+        "text": "Building tools report a dry run by default and change nothing. A real run needs dry_run: false and confirm: true (confirm_required otherwise) and answers job_id, status and preflight_summary (counts and warning or problem codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
         "subtopics": {
           "polling": {
             "summary": "job_id: poll a running or finished job.",
-            "text": "Poll with job_id alone (verbose allowed). A poll answers status and result (placed, removed, used, refunded, verification, gas_check, error); preflight and final_check are null because the real run already answered them, except that a refused job keeps final_check, which says why. verbose: true answers the whole job. job_not_found when the id is not running, queued or among the last jobs kept."
+            "text": "Poll with job_id alone (verbose allowed). A poll answers status and result (placed, removed, used, refunded, verification, gas_check, error); preflight and final_check are null or left out because the real run already answered them, except that a refused job keeps final_check, which says why. verbose: true answers the whole job. job_not_found when the id is not running, queued or among the last jobs kept."
           },
           "queue": {
             "summary": "busy, wait and the queue of real runs.",
@@ -1634,6 +1634,7 @@
             "maximum": 4096,
             "description": "Pieces listed per list in the report; default 5. All are counted and checked."
           },
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
         },
         "additionalProperties": false
@@ -1809,6 +1810,7 @@
             "maximum": 4096,
             "description": "Pieces listed per list in the report; default 5. All are counted and checked."
           },
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
         },
         "additionalProperties": false
@@ -1879,7 +1881,7 @@
       "name": "clean_pipes",
       "description": "Tidy pipe networks in place with clean_cables' operations, keeping every network's contents: removals that would empty one stop. Gas checked before and after. Dry run by default; confirm to run.\nMore: tool_info {tool: \"clean_pipes\"}",
       "help": {
-        "text": "Every pipe grade; grade and content stay; kits instead of coils. A removed pipe leaves the network before it is destroyed, so its volume goes and its contents stay: moles and energy hold and the pressure rises (would_burst refuses past the weakest pipe; burst_pipe, no_atmosphere, atmosphere_busy and content_mismatch refuse too).",
+        "text": "Every pipe grade; grade and content stay; kits instead of coils. A removed pipe leaves the network before it is destroyed, so its volume goes and its contents stay: moles and energy hold and the pressure rises (would_burst refuses past the weakest pipe; no_atmosphere, atmosphere_busy and content_mismatch refuse too).",
         "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
         "topics": {
           "operations": {
@@ -2013,6 +2015,7 @@
             "maximum": 4096,
             "description": "Pieces listed per list in the report; default 5. All are counted and checked."
           },
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."},
           "acknowledge_gas_lost": {
             "type": "string",
@@ -2091,7 +2094,7 @@
       "name": "connections",
       "description": "How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (40 per page) with filters and a summary. Read only.\nMore: tool_info {tool: \"connections\"}",
       "help": {
-        "text": "Two forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. A big network reads best with an area and fields [\"reference_id\", \"prefab_name\"] or omit [\"members.position\"].",
+        "text": "Three forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. min and max alone: every cable, pipe and chute piece in the box with an open end, across all networks, each with its network_id and open_ends (kind narrows it; at most a 32 m cube). A big network reads best with an area and fields [\"reference_id\", \"prefab_name\"] or omit [\"members.position\"].",
         "keys": "thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, ends [{index, type, type_name, role, role_name, position, network, connected}], count, network {kind, id}, summary, members [{reference_id, prefab_name, display_name, member, position, open_ends}], structure_count, device_count, offset, limit, total, has_more, resolved_networks.",
         "topics": {
           "ends": {
@@ -2133,15 +2136,15 @@
           "kind": {
             "type": "string",
             "enum": ["pipe", "cable", "chute"],
-            "description": "The kind of network_id: pipe, cable or chute."
+            "description": "Kind of network_id; box form: only this kind."
           },
-          "prefab_contains": {"type": "string", "description": "Network form: only members whose prefab name holds this, any case."},
+          "prefab_contains": {"type": "string", "description": "Only members whose prefab name holds this, any case."},
           "open_ends_only": {
             "type": "boolean",
             "description": "Network form: only members with an end nothing is attached at. Default false."
           },
-          "min": {"description": "Network form: a box corner, [x, y, z] in metres; with max."},
-          "max": {"description": "Network form: the other box corner."},
+          "min": {"description": "Box corner [x, y, z]; with max. Alone: open ends in it."},
+          "max": {"description": "The other box corner."},
           "near": {"description": "Network form: a point, [x, y, z] in metres; with radius_m."},
           "radius_m": {
             "type": "number",
@@ -2153,7 +2156,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 1000,
-            "description": "Network form: members per page; default 40."
+            "description": "Members per page; default 40, box form 25."
           },
           "offset": {
             "type": "integer",
@@ -2188,7 +2191,7 @@
           }
         }
       },
-      "x-views": ["ConnectionsView", "NetworkMembersView"],
+      "x-views": ["ConnectionsView", "NetworkMembersView", "AreaOpenEndsView"],
       "x-shaping": "lists",
       "x-paging": {
         "list": "members",
@@ -2196,7 +2199,7 @@
         "limit": "limit",
         "total": "total",
         "has_more": "has_more",
-        "order": "network form only: the network's pieces as the game lists them (its structure list), then its devices, each thing once"
+        "order": "network form: the network's pieces as the game lists them (its structure list), then its devices, each thing once; box form: cables, then pipes, then chutes, each by y, z, x"
       }
     },
     {
@@ -2803,10 +2806,8 @@
             "type": "number",
             "description": "Only items made at or after this game time (game_clock game_time_s); negative: within that many seconds back."
           },
-          "min": {
-            "description": "Box corner, [x, y, z] in metres; with max: only things whose outermost holder stands in the box."
-          },
-          "max": {"description": "The other corner of the box; with min."},
+          "min": {"description": "Box corner, [x, y, z] m; with max: only things in the box."},
+          "max": {"description": "The other box corner."},
           "near_player_m": {
             "type": "number",
             "exclusiveMinimum": 0,
@@ -3060,12 +3061,9 @@
           },
           "occupied_only": {
             "type": "boolean",
-            "description": "Only cells holding a frame, a wall or other face structure, or anything in their small cells; total counts those. Default false."
+            "description": "Only cells holding something (frame, wall, small-grid thing). Default false."
           },
-          "include_piece_cells": {
-            "type": "boolean",
-            "description": "List every small cell of a piece that fills more than one. Default false: cell_count and cell_box only."
-          },
+          "include_piece_cells": {"type": "boolean", "description": "Every small cell of a long piece, not just cell_count and cell_box."},
           "limit": {"type": "integer", "minimum": 1, "maximum": 125, "description": "2 m cells per page; default 8, max 125."},
           "offset": {"type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Cells to skip (see paging)."}
         },
@@ -4433,7 +4431,7 @@
             "maximum": 1024,
             "description": "Cells listed; default 5, 0 for none. All are counted and checked."
           },
-          "verbose": {"type": "boolean", "description": "With job_id or a confirmed run: the whole job or preflight (see jobs)."},
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; nothing else but verbose (see jobs/polling)."}
         },
         "additionalProperties": false
@@ -4711,7 +4709,7 @@
             "maximum": 1024,
             "description": "Cells listed; default 5, 0 for none. All are counted and checked."
           },
-          "verbose": {"type": "boolean", "description": "With job_id or a confirmed run: the whole job or preflight (see jobs)."},
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; nothing else but verbose (see jobs/polling)."}
         },
         "additionalProperties": false
@@ -4983,7 +4981,7 @@
             "maximum": 1024,
             "description": "Cells listed; default 5, 0 for none. All are counted and checked."
           },
-          "verbose": {"type": "boolean", "description": "With job_id or a confirmed run: the whole job or preflight (see jobs)."},
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; nothing else but verbose (see jobs/polling)."},
           "acknowledge_gas_lost": {
             "type": "string",
@@ -6631,7 +6629,7 @@
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
           "limit": {"type": "integer", "minimum": 0, "maximum": 1024, "description": "Pieces listed; default 5, 0 for none."},
-          "verbose": {"type": "boolean", "description": "With job_id or a confirmed run: the whole job or preflight (see jobs)."},
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; nothing else but verbose (see jobs/polling)."}
         },
         "additionalProperties": false
@@ -6752,7 +6750,7 @@
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
           "limit": {"type": "integer", "minimum": 0, "maximum": 1024, "description": "Pieces listed; default 5, 0 for none."},
-          "verbose": {"type": "boolean", "description": "With job_id or a confirmed run: the whole job or preflight (see jobs)."},
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; nothing else but verbose (see jobs/polling)."}
         },
         "additionalProperties": false
@@ -6873,7 +6871,7 @@
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
           "limit": {"type": "integer", "minimum": 0, "maximum": 1024, "description": "Pieces listed; default 5, 0 for none."},
-          "verbose": {"type": "boolean", "description": "With job_id or a confirmed run: the whole job or preflight (see jobs)."},
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; nothing else but verbose (see jobs/polling)."},
           "acknowledge_gas_lost": {
             "type": "string",
@@ -7013,7 +7011,7 @@
           },
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
-          "verbose": {"type": "boolean", "description": "With job_id or a confirmed run: the whole job or preflight (see jobs)."},
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; nothing else but verbose (see jobs/polling)."},
           "acknowledge_gas_lost": {
             "type": "string",
@@ -7155,6 +7153,7 @@
             "maximum": 4096,
             "description": "Pieces listed per list in the report; default 5. All are counted and checked."
           },
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
         },
         "additionalProperties": false
@@ -7301,6 +7300,7 @@
             "maximum": 4096,
             "description": "Pieces listed per list in the report; default 5. All are counted and checked."
           },
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
         },
         "additionalProperties": false
@@ -8215,11 +8215,11 @@
       "description": "The damage state of any thing (panel, pipe, cable, wall, frame, door, vent, device, item), which no logic type exposes. One thing, up to 256, a network's pieces, or a world scan of damaged and broken things. Read only.\nMore: tool_info {tool: \"thing_health\"}",
       "help": {
         "text": "Four forms. reference_id: one thing. reference_ids: up to 256, a result each with its own error. network_id: every piece of one pipe (default), cable or chute network, worst first, paged (damaged_only narrows it). None of them: scan the world for damaged and broken things, broken first then worst first, paged (8 per page).",
-        "keys": "reference_id, prefab_name, display_name, custom_name, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage, is_broken, broken_build_state, being_destroyed, pipe_burst, position, distance_m, networks [{kind, id}], results [{index, ok, reference_id, prefab_name, display_name, ...}], count, success_count, error_count, network_id, pieces, damaged_only, things [{reference_id, prefab_name, display_name, custom_name, condition, ...}], total, offset, limit, has_more, structures, broken, scanned, min_damage_ratio, local_player, resolved_networks.",
+        "keys": "reference_id, prefab_name, display_name, custom_name, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage, is_broken, broken_build_state, being_destroyed, pipe_burst, damage_record, position, distance_m, networks [{kind, id}], results [{index, ok, reference_id, prefab_name, display_name, ...}], count, success_count, error_count, network_id, pieces, damaged_only, things [{reference_id, prefab_name, display_name, custom_name, condition, ...}], total, offset, limit, has_more, structures, broken, scanned, min_damage_ratio, local_player, resolved_networks.",
         "topics": {
           "reply": {
             "summary": "What each thing reports.",
-            "text": "reference_id, prefab_name, display_name, kind, type, damage_state (destructible, indestructible or none), max_damage, total_damage (brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (0 like new, 1 destroyed), health_percent (as the solar panel tooltip shows), damage per type, is_broken, broken_build_state, condition, custom_name, networks [{kind, id}], being_destroyed, band (solar panels: green, yellow over 0.25, red over 0.75), pipe_burst (none, pressure, liquid or solid), position and distance_m."
+            "text": "reference_id, prefab_name, display_name, kind, type, damage_state (destructible, indestructible or none), max_damage, total_damage (brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (0 like new, 1 destroyed), health_percent (as the solar panel tooltip shows), damage per type, is_broken, broken_build_state, condition, custom_name, networks [{kind, id}], being_destroyed, band (solar panels: green, yellow over 0.25, red over 0.75), pipe_burst (none, or pressure for any burst pipe), damage_record (pipes: every cause that damaged it, pressure, liquid or solid, the cause the tooltip names), position and distance_m."
           },
           "broken": {
             "summary": "is_broken and condition, and why health reads 100 %.",
@@ -8328,6 +8328,7 @@
           "broken_build_state": {"type": ["boolean", "null"]},
           "being_destroyed": {"type": "boolean"},
           "pipe_burst": {"type": ["string", "null"]},
+          "damage_record": {"type": ["array", "null"]},
           "position": {"type": "object"},
           "distance_m": {"type": ["number", "null"]},
           "networks": {
@@ -8361,6 +8362,7 @@
                 "broken_build_state": {"type": ["boolean", "null"]},
                 "being_destroyed": {"type": "boolean"},
                 "pipe_burst": {"type": ["string", "null"]},
+                "damage_record": {"type": ["array", "null"]},
                 "position": {"type": "object"},
                 "distance_m": {"type": ["number", "null"]},
                 "networks": {
@@ -8400,6 +8402,7 @@
                 "broken_build_state": {"type": ["boolean", "null"]},
                 "being_destroyed": {"type": "boolean"},
                 "pipe_burst": {"type": ["string", "null"]},
+                "damage_record": {"type": ["array", "null"]},
                 "position": {"type": "object"},
                 "distance_m": {"type": ["number", "null"]},
                 "networks": {
@@ -8862,6 +8865,7 @@
             "maximum": 4096,
             "description": "Pieces listed per list; default 5. All are counted and checked."
           },
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
         },
         "additionalProperties": false
@@ -8930,9 +8934,9 @@
     },
     {
       "name": "upgrade_pipes",
-      "description": "Swap normal pipe for insulated pipe in place (gas to insulated gas, liquid to insulated liquid), keeping the network's contents whole. As upgrade_cables, with a gas check. Dry run by default; confirm to swap.\nMore: tool_info {tool: \"upgrade_pipes\"}",
+      "description": "Swap normal pipe for insulated pipe in place (gas to insulated gas, liquid to insulated liquid), or burst pipe for new (to repair), keeping the network's contents whole. As upgrade_cables, with a gas check. Dry run by default; confirm to swap.\nMore: tool_info {tool: \"upgrade_pipes\"}",
       "help": {
-        "text": "Each replacement joins the network before its old piece leaves, so the network's gas is never split, vented or divided; only its volume changes by the pieces' volume difference. Pieces already insulated and members that are not pipes (vents, drains, radiators) stay. Kits instead of coils; refund gives back the normal kits.",
+        "text": "Each replacement joins the network before its old piece leaves, so the network's gas is never split, vented or divided; only its volume changes by the pieces' volume difference. Pieces already insulated and members that are not pipes (vents, drains, radiators) stay. to repair swaps each burst piece (not_burst keeps the others) for a new piece of its own kit, the same way, so a burst pipe that is the only pipe of its network keeps the contents. Kits instead of coils; refund gives back the normal kits.",
         "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
         "topics": {
           "report": {
@@ -8941,7 +8945,7 @@
           },
           "problems": {
             "summary": "The pipe problems.",
-            "text": "As upgrade_cables, plus burst_pipe (repair it first), no_atmosphere, atmosphere_busy (a gas change, game event or queued move_gas touching the network waits for the next atmospherics tick: try again), content_mismatch, would_burst (the pressure after would pass the lowest pipe rating)."
+            "text": "As upgrade_cables, plus no_atmosphere, atmosphere_busy (a gas change, game event or queued move_gas touching the network waits for the next atmospherics tick: try again), content_mismatch, would_burst (the pressure after would pass the lowest pipe rating)."
           }
         },
         "shared": ["swaps", "jobs", "refunds", "networks", "truncation", "pipes", "gas_hold"]
@@ -8984,7 +8988,11 @@
             "items": {"type": "string"},
             "description": "Pieces by reference id, up to 4096; or give network_id."
           },
-          "to": {"type": "string", "enum": ["insulated"], "description": "insulated (the default and only target)."},
+          "to": {
+            "type": "string",
+            "enum": ["insulated", "repair"],
+            "description": "insulated (default), or repair: burst pieces become new ones."
+          },
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
@@ -9018,6 +9026,7 @@
             "maximum": 4096,
             "description": "Pieces listed per list; default 5. All are counted and checked."
           },
+          "verbose": {"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."},
           "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."},
           "acknowledge_gas_lost": {
             "type": "string",

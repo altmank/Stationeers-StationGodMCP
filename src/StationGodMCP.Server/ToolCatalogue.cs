@@ -25,7 +25,7 @@ internal sealed record ToolSet(
 {
     internal const string OutputFileDescription = "Whole reply to a file, answered by a pointer (see shaping).";
 
-    internal const string FieldsDescription = "Keys to keep in list entries (see shaping).";
+    internal const string FieldsDescription = "Keys to keep (see shaping).";
 
     internal const string LimitsDescription = "{list: count}: lift a default cut (see truncation).";
 

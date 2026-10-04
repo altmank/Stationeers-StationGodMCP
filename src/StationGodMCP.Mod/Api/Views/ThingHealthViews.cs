@@ -32,6 +32,7 @@ internal sealed class HealthView
         BrokenBuildState = flags.BrokenBuildState;
         BeingDestroyed = flags.BeingDestroyed;
         PipeBurst = flags.PipeBurst;
+        DamageRecord = flags.DamageRecord;
         Position = position;
         DistanceM = distanceM;
         Networks = networks;
@@ -87,8 +88,15 @@ internal sealed class HealthView
 
     public bool BeingDestroyed { get; }
 
-    /// <summary>Pipes only: none, pressure, liquid or solid.</summary>
+    /// <summary>
+    /// Pipes only: none, or the burst state; the game sets pressure for any pipe broken by damage, so damage_record
+    /// says the cause.
+    /// </summary>
     public string? PipeBurst { get; }
+
+    /// <summary>Pipes only: every cause that has damaged it (pressure, liquid, solid), as the tooltip names them.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? DamageRecord { get; }
 
     public PositionView Position { get; }
 
@@ -133,8 +141,9 @@ internal sealed class DamageReading
 internal sealed class HealthFlags
 {
     internal HealthFlags(string? band, bool isBroken, bool beingDestroyed, string? pipeBurst,
-        string condition = HealthCondition.Intact, bool? brokenBuildState = null)
+        string condition = HealthCondition.Intact, bool? brokenBuildState = null, List<string>? damageRecord = null)
     {
+        DamageRecord = damageRecord;
         Band = band;
         IsBroken = isBroken;
         BeingDestroyed = beingDestroyed;
@@ -154,6 +163,8 @@ internal sealed class HealthFlags
     internal bool BeingDestroyed { get; }
 
     internal string? PipeBurst { get; }
+
+    internal List<string>? DamageRecord { get; }
 }
 
 /// <summary>Each kind of damage, as IndestructableDamageState keeps it.</summary>
@@ -239,6 +250,9 @@ internal sealed class HealthItemView : BatchItemView
     public bool BeingDestroyed => _health.BeingDestroyed;
 
     public string? PipeBurst => _health.PipeBurst;
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? DamageRecord => _health.DamageRecord;
 
     public PositionView Position => _health.Position;
 

@@ -1,1 +1,1 @@
-{"type": "boolean", "description": "With job_id or a confirmed run: the whole job or preflight (see jobs)."}
+{"type": "boolean", "description": "Confirmed run or poll: the whole job and preflight (see jobs)."}

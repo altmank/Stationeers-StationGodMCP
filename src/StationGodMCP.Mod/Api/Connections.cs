@@ -50,9 +50,16 @@ internal static class ConnectionsApi
     internal static object Handle(Args args)
     {
         bool thing = args.Has("reference_id");
-        if (thing == args.Has("network_id"))
+        bool network = args.Has("network_id");
+        if (!thing && !network && (args.Has("min") || args.Has("max")))
         {
-            throw ApiErrors.InvalidArgument("Pass reference_id, or network_id with kind.");
+            return OpenEndsInArea(args);
+        }
+
+        if (thing == network)
+        {
+            throw ApiErrors.InvalidArgument(
+                "Pass reference_id, network_id with kind, or min and max (open ends in a box).");
         }
 
         if (thing)
@@ -73,6 +80,61 @@ internal static class ConnectionsApi
         ThingId id = NetworkHandles.Resolve(args, "network_id", family);
         return NetworkReader.Read(kind, id, PageRequest.From(args, DefaultLimit, MaximumLimit),
             NetworkMemberFilter.Parse(args));
+    }
+
+    // The area form: every cable, pipe and chute piece (or those of kind) standing in the box with an end of its kind
+    // that nothing is attached at, across every network; cells by y, then z, then x, kinds in that order.
+    private static AreaOpenEndsView OpenEndsInArea(Args args)
+    {
+        args.Reject("the box form (it lists open ends in a box)", "near", "radius_m");
+        if (args.OptionalBool("open_ends_only") == false)
+        {
+            throw ApiErrors.InvalidArgument(
+                "The box form lists open ends only; drop open_ends_only false, or name a network_id for all members.");
+        }
+
+        PieceSelection.Box box = UpgradeApi.BoxOf(args);
+        NetworkMemberFilter filter = NetworkMemberFilter.Parse(args);
+        string? only = args.OptionalString("kind")?.Trim().ToLowerInvariant();
+        List<UpgradeFamily> families = new List<UpgradeFamily>(3);
+        foreach (UpgradeFamily family in new UpgradeFamily[] { new CableFamily(), new PipeFamily(), new ChuteFamily() })
+        {
+            if (only == null || family.NetworkKind == only)
+            {
+                families.Add(family);
+            }
+        }
+
+        if (families.Count == 0)
+        {
+            throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.");
+        }
+
+        List<NetworkMemberView> found = new List<NetworkMemberView>();
+        foreach (UpgradeFamily family in families)
+        {
+            foreach (SmallGrid piece in UpgradePlanner.InBox(family, box))
+            {
+                if (!filter.KeepsPrefab(piece.PrefabName))
+                {
+                    continue;
+                }
+
+                List<int> open = NetworkReader.OpenEnds(piece, family.NetworkKind);
+                if (open.Count > 0)
+                {
+                    IReferencable? owner = family.NetworkOf(piece);
+                    found.Add(new NetworkMemberView(GameLookup.ViewOf(piece), family.NetworkKind,
+                        GameLookup.ViewOf(piece.Position), open,
+                        owner != null ? new ThingId(owner.ReferenceId) : (ThingId?)null));
+                }
+            }
+        }
+
+        PageRequest page = PageRequest.From(args, ReplyDefaults.AreaOpenEnds, MaximumLimit);
+        Slice<NetworkMemberView> slice = Slice<NetworkMemberView>.Of(found, page);
+        page.Note("members", slice.Items.Count, found.Count);
+        return new AreaOpenEndsView(Slice<NetworkMemberView>.Page(slice.Items, page, found.Count));
     }
 }
 
@@ -474,7 +536,7 @@ internal static class NetworkReader
     }
 
     // The indexes of a member's ends of the network's kind that nothing is attached at (EndsReader.AttachedAt).
-    private static List<int> OpenEnds(Thing member, string kind)
+    internal static List<int> OpenEnds(Thing member, string kind)
     {
         List<int> open = new List<int>();
         if (!(member is SmallGrid grid) || grid.OpenEnds == null)

@@ -59,14 +59,8 @@
         "type": "boolean",
         "description": "Leave out each cell's small and support strings and the legend. Default false."
       },
-      "occupied_only": {
-        "type": "boolean",
-        "description": "Only cells holding a frame, a wall or other face structure, or anything in their small cells; total counts those. Default false."
-      },
-      "include_piece_cells": {
-        "type": "boolean",
-        "description": "List every small cell of a piece that fills more than one. Default false: cell_count and cell_box only."
-      },
+      "occupied_only": {"type": "boolean", "description": "Only cells holding something (frame, wall, small-grid thing). Default false."},
+      "include_piece_cells": {"type": "boolean", "description": "Every small cell of a long piece, not just cell_count and cell_box."},
       "limit": {"type": "integer", "minimum": 1, "maximum": 125, "description": "2 m cells per page; default 8, max 125."},
       "offset": {"type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Cells to skip (see paging)."}
     },

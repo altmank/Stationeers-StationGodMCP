@@ -88,7 +88,9 @@ internal static class ReplyShapes
         {
             S<ConnectionsView>().List("ConnectionsView.Ends", 4).List("ConnectionEndView.Connected", 2),
             S<NetworkMembersView>().List("NetworkMembersView.Members", Math.Min(W.CableNetworkMembers, D.ConnectionMembers))
-                .Absent("NetworkMemberView.OpenEnds").Holds("NetworkMembersView.Summary", typeof(CableSummaryView))
+                .Absent("NetworkMemberView.OpenEnds").Absent("NetworkMemberView.NetworkId")
+                .Holds("NetworkMembersView.Summary", typeof(CableSummaryView)),
+            S<AreaOpenEndsView>().List("AreaOpenEndsView.Members", D.AreaOpenEnds).List("NetworkMemberView.OpenEnds", 2)
         };
         shapes["consumables"] = new[]
         {
@@ -369,12 +371,14 @@ internal static class ReplyShapes
         shapes["solar_aim"] = new[] { S<SolarFixedView>(), S<SolarTurnView>() };
         shapes["thing_health"] = new[]
         {
-            S<HealthView>().List("HealthView.Networks", 1),
+            S<HealthView>().List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3),
             S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(HealthItemView))
-                .List("HealthView.Networks", 1).List("HealthItemView.Networks", 1),
+                .List("HealthView.Networks", 1).List("HealthItemView.Networks", 1)
+                .List("HealthView.DamageRecord", 3).List("HealthItemView.DamageRecord", 3),
             S<HealthNetworkView>().List("HealthNetworkView.Things", Math.Min(W.CableNetworkMembers, D.HealthThings))
-                .List("HealthView.Networks", 1),
+                .List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3),
             S<HealthScanView>().List("HealthScanView.Things", D.HealthThings).List("HealthView.Networks", 1)
+                .List("HealthView.DamageRecord", 3)
         };
         foreach (string tool in new[] { "trader_buy", "trader_sell" })
         {

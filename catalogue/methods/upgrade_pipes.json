@@ -1,8 +1,8 @@
 {
   "name": "upgrade_pipes",
-  "summary": "Swap normal pipe for insulated pipe in place (gas to insulated gas, liquid to insulated liquid), keeping the network's contents whole. As upgrade_cables, with a gas check. Dry run by default; confirm to swap.",
+  "summary": "Swap normal pipe for insulated pipe in place (gas to insulated gas, liquid to insulated liquid), or burst pipe for new (to repair), keeping the network's contents whole. As upgrade_cables, with a gas check. Dry run by default; confirm to swap.",
   "help": {
-    "text": "Each replacement joins the network before its old piece leaves, so the network's gas is never split, vented or divided; only its volume changes by the pieces' volume difference. Pieces already insulated and members that are not pipes (vents, drains, radiators) stay. Kits instead of coils; refund gives back the normal kits.",
+    "text": "Each replacement joins the network before its old piece leaves, so the network's gas is never split, vented or divided; only its volume changes by the pieces' volume difference. Pieces already insulated and members that are not pipes (vents, drains, radiators) stay. to repair swaps each burst piece (not_burst keeps the others) for a new piece of its own kit, the same way, so a burst pipe that is the only pipe of its network keeps the contents. Kits instead of coils; refund gives back the normal kits.",
     "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
     "topics": {
       "report": {
@@ -11,7 +11,7 @@
       },
       "problems": {
         "summary": "The pipe problems.",
-        "text": "As upgrade_cables, plus burst_pipe (repair it first), no_atmosphere, atmosphere_busy (a gas change, game event or queued move_gas touching the network waits for the next atmospherics tick: try again), content_mismatch, would_burst (the pressure after would pass the lowest pipe rating)."
+        "text": "As upgrade_cables, plus no_atmosphere, atmosphere_busy (a gas change, game event or queued move_gas touching the network waits for the next atmospherics tick: try again), content_mismatch, would_burst (the pressure after would pass the lowest pipe rating)."
       }
     },
     "shared": ["swaps", "jobs", "refunds", "networks", "truncation", "pipes", "gas_hold"]
@@ -51,7 +51,11 @@
         "items": {"type": "string"},
         "description": "Pieces by reference id, up to 4096; or give network_id."
       },
-      "to": {"type": "string", "enum": ["insulated"], "description": "insulated (the default and only target)."},
+      "to": {
+        "type": "string",
+        "enum": ["insulated", "repair"],
+        "description": "insulated (default), or repair: burst pieces become new ones."
+      },
       "dry_run": {"$ref": "defs/dry_run.json"},
       "confirm": {"$ref": "defs/confirm.json"},
       "from_id": {
@@ -70,6 +74,7 @@
         "maximum": 4096,
         "description": "Pieces listed per list; default 5. All are counted and checked."
       },
+      "verbose": {"$ref": "defs/verbose.json"},
       "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."},
       "acknowledge_gas_lost": {"$ref": "defs/acknowledge_gas_lost.json"}
     },

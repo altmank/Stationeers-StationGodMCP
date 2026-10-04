@@ -69,6 +69,7 @@
       },
       "refund_to": {"$ref": "defs/refund_to.json"},
       "limit": {"$ref": "defs/limit.json"},
+      "verbose": {"$ref": "defs/verbose.json"},
       "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
     },
     "additionalProperties": false

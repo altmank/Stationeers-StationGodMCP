@@ -383,7 +383,7 @@ internal static class UpgradePlanner
                 $"{members.Count} pieces; at most {MaximumPieces} per run. Name them with reference_ids in parts.");
 
     // Each small cell of the box once, every piece once however many cells it fills.
-    private static List<SmallGrid> InBox(UpgradeFamily family, PieceSelection.Box box)
+    internal static List<SmallGrid> InBox(UpgradeFamily family, PieceSelection.Box box)
     {
         List<SmallGrid> pieces = new List<SmallGrid>();
         HashSet<long> seen = new HashSet<long>();

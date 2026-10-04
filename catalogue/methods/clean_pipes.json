@@ -2,7 +2,7 @@
   "name": "clean_pipes",
   "summary": "Tidy pipe networks in place with clean_cables' operations, keeping every network's contents: removals that would empty one stop. Gas checked before and after. Dry run by default; confirm to run.",
   "help": {
-    "text": "Every pipe grade; grade and content stay; kits instead of coils. A removed pipe leaves the network before it is destroyed, so its volume goes and its contents stay: moles and energy hold and the pressure rises (would_burst refuses past the weakest pipe; burst_pipe, no_atmosphere, atmosphere_busy and content_mismatch refuse too).",
+    "text": "Every pipe grade; grade and content stay; kits instead of coils. A removed pipe leaves the network before it is destroyed, so its volume goes and its contents stay: moles and energy hold and the pressure rises (would_burst refuses past the weakest pipe; no_atmosphere, atmosphere_busy and content_mismatch refuse too).",
     "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
     "topics": {
       "operations": {
@@ -110,6 +110,7 @@
       },
       "refund_to": {"$ref": "defs/refund_to.json"},
       "limit": {"$ref": "defs/limit.json"},
+      "verbose": {"$ref": "defs/verbose.json"},
       "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."},
       "acknowledge_gas_lost": {"$ref": "defs/acknowledge_gas_lost.json"}
     },
