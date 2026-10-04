@@ -641,14 +641,14 @@ internal static class RunPlanner
 
         foreach (Kit kit in kits)
         {
-            ItemStock stock = plan.From != null ? ItemStock.In(plan.From, kit.Item) : ItemStock.Empty(kit.Item);
+            ItemStock stock = PaySources.StockOf(plan.From, plan.MoreFrom, kit.Item);
             stock.Needed = needed[kit.Item.PrefabHash];
             plan.Stocks.Add(stock);
             if (plan.From != null && stock.Available < stock.Needed)
             {
                 plan.Problem(plan.Request.Kind.ShortageCode,
                     $"{stock.Needed} {Names.Of(kit.Item)} needed, {stock.Available} held by " +
-                    $"{Names.Of(plan.From)}.", plan.From.ReferenceId);
+                    $"{PaySources.Holders(plan.From, plan.MoreFrom)}.", plan.From.ReferenceId);
             }
         }
     }
@@ -660,6 +660,14 @@ internal static class RunPlanner
         string role = plan.Request.Build != null ? "to take coils from" : "to give the refund to";
         if (from.HasValue)
         {
+            List<ThingId> missing = new List<ThingId>();
+            plan.MoreFrom.AddRange(PaySources.Resolve(plan.Request.Options.MoreFrom, missing));
+            foreach (ThingId id in missing)
+            {
+                plan.Problem(ApiErrors.ThingNotFoundCode, $"No thing with reference id {id} to take coils from.",
+                    id.Value);
+            }
+
             if (GameLookup.TryFindThing(from.Value, out Thing thing) && !thing.IsBeingDestroyed)
             {
                 return thing;

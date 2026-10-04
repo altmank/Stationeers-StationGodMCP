@@ -200,16 +200,41 @@ internal sealed class PlacementLookView
 /// <summary>One item over the whole run: how many are needed and how many the source holds.</summary>
 internal sealed class BuildMaterialView
 {
-    internal BuildMaterialView(string? prefabName, int needed, int available)
+    internal BuildMaterialView(string? prefabName, int needed, int available, List<PaidByView>? paidBy = null)
     {
         PrefabName = prefabName;
         Needed = needed;
         Available = available;
+        PaidBy = paidBy;
     }
 
     public string? PrefabName { get; }
 
     public int Needed { get; }
+
+    public int Available { get; }
+
+    /// <summary>With from_id listing several things: what each pays, in order; left out with one source.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<PaidByView>? PaidBy { get; }
+}
+
+/// <summary>One source of a material: the thing, what it pays and what it holds.</summary>
+internal sealed class PaidByView
+{
+    internal PaidByView(ThingId referenceId, string? name, int quantity, int available)
+    {
+        ReferenceId = referenceId;
+        Name = name;
+        Quantity = quantity;
+        Available = available;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public string? Name { get; }
+
+    public int Quantity { get; }
 
     public int Available { get; }
 }

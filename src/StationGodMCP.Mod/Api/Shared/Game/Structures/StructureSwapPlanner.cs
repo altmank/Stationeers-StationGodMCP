@@ -285,14 +285,14 @@ internal static class StructureSwapPlanner
         foreach (MaterialTotal total in plan.Totals)
         {
             Item item = plan.Items[total.Item];
-            ItemStock stock = plan.From != null ? ItemStock.In(plan.From, item) : ItemStock.Empty(item);
+            ItemStock stock = PaySources.StockOf(plan.From, plan.MoreFrom, item);
             stock.Needed = total.Charge;
             plan.Stocks.Add(stock);
             if (plan.From != null && stock.Available < stock.Needed)
             {
                 plan.Problem("not_enough_materials",
                     $"{stock.Needed} {Names.Of(item)} ({item.PrefabName}) needed, {stock.Available} held by " +
-                    $"{Names.Of(plan.From)}.", plan.From);
+                    $"{PaySources.Holders(plan.From, plan.MoreFrom)}.", plan.From);
             }
         }
     }
@@ -319,6 +319,14 @@ internal static class StructureSwapPlanner
         ThingId? from = plan.Request.Arguments.From;
         if (from.HasValue)
         {
+            List<ThingId> missing = new List<ThingId>();
+            plan.MoreFrom.AddRange(PaySources.Resolve(plan.Request.Arguments.MoreFrom, missing));
+            foreach (ThingId id in missing)
+            {
+                plan.Problems.Add(new UpgradeProblemView(ApiErrors.ThingNotFoundCode,
+                    $"No thing with reference id {id} to take materials from.", id));
+            }
+
             if (GameLookup.TryFindThing(from.Value, out Thing thing) && !thing.IsBeingDestroyed)
             {
                 return thing;

@@ -49,7 +49,10 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    starts when the slot is free, with every check run again on the world the earlier jobs left.
 6. **Materials** come from your inventory at any depth, or from `from_id` (a belt, a locker, any container), and cost
    what the game's own placement charges. Nothing is made for free (`not_enough_coils` for cables and pipes,
-   `not_enough_kits` for chutes, `not_enough_materials` for structures).
+   `not_enough_kits` for chutes, `not_enough_materials` for structures). On the place, upgrade, clean and replace tools
+   `from_id` may list up to 8 things, tried in order for each material, so a hull piece can take its kit from one
+   locker and its steel from another: `"from_id": ["<rocket parts locker>", "<materials locker>"]`. The dry run's
+   materials then give `paid_by`, what each thing pays and holds; the first thing is the one refunds to `source` use.
 7. **Refunds** are what deconstruction would give back. Every tool that refunds (the place tools with `remove_ids`,
    the remove, upgrade, clean and replace tools, `remove_structure`, `undo_job`, `plan_removal`) takes `refund_to`: a
    list of targets tried in turn for each item until it fits.

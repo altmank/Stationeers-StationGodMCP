@@ -55,10 +55,7 @@
       "wait": {"$ref": "defs/wait.json"},
       "dry_run": {"$ref": "defs/dry_run.json"},
       "confirm": {"$ref": "defs/confirm.json"},
-      "from_id": {
-        "type": "string",
-        "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
-      },
+      "from_id": {"$ref": "defs/pay_from.json"},
       "skip_unmatched": {
         "type": "boolean",
         "description": "Leave pieces that cannot be swapped (footprint_mismatch, invalid_target) as they are instead of refusing. Default false."

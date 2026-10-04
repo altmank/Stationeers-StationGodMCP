@@ -172,8 +172,9 @@ internal sealed class ReportDetail
 internal sealed class PlaceArguments
 {
     internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free, bool allowDoorKeepOut = false,
-        bool footprintCells = false, ReportDetail? detail = null)
+        bool footprintCells = false, ReportDetail? detail = null, List<ThingId>? moreFrom = null)
     {
+        MoreFrom = moreFrom ?? new List<ThingId>();
         Detail = detail ?? ReportDetail.Brief;
         FootprintCells = footprintCells;
         AllowDoorKeepOut = allowDoorKeepOut;
@@ -186,6 +187,9 @@ internal sealed class PlaceArguments
 
     /// <summary>The thing materials come from; null for the player.</summary>
     internal ThingId? From { get; }
+
+    /// <summary>from_id's further things, tried after From for each material.</summary>
+    internal List<ThingId> MoreFrom { get; }
 
     /// <summary>Place without materials (creative worlds only).</summary>
     internal bool Free { get; }
@@ -330,10 +334,11 @@ internal static class BuildArgs
         bool confirmed = Confirmed(args);
         bool verbose = args.OptionalBool(VerboseArgument) ?? false;
         return new BuildForm<PlaceArguments>.Run(
-            new PlaceArguments(placements, args.OptionalThingId("from_id"), args.OptionalBool("free") ?? false,
+            new PlaceArguments(placements, SourceArgs.First(SourceArgs.Of(args)), args.OptionalBool("free") ?? false,
                 args.OptionalBool("allow_door_keepout") ?? false,
                 args.OptionalBool(FootprintCellsArgument) ?? false,
-                new ReportDetail(args.OptionalBool(NotesArgument) ?? false, verbose)),
+                new ReportDetail(args.OptionalBool(NotesArgument) ?? false, verbose),
+                SourceArgs.Rest(SourceArgs.Of(args))),
             confirmed, confirmed && verbose);
     }
 

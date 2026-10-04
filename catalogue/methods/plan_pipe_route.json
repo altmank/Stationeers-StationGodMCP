@@ -73,7 +73,7 @@
       "join_trunk": {"type": "boolean", "description": "Add a missing tap to join_to (tap_added). Default false."},
       "allow_split": {"type": "boolean", "description": "Passed on: let removals split networks. Default false."},
       "allow_split_long": {"type": "boolean", "description": "Default true: long straights met are split in the same job."},
-      "from_id": {"type": "string", "description": "Passed on: the thing whose slots pay (see materials)."},
+      "from_id": {"$ref": "defs/pay_from.json"},
       "include_links": {"$ref": "defs/include_links.json"},
       "include_notes": {"$ref": "defs/include_notes.json"},
       "include_network_devices": {"$ref": "defs/include_network_devices.json"},
@@ -100,5 +100,5 @@
   },
   "x-views": ["PlanRouteView"],
   "x-shaping": "lists",
-  "x-read-by": {"allow_bridge": "Api/PlanRoute.cs"}
+  "x-read-by": {"from_id": "Api/Shared/SourceArgs.cs", "allow_bridge": "Api/PlanRoute.cs"}
 }

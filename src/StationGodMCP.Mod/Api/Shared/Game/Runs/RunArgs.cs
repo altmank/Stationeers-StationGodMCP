@@ -304,11 +304,12 @@ internal static class RunArgs
 
         RunTargets targets = new RunTargets(args.OptionalThingId("root"), joinTo,
             args.OptionalBool("join_trunk") ?? false);
+        List<ThingId> sources = SourceArgs.Of(args);
         return new RunOptions(new EditAllowance(bridge, args.OptionalBool("allow_split") ?? false),
-            args.OptionalThingId("from_id"), RefundArgs.RouteWithFlag(args),
+            SourceArgs.First(sources), RefundArgs.RouteWithFlag(args),
             args.OptionalInt("limit", 0, RunPath.MaximumCells) ?? DefaultListLimit,
             args.OptionalBool("allow_split_long") ?? true, targets, args.OptionalBool("allow_door_keepout") ?? false,
             new RunDetail(args.OptionalBool("include_links") ?? false, args.OptionalBool("include_notes") ?? false,
-                args.OptionalBool("include_network_devices") ?? false));
+                args.OptionalBool("include_network_devices") ?? false), SourceArgs.Rest(sources));
     }
 }

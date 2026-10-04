@@ -120,8 +120,10 @@ internal sealed class RunDetail
 internal sealed class RunOptions
 {
     internal RunOptions(EditAllowance allow, ThingId? from, RefundRoute refundTo, int listLimit, bool splitLong = true,
-        RunTargets? targets = null, bool allowDoorKeepOut = false, RunDetail? detail = null)
+        RunTargets? targets = null, bool allowDoorKeepOut = false, RunDetail? detail = null,
+        List<ThingId>? moreFrom = null)
     {
+        MoreFrom = moreFrom ?? new List<ThingId>();
         Detail = detail ?? RunDetail.Brief;
         AllowDoorKeepOut = allowDoorKeepOut;
         Allow = allow;
@@ -136,7 +138,7 @@ internal sealed class RunOptions
     internal RunTargets Targets { get; }
 
     internal RunOptions WithTargets(RunTargets targets) =>
-        new RunOptions(Allow, From, RefundTo, ListLimit, SplitLong, targets, AllowDoorKeepOut, Detail);
+        new RunOptions(Allow, From, RefundTo, ListLimit, SplitLong, targets, AllowDoorKeepOut, Detail, MoreFrom);
 
     /// <summary>include_links and include_notes: what the report lists beyond its counts.</summary>
     internal RunDetail Detail { get; }
@@ -154,6 +156,9 @@ internal sealed class RunOptions
 
     /// <summary>The thing coils are taken from and given back to; null for the player.</summary>
     internal ThingId? From { get; }
+
+    /// <summary>from_id's further things, tried after From for each coil or kit.</summary>
+    internal List<ThingId> MoreFrom { get; }
 
     /// <summary>Whether anything is given back (refund_to not none, refund not false).</summary>
     internal bool Refund => RefundTo.GivesBack;
@@ -321,6 +326,9 @@ internal sealed class RunPlan
     internal List<GridCell> AirCells { get; } = new List<GridCell>();
 
     internal Thing? From { get; set; }
+
+    /// <summary>The further things materials are taken from, after From.</summary>
+    internal List<Thing> MoreFrom { get; } = new List<Thing>();
 
     /// <summary>Where the refund goes (refund_to resolved); null until the materials are counted.</summary>
     internal RefundReceivers? Refunds { get; set; }

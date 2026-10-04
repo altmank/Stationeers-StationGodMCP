@@ -64,7 +64,8 @@ internal static class BuildReports
         List<BuildMaterialView> materials = new List<BuildMaterialView>(plan.Stocks.Count);
         foreach (ItemStock stock in plan.Stocks)
         {
-            materials.Add(new BuildMaterialView(stock.Item.PrefabName, stock.Needed, stock.Available));
+            materials.Add(new BuildMaterialView(stock.Item.PrefabName, stock.Needed, stock.Available,
+                PaySources.PaidBy(stock)));
         }
 
         return new PlaceReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings,

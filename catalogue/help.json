@@ -167,7 +167,7 @@
   "families": {
     "materials": {
       "summary": "from_id: where a build's materials come from.",
-      "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
+      "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
     },
     "gas_hold": {
       "summary": "gas_check and the gas hold after a pipe job lost gas; acknowledge_gas_lost.",
@@ -361,7 +361,7 @@
         },
         "materials": {
           "summary": "Coils, kits and materials for a swap.",
-          "text": "Each swap costs the new piece's coil or kit less the old one's, by the coil's own merge rule; a shortfall is taken from from_id (default the player) and refused with not_enough_coils (or not_enough_materials) when it holds too few. Nothing is made for free. With refund (default true) the surplus and removed pieces' materials go where refund_to says. Without a player and without from_id, a swap that charges nothing and whose refund_to is not the single word source still goes ahead (the refund lands where the first piece stood); else no_local_player."
+          "text": "Each swap costs the new piece's coil or kit less the old one's, by the coil's own merge rule; a shortfall is taken from from_id (default the player; a list is tried in order, see materials) and refused with not_enough_coils (or not_enough_materials) when it holds too few. Nothing is made for free. With refund (default true) the surplus and removed pieces' materials go where refund_to says. Without a player and without from_id, a swap that charges nothing and whose refund_to is not the single word source still goes ahead (the refund lands where the first piece stood); else no_local_player."
         }
       }
     },

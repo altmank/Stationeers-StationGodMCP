@@ -71,10 +71,7 @@
       "allow_split": {"$ref": "defs/allow_split.json"},
       "dry_run": {"$ref": "defs/dry_run.json"},
       "confirm": {"$ref": "defs/confirm.json"},
-      "from_id": {
-        "type": "string",
-        "description": "The thing whose inventory gives the coils or kits and takes the refund. Default the player."
-      },
+      "from_id": {"$ref": "defs/pay_from.json"},
       "refund": {
         "type": "boolean",
         "description": "Give back what removed pieces and cheaper changes return. Default true; false is refund_to none."

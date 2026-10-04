@@ -23,7 +23,7 @@ internal sealed record ToolSet(
     ToolHelp Help,
     IReadOnlyDictionary<string, HelpPointer> ErrorPointers)
 {
-    internal const string OutputFileDescription = "Whole reply to a file, answered by a pointer (see shaping).";
+    internal const string OutputFileDescription = "Whole reply to a file; answers a pointer (see shaping).";
 
     internal const string FieldsDescription = "Keys to keep (see shaping).";
 

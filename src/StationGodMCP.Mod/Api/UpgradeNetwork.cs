@@ -233,7 +233,8 @@ internal static class UpgradeApi
             RefundArgs.RouteWithFlag(args),
             args.OptionalInt("limit", 1, UpgradePlanner.MaximumPieces) ?? DefaultListLimit,
             args.OptionalBool("include_notes") ?? false);
-        return new UpgradeRequest(family, goal, selection, args.OptionalThingId("from_id"), options);
+        List<ThingId> sources = SourceArgs.Of(args);
+        return new UpgradeRequest(family, goal, selection, SourceArgs.First(sources), options, SourceArgs.Rest(sources));
     }
 
     // Exactly one of network_id, reference_ids, or a box (min and max: only clean_chutes lists them).

@@ -120,6 +120,9 @@ internal sealed class PlacePlan
     /// <summary>Where materials come from; null when free or when there is none (a problem says so).</summary>
     internal Thing? From { get; set; }
 
+    /// <summary>The further things materials are taken from, after From.</summary>
+    internal List<Thing> MoreFrom { get; } = new List<Thing>();
+
     internal ulong Owner { get; set; }
 
     internal Dictionary<int, Item> Items { get; } = new Dictionary<int, Item>();
@@ -1097,6 +1100,13 @@ internal static class PlacePlanner
         ThingId? from = plan.Arguments.From;
         if (from.HasValue)
         {
+            List<ThingId> missing = new List<ThingId>();
+            plan.MoreFrom.AddRange(PaySources.Resolve(plan.Arguments.MoreFrom, missing));
+            foreach (ThingId id in missing)
+            {
+                plan.Problem(ApiErrors.ThingNotFoundCode, $"No thing with reference id {id} to take materials from.");
+            }
+
             if (GameLookup.TryFindThing(from.Value, out Thing thing) && !thing.IsBeingDestroyed)
             {
                 plan.From = thing;
@@ -1137,14 +1147,14 @@ internal static class PlacePlanner
         foreach (KeyValuePair<int, int> item in needed)
         {
             Item prefab = plan.Items[item.Key];
-            ItemStock stock = plan.From != null ? ItemStock.In(plan.From, prefab) : ItemStock.Empty(prefab);
+            ItemStock stock = PaySources.StockOf(plan.From, plan.MoreFrom, prefab);
             stock.Needed = item.Value;
             plan.Stocks.Add(stock);
             if (plan.From != null && stock.Available < stock.Needed)
             {
                 plan.Problem("not_enough_materials",
                     $"{stock.Needed} {Names.Of(prefab)} ({prefab.PrefabName}) needed, {stock.Available} held by " +
-                    $"{Names.Of(plan.From)}.");
+                    $"{PaySources.Holders(plan.From, plan.MoreFrom)}.");
             }
         }
     }

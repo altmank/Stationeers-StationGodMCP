@@ -99,10 +99,7 @@
       },
       "dry_run": {"$ref": "defs/dry_run.json"},
       "confirm": {"$ref": "defs/confirm.json"},
-      "from_id": {
-        "type": "string",
-        "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
-      },
+      "from_id": {"$ref": "defs/pay_from.json"},
       "skip_unmatched": {"$ref": "defs/skip_unmatched.json"},
       "refund": {
         "type": "boolean",

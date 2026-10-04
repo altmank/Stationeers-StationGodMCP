@@ -146,6 +146,9 @@ internal sealed class StructureSwapPlan
 
     internal Thing? From { get; set; }
 
+    /// <summary>The further things materials are taken from, after From.</summary>
+    internal List<Thing> MoreFrom { get; } = new List<Thing>();
+
     /// <summary>Where the refund goes (refund_to resolved); null until the materials are counted.</summary>
     internal RefundReceivers? Refunds { get; set; }
 

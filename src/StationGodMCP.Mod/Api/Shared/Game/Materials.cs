@@ -11,6 +11,20 @@ using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game;
 
+/// <summary>A source of a stock and how many of the item it adds.</summary>
+internal readonly struct StockSource
+{
+    internal StockSource(Thing thing, int available)
+    {
+        Thing = thing;
+        Available = available;
+    }
+
+    internal Thing Thing { get; }
+
+    internal int Available { get; }
+}
+
 /// <summary>An item and how many of it.</summary>
 internal sealed class ItemAmount
 {
@@ -105,18 +119,20 @@ internal static class BuildMaterials
 }
 
 /// <summary>
-/// The stacks of one item the source holds: its own stacks at any depth of slots (hands, suit, backpack, belt, a
-/// locker's slots), or the source itself when it is such a stack. Taken as a kit's own placement takes them
+/// The stacks of one item the sources hold, source by source in the order given: each source's own stacks at any depth
+/// of slots (hands, suit, backpack, belt, a locker's slots), or the source itself when it is such a stack; a stack
+/// counted once however many sources reach it. Taken in that order as a kit's own placement takes them
 /// (Stackable.OnUseItem, which removes an emptied stack).
 /// </summary>
 internal sealed class ItemStock
 {
     private const int MaximumDepth = 8;
 
-    private ItemStock(Item item, List<Stackable> stacks)
+    private ItemStock(Item item, List<Stackable> stacks, List<StockSource>? sources = null)
     {
         Item = item;
         Stacks = stacks;
+        Sources = sources ?? new List<StockSource>();
         int available = 0;
         foreach (Stackable stack in stacks)
         {
@@ -134,18 +150,41 @@ internal sealed class ItemStock
 
     internal int Needed { get; set; }
 
+    /// <summary>Each source in order with how many of the item it alone adds.</summary>
+    internal List<StockSource> Sources { get; }
+
     internal static ItemStock Empty(Item item) => new ItemStock(item, new List<Stackable>());
 
-    internal static ItemStock In(Thing source, Item item)
+    internal static ItemStock In(Thing source, Item item) => In(new List<Thing> { source }, item);
+
+    internal static ItemStock In(IReadOnlyList<Thing> sources, Item item)
     {
         List<Stackable> stacks = new List<Stackable>();
-        if (source is Stackable own && own.PrefabHash == item.PrefabHash)
+        List<StockSource> counted = new List<StockSource>(sources.Count);
+        HashSet<long> seen = new HashSet<long>();
+        foreach (Thing source in sources)
         {
-            stacks.Add(own);
+            List<Stackable> own = new List<Stackable>();
+            if (source is Stackable self && self.PrefabHash == item.PrefabHash)
+            {
+                own.Add(self);
+            }
+
+            Collect(source, item.PrefabHash, own, 0);
+            int added = 0;
+            foreach (Stackable stack in own)
+            {
+                if (seen.Add(stack.ReferenceId))
+                {
+                    stacks.Add(stack);
+                    added += stack.Quantity;
+                }
+            }
+
+            counted.Add(new StockSource(source, added));
         }
 
-        Collect(source, item.PrefabHash, stacks, 0);
-        return new ItemStock(item, stacks);
+        return new ItemStock(item, stacks, counted);
     }
 
     private static void Collect(Thing holder, int prefabHash, List<Stackable> stacks, int depth)

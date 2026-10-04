@@ -116,7 +116,7 @@ internal static class JobSnapshots
 
     // The request's own source fields; each tool has already checked them.
     private static JobSource SourceOf(Args args) =>
-        new JobSource(args.OptionalThingId("from_id")?.Value, args.OptionalBool("free") ?? false,
+        new JobSource(SourceArgs.First(SourceArgs.Of(args))?.Value, args.OptionalBool("free") ?? false,
             RefundArgs.RouteOf(args.Optional(RefundArgs.Argument)), args.OptionalBool(RefundArgs.Flag));
 
     internal static ThingSnapshot Of(Structure structure)

@@ -244,7 +244,7 @@ internal static class UpgradeReports
             }
 
             coils.Add(new UpgradeCoilView(stock.Item.PrefabName, stock.Item.DisplayName, stock.Needed,
-                stock.Available, stacks));
+                stock.Available, stacks, PaySources.PaidBy(stock)));
         }
 
         return coils;

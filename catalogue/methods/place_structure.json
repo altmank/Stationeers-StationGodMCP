@@ -215,7 +215,7 @@
       },
       "label": {"type": "string", "description": "A name, as the Labeller writes it."},
       "color": {"oneOf": [{"type": "string"}, {"type": "integer"}], "description": "A colour name or index (paint lists them)."},
-      "from_id": {"type": "string", "description": "The thing whose slots pay; default the player (see materials)."},
+      "from_id": {"$ref": "defs/pay_from.json"},
       "include_footprint_cells": {"type": "boolean", "description": "List each layout footprint's small and large cells; default counts only."},
       "free": {
         "type": "boolean",

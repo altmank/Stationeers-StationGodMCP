@@ -703,8 +703,9 @@ internal sealed class PipePrefabNumbers
 internal sealed class UpgradeCoilView
 {
     internal UpgradeCoilView(string? prefabName, string? displayName, int needed, int available,
-        List<UpgradeStackView> stacks)
+        List<UpgradeStackView> stacks, List<PaidByView>? paidBy = null)
     {
+        PaidBy = paidBy;
         PrefabName = prefabName;
         DisplayName = displayName;
         Needed = needed;
@@ -721,6 +722,10 @@ internal sealed class UpgradeCoilView
     public int Available { get; }
 
     public List<UpgradeStackView> Stacks { get; }
+
+    /// <summary>With from_id listing several things: what each pays, in order; left out with one source.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<PaidByView>? PaidBy { get; }
 }
 
 /// <summary>A stack in the source's inventory and the thing whose slot holds it.</summary>

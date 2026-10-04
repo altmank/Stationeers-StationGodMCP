@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.19.0
+
+- **`from_id` takes a list.** The place, upgrade, clean and replace tools (and the route planners, which pass it on)
+  take up to 8 things, tried in order for each material: a fuselage piece pays its kit from the rocket parts locker
+  and its steel from the materials locker in one placement. The dry run's materials give `paid_by` (each thing, what
+  it pays and what it holds) when more than one thing is listed. The first thing stands for the source where one
+  thing is meant (refunds to `source`, `undo_job`). The remove tools keep one `from_id`.
+- Shortage refusals name every thing that was searched.
+
 ## 1.18.1
 
 - **`output_file` with a path** is refused naming where the file goes: the output folder

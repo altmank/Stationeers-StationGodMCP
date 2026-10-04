@@ -1,0 +1,4 @@
+{
+  "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+  "description": "Payer, or payers tried in order per material; default the player."
+}

@@ -110,7 +110,14 @@ internal sealed class ReplyShape
     internal int? LengthOf(string member) =>
         _lengths.TryGetValue(member, out int length) || _lengths.TryGetValue(AnyType(member), out length) ? length : null;
 
-    internal bool IsAbsent(string member) => _absent.Contains(member) || _absent.Contains(AnyType(member));
+    internal bool IsAbsent(string member) =>
+        AbsentInEveryDefault.Contains(member) || _absent.Contains(member) || _absent.Contains(AnyType(member));
+
+    // Members no default reply carries, whatever the tool: paid_by comes only with from_id listing several things.
+    private static readonly HashSet<string> AbsentInEveryDefault = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "BuildMaterialView.PaidBy", "UpgradeCoilView.PaidBy", "StructureMaterialView.PaidBy"
+    };
 
     internal string? TextOf(string member) =>
         _texts.TryGetValue(member, out string? text) || _texts.TryGetValue(AnyType(member), out text) ? text : null;

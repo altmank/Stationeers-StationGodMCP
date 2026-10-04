@@ -60,8 +60,9 @@ internal abstract class PieceSelection
 internal sealed class UpgradeRequest
 {
     internal UpgradeRequest(UpgradeFamily family, SwapGoal goal, PieceSelection selection, ThingId? from,
-        UpgradeOptions options)
+        UpgradeOptions options, List<ThingId>? moreFrom = null)
     {
+        MoreFrom = moreFrom ?? new List<ThingId>();
         Family = family;
         Goal = goal;
         Selection = selection;
@@ -81,6 +82,9 @@ internal sealed class UpgradeRequest
 
     /// <summary>The thing coils are taken from; null for the player.</summary>
     internal ThingId? From { get; }
+
+    /// <summary>from_id's further things, tried after From for each coil or kit.</summary>
+    internal List<ThingId> MoreFrom { get; }
 
     internal bool SkipUnmatched { get; }
 
@@ -296,6 +300,9 @@ internal sealed class UpgradePlan
 
     internal Thing? From { get; set; }
 
+    /// <summary>The further things coils are taken from, after From.</summary>
+    internal List<Thing> MoreFrom { get; } = new List<Thing>();
+
     /// <summary>Where the refund goes (refund_to resolved); null until the coils are counted.</summary>
     internal RefundReceivers? Refunds { get; set; }
 
@@ -471,14 +478,14 @@ internal static class UpgradePlanner
         HolderRemoved(plan, request);
         foreach (Kit kit in kits)
         {
-            ItemStock stock = plan.From != null ? ItemStock.In(plan.From, kit.Item) : ItemStock.Empty(kit.Item);
+            ItemStock stock = PaySources.StockOf(plan.From, plan.MoreFrom, kit.Item);
             stock.Needed = needed[kit.Item.PrefabHash];
             plan.Stocks.Add(stock);
             if (plan.From != null && stock.Available < stock.Needed)
             {
                 plan.Problem("not_enough_coils",
                     $"{stock.Needed} {Names.Of(kit.Item)} needed, {stock.Available} held by " +
-                    $"{Names.Of(plan.From)}.", plan.From);
+                    $"{PaySources.Holders(plan.From, plan.MoreFrom)}.", plan.From);
             }
         }
     }
@@ -503,6 +510,14 @@ internal static class UpgradePlanner
     {
         if (request.From.HasValue)
         {
+            List<ThingId> missing = new List<ThingId>();
+            plan.MoreFrom.AddRange(PaySources.Resolve(request.MoreFrom, missing));
+            foreach (ThingId id in missing)
+            {
+                plan.Problems.Add(new UpgradeProblemView(ApiErrors.ThingNotFoundCode,
+                    $"No thing with reference id {id} to take coils from.", id));
+            }
+
             if (GameLookup.TryFindThing(request.From.Value, out Thing from) && !from.IsBeingDestroyed)
             {
                 return from;

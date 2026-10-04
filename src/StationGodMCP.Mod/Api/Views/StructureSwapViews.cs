@@ -345,8 +345,9 @@ internal sealed class StructureMaterialLineView
 internal sealed class StructureMaterialView
 {
     internal StructureMaterialView(string? prefabName, string? displayName, StructureMaterialCounts counts,
-        List<UpgradeStackView> stacks)
+        List<UpgradeStackView> stacks, List<PaidByView>? paidBy = null)
     {
+        PaidBy = paidBy;
         PrefabName = prefabName;
         DisplayName = displayName;
         Cost = counts.Cost;
@@ -372,6 +373,10 @@ internal sealed class StructureMaterialView
     public int GiveBack { get; }
 
     public int Available { get; }
+
+    /// <summary>With from_id listing several things: what each pays, in order; left out with one source.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<PaidByView>? PaidBy { get; }
 
     public List<UpgradeStackView> Stacks { get; }
 }

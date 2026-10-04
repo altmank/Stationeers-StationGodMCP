@@ -71,8 +71,9 @@ internal abstract class StructureSwapForm
 internal sealed class StructureSwapArguments
 {
     internal StructureSwapArguments(string? to, StructureScope scope, List<string>? fromPrefabs, ThingId? from,
-        StructureSwapOptions options)
+        StructureSwapOptions options, List<ThingId>? moreFrom = null)
     {
+        MoreFrom = moreFrom ?? new List<ThingId>();
         To = to;
         Scope = scope;
         FromPrefabs = fromPrefabs;
@@ -93,6 +94,9 @@ internal sealed class StructureSwapArguments
 
     /// <summary>The thing materials come from and refunds go to; null for the player.</summary>
     internal ThingId? From { get; }
+
+    /// <summary>from_id's further things, tried after From for each material.</summary>
+    internal List<ThingId> MoreFrom { get; }
 
     /// <summary>Whether anything is given back (refund_to not none, refund not false).</summary>
     internal bool Refund => RefundTo.GivesBack;
@@ -165,10 +169,10 @@ internal static class StructureSwapArgs
         }
 
         StructureSwapArguments arguments = new StructureSwapArguments(Target(args, targetRequired), Scope(args),
-            FromPrefabs(args), args.OptionalThingId("from_id"),
+            FromPrefabs(args), SourceArgs.First(SourceArgs.Of(args)),
             new StructureSwapOptions(RefundArgs.RouteWithFlag(args), args.OptionalBool("skip_unmatched") ?? false,
                 args.OptionalInt("limit", 1, MaximumPieces) ?? DefaultLimit,
-                args.OptionalBool("include_notes") ?? false));
+                args.OptionalBool("include_notes") ?? false), SourceArgs.Rest(SourceArgs.Of(args)));
         return new StructureSwapForm.Run(arguments, !dryRun);
     }
 

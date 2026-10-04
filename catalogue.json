@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.18.1",
+  "mod_version": "1.19.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -174,7 +174,7 @@
     "families": {
       "materials": {
         "summary": "from_id: where a build's materials come from.",
-        "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
+        "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
       },
       "gas_hold": {
         "summary": "gas_check and the gas hold after a pipe job lost gas; acknowledge_gas_lost.",
@@ -368,7 +368,7 @@
           },
           "materials": {
             "summary": "Coils, kits and materials for a swap.",
-            "text": "Each swap costs the new piece's coil or kit less the old one's, by the coil's own merge rule; a shortfall is taken from from_id (default the player) and refused with not_enough_coils (or not_enough_materials) when it holds too few. Nothing is made for free. With refund (default true) the surplus and removed pieces' materials go where refund_to says. Without a player and without from_id, a swap that charges nothing and whose refund_to is not the single word source still goes ahead (the refund lands where the first piece stood); else no_local_player."
+            "text": "Each swap costs the new piece's coil or kit less the old one's, by the coil's own merge rule; a shortfall is taken from from_id (default the player; a list is tried in order, see materials) and refused with not_enough_coils (or not_enough_materials) when it holds too few. Nothing is made for free. With refund (default true) the surplus and removed pieces' materials go where refund_to says. Without a player and without from_id, a swap that charges nothing and whose refund_to is not the single word source still goes ahead (the refund lands where the first piece stood); else no_local_player."
           }
         }
       },
@@ -1604,8 +1604,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "skip_unmatched": {
             "type": "boolean",
@@ -1780,8 +1780,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "skip_unmatched": {
             "type": "boolean",
@@ -1985,8 +1985,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "skip_unmatched": {
             "type": "boolean",
@@ -4402,8 +4402,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose inventory gives the coils or kits and takes the refund. Default the player."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "refund": {
             "type": "boolean",
@@ -4680,8 +4680,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose inventory gives the coils or kits and takes the refund. Default the player."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "refund": {
             "type": "boolean",
@@ -4952,8 +4952,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose inventory gives the coils or kits and takes the refund. Default the player."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "refund": {
             "type": "boolean",
@@ -5271,7 +5271,10 @@
             "oneOf": [{"type": "string"}, {"type": "integer"}],
             "description": "A colour name or index (paint lists them)."
           },
-          "from_id": {"type": "string", "description": "The thing whose slots pay; default the player (see materials)."},
+          "from_id": {
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
+          },
           "include_footprint_cells": {"type": "boolean", "description": "List each layout footprint's small and large cells; default counts only."},
           "free": {
             "type": "boolean",
@@ -5497,7 +5500,10 @@
           "join_trunk": {"type": "boolean", "description": "Add a missing tap to join_to (tap_added). Default false."},
           "allow_split": {"type": "boolean", "description": "Passed on: let removals split networks. Default false."},
           "allow_split_long": {"type": "boolean", "description": "Default true: long straights met are split in the same job."},
-          "from_id": {"type": "string", "description": "Passed on: the thing whose slots pay (see materials)."},
+          "from_id": {
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
+          },
           "include_links": {"type": "boolean", "description": "true: list every added and lost link."},
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
@@ -5528,7 +5534,7 @@
       },
       "x-views": ["PlanRouteView"],
       "x-shaping": "lists",
-      "x-read-by": {"allow_bridge": "Api/PlanRoute.cs"}
+      "x-read-by": {"from_id": "Api/Shared/SourceArgs.cs", "allow_bridge": "Api/PlanRoute.cs"}
     },
     {
       "name": "plan_chute_route",
@@ -5683,7 +5689,10 @@
           "join_trunk": {"type": "boolean", "description": "Add a missing tap to join_to (tap_added). Default false."},
           "allow_split": {"type": "boolean", "description": "Passed on: let removals split networks. Default false."},
           "allow_split_long": {"type": "boolean", "description": "Default true: long straights met are split in the same job."},
-          "from_id": {"type": "string", "description": "Passed on: the thing whose slots pay (see materials)."},
+          "from_id": {
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
+          },
           "include_links": {"type": "boolean", "description": "true: list every added and lost link."},
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
@@ -5714,7 +5723,7 @@
       },
       "x-views": ["PlanRouteView"],
       "x-shaping": "lists",
-      "x-read-by": {"allow_bridge": "Api/PlanRoute.cs"}
+      "x-read-by": {"from_id": "Api/Shared/SourceArgs.cs", "allow_bridge": "Api/PlanRoute.cs"}
     },
     {
       "name": "plan_pipe_route",
@@ -5867,7 +5876,10 @@
           "join_trunk": {"type": "boolean", "description": "Add a missing tap to join_to (tap_added). Default false."},
           "allow_split": {"type": "boolean", "description": "Passed on: let removals split networks. Default false."},
           "allow_split_long": {"type": "boolean", "description": "Default true: long straights met are split in the same job."},
-          "from_id": {"type": "string", "description": "Passed on: the thing whose slots pay (see materials)."},
+          "from_id": {
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
+          },
           "include_links": {"type": "boolean", "description": "true: list every added and lost link."},
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
@@ -5898,7 +5910,7 @@
       },
       "x-views": ["PlanRouteView"],
       "x-shaping": "lists",
-      "x-read-by": {"allow_bridge": "Api/PlanRoute.cs"}
+      "x-read-by": {"from_id": "Api/Shared/SourceArgs.cs", "allow_bridge": "Api/PlanRoute.cs"}
     },
     {
       "name": "plan_removal",
@@ -7123,8 +7135,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "skip_unmatched": {
             "type": "boolean",
@@ -7270,8 +7282,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "skip_unmatched": {
             "type": "boolean",
@@ -8835,8 +8847,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "skip_unmatched": {
             "type": "boolean",
@@ -8996,8 +9008,8 @@
           "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
           "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."},
           "from_id": {
-            "type": "string",
-            "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
           },
           "skip_unmatched": {
             "type": "boolean",
