@@ -198,7 +198,7 @@ A method entry, abridged, for `thing_health`:
           "type": "object", "additionalProperties": false, "required": ["poll_param"],
           "properties": {"poll_param": {"type": "string"}}
         },
-        "x-needs-mod": {"type": "array", "items": {"enum": ["StationeersLua", "BlueprintMod", "IngotVault", "TerraformingReloaded"]}},
+        "x-needs-mod": {"type": "array", "items": {"enum": ["StationeersLua", "BlueprintMod", "IngotVault", "TerraformingReloaded", "ScriptedScreens"]}},
         "x-mcp": {"enum": ["tool", "hidden"], "default": "tool"},
         "x-read-by": {"type": "object", "additionalProperties": {"type": "string"}},
         "x-file-arguments": {"type": "object", "additionalProperties": {"type": "object", "properties": {"into": {}, "description": {}}}},

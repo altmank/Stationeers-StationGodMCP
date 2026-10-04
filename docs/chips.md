@@ -31,6 +31,8 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 | `control_ic_execution` | Pause, step one instruction, resume (IC10); restart (Lua). | `reference_id`, `action`: `pause`, `step`, `resume`, `restart` |
 | `resolve_ic_selectors` | What a chip's `db` and `d0`... pins and its aliases point at, and the prefab and name-hash selector (`lbn`, `sbn`) of each device on its data network. | `reference_id`, `target_reference_ids` |
 | `set_ic_pins` | Set an IC Housing's pins, as turning its screws would. | `reference_id`, `pins: {d0: "<id>", d3: null}`, `allow_off_network` |
+| `screen_read` | What a ScriptedScreens screen shows: its surfaces and one surface's elements, each with its box, text and props; a picture where the game draws. | `reference_id`, `surface`, `type`, `text_contains`, `shown_only`, `include_style`, `image` |
+| `screen_press` | Touch a control on a ScriptedScreens screen as a player does: a click, a change or a toggle. | `reference_id`, `element_id` or `at: [x, y]`, `event`, `value`, `player` |
 
 ## IC10
 
@@ -95,6 +97,23 @@ Load a program and check it, `set_ic_source` then `get_ic_status`:
   computer is on, powered and built; a cartridge while its tablet is on and powered; a suit or visor with a charged
   battery.
 - A holder that is off or unpowered compiles the new source when it runs again.
+
+## Screens (ScriptedScreens)
+
+A Lua chip on a ScriptedScreens board, cartridge or visor draws its screen from a model the host keeps: every element
+the script has built, with its type, its place and its props. `screen_read {reference_id}` reads that model, so it
+works on a dedicated server too. It lists the surfaces (`shown_on` says which screen shows each) and the elements of one
+(default: the one the main screen shows), each with `box {x, y, w, h}` in surface pixels from the top-left corner,
+`shown`, `touch` (a control a press acts on) and `props` (`text`, `value`, `z_index`...). `text_contains` and `type`
+narrow the list. A vector element's motion is drawn by each player's game; its props hold the scene, not the frame.
+
+`image: true` adds ScriptedScreens' own PNG of the drawn surface. Only a game that draws can give one: on a dedicated
+server the answer is `not_rendered`; read the elements instead.
+
+`screen_press` sends a touch into the host's input path, as a player's touch arrives: `click` (default), `change` with
+`value`, or `toggle`, on `element_id`, or on the shown control at `at: [x, y]` (the highest `z_index` there; scroll
+positions are not applied). The script's handler runs on its next tick and sees `player` (default your name) as the one
+who touched it, so read the screen again about half a second later to see what it did.
 
 ## Pins
 

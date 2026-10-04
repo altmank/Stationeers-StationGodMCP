@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:81abf15dc890c741c14d145ab27c9f0388cd73bb53ffb36f29ebc04941d0544c'
-MOD_VERSION = '1.22.0'
+CATALOGUE_HASH = 'sha256:8c8a7efb6253bb4d37056a751f59e43c697a0a45e54c70b144c339557b899c87'
+MOD_VERSION = '1.23.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -13,8 +13,8 @@ READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections'
  'mod_info', 'network_snapshot', 'outer_frames', 'plan_cable_route', 'plan_chute_route', 'plan_pipe_route',
  'plan_removal', 'planet', 'plants', 'player_vitals', 'read_console', 'read_devices', 'read_logic',
  'read_logic_many', 'read_memory', 'reagents', 'resolve_ic_selectors', 'rocket_forecast', 'rocket_mining_options',
- 'rocket_status', 'rooms', 'sample_logic', 'solar_aim', 'thing_health', 'trader_contacts', 'trader_inventory',
- 'vault_contents', 'wall_map', 'water_sources', 'weather'])
+ 'rocket_status', 'rooms', 'sample_logic', 'screen_read', 'solar_aim', 'thing_health', 'trader_contacts',
+ 'trader_inventory', 'vault_contents', 'wall_map', 'water_sources', 'weather'])
 
 TABLE = {'catalogue': {'class': 'read',
                'class_when': [],
@@ -1224,6 +1224,45 @@ TABLE = {'catalogue': {'class': 'read',
                   'required': ['targets'],
                   'shaping': 'lists',
                   'protocol': False},
+ 'screen_press': {'class': 'write',
+                  'class_when': [],
+                  'effects': [],
+                  'paging': None,
+                  'duration': None,
+                  'params': ['gateway_id',
+                             'reference_id',
+                             'surface',
+                             'element_id',
+                             'at',
+                             'event',
+                             'value',
+                             'player'],
+                  'required': ['reference_id'],
+                  'shaping': 'lists',
+                  'protocol': False},
+ 'screen_read': {'class': 'read',
+                 'class_when': [],
+                 'effects': [],
+                 'paging': {'list': 'elements',
+                            'offset': 'offset',
+                            'limit': 'limit',
+                            'total': 'total',
+                            'has_more': 'has_more',
+                            'order': 'element id'},
+                 'duration': None,
+                 'params': ['gateway_id',
+                            'reference_id',
+                            'surface',
+                            'type',
+                            'text_contains',
+                            'shown_only',
+                            'include_style',
+                            'image',
+                            'limit',
+                            'offset'],
+                 'required': ['reference_id'],
+                 'shaping': 'lists',
+                 'protocol': False},
  'set_ic_pins': {'class': 'write',
                  'class_when': [],
                  'effects': [],
@@ -2033,6 +2072,20 @@ class Methods:
         Class: read. Arguments: gateway_id, targets (required), duration_seconds, interval_seconds.
         """
         return self.call('sample_logic', **{'gateway_id': gateway_id, 'targets': targets, 'duration_seconds': duration_seconds, 'interval_seconds': interval_seconds}, **options)
+
+    def screen_press(self, *, gateway_id: str | None = None, reference_id: str | None = None, surface: str | None = None, element_id: str | None = None, at: object | None = None, event: str | None = None, value: str | None = None, player: str | None = None, **options) -> dict:
+        """Touch a control on a ScriptedScreens screen as a player's touch does: element_id, or the control at a point; click, change with value, or toggle.
+
+        Class: write. Arguments: gateway_id, reference_id (required), surface, element_id, at, event, value, player.
+        """
+        return self.call('screen_press', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'surface': surface, 'element_id': element_id, 'at': at, 'event': event, 'value': value, 'player': player}, **options)
+
+    def screen_read(self, *, gateway_id: str | None = None, reference_id: str | None = None, surface: str | None = None, type: str | None = None, text_contains: str | None = None, shown_only: bool | None = None, include_style: bool | None = None, image: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+        """Read what a ScriptedScreens screen shows (a Console or Computer board, a tablet, a visor): its surfaces and one surface's elements with their boxes, text and props, from the host's model.
+
+        Class: read. Arguments: gateway_id, reference_id (required), surface, type, text_contains, shown_only, include_style, image, limit, offset.
+        """
+        return self.call('screen_read', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'surface': surface, 'type': type, 'text_contains': text_contains, 'shown_only': shown_only, 'include_style': include_style, 'image': image, 'limit': limit, 'offset': offset}, **options)
 
     def set_ic_pins(self, *, gateway_id: str | None = None, reference_id: str | None = None, pins: dict | None = None, allow_off_network: bool | None = None, **options) -> dict:
         """Set an IC Housing's pins d0 to d5 as a screwdriver does: a device id per pin, null to clear.

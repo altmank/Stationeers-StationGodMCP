@@ -222,7 +222,7 @@ internal static class RocketForecastApi
         }
 
         SiteRead? site = MiningReads.SiteOf(target);
-        ForecastMiningView? mining = site != null ? MiningAt(site, parts, park, mine) : null;
+        ForecastMiningView? mining = site != null ? MiningAt(site, parts, park, mine, assumptions) : null;
         if (mining != null && !mining.Collectable)
         {
             assumptions.Add($"Warning: this loadout collects nothing at {mining.Site} ({mining.Kind} site): " +
@@ -282,9 +282,19 @@ internal static class RocketForecastApi
         return mining;
     }
 
-    private static ForecastMiningView MiningAt(SiteRead site, RocketParts parts, float park, bool mine)
+    // mine: each machine switched on at the site, as the player switches it on; one that is off now is named.
+    private static ForecastMiningView MiningAt(SiteRead site, RocketParts parts, float park, bool mine,
+        List<string> assumptions)
     {
-        List<MachineYieldView> machines = MiningPlans.Machines(site, parts, out List<string> problems);
+        List<string> off = new List<string>();
+        List<MachineYieldView> machines = MiningPlans.Machines(site, parts, out List<string> problems, mine, off);
+        if (off.Count > 0)
+        {
+            assumptions.Add($"{string.Join(", ", off)} {(off.Count == 1 ? "is" : "are")} switched off; mine models " +
+                            $"{(off.Count == 1 ? "it" : "them")} switched on at {SpaceRoutes.NameOf(site.Node)}, as " +
+                            "you switch them on to mine.");
+        }
+
         bool collectable = false;
         double perHour = 0.0;
         for (int index = 0; index < machines.Count; index++)

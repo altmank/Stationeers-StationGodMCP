@@ -164,23 +164,39 @@ internal static class MiningPlans
             site.Kind, site.Reading, site.StackSize, site.Materials, machines, problems);
     }
 
-    /// <summary>Every miner and collector at the site, and the site-wide problems (nothing on board collects it).</summary>
-    internal static List<MachineYieldView> Machines(SiteRead site, RocketParts parts, out List<string> problems)
+    /// <summary>
+    /// Every miner and collector at the site, and the site-wide problems (nothing on board collects it). switchOn
+    /// models each machine switched on, as a player does to mine; switchedOn names those that are off now.
+    /// </summary>
+    internal static List<MachineYieldView> Machines(SiteRead site, RocketParts parts, out List<string> problems,
+        bool switchOn = false, List<string>? switchedOn = null)
     {
         double tick = Assets.Scripts.GameManager.GameTickSpeedSeconds;
         problems = new List<string>(3);
         List<MachineYieldView> machines = new List<MachineYieldView>(parts.Miners.Count + parts.Collectors.Count);
         for (int index = 0; index < parts.Miners.Count; index++)
         {
-            MachineYield yield = MiningYields.Miner(MiningReads.MinerOf(parts.Miners[index], parts), site.Reading,
-                tick, parts.Miners.Count);
+            MinerReading miner = MiningReads.MinerOf(parts.Miners[index], parts);
+            if (switchOn && !miner.On)
+            {
+                switchedOn?.Add(miner.Name);
+                miner = miner.SwitchedOn();
+            }
+
+            MachineYield yield = MiningYields.Miner(miner, site.Reading, tick, parts.Miners.Count);
             machines.Add(new MachineYieldView(yield, site.StackSize));
         }
 
         for (int index = 0; index < parts.Collectors.Count; index++)
         {
-            MachineYield yield = MiningYields.Collector(MiningReads.CollectorOf(parts.Collectors[index]), site.Reading,
-                tick);
+            CollectorReading collector = MiningReads.CollectorOf(parts.Collectors[index]);
+            if (switchOn && !collector.On)
+            {
+                switchedOn?.Add(collector.Name);
+                collector = collector.SwitchedOn();
+            }
+
+            MachineYield yield = MiningYields.Collector(collector, site.Reading, tick);
             machines.Add(new MachineYieldView(yield, site.StackSize));
         }
 

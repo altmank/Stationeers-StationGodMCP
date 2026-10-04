@@ -65,6 +65,11 @@
     "caller_may_resend": "yes",
     "see": {"topic": "errors", "subtopic": "protocol"}
   },
+  "capture_failed": {
+    "description": "ScriptedScreens could not picture the surface; the message gives its reason.",
+    "origin": "tool",
+    "see": {"tool": "screen_read", "topic": "refusals"}
+  },
   "card_not_found": {
     "description": "That reference id is not a credit card. Use a card the player carries, or leave credit_card_id out.",
     "origin": "tool",
@@ -114,6 +119,11 @@
     "description": "That request id is already in flight on this connection. Nothing ran; use a new id.",
     "origin": "protocol",
     "see": {"topic": "errors", "subtopic": "protocol"}
+  },
+  "element_not_found": {
+    "description": "The surface has no element with that id. screen_read lists them.",
+    "origin": "tool",
+    "see": {"tool": "screen_press", "topic": "refusals"}
   },
   "engine_not_modelled": {
     "description": "The rocket has an engine the forecast has no model for. The forecast cannot run for this rocket.",
@@ -367,6 +377,11 @@
     "origin": "tool",
     "see": {"tool": "advance_build_state", "topic": "refusals"}
   },
+  "no_control_at": {
+    "description": "No shown control stands at that point. screen_read gives each element its box; touch by element_id instead.",
+    "origin": "tool",
+    "see": {"tool": "screen_press", "topic": "refusals"}
+  },
   "no_credit_card": {
     "description": "The player carries no credit card. Carry one, or give credit_card_id.",
     "origin": "tool",
@@ -451,6 +466,11 @@
     "description": "No save is loaded, so there is no folder for the CSV. Save the world first.",
     "origin": "tool",
     "see": {"topic": "rockets"}
+  },
+  "no_screen": {
+    "description": "The holder shows no ScriptedScreens UI: its chip has drawn nothing yet, or it is not a ScriptedScreens board, cartridge or visor.",
+    "origin": "tool",
+    "see": {"tool": "screen_read", "topic": "refusals"}
   },
   "no_slots": {
     "description": "The thing has no slots. Pick a container or device with slots.",
@@ -583,6 +603,11 @@
     "description": "The world is still loading. Try again in a moment.",
     "origin": "tool",
     "see": {"topic": "errors", "subtopic": "host"}
+  },
+  "not_rendered": {
+    "description": "This game draws nothing (a dedicated server), so there is no picture of the screen. Read its elements instead.",
+    "origin": "tool",
+    "see": {"tool": "screen_read", "topic": "refusals"}
   },
   "not_solar_panel": {
     "description": "That reference id is not a solar panel. find_things with prefab_contains Solar lists them.",
@@ -722,6 +747,16 @@
     "origin": "tool",
     "see": {"topic": "jobs", "subtopic": "refusals"}
   },
+  "screens_changed": {
+    "description": "This ScriptedScreens version keeps its screens in a shape StationGod cannot read. StationGod needs an update.",
+    "origin": "tool",
+    "see": {"tool": "screen_read", "topic": "refusals"}
+  },
+  "screens_mod_required": {
+    "description": "The screen tools need the ScriptedScreens mod, which is not loaded.",
+    "origin": "tool",
+    "see": {"tool": "screen_read", "topic": "refusals"}
+  },
   "sell_separately": {
     "description": "An earlier line of this call sold goods the game would take again for this entry. Sell this entry in a call of its own.",
     "origin": "tool",
@@ -778,6 +813,11 @@
     "description": "A subscription would pass a limit; poll instead.",
     "origin": "protocol",
     "see": {"topic": "errors", "subtopic": "protocol"}
+  },
+  "surface_not_found": {
+    "description": "The screen has no surface by that name. The message lists the surfaces.",
+    "origin": "tool",
+    "see": {"tool": "screen_read", "topic": "refusals"}
   },
   "terraforming_mod_required": {
     "description": "Removing gas from the planet needs Terraforming Reloaded; the stock game keeps the planet's air read-only.",

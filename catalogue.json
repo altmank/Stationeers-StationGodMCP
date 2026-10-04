@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.22.0",
+  "mod_version": "1.23.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -459,6 +459,11 @@
       "caller_may_resend": "yes",
       "see": {"topic": "errors", "subtopic": "protocol"}
     },
+    "capture_failed": {
+      "description": "ScriptedScreens could not picture the surface; the message gives its reason.",
+      "origin": "tool",
+      "see": {"tool": "screen_read", "topic": "refusals"}
+    },
     "card_not_found": {
       "description": "That reference id is not a credit card. Use a card the player carries, or leave credit_card_id out.",
       "origin": "tool",
@@ -508,6 +513,11 @@
       "description": "That request id is already in flight on this connection. Nothing ran; use a new id.",
       "origin": "protocol",
       "see": {"topic": "errors", "subtopic": "protocol"}
+    },
+    "element_not_found": {
+      "description": "The surface has no element with that id. screen_read lists them.",
+      "origin": "tool",
+      "see": {"tool": "screen_press", "topic": "refusals"}
     },
     "engine_not_modelled": {
       "description": "The rocket has an engine the forecast has no model for. The forecast cannot run for this rocket.",
@@ -761,6 +771,11 @@
       "origin": "tool",
       "see": {"tool": "advance_build_state", "topic": "refusals"}
     },
+    "no_control_at": {
+      "description": "No shown control stands at that point. screen_read gives each element its box; touch by element_id instead.",
+      "origin": "tool",
+      "see": {"tool": "screen_press", "topic": "refusals"}
+    },
     "no_credit_card": {
       "description": "The player carries no credit card. Carry one, or give credit_card_id.",
       "origin": "tool",
@@ -845,6 +860,11 @@
       "description": "No save is loaded, so there is no folder for the CSV. Save the world first.",
       "origin": "tool",
       "see": {"topic": "rockets"}
+    },
+    "no_screen": {
+      "description": "The holder shows no ScriptedScreens UI: its chip has drawn nothing yet, or it is not a ScriptedScreens board, cartridge or visor.",
+      "origin": "tool",
+      "see": {"tool": "screen_read", "topic": "refusals"}
     },
     "no_slots": {
       "description": "The thing has no slots. Pick a container or device with slots.",
@@ -977,6 +997,11 @@
       "description": "The world is still loading. Try again in a moment.",
       "origin": "tool",
       "see": {"topic": "errors", "subtopic": "host"}
+    },
+    "not_rendered": {
+      "description": "This game draws nothing (a dedicated server), so there is no picture of the screen. Read its elements instead.",
+      "origin": "tool",
+      "see": {"tool": "screen_read", "topic": "refusals"}
     },
     "not_solar_panel": {
       "description": "That reference id is not a solar panel. find_things with prefab_contains Solar lists them.",
@@ -1116,6 +1141,16 @@
       "origin": "tool",
       "see": {"topic": "jobs", "subtopic": "refusals"}
     },
+    "screens_changed": {
+      "description": "This ScriptedScreens version keeps its screens in a shape StationGod cannot read. StationGod needs an update.",
+      "origin": "tool",
+      "see": {"tool": "screen_read", "topic": "refusals"}
+    },
+    "screens_mod_required": {
+      "description": "The screen tools need the ScriptedScreens mod, which is not loaded.",
+      "origin": "tool",
+      "see": {"tool": "screen_read", "topic": "refusals"}
+    },
     "sell_separately": {
       "description": "An earlier line of this call sold goods the game would take again for this entry. Sell this entry in a call of its own.",
       "origin": "tool",
@@ -1172,6 +1207,11 @@
       "description": "A subscription would pass a limit; poll instead.",
       "origin": "protocol",
       "see": {"topic": "errors", "subtopic": "protocol"}
+    },
+    "surface_not_found": {
+      "description": "The screen has no surface by that name. The message lists the surfaces.",
+      "origin": "tool",
+      "see": {"tool": "screen_read", "topic": "refusals"}
     },
     "terraforming_mod_required": {
       "description": "Removing gas from the planet needs Terraforming Reloaded; the stock game keeps the planet's air read-only.",
@@ -7679,7 +7719,10 @@
             "description": "Re-entry profile; default the rocket's."
           },
           "park_s": {"type": "number", "minimum": 0, "description": "Seconds spent at the destination."},
-          "mine": {"type": "boolean", "description": "Miners and cargo holds draw their power while parked. Default false."},
+          "mine": {
+            "type": "boolean",
+            "description": "Mine while parked: miners and collectors switched on, drawing their power. Default false."
+          },
           "fill_holds": {"type": "boolean", "description": "Every cargo slot is filled by the end of the stop."},
           "add_cargo_slots": {"type": "integer", "minimum": 0, "description": "Cargo slots filled during the stop.", "maximum": 100000},
           "park_load_w": {
@@ -8058,6 +8101,131 @@
       },
       "x-shaping": "lists",
       "x-duration": {"param": "duration_seconds", "max_s": 30}
+    },
+    {
+      "name": "screen_press",
+      "description": "Touch a control on a ScriptedScreens screen as a player's touch does: element_id, or the control at a point; click, change with value, or toggle. The script's handler runs on its next tick. Writes.\nMore: tool_info {tool: \"screen_press\"}",
+      "help": {
+        "text": "The touch goes into the host's input path, so the handler sees player (default the player's name) as the one who touched it. at [x, y] is surface pixels from the top-left, as screen_read gives boxes: it takes the shown control (button, checkbox, toggle, slider...) with the highest z_index whose box holds the point; scroll positions are not applied. element_id takes any element. Read the screen again after the script's next tick (about 0.5 s) to see the result. Host only.",
+        "keys": "holder {reference_id, prefab_name, display_name}, surface, element {id, type, box, shown, touch, props}, event, value, player, accepted.",
+        "topics": {
+          "refusals": {
+            "summary": "Why a touch is not sent.",
+            "text": "element_not_found; no_control_at (no shown control at the point); surface_not_found; no_screen; screens_mod_required; screens_changed; not_host (a multiplayer client); invalid_argument (an event other than click, change or toggle, change without value, both or neither of element_id and at)."
+          }
+        },
+        "shared": ["chips", "gateways", "shaping"]
+      },
+      "class": "write",
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {
+          "gateway_id": {
+            "type": "string",
+            "description": "Omit or 'world' for every device; a gateway id narrows to its data networks (see gateways)."
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "The circuit holder: an IC Housing, a worn holder, a Lua board or cartridge, or the chip itself (see chips)."
+          },
+          "surface": {"type": "string", "description": "The surface; default the one the main screen shows."},
+          "element_id": {"type": "string", "description": "The element to touch, as screen_read lists it."},
+          "at": {"description": "Or a point [x, y] on the surface, in pixels from the top-left."},
+          "event": {"type": "string", "enum": ["click", "change", "toggle"], "description": "Default click."},
+          "value": {"type": "string", "description": "With change: the new value as text (0.5, an option index)."},
+          "player": {"type": "string", "description": "The name the handler receives; default the player's."}
+        },
+        "required": ["reference_id"],
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "holder": {"type": "object"},
+          "surface": {"type": "string"},
+          "element": {"type": "object"},
+          "event": {"type": "string"},
+          "value": {"type": ["string", "null"]},
+          "player": {"type": "string"},
+          "accepted": {"type": "boolean"}
+        }
+      },
+      "x-views": ["ScreenPressView"],
+      "x-shaping": "lists",
+      "x-needs-mod": ["ScriptedScreens"]
+    },
+    {
+      "name": "screen_read",
+      "description": "Read what a ScriptedScreens screen shows (a Console or Computer board, a tablet, a visor): its surfaces and one surface's elements with their boxes, text and props, from the host's model. image adds a PNG where the game draws. Read only.\nMore: tool_info {tool: \"screen_read\"}",
+      "help": {
+        "text": "The model is the elements the chip's script has built, as the host holds them, so it works on a dedicated server. Each element gives id, type, box {x, y, w, h} in surface pixels from the top-left (null when it needs a surface size the script did not set), shown, touch (a control screen_press can touch) and props (text, value, z_index...). A vector element's motion is drawn by each client; its props hold the scene. image true asks ScriptedScreens for its own picture of the drawn surface, which a dedicated server cannot give (not_rendered).",
+        "keys": "holder {reference_id, prefab_name, display_name}, chip_id, surfaces [{name, element_count, shown_on}], surface, width, height, elements [{id, type, box, shown, touch, props, style}], count, total, offset, limit, has_more, image {path, surface, width, height}.",
+        "topics": {
+          "refusals": {
+            "summary": "Why a screen cannot be read.",
+            "text": "screens_mod_required (ScriptedScreens is not loaded); screens_changed (a ScriptedScreens version StationGod cannot read); no_screen (the chip has drawn nothing, or the holder is not a ScriptedScreens host); surface_not_found (the message lists the surfaces); not_rendered and capture_failed (image only)."
+          }
+        },
+        "shared": ["chips", "gateways", "paging", "shaping"]
+      },
+      "class": "read",
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {
+          "gateway_id": {
+            "type": "string",
+            "description": "Omit or 'world' for every device; a gateway id narrows to its data networks (see gateways)."
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "The circuit holder: an IC Housing, a worn holder, a Lua board or cartridge, or the chip itself (see chips)."
+          },
+          "surface": {"type": "string", "description": "The surface to list; default the one the main screen shows."},
+          "type": {"type": "string", "description": "Only elements of this type (button, label, gauge...)."},
+          "text_contains": {
+            "type": "string",
+            "description": "Only elements whose text, label, title, placeholder or value holds this, any case."
+          },
+          "shown_only": {"type": "boolean", "description": "Default true: leave out hidden elements and those inside hidden ones."},
+          "include_style": {"type": "boolean", "description": "true: add each element's style (colours, fonts). Default false."},
+          "image": {"type": "boolean", "description": "true: add a PNG of the drawn surface (not on a dedicated server)."},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Elements per page; default 25."},
+          "offset": {"type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Elements to skip (see paging)."}
+        },
+        "required": ["reference_id"],
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "holder": {"type": "object"},
+          "chip_id": {"type": "string"},
+          "surfaces": {"type": "array"},
+          "surface": {"type": "string"},
+          "width": {"type": ["number", "null"]},
+          "height": {"type": ["number", "null"]},
+          "elements": {"type": "array"},
+          "count": {"type": "integer"},
+          "total": {"type": "integer"},
+          "offset": {"type": "integer"},
+          "limit": {"type": "integer"},
+          "has_more": {"type": "boolean"},
+          "image": {"type": ["object", "null"]}
+        }
+      },
+      "x-views": ["ScreenReadView"],
+      "x-shaping": "lists",
+      "x-paging": {
+        "list": "elements",
+        "offset": "offset",
+        "limit": "limit",
+        "total": "total",
+        "has_more": "has_more",
+        "order": "element id"
+      },
+      "x-needs-mod": ["ScriptedScreens"]
     },
     {
       "name": "set_ic_pins",

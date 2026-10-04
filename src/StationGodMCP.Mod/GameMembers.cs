@@ -347,6 +347,19 @@ internal static class GameMembers
     internal static readonly GameField LuaSnapshotErrorMessage = LuaSnapshotField("LastErrorMessage");
     internal static readonly GameField LuaSnapshotErrorTraceback = LuaSnapshotField("LastErrorTraceback");
 
+    // ---- ScriptedScreens (screen_read, screen_press): another mod, optional; its absence is not a game change ----
+    internal static readonly GameType ScreensSystem =
+        Optional("ScriptedScreens.ScriptableUi.ScriptedScreensScriptableUiSystem");
+    internal static readonly GameField ScreensBoardStates = ScreensField("States");
+    internal static readonly GameField ScreensCartridgeStates = ScreensField("CartridgeStates");
+    internal static readonly GameField ScreensVisorStates = ScreensField("VisorStates");
+    internal static readonly GameMethod ScreensDispatchInput = ScreensMethod("DispatchInputEvent");
+    internal static readonly GameMethod ScreensCapture = ScreensMethod("TryCaptureSurfaceScreenshotForChip");
+    internal static readonly GameType ScreensUiInput = Register(new GameType(
+        "ScriptedScreens.ScriptableUi.ScriptedScreensScriptableUiSystem.UiInput",
+        () => ScreensSystem.OrNull?.GetNestedType("UiInput", BindingFlags.Public | BindingFlags.NonPublic),
+        optional: true));
+
     // ---- IngotVault (vault_* tools): another mod, optional; its absence is not a game change ----
     internal static readonly GameType VaultType = Optional("IngotVault.StructureIngotVault");
     internal static readonly GameType RemoteVaultType = Optional("IngotVault.StructureRemoteVault");
@@ -511,6 +524,15 @@ internal static class GameMembers
     private static GameField BlueprintField(GameType owner, string ownerName, string name) =>
         Register(new GameField($"BlueprintMod.{ownerName}.{name}",
             () => owner.OrNull?.GetField(name, BindingFlags.Instance | BindingFlags.Public), optional: true));
+
+    // A static member of ScriptedScreens' UI system, public or not; neither method named is overloaded.
+    private static GameField ScreensField(string name) =>
+        Register(new GameField($"{ScreensSystem.Name}.{name}", () => ScreensSystem.OrNull?.GetField(name, AnyStatic),
+            optional: true));
+
+    private static GameMethod ScreensMethod(string name) =>
+        Register(new GameMethod($"{ScreensSystem.Name}.{name}", () => ScreensSystem.OrNull?.GetMethod(name, AnyStatic),
+            optional: true));
 
     // A member of one of IngotVault's types; none of the methods named is overloaded.
     private static GameField VaultField(GameType owner, string name, BindingFlags flags) =>

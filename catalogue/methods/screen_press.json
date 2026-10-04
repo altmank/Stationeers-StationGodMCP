@@ -1,0 +1,47 @@
+{
+  "name": "screen_press",
+  "summary": "Touch a control on a ScriptedScreens screen as a player's touch does: element_id, or the control at a point; click, change with value, or toggle. The script's handler runs on its next tick. Writes.",
+  "help": {
+    "text": "The touch goes into the host's input path, so the handler sees player (default the player's name) as the one who touched it. at [x, y] is surface pixels from the top-left, as screen_read gives boxes: it takes the shown control (button, checkbox, toggle, slider...) with the highest z_index whose box holds the point; scroll positions are not applied. element_id takes any element. Read the screen again after the script's next tick (about 0.5 s) to see the result. Host only.",
+    "keys": "holder {reference_id, prefab_name, display_name}, surface, element {id, type, box, shown, touch, props}, event, value, player, accepted.",
+    "topics": {
+      "refusals": {
+        "summary": "Why a touch is not sent.",
+        "text": "element_not_found; no_control_at (no shown control at the point); surface_not_found; no_screen; screens_mod_required; screens_changed; not_host (a multiplayer client); invalid_argument (an event other than click, change or toggle, change without value, both or neither of element_id and at)."
+      }
+    },
+    "shared": ["chips", "gateways", "shaping"]
+  },
+  "class": "write",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"$ref": "defs/reference_id.json"},
+      "surface": {"type": "string", "description": "The surface; default the one the main screen shows."},
+      "element_id": {"type": "string", "description": "The element to touch, as screen_read lists it."},
+      "at": {"description": "Or a point [x, y] on the surface, in pixels from the top-left."},
+      "event": {"type": "string", "enum": ["click", "change", "toggle"], "description": "Default click."},
+      "value": {"type": "string", "description": "With change: the new value as text (0.5, an option index)."},
+      "player": {"type": "string", "description": "The name the handler receives; default the player's."}
+    },
+    "required": ["reference_id"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "holder": {"type": "object"},
+      "surface": {"type": "string"},
+      "element": {"type": "object"},
+      "event": {"type": "string"},
+      "value": {"type": ["string", "null"]},
+      "player": {"type": "string"},
+      "accepted": {"type": "boolean"}
+    }
+  },
+  "x-views": ["ScreenPressView"],
+  "x-shaping": "lists",
+  "x-needs-mod": ["ScriptedScreens"]
+}

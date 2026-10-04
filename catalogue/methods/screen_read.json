@@ -1,0 +1,66 @@
+{
+  "name": "screen_read",
+  "summary": "Read what a ScriptedScreens screen shows (a Console or Computer board, a tablet, a visor): its surfaces and one surface's elements with their boxes, text and props, from the host's model. image adds a PNG where the game draws. Read only.",
+  "help": {
+    "text": "The model is the elements the chip's script has built, as the host holds them, so it works on a dedicated server. Each element gives id, type, box {x, y, w, h} in surface pixels from the top-left (null when it needs a surface size the script did not set), shown, touch (a control screen_press can touch) and props (text, value, z_index...). A vector element's motion is drawn by each client; its props hold the scene. image true asks ScriptedScreens for its own picture of the drawn surface, which a dedicated server cannot give (not_rendered).",
+    "keys": "holder {reference_id, prefab_name, display_name}, chip_id, surfaces [{name, element_count, shown_on}], surface, width, height, elements [{id, type, box, shown, touch, props, style}], count, total, offset, limit, has_more, image {path, surface, width, height}.",
+    "topics": {
+      "refusals": {
+        "summary": "Why a screen cannot be read.",
+        "text": "screens_mod_required (ScriptedScreens is not loaded); screens_changed (a ScriptedScreens version StationGod cannot read); no_screen (the chip has drawn nothing, or the holder is not a ScriptedScreens host); surface_not_found (the message lists the surfaces); not_rendered and capture_failed (image only)."
+      }
+    },
+    "shared": ["chips", "gateways", "paging", "shaping"]
+  },
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {"$ref": "defs/gateway_id.json"},
+      "reference_id": {"$ref": "defs/reference_id.json"},
+      "surface": {"type": "string", "description": "The surface to list; default the one the main screen shows."},
+      "type": {"type": "string", "description": "Only elements of this type (button, label, gauge...)."},
+      "text_contains": {
+        "type": "string",
+        "description": "Only elements whose text, label, title, placeholder or value holds this, any case."
+      },
+      "shown_only": {"type": "boolean", "description": "Default true: leave out hidden elements and those inside hidden ones."},
+      "include_style": {"type": "boolean", "description": "true: add each element's style (colours, fonts). Default false."},
+      "image": {"type": "boolean", "description": "true: add a PNG of the drawn surface (not on a dedicated server)."},
+      "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Elements per page; default 25."},
+      "offset": {"type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Elements to skip (see paging)."}
+    },
+    "required": ["reference_id"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "holder": {"type": "object"},
+      "chip_id": {"type": "string"},
+      "surfaces": {"type": "array"},
+      "surface": {"type": "string"},
+      "width": {"type": ["number", "null"]},
+      "height": {"type": ["number", "null"]},
+      "elements": {"type": "array"},
+      "count": {"type": "integer"},
+      "total": {"type": "integer"},
+      "offset": {"type": "integer"},
+      "limit": {"type": "integer"},
+      "has_more": {"type": "boolean"},
+      "image": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["ScreenReadView"],
+  "x-shaping": "lists",
+  "x-paging": {
+    "list": "elements",
+    "offset": "offset",
+    "limit": "limit",
+    "total": "total",
+    "has_more": "has_more",
+    "order": "element id"
+  },
+  "x-needs-mod": ["ScriptedScreens"]
+}

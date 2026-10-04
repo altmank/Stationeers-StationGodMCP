@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.23.0
+
+- **New tool `screen_read`**: what a ScriptedScreens screen (a Console or Computer board, a tablet, a visor) shows,
+  from the host's UI model, so a dedicated server answers too: its surfaces, the screens showing each, and one
+  surface's elements with their box on the surface, `shown`, `touch` and props. `image: true` adds ScriptedScreens'
+  own PNG of the drawn surface where the game draws (`not_rendered` on a dedicated server).
+- **New tool `screen_press`**: touch a control as a player does (click, change with a value, toggle), by
+  `element_id` or at a point on the surface; the script's handler runs on its next tick with `player` as the toucher.
+- **`rocket_forecast` `mine` switches the miners on.** A miner or gas collector switched off on the pad is modelled
+  switched on at the site, as you switch it on to mine, and named in the assumptions; before, it read as collecting
+  nothing.
+
 ## 1.22.0
 
 - **New tool `advance_build_state`**: builds a placed structure on to a later build state (`to_state`, default the

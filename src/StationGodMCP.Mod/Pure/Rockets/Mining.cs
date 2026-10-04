@@ -207,6 +207,10 @@ internal sealed class MinerReading
     /// <summary>Whether its chute export reaches a cargo hold (else it stops once its export slot is full).</summary>
     internal bool ExportsToHold { get; }
 
+    /// <summary>The same miner switched on, as a player switches it on to mine at a site.</summary>
+    internal MinerReading SwitchedOn() =>
+        new MinerReading(Name, OreSpeed, IceSpeed, JunkSpeed, Head, true, PowerW, ExportsToHold);
+
     /// <summary>RocketMiner.MinerSpeedMultiplier (RocketMiner.cs:122-142).</summary>
     internal float SpeedOn(int typeFlags)
     {
@@ -245,6 +249,9 @@ internal sealed class CollectorReading
     internal bool On { get; }
 
     internal bool HasPipeNetwork { get; }
+
+    /// <summary>The same collector switched on, as a player switches it on to collect at a site.</summary>
+    internal CollectorReading SwitchedOn() => new CollectorReading(Name, true, HasPipeNetwork);
 }
 
 /// <summary>What one machine on board gets from one site, per cycle and per hour, and why not when it gets nothing.</summary>

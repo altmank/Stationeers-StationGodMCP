@@ -61,6 +61,8 @@ recorder for the flight itself. All four only read the game. No gateway is neede
 
 With `mine` and `park_s`, `rocket_forecast` fills the cargo slots the stop's yield would fill, and reports `mining`:
 whether the loadout collects the destination, units per hour, units and slots in the stop, and what is wrong if not.
+`mine` models the miners and gas collectors switched on at the site, as you switch them on to mine; one that is
+switched off on the pad is named in the assumptions, not counted as collecting nothing.
 
 ## How the forecast works
 

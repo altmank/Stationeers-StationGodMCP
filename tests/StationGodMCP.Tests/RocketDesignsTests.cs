@@ -360,6 +360,20 @@ public sealed class RocketDesignsTests
     }
 
     [Fact]
+    public void AMinerOffOnThePadMinesOnceSwitchedOnAsMineModelsIt()
+    {
+        MinerReading off = new MinerReading("Rocket Miner", 1f, 1f, 1f, Head("Mineral", 1f, 1.2f, 0f), false, 100.0, true);
+
+        MachineYield asItStands = MiningYields.Miner(off, OreSite(), Tick, 1);
+        MachineYield switchedOn = MiningYields.Miner(off.SwitchedOn(), OreSite(), Tick, 1);
+
+        Assert.Contains(asItStands.Problems, problem => problem.StartsWith("The miner is off"));
+        Assert.True(switchedOn.Collected);
+        Assert.Equal(41, switchedOn.UnitsPerCycle);
+        Assert.True(new CollectorReading("Rocket Gas Collector", false, true).SwitchedOn().On);
+    }
+
+    [Fact]
     public void AnIceHeadAtAnOreSiteGetsNothingButStillEatsTheSite()
     {
         MachineYield yield = MiningYields.Miner(Miner(Head("Mining-Drill Head (Ice)", 1f, 0f, 1.2f)), OreSite(), Tick, 1);

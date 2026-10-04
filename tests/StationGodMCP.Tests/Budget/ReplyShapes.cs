@@ -386,6 +386,13 @@ internal static class ReplyShapes
         {
             PlaceReportInto(S<ShowPreviewView>()).List("ShowPreviewView.Notes", 0)
         };
+        // A console page holds a few dozen elements; each prop set is a handful of short texts.
+        shapes["screen_read"] = new[]
+        {
+            S<ScreenReadView>().List("ScreenReadView.Elements", D.ScreenElements).List("ScreenReadView.Surfaces", 3)
+                .List("ScreenSurfaceView.ShownOn", 1).Absent("ScreenElementView.Style", "ScreenReadView.Image")
+        };
+        shapes["screen_press"] = new[] { S<ScreenPressView>().Absent("ScreenElementView.Style") };
         shapes["solar_aim"] = new[] { S<SolarFixedView>(), S<SolarTurnView>() };
         shapes["thing_health"] = new[]
         {

@@ -40,7 +40,10 @@
         "description": "Re-entry profile; default the rocket's."
       },
       "park_s": {"type": "number", "minimum": 0, "description": "Seconds spent at the destination."},
-      "mine": {"type": "boolean", "description": "Miners and cargo holds draw their power while parked. Default false."},
+      "mine": {
+        "type": "boolean",
+        "description": "Mine while parked: miners and collectors switched on, drawing their power. Default false."
+      },
       "fill_holds": {"type": "boolean", "description": "Every cargo slot is filled by the end of the stop."},
       "add_cargo_slots": {"type": "integer", "minimum": 0, "description": "Cargo slots filled during the stop.", "maximum": 100000},
       "park_load_w": {
