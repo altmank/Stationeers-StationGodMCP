@@ -153,7 +153,7 @@ internal static class RocketForecastApi
         {
             throw ApiErrors.Refused("manned_target",
                 $"Someone sits in a Crew Module Chair: the rocket may only target a launch mount (ground or orbital); the " +
-                $"game clears {SpaceRoutes.NameOf(target)} as a target (Rocket.cs:1871-1885). Give a pad as 'to'.");
+                $"game clears {SpaceRoutes.NameOf(target)} as a target. Give a pad as 'to'.");
         }
     }
 

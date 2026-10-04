@@ -1,16 +1,23 @@
 {
   "name": "trader_inventory",
-  "description": "What each trader contact in the sky buys and sells: item or gas name, prefab, credits per unit, how many it wants or has in stock, the conditions a sold-to-it item or gas must meet (purity, moles per unit, temperature range), and for each line it buys how many units of what you hold meet its conditions (have, not capped by wanted, as the game's own sellable count is not: the goods on the pad network's vending machines and in the card holder's inventory that meet its conditions, as trader_sell takes them, so a 'Box of ...' line counts only the boxes whose contents it accepts; for a gas line the pad network's gas in units when the gas meets its conditions; the pad is the one the contact is called to, or every landing pad's network for a contact not called yet; the card holder is credit_card_id's holder, else the player) and, for the landed trader only, how many it would take right now (sellable: what the pad network's vending machines and you carry that meets its conditions, or the pad network's gas in units, the trade window's own count; trader_sell counts the same with the card holder's inventory in place of yours, so the two agree when the card is yours; null for a contact not landed). The game rolls a trader's inventory when the contact appears, so this works before the trader is interrogated. Omit contact_id for every contact. Refusals: invalid_argument, contact_not_found, card_not_found, card_not_usable. Read only; no gateway is needed. 1.14.0+: by default the reply keeps the first entries of its list (contacts 2); truncated gives each cut list's returned and total counts, and list_limits {list: count} keeps more.",
+  "summary": "What each trader contact buys and sells: prices, stock and wanted counts, the conditions goods must meet, and how much of what you hold meets them. Lists 2 contacts. Read only.",
+  "help": {
+    "text": "The game rolls a trader's inventory when the contact appears, so this works before the trader is interrogated. Leave contact_id out for every contact. Each line: item or gas name, prefab, credits per unit, wanted or in stock, and the conditions a sold item or gas must meet (purity, moles per unit, temperature range).",
+    "topics": {
+      "have": {
+        "summary": "have and sellable on lines it buys.",
+        "text": "have: units you hold that meet its conditions, not capped by wanted: the goods on the pad network's vending machines and in the card holder's inventory, as trader_sell takes them (a 'Box of ...' line counts only boxes whose contents it accepts; a gas line counts the pad network's gas in units). The pad is the one the contact is called to, or every pad's network for a contact not called yet; the card holder is credit_card_id's holder, else the player. sellable (the landed trader only): the trade window's own count at the moment; null for a contact not landed."
+      }
+    },
+    "shared": ["trading", "truncation"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
-      "contact_id": {"type": "string", "description": "Reference ID of one trader contact (see trader_contacts); omit for all."},
-      "credit_card_id": {
-        "type": "string",
-        "description": "The credit card whose holder's inventory counts toward have, as trader_sell takes goods from it; default the player's inventory."
-      }
+      "contact_id": {"type": "string", "description": "One trader contact (trader_contacts); left out, every contact."},
+      "credit_card_id": {"type": "string", "description": "The card whose holder's inventory counts toward have; default the player's."}
     },
     "additionalProperties": false
   },

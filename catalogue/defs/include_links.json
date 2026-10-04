@@ -1,4 +1,1 @@
-{
-  "type": "boolean",
-  "description": "Default false (1.7.0+): links has counts only (added_count, lost_count); true lists every added and lost link too."
-}
+{"type": "boolean", "description": "true: list every added and lost link."}

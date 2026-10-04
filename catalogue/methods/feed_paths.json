@@ -1,6 +1,16 @@
 {
   "name": "feed_paths",
-  "description": "Trace how a network feeds its devices from a root device (an APC's output, a generator): kind cable (default), pipe or chute; root (reference id); network_id or port (the root's port) when the root is on several networks of the kind (an APC's input and output). Breadth first over the network's links (the shortest path to each device; a device is an end, never passed through). Returns root, network_id, root_room_id, devices [{reference_id, prefab_name, display_name, room_id, pieces (between the root and the device), rooms (the rooms those pieces pass through in order; pieces in no room, e.g. inside a floor frame or outdoors, are skipped), through (rooms neither the root's nor the device's own), fed_through_other_rooms}], daisy_chains (how many devices are fed through another room), rooms [{room_id, devices, entries (the pieces where the feeds enter the room), entry_at, multiple_feeds}], multiple_feeds, unreached (devices on the network no run from the root reaches). A piece is in the room of a 2 m cell it touches (its own cell first); a device in the room of its grid cell (as rooms). Read only. No gateway is needed. network_id (1.3.0+) is a network handle: a piece or device reference id or {reference_id, port} work too. 1.14.0+: by default the reply keeps the first entries of its lists (devices 15, unreached 10); truncated gives each cut list's returned and total counts, and list_limits {list: count} keeps more.",
+  "summary": "Trace how a network feeds its devices from a root device (an APC output, a generator): the pieces and rooms each feed passes through, daisy chains, and devices no run reaches. Read only.",
+  "help": {
+    "text": "Breadth first over the network's links, so each device gets its shortest path; a device is an end, never passed through. Returns root, network_id, root_room_id, devices [{reference_id, prefab_name, display_name, room_id, pieces, rooms, through, fed_through_other_rooms}], daisy_chains, rooms [{room_id, devices, entries, entry_at, multiple_feeds}], multiple_feeds and unreached. Lists devices 15 and unreached 10 by default.",
+    "topics": {
+      "rooms": {
+        "summary": "How pieces and devices are placed in rooms.",
+        "text": "A piece is in the room of a 2 m cell it touches (its own cell first); a device in the room of its grid cell, as rooms has it. rooms lists the rooms a feed passes in order; pieces in no room (inside a floor frame, outdoors) are skipped. through: rooms neither the root's nor the device's own."
+      }
+    },
+    "shared": ["networks", "truncation"]
+  },
   "class": "read",
   "cost": "plan",
   "params": {
@@ -12,20 +22,18 @@
           {"type": "string"},
           {
             "type": "object",
-            "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+            "properties": {
+              "reference_id": {"type": "string", "description": "A device or piece on the network."},
+              "port": {"type": "integer", "minimum": 0, "maximum": 64, "description": "The device's port index."}
+            },
             "required": ["reference_id"],
             "additionalProperties": false
           }
         ],
-        "description": "The network to trace, when the root is on several: its id, a piece on it, or {reference_id, port}."
+        "description": "The network to trace when the root is on several (see networks)."
       },
-      "port": {
-        "type": "integer",
-        "minimum": 0,
-        "maximum": 64,
-        "description": "Or the root's port whose network to trace (connections lists them)."
-      },
-      "kind": {"type": "string", "enum": ["cable", "pipe", "chute"], "description": "Default cable."}
+      "port": {"type": "integer", "minimum": 0, "maximum": 64, "description": "Or the root's port whose network to trace."},
+      "kind": {"type": "string", "enum": ["cable", "pipe", "chute"], "description": "cable (default), pipe or chute."}
     },
     "required": ["root"],
     "additionalProperties": false

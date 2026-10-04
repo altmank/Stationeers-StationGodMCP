@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.15.0
+
+Short tool descriptions, long help on demand. 94 tools (93 plus tool_info).
+
+- **Tool descriptions are short.** Each tool's description is two or three lines (what it does, the arguments that
+  matter, its safety flags: cheat, dry run by default) ending with `More: tool_info {tool: "<name>"}`, and every
+  argument has a one-line description. The tool list an agent loads is about 196 KB, down from about 501 KB; the
+  descriptions alone are about 20 KB, down from 247 KB. Version history and code internals left the text; every
+  rule the tools follow is still documented.
+- **New `tool_info`.** The long help in three levels, each reply under 1.5 KB: `{}` lists the shared topics
+  (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors);
+  `{tool}` a tool's text and topics; `{tool, topic}` or `{topic}` one topic and its subtopics;
+  `{tool, topic, subtopic}` the detail. The MCP server answers it from the catalogue, with or without the game.
+- **Explainer errors.** Every error carries `see` `{tool, topic, subtopic}`: the `tool_info` node that explains its
+  code. The catalogue gives every code a plain message saying what went wrong and what to do. A direct client that
+  sends `set_ic_source`'s `source_file` (read only by the MCP server) is told to send `source` itself.
+- **The build enforces the text.** A lint in the test suite holds every description, argument, help topic and error
+  message to the catalogue's text rubric (docs/architecture/catalogue.md, *Help and the text rubric*): lengths, node
+  sizes, no versions, history, dates, code internals, names, URLs or em dashes, every argument described, every
+  pointer resolving, every error code with a message and a `see`, and a cap on the tool list's size. `build.ps1` runs
+  the tests and fails on any of it.
+- **Plain JSON escaping in MCP replies.** The MCP server writes quotes and apostrophes inside strings plainly instead
+  of as six-character escapes, so every reply's text copy is smaller. The content is the same.
+- Error messages no longer cite game source files or internal method names (`not_paintable`, `manned_target`,
+  `command_not_ready`).
+- The server's instructions are short and point at `tool_info`.
+
 ## 1.14.0
 
 2026-10-03. Small default replies everywhere; fixes found on a dedicated server. 93 tools.

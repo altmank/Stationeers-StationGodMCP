@@ -50,6 +50,9 @@ internal static class ReplyShapes
     /// <summary>Methods held to no budget, each with why.</summary>
     internal static IReadOnlyDictionary<string, string> Exemptions { get; } = new Dictionary<string, string>
     {
+        ["tool_info"] =
+            "Answered by the MCP server from the catalogue, never by the game; CatalogueTextTests holds every node it " +
+            "answers under 1.5 KB.",
         ["get_ic_source"] =
             "Its reply is the chip's source, as long as the chip's program (a 60 KB Lua hub): reading it is the call's " +
             "purpose. output_file writes it to a file and answers a pointer; get_ic_status reads everything else.",

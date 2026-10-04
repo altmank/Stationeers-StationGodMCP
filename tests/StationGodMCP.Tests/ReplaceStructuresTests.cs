@@ -534,8 +534,9 @@ public sealed class StructureSwapWireTests
 /// <summary>Every tool the sidecar lists has a definition and a handler in the mod, and the other way round.</summary>
 public sealed class ToolRegistrationTests
 {
-    // Answered by the sidecar itself (it samples through read_logic), never sent to the mod.
-    private static readonly string[] SidecarOnly = { "sample_logic" };
+    // Answered without an ApiHost handler: sample_logic in the mod's subscription lane, tool_info by the sidecar from
+    // the catalogue.
+    private static readonly string[] SidecarOnly = { "sample_logic", "tool_info" };
 
     [Fact]
     public void TheToolListAndTheModsHandlersAgree()

@@ -1,6 +1,16 @@
 {
   "name": "water_sources",
-  "description": "Every canister, tank, device and pipe network in the world that holds water, polluted water or steam, with its holder or its network's devices, location, pressure, temperature and the water in moles, litres and hydration; largest first, with totals. Room and world air, bodies and organs are left out, and so are bottles and packets (see consumables). A pipe network is listed from the moment it exists, even while paused; a thing's own atmosphere made since the last atmospherics tick (a canister spawned while paused) is listed from the next tick on. Water is drunk through a water bottle filler or a drinking fountain on a pipe network; polluted water needs a water purifier first and steam has to condense. Sources under min_mol (default 1 mol, 0.018 L) are skipped. owner.kind: item, structure, dynamic (a portable tank) or pipe_network. Read only; no gateway is needed. 1.14.0+: by default the reply keeps the first entries of its list (sources 15); truncated gives each cut list's returned and total counts, and list_limits {list: count} keeps more.",
+  "summary": "Every canister, tank, device and pipe network holding water, polluted water or steam, with location, pressure, temperature and water in moles, litres and hydration; largest first. Lists 15. Read only.",
+  "help": {
+    "text": "Room and world air, bodies, organs, bottles and packets (consumables lists those) are left out. Sources under min_mol (default 1 mol, 0.018 L) are skipped. Water is drunk through a water bottle filler or a drinking fountain on a pipe network; polluted water needs a water purifier first and steam must condense. owner.kind is item, structure, dynamic (a portable tank) or pipe_network.",
+    "topics": {
+      "timing": {
+        "summary": "When new sources appear.",
+        "text": "A pipe network is listed from the moment it exists, even while paused; a thing's own atmosphere made after the last atmospherics tick (a canister spawned while paused) is listed from the next tick on."
+      }
+    },
+    "shared": ["truncation"]
+  },
   "class": "read",
   "cost": "world",
   "params": {
@@ -9,13 +19,13 @@
       "min_mol": {
         "type": "number",
         "exclusiveMinimum": 0,
-        "description": "Skip sources holding less water, polluted water and steam together than this; default 1 mol (0.018 litres). The old name min_moles is still read."
+        "description": "Skip sources holding less water, polluted water and steam together; default 1 mol."
       },
       "min_moles": {
         "type": "number",
         "exclusiveMinimum": 0,
         "deprecated": true,
-        "description": "Deprecated: the old name of min_mol, still read (min_mol wins when both are given)."
+        "description": "Old name of min_mol, still read; min_mol wins."
       }
     },
     "additionalProperties": false

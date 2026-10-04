@@ -3,5 +3,5 @@
   "minItems": 1,
   "maxItems": 1024,
   "items": {"type": "string"},
-  "description": "Things checked as if already gone (their cells free, their links absent) but not removed; a real run is refused while any still stands (assumed_present)."
+  "description": "Things checked as if already gone, not removed; a real run needs them gone (see runs/assume_removed)."
 }

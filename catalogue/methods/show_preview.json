@@ -1,6 +1,10 @@
 {
   "name": "show_preview",
-  "description": "Draw in-game wire boxes for a planned layout (1.4.3+), on the player's screen only (other players see nothing; never the game's construction cursor; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod: drawn_on names the player): the same placement fields as place_structure (placements, or prefab and at, with rotation/facing/face/orient/above_floor_m...) are dry-run and each placement's footprint (green, red when it has a problem), render box (white) and port joining cells (cyan, red when blocked) drawn; cells [[x, y, z], ...] (up to 512, yellow 0.5 m cubes, e.g. a planned route's waypoints or cells) and boxes [{min, max, color red|green|white|cyan|yellow}] (up to 64) too. seconds (default 30, max 300); a new call replaces the last unless keep: true; clear: true only removes them. xray: true (1.7.0+) draws every box through walls, frames and terrain (depth test off; see highlight); without it walls and frames hide the lines. Returns shown, cleared, seconds, dry_run (place_structure's own dry run of the placements), notes, and drawn_on and view {source local|remote, age_s} when another player's game drew them. Changes nothing in the world. Needs the player's screen: no_view without one (the player's view (1.12.0+) is this game's own camera, or on a dedicated server the view the player's own StationGod sends (StationGod is optional on a player's machine; without it these calls refuse)).",
+  "summary": "Draw wire boxes for a planned layout on the player's screen only: place_structure's dry run of the placements (footprint, render box, port cells), plus cells and boxes. Nothing in the world changes.",
+  "help": {
+    "text": "Takes place_structure's placement fields. Footprint green (red with a problem), render box white, port joining cells cyan (red when blocked); cells (up to 512, yellow 0.5 m cubes, such as a planned route) and boxes [{min, max, color}] (up to 64). seconds default 30, max 300; a new call clears the last unless keep; clear only removes. xray draws through walls and terrain. Returns shown, cleared, seconds, dry_run, notes, drawn_on and view.",
+    "shared": ["player", "placing", "positions", "turns", "doors"]
+  },
   "class": "read",
   "cost": "instant",
   "x-effects": ["display"],
@@ -8,30 +12,39 @@
     "type": "object",
     "properties": {
       "placements": {"type": "array", "maxItems": 64, "items": {"type": "object"}, "description": "As place_structure's placements."},
-      "prefab": {"oneOf": [{"type": "string"}, {"type": "integer"}]},
-      "at": {"description": "As place_structure's at."},
-      "rotation": {"type": "array", "items": {"type": "number"}},
-      "facing": {"type": "string"},
-      "up": {"type": "string"},
-      "face": {"type": "string"},
-      "orient": {"type": "object"},
-      "above_floor_m": {"type": "number"},
-      "build_state": {},
-      "allow_door_keepout": {"type": "boolean"},
-      "cells": {"type": "array", "maxItems": 512},
+      "prefab": {"oneOf": [{"type": "string"}, {"type": "integer"}], "description": "As place_structure's prefab."},
+      "at": {"description": "As place_structure's at (see positions)."},
+      "rotation": {"type": "array", "items": {"type": "number"}, "description": "As place_structure's rotation (see turns)."},
+      "facing": {"type": "string", "description": "As place_structure's facing."},
+      "up": {"type": "string", "description": "As place_structure's up."},
+      "face": {"type": "string", "description": "As place_structure's face."},
+      "orient": {"type": "object", "description": "As place_structure's orient (see turns/orient)."},
+      "above_floor_m": {"type": "number", "description": "As place_structure's above_floor_m."},
+      "build_state": {"description": "As place_structure's build_state."},
+      "allow_door_keepout": {"type": "boolean", "description": "As place_structure: a piece in a door keep-out is a warning (see doors)."},
+      "cells": {"type": "array", "maxItems": 512, "description": "Yellow 0.5 m cubes at these points, up to 512."},
       "boxes": {
         "type": "array",
         "maxItems": 64,
         "items": {
           "type": "object",
-          "properties": {"min": {}, "max": {}, "color": {"type": "string", "enum": ["red", "green", "white", "cyan", "yellow"]}},
+          "properties": {
+            "min": {"description": "One corner, [x, y, z] in metres."},
+            "max": {"description": "The other corner."},
+            "color": {
+              "type": "string",
+              "enum": ["red", "green", "white", "cyan", "yellow"],
+              "description": "red, green, white, cyan or yellow."
+            }
+          },
           "required": ["min", "max"]
-        }
+        },
+        "description": "Boxes {min, max, color}, up to 64."
       },
-      "seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 300},
-      "keep": {"type": "boolean"},
-      "clear": {"type": "boolean"},
-      "xray": {"type": "boolean", "description": "Default false. true: draw through walls, frames and terrain."}
+      "seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 300, "description": "How long to show; default 30, max 300."},
+      "keep": {"type": "boolean", "description": "true: keep what earlier calls drew. Default false."},
+      "clear": {"type": "boolean", "description": "Only remove what is drawn."},
+      "xray": {"type": "boolean", "description": "Draw through walls, frames and terrain. Default false."}
     },
     "additionalProperties": false
   },

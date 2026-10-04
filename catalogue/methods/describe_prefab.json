@@ -1,11 +1,26 @@
 {
   "name": "describe_prefab",
-  "description": "What a buildable prefab is before it stands anywhere (1.4.3+), in its own frame (unturned, x right, y up, z forward, origin snapped as the cursor snaps it): prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes (the axes the cursor turns a grid-placed prefab about), allowed_rotations [{facing, up, euler}] (the turns place_structure accepts; a face-mounted piece: every turn, the cursor check decides), small_cells (offsets of the small cells it takes), render_box (the box its meshes fill), grid_box (the small cells' box: its real footprint; null for 2 m structures), ports [{index, type, role, flow in|out|null, at (the joining cell's offset), outward (the way a run leaves)}], visual_up {local (the own axis that reads as its top), lying_allowed, source, verified (true when seen live or forced by the game: the cursor turns it about y only; false: a guess or, for a prefab with no entry that can be built any way up, source ASSUMED, 1.7.0+)}, reversible_flow (turbo volume pumps: Mode 0 and 1 move gas opposite ways), has_cursor and (1.7.0+) controls {local (the own axis its slots, buttons and switches face), votes, considered, source, fallback (true: none of its controls sits clearly on one side, so its forward +z stands in)}, left out for anything that is no device and has no controls. Read only. No gateway is needed.",
+  "summary": "What a buildable prefab is before it stands anywhere, in its own frame: placement kind, the turns it takes, its cells, render box, ports, visual top and controls side. Read only.",
+  "help": {
+    "text": "Its own frame is unturned, x right, y up, z forward, origin snapped as the cursor snaps it. Returns prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells, render_box, grid_box, ports [{index, type, role, flow, at, outward}], visual_up, reversible_flow, has_cursor and controls.",
+    "topics": {
+      "visual_up": {
+        "summary": "visual_up and controls.",
+        "text": "visual_up {local (the axis that reads as its top), lying_allowed, source, verified (true when seen live or forced by the game; false: a guess, or source ASSUMED for a prefab that builds any way up)}. controls {local (the axis its slots, buttons and switches face), votes, considered, source, fallback (true: no control sits clearly on one side, so forward +z stands in)}, left out for anything with no controls. reversible_flow: turbo volume pumps, whose Mode 0 and 1 move gas opposite ways."
+      }
+    },
+    "shared": ["turns", "placing"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
-    "properties": {"prefab": {"oneOf": [{"type": "string"}, {"type": "integer"}], "description": "Prefab name or prefab hash."}},
+    "properties": {
+      "prefab": {
+        "oneOf": [{"type": "string"}, {"type": "integer"}],
+        "description": "Prefab name (StructureWallLight, as find_things and looking_at report them) or prefab hash."
+      }
+    },
     "required": ["prefab"],
     "additionalProperties": false
   },

@@ -1,1 +1,4 @@
-{"type": "string", "description": "The refund's source (refund_to source and storage). Default the player."}
+{
+  "type": "string",
+  "description": "The thing whose slots pay coils or kits and take refunds; default the player (see materials)."
+}

@@ -1,16 +1,20 @@
 {
   "name": "read_logic",
-  "description": "Read a generic logic value from a device using a logic-type name or numeric ID. Any device in the world; a gateway_id limits it to devices on that gateway's data networks.",
+  "summary": "Read one logic value from a device, by logic type name or number. Read only.",
+  "help": {
+    "text": "Any device in the world; gateway_id narrows the scope. read_logic_many and read_devices read many values in one call.",
+    "shared": ["gateways", "logic"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
       "gateway_id": {"$ref": "defs/gateway_id.json"},
-      "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
+      "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
       "logic_type": {
         "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
-        "description": "LogicType enum name or numeric ushort ID."
+        "description": "A logic type name (Temperature) or number."
       }
     },
     "required": ["reference_id", "logic_type"],

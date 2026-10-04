@@ -22,11 +22,12 @@ internal sealed class Catalogue
     private readonly Dictionary<string, CatalogueMethod> _methods;
 
     private Catalogue(string modVersion, Dictionary<string, CatalogueMethod> methods, HashSet<string> errorCodes,
-        int protocolMethodCount)
+        Dictionary<string, ErrorSee> errorPointers, int protocolMethodCount)
     {
         ModVersion = modVersion;
         _methods = methods;
         ErrorCodes = errorCodes;
+        ErrorPointers = errorPointers;
         ProtocolMethodCount = protocolMethodCount;
     }
 
@@ -34,6 +35,9 @@ internal sealed class Catalogue
 
     /// <summary>Every error code the catalogue registers.</summary>
     internal HashSet<string> ErrorCodes { get; }
+
+    /// <summary>Each error code's help pointer (its see), by code.</summary>
+    internal Dictionary<string, ErrorSee> ErrorPointers { get; }
 
     internal IEnumerable<CatalogueMethod> Methods => _methods.Values;
 
@@ -76,9 +80,14 @@ internal sealed class Catalogue
             throw new CatalogueException("errors is missing.");
         }
 
+        Dictionary<string, ErrorSee> errorPointers = new Dictionary<string, ErrorSee>(StringComparer.Ordinal);
         foreach (JProperty error in errors.Properties())
         {
             errorCodes.Add(error.Name);
+            if (error.Value["see"] is JObject see)
+            {
+                errorPointers.Add(error.Name, SeeOf(see, $"errors.{error.Name}.see"));
+            }
         }
 
         Dictionary<string, CatalogueMethod> methods = new Dictionary<string, CatalogueMethod>(StringComparer.Ordinal);
@@ -106,7 +115,16 @@ internal sealed class Catalogue
             }
         }
 
-        return new Catalogue(modVersion, methods, errorCodes, protocolMethods);
+        return new Catalogue(modVersion, methods, errorCodes, errorPointers, protocolMethods);
+    }
+
+    private static ErrorSee SeeOf(JObject see, string at)
+    {
+        string? Text(string key) => see[key] == null ? null
+            : see[key]!.Type == JTokenType.String ? (string)see[key]! : throw new CatalogueException($"{at}.{key}: must be a string.");
+
+        return new ErrorSee(Text("tool"), Text("topic") ?? throw new CatalogueException($"{at}.topic is missing."),
+            Text("subtopic"));
     }
 }
 
@@ -153,6 +171,21 @@ internal sealed class CatalogueMethod
 
     /// <summary>x-mcp hidden: not an MCP tool (a protocol method).</summary>
     internal bool Hidden { get; }
+
+    /// <summary>x-runs-in sidecar: the MCP server answers it from the catalogue; the mod has no handler for it.</summary>
+    internal bool RunsInSidecar { get; private set; }
+
+    // x-file-arguments: arguments only the MCP server reads (a file it sends as another argument), by name: the
+    // argument it fills.
+    private readonly Dictionary<string, string> _fileArguments = new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// What to tell a direct client that sends an argument only the MCP server reads (set_ic_source's source_file);
+    /// null for any other name.
+    /// </summary>
+    internal string? ServerOnlyArgument(string name) => _fileArguments.TryGetValue(name, out string into)
+        ? $"'{name}' is read by the MCP server, which sends that file's text as '{into}'; a direct client sends '{into}' itself."
+        : null;
 
     /// <summary>x-duration's argument: the seconds the call itself runs for; null without x-duration.</summary>
     internal string? DurationParameter { get; private set; }
@@ -274,6 +307,15 @@ internal sealed class CatalogueMethod
             compiled.DefaultLimits = defaults;
         }
 
+        compiled.RunsInSidecar = (string?)method["x-runs-in"] == "sidecar";
+        if (method["x-file-arguments"] is JObject files)
+        {
+            foreach (JProperty file in files.Properties())
+            {
+                compiled._fileArguments[file.Name] = (string?)file.Value["into"] ?? string.Empty;
+            }
+        }
+
         if (method["x-duration"] is JObject duration)
         {
             compiled.DurationParameter = duration["param"]?.Type == JTokenType.String
@@ -330,6 +372,14 @@ internal sealed class CatalogueMethod
     {
         List<SchemaProblem> problems = new List<SchemaProblem>();
         Parameters.Validate(arguments ?? new JObject(), string.Empty, problems);
+        for (int index = 0; index < problems.Count; index++)
+        {
+            if (ServerOnlyArgument(problems[index].Path) is string note)
+            {
+                problems[index] = new SchemaProblem(problems[index].Path, note);
+            }
+        }
+
         return problems;
     }
 

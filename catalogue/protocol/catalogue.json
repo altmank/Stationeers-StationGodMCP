@@ -1,6 +1,6 @@
 {
   "name": "catalogue",
-  "description": "The whole method catalogue this mod was built with: every method, its arguments, classes, costs and reply keys, the error codes and the shared reply keys. welcome.catalogue.hash is the SHA-256 of the exact file; a client whose built-in catalogue has another hash fetches this one.",
+  "description": "The whole method catalogue this mod carries: every method, its arguments, classes, costs and reply keys, the error codes and the shared reply keys. welcome.catalogue.hash is the SHA-256 of the exact file; a client whose built-in catalogue has another hash fetches this one.",
   "class": "read",
   "cost": "instant",
   "params": {"type": "object", "properties": {}, "additionalProperties": false},
@@ -10,6 +10,7 @@
       "catalogue_version": {"type": "integer"},
       "mod_version": {"type": "string"},
       "server": {"type": "object"},
+      "help": {"type": "object"},
       "errors": {"type": "object"},
       "shared_reply_keys": {"type": "array"},
       "protocol_methods": {"type": "array"},

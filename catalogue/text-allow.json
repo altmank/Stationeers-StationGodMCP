@@ -1,0 +1,12 @@
+[
+  {
+    "rule": "code_call",
+    "text": "\"fn()\": value",
+    "reason": "The rule file's own example syntax: an example fixes a function's result by writing \"fn()\" as a key."
+  },
+  {
+    "rule": "change_word",
+    "text": "GrowPressure), now (at its value)",
+    "reason": "now is the reply key holding the stat at the gene's own value; the text names the key, not a change."
+  }
+]

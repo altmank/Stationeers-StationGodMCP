@@ -1,30 +1,50 @@
 {
   "name": "wall_map",
-  "description": "A text elevation of one 2 m face plane as seen from one side (1.4.3+), 0.5 m per character: plane (e.g. \"z=668\", an even metre) with around (a point) and side (+z/-z: the side you view from; default the side in a room), or looking: true (the plane of the face your look ray hits, around the hit, seen from your side); radius_m (default 4, max 16). Returns plane, side, right and up (the world axes a column and a row step run along), rows (a ruler line marking 2 m seams with |, then one line per 0.5 m, top first, left to right as seen: W wall, G window, D door, F a frame with no plate, . open, x a door's keep-out, c cable, p pipe, b both, h chute, a capital or digit a device or mounted thing, over every cell its mesh box covers by more than 0.1 m (1.4.4+: a console's frame overhangs its registered cells; before, only those cells), which free_rects then treats as taken; each character covers the small cell on the plane and the one in front of it; a small cell on a 2 m seam belongs to the section on its plus side, whichever side it is seen from; a passive vent or in-line tank is a thing with a key, not p), top_left (the world point of the first cell's centre, on the plane), sections [{face, look wall|window|door|frame|open, reference_id, prefab_name}], things [{key, reference_id, prefab_name, display_name, position}], legend, and with free_rects {w, h (metres, rounded up to 0.5), one_section (default true: never across a seam), require_wall (default true: only on wall, not window, frame or open), limit (default 20, max 50)}: free_rects [{row, column (top-left on the map), centre (world point on the plane), cells_wide, cells_high}] where that rectangle fits on free cells. Read only. No gateway is needed. view {source local|remote, age_s} when looking read the player's view. The player's view (1.12.0+) is this game's own camera, or on a dedicated server the view the player's own StationGod sends (StationGod is optional on a player's machine; without it these calls refuse): no_view or view_stale without one.",
+  "summary": "A text elevation of one 2 m face plane as seen from one side, 0.5 m per character: walls, windows, doors, frames, pieces and devices; with free_rects, where a rectangle fits. Read only.",
+  "help": {
+    "text": "plane (\"z=668\") with around and side (default the side in a room), or looking: true (the face your look ray hits, seen from your side); radius_m default 4, max 16. Returns plane, side, right and up (the axes a column and a row step along), rows, top_left, sections, things, legend and free_rects.",
+    "topics": {
+      "rows": {
+        "summary": "How to read the rows.",
+        "text": "A ruler line marks 2 m seams with |, then one line per 0.5 m, top first, left to right as seen: W wall, G window, D door, F a frame with no plate, . open, x a door's keep-out, c cable, p pipe, b both, h chute, a capital or digit a device or mounted thing over every cell its mesh box covers by more than 0.1 m. Each character covers the small cell on the plane and the one in front. A cell on a seam belongs to the section on its plus side. A passive vent or in-line tank is a thing with a key, not p."
+      },
+      "free_rects": {
+        "summary": "Finding free rectangles.",
+        "text": "free_rects {w, h (metres, rounded up to 0.5), one_section (default true: never across a seam), require_wall (default true: only on wall, not window, frame or open), limit (default 20, max 50)} answers free_rects [{row, column (top-left on the map), centre (a world point on the plane), cells_wide, cells_high}]."
+      }
+    },
+    "shared": ["player", "positions"]
+  },
   "class": "read",
   "cost": "world",
   "params": {
     "type": "object",
     "properties": {
-      "plane": {"type": "string", "description": "\"x=716\", \"z=668\"...: an axis and an even metre."},
+      "plane": {"type": "string", "description": "A face plane, \"x=716\": an axis and an even metre."},
       "side": {
         "type": "string",
         "enum": ["+x", "-x", "+y", "-y", "+z", "-z"],
-        "description": "The side you view from (on the plane's axis)."
+        "description": "The side you view from, on the plane's axis."
       },
-      "looking": {"type": "boolean", "description": "Use the face your look ray hits instead of plane."},
-      "around": {"description": "[x, y, z]: the map's centre (with plane)."},
-      "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 16},
+      "looking": {"type": "boolean", "description": "Map the face your look ray hits instead of plane."},
+      "around": {"description": "The map's centre, [x, y, z] in metres (with plane)."},
+      "radius_m": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 16,
+        "description": "Half-width of the map; default 4, max 16."
+      },
       "free_rects": {
         "type": "object",
         "properties": {
-          "w": {"type": "number"},
-          "h": {"type": "number"},
-          "one_section": {"type": "boolean"},
-          "require_wall": {"type": "boolean"},
-          "limit": {"type": "integer", "minimum": 1, "maximum": 50}
+          "w": {"type": "number", "description": "Width in metres."},
+          "h": {"type": "number", "description": "Height in metres."},
+          "one_section": {"type": "boolean", "description": "Never across a seam. Default true."},
+          "require_wall": {"type": "boolean", "description": "Only on wall. Default true."},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 50, "description": "Rectangles returned; default 20, max 50."}
         },
-        "required": ["w", "h"]
+        "required": ["w", "h"],
+        "description": "Find where a w by h rectangle fits (topic free_rects)."
       }
     },
     "additionalProperties": false

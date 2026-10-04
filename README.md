@@ -67,11 +67,12 @@ Ask the agent to call these, in order, to see that everything works:
 3. `looking_at`: what your crosshair is on. Point at something and ask the agent about it.
 
 From there, ask in plain words: "which rooms are losing pressure", "what does this chip do", "run heavy cable from
-the APC to the new room along the frames". The agent reads each tool's own description, which lists every argument.
+the APC to the new room along the frames". Each tool's own description is short; the agent reads the long help with
+`tool_info` (`{tool: "place_structure"}`, then a topic), and every error names the `tool_info` topic that explains it.
 
 ## Tools
 
-93 tools, in these areas. Each page lists its tools with what they take and give back.
+93 tools, in these areas, plus `tool_info`, the help. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |
@@ -122,7 +123,7 @@ Errors always come back in the reply. Run replies are compact by default: a conf
 8 KB on a large base: lists come a short page at a time (`limit`, `offset`), a long list is cut to its first entries
 and every reply ends with `truncated`, naming each list it held back with how many it returned, the total and
 the argument that gets the rest (`[]` when it held nothing back) (`list_limits: {"devices": 100}` keeps more), and fixed explanations
-are in the tool descriptions, not the replies (`include_notes: true` where a report has them).
+are in the tool help (`tool_info`), not the replies (`include_notes: true` where a report has them).
 
 Things are named by `display_name`, the game's own name (the label, else the localised name). Where the game has no
 English name for a prefab it shows a placeholder such as `<N:EN:StructureCrewUmbilicalDoor>`; `display_name` and every

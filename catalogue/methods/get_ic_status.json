@@ -1,6 +1,24 @@
 {
   "name": "get_ic_status",
-  "description": "Inspect a visible circuit holder's source, current instruction, registers, stack window, aliases, defines, jump tags, power state, pause state, compile/runtime diagnostics, and its device pins d0..d5 (pins: each pin's device reference ID, prefab and display name or null when empty, the alias the chip gave the pin, and reachable, false when the chip cannot reach the device because it is not on the housing's data network). Holders: IC Housings, suits and other worn holders, and StationeersLua / ScriptedScreens Lua holders (a Console or Computer board, a tablet cartridge, a Programmable Visor). housing.kind is ic_housing, worn_item, computer_board, cartridge or inserted_item; operable says whether the holder runs its chip now (a board: its computer on, powered and fully built; a cartridge: its tablet on and powered; a suit or visor: a charged battery). Also language (ic10 or lua), holder, chip and source_length. For a Lua chip, lua: compiling (a worker thread is compiling it; read again), has_runtime, init_complete (module-level code done, tick(dt) running), running (all of these, no error, not a library), library (a --@module chip other chips require), source_version, last_error {kind compile or runtime, line, message, traceback} or null, log {lines (the last log_lines print() lines), line_count, truncated}, and unavailable when StationeersLua's internals could not be read. compile_error_line (0-based) and compile_error_type say where compiling failed (null while the source compiles); error_line and error_type are the last runtime error's (error_line a string such as \"0\", compile_error_line an integer). A register or stack value that is not finite is a string (\"NaN\", \"Infinity\", \"-Infinity\"). Registers, stack and line fields are IC10's and mean nothing for a Lua chip: 1.14.0+ runtime is null for a Lua chip. A holder with no chip answers only has_chip false, reference_id, gateway_id, holder and pins (no housing, power or runtime fields); stack_start, stack_count and log_lines are still checked. include_source (1.7.0+; default false since 1.14.0, true before): true adds the whole source; otherwise source is null and source_length still the chip's (get_ic_source reads the source alone, with output_file for a large one).",
+  "summary": "Inspect a circuit holder's chip: current line, registers, stack window, aliases, defines, pins d0 to d5, power and pause state, compile and runtime errors, a Lua chip's log. Read only.",
+  "help": {
+    "text": "Works on IC Housings, suits and other worn holders, and Lua holders (a Console or Computer board, a tablet cartridge, a Programmable Visor). The source comes only with include_source; source_length always counts it.",
+    "topics": {
+      "holder": {
+        "summary": "housing, operable, pins, and an empty holder.",
+        "text": "housing.kind is ic_housing, worn_item, computer_board, cartridge or inserted_item. operable says whether the holder runs its chip: a board needs its computer on, powered and fully built; a cartridge its tablet on and powered; a suit or visor a charged battery. pins: each pin's device reference id, prefab and name (null when empty), the alias the chip gave it, and reachable (false when the device is not on the housing's data network). A holder with no chip answers only has_chip false, reference_id, gateway_id, holder and pins."
+      },
+      "ic10": {
+        "summary": "IC10 runtime: registers, stack, errors.",
+        "text": "runtime holds the current line, registers, the stack window (stack_start, stack_count), aliases, defines and jump tags. compile_error_line (0-based integer) and compile_error_type say where compiling failed, null while the source compiles; error_line (a string such as \"0\") and error_type are the last runtime error. A register or stack value that is not finite is a string: \"NaN\", \"Infinity\", \"-Infinity\". runtime is null for a Lua chip."
+      },
+      "lua": {
+        "summary": "The lua block of a Lua chip.",
+        "text": "lua: compiling (read again while true), has_runtime, init_complete (module-level code done, tick(dt) running), running (all of these, no error, not a library), library (a --@module chip other chips require), source_version, last_error {kind compile or runtime, line, message, traceback} or null, log {lines (the last log_lines printed lines), line_count, truncated}, and unavailable when StationeersLua's state cannot be read."
+      }
+    },
+    "shared": ["gateways", "chips"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
@@ -11,24 +29,24 @@
       "stack_start": {
         "type": "integer",
         "minimum": 0,
-        "description": "First stack address to include; defaults to 0.",
+        "description": "First stack address to include; default 0.",
         "maximum": 2147483647
       },
       "stack_count": {
         "type": "integer",
         "minimum": 0,
         "maximum": 512,
-        "description": "Number of stack values to include; defaults to 64. Use 0 to omit values."
+        "description": "Stack values to include; default 64, 0 for none."
       },
       "log_lines": {
         "type": "integer",
         "minimum": 0,
         "maximum": 200,
-        "description": "Lua chips: how many of the last print() log lines to include; defaults to 20. Use 0 to omit the log."
+        "description": "Lua chips: how many of the last printed log lines; default 20, 0 for none."
       },
       "include_source": {
         "type": "boolean",
-        "description": "Default false (1.14.0+): source is null, source_length still counts it. true: the whole source."
+        "description": "true: include the whole source. Default false (source null, source_length still counts it)."
       }
     },
     "required": ["reference_id"],

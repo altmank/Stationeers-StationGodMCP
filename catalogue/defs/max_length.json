@@ -1,1 +1,1 @@
-{"type": "integer", "minimum": 2, "maximum": 1024}
+{"type": "integer", "minimum": 2, "maximum": 1024, "description": "Most cells in the route; default 400."}

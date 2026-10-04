@@ -320,7 +320,7 @@ public sealed class ShapingTests
         ErrorView error = ReplyTooLarge.Of(2048, shape.MaxBytes!.Value, shaped.Outcome);
 
         Assert.Equal(
-            """{"code":"reply_too_large","message":"The reply is 2048 bytes, more than the 1024 allowed; narrow it with fields, limit or the method's own filters.","data":{"bytes":2048,"limit":1024,"counts":{"things":3,"cells":0}}}""",
+            """{"code":"reply_too_large","message":"The reply is 2048 bytes, more than the 1024 allowed; narrow it with fields, limit or the method's own filters.","data":{"bytes":2048,"limit":1024,"counts":{"things":3,"cells":0}},"see":{"topic":"shaping"}}""",
             ApiJson.WriteFresh(error));
     }
 

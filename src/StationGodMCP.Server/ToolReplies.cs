@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using StationGodMCP.Client;
 
 namespace StationGodMCP.Server;
 
@@ -15,14 +17,32 @@ internal static class ToolFailure
 /// </summary>
 internal static class ToolReplies
 {
+    // The text copy is written as the adapter writes structuredContent (plain escaping), so the two read the same.
+    private static readonly JsonSerializerOptions TextOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
     internal static object Of(JsonElement body, bool isError) => new
     {
-        content = new[] { new { type = "text", text = body.GetRawText() } },
+        content = new[] { new { type = "text", text = JsonSerializer.Serialize(body, TextOptions) } },
         structuredContent = body,
         isError
     };
 
-    /// <summary>An error the sidecar answers itself, in the same {code, message} object the mod gives.</summary>
-    internal static object Error(string code, string message) =>
-        Of(JsonSerializer.SerializeToElement(new { code, message }), isError: true);
+    private static readonly JsonSerializerOptions ErrorOptions = new()
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    /// <summary>
+    /// An error the sidecar answers itself, in the same {code, message, see} object the mod gives: see is the tool_info
+    /// node that explains the code (absent when the catalogue gives none).
+    /// </summary>
+    internal static object Error(string code, string message, HelpPointer? see) =>
+        Of(JsonSerializer.SerializeToElement(new ErrorBody(code, message, see), ErrorOptions), isError: true);
+
+    private sealed record ErrorBody(string Code, string Message, HelpPointer? See);
 }

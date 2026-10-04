@@ -1,15 +1,41 @@
 {
   "name": "rocket_status",
-  "description": "Every rocket (or rocket_id: the rocket's, its rocket network's or any part's id), read from the game. Every rocket design the game builds: all six engines, gas and liquid lines, payload bays, crew modules, miners, collectors, scanners. where: state (OnLaunchMount, Launching, InSpace, Landing), mode, current and target node (name, map code, code_value = the number the avionics' DestinationCode takes, charted), progress, altitude above the launch mount while launching or landing, velocity, acceleration, flight rule, and the route left to the target as the game will fly it (SpaceMapPathFinder asked afresh at each node: fewest hops, through uncharted nodes too; a hop's distance is twice the map distance and is also its delta-v). manned: someone sits in a Crew Module Chair (only launch mounts can be targeted). mass: total, structure (1 kg per filled cargo slot included), gas (gas and liquid in the rocket's pipes, tanks and engine chambers), payload_kg (payloads on bays), parts by kind with count and kg. fuel: each engine input network (input 1 and input 2 of every engine; a Pressure Fed Liquid Engine's input 2 is a heat exchanger, not fuel) with pipe litres and mol, total mol, liquid mol and litres, pipe gas kPa (what pressure-fed engines read), which engine inputs draw from it (feeds), mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass). engines: engine name, feed (its feed law with the game's numbers: Pumped Gas 18 mol x throttle; Pressure Fed Gas and Heavy by each input's gas pressure; Pumped Liquid 0.55 L x throttle split by Setting; Pressure Fed Liquid and Heavy 0.04-0.8 / 1.5 L by input 1's gas pressure plus a gas draw), input networks, missing_input, on, powered, throttle, thrust, mol drawn last tick, exhaust, prefab max thrust, watts, modelled. thrust: current, max_recorded, prefab_max, max_expected (what the landing check uses), achievable_full (every engine's first full-throttle tick on the lines as they are, by the game's own combustion on a copy) and recorded_exceeds_achievable. landing_check: the confidence the Rocket Control screen shows (ground pad's hop, world gravity). landing_at_pad: the check the game really makes at re-entry toward the target pad, else its home pad (pad, orbital: an Orbital Launch Mount uses gravity 1 m/s2, delta_v, confidence, band, min required thrust). collects: what the gear can bring home or do (ore, ice, gas, chart/discover/survey, surface_scan; rocket_mining_options has the detail). cargo: holds with filled/slots and kg. power: charge, capacity, percent, load per 0.5 s tick, seconds left, every device's watts now and when on, and whether AutoShutOff leaves it on. burn_time: the game's estimate, ours at full and at current throttle (every engine's feed law run tick by tick on a copy until nothing is drawn). checks (self_test, default true unless compact): the forecast's ported formulas against the game's own numbers now. notes. parts (parts: true): every hull piece and internal part with prefab, label, role (hull or internal), offset in metres from the engine mount in the mount's frame, rotation relative to the mount (as place_structure takes it) and what sits in its slots: enough to build the rocket again. compact: leaves out mass parts, fuel tanks, power devices and checks. explanations: what the thrust and landing numbers mean, once per reply. Combustion: the game's rate (0.96), or Terraforming Reloaded's when that mod is loaded (thrust.combustion). Read only; no gateway.",
+  "summary": "Every rocket, or one, read from the game: where it is and where it goes, mass, fuel lines, engines, thrust, landing confidence, cargo, power, burn time. compact and parts shape it. Read only.",
+  "help": {
+    "text": "explanations (what the thrust and landing numbers mean) come once per reply. compact leaves out mass parts, fuel tanks, power devices and checks. parts lists every part with its pose, enough to build the rocket again.",
+    "topics": {
+      "where": {
+        "summary": "State, nodes and the route.",
+        "text": "where: state (OnLaunchMount, Launching, InSpace, Landing), mode, current and target node (name, map code, code_value: the number the avionics' DestinationCode takes, charted), progress, altitude above the launch mount while launching or landing, velocity, acceleration, flight rule, and the route left as the game will fly it: re-planned at each node, fewest hops, through uncharted nodes too; a hop's distance is twice the map distance and is also its delta-v. manned: someone sits in a Crew Module Chair (only launch mounts can be targeted)."
+      },
+      "mass_fuel": {
+        "summary": "mass and fuel.",
+        "text": "mass: total, structure (1 kg per filled cargo slot included), gas (in the rocket's pipes, tanks and engine chambers), payload_kg, parts by kind. fuel: each engine input network (input 1 and 2 of every engine; a Pressure Fed Liquid Engine's input 2 is a heat exchanger) with pipe litres and mol, total mol, liquid mol and litres, pipe gas kPa (what pressure-fed engines read), feeds (which engine inputs draw from it), mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass)."
+      },
+      "engines": {
+        "summary": "engines, thrust and burn time.",
+        "text": "engines: name, feed (its feed law with the game's numbers), input networks, missing_input, on, powered, throttle, thrust, mol drawn last tick, exhaust, prefab max thrust, watts, modelled. thrust: current, max_recorded, prefab_max, max_expected (what the landing check uses), achievable_full (every engine's first full-throttle tick on the lines as they are, by the game's combustion on a copy), recorded_exceeds_achievable. burn_time: the game's estimate, and ours at full and current throttle."
+      },
+      "landing": {
+        "summary": "landing_check and landing_at_pad.",
+        "text": "landing_check: the confidence the Rocket Control screen shows (the ground pad's hop, world gravity). landing_at_pad: the check the game makes at re-entry toward the target pad, else its home pad: {pad, orbital (an Orbital Launch Mount uses gravity 1 m/s2), delta_v, confidence, band, min required thrust}."
+      },
+      "other": {
+        "summary": "collects, cargo, power, checks, parts.",
+        "text": "collects: what the gear can bring home or do (ore, ice, gas, chart, discover, survey, surface_scan; rocket_mining_options has the detail). cargo: holds with filled, slots and kg. power: charge, capacity, percent, load per 0.5 s tick, seconds left, every device's watts and whether auto shut-off leaves it on. checks (self_test): the forecast's formulas against the game's numbers. parts: each hull piece and internal part with prefab, label, role, offset in metres from the engine mount in its frame, rotation as place_structure takes it, and slot contents."
+      }
+    },
+    "shared": ["rockets"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
-      "rocket_id": {"type": "string", "description": "A rocket, its rocket network, or any of its parts. Omit for every rocket."},
+      "rocket_id": {"type": "string", "description": "A rocket, its rocket network, or any part; left out, every rocket."},
       "self_test": {
         "type": "boolean",
-        "description": "Compare the forecast's port with the game's own numbers. Default true (false with compact)."
+        "description": "Compare the forecast's formulas with the game's numbers. Default true (false with compact)."
       },
       "compact": {
         "type": "boolean",

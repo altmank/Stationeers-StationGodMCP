@@ -2,5 +2,5 @@
   "type": "integer",
   "minimum": 1,
   "maximum": 4096,
-  "description": "Pieces listed per list in the report, default 5 (200 before 1.14.0) (all are counted and checked)."
+  "description": "Pieces listed per list in the report; default 5. All are counted and checked."
 }

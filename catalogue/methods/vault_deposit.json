@@ -1,6 +1,20 @@
 {
   "name": "vault_deposit",
-  "description": "Put ingots, ores and ices straight into an Ingot Vault's store, as a move: taken from wherever they are (a player's inventory at any depth, a container, the ground) and added to the store with the vault's own import bookkeeping (IngotVault CollectResource: an ingot adds its reagents times its grams to the vault's reagent store, an ore or ice adds its count to the vault's ore store), then the item is destroyed as the import destroys it, or, for part of a stack, only that part is taken off it. No import slot, chute or door is used, so nothing waits in a queue or is ejected; the vault's totals, power use, screen, save and vault_contents agree at once. The vault's rule decides what it takes: ingots and ores (ices, slag and organics are ores) whose slot class fits its import slot; anything else is refused (not_vault_material). Three forms: items [{reference_id, quantity (optional: part of a stack; whole numbers for ores, grams for ingots)}] (up to 256), reference_ids [...] (whole items), or a filter over every item in the world: prefab_contains, name_contains, location (any, ground, player, stored), within_id (inside that holder at any depth, e.g. a backpack or the player), near_player_m, kind (any, ingot, ore (not ice), ice), limit (default 256, max 1000; nearest the player first); items the vault does not take are left out and counted as skipped. vault_id may be a Remote Vault: it deposits into the one vault on its data network. Dry run by default; dry_run false and confirm true to do it. Returns {dry_run, vault, via (the Remote Vault used, or null), matched (filter form: items the filter named), skipped, truncated, items: {results: [{index, ok, reference_id, prefab_name, display_name, kind, from {id, slot} (null on the ground), quantity, left_in_source}] or {index, ok: false, reference_id, prefab_name, error {code, message}}, count, success_count, error_count}, stock: [{kind, prefab_name, display_name, reagent, before, change, after}] (a real run reads after back from the vault)}. Per-item refusals: thing_not_found, not_vault_material, no_reagents (an ingot without reagents: the vault would destroy it and store nothing), in_vault_slot (in a vault's own import or export slot; let the vault finish), slot_locked, invalid_argument (more than the stack holds, a fraction of an ore, an item named twice). Whole-request refusals: thing_not_found (the filter's within_id names nothing), vault_unpowered (the vault is off or unpowered: it neither imports nor vends then), confirm_required, ingot_vault_mod_required, ingot_vault_changed, not_a_vault, vault_not_connected, not_host. Host only. No gateway is needed.",
+  "summary": "Put ingots, ores and ices straight into an Ingot Vault's store from wherever they are, with the vault's own bookkeeping; by id, in part, or by a filter over the world. Dry run by default; confirm to do it.",
+  "help": {
+    "text": "Each item is added to the store (an ingot's reagents times its grams; an ore's or ice's count) and destroyed, or only the part asked is taken off a stack. The vault's rule decides what it takes: ingots and ores (ices, slag and organics are ores) whose slot class fits its import slot. Host only.",
+    "topics": {
+      "forms": {
+        "summary": "items, reference_ids, or a filter.",
+        "text": "items [{reference_id, quantity}] (up to 256; quantity a whole count for ores, grams for ingots), reference_ids (whole items), or a filter over every item in the world: prefab_contains, name_contains, location, within_id, near_player_m, kind and limit (default 256, max 1000, nearest the player first). Items the vault does not take are left out of a filter and counted as skipped."
+      },
+      "reply": {
+        "summary": "What a deposit answers.",
+        "text": "{dry_run, vault, via (the Remote Vault used), matched, skipped, truncated, items {results [{index, ok, reference_id, prefab_name, display_name, kind, from {id, slot}, quantity, left_in_source}], count, success_count, error_count}, stock [{kind, prefab_name, display_name, reagent, before, change, after}]}. A real run reads after back from the vault. A refused item: thing_not_found, not_vault_material, no_reagents, in_vault_slot, slot_locked, invalid_argument (more than the stack holds, part of an ore, an item named twice)."
+      }
+    },
+    "shared": ["vaults", "jobs", "items"]
+  },
   "class": "write",
   "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
   "cost": "instant",
@@ -15,17 +29,17 @@
         "items": {
           "type": "object",
           "properties": {
-            "reference_id": {"type": "string"},
+            "reference_id": {"type": "string", "description": "The item."},
             "quantity": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Part of the stack: a whole count for ores, grams for ingots. Default all of it."
+              "description": "Part of the stack: a whole count of ore, grams of ingot. Default all."
             }
           },
           "required": ["reference_id"],
           "additionalProperties": false
         },
-        "description": "Items by id, each whole or in part."
+        "description": "Items by id, each whole or in part, up to 256."
       },
       "reference_ids": {
         "type": "array",
@@ -34,28 +48,25 @@
         "items": {"type": "string"},
         "description": "Whole items by id."
       },
-      "prefab_contains": {"type": "string", "description": "Filter form: prefab name contains this (ignoring case)."},
-      "name_contains": {"type": "string", "description": "Filter form: display name contains this (ignoring case)."},
+      "prefab_contains": {"type": "string", "description": "Filter: part of the prefab name, any case."},
+      "name_contains": {"type": "string", "description": "Filter: part of the shown name, any case."},
       "location": {
         "type": "string",
         "enum": ["any", "ground", "player", "stored"],
-        "description": "Filter form: where the item is. Default any."
+        "description": "Filter: any, ground, player or stored (see items)."
       },
-      "within_id": {
-        "type": "string",
-        "description": "Filter form: inside this holder at any depth (a backpack, a locker, a player)."
-      },
-      "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Filter form: within this many metres of the player."},
+      "within_id": {"type": "string", "description": "Filter: inside this holder at any depth (a backpack, a locker, a player)."},
+      "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Filter: within this many metres of the player."},
       "kind": {
         "type": "string",
         "enum": ["any", "ingot", "ore", "ice"],
-        "description": "Filter form: ingot, ore (not ice), ice, or any the vault takes. Default any."
+        "description": "Filter: ingot, ore (not ice), ice, or any. Default any."
       },
       "limit": {
         "type": "integer",
         "minimum": 1,
         "maximum": 1000,
-        "description": "Filter form: at most this many items, nearest first. Default 256."
+        "description": "Filter: at most this many items, nearest first; default 256."
       },
       "dry_run": {"type": "boolean", "description": "Default true: check and report only."},
       "confirm": {"type": "boolean", "description": "true with dry_run false to deposit."}

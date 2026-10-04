@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.14.0</Version>
+  <Version>1.15.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,11 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.15.0
+- Short tool descriptions: an agent's tool list is under half its size. The long help moved into the new tool_info tool, read one small topic at a time and answered without the game.
+- Every error says what went wrong and what to do, and names the tool_info topic that explains it (see).
+- MCP replies are written with plain JSON escaping, so they are smaller.
+
 v1.14.0
 - Small default replies: every tool's default reply stays under 8 KB on a big base (shorter pages, every reply says in truncated what it held back and how to get it, a new list_limits argument, fixed explanations moved into the tool descriptions). fields reaches nested keys; new omit drops any key. get_ic_status leaves the source out unless asked.
 - set_ic_source source_file deploys a big Lua source from a file; connections area filter; atmosphere_contents reads a Pipe Analyzer's pipe network; console output is captured on a dedicated server.

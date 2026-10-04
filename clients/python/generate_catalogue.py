@@ -98,6 +98,8 @@ def render(catalogue_bytes):
         "        raise NotImplementedError",
     ]
     for method in sorted(catalogue.get("methods") or [], key=lambda entry: entry["name"]):
+        if method["name"] not in table:
+            continue  # not in the table: answered by the MCP server (x-runs-in sidecar), never by the game
         name = method["name"]
         if name in RESERVED or not name.isidentifier() or keyword.iskeyword(name):
             raise SystemExit(f"catalogue method '{name}' clashes with a Client attribute or a Python keyword")

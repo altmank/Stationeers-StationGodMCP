@@ -1,5 +1,5 @@
 {
   "type": "string",
   "enum": ["none", "frame_edges", "walls", "hidden"],
-  "description": "hidden: least visible route (inside a frame 1, frame surface 3, wall plane 5, air 9 per cell)."
+  "description": "none, frame_edges, walls, or hidden (least visible) (see routing/rules)."
 }

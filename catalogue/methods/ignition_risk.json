@@ -1,6 +1,20 @@
 {
   "name": "ignition_risk",
-  "description": "Whether the things the player carries would catch fire, by the game's own fire rule. Returns player ({reference_id, display_name, position}, null without one), cell (the air of the cell the player stands in: {temperature_k, pressure_kpa, energy_j, inflamed (the air is burning), oxygen_mol, in_room}, null without a player), autoignition_min_energy_j (1e7) and minimum_ignition_pressure_kpa (1.5), and items: every burnable thing the player carries at any depth, {reference_id, prefab_name, display_name, slot (the slot's name), in_hand (directly in a hand), holder ({reference_id, prefab_name, display_name} of the thing whose slot holds it), atmosphere (the air its fire check reads: world, internal for a slot that uses its holder's own air such as a suit, or none), burning, hidden (in a slot that hides it: never burns), flashpoint_k, flashpoint_effective_k (the flashpoint divided by the air's pressure as a share of one atmosphere, clamped to 1: what burning air must pass), autoignition_k (null when unset), ignites_now (the game's ShouldIgnite on that air after its fire tick's checks: burnable, not hidden, air at least 1.5 kPa), health_ratio}. A thing lights when the air is burning and hotter than its effective flashpoint, or when the air is hotter than its autoignition and holds more than 10 MJ; once burning it keeps burning while its cell holds over 0.3 mol of oxygen. include_prefabs adds prefabs: every prefab with a flashpoint or autoignition temperature, {prefab_name, display_name, flashpoint_k, autoignition_k}. Read only; no gateway is needed. 1.14.0+: by default the reply keeps the first entries of its list (items 12); truncated gives each cut list's returned and total counts, and list_limits {list: count} keeps more.",
+  "summary": "Whether the things the player carries would catch fire, by the game's own fire rule: the air around the player and every burnable item with its flashpoint. Lists 12 items. Read only.",
+  "help": {
+    "text": "Returns player, cell (the air the player stands in: temperature_k, pressure_kpa, energy_j, inflamed, oxygen_mol, in_room), autoignition_min_energy_j (1e7), minimum_ignition_pressure_kpa (1.5) and items. include_prefabs adds every prefab with a flashpoint or autoignition temperature.",
+    "topics": {
+      "rule": {
+        "summary": "When a thing lights and keeps burning.",
+        "text": "A thing lights when the air is burning and hotter than its effective flashpoint, or when the air is hotter than its autoignition and holds more than 10 MJ; once burning it keeps burning while its cell holds over 0.3 mol of oxygen. A hidden slot never burns. Air under 1.5 kPa lights nothing."
+      },
+      "items": {
+        "summary": "What each carried item reports.",
+        "text": "items: every burnable thing carried at any depth, {reference_id, prefab_name, display_name, slot, in_hand, holder, atmosphere (world, internal for a slot that uses its holder's own air such as a suit, or none), burning, hidden, flashpoint_k, flashpoint_effective_k (the flashpoint divided by the air's pressure as a share of one atmosphere, clamped to 1), autoignition_k, ignites_now (the game's own check on that air), health_ratio}."
+      }
+    },
+    "shared": ["player", "truncation"]
+  },
   "class": "read",
   "cost": "world",
   "params": {

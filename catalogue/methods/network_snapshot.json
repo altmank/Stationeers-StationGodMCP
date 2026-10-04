@@ -1,6 +1,10 @@
 {
   "name": "network_snapshot",
-  "description": "Capture one main-thread snapshot of filtered network devices and their readable logic values. Filters may use reference IDs, prefab hash, display-name text, and selected logic types.",
+  "summary": "Snapshot devices and their readable logic values in one frame, filtered by reference_ids, prefab_hash, name_contains and logic_types. Returns 2 devices by default (max_devices). Read only.",
+  "help": {
+    "text": "Narrow it with the filters first: every matching device reads every logic type it exposes unless logic_types names some. max_devices sets how many devices come back (default 2).",
+    "shared": ["gateways", "logic"]
+  },
   "class": "read",
   "cost": "world",
   "params": {
@@ -12,31 +16,26 @@
         "minItems": 1,
         "maxItems": 256,
         "items": {"type": "string"},
-        "description": "Optional exact device reference-ID filter."
+        "description": "Only these devices, by reference id."
       },
       "prefab_hash": {
         "type": "integer",
-        "description": "Optional exact signed PrefabHash filter.",
+        "description": "Exact prefab hash (a signed integer).",
         "minimum": -2147483648,
         "maximum": 2147483647
       },
-      "name_contains": {"type": "string", "description": "Optional case-insensitive DisplayName substring filter."},
+      "name_contains": {"type": "string", "description": "Part of the device's name, any case."},
       "logic_types": {
         "type": "array",
         "minItems": 1,
         "maxItems": 64,
         "items": {
           "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
-          "description": "LogicType enum name or numeric ushort ID."
+          "description": "A logic type name (Temperature) or number."
         },
-        "description": "Optional logic types to read. Omit to read every logic type each matching device exposes."
+        "description": "Logic types to read; left out, every one each device exposes."
       },
-      "max_devices": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 256,
-        "description": "Maximum returned devices; defaults to 2 (256 before 1.14.0; narrow with the filters)."
-      }
+      "max_devices": {"type": "integer", "minimum": 1, "maximum": 256, "description": "Most devices returned; default 2."}
     },
     "additionalProperties": false
   },

@@ -1,6 +1,20 @@
 {
   "name": "landing_pads",
-  "description": "Every trader landing pad in the world, measured by the game's own checks: no guessing from tiles. Each pad: reference_id, prefab_name, display_name, position, forward (+x, -x, +z or -z; +z is north), is_network_center (a pad network with more or fewer than one centre refuses every landing), piece_count (pieces on its landing-pad network), extent {x_tiles, z_tiles} (the box of its pad tiles and centre, 2 m tiles), largest_square_tiles (the biggest n up to 15 for which the game's CheckPadSize passes an n x n pad, allowing the one-tile shifted centre the game allows on even sides; every cell of the square must be a pad tile or the centre, so a Data And Power or other connection piece inside it shrinks the square), runway_ok (a plane's runway threshold check: exactly one switched-on threshold on the network; null without a network), fits_by_ship (for each ShuttleType: shuttle_type, pad_size_tiles [x, y] from the game's table, runway_tiles (the approach length the game uses for planes, not checked against the pad), needs_threshold (planes), fits), and contacts (every trader contact in the sky: reference_id (the contact's id, as trader_contacts gives it), name, shuttle_type, pad_size_tiles, fits, can_land (the game's CanTraderLand now: power, error, one centre, storm (planes are exempt), pad size, runway threshold) and reason (the game's message, empty when it can land)). Also count. Read only: the game's pad check moves the landing point of the pad it measures, and every check here puts it back, so a landing in progress is never affected. No gateway is needed.",
+  "summary": "Every trader landing pad, measured by the game's own checks: its largest square, runway threshold, which ships fit, and whether each contact in the sky can land. Read only.",
+  "help": {
+    "text": "The game's pad check moves the landing point of the pad it measures; every check here puts it back, so a landing in progress is never affected. Also count.",
+    "topics": {
+      "pad": {
+        "summary": "What each pad reports.",
+        "text": "reference_id, prefab_name, display_name, position, forward (+z north), is_network_center (a network with more or fewer than one centre refuses every landing), piece_count, extent {x_tiles, z_tiles} (2 m tiles), largest_square_tiles (the biggest n up to 15 whose n x n pad the game accepts, with the one-tile shifted centre allowed on even sides; a connection piece inside shrinks it), runway_ok (exactly one switched-on runway threshold; null without a network)."
+      },
+      "ships": {
+        "summary": "fits_by_ship and contacts.",
+        "text": "fits_by_ship: per ship type, {shuttle_type, pad_size_tiles [x, y], runway_tiles (the approach length for planes, not checked against the pad), needs_threshold, fits}. contacts: every trader in the sky, {reference_id, name, shuttle_type, pad_size_tiles, fits, can_land (the game's own landing check: power, error, one centre, storm (planes are exempt), pad size, runway threshold), reason (the game's message, empty when it can land)}."
+      }
+    },
+    "shared": ["trading"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {"type": "object", "properties": {}, "additionalProperties": false},

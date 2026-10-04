@@ -1,21 +1,37 @@
 {
   "name": "label",
-  "description": "Rename a thing as the hand Labeller does, with the game's own rename (Thing.RenameThing on the host, which syncs to clients and is saved; a multiplayer client sends the rename to the host). The name is written as the Labeller writes it: an empty name becomes the game's name for the prefab (the game stores that name rather than clearing the label), cut to 200 characters, rich-text tags stripped except on signs and labels. Only things the Labeller can rename: portable tanks and other movable things, every device, the big in-line tanks (StructureInLineTank), hydroponic trays, plants, IC chips, flags and a few more (find_things reports labelable). One rename: reference_id and name. Or labels: up to 64 {reference_id, name}, applied in order. A rename returns {index, ok, reference_id, prefab_name, written (the name stored), sent_to_host (true on a multiplayer client: current shows the name once the host's update arrives), previous {display_name, custom_name}, current {display_name, custom_name}}, read back from the thing; a refusal {index, ok: false, reference_id, error {code, message}} changes nothing. The batch form returns results, count, success_count and error_count; the single form returns the rename, or the refusal as the error. Refusals: thing_not_found, not_labelable (a class the Labeller cannot rename: pipes, cables, frames, ordinary items, and the pipe-size in-line tanks, class InLineTank, e.g. StructureInLineTankGas1x2: the game has no rename for them and StationGod keeps no names of its own; label a sign or device beside one instead), invalid_argument. No gateway is needed.",
+  "summary": "Rename things as the hand Labeller does: one with reference_id and name, or up to 64 with labels. An empty name gives back the game's name for it.",
+  "help": {
+    "text": "Uses the game's own rename: the host's rename syncs to clients and is saved; a multiplayer client sends it to the host. Each result gives written, sent_to_host, previous and current {display_name, custom_name}, read back from the thing.",
+    "topics": {
+      "names": {
+        "summary": "How the name is written.",
+        "text": "As the Labeller writes it: an empty name becomes the game's name for the prefab (stored as that name, not cleared), cut to 200 characters, rich-text tags stripped except on signs and labels."
+      },
+      "refusals": {
+        "summary": "What the Labeller cannot rename.",
+        "text": "not_labelable: a class the Labeller cannot rename: pipes, cables, frames, ordinary items, and the pipe-size in-line tanks (StructureInLineTankGas1x2 and the like); the game has no rename for them. Label a sign or device beside one instead. It renames portable tanks and other movable things, every device, the big in-line tanks (StructureInLineTank), hydroponic trays, plants, IC chips and flags; find_things reports labelable. A refusal changes nothing; in the batch form only its own entry fails."
+      }
+    }
+  },
   "class": "write",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
-      "reference_id": {"type": "string", "description": "Reference ID of the thing to rename (find_things, looking_at, list_devices)."},
-      "name": {"type": "string", "description": "The new name; empty restores the game's name."},
+      "reference_id": {"type": "string", "description": "The thing to rename (find_things, looking_at, list_devices)."},
+      "name": {"type": "string", "description": "The new name; empty gives back the game's name."},
       "labels": {
         "type": "array",
         "minItems": 1,
         "maxItems": 64,
-        "description": "Several renames, applied in order; use instead of reference_id and name.",
+        "description": "Several renames, up to 64, applied in order; instead of reference_id and name.",
         "items": {
           "type": "object",
-          "properties": {"reference_id": {"type": "string"}, "name": {"type": "string"}},
+          "properties": {
+            "reference_id": {"type": "string", "description": "The thing to rename."},
+            "name": {"type": "string", "description": "Its new name."}
+          },
           "required": ["reference_id", "name"],
           "additionalProperties": false
         }

@@ -1,6 +1,24 @@
 {
   "name": "thing_health",
-  "description": "The damage state of any thing (solar panel, pipe, cable, wall, frame, door, vent, device, item), read from the game's own DamageState: no LogicType exposes damage. Four forms. reference_id: that one thing. reference_ids: up to 256 things, a result per id with index and ok, and a per-item error (thing_not_found, invalid_argument for an id that is not a decimal string) instead of failing the call. network_id (1.10.0+): every piece of one pipe (default), cable or chute network (kind), devices left out, worst first, paged (limit, offset); damaged_only lists only damaged and broken pieces; replies network_id, kind, pieces (every piece), damaged_only, things, count, total, offset, limit, has_more; network_not_found when the network is gone. None of them: scan every thing in the world and list the damaged and broken ones, broken first, then worst first, paged (broken_only: only broken ones); the scan skips things being destroyed, indestructible things, players and animals, and organs, and counts decaying food and hurt plants as damaged items (use structures_only for the base alone). Each thing has reference_id, prefab_name, display_name, kind (structure, item or other), type (runtime class), damage_state (destructible, indestructible or none), damage_state_class, max_damage (health capacity), total_damage (the sum the game counts: brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (total_damage / max_damage: 0 like new, 1 destroyed), health_percent (100 - damage_ratio * 100 rounded, as the solar panel tooltip shows), damage (each type), is_broken (at max damage, a structure in its broken build state, a burst pipe: pipe_burst not none; bursting leaves a pipe's damage at 0, or a burnt cable: the separate undamaged piece, e.g. StructureCableStraightBurnt, an overload leaves, carrying no power), broken_build_state (structures: below build state 0, the broken mesh the game swaps in; null for other things), condition (1.4.3+: broken, damaged, intact, indestructible or none; broken wins, because the game heals a structure it breaks to 0 damage, so a broken vent reads 100 % health, and a burst pipe or a burnt cable reads 0 damage and 100 % health: the numbers stay the game's own, condition and is_broken are the signal), custom_name (the Labeller name), networks (structures: [{kind, id}] of the cable, pipe and chute networks it is part of or its ports join), being_destroyed, band (solar panels only: the tooltip colour green, yellow over 0.25, red over 0.75), pipe_burst (pipes only: none, pressure, liquid or solid), position (a thing in a slot, e.g. a stored item or a planted plant, is placed by its outermost holder) and distance_m from the player. An indestructible thing (the modded Force-Field Door, anything marked Indestructable) reports damage_state indestructible with total_damage, damage_ratio and health_percent null, never a fake 0. A solar panel generates (1 - damage_ratio) of its undamaged output. The scan also returns count, total (matches on all pages), structures, broken, scanned, min_damage_ratio, offset, limit, has_more and local_player. Read only; no gateway is needed.",
+  "summary": "The damage state of any thing (panel, pipe, cable, wall, frame, door, vent, device, item), which no logic type exposes. One thing, up to 256, a network's pieces, or a world scan of damaged and broken things. Read only.",
+  "help": {
+    "text": "Four forms. reference_id: one thing. reference_ids: up to 256, a result each with its own error. network_id: every piece of one pipe (default), cable or chute network, worst first, paged (damaged_only narrows it). None of them: scan the world for damaged and broken things, broken first then worst first, paged (8 per page).",
+    "topics": {
+      "reply": {
+        "summary": "What each thing reports.",
+        "text": "reference_id, prefab_name, display_name, kind, type, damage_state (destructible, indestructible or none), max_damage, total_damage (brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (0 like new, 1 destroyed), health_percent (as the solar panel tooltip shows), damage per type, is_broken, broken_build_state, condition, custom_name, networks [{kind, id}], being_destroyed, band (solar panels: green, yellow over 0.25, red over 0.75), pipe_burst (none, pressure, liquid or solid), position and distance_m."
+      },
+      "broken": {
+        "summary": "is_broken and condition, and why health reads 100 %.",
+        "text": "is_broken: at maximum damage, a structure in its broken build state, a burst pipe (bursting leaves its damage at 0), or a burnt cable (the separate undamaged piece an overload leaves, such as StructureCableStraightBurnt, carrying no power). condition: broken, damaged, intact, indestructible or none; broken wins, because the game heals a structure it breaks to 0 damage. The numbers stay the game's own; condition and is_broken are the signal. An indestructible thing reports its damage numbers as null, never a fake 0."
+      },
+      "scan": {
+        "summary": "What the world scan skips and counts.",
+        "text": "The scan skips things being destroyed, indestructible things, players, animals and organs, and counts decaying food and hurt plants as damaged items (structures_only for the base alone). It also returns count, total (matches on all pages), structures, broken, scanned, min_damage_ratio, offset, limit, has_more and local_player. A solar panel generates (1 - damage_ratio) of its undamaged output."
+      }
+    },
+    "shared": ["networks", "paging", "player"]
+  },
   "class": "read",
   "cost": "world",
   "x-cost-when": [
@@ -11,21 +29,24 @@
   "params": {
     "type": "object",
     "properties": {
-      "reference_id": {"type": "string", "description": "Reference ID of one thing (from find_items, list_devices, list_containers)."},
+      "reference_id": {"type": "string", "description": "One thing."},
       "reference_ids": {
         "type": "array",
         "minItems": 1,
         "maxItems": 256,
         "items": {"type": "string"},
-        "description": "Reference IDs of up to 256 things, for one call per card."
+        "description": "Up to 256 things, a result each."
       },
       "network_id": {
-        "description": "Network form (1.10.0+): every piece of one network, worst first, paged. A network id, a piece or device on it (a device on one network of the kind), or {reference_id, port}; resolved_networks names what it resolved to.",
+        "description": "Network form: a network or a handle on it; every piece, worst first (see networks).",
         "oneOf": [
           {"type": "string"},
           {
             "type": "object",
-            "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+            "properties": {
+              "reference_id": {"type": "string", "description": "A device on the network."},
+              "port": {"type": "integer", "minimum": 0, "maximum": 64, "description": "The device's port index."}
+            },
             "required": ["reference_id"],
             "additionalProperties": false
           }
@@ -34,45 +55,39 @@
       "kind": {
         "type": "string",
         "enum": ["pipe", "cable", "chute"],
-        "description": "Network form: the network's kind, default pipe."
+        "description": "Network form: pipe (default), cable or chute."
       },
-      "damaged_only": {
-        "type": "boolean",
-        "description": "Network form: list only damaged and broken pieces (as the scan lists them). Default false."
-      },
+      "damaged_only": {"type": "boolean", "description": "Network form: only damaged and broken pieces. Default false."},
       "min_damage_ratio": {
         "type": "number",
         "minimum": 0,
         "exclusiveMaximum": 1,
-        "description": "Scan only: list things whose damage_ratio is above this (0.25 = the yellow band, 0.75 = red). Default 0, any damage. The older name min_ratio is still read."
+        "description": "Scan: only damage_ratio above this (0.25 yellow, 0.75 red). Default 0."
       },
       "min_ratio": {
         "type": "number",
         "minimum": 0,
         "exclusiveMaximum": 1,
         "deprecated": true,
-        "description": "Deprecated: the older name of min_damage_ratio, still read (min_damage_ratio wins when both are given)."
+        "description": "Old name of min_damage_ratio, still read; min_damage_ratio wins."
       },
-      "structures_only": {"type": "boolean", "description": "Scan only: leave items out. Default false."},
-      "broken_only": {
-        "type": "boolean",
-        "description": "Scan only: list only things in the game's broken state (condition broken), whatever their damage numbers. Default false."
-      },
+      "structures_only": {"type": "boolean", "description": "Scan: leave items out. Default false."},
+      "broken_only": {"type": "boolean", "description": "Scan: only things in the game's broken state. Default false."},
       "near_player_m": {
         "type": "number",
         "exclusiveMinimum": 0,
-        "description": "Scan only: only things within this many metres of the player."
+        "description": "Scan: only things within this many metres of the player."
       },
       "limit": {
         "type": "integer",
         "minimum": 1,
         "maximum": 500,
-        "description": "Scan and network forms: things per page, default 8 (200 before 1.14.0)."
+        "description": "Scan and network forms: things per page; default 8."
       },
       "offset": {
         "type": "integer",
         "minimum": 0,
-        "description": "Scan and network forms: things to skip, for paging.",
+        "description": "Scan and network forms: things to skip (see paging).",
         "maximum": 2147483647
       }
     },

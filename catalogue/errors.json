@@ -1,350 +1,849 @@
 {
-  "ambiguous_axis": {"description": "<name>: <…> is turned off the grid's axes; use frame world or player.", "origin": "tool"},
+  "ambiguous_axis": {
+    "description": "A relative point or named facing lies within 10 degrees of a diagonal from the player, so the axis is unclear. Use frame world or target, or turn toward an axis.",
+    "origin": "tool",
+    "see": {"topic": "positions", "subtopic": "relative"}
+  },
   "ambiguous_circuit_holder": {
-    "description": "Device <reference_id> (<prefab_name>) holds <count> circuit holders (<…>); pass the reference id of the one you mean.",
-    "origin": "tool"
+    "description": "The device holds several circuit holders. Pass the reference id of the one you mean; the message lists them.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
   },
-  "ambiguous_item": {"description": "<count> of the trader's entries are <…>; give both name and prefab_name.", "origin": "tool"},
-  "ambiguous_node": {"description": "'<wanted>' names <count> nodes: <…>. Give the code.", "origin": "tool"},
+  "ambiguous_item": {
+    "description": "Several of the trader's entries match the name. Give both name and prefab_name.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "ambiguous_node": {
+    "description": "The name matches several space-map nodes. Give the node's code; the message lists them.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
+  },
   "ambiguous_port": {
-    "description": "<name>: <prefab_name> <reference_id> is on <count> <network_kind> networks [<…>]; name one with {reference_id, port} (ports: <…>).",
-    "origin": "tool"
+    "description": "The device sits on several networks of that kind. Name one with {reference_id, port}; the message lists the ports.",
+    "origin": "tool",
+    "see": {"topic": "networks"}
   },
-  "ambiguous_rocket": {"description": "There are <count> rockets: give rocket_id, one of <…>.", "origin": "tool"},
-  "assumed_present": {"description": "Refused with assumed_present.", "origin": "tool"},
-  "atmosphere_not_found": {"description": "'<name>': no thing, pipe network or atmosphere has id <id>.", "origin": "tool"},
-  "blueprint_failed": {"description": "BlueprintMod read nothing from '<path>'.", "origin": "tool"},
-  "build_failed": {"description": "Replacing <prefab_name> <reference_id> by its singles failed: <message>", "origin": "tool"},
+  "ambiguous_rocket": {
+    "description": "There are several rockets. Give rocket_id; the message lists them.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
+  },
+  "assumed_present": {
+    "description": "A thing named in assume_removed still stands, so the real run cannot go ahead. Remove it first, then run again.",
+    "origin": "tool",
+    "see": {"topic": "runs", "subtopic": "assume_removed"}
+  },
+  "atmosphere_not_found": {
+    "description": "No thing, pipe network or atmosphere has that id. Check the id with atmosphere_contents or find_things.",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
+  },
+  "blueprint_failed": {
+    "description": "BlueprintMod read nothing from that path. Check the file name and folder.",
+    "origin": "tool",
+    "see": {"tool": "paste_blueprint", "topic": "refusals"}
+  },
+  "build_failed": {
+    "description": "Building a piece failed part way; the message names the piece and why. The job stopped there; check what it built.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "refusals"}
+  },
   "busy": {
-    "description": "<maximum_pending> moves are already waiting for the next atmospherics tick (is the game paused?).",
-    "origin": "tool"
+    "description": "Too many gas moves are already waiting for the next atmospherics tick (is the game paused?). Unpause, or wait and try again.",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
   },
-  "cancelled": {"description": "Cancelled before it started. Nothing ran.", "origin": "protocol", "caller_may_resend": "yes"},
-  "card_not_found": {"description": "Reference id <value> is not a credit card.", "origin": "tool"},
+  "cancelled": {
+    "description": "Cancelled before it started: nothing ran. Send it again if you still want it.",
+    "origin": "protocol",
+    "caller_may_resend": "yes",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
+  "card_not_found": {
+    "description": "That reference id is not a credit card. Use a card the player carries, or leave credit_card_id out.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
   "card_not_usable": {
-    "description": "Credit card <reference_id> <where>. The game's sell takes goods from the card holder too and works only with a card a player carries or a vending machine holds.",
-    "origin": "tool"
+    "description": "The credit card is not where the game's sell can use it. Use a card a player carries or a vending machine holds.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
   },
   "coils_short": {
-    "description": "Only <taken> of <cost> <…> could be taken for cell <cell>; the build stopped before it (what was taken is given back).",
-    "origin": "tool"
+    "description": "Fewer coils or kits could be taken than the piece costs; the build stopped before it and gave back what it took. Bring more, then run again.",
+    "origin": "tool",
+    "see": {"topic": "materials"}
   },
   "command_not_found": {
-    "description": "No console command is registered as '<key>'. Run the console command 'help' to list them.",
-    "origin": "tool"
+    "description": "No console command has that name. Run the console command 'help' to list them.",
+    "origin": "tool",
+    "see": {"tool": "run_console_command", "topic": "refusals"}
   },
   "command_not_ready": {
-    "description": "'<key>' needs an initialised GameManager. The console would not run it now: it would be queued and fired later during world init, out of band and with its output attributed to nothing. Retry once the game has finished loading.",
-    "origin": "tool"
+    "description": "The game has not finished loading, so the console would not run the command yet. Try again once the world is loaded.",
+    "origin": "tool",
+    "see": {"tool": "run_console_command", "topic": "refusals"}
   },
-  "confirm_required": {"description": "A real run needs dry_run: false and confirm: true; nothing was changed.", "origin": "tool"},
-  "contact_not_found": {"description": "No trader contact has reference id <contact_id>.", "origin": "tool"},
-  "device_not_found": {"description": "Pin d<index>: device <id> is not visible <where>.", "origin": "tool"},
-  "dish_not_ready": {"description": "The dish has no horizontal pivot or pointing transform.", "origin": "tool"},
-  "duplicate_id": {"description": "The id is already in flight on this connection. Nothing ran.", "origin": "protocol"},
+  "confirm_required": {
+    "description": "A real run needs dry_run: false and confirm: true together. Nothing ran.",
+    "origin": "tool",
+    "see": {"topic": "jobs"}
+  },
+  "contact_not_found": {
+    "description": "No trader contact has that reference id. trader_contacts lists them.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "device_not_found": {
+    "description": "No device with that id is reachable here. Check the id, or the gateway the call is scoped to.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
+  },
+  "dish_not_ready": {
+    "description": "The dish has no pivot or pointing part to turn: it is not built far enough. Finish building it.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "duplicate_id": {
+    "description": "That request id is already in flight on this connection. Nothing ran; use a new id.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "engine_not_modelled": {
-    "description": "<…> is a <…>, none of the game's six engine classes (or a class built on one): its feed law is unknown to the forecast.",
-    "origin": "tool"
+    "description": "The rocket has an engine the forecast has no model for. The forecast cannot run for this rocket.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
   },
   "final_check_failed": {
-    "description": "The check once the tick had stopped found <count> problem(s); nothing was changed.",
-    "origin": "tool"
+    "description": "The check run once the tick stopped found problems, so nothing ran. The report lists them; fix them and run again.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "refusals"}
   },
-  "game_changed": {"description": "A game member this method needs is missing in this game build.", "origin": "protocol"},
-  "game_not_running": {"description": "The world is not running.", "origin": "tool"},
-  "game_timeout": {
-    "description": "The call was not started before its deadline. Nothing ran.",
+  "game_changed": {
+    "description": "This game build lacks a game member the tool needs. The tool cannot run on this build; mod_info lists what is missing.",
     "origin": "protocol",
-    "caller_may_resend": "yes"
+    "see": {"topic": "errors", "subtopic": "mods"}
+  },
+  "game_not_running": {
+    "description": "The world is not running. Load a world, then try again.",
+    "origin": "tool",
+    "see": {"topic": "errors", "subtopic": "host"}
+  },
+  "game_timeout": {
+    "description": "The call did not start before its deadline. Nothing ran; it is safe to send again.",
+    "origin": "protocol",
+    "caller_may_resend": "yes",
+    "see": {"topic": "errors", "subtopic": "protocol"}
   },
   "game_unavailable": {
-    "description": "The sidecar could not reach the mod (no pipe, or another client held it), or the mod took the call and sent no reply in time; in that case the call may still have run.",
+    "description": "The server could not reach the game, or the game took the call and sent no reply in time; then it may have run. Check the game is running with StationGod, then retry a read; check before repeating a write.",
     "origin": "client",
-    "caller_may_resend": "if_read"
+    "caller_may_resend": "if_read",
+    "see": {"topic": "errors"}
   },
-  "gas_check_failed": {"description": "Refused with gas_check_failed.", "origin": "tool"},
-  "gas_hold_mismatch": {"description": "Refused with gas_hold_mismatch.", "origin": "tool"},
-  "gateway_not_found": {"description": "No StationGod Gateway has reference ID <id>.", "origin": "tool"},
-  "gateway_unavailable": {"description": "Gateway <id> is unavailable: <unavailable>.", "origin": "tool"},
-  "has_color_state": {"description": "<…> keeps its colour as an animator state; the spray can does not paint it.", "origin": "tool"},
-  "ic_compile_error": {"description": "The IC cannot be stepped while it has a compilation error.", "origin": "tool"},
-  "ic_not_operable": {"description": "Refused with ic_not_operable.", "origin": "tool"},
-  "in_vault_slot": {"description": "<…> is in a slot of <…>; take it out or let the vault finish.", "origin": "tool"},
+  "gas_check_failed": {
+    "description": "An earlier pipe job lost gas, so real runs that touch pipe networks are held. Ask the user; only with their agreement pass acknowledge_gas_lost with that job's id.",
+    "origin": "tool",
+    "see": {"topic": "gas_hold"}
+  },
+  "gas_hold_mismatch": {
+    "description": "acknowledge_gas_lost names another job than the one holding pipe jobs. Use the job id the message names, with the user's agreement.",
+    "origin": "tool",
+    "see": {"topic": "gas_hold", "subtopic": "acknowledge"}
+  },
+  "gateway_not_found": {
+    "description": "No StationGod Gateway has that id. list_gateways lists them; or leave gateway_id out for the whole world.",
+    "origin": "tool",
+    "see": {"topic": "gateways", "subtopic": "refusals"}
+  },
+  "gateway_unavailable": {
+    "description": "The gateway cannot scope calls: it is not fully built, or has no data cable on either port. Finish it or connect a data cable.",
+    "origin": "tool",
+    "see": {"topic": "gateways", "subtopic": "refusals"}
+  },
+  "has_color_state": {
+    "description": "This thing keeps its colour as an animation state; the spray can does not paint it. Nothing to do: it cannot be painted.",
+    "origin": "tool",
+    "see": {"tool": "paint", "topic": "refusals"}
+  },
+  "help_not_found": {
+    "description": "No help node has that name. The message lists the names it knows or the nearest ones; tool_info {} lists the shared topics.",
+    "origin": "client",
+    "see": {"tool": "tool_info", "topic": "levels"}
+  },
+  "ic_compile_error": {
+    "description": "The chip has a compile error, so it cannot be stepped. Fix the source with set_ic_source first.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
+  },
+  "ic_not_operable": {
+    "description": "The IC Housing is off, unpowered or not operable, or a worn item's battery is flat. Fix that, then try again.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
+  },
+  "in_vault_slot": {
+    "description": "The item sits in a vault's slot. Take it out first, or let the vault finish.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
+  },
   "ingot_vault_changed": {
-    "description": "The IngotVault mod has changed: <…> is gone. This StationGod build needs an update for this IngotVault version; nothing was changed.",
-    "origin": "tool"
+    "description": "This StationGod build does not know the loaded IngotVault version. Nothing ran; update StationGod.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
   },
   "ingot_vault_mod_required": {
-    "description": "The vault tools need the IngotVault mod (Steam Workshop 3749011679), which is not loaded.",
-    "origin": "tool"
+    "description": "The vault tools need the IngotVault mod, which is not loaded.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
   },
-  "insufficient_available": {"description": "Only <available> that the trader accepts are <…><after>.", "origin": "tool"},
-  "insufficient_credits": {"description": "This costs <cost>; the card holds <currency>.", "origin": "tool"},
-  "insufficient_stock": {"description": "The trader has <limit> in stock.", "origin": "tool"},
-  "internal_error": {"description": "A bug. The method may have partly run.", "origin": "protocol"},
+  "insufficient_available": {
+    "description": "Fewer of the item than asked are held where the trader can take them. Sell fewer, or bring more.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "insufficient_credits": {
+    "description": "The card holds fewer credits than this costs. Buy less, or use another card.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "insufficient_stock": {
+    "description": "The trader has fewer in stock than asked. Buy no more than the stock.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "internal_error": {
+    "description": "A bug in StationGod; the call may have partly run. Check the world before repeating it, and report the message.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "invalid_argument": {
-    "description": "The arguments break the catalogue (version 2) or a tool's own reading (both versions). Nothing ran.",
-    "origin": "protocol"
+    "description": "An argument is missing, has the wrong type, or breaks a rule; the message names it. Fix that argument and send again; nothing ran.",
+    "origin": "protocol",
+    "see": {"topic": "errors"}
   },
-  "invalid_color": {"description": "Empty color.", "origin": "tool"},
-  "invalid_destination": {"description": "<…> is <…> or inside it.", "origin": "tool"},
+  "invalid_color": {
+    "description": "The colour is empty or unknown. Give a colour name or index; paint lists them.",
+    "origin": "tool",
+    "see": {"tool": "paint", "topic": "refusals"}
+  },
+  "invalid_destination": {
+    "description": "The destination is the item itself or inside it. Pick another slot or container.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
   "invalid_downlink": {
-    "description": "<downlink_id> is no downlink this uplink can follow: a built, logic readable Logic Rocket Downlink.",
-    "origin": "tool"
+    "description": "That is no downlink this uplink can follow. Give a built, logic-readable Logic Rocket Downlink.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
   },
-  "invalid_logic_type": {"description": "Refused with invalid_logic_type.", "origin": "tool"},
-  "invalid_prefab": {"description": "Refused with invalid_prefab.", "origin": "tool"},
-  "invalid_shape": {"description": "Version 2 only: shape is malformed. Nothing ran.", "origin": "protocol"},
-  "job_not_found": {"description": "No job <id> is running, queued or among the last <kept_jobs>.", "origin": "tool"},
+  "invalid_logic_type": {
+    "description": "The logic type is not one the game knows. Use a LogicType name or number; describe_device lists a device's.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
+  },
+  "invalid_prefab": {
+    "description": "No kit builds that prefab, or it is not a structure or not loaded. Check the name; looking_at and find_things report prefab names.",
+    "origin": "tool",
+    "see": {"topic": "placing", "subtopic": "refusals"}
+  },
+  "invalid_shape": {
+    "description": "The call's shape (fields, omit, limits) is malformed. Fix it; nothing ran.",
+    "origin": "protocol",
+    "see": {"topic": "shaping"}
+  },
+  "job_not_found": {
+    "description": "No job with that id is running, queued or kept. Job ids are kept for the last jobs only; start the run again if needed.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "polling"}
+  },
   "joined_too_large": {
-    "description": "More than <maximum_members> atmospheres are joined; pass joined: false to move from the named one only.",
-    "origin": "tool"
+    "description": "Too many atmospheres are joined to the one named. Pass joined: false to move gas from the named one only.",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
   },
-  "logic_not_readable": {"description": "Device does not expose <…> as readable.", "origin": "tool"},
-  "logic_not_writable": {"description": "Device <reference_id> does not expose <…> as writable.", "origin": "tool"},
+  "logic_not_readable": {
+    "description": "The device does not expose that logic type as readable. describe_device lists what it reads.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
+  },
+  "logic_not_writable": {
+    "description": "The device does not expose that logic type as writable. describe_device lists what it writes.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
+  },
   "long_piece": {
-    "description": "<prefab_name> <reference_id> is a long straight; start from one of its cells with <name>.at, or make it the target (to), where the route may join any of its cells.",
-    "origin": "tool"
+    "description": "The route starts or ends on a long straight. Start from one of its cells with at, or make it the target (to), where the route may join any of its cells.",
+    "origin": "tool",
+    "see": {"topic": "runs", "subtopic": "long_straights"}
   },
-  "lua_changed": {"description": "Refused with lua_changed.", "origin": "tool"},
+  "lua_changed": {
+    "description": "This StationGod build does not know the loaded StationeersLua version. Update StationGod.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
+  },
   "lua_chip_unsupported": {
-    "description": "A Lua chip cannot <action>: it runs a whole tick(dt) per game tick, with no line to stop at. Use restart to run it again from the start, or set_ic_source to change it.",
-    "origin": "tool"
+    "description": "A Lua chip runs a whole tick per game tick, so it cannot be stepped or paused at a line. Use restart, or set_ic_source to change it.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
   },
-  "lua_not_installed": {"description": "Refused with lua_not_installed.", "origin": "tool"},
+  "lua_not_installed": {
+    "description": "Lua chips need the StationeersLua mod, which is not loaded.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
+  },
   "manned_target": {
-    "description": "Someone sits in a Crew Module Chair: the rocket may only target a launch mount; the game clears <…> as a target.",
-    "origin": "tool"
+    "description": "Someone sits in a Crew Module Chair, so the rocket may only target a launch mount. Pick a launch mount, or empty the chair.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
   },
-  "materials_failed": {"description": "Refused with materials_failed.", "origin": "tool"},
+  "materials_failed": {
+    "description": "Taking the materials for a swap failed; the run stopped. Check from_id holds them, then run again.",
+    "origin": "tool",
+    "see": {"topic": "materials"}
+  },
   "materials_short": {
-    "description": "Only <taken> of <charge> <…> could be taken for this piece; it was swapped and the run stopped after it.",
-    "origin": "tool"
+    "description": "Fewer materials could be taken than the piece costs; the run stopped after it. Bring more, then run again for the rest.",
+    "origin": "tool",
+    "see": {"topic": "materials"}
   },
-  "memory_not_readable": {"description": "Device <reference_id> does not expose readable memory.", "origin": "tool"},
-  "memory_not_writable": {"description": "Device <reference_id> does not expose writable memory.", "origin": "tool"},
-  "method_not_found": {"description": "No such method.", "origin": "protocol"},
-  "mod_missing": {"description": "BlueprintMod has not set up its Blueprints folder yet; pass an absolute path.", "origin": "tool"},
-  "move_failed": {"description": "Refused with move_failed.", "origin": "tool"},
-  "network_empty": {"description": "Network <network> has no <noun> piece.", "origin": "tool"},
-  "network_gone": {"description": "Network <id> no longer exists.", "origin": "tool"},
-  "network_not_found": {"description": "No <kind> network has id <id>.", "origin": "tool"},
+  "memory_not_readable": {
+    "description": "The device has no readable memory. Pick a device with memory, such as an IC Housing.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
+  },
+  "memory_not_writable": {
+    "description": "The device has no writable memory. Pick a device with memory, such as an IC Housing.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
+  },
+  "method_not_found": {
+    "description": "No such method on this game's StationGod. The game may run an older version; mod_info names it.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
+  "mod_missing": {
+    "description": "BlueprintMod has not set up its Blueprints folder yet. Pass an absolute path.",
+    "origin": "tool",
+    "see": {"tool": "paste_blueprint", "topic": "refusals"}
+  },
+  "move_failed": {
+    "description": "The game refused the move; the message says why. Check the source and destination, then try again.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
+  "network_empty": {
+    "description": "The network has no piece of that kind. Name another network, or a piece on it.",
+    "origin": "tool",
+    "see": {"topic": "networks"}
+  },
+  "network_gone": {
+    "description": "No network has that id any more: the world moved on. Read the id again.",
+    "origin": "tool",
+    "see": {"topic": "networks"}
+  },
+  "network_not_found": {
+    "description": "No network of that kind has that id. Name a piece or device on it instead, or read the id again.",
+    "origin": "tool",
+    "see": {"topic": "networks"}
+  },
   "no_atmosphere": {
-    "description": "<name> (<id>) holds no gas or liquid: it has no internal atmosphere, is not a pipe or a landing pad piece, is connected to no pipe network and has nothing with an atmosphere in its slots.",
-    "origin": "tool"
+    "description": "The thing holds no gas or liquid: no internal atmosphere, no pipe network and nothing with an atmosphere in its slots. Pick a pipe, tank or device that holds gas.",
+    "origin": "tool",
+    "see": {"tool": "atmosphere_contents", "topic": "refusals"}
   },
-  "no_credit_card": {"description": "Refused with no_credit_card.", "origin": "tool"},
-  "no_crosshair_hit": {"description": "near: the look ray hits nothing within 20 m; pass near.", "origin": "tool"},
-  "no_cursor": {"description": "The game has no placement cursor for <prefab_name>.", "origin": "tool"},
+  "no_credit_card": {
+    "description": "The player carries no credit card. Carry one, or give credit_card_id.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "no_crosshair_hit": {
+    "description": "The look ray hits nothing within reach. Look at a surface, or give the point another way.",
+    "origin": "tool",
+    "see": {"topic": "positions", "subtopic": "crosshair"}
+  },
+  "no_cursor": {
+    "description": "The game has no placement cursor for this prefab, so it cannot be placed. Pick another prefab.",
+    "origin": "tool",
+    "see": {"topic": "placing", "subtopic": "refusals"}
+  },
   "no_face": {
-    "description": "<name>: the look ray hits <point>, which is not on a 2 m face plane; look straight at a wall, floor or ceiling.",
-    "origin": "tool"
+    "description": "The look ray does not hit a 2 m face plane. Look straight at a wall, floor or ceiling.",
+    "origin": "tool",
+    "see": {"topic": "positions", "subtopic": "look_face"}
   },
-  "no_flight_log": {"description": "This rocket has no flight log: start one with action start.", "origin": "tool"},
-  "no_free_slot": {"description": "<…> has no slot that takes <…>.", "origin": "tool"},
+  "no_flight_log": {
+    "description": "This rocket has no flight log. Start one with action start.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
+  },
+  "no_free_slot": {
+    "description": "No slot of the container takes the item. Free a slot, or pick another container.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
   "no_fuel_line": {
-    "description": "No engine on this rocket has a pipe network on its input: there is nothing to burn.",
-    "origin": "tool"
+    "description": "No engine on this rocket has a pipe network on its input, so there is nothing to burn. Connect the fuel line.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
   },
-  "no_genes": {"description": "<…> has no gene set yet.", "origin": "tool"},
-  "no_kit": {"description": "No coil or kit places <…> pieces.", "origin": "tool"},
-  "no_line_shader": {"description": "This build of the game has no built-in shader to draw lines with.", "origin": "tool"},
+  "no_genes": {
+    "description": "The plant has no gene set yet. Wait until it grows one.",
+    "origin": "tool",
+    "see": {"tool": "plant_genes", "topic": "refusals"}
+  },
+  "no_kit": {
+    "description": "No coil or kit builds this piece, so it cannot be placed or put back. Pick another piece.",
+    "origin": "tool",
+    "see": {"topic": "materials"}
+  },
+  "no_line_shader": {
+    "description": "This game build has no built-in shader to draw lines with, so nothing can be drawn.",
+    "origin": "tool",
+    "see": {"tool": "highlight", "topic": "refusals"}
+  },
   "no_local_player": {
-    "description": "There is no player: no local player (a dedicated server) and no connected, living player in the world, or several (named), so which one is the player is ambiguous.",
-    "origin": "tool"
+    "description": "There is no single player: no local player, and none or several connected living players. The message names them; act with a player in the world, or give from_id.",
+    "origin": "tool",
+    "see": {"topic": "player"}
   },
-  "no_network": {"description": "<name>: <prefab_name> <id> is on no network.", "origin": "tool"},
+  "no_network": {
+    "description": "The thing is on no network of that kind. Name a piece or device that is on one.",
+    "origin": "tool",
+    "see": {"topic": "networks"}
+  },
   "no_programmable_chip": {
-    "description": "Device <reference_id> (<prefab_name>) keeps its memory on a programmable chip and has none installed.",
-    "origin": "tool"
+    "description": "The device keeps its memory on a programmable chip and has none installed. Install a chip first.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
   },
-  "no_reagents": {"description": "<…> carries no reagents; the vault would destroy it and store nothing.", "origin": "tool"},
+  "no_reagents": {
+    "description": "The item carries no reagents; the vault would destroy it and store nothing. Leave it out.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
+  },
   "no_room": {
-    "description": "No vending machine on the pad's network, nor the card holder, has an empty tradable slot.",
-    "origin": "tool"
+    "description": "There is no empty slot to put the goods in. Free a slot in a vending machine on the pad's network or in the holder.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
   },
   "no_run_between": {
-    "description": "No run of <noun> pieces joins <reference_id> and <reference_id> by the model's links.",
-    "origin": "tool"
+    "description": "No run of pieces of that kind joins the two ends. Check the ends, or name the run's pieces with reference_ids.",
+    "origin": "tool",
+    "see": {"topic": "routing", "subtopic": "reroute"}
   },
-  "no_save_folder": {"description": "No save is loaded, so there is no folder for the CSV.", "origin": "tool"},
-  "no_slots": {"description": "<…> has no slots.", "origin": "tool"},
-  "no_target": {"description": "The rocket stands on its pad with no target: give 'to' (a node's name or code).", "origin": "tool"},
+  "no_save_folder": {
+    "description": "No save is loaded, so there is no folder for the CSV. Save the world first.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
+  },
+  "no_slots": {
+    "description": "The thing has no slots. Pick a container or device with slots.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
+  "no_target": {
+    "description": "The rocket stands on its pad with no target. Give 'to': a node's name or code.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
+  },
   "no_view": {
-    "description": "<name>: there is no player view to read or screen to draw on, and why: no player, this game has no camera yet, or the player plays on another machine whose game sends no view (StationGod is optional there; sharing it needs StationGod 1.12.0 or later speaking the same view protocol) or one this server cannot read.",
-    "origin": "tool"
+    "description": "There is no player view to read or screen to draw on; the message says why. Use frame world or target, or have the player run StationGod.",
+    "origin": "tool",
+    "see": {"topic": "player", "subtopic": "view"}
   },
-  "no_world": {"description": "No world is loaded.", "origin": "tool"},
+  "no_world": {
+    "description": "No world is loaded. Load one, then try again.",
+    "origin": "tool",
+    "see": {"topic": "errors", "subtopic": "host"}
+  },
   "no_xray_material": {
-    "description": "Neither the T-Ray SPU's material nor a built-in shader to draw through walls with was found.",
-    "origin": "tool"
+    "description": "This game build has no material to draw through walls with. Draw without xray.",
+    "origin": "tool",
+    "see": {"tool": "highlight", "topic": "refusals"}
   },
-  "node_not_found": {"description": "No space-map node is called '<wanted>': give its name, its map code, or 'pad'.", "origin": "tool"},
+  "node_not_found": {
+    "description": "No space-map node has that name. Give its name, its map code, or 'pad'.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
+  },
   "not_a_lua_chip": {
-    "description": "restart is for Lua chips; an IC10 chip restarts at line 0 when set_ic_source writes it.",
-    "origin": "tool"
+    "description": "restart is for Lua chips. An IC10 chip restarts at line 0 when set_ic_source writes it.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
   },
-  "not_a_plant": {"description": "<…> (<…>) is not a plant, seed or plant produce.", "origin": "tool"},
+  "not_a_plant": {
+    "description": "That thing is not a plant, seed or plant produce. plants lists the plants.",
+    "origin": "tool",
+    "see": {"tool": "plant_genes", "topic": "refusals"}
+  },
   "not_a_segment": {
-    "description": "The pieces meet the rest of the world at <count> cell(s) [<…>], not two: a reroute replaces a run with one way in and one way out. Name a segment without branches or dead ends.",
-    "origin": "tool"
+    "description": "The pieces meet the rest of the world at more or fewer than two cells. A reroute swaps out a run with one way in and one way out: name a segment without branches or dead ends.",
+    "origin": "tool",
+    "see": {"topic": "routing", "subtopic": "reroute"}
   },
-  "not_a_vault": {"description": "<…> (<id>) is not an Ingot Vault or a Remote Vault.", "origin": "tool"},
-  "not_connectable": {"description": "<…> (<…>) is not a pipe, cable, chute or device, so it has no connection ends.", "origin": "tool"},
-  "not_enough_coils": {"description": "Refused with not_enough_coils.", "origin": "tool"},
-  "not_enough_kits": {"description": "Refused with not_enough_kits.", "origin": "tool"},
-  "not_enough_stock": {"description": "The vault holds <…> <…>; cannot take <quantity>.", "origin": "tool"},
-  "not_host": {"description": "This game is a multiplayer client; only the host moves gas.", "origin": "tool"},
+  "not_a_vault": {
+    "description": "That thing is not an Ingot Vault or a Remote Vault. find_things lists vaults.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
+  },
+  "not_connectable": {
+    "description": "That thing is not a pipe, cable, chute or device, so it has no connection ends.",
+    "origin": "tool",
+    "see": {"tool": "connections", "topic": "refusals"}
+  },
+  "not_enough_coils": {
+    "description": "The source holds fewer coils or pipes than the run needs. The message names what is missing; bring more or use another from_id.",
+    "origin": "tool",
+    "see": {"topic": "materials"}
+  },
+  "not_enough_kits": {
+    "description": "The source holds fewer chute kits than the run needs. The message names what is missing; bring more or use another from_id.",
+    "origin": "tool",
+    "see": {"topic": "materials"}
+  },
+  "not_enough_stock": {
+    "description": "The vault holds less than asked. Take no more than it holds; vault_contents lists it.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
+  },
+  "not_host": {
+    "description": "This game is a multiplayer client; only the host can change the world. Run StationGod on the host.",
+    "origin": "tool",
+    "see": {"topic": "errors", "subtopic": "host"}
+  },
   "not_ic_housing": {
-    "description": "Circuit holder <holder_id> (<prefab_name>) is a <name>; only an IC Housing's pins can be set.",
-    "origin": "tool"
+    "description": "That circuit holder is not an IC Housing; only an IC Housing's pins can be set.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
   },
-  "not_in_room": {"description": "Thing <id> is not in a closed room: its cell is outside.", "origin": "tool"},
-  "not_in_vault": {"description": "The vault holds no <…>; it holds <…>.", "origin": "tool"},
-  "not_labelable": {"description": "Refused with not_labelable.", "origin": "tool"},
-  "not_landed": {"description": "Refused with not_landed.", "origin": "tool"},
-  "not_logic_device": {"description": "Pin d<index>: <id> is a <…>, not a logic device a pin can hold.", "origin": "tool"},
-  "not_movable": {"description": "<…> is not an item that fits in a slot.", "origin": "tool"},
+  "not_in_room": {
+    "description": "The thing is not in a closed room: its cell is outside. Name a thing inside a room.",
+    "origin": "tool",
+    "see": {"tool": "rooms", "topic": "refusals"}
+  },
+  "not_in_vault": {
+    "description": "The vault holds none of that item. vault_contents lists what it holds.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
+  },
+  "not_labelable": {
+    "description": "The thing takes no label. Pick a device, sign or tank.",
+    "origin": "tool",
+    "see": {"tool": "label", "topic": "refusals"}
+  },
+  "not_landed": {
+    "description": "The trader's ship has not landed on the pad. Wait for it to land.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "not_logic_device": {
+    "description": "The thing is not a logic device a pin can hold. Pick a device on the data network.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
+  },
+  "not_movable": {"description": "The thing is not an item that fits in a slot.", "origin": "tool", "see": {"topic": "slots"}},
   "not_on_data_network": {
-    "description": "Pin d<index>: device <id> (<…>) is not on IC Housing <reference_id>'s data network, so the chip would not reach it through the pin. Connect it to the housing's data network, or pass allow_off_network to store it anyway.",
-    "origin": "tool"
+    "description": "The device is not on the housing's data network, so the chip would not reach it. Connect it, or pass allow_off_network to store it anyway.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
   },
   "not_on_network": {
-    "description": "<prefab_name> <reference_id> is not on network <wanted>; its <noun> networks: [<…>].",
-    "origin": "tool"
+    "description": "The device is not on the network named; the message lists the networks it is on. Name one of those.",
+    "origin": "tool",
+    "see": {"topic": "networks"}
   },
-  "not_paintable": {"description": "<…> refused the paint (its SetCustomColor is not implemented).", "origin": "tool"},
-  "not_ready": {"description": "The world grid is not loaded.", "origin": "tool"},
-  "not_solar_panel": {"description": "Reference id <id> is not a solar panel.", "origin": "tool"},
-  "not_sold": {"description": "The trader does not <…> <…>.", "origin": "tool"},
-  "not_uplink": {"description": "<display_name> (<reference_id>) is not a Logic Rocket Uplink.", "origin": "tool"},
-  "not_vault_material": {"description": "<…> is not something the vault imports: it keeps ingots, ores and ices only.", "origin": "tool"},
-  "not_wanted": {"description": "The trader wants only <wanted> more<after>.", "origin": "tool"},
-  "nothing_to_move": {"description": "The source holds none of the requested gases.", "origin": "tool"},
+  "not_paintable": {"description": "The thing does not take paint.", "origin": "tool", "see": {"tool": "paint", "topic": "refusals"}},
+  "not_ready": {
+    "description": "The world is still loading. Try again in a moment.",
+    "origin": "tool",
+    "see": {"topic": "errors", "subtopic": "host"}
+  },
+  "not_solar_panel": {
+    "description": "That reference id is not a solar panel. find_things with prefab_contains Solar lists them.",
+    "origin": "tool",
+    "see": {"topic": "errors", "subtopic": "not_found"}
+  },
+  "not_sold": {
+    "description": "The trader does not trade that item. trader_inventory lists what it buys and sells.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "not_uplink": {"description": "That thing is not a Logic Rocket Uplink.", "origin": "tool", "see": {"topic": "rockets"}},
+  "not_vault_material": {
+    "description": "The vault keeps ingots, ores and ices only. Leave the item out.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
+  },
+  "not_wanted": {
+    "description": "The trader wants fewer of the item than offered. Sell no more than it wants.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "nothing_to_move": {
+    "description": "The source holds none of the gases asked for. Check its contents with atmosphere_contents.",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
+  },
   "out_of_range": {
-    "description": "Gene <gene>: <value> is outside the game's range <minimum> to <maximum>; pass force to write it anyway.",
-    "origin": "tool"
+    "description": "The gene value is outside the game's range. Use a value inside it, or pass force to write it anyway.",
+    "origin": "tool",
+    "see": {"tool": "plant_genes", "topic": "refusals"}
   },
-  "pad_unavailable": {"description": "Refused with pad_unavailable.", "origin": "tool"},
-  "paint_failed": {"description": "<…> still shows colour index <now> after painting it <color_index>.", "origin": "tool"},
-  "partial_merge": {"description": "Part of a stack can only go into an empty slot; the game has no partial merge.", "origin": "tool"},
-  "paste_refused": {"description": "Refused with paste_refused.", "origin": "tool"},
-  "plant_not_found": {"description": "Nothing with reference id <id> is a plant.", "origin": "tool"},
+  "pad_unavailable": {
+    "description": "The trader's landing pad is off (unpowered) or has an error. Power it and clear the error.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
+  },
+  "paint_failed": {
+    "description": "The thing still shows its old colour after painting. It does not keep this colour.",
+    "origin": "tool",
+    "see": {"tool": "paint", "topic": "refusals"}
+  },
+  "partial_merge": {
+    "description": "Part of a stack can only go into an empty slot; the game has no partial merge. Move it to an empty slot, or move the whole stack.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
+  "paste_refused": {
+    "description": "BlueprintMod refused the paste; the message says why.",
+    "origin": "tool",
+    "see": {"tool": "paste_blueprint", "topic": "refusals"}
+  },
+  "plant_not_found": {
+    "description": "Nothing with that id is a plant. plants lists the plants.",
+    "origin": "tool",
+    "see": {"tool": "plant_genes", "topic": "refusals"}
+  },
   "planted": {
-    "description": "<…> is growing in <…>: a player never takes a plant out whole, only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.",
-    "origin": "tool"
+    "description": "The plant is growing: a player never takes a plant out whole, only harvests it once mature or clears it. Harvest it instead.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
   },
-  "port_not_joined": {"description": "Port <value> of <prefab_name> <reference_id> joins no <noun> network.", "origin": "tool"},
-  "prefab_missing": {"description": "No item prefab <prefab_hash> exists to make.", "origin": "tool"},
+  "port_not_joined": {
+    "description": "That port joins no network of the kind. Name a port that is joined, or the network itself.",
+    "origin": "tool",
+    "see": {"topic": "networks"}
+  },
+  "prefab_missing": {
+    "description": "No item prefab exists for what the vault would make. Pick another item.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
+  },
   "protocol_error": {
-    "description": "A message the protocol does not allow: not a JSON object, unknown type, unknown top-level key, a call before welcome, a repeated hello, sign-in not finished within 10 seconds of connecting. The connection is closed after the reply.",
-    "origin": "protocol"
-  },
-  "read_failed": {"description": "Refused with read_failed.", "origin": "tool"},
-  "refund_failed": {"description": "Refused with refund_failed.", "origin": "tool"},
-  "refused": {
-    "description": "'<name>': atmosphere <reference_id> is a <mode> atmosphere. A single world cell is not moved to or from; name its room ({\"room_id\"} or {\"room_of\"}) instead.",
-    "origin": "tool"
-  },
-  "remove_failed": {"description": "Removing <prefab_name> <reference_id> failed: <message>", "origin": "tool"},
-  "reply_too_large": {
-    "description": "The reply would exceed shape.max_bytes or limits.max_reply_bytes. The method ran.",
+    "description": "A message the protocol does not allow. The connection is closed after the reply; reconnect and send a valid message.",
     "origin": "protocol",
-    "caller_may_resend": "if_read"
+    "see": {"topic": "errors", "subtopic": "protocol"}
   },
-  "request_too_large": {"description": "A message longer than limits.max_request_bytes. The connection is closed.", "origin": "protocol"},
+  "read_failed": {
+    "description": "The game failed to read the value; the message says why.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
+  },
+  "refund_failed": {
+    "description": "Giving the refund back failed; the message says why. Check refund_to, then the ground in front of the source.",
+    "origin": "tool",
+    "see": {"topic": "refunds"}
+  },
+  "refused": {
+    "description": "The atmosphere is a single world cell, which gas is not moved to or from. Name its room ({room_id} or {room_of}) instead.",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
+  },
+  "remove_failed": {
+    "description": "Removing a piece failed part way; the message names it and why. The job stopped there; check what it removed.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "refusals"}
+  },
+  "reply_too_large": {
+    "description": "The reply is larger than allowed; the method ran. Narrow it with fields, limit or filters, or use output_file.",
+    "origin": "protocol",
+    "caller_may_resend": "if_read",
+    "see": {"topic": "shaping"}
+  },
+  "request_too_large": {
+    "description": "The message is longer than the protocol allows. The connection is closed; send a smaller request.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "rocket_not_found": {
-    "description": "No rocket has the id <value>: give a rocket's, its rocket network's or any of its parts' reference id.",
-    "origin": "tool"
+    "description": "No rocket has that id. Give a rocket's, its rocket network's or any of its parts' reference id.",
+    "origin": "tool",
+    "see": {"topic": "rockets"}
   },
-  "room_not_found": {"description": "No room has id <id>.", "origin": "tool"},
-  "rule_error": {"description": "Refused with rule_error.", "origin": "tool"},
-  "rule_not_found": {"description": "Refused with rule_not_found.", "origin": "tool"},
+  "room_not_found": {
+    "description": "No room has that id. rooms lists them.",
+    "origin": "tool",
+    "see": {"topic": "errors", "subtopic": "not_found"}
+  },
+  "rule_error": {
+    "description": "A lint rule failed to run; the message names the rule and why. Fix or disable that rule.",
+    "origin": "tool",
+    "see": {"tool": "lint_rules", "topic": "refusals"}
+  },
+  "rule_not_found": {
+    "description": "No lint rule has that id. lint_rules lists them.",
+    "origin": "tool",
+    "see": {"tool": "lint_rules", "topic": "refusals"}
+  },
   "same_joined_set": {
-    "description": "'to' is joined to 'from' (the game mixes them every tick), so the gas would flow straight back. Pass joined: false to move between them anyway.",
-    "origin": "tool"
+    "description": "'to' is joined to 'from', so the gas would flow straight back. Pass joined: false to move between them anyway.",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
   },
-  "same_slot": {"description": "<…> is already in that slot.", "origin": "tool"},
+  "same_slot": {"description": "The item is already in that slot. Nothing to do.", "origin": "tool", "see": {"topic": "slots"}},
   "save_started": {
-    "description": "A save started while waiting for the game tick; nothing was changed. Run it again.",
-    "origin": "tool"
+    "description": "A save began while the job waited for the game tick, so nothing ran. Run it again.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "refusals"}
   },
   "sell_separately": {
-    "description": "An earlier line of this call sold goods the game would take again for this entry (they leave their slots only at the end of the frame); sell this entry in a call of its own.",
-    "origin": "tool"
+    "description": "An earlier line of this call sold goods the game would take again for this entry. Sell this entry in a call of its own.",
+    "origin": "tool",
+    "see": {"topic": "trading"}
   },
   "shutting_down": {
-    "description": "The mod is stopping or the world is unloading; the call was not started.",
+    "description": "The game is stopping or the world is unloading; the call did not start. Send it again once the world is loaded.",
     "origin": "protocol",
-    "caller_may_resend": "yes"
+    "caller_may_resend": "yes",
+    "see": {"topic": "errors", "subtopic": "protocol"}
   },
-  "slot_locked": {"description": "<…> is in a locked slot.", "origin": "tool"},
-  "slot_not_found": {"description": "<…> has no slot <index> (it has <count>).", "origin": "tool"},
-  "slot_occupied": {"description": "<…> already has <…> planted; a plant slot holds one plant.", "origin": "tool"},
-  "slot_refuses": {"description": "The game has no plant that <…> grows into.", "origin": "tool"},
+  "slot_locked": {"description": "The item is in a locked slot. Unlock the slot first.", "origin": "tool", "see": {"topic": "slots"}},
+  "slot_not_found": {
+    "description": "The thing has no slot with that index; the message gives how many it has. inspect_slots lists them.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
+  "slot_occupied": {
+    "description": "The slot is taken. Pick an empty slot, or move what is there first.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
+  "slot_refuses": {
+    "description": "The slot does not take that item. Pick a slot that does; inspect_slots lists them.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
   "source_too_large": {
-    "description": "The Lua source is <…> characters; the limit is <…>. Split it into library chips (--@module) and require them.",
-    "origin": "tool"
+    "description": "The Lua source is over the chip's limit. Split it into library chips (--@module) and require them.",
+    "origin": "tool",
+    "see": {"topic": "chips"}
   },
-  "stack_full": {"description": "<…> holds <quantity> of <max_quantity>; <quantity> more do not fit.", "origin": "tool"},
+  "stack_full": {
+    "description": "The stack is full; the rest does not fit. Move fewer, or into an empty slot.",
+    "origin": "tool",
+    "see": {"topic": "slots"}
+  },
   "subject_not_found": {
-    "description": "Rule <id> selects <set>; none of those around the place given is the subject named.",
-    "origin": "tool"
+    "description": "None of the things around the place given is the subject named. Check the rule's subject and the place.",
+    "origin": "tool",
+    "see": {"tool": "lint_rules", "topic": "refusals"}
   },
   "subscription_limit": {
-    "description": "A subscription would exceed a per-subscription, connection or global limit; poll instead.",
-    "origin": "protocol"
+    "description": "A subscription would pass a limit; poll instead.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
   },
   "terraforming_mod_required": {
-    "description": "Removing gas from the planet needs Terraforming Reloaded: the stock game keeps the planet's air read-only, so a removal would not last.",
-    "origin": "tool"
+    "description": "Removing gas from the planet needs Terraforming Reloaded; the stock game keeps the planet's air read-only.",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
   },
   "thing_not_found": {
-    "description": "No thing, pipe or landing pad network or thing's atmosphere has reference id <id>. Room and world air cannot be looked up this way.",
-    "origin": "tool"
+    "description": "No thing has that reference id: it is gone or the id is wrong. Find it again with find_things or looking_at.",
+    "origin": "tool",
+    "see": {"topic": "errors", "subtopic": "not_found"}
   },
   "tick_held": {
-    "description": "An earlier job's atmosphere work ran past its time limit and is still running; the tick stays held until it ends. Try again, or pass wait: true to queue the run.",
-    "origin": "tool"
+    "description": "An earlier job's atmosphere work is still running, so the tick stays held. Try again, or pass wait: true to queue the run.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "queue"}
   },
-  "tick_not_stopped": {"description": "The game tick did not stop in time; nothing was changed.", "origin": "tool"},
+  "tick_not_stopped": {
+    "description": "The game tick did not stop in time, so nothing ran. Try again.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "refusals"}
+  },
   "too_many_in_flight": {
-    "description": "More calls in flight than limits.max_in_flight. Nothing ran.",
+    "description": "Too many calls are in flight on this connection. Nothing ran; wait for replies, then send again.",
     "origin": "protocol",
-    "caller_may_resend": "yes"
+    "caller_may_resend": "yes",
+    "see": {"topic": "errors", "subtopic": "protocol"}
   },
-  "too_many_pieces": {"description": "Network <network> has <count> members.", "origin": "tool"},
-  "trade_failed": {"description": "Refused with trade_failed.", "origin": "tool"},
-  "transfer_not_found": {"description": "No move <id> is waiting or among the last <kept_outcomes> applied.", "origin": "tool"},
-  "unauthorized": {"description": "The TCP shared secret is missing or wrong. The connection is closed.", "origin": "protocol"},
-  "unit_out_of_range": {"description": "<…> has <count> gene set(s), the top one last: unit must be 0 to <…>.", "origin": "tool"},
+  "too_many_pieces": {
+    "description": "The network has more members than the tool walks. Name a smaller part of it.",
+    "origin": "tool",
+    "see": {"topic": "networks"}
+  },
+  "trade_failed": {"description": "The game refused the trade; the message says why.", "origin": "tool", "see": {"topic": "trading"}},
+  "transfer_not_found": {
+    "description": "No gas move with that id is waiting or kept. Start the move again if needed.",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
+  },
+  "unauthorized": {
+    "description": "The TCP shared secret is missing or wrong. The connection is closed; reconnect with the right secret.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
+  "unit_out_of_range": {
+    "description": "The gene set index is out of range; the message gives how many sets the plant has.",
+    "origin": "tool",
+    "see": {"tool": "plant_genes", "topic": "refusals"}
+  },
   "unknown_gas": {
-    "description": "'<item>' is not a gas name as atmosphere_contents reports them (Oxygen, Nitrogen, CarbonDioxide, LiquidOxygen, Steam...).",
-    "origin": "tool"
+    "description": "That is not a gas name as atmosphere_contents reports them (Oxygen, Nitrogen, CarbonDioxide, LiquidOxygen, Steam...).",
+    "origin": "tool",
+    "see": {"tool": "move_gas", "topic": "refusals"}
   },
-  "unknown_gene": {"description": "'<name>' is not a gene. Genes: <…>.", "origin": "tool"},
-  "unknown_subscription": {"description": "unsubscribe of an id this connection does not have.", "origin": "protocol"},
-  "unsupported_protocol": {"description": "No common major version.", "origin": "protocol"},
+  "unknown_gene": {
+    "description": "That is not a gene; the message lists the genes.",
+    "origin": "tool",
+    "see": {"tool": "plant_genes", "topic": "refusals"}
+  },
+  "unknown_subscription": {
+    "description": "This connection has no subscription with that id.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
+  "unsupported_protocol": {
+    "description": "The client and the game share no protocol version. Update the older side.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "vault_display_slot": {
-    "description": "Slot <index> of <…> only shows the vault's store; use vault_deposit to store items.",
-    "origin": "tool"
+    "description": "That slot only shows the vault's store. Use vault_deposit to store items.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
   },
   "vault_not_connected": {
-    "description": "Remote Vault <id> reaches no vault (<connection>): it needs exactly one Ingot Vault on its data network.",
-    "origin": "tool"
+    "description": "The Remote Vault reaches no vault: it needs exactly one Ingot Vault on its data network.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
   },
-  "vault_not_ready": {"description": "<…> has no store yet.", "origin": "tool"},
+  "vault_not_ready": {
+    "description": "The vault has no store yet. Wait until it is built and powered.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
+  },
   "vault_unpowered": {
-    "description": "<…> (<reference_id>) is <…>; the vault neither imports nor vends then. Nothing was changed.",
-    "origin": "tool"
+    "description": "The vault is off or unpowered, so it neither imports nor vends. Nothing ran; power it on.",
+    "origin": "tool",
+    "see": {"topic": "vaults"}
   },
   "view_stale": {
-    "description": "<name>: the view the player's game last sent is stale (they stand more than 0.3 m from where it was taken, or it is over 5 s old and they moved since): their game stopped sending it.",
-    "origin": "tool"
+    "description": "The player's game stopped sending its view: the last one is too old or taken too far from where they stand. Use frame world or target, or have them look again.",
+    "origin": "tool",
+    "see": {"topic": "player", "subtopic": "view"}
   },
   "would_burst": {
-    "description": "'<name>' <verb> <predicted> kPa against a limit of <…> kPa (<member>: <max_kpa> kPa across, <outside_kpa> kPa outside). Pass force to move it anyway.",
-    "origin": "tool"
+    "description": "The change would take a pipe, tank or network past its pressure limit; the message gives the numbers. Change less; move_gas also takes force to do it anyway.",
+    "origin": "tool",
+    "see": {"topic": "pipes"}
   },
-  "write_failed": {"description": "Refused with write_failed.", "origin": "tool"}
+  "write_failed": {
+    "description": "The game failed to write the value; the message says why.",
+    "origin": "tool",
+    "see": {"topic": "logic"}
+  }
 }

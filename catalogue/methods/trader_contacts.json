@@ -1,6 +1,20 @@
 {
   "name": "trader_contacts",
-  "description": "Returns game_time_s, contacts and dishes. List every trader contact in the sky (trader type, display name, shuttle, landing pad size it needs (pad_size_tiles), unit direction vector from the base with y up, elevation, watts needed to resolve and to contact (min_power_to_resolve_w, min_power_to_contact_w), whether it is already contacted, seconds left before it leaves (time_left_s)) and every satellite dish with where it points: forward is the vector the game scores contacts against (angle error = acos(dot(forward, direction))), only updated when the dish moves, and transform_up is its current pose. Also the dish's current horizontal and vertical in degrees, whether it turns now (finished to its last build state, powered, on, and can_rotate: all three, the game's own check; a dish that cannot rotate never moves toward a written angle), its field_of_view_deg and its wattage range (min_power_w, max_power_w). Read only; no gateway is needed. Whether a contact fits and can land on a pad: see landing_pads.",
+  "summary": "Every trader contact in the sky and every satellite dish with where it points. Read only.",
+  "help": {
+    "text": "Returns game_time_s, contacts and dishes. Whether a contact fits and can land on a pad: landing_pads. What it trades: trader_inventory. Aiming a dish: dish_aim.",
+    "topics": {
+      "contacts": {
+        "summary": "What each contact reports.",
+        "text": "Trader type, display name, shuttle, pad_size_tiles (the pad it needs), direction (a unit vector from the base, y up), elevation, min_power_to_resolve_w and min_power_to_contact_w, contacted, and time_left_s before it leaves."
+      },
+      "dishes": {
+        "summary": "What each dish reports.",
+        "text": "forward: the vector the game scores contacts against (angle error = acos(dot(forward, direction))), updated only when the dish moves; transform_up: its pose. Also horizontal and vertical in degrees, whether it turns (finished, powered, on and can_rotate: the game's own check; a dish that cannot rotate never moves toward a written angle), field_of_view_deg, min_power_w and max_power_w."
+      }
+    },
+    "shared": ["trading"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {"type": "object", "properties": {}, "additionalProperties": false},

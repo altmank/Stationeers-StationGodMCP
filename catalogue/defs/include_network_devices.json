@@ -1,4 +1,1 @@
-{
-  "type": "boolean",
-  "description": "Default false (1.9.0+): networks_before and networks_after give device_count; true lists every device too."
-}
+{"type": "boolean", "description": "true: list each network's devices and riding items."}

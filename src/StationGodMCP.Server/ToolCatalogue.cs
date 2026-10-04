@@ -19,18 +19,17 @@ internal sealed record ToolSet(
     IReadOnlySet<string> SmallReplies,
     string ServerName,
     string Instructions,
-    IReadOnlyDictionary<string, IReadOnlyList<FileArgument>> FileArguments)
+    IReadOnlyDictionary<string, IReadOnlyList<FileArgument>> FileArguments,
+    ToolHelp Help,
+    IReadOnlyDictionary<string, HelpPointer> ErrorPointers)
 {
-    private const string OutputFileDescription = "Reply to a JSON file, answer a pointer (server instructions).";
+    internal const string OutputFileDescription = "Whole reply to a file, answered by a pointer (see shaping).";
 
-    private const string FieldsDescription =
-        "Keys kept in each entry of the reply's lists; a dotted name is a path read from each entry (occupant.prefab_name) or from one list's entries (things.position.x).";
+    internal const string FieldsDescription = "Keys to keep in list entries (see shaping).";
 
-    private const string LimitsDescription =
-        "Entries kept per top-level list, {list: count}; lifts a list's default cut (truncated names the full length).";
+    internal const string LimitsDescription = "{list: count}: lift a default cut (see truncation).";
 
-    private const string OmitDescription =
-        "Keys left out of the reply, as paths from its top (source, runtime.registers; through a list each entry: members.position).";
+    internal const string OmitDescription = "Key paths to leave out (see shaping).";
 
     private static readonly Lazy<ToolSet> Embedded = new(() => From(GameCatalogue.BuiltIn.Document, fallback: null));
 
@@ -69,7 +68,25 @@ internal sealed record ToolSet(
         JsonObject? server = document["server"] as JsonObject;
         return new ToolSet(tools, schemas, new HashSet<string>(schemas.Keys, StringComparer.Ordinal), small,
             (string?)server?["name"] ?? fallback?.ServerName ?? "StationGodMCP",
-            (string?)server?["instructions"] ?? fallback?.Instructions ?? string.Empty, files);
+            (string?)server?["instructions"] ?? fallback?.Instructions ?? string.Empty, files, ToolHelp.Of(catalogue),
+            PointersOf(document["errors"] as JsonObject));
+    }
+
+    /// <summary>The tool_info node that explains an error code, or null when the catalogue gives none.</summary>
+    internal HelpPointer? SeeOf(string code) => ErrorPointers.TryGetValue(code, out HelpPointer? see) ? see : null;
+
+    private static Dictionary<string, HelpPointer> PointersOf(JsonObject? errors)
+    {
+        Dictionary<string, HelpPointer> pointers = new(StringComparer.Ordinal);
+        foreach ((string code, JsonNode? error) in errors ?? [])
+        {
+            if (error?["see"] is JsonObject see && (string?)see["topic"] is { } topic)
+            {
+                pointers[code] = new HelpPointer((string?)see["tool"], topic, (string?)see["subtopic"]);
+            }
+        }
+
+        return pointers;
     }
 
     /// <summary>The tool's file arguments; empty when it has none.</summary>

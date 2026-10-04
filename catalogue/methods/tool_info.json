@@ -1,0 +1,44 @@
+{
+  "name": "tool_info",
+  "summary": "The long help, in small steps: {} lists the shared topics, {tool} a tool's topics, {tool, topic} or {topic} one topic and its subtopics, {tool, topic, subtopic} the detail.\nAnswered without the game. Errors carry see: {tool, topic} naming the node that explains them.",
+  "help": {
+    "text": "tool_info answers one help node per call, each under 1.5 KB. Start with {tool: \"<name>\"} for any tool, or {} for the topics every tool shares.",
+    "topics": {
+      "levels": {
+        "summary": "The three levels and how to name a node.",
+        "text": "Level 1 is a tool ({tool}) or a shared topic ({topic}). Level 2 is a topic of that tool ({tool, topic}); a tool's topic may also name a shared topic. Level 3 is a subtopic ({tool, topic, subtopic} or {topic, subtopic}). Each reply lists the next level's names with one line each. A name that matches nothing is refused (help_not_found) with the names it knows or the nearest ones; subtopic without topic is refused (invalid_argument).",
+        "subtopics": {
+          "pointers": {
+            "summary": "What (see X) and see in an error mean.",
+            "text": "In an argument's description, (see positions) means tool_info {topic: \"positions\"}, and (see shaping/fields) means tool_info {topic: \"shaping\", subtopic: \"fields\"}. (topic X) names topic X of the same tool. An error's see {tool, topic, subtopic} is the node that explains it: pass it to tool_info as it is."
+          }
+        }
+      }
+    }
+  },
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "tool": {"type": "string", "description": "A tool's name: its help and topics."},
+      "topic": {"type": "string", "description": "A topic of that tool, or a shared topic when tool is left out."},
+      "subtopic": {"type": "string", "description": "A subtopic of that topic."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "tool": {"type": "string"},
+      "topic": {"type": "string"},
+      "subtopic": {"type": "string"},
+      "text": {"type": "string"},
+      "topics": {"type": "array"},
+      "shared_topics": {"type": "array"},
+      "subtopics": {"type": "array"}
+    }
+  },
+  "x-shaping": "none",
+  "x-runs-in": "sidecar"
+}

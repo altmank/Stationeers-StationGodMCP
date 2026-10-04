@@ -1,6 +1,16 @@
 {
   "name": "player_vitals",
-  "description": "The player's hunger and thirst: nutrition and hydration now and their capacities, food quality and its multiplier, mood, sleeping, brain online, helmet closed, the temperature thirst depends on right now and where it is taken (suit, room or world), the difficulty's hunger rate, hydration rate and offline metabolism, and the drain per game second for hunger and for thirst computed with the game's own per-tick formulas (Human.LifeNutrition, Human.LifeDehydrate): right now (0 while lying in a bed, a powered sleeper or a working cryo tube, halved while sleeping elsewhere) and when up and about, each with the seconds until the body's store reaches 0 at that rate (time_left_s, time_left_awake_s; thirst_temperature has temperature_k). Food and water carried or stored are not counted here; see consumables and water_sources. Read only; no gateway is needed.",
+  "summary": "The player's hunger and thirst: nutrition and hydration and their capacities, the drain per second as the game works it out, and the time until each runs out. Read only.",
+  "help": {
+    "text": "Also food quality and its multiplier, mood, sleeping, brain online, helmet closed, and the temperature thirst depends on and where it is taken (suit, room or world), plus the difficulty's hunger and hydration rates and offline metabolism. Food and water carried are not counted here: see consumables and water_sources.",
+    "topics": {
+      "drain": {
+        "summary": "The drain rates and times left.",
+        "text": "Hunger and thirst drain per game second, by the game's own per-tick formulas: at the moment (0 while lying in a bed, a powered sleeper or a working cryo tube; halved while sleeping elsewhere) and when up and about, each with the seconds until the body's store reaches 0 at that rate (time_left_s, time_left_awake_s). thirst_temperature has temperature_k."
+      }
+    },
+    "shared": ["player"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {"type": "object", "properties": {}, "additionalProperties": false},

@@ -6,14 +6,16 @@
     "properties": {
       "waypoints": {
         "type": "array",
-        "items": {"description": "[x, y, z] or {x, y, z} in metres; snapped to the small cell it falls in."}
+        "items": {"description": "[x, y, z] in metres, snapped to its 0.5 m cell."},
+        "description": "The branch's points, first one its free end."
       },
       "cells": {
         "type": "array",
-        "items": {"description": "[x, y, z] or {x, y, z} in metres; snapped to the small cell it falls in."}
+        "items": {"description": "[x, y, z] in metres, snapped to its 0.5 m cell."},
+        "description": "The branch's cells, first one its free end."
       },
-      "attach": {"description": "[x, y, z] or {x, y, z} in metres; snapped to the small cell it falls in."}
+      "attach": {"description": "The run cell the branch joins with a junction; default the first found."}
     }
   },
-  "description": "Side runs of a tree: each {waypoints or cells, attach}: its first cell is a free end (joins ports and ends around it as a run end does), its last cell joins the cell attach names (a cell of the run or an earlier branch next to it; default the first found), which becomes a junction. plan_*_route with several starts fills this in."
+  "description": "Side runs of a tree, up to 16, each {waypoints or cells, attach} (see runs/forms)."
 }

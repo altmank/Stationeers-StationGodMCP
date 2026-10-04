@@ -2,6 +2,7 @@
 
 using Newtonsoft.Json;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -83,6 +84,7 @@ internal sealed class ErrorView
         Code = code;
         Message = message;
         Data = data;
+        See = ErrorGuide.SeeOf(code);
     }
 
     public string Code { get; }
@@ -92,4 +94,8 @@ internal sealed class ErrorView
     /// <summary>Details a program can act on (reply_too_large's sizes); absent when the error has none.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public object? Data { get; }
+
+    /// <summary>The tool_info node that explains the code; absent for a code the catalogue gives none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ErrorSee? See { get; }
 }

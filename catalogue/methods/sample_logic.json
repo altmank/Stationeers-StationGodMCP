@@ -1,6 +1,10 @@
 {
   "name": "sample_logic",
-  "description": "Sample up to 32 logic values for at most 30 seconds and return their initial readings plus timestamped changes.",
+  "summary": "Watch up to 32 logic values for up to 30 s; answers their first readings and every change with its time. Read only.",
+  "help": {
+    "text": "Samples every interval_seconds (default 0.5) for duration_seconds (default 5), at most 120 samples. The game takes each sample in the first frame at or after it is due, so an interval shorter than a frame yields fewer samples than asked; sample_count says how many it took.",
+    "shared": ["gateways", "logic"]
+  },
   "class": "read",
   "cost": "stream",
   "params": {
@@ -14,23 +18,19 @@
         "items": {
           "type": "object",
           "properties": {
-            "reference_id": {"type": "string", "description": "Target device reference ID."},
+            "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
             "logic_type": {
               "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
-              "description": "LogicType enum name or numeric ushort ID."
+              "description": "A logic type name (Temperature) or number."
             }
           },
           "required": ["reference_id", "logic_type"],
           "additionalProperties": false
-        }
+        },
+        "description": "Values to watch, up to 32, each {reference_id, logic_type}."
       },
-      "duration_seconds": {"type": "number", "minimum": 0.1, "maximum": 30, "description": "Observation duration; defaults to 5 seconds."},
-      "interval_seconds": {
-        "type": "number",
-        "minimum": 0.05,
-        "maximum": 5,
-        "description": "Least time between samples; defaults to 0.5 seconds. At most 120 samples may be requested. The game takes each sample in the first frame at or after it is due, so an interval shorter than a frame yields fewer samples than asked; sample_count says how many were taken."
-      }
+      "duration_seconds": {"type": "number", "minimum": 0.1, "maximum": 30, "description": "How long to watch; default 5, max 30."},
+      "interval_seconds": {"type": "number", "minimum": 0.05, "maximum": 5, "description": "Least time between samples; default 0.5."}
     },
     "required": ["targets"],
     "additionalProperties": false

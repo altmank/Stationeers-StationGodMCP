@@ -1,6 +1,20 @@
 {
   "name": "upgrade_cables",
-  "description": "Replace cable pieces with heavy (default) or super heavy cable in place, piece for piece, as the coil's own merge placement builds them (the game refuses to place heavy cable over normal: Cable.CanReplace). Name a whole cable network with network_id (from connections) or pieces with reference_ids (up to 4096). Pieces already at or above the target stay. Each piece's replacement is the first piece of the target coil (found by what the coil places, e.g. Cable Coil (Heavy)) whose cells and connection ends (type, role, cell and facing cell) match the old piece exactly, at the old rotation or turned; that is how straight, corner, T, cross, 5- and 6-way junctions and the 3-, 5- and 10-long straights map. DRY RUN BY DEFAULT: dry_run true (default) changes nothing and reports every piece (reference_id, prefab_name, position, rotation_deg, target_prefab_name, target_rotation_deg, rotation_kept, cost in coils, network_id; up to limit, default 5 since 1.14.0, 200 before), by_prefab (count, cost_each, cost_total, refund_each (0 with refund false, as every refund in the reply: nothing comes back), max_power_w_before/after), kept_pieces and unmatched_pieces with reasons, coils (needed, available, the stacks and where they are in the source), refund (the old coils deconstruction would give back), networks (loads, lowest_cable_max_w_before and lowest_cable_max_w_after: the new weakest cable, lowest fuse, devices), devices next to or mounted on the pieces with their networks, connectivity (the game's links now, the links predicted with every replacement in place; added and lost must be empty; model_matches_game proves the prediction method on these very pieces; mounted fuses and analysers; null when no piece has a replacement, since links are surveyed only around pieces to swap) and ready. Every problem is listed at once in problems (code, message, reference_id): e.g. unmatched_pieces (no replacement; skip_unmatched true leaves those pieces as they are), not_enough_coils, link_added, link_lost, connectivity_model_mismatch, mounted_device_turned, shape_model_mismatch, not_complete, rocket_internal, no_local_player, thing_not_found. A real run needs dry_run false AND confirm true; it is refused (status refused, nothing changed) unless the checks find nothing. It then returns a job (status waiting, job_id, preflight): the mod holds the game tick as a save does, runs every check again once the tick has stopped, swaps every piece in that one frame (replacement built first, old piece removed after, coils taken from the source as placing takes them), checks the result the next frame and lets the tick go. Poll with job_id alone: status applied (verification ok), applied_with_differences (verification lists each link, mount, device or network that differs), stopped (a piece failed: swapped lists old and new ids, not_swapped the rest, stopped_at the piece and whether it is intact; run the same call again to resume, since swapped pieces are then already heavy), applied_unchecked, or refused (final_check says why; nothing changed). from_id: the thing whose inventory gives the coils (default the player; any container or a coil stack). refund (default true): the old coils, as deconstructing gives them, go where refund_to says (default [\"inventory\", \"source\", \"storage\", \"ground\"], each tried in turn per item: the player's inventory, then topping up from_id when it is a stack, then from_id's slots and those of the container it is stored in, then the ground in front of the holder; a container's reference id is exactly that container; refund_to \"source\" keeps the old way: into from_id's inventory, default the player, and the player carrying it); each target tops up matching stacks first, then makes new stacks in empty slots that take the item, a holder's own slots before those of the items in them, never a hidden slot, a body slot or a stack's own slot (a cable coil's, whose contents the game destroys with it); the dry run's materials.refund_plan shows each item's destinations; only what nothing takes goes on the ground a metre in front of the outermost holder, at rest (never inside the player); the job's refund_delivered lists each part with where: merged, slot or ground and the target it went to. Devices, APCs, batteries and transformers connect to any cable type (CableType is only read when placing); network ids stay the same. Host only (not_host on a client). No gateway is needed. Job slot (1.3.0+): while another job runs, a real run answers status busy with running_job_id (nothing changed); wait: true queues it instead (status queued, its own job_id, position; up to 8 wait), and it starts once the slot is free, its whole preflight run again on the world the earlier jobs left. Network handles (1.3.0+): wherever a network id is taken (network_id, to.network_id, join_to, allow_bridge entries) a reference id of any piece or device on the network, or {reference_id, port} of a device port, works too and is resolved to the current id when the call runs (ids change after almost every edit); the reply lists each in resolved_networks [{argument, given, network_id}]. In allow_bridge a bare device id stays the device (its ports may share a network); name one of its networks with {reference_id, port}. Compact reports (1.14.0+): notes (the tool's fixed explanations) only with include_notes: true; pieces, kept_pieces, unmatched_pieces and dead_end_pieces list up to limit (default 5, was 200; the counts always cover them all); devices lists the first 5 (truncated gives the full count; list_limits {\"devices\": n} lists more). A dry run's networks give device_count, their devices listed in a job's verification only (1.14.0+).",
+  "summary": "Swap cable pieces for heavy (default) or super heavy cable in place, piece for piece, as the coil's merge builds them; a whole network or chosen pieces. Dry run by default; confirm to swap.",
+  "help": {
+    "text": "Each piece's replacement is the first piece of the target coil whose cells and connection ends match the old piece exactly, at the old rotation or turned: straights, corners, junctions and long straights all map. Pieces at or above the target stay. Devices connect to any cable type.",
+    "topics": {
+      "report": {
+        "summary": "What the dry run reports.",
+        "text": "pieces (reference_id, prefab_name, position, rotation_deg, target_prefab_name, target_rotation_deg, rotation_kept, cost, network_id; up to limit), by_prefab (count, cost_each, cost_total, refund_each, max_power_w_before and after), kept_pieces and unmatched_pieces with reasons, coils (needed, available, stacks), refund, networks (loads, weakest cable before and after, lowest fuse, device_count), devices next to or on the pieces (first 5), connectivity, problems and ready."
+      },
+      "problems": {
+        "summary": "The problems a dry run can list.",
+        "text": "unmatched_pieces (no replacement; skip_unmatched leaves them), not_enough_coils, link_added, link_lost, connectivity_model_mismatch, mounted_device_turned, shape_model_mismatch, not_complete, rocket_internal, no_local_player, thing_not_found."
+      }
+    },
+    "shared": ["swaps", "jobs", "refunds", "networks", "truncation"]
+  },
   "class": "write",
   "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
   "cost": "job",
@@ -18,12 +32,15 @@
           {"type": "string"},
           {
             "type": "object",
-            "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+            "properties": {
+              "reference_id": {"type": "string", "description": "A device or piece on the network."},
+              "port": {"type": "integer", "minimum": 0, "maximum": 64, "description": "The device's port index."}
+            },
             "required": ["reference_id"],
             "additionalProperties": false
           }
         ],
-        "description": "A network, every piece of it: its id, a piece or device on it, or {reference_id, port}. Give this or reference_ids."
+        "description": "A network, every piece of it: its id or a handle on it (see networks)."
       },
       "wait": {"$ref": "defs/wait.json"},
       "reference_ids": {
@@ -31,14 +48,14 @@
         "minItems": 1,
         "maxItems": 4096,
         "items": {"type": "string"},
-        "description": "Pieces to replace, by reference id. Give this or network_id."
+        "description": "Pieces by reference id, up to 4096; or give network_id."
       },
-      "to": {"type": "string", "enum": ["heavy", "super_heavy"], "description": "The target grade. Default heavy."},
+      "to": {"type": "string", "enum": ["heavy", "super_heavy"], "description": "heavy (default) or super_heavy."},
       "dry_run": {"$ref": "defs/dry_run.json"},
       "confirm": {"$ref": "defs/confirm.json"},
       "from_id": {
         "type": "string",
-        "description": "The thing whose inventory gives the coils or kits. Default the player; with neither, a run that takes no coils and whose refund_to is not the single word source goes ahead, else no_local_player."
+        "description": "The thing whose slots pay and take the refund; default the player (see swaps/materials)."
       },
       "skip_unmatched": {"$ref": "defs/skip_unmatched.json"},
       "refund": {
@@ -50,7 +67,7 @@
         "type": "integer",
         "minimum": 1,
         "maximum": 4096,
-        "description": "Pieces listed in the report, default 5 (200 before 1.14.0) (all are counted and checked)."
+        "description": "Pieces listed per list; default 5. All are counted and checked."
       },
       "job_id": {"type": "string", "description": "Poll a confirmed run; give nothing else."}
     },

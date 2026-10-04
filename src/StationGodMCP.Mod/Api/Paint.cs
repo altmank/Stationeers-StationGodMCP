@@ -312,7 +312,7 @@ internal static class Painter
             // Structure.SetCustomColor throws this for a render mode the check above did not know.
             return ApiErrors.Refused(
                 "not_paintable",
-                $"{Names.Of(thing)} refused the paint (its SetCustomColor is not implemented).");
+                $"{Names.Of(thing)} refused the paint: the game does not paint this kind of thing.");
         }
 
         int now = GameManager.GetColorIndex(thing.CustomColor);

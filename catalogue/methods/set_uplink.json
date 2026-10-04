@@ -1,6 +1,10 @@
 {
   "name": "set_uplink",
-  "description": "Point a Logic Rocket Uplink at a Logic Rocket Downlink (1.14.0+), as screwdriver presses on the uplink's first button do: the uplink then reads the downlink's data network (its rocket's devices). Only a downlink a press could select is taken: built and logic readable (describe_device on the uplink lists them in uplink.choices); anything else is refused invalid_downlink. The host sends the change to clients. Returns uplink, previous_downlink (pass its reference_id to set it back; null when it followed none) and link (the uplink's link now, as describe_device's uplink). Refused: not_uplink (reference_id is not a Logic Rocket Uplink), invalid_downlink, not_host (a multiplayer client), device_not_found. Writes.",
+  "summary": "Point a Logic Rocket Uplink at a Logic Rocket Downlink, as screwdriver presses on its first button do; the uplink then reads that downlink's data network. Answers previous_downlink to set it back.",
+  "help": {
+    "text": "Only a downlink a press could select is taken: built and logic readable (describe_device on the uplink lists them in uplink.choices); anything else is invalid_downlink. The host sends the change to clients. Returns uplink, previous_downlink (its reference_id sets it back; null when it followed none) and link (as describe_device's uplink). Refused: not_uplink, invalid_downlink, not_host, device_not_found.",
+    "shared": ["gateways", "rockets"]
+  },
   "class": "write",
   "cost": "instant",
   "params": {

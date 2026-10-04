@@ -172,6 +172,7 @@ internal static class CatalogueFiles
         JsonObject server = ReadJson(Path.Combine(root, "server.json")).AsObject();
         JsonObject errors = ReadJson(Path.Combine(root, "errors.json")).AsObject();
         JsonArray shared = ReadJson(Path.Combine(root, "shared.json"))["shared_reply_keys"]!.AsArray();
+        JsonObject help = ReadJson(Path.Combine(root, "help.json")).AsObject();
 
         JsonArray methods = new JsonArray();
         foreach ((string file, JsonObject source) in MethodSources())
@@ -183,7 +184,7 @@ internal static class CatalogueFiles
             }
 
             AddSharedReplyKeys(method, shared);
-            methods.Add(method);
+            methods.Add(WithDescription(method));
         }
 
         return new JsonObject
@@ -191,6 +192,7 @@ internal static class CatalogueFiles
             ["catalogue_version"] = CatalogueVersion,
             ["mod_version"] = ModVersion(),
             ["server"] = Resolve(server.DeepClone(), root),
+            ["help"] = Resolve(help.DeepClone(), root),
             ["errors"] = errors.DeepClone(),
             ["shared_reply_keys"] = Resolve(shared.DeepClone(), root),
             ["protocol_methods"] = ProtocolMethods(root),
@@ -213,6 +215,33 @@ internal static class CatalogueFiles
         }
 
         return methods;
+    }
+
+    /// <summary>The line every tool description ends with: where its long help is.</summary>
+    internal static string MoreLine(string method) => $"More: tool_info {{tool: \"{method}\"}}";
+
+    // A method source's summary becomes its description, with the More line under it, in the key's old place.
+    private static JsonObject WithDescription(JsonObject method)
+    {
+        if (method["summary"] is not JsonValue summary)
+        {
+            return method;
+        }
+
+        JsonObject described = new JsonObject();
+        foreach ((string key, JsonNode? value) in method)
+        {
+            if (key == "summary")
+            {
+                described["description"] = (string)summary! + "\n" + MoreLine((string)method["name"]!);
+            }
+            else
+            {
+                described[key] = value?.DeepClone();
+            }
+        }
+
+        return described;
     }
 
     /// <summary>The shared reply keys that apply to a method, by the rules applies_when names.</summary>

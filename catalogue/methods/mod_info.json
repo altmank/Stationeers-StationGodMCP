@@ -1,6 +1,24 @@
 {
   "name": "mod_info",
-  "description": "The running mod's identity and health: mod_id, mod_version, assembly_version, informational_version, pipe_name (the local named pipe this game listens on, the sidecar's --pipe: tells which game a sidecar reached when two run on one machine), and methods: every method the mod answers, each {method, calls, errors, total_ms, mean_ms (null before the first call), max_ms} counted in memory since the mod loaded (main-thread time per request; errors are replies with ok false). Also count, reflection: [{member, resolved, optional}] (every game member the mod reaches by reflection and every Harmony target it patches; optional ones belong to other mods such as Terraforming Reloaded and BlueprintMod) and missing_count (required members not found: methods that need one answer game_changed). runtime (1.9.1+): what the mod has cost the game since it loaded: uptime_s; world_epoch (worlds left since load; leaving one clears IC pauses, job records, print and flight logs); request_budget_ms (main-thread ms per frame for requests, null = unlimited); frames {busy_frames, requests_served, requests_per_frame_mean, requests_per_frame_max, frame_ms, budget_stops (frames that left requests for the next one), expired (requests never reached before game_timeout)}; memory {gc_collections, gc_max_generation, gc_total_memory_bytes, mono_used_bytes, mono_heap_bytes (null where the game does not report them)}; methods: the 10 methods called so far that cost the most main-thread time, most first (1.14.0+; method_count counts them all), each {method, calls, errors, main_thread_ms, handler_ms, serialize_ms, queue_wait_ms, reply_bytes}, the last four as {total, mean, max}. The mod's own pipe reply envelope (read by pipe clients such as the script dashboard) also carries elapsed_ms, that request's main-thread time; MCP tool results do not carry it, so use the methods' mean_ms and max_ms here. Read only; no gateway is needed. 1.14.0+: by default the reply keeps the first entries of its lists (methods 15, reflection 10); truncated gives each cut list's returned and total counts, and list_limits {list: count} keeps more.",
+  "summary": "The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game. Read only.",
+  "help": {
+    "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 15 and reflection 10 by default; list_limits keeps more.",
+    "topics": {
+      "methods": {
+        "summary": "Per-method counts and times.",
+        "text": "methods: every method the mod answers, {method, calls, errors, total_ms, mean_ms (null before the first call), max_ms}, counted in memory after the mod loaded; main-thread time per request; errors are replies with ok false. The pipe reply envelope of the mod carries elapsed_ms, the main-thread time of a request; MCP tool results do not carry it, so use mean_ms and max_ms here."
+      },
+      "reflection": {
+        "summary": "The game members the mod reaches.",
+        "text": "reflection [{member, resolved, optional}]: every game member the mod reaches by name. Optional ones belong to other mods such as Terraforming Reloaded and BlueprintMod. missing_count: required members not found; methods that need one answer game_changed."
+      },
+      "runtime": {
+        "summary": "What the mod costs the game.",
+        "text": "runtime: uptime_s; world_epoch (worlds left after load; leaving one clears IC pauses, job records, print and flight logs); request_budget_ms (main-thread ms per frame for requests, null = unlimited); frames {busy_frames, requests_served, requests_per_frame_mean, requests_per_frame_max, frame_ms, budget_stops, expired}; memory {gc_collections, gc_max_generation, gc_total_memory_bytes, mono_used_bytes, mono_heap_bytes}; methods: the 10 costliest so far (method_count counts all), each {method, calls, errors, main_thread_ms, handler_ms, serialize_ms, queue_wait_ms, reply_bytes}, the last four as {total, mean, max}."
+      }
+    },
+    "shared": ["truncation"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {"type": "object", "properties": {}, "additionalProperties": false},

@@ -1,6 +1,10 @@
 {
   "name": "read_logic_many",
-  "description": "Read up to 256 generic logic values in one main-thread request. Each operation returns its own result, by index: {index, ok, reference_id, logic_type, value}, or on failure {index, ok: false, reference_id, logic_type, error: {code, message}} where reference_id and logic_type are null when the entry's own could not be read.",
+  "summary": "Read up to 256 logic values in one call; each result stands alone, by index, with its own error. Read only.",
+  "help": {
+    "text": "Each result is {index, ok, reference_id, logic_type, value}, or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read. read_devices also reads slots, atmospheres and reagents in one frame.",
+    "shared": ["gateways", "logic"]
+  },
   "class": "read",
   "cost": "bounded",
   "x-cost-when": [{"when": {"reads": {"present": true}}, "cost": "bounded", "per_item": "reads"}],
@@ -15,15 +19,16 @@
         "items": {
           "type": "object",
           "properties": {
-            "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
+            "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
             "logic_type": {
               "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
-              "description": "LogicType enum name or numeric ushort ID."
+              "description": "A logic type name (Temperature) or number."
             }
           },
           "required": ["reference_id", "logic_type"],
           "additionalProperties": false
-        }
+        },
+        "description": "The reads, up to 256, each {reference_id, logic_type}."
       }
     },
     "required": ["reads"],

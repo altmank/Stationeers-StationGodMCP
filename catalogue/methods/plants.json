@@ -1,6 +1,20 @@
 {
   "name": "plants",
-  "description": "Every plant in short by default (1.14.0+): reference_id, prefab_name, display_name, planted, tray, stage (index), stage_count, maturity_ratio, ready_to_harvest, dead, health_percent, problems and harvest_in_s; reference_id (one plant) or verbose gives each plant in full as follows. Every plant growing in a hydroponics tray, planter or station, read from the plant itself, so it works for trays with no data port: its tray, growth stage (index, count, first mature and seeding stages, progress and length of the current stage, every stage's length), whether it is mature, seeding, dead or ready to harvest, growth efficiency and its parts (breathing, temperature, hydration, pressure, light), active problems in plain words (dry, too cold, harmful gas...), each condition's running time (time_s) against the time after which it starts damaging the plant, damage per type with damage_ratio (0 unharmed, 1 dead) and health_percent, harvest and seed counts with a forecast of the next harvest from recorded stress, nutrition, fertiliser, light exposure, the air it breathes (pressure, temperature_k, gas ratios), its tray's water, its needs (ideal and survivable temperature_k and pressure_kpa, gases taken in (mol_per_tick) with the share of the air each needs, water_mol_per_tick, light and dark seconds per day, harmful gas limits) and forecasts at the current efficiency: seconds to the next stage, to harvest, to seeds and, for perennials, to regrow after a harvest (null when it is not growing). Times are game seconds (game_time_s); efficiency parts are multipliers (growth_factor, breathing_factor...); temperatures are kelvin. include_unplanted adds every other plant item (harvested crops, seed bags). Errors: plant_not_found (no plant has that reference_id: no such thing, or not a plant), invalid_argument. Read only; no gateway is needed. 1.14.0+: by default the reply keeps the first entries of its list (plants 15); truncated gives each cut list's returned and total counts, and list_limits {list: count} keeps more.",
+  "summary": "Every plant in trays, planters and stations, read from the plant itself: stage, maturity, health, problems, time to harvest. Short by default; verbose or reference_id gives a plant in full. Lists 15. Read only.",
+  "help": {
+    "text": "In short: reference_id, prefab_name, display_name, planted, tray, stage, stage_count, maturity_ratio, ready_to_harvest, dead, health_percent, problems and harvest_in_s. Works for trays with no data port. include_unplanted adds harvested crops and seed bags. Times are game seconds, efficiency parts are multipliers, temperatures kelvin.",
+    "topics": {
+      "full": {
+        "summary": "What a plant in full reports.",
+        "text": "Growth stage (index, count, first mature and seeding stages, progress and length of the current stage, every stage's length); mature, seeding, dead, ready to harvest; growth efficiency and its parts (breathing, temperature, hydration, pressure, light); problems in plain words (dry, too cold, harmful gas); each condition's time_s against the time after which it starts damaging the plant; damage per type with damage_ratio (0 unharmed, 1 dead) and health_percent; harvest and seed counts with a forecast of the next harvest from recorded stress; nutrition, fertiliser, light exposure, the air it breathes, its tray's water."
+      },
+      "needs": {
+        "summary": "A plant's needs and forecasts.",
+        "text": "needs: ideal and survivable temperature_k and pressure_kpa, gases taken in (mol_per_tick) with the share of the air each needs, water_mol_per_tick, light and dark seconds per day, and harmful gas limits. Forecasts at the current efficiency: seconds to the next stage, to harvest, to seeds and, for perennials, to regrow after a harvest (null when it is not growing)."
+      }
+    },
+    "shared": ["truncation"]
+  },
   "class": "read",
   "cost": "world",
   "params": {
@@ -8,16 +22,13 @@
     "properties": {
       "reference_id": {
         "type": "string",
-        "description": "Reference ID of one plant (see find_items or container_contents of its tray); omit for all."
+        "description": "One plant (find_items, or container_contents of its tray); left out, every plant."
       },
       "include_unplanted": {
         "type": "boolean",
-        "description": "Also list plant items that are not planted: crops in lockers, seed bags. Default false."
+        "description": "Also list plant items not planted: crops in lockers, seed bags. Default false."
       },
-      "verbose": {
-        "type": "boolean",
-        "description": "1.14.0+: every plant in full, as one plant (reference_id) is given. Default false: every plant in short."
-      }
+      "verbose": {"type": "boolean", "description": "Every plant in full, as one plant is given. Default false."}
     },
     "additionalProperties": false
   },

@@ -1,4 +1,1 @@
-{
-  "type": "boolean",
-  "description": "When another job runs: queue this run behind it (status queued, poll its job_id) instead of answering busy. Default false."
-}
+{"type": "boolean", "description": "Queue behind a running job instead of answering busy (see jobs/queue)."}

@@ -1,6 +1,10 @@
 {
   "name": "write_logic_many",
-  "description": "Write up to 256 generic logic values in order in one main-thread request. Each operation returns its own result, by index: {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value as write_logic reads it back), or on failure {index, ok: false, reference_id, logic_type, error: {code, message}} where reference_id and logic_type are null when the entry's own could not be read.",
+  "summary": "Write up to 256 logic values in order in one call; each result stands alone, by index, with its own error.",
+  "help": {
+    "text": "Each result is {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value read back as write_logic does), or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read.",
+    "shared": ["gateways", "logic"]
+  },
   "class": "write",
   "cost": "bounded",
   "x-cost-when": [{"when": {"writes": {"present": true}}, "cost": "bounded", "per_item": "writes"}],
@@ -15,16 +19,17 @@
         "items": {
           "type": "object",
           "properties": {
-            "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
+            "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
             "logic_type": {
               "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
-              "description": "LogicType enum name or numeric ushort ID."
+              "description": "A logic type name (Temperature) or number."
             },
-            "value": {"type": "number", "description": "Finite double value to write."}
+            "value": {"type": "number", "description": "The value to write: a finite number."}
           },
           "required": ["reference_id", "logic_type", "value"],
           "additionalProperties": false
-        }
+        },
+        "description": "The writes, up to 256, each {reference_id, logic_type, value}, applied in order."
       }
     },
     "required": ["writes"],

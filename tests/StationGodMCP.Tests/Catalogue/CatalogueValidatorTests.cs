@@ -151,4 +151,15 @@ public sealed class CatalogueValidatorTests
             Assert.Equal(method.DefaultClass == MethodClass.Read && !method.HasClassRules, readOnly);
         }
     }
+
+    [Fact]
+    public void ADirectClientSendingSourceFileIsToldTheServerReadsIt()
+    {
+        Assert.True(Catalogue.TryGet("set_ic_source", out Pure.Catalogue.CatalogueMethod? method));
+
+        string problem = Assert.Single(method!.Check("""{"reference_id":"1","source":"x","source_file":"C:/a.lua"}""")).Problem;
+
+        Assert.Contains("read by the MCP server", problem);
+        Assert.Contains("'source'", problem);
+    }
 }

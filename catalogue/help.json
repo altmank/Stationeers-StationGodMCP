@@ -1,0 +1,387 @@
+{
+  "intro": "tool_info gives the long help in small steps: {tool} lists a tool's topics, {tool, topic} gives one topic, {tool, topic, subtopic} the detail, and {topic} one of the shared topics below. An argument's (see X) means tool_info {topic: \"X\"}; an error's see names the node that explains it.",
+  "topics": {
+    "positions": {
+      "summary": "Points: [x, y, z] in metres; crosshair and relative forms.",
+      "text": "A point is [x, y, z] or {x, y, z} in world metres, +y up. Building tools snap it to the cell it falls in: 0.5 m small cells for pieces and small devices, 2 m large cells for frames, walls and large structures. The reply's resolved says where it landed and how (resolved.at_how). Where a tool's at says so, it also takes the forms in the subtopics.",
+      "subtopics": {
+        "crosshair": {
+          "summary": "{crosshair: true}: where the look ray hits.",
+          "text": "{crosshair: true, right_m, up_m, forward_m}: the point the player's look ray hits within 10 m, moved by right_m, up_m and forward_m in the player frame. no_crosshair_hit when the ray hits nothing. Needs the player's view (see player/view)."
+        },
+        "relative": {
+          "summary": "{relative_to, frame, right_m, up_m, forward_m, from}: a point beside a thing.",
+          "text": "{relative_to: \"player\" | \"crosshair\" | a reference id | {reference_id}, frame, right_m, up_m, forward_m, from}. frame: player (level; right and forward are the world axes nearest the player's own; ambiguous_axis within 10 degrees of a diagonal), world, or target (the thing's own turn; the default for a thing). from: origin, top, bottom, left, right, front or back: the middle of that side of the thing's footprint box, read in the frame. The player frame is the default for player and crosshair and needs the player's view. A bad from or frame is invalid_argument."
+        },
+        "look_face": {
+          "summary": "{on_face_i_look_at: true, along_right_m, along_up_m}: a point on the face you look at.",
+          "text": "{on_face_i_look_at: true, along_right_m, along_up_m}: a point on the 2 m face plane the look ray hits, right and up as you see them; on a floor, up is away from you. no_face when the ray hits no face plane: look straight at a wall, floor or ceiling."
+        },
+        "above_floor": {
+          "summary": "above_floor_m: set a piece's bottom a height above the floor.",
+          "text": "above_floor_m puts the bottom of the piece's mesh box this many metres above the first floor below at (a plane within 10 m with a floor plate or frame under it; none is cannot_place). The cursor snaps to 0.5 m, so the snaps below and above are tried and the one landing nearest is kept; resolved.at_how says where it ended up."
+        }
+      }
+    },
+    "turns": {
+      "summary": "Turning a piece: rotation, facing, face, orient.",
+      "text": "Give at most one of rotation, facing (with up) and face; or orient instead of all of them. Left out, a piece keeps the turn its cursor gives first. A grid-placed piece may only be turned about the axes its cursor turns it (invalid_rotation); a piece the cursor turns itself as it autoplaces (cables, pipes, lockers) is kept at any turn with the warning unusual_rotation.",
+      "subtopics": {
+        "rotation": {
+          "summary": "rotation [x, y, z]: degrees, multiples of 90.",
+          "text": "rotation [x, y, z] in degrees, each a multiple of 90, applied z first, then x, then y. Replies give each turn as {facing, up, euler}, where euler is the quarter turns rotation takes."
+        },
+        "facing": {
+          "summary": "facing and up: axes, or named facings such as toward_player.",
+          "text": "facing is where the piece's front points: +x, -x, +y (up), -y, +z or -z, or a named facing: toward_player or away_from_player (the level axis toward you; ambiguous_axis near a diagonal), out_of_face (the outward normal of the face you look at), into_room (the one level side whose next 2 m cell is in a room and the other not). up is where its top points; default +y, or +z when facing is vertical."
+        },
+        "face": {
+          "summary": "face: for walls and other face-placed pieces.",
+          "text": "face names the face of the cell holding at that a face-placed piece (a wall plate, a window) sits on; the piece faces into that cell. A piece placed on a face sits on the face opposite its facing."
+        },
+        "orient": {
+          "summary": "orient: choose the turn by intent and let the tool score every allowed turn.",
+          "text": "orient {mount, upright, controls_toward, ports, flow} tries every turn the cursor allows, checks each as a plain placement, and keeps the best score. Excluded: turns the cursor refuses or that do not rest on mount. Penalties: not upright +20, each target missed up to +10 by angle, layout conflicts problem 100, warning 10, info 1. The reply's orient gives chosen {facing, up, euler, score, reasons}, the next 3 alternatives and tried. A target is an axis, \"room\", \"player\", a point or {reference_id}. A turbo volume pump is also scored with its flow reversed; mode_flip then says to write Mode 1 after building."
+        }
+      }
+    },
+    "refunds": {
+      "summary": "refund_to: where removed pieces' materials go.",
+      "text": "refund_to is a list of targets tried in turn per item until it fits; default [\"inventory\", \"source\", \"storage\", \"ground\"]. Each target tops up matching stacks, then fills empty slots that take the item (never a hidden slot, a body slot or a stack's own slot); what fits none goes on the ground in front of the holder. The dry run's refund_plan shows each item's destinations; the job's refunded entries name the target.",
+      "subtopics": {
+        "targets": {
+          "summary": "The targets: inventory, source, storage, a container id, ground.",
+          "text": "inventory: the player's (from_id when it is a player, else the player; skipped without one). source: top up from_id when it is a stack, such as a coil. storage: from_id's slots, then the other slots of the container it is stored in. A container's reference id: exactly that container. ground: a metre in front of from_id or the player."
+        },
+        "words": {
+          "summary": "One word instead of a list: source, ground, none.",
+          "text": "Building tools also take one word: source (from_id's inventory and the player carrying it, the rest in front of it), ground (in front of the source), none (nothing back, as refund false), inventory, storage or a container id. refund false is refund_to none; the two together are refused."
+        },
+        "skipped": {
+          "summary": "refund_target_skipped and refund_holder_removed.",
+          "text": "A target that cannot be used is skipped; when you named the list, the warning refund_target_skipped says why (no player, no from_id, from_id not a stack, from_id with no slot a refund fits, or a from_id that names no thing). A from_id the same request removes is refused (refund_holder_removed) when refund_to gives into it (source, storage or the default): name another holder or ground."
+        }
+      }
+    },
+    "paging": {
+      "summary": "limit and offset: a long list page by page.",
+      "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order."
+    },
+    "shaping": {
+      "summary": "fields, omit, output_file: smaller replies or a file.",
+      "text": "Tools whose replies can grow take fields, omit, list_limits and output_file. Prefer filters, limit, fields and omit; use output_file when you need all of a large reply. Errors are always answered inline.",
+      "subtopics": {
+        "fields": {
+          "summary": "fields: keep only these keys in each list entry.",
+          "text": "fields [names] keeps only those keys in each entry of the reply's top-level lists, e.g. find_things fields [\"reference_id\", \"position\"]. A dotted name is a path read from each entry through nested objects and lists (occupant.prefab_name), or from one list's entries when it starts with that list's name (things.position.x). Dictionary keys keep their case (results.logic.Temperature). A name no entry has is listed in fields_unmatched."
+        },
+        "omit": {
+          "summary": "omit: leave key paths out of the reply.",
+          "text": "omit [paths] leaves those keys out wherever they are, each a path from the reply's top, e.g. get_ic_status omit [\"lua.log\", \"pins\"]. A list on the way applies the rest of the path to each entry (connections omit [\"members.position\"]). A path that matched nothing is listed in omit_unmatched."
+        },
+        "output_file": {
+          "summary": "output_file: the whole reply as a file, answered by a pointer.",
+          "text": "output_file: true, or a file name (letters, digits, - _ . and no folders), writes the whole reply as indented JSON and answers a pointer {output_file (the full path), bytes, tool, counts (each top-level list's length), summary (the short top-level values), in_file_only (keys too large to repeat), truncated}. The folder is %LOCALAPPDATA%\\StationGodMCP\\output unless the server runs with --output-dir or STATIONGODMCP_OUTPUT_DIR. Files older than 7 days, and beyond the newest 200, are deleted; a named file is overwritten. A reply larger than the server's inline limit is written to a file the same way (auto_output_file)."
+        }
+      }
+    },
+    "truncation": {
+      "summary": "truncated: what a reply held back; list_limits.",
+      "text": "Default replies stay small: a tool lists a short page or the first entries of a long list. Every reply ends with truncated, one entry per list it held back: {list, returned, total, more (the argument that gets the rest, with its maximum)}; at_least true when total is a lower bound. truncated [] means the reply holds everything. It survives fields, omit and output_file. Read it before concluding you saw everything. list_limits {list: count} keeps more entries of a list the reply cut by default."
+    },
+    "cheats": {
+      "summary": "Cheat tools: the user approves each use.",
+      "text": "A cheat tool or argument changes the world in a way a player cannot: it bypasses the game's physics, rules or costs (move_gas, write_memory, run_console_command, plant_genes edits, paste_blueprint, place_structure free). Tell the user when a call is a cheat and get their approval for that call before running it. Each tool's description says when it is one."
+    },
+    "jobs": {
+      "summary": "Building jobs: dry run, confirm, polls, the queue.",
+      "text": "Building tools report a dry run by default and change nothing. A real run needs dry_run: false and confirm: true (confirm_required otherwise) and answers job_id, status and preflight_summary (counts and warning codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
+      "subtopics": {
+        "polling": {
+          "summary": "job_id: poll a running or finished job.",
+          "text": "Poll with job_id alone (verbose allowed). A poll answers status and result (placed, removed, used, refunded, verification, gas_check, error); preflight and final_check are null because the real run already answered them, except that a refused job keeps final_check, which says why. verbose: true answers the whole job. job_not_found when the id is not running, queued or among the last jobs kept."
+        },
+        "queue": {
+          "summary": "busy, wait and the queue of real runs.",
+          "text": "One job runs at a time. While one runs, a real run answers status busy with running_job_id and changes nothing; wait: true queues it instead (status queued, its own job_id and position; up to 8 wait). A queued run starts when the slot is free and runs its whole preflight again on the world the earlier jobs left. tick_held: an earlier job's atmosphere work is still running; try again or pass wait: true."
+        },
+        "refusals": {
+          "summary": "Why a confirmed run stops: final check, tick, save.",
+          "text": "final_check_failed: the check run once the tick stopped found problems, so nothing ran; the report lists them. tick_not_stopped: the game tick did not stop in time, so nothing ran; try again. save_started: a save began while waiting, so nothing ran; run it again. A job that stops part way reports stopped with stopped_at and what it built."
+        }
+      }
+    },
+    "gateways": {
+      "summary": "gateway_id: which devices a device tool reaches.",
+      "text": "Leave gateway_id out, or pass \"world\", to reach any device in the world. A StationGod Gateway's id (list_gateways) narrows the call to the devices on that gateway's data networks. An empty string counts as left out; spaces around an id are ignored. Inventory, clock, console and building tools take no gateway.",
+      "subtopics": {
+        "refusals": {
+          "summary": "gateway_not_found and gateway_unavailable.",
+          "text": "gateway_not_found: no StationGod Gateway has that id; list_gateways lists them. gateway_unavailable: the gateway cannot scope calls, and the message says why: incomplete (not fully built: finish building it) or no_data_network (no data cable on either port: connect one)."
+        }
+      }
+    },
+    "player": {
+      "summary": "Who the player is; whose camera the view tools use.",
+      "text": "The player (the default from_id, to_id and credit card holder, a 'player' argument, near_player_m, local_player and player in replies, player_vitals) is the local player when the game has one. On a dedicated server it is the one connected, living player; with none or several, those calls refuse no_local_player, naming why.",
+      "subtopics": {
+        "view": {
+          "summary": "The camera and screen: crosshair, looking_at, highlight, show_preview.",
+          "text": "The camera and screen (looking_at, crosshair, on_face_i_look_at, the player frame, highlight, show_preview) are the player's. In a hosted game that is this game's own camera. On a dedicated server it is the view the player's own StationGod sends and the screen it draws on; StationGod is optional for players, and without it those calls refuse no_view, saying why. A view more than 5 s old from a player who has moved after it, or taken more than 0.3 m from where they stand, is refused view_stale. Replies that read a view carry view {source local|remote, age_s}. Use frame world or target instead of the view where a tool allows it."
+        }
+      }
+    },
+    "networks": {
+      "summary": "Naming a network by id, piece, device or port.",
+      "text": "Where an argument takes a network it accepts the network's id, a piece on it, a device on exactly one network of the kind, or {reference_id, port} for a device's port. The reply's resolved_networks says what each handle resolved to. network_not_found: no network of that kind has the id. ambiguous_port: the device sits on several networks of the kind; name the port. not_on_network and port_not_joined say what the device is on instead.",
+      "subtopics": {
+        "bridging": {
+          "summary": "allow_bridge: when joining two networks is meant.",
+          "text": "Building tools refuse a run that would join two networks that hold different things (would_bridge). allow_bridge lists the networks (ids or handles) and devices whose joining is meant, so the run may merge them."
+        }
+      }
+    },
+    "errors": {
+      "summary": "Error replies: code, message, see; resending.",
+      "text": "An error is {code, message, see, data}. message says what went wrong and what to do; see {tool, topic, subtopic} names the tool_info node that explains the code; data holds details a program can act on (sizes, for reply_too_large). invalid_argument names the argument. game_unavailable: the server could not reach the game, or the game took the call and sent no reply in time, in which case it may have run.",
+      "subtopics": {
+        "not_found": {
+          "summary": "thing_not_found and the other *_not_found codes.",
+          "text": "The id names nothing: the thing is gone, or the id is wrong. Find it again with find_things, looking_at, list_devices or rooms. Ids are decimal strings."
+        },
+        "host": {
+          "summary": "not_host, not_ready, no_world, game_not_running.",
+          "text": "not_host: this game is a multiplayer client; only the host changes the world, so run StationGod on the host. not_ready, no_world and game_not_running: the world is loading or not loaded; try again once it is."
+        },
+        "mods": {
+          "summary": "Tools that need another mod, and game_changed.",
+          "text": "Some tools need another mod and say so: ingot_vault_mod_required (IngotVault), lua_not_installed (StationeersLua), mod_missing (BlueprintMod has no Blueprints folder yet), terraforming_mod_required (Terraforming Reloaded). game_changed: this game build lacks a game member a tool needs; mod_info lists what is missing."
+        },
+        "protocol": {
+          "summary": "Connection and call codes from the protocol.",
+          "text": "Nothing ran, and the call is safe to send again: game_timeout, cancelled, shutting_down, too_many_in_flight, duplicate_id (use a new id). The connection closes: protocol_error, unauthorized (wrong TCP secret), request_too_large, unsupported_protocol. method_not_found: no such method on this game's StationGod (mod_info names its version). subscription_limit and unknown_subscription: subscriptions. internal_error: a bug; the call may have partly run, so check the world before repeating it."
+        }
+      }
+    }
+  },
+  "families": {
+    "materials": {
+      "summary": "from_id: where a build's materials come from.",
+      "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
+    },
+    "gas_hold": {
+      "summary": "gas_check and the gas hold after a pipe job lost gas; acknowledge_gas_lost.",
+      "text": "Every job that changes pipe networks checks their gas before and after (gas_check). When gas is still missing, the job ends gas_lost and every later real run that touches a pipe network is refused (gas_check_failed) until the world is loaded again or the loss is acknowledged. Dry runs still answer. Ask the user before acknowledging a gas loss: never pass acknowledge_gas_lost on your own.",
+      "subtopics": {
+        "acknowledge": {
+          "summary": "acknowledge_gas_lost: accept a loss and lift the hold.",
+          "text": "acknowledge_gas_lost with the id of the job that set the hold (run-N, upgrade-N, place-N, remove-N) accepts that loss; the hold lifts as this run starts (a queued run: when it leaves the queue). The reply's gas_hold repeats the loss (job, networks, missing mol), as does every poll of that job with job_id. Another id is refused with gas_hold_mismatch, naming the holding job; an empty string is invalid_argument. A later failed check holds pipe jobs again under its own job id. A dry run's gas_hold says whether a hold applies and what acknowledging would lift; it lifts nothing."
+        },
+        "check": {
+          "summary": "gas_check: what the job compares and puts back.",
+          "text": "The job applies the game's queued gas changes after every piece it builds, then compares each family of pipe networks it touched (networks sharing a pipe, or a cell a pipe filled before and one fills after) by moles and energy. gas_check {checked, ok, summary, families [{networks_before, networks_after, mol_before, mol_after, energy_before_j, energy_after_j, planned_loss_mol, missing_mol, emptied, ok}], recovered, withheld, ghosts, ghosts_cleared, old_ghosts, orphans, old_orphans}. Gas a merge lost is put back, never past a network's weakest pipe; gas that would burst a pipe is withheld and the check fails. A run that places or removes nothing with a pipe end is neither checked nor held."
+        }
+      }
+    },
+    "lint": {
+      "summary": "Dry-run lint warnings (lint_<rule id>) on what a request would place.",
+      "text": "The dry_run rules of lint-rules.json (the mod's file, with the save's file over it; lint_rules lists them) run on what a building request would place, in the world around it. Each finding about a placed thing is a warning lint_<rule id>, such as lint_floating_run, whatever the rule's level: nothing is refused for one. lint_layout runs every rule over standing things."
+    },
+    "doors": {
+      "summary": "Door keep-outs and windows: allow_door_keepout.",
+      "text": "A new small-grid piece with a cell in a door's keep-out (the door's face and a band either side inside its rectangle, 0.5 m by default; the door's own port cells are free) is refused with in_door_keepout; allow_door_keepout: true makes it a warning. A piece on a window's face warns crosses_window."
+    },
+    "logic": {
+      "summary": "Logic types: names or numbers, readable and writable values, logic errors.",
+      "text": "A logic type is its name as the game shows it (Temperature, On, Setting) or its number (0 to 65535); mod logic types without a name go by number. describe_device lists what a device reads and writes. invalid_logic_type: no such type. logic_not_readable or logic_not_writable: the device does not expose it that way. device_not_found: no device with that id in the call's scope (check the gateway). read_failed or write_failed: the game failed; the message says why. memory_not_readable, memory_not_writable and no_programmable_chip come from the memory tools."
+    },
+    "chips": {
+      "summary": "IC tools: which holders they take, IC10 and Lua chips, chip errors.",
+      "text": "reference_id names the circuit holder by any of: an IC Housing or a worn one (suit, Programmable Visor) from list_devices; a Console or Computer holding a ScriptedScreens Lua board (Circuitboard or Motherboard (Lua Chip)); a held tablet holding one Lua cartridge; the board or cartridge itself; or the chip in any holder. inspect_slots on the console or tablet lists the board, cartridge and chip ids. Anything else, and a chip in no holder, is not_ic_housing. Replies give reference_id (the device or worn item the scope reaches), holder (the circuit holder) and chip.",
+      "subtopics": {
+        "lua": {
+          "summary": "Lua chips (StationeersLua): compiling, running, errors.",
+          "text": "A StationeersLua chip (Integrated Circuit (Lua)) compiles on a worker thread, runs its module-level code once, then tick(dt) every game tick. After set_ic_source or a restart, lua.compiling is usually true: call get_ic_status until it is false, then read lua.running and lua.last_error. A holder that is off or unpowered compiles when it runs again. A Lua chip cannot pause or step (lua_chip_unsupported). lua_not_installed: StationeersLua is not loaded. lua_changed: this build does not know the loaded StationeersLua version."
+        },
+        "refusals": {
+          "summary": "The chip errors and what to do.",
+          "text": "no_programmable_chip: the holder has no chip; install one. not_ic_housing: not a circuit holder this tool takes (set_ic_pins takes IC Housings only). ambiguous_circuit_holder: the device holds several; pass the one you mean. ic_compile_error: the source has a compile error; fix it first. ic_not_operable: the housing is off, unpowered or not built, or a worn item's battery is flat. source_too_large: a Lua source over 262144 characters; split it into library chips (--@module). not_a_lua_chip: restart is for Lua chips. not_logic_device and not_on_data_network: see set_ic_pins."
+        }
+      }
+    },
+    "items": {
+      "summary": "Finding items: filters, locations, holders and machine stock.",
+      "text": "Item tools search the whole world, not one network: the ground, lockers, crates and machines, and what players carry (suit, backpack, toolbelt, hands, nested to any depth). location is ground (loose), player (carried at any depth), stored (in any other holder) or machine_stock (held as reagents inside a machine); the default is any, machine stock included. held_in lists the holders from the item's own slot outwards; position is the outermost holder's. within_id narrows to one holder at any depth and its machine stock; an id that names nothing is thing_not_found, never an empty holder. Organs are left out.",
+      "subtopics": {
+        "machine_stock": {
+          "summary": "Material machines hold as reagents, not items.",
+          "text": "Ingots loaded into a fabricator (Autolathe, Electronics Printer, Pipe Bender, Tool Manufactory...) are listed as the ingot it ejects (1 reagent unit = 1 ingot); a furnace's, centrifuge's or mixer's working load is listed under its reagent name (prefab_name null). A stock entry has reference_id null, held_in naming the machine with slot_index -1, and machine_stock {reagent, reagent_name, kind (fabricator or processing), movable false}. move_item cannot move it. A fabricator that is on, powered and not printing ejects its stock as ingots into its export slot when opened, one stack per tick (EjectReagent on its logic ejects one reagent). A processing load is not ingots yet: the machine smelts it, or drops it as Reagent Mix."
+        }
+      }
+    },
+    "slots": {
+      "summary": "Slots: numbering, hidden slots, growers, and slot refusals.",
+      "text": "Slot indexes are as container_contents gives them for any thing, and inspect_slots for a device. Only slots a player can reach take items: a hidden slot (a cable coil's internal slot, a vending machine's store) is refused. Items move slot to slot, never through the world.",
+      "subtopics": {
+        "growers": {
+          "summary": "A grower's plant and fertiliser slots.",
+          "text": "A grower's plant and fertiliser slots follow its hand interactions, hidden or not. A seed or plant into a plant slot (a hydroponics tray, planter, station or device) is planted as a player plants it: one unit is used and a plant grows with that unit's genes, so quantity must be 1; an occupied plant slot is slot_occupied. A plant slot takes only a seed or plant; a fertiliser slot only fertiliser, one unit into an empty slot. A growing plant is never taken out (planted): a player only harvests or clears it; a seed bag left in one may be."
+        },
+        "refusals": {
+          "summary": "Why a move into or out of a slot is refused.",
+          "text": "not_movable: not an item that fits a slot (a structure). invalid_destination: the destination is the item or inside it. no_slots, slot_not_found, same_slot. slot_locked: the source or destination slot is locked. slot_refuses: the game's slot rules (a hidden slot, the slot class, the game's own reason, or a draggable such as a crate or portable tank, which the game only drags in). slot_occupied: something it cannot join, or merge false, or a filled grower slot. partial_merge: part of a stack only goes into an empty slot. stack_full. no_free_slot. move_failed: the game did not do it; read the slots."
+        }
+      }
+    },
+    "trading": {
+      "summary": "Traders: contacts, dishes, pads, cards, and the trade refusals.",
+      "text": "A trader contact appears in the sky; a dish aimed at it (dish_aim) with enough power resolves and contacts it; the trader lands on a pad that fits its ship (landing_pads) and trades through the pad's data network: its vending machines and the card holder's inventory hold the goods, and the pad network's atmosphere the gas. Only a landed, ready trader trades (not_landed names the landed one). The card must be carried by a player or held by a vending machine. The price per unit is the trader's, adjusted by the respawn stress penalty while you have respawn stress.",
+      "subtopics": {
+        "refusals": {
+          "summary": "Whole-trade and per-line refusals.",
+          "text": "Whole trade: not_host, contact_not_found, not_landed, pad_unavailable (the pad is off, which means unpowered, or in error), card_not_found, no_credit_card (none given and the player carries none), card_not_usable (a sale: the card lies loose or is in anything but a player or vending machine). Per line: not_sold (the trader does not trade it), ambiguous_item (give name and prefab_name), insufficient_stock, insufficient_credits, no_room (no empty tradable slot), not_wanted and insufficient_available (sales), sell_separately (sell that entry in a call of its own), trade_failed (the game's own message; it charges only for what it delivered)."
+        }
+      }
+    },
+    "vaults": {
+      "summary": "Ingot Vaults (the IngotVault mod): stock, remote vaults, vault refusals.",
+      "text": "The vault tools need the IngotVault mod (Steam Workshop 3749011679). An Ingot Vault keeps ingots as grams of reagent and ores and ices as counts. A Remote Vault id reaches the one vault on its data network. Deposits and withdrawals use the vault's own bookkeeping, as moves: no import slot, chute, vend queue or door, so the vault's totals, power use, screen and save agree at once. find_items and item_totals see a vault's ingots only as machine stock and miss its ores; vault_contents reads them all.",
+      "subtopics": {
+        "refusals": {
+          "summary": "The vault errors and what to do.",
+          "text": "ingot_vault_mod_required: IngotVault is not loaded. ingot_vault_changed: this StationGod build does not know the loaded IngotVault version. not_a_vault: not an Ingot Vault or Remote Vault. vault_not_connected: the Remote Vault needs exactly one Ingot Vault on its data network. vault_unpowered: the vault is off or unpowered, so it neither imports nor vends. vault_not_ready: no store yet. not_vault_material: it keeps ingots, ores and ices only. no_reagents: an ingot with no reagents would be destroyed for nothing. in_vault_slot: the item sits in a vault slot. not_in_vault and not_enough_stock: vault_contents lists what it holds. prefab_missing: no item exists for that entry. vault_display_slot: that slot only shows the store."
+        }
+      }
+    },
+    "rockets": {
+      "summary": "Rocket tools: naming a rocket and a node, engines and feeds, rocket errors.",
+      "text": "rocket_id is a rocket, its rocket network, or any of its parts; leave it out when there is one rocket. A node is its name, its map code (as shown, or its number), a reference id, or 'pad': this rocket's pad (the one it stands on, launches from or lands on, else the only ground launch mount). Every rocket design the game builds is read: all six engines, gas and liquid lines, payload bays, crew modules, miners, collectors, scanners. Combustion is the game's rate (0.96), or Terraforming Reloaded's when that mod is loaded.",
+      "subtopics": {
+        "engines": {
+          "summary": "The six engines and how each draws fuel.",
+          "text": "Pumped Gas Engine: 18 x throttle/100 mol a tick from input 1, whatever the pressure. Pressure Fed Gas Engine (and Heavy): moles from each input by its own gas pressure (up to 5,000 or 8,500 kPa over a 10 L pipe); both inputs needed. Pumped Liquid Engine: 0.55 L a tick x throttle, Setting % from input 1 and the rest from input 2, liquid only (hydrazine alone works with Setting 100). Pressure Fed Liquid Engine (and Heavy): 0.04 to 0.8 (1.5) L of liquid by input 1's gas pressure, plus a pressure-fed gas draw; input 2 is a heat exchanger only. Pressure-fed thrust sags as the line drains."
+        },
+        "refusals": {
+          "summary": "The rocket errors and what to do.",
+          "text": "rocket_not_found: give a rocket's, its network's or any part's id. ambiguous_rocket: several rockets; give rocket_id. node_not_found: give a node's name, map code or 'pad'. ambiguous_node: give the node's code. no_target: the rocket stands on its pad with no target; give to. manned_target: someone sits in a Crew Module Chair, so only a launch mount can be the target. no_fuel_line: no engine has a pipe network on its input. engine_not_modelled: an engine class the forecast has no feed law for. no_flight_log: start one first. no_save_folder: save the world first. not_uplink and invalid_downlink: set_uplink."
+        }
+      }
+    },
+    "runs": {
+      "summary": "Laying pipe, cable and chute runs: forms, joins, guards, reports.",
+      "text": "place_cables, place_pipes and place_chutes lay a run as a coil or kit builds it: for every 0.5 m cell the one-cell piece whose ends match that cell's connections, turned as needed; long straights are never placed. The caller gives the route (plan_*_route finds one). A dry run by default; a real run is a job that holds the tick, checks again, builds in one frame and verifies. One job at a time across every building tool. Host only.",
+      "subtopics": {
+        "forms": {
+          "summary": "waypoints, cells, piece, pieces, branches, extra_ends.",
+          "text": "Give one of: waypoints (points joined by straight axis-aligned lines; nothing is searched), cells (every cell, each a neighbour of the one before), piece {at, ends} (one piece; a single end gets a straight whose far end stays open), or pieces [{at, ends}] (up to 256 separate pieces in one job). An end pointing into another piece of the job with no end back stays open (open_end). branches [{waypoints or cells, attach}]: side runs whose first cell is a free end and whose last joins attach with a junction. extra_ends [{at, toward}] add ends to run cells. Points snap to the 0.5 m cell they fall in."
+        },
+        "joins": {
+          "summary": "join ends, none or all, and meeting existing pieces.",
+          "text": "join ends (default): the first and last cells also join every open end and port pointing at them, and the piece straight ahead of a run end that joins nothing else; a run end standing on a piece joins it and the ports pointing at it, not another network's ends from the side. none: only the run and extra_ends. all: every run cell joins every open end and port pointing at it. A cell holding a piece keeps it when it has the ends, else becomes the piece with both sets of ends (a straight crossed becomes a cross). A one-cell run that joins nothing is nothing_to_join (name its ends with piece)."
+        },
+        "long_straights": {
+          "summary": "Long straights the run joins or crosses.",
+          "text": "A long straight (3, 5 or 10 cells) the run must join in its middle or cross is split into singles in the same job (same line, grade, colour and owner) and then joined: warning long_split, listed in removals with its cells as new singles. allow_split_long false refuses (long_piece). A route may also start from one of its cells with at, or end on it as to."
+        },
+        "assume_removed": {
+          "summary": "remove_ids and assume_removed.",
+          "text": "remove_ids: pieces of the run's kind removed in the same job before building (a reroute; no power tick sees a device unpowered); a burnt cable may be named, freeing its cell. assume_removed: things checked as if already gone (cells free, links absent, pieces forecast as removed with assumed true); nothing of them is removed, and a real run is refused (assumed_present) while any still stands, so remove them first or pass the pieces as remove_ids. A run queued with wait behind another job is checked when it starts, so that job may remove them."
+        },
+        "placement": {
+          "summary": "The cursor's placement rule, and rockets.",
+          "text": "Placement is checked as the game's cursor checks it. A cell with a device, chute or other small-grid thing is cell_blocked; a pipe blocks a cable (and a cable a pipe) only along its own axis; chutes collide with cables, pipes and devices; frames and walls never block. A piece with a device mounted on it, an indestructible piece or a launching or landing rocket's piece is cannot_change. Inside a rocket a piece goes only where its fuselage makes a cell of that kind, and joins the rocket as a hand-laid one does. A new piece in a free port's joining cell with no end toward it warns blocks_port."
+        },
+        "taps": {
+          "summary": "not_joined, join_to and join_trunk.",
+          "text": "A run end left open next to, or one free cell short of, a piece of another network it could join warns not_joined, naming the piece, the tap cells and the direction. join_to (a network handle): the network the run must end up on; not_joined when it does not, with the nearest near miss. join_trunk true adds the missing tap (up to one free cell, into the target piece, which becomes a junction; warning tap_added)."
+        },
+        "guards": {
+          "summary": "would_bridge, would_split, would_loop, link_lost, through_air.",
+          "text": "Every network after the edit is forecast by the game's own connection rule (links.model_matches_game proves it). would_bridge: the run joins two networks, or two ports of one device; allowed when allow_bridge names every network of that merge or the device. would_split: removals split a network or leave a port joined to nothing (allow_split); each part lists its devices, root and cut_off. link_lost: a piece the edit touches would lose a link. would_loop (warning): a new link joins what is already joined another way. through_air (warning): new pieces on no frame and no wall plane; air_cells counts them."
+        },
+        "report": {
+          "summary": "The dry run report and the reply switches.",
+          "text": "cells [{at, action place, change or keep, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end}], removals, materials, networks_before, networks_after (each with its guard numbers), would_bridge, would_split, links {count_before, count_after, added_count, lost_count, model_matches_game}, problems, warnings, ready. limit lists 5 cells (0 none); include_links, include_network_devices and include_notes add detail. A job's log lists created_ids and created_by_part. Status applied, applied_with_differences, stopped, applied_unchecked or refused."
+        }
+      }
+    },
+    "routing": {
+      "summary": "Finding a route: ends, search rules, trees, trunks, reroutes.",
+      "text": "plan_cable_route, plan_pipe_route and plan_chute_route search the small grid (A*) for a route and dry-run it with the place tool. The search never passes through a cell holding a piece of its kind (it would join it), a device or other small-grid thing, nor along another kind's axis in a cell; frames and walls never block. Returns found, route, place_arguments (add dry_run false and confirm true to build) and dry_run, or a failure: no_route, too_long, search_limit. When to names a network, place_arguments carries join_to.",
+      "subtopics": {
+        "ends": {
+          "summary": "What from and to can name.",
+          "text": "{at}: a cell; a piece there is joined. {reference_id} of a piece: its cell (leaving through an open end is free, another direction makes a junction); to on a long straight takes any of its cells. {reference_id, port} of a device: the cell a piece joining that port stands in (port may be left out with one port of the kind). {reference_id} of an in-line tank, passive vent or other thing with its own ends: the cell beyond its free end. to may be {network_id}: the nearest cell of any piece of that network. An end whose cell no piece may take is cell_blocked."
+        },
+        "rules": {
+          "summary": "frames_first, prefer, inside_frames, avoid_*.",
+          "text": "frames_first (default true): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. prefer: frame_edges (cells on two or three face planes of a frame cell), walls (on or beside a wall plane), hidden (inside a frame 1, frame surface 3, wall plane 5, air 9). inside_frames: only cells inside or on a frame. avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow_door_keepout; a window face costs 6 more."
+        },
+        "starts": {
+          "summary": "Several starts grow one tree.",
+          "text": "from may be {reference_id, ports: [..]} or an array of starts, up to 16. The first start routes to the target; each other start routes to the nearest cell of the tree so far and joins it with a junction (a start the tree passes gets an extra end), never to the network a second time, so a device with separate ports gets one run and no loop. The reply adds route.branches."
+        },
+        "trunk": {
+          "summary": "Bus mode: a trunk and its drops in one job.",
+          "text": "trunk {waypoints or cells} instead of to: the trunk is laid as given and every start branches to the nearest cell of the tree so far, junctions included, so a trunk and its drops are one job and one guard forecast. The trunk's own ends join what they meet (join). join_to names the target network in trunk mode."
+        },
+        "reroute": {
+          "summary": "Replacing an old run.",
+          "text": "reroute {reference_ids: the old run's pieces} or {between: [end, end]} (the shortest run between two devices or pieces on one network; an end is a reference id or {reference_id, port}). The old run must meet the rest at exactly two cells (not_a_segment); the new route runs between them with the old pieces removed in the same job. A device on several networks of the kind uses the one both ends share; none or several is not_on_one_network or ambiguous_port, listing the ports. no_run_between: no run of that kind joins the ends."
+        },
+        "reserve": {
+          "summary": "reserve_cells, reserve_ports and assume_removed.",
+          "text": "reserve_cells and reserve_ports: cells the search treats as blocked (a port's joining cell), so one run cannot take the cell another port's run needs; a reserved cell that is one of this route's ends is released, with a note. assume_removed plans as if things are gone: pieces of the kind go into place_arguments.remove_ids (built and removed together), other things into place_arguments.assume_removed (remove them first); route.assumed_removed lists pieces, others, missing and in_the_way."
+        },
+        "reply": {
+          "summary": "The route block.",
+          "text": "route {waypoints, length, bends, cost, expanded, removes, air_cells (0 for a clean route), air, branches, extra_ends, visibility {inside, frame_surface, wall, air}, assumed_removed, removal_refund}. would_loop in the dry run means the route joins what is already joined; with join all the planner tries once more away from the ends' own networks."
+        }
+      }
+    },
+    "removals": {
+      "summary": "Removing pipe, cable and chute pieces: forms, splits, refunds.",
+      "text": "remove_cables, remove_pipes and remove_chutes remove pieces as a player's tool does: reference_ids, or the piece in each cell of waypoints or cells. would_split refuses a removal that splits a network or leaves a port joined to nothing, unless allow_split; each part lists its devices, root and cut_off (the devices no root reaches after it). A network that only loses pieces keeps its id; a split one is rebuilt by the game with new ids (chute networks always take new ids). Refunds go where refund_to says. plan_removal prices the same dry run without the power to run it."
+    },
+    "pipes": {
+      "summary": "Pipe safety: content, bursts, holding contents, gas checks.",
+      "text": "A pipe of other content is never joined (content_mismatch). would_burst: the pooled contents in the pooled volume would pass the weakest pipe (new pipes add volume, removed ones take it off); move_gas also checks tanks and canisters. Removals never lose or move contents: removing every pipe of a network that holds gas or liquid is holds_contents, and a removal that would split one is contents_would_move; empty it first. Placing into a network adds volume: contents stay and pressure falls. A pipe with a device mounted is cannot_change. Every pipe job checks gas before and after (see gas_hold)."
+    },
+    "swaps": {
+      "summary": "Swapping pieces in place: upgrade_*, clean_* and replace_*.",
+      "text": "These tools swap pieces in place within one held tick: each replacement is built first and the old piece removed after, so no network splits, no face opens and no gas moves between. A dry run reports every piece and lists every problem at once; a real run (dry_run false, confirm true) is refused unless the checks find nothing. Name a network with network_id or pieces with reference_ids (up to 4096); pieces outside them only connect. Host only.",
+      "subtopics": {
+        "job": {
+          "summary": "The swap job and its statuses.",
+          "text": "The job holds the tick as a save does, runs every check again, swaps every piece in one frame, checks the result the next frame and lets the tick go. Poll with job_id: applied; applied_with_differences (verification lists each link, mount, device or network that differs); stopped (a piece failed: swapped lists old and new ids, not_swapped the rest, stopped_at the piece and whether it is intact; run the same call again to resume); applied_unchecked; refused (final_check says why; nothing ran)."
+        },
+        "connectivity": {
+          "summary": "Links predicted and checked.",
+          "text": "connectivity holds the game's links as they stand and the links predicted with every replacement in place; added and lost must be empty (link_added, link_lost, device_link_lost refuse), so no neighbour or device loses a link and no networks merge. model_matches_game proves the prediction on these very pieces. Network ids stay the same."
+        },
+        "materials": {
+          "summary": "Coils, kits and materials for a swap.",
+          "text": "Each swap costs the new piece's coil or kit less the old one's, by the coil's own merge rule; a shortfall is taken from from_id (default the player) and refused with not_enough_coils (or not_enough_materials) when it holds too few. Nothing is made for free. With refund (default true) the surplus and removed pieces' materials go where refund_to says. Without a player and without from_id, a swap that charges nothing and whose refund_to is not the single word source still goes ahead (the refund lands where the first piece stood); else no_local_player."
+        }
+      }
+    },
+    "placing": {
+      "summary": "Placing structures: the cursor rule, supports, rockets, refusals.",
+      "text": "place_structure places anything a kit builds, checked as the game's own placement cursor checks it (blocked cells and faces, small-grid collisions, each class's own rules, a face-mounted piece's support; nothing loose, no creature or player inside a piece that fills its cell), and again just before each piece is built. Every placement must be one a player's cursor would accept there; check_replaceable asks the same of standing things. A small-grid piece whose slot in a cell is taken is refused.",
+      "subtopics": {
+        "supports": {
+          "summary": "Supports an earlier placement of the request puts there.",
+          "text": "A piece that needs a frame below (a station battery, a dish, landing pad parts) may stand on a frame an earlier placement of the same request puts there, and a face-mounted piece (a solar panel, a wall light) on a support behind it the request places: warning supported_by_placement, checked again once that support stands. Such pieces stand in the free cell on top of a frame, not inside one; cannot_place says so when a frame fills the spot's own cell."
+        },
+        "rockets": {
+          "summary": "Building rockets as a player does.",
+          "text": "Rockets are built as a player builds them: launch mount, engine fuselage, fuselage pieces, nose cone, and the internals (engines, tanks, batteries, avionics, miner, scanner, cargo, umbilical sockets) in the cells the fuselage gives them, each with the game's own rule. Built bottom up in one request, each placement names the earlier one it waits for. A fuselage piece placed where another of its family stands takes its place as an angle grinder swap does (warning replaces_fuselage; the old piece gives nothing back), only where a merge kit builds the prefab. A launching or landing rocket is left alone."
+        },
+        "refusals": {
+          "summary": "Why one placement is refused.",
+          "text": "invalid_prefab (not loaded, not a structure, no kit builds it), invalid_rotation, invalid_build_state, no_cursor, cannot_place (with the game's reason), overlaps_placement (two placements in one slot, or one the game would refuse once an earlier placement stands: overlapping long pipes, a frame and a piece in its 2 m cell), not_labelable, not_paintable, invalid_color, in_door_keepout, and the view errors no_view, view_stale, no_crosshair_hit, no_face, ambiguous_axis. For the whole run: not_enough_materials, not_creative."
+        }
+      }
+    }
+  }
+}

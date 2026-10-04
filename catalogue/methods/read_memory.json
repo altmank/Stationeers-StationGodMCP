@@ -1,15 +1,19 @@
 {
   "name": "read_memory",
-  "description": "Read a contiguous range of up to 512 values from a visible device with readable memory, as a chip's get instruction does: an IC Housing or suit (its chip's stack), a Logic Sorter, a satellite dish, a fabricator, rocket avionics and the like. A Logic Memory has only its Setting, no memory (memory_not_readable). Refused: a range past the memory's last address (stack_size in the reply; invalid_argument), and an IC Housing or suit with no chip (no_programmable_chip).",
+  "summary": "Read up to 512 values of a device's memory from start_address, as a chip's get does: an IC Housing or suit (its chip's stack), Logic Sorter, dish, fabricator, rocket avionics. Read only.",
+  "help": {
+    "text": "A Logic Memory has only its Setting, no memory (memory_not_readable). A range past the memory's last address is invalid_argument; the reply gives stack_size. An IC Housing or suit without a chip is no_programmable_chip.",
+    "shared": ["gateways", "logic"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
       "gateway_id": {"$ref": "defs/gateway_id.json"},
-      "reference_id": {"type": "string", "description": "Memory-device reference ID returned by list_devices."},
-      "start_address": {"type": "integer", "minimum": 0, "maximum": 2147483647},
-      "count": {"type": "integer", "minimum": 1, "maximum": 512}
+      "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
+      "start_address": {"type": "integer", "minimum": 0, "maximum": 2147483647, "description": "The first address to read, from 0."},
+      "count": {"type": "integer", "minimum": 1, "maximum": 512, "description": "How many values to read, 1 to 512."}
     },
     "required": ["reference_id", "start_address", "count"],
     "additionalProperties": false

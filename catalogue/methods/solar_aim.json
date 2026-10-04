@@ -1,11 +1,25 @@
 {
   "name": "solar_aim",
-  "description": "The exact Horizontal and Vertical (logic degrees) that point a solar panel's cells straight at the sun, worked out from the panel's own pivots and the game's sun vector: no daylight sensor and no calibration. Returns reference_id, prefab_name, can_turn, operable (finished to its last build state and not broken; the game generates nothing from a panel that is not, at any angle), horizontal and vertical (logic degrees, as write_logic takes them), off_sun_deg (the angle still off at that pose, non-zero only when the sun is outside the tilt range), alignment_ratio (1 - 2 sin(off / 2), the panel's Ratio at that pose before shading, from the facing alone; with the sun below the horizon the game's Ratio is 0 whatever this says, since the ground shades the panel: read it then as how well the pose meets the sun once it is up), sun {x, y, z, above_horizon, eclipse (OrbitalSimulation.IsEclipse; always false on a dedicated server, where the game does not work out eclipses)} and current {horizontal, vertical, ratio} (the panel's aim and Ratio now). Every pose (H, V) has a twin (H + 180, 180 - V) that faces the cells the same way; when both reach the sun equally (within 0.1 degree) it answers the one needing the smaller turn from current, so a tracker writing every answer never swings the panel round. With the sun below the horizon it gives the pose closest to the sun now: tilted toward where it set until midnight, toward where it will rise after. The game stops a turning panel within its rotation tolerance of the target, up to about 0.6 degrees short in Horizontal (under 1% of Ratio). A panel without pivots (the Flat panel) reports can_turn false and a note instead of the angles. Refusals: invalid_argument, not_solar_panel (no thing has that id, or it is not a solar panel). Read only: write the angles with write_logic. No gateway is needed.",
+  "summary": "Work out the Horizontal and Vertical (logic degrees) that point a solar panel straight at the sun, from the panel's own pivots and the sun's position. Read only: write them with write_logic.",
+  "help": {
+    "text": "Returns reference_id, prefab_name, can_turn, operable, horizontal and vertical, off_sun_deg, alignment_ratio, sun and current. No daylight sensor and no calibration are needed. A panel without pivots (the Flat panel) reports can_turn false and a note instead of angles.",
+    "topics": {
+      "reply": {
+        "summary": "What each value means.",
+        "text": "operable: finished to its last build state and not broken; the game generates nothing from a panel that is not, at any angle. off_sun_deg: the angle still off at that pose, above 0 only when the sun is outside the tilt range. alignment_ratio: 1 - 2 sin(off / 2), the panel's Ratio at that pose before shading. sun {x, y, z, above_horizon, eclipse}: eclipse is always false on a dedicated server, which does not work out eclipses. current {horizontal, vertical, ratio}: the panel's aim and Ratio at the moment of the call."
+      },
+      "tracking": {
+        "summary": "Twin poses, night, and the turning tolerance.",
+        "text": "Every pose (H, V) has a twin (H + 180, 180 - V) facing the cells the same way; when both reach the sun equally (within 0.1 degree) it answers the one needing the smaller turn from current, so a tracker writing every answer never swings the panel round. With the sun below the horizon the game's Ratio is 0 whatever this says; it gives the pose closest to the sun: toward where it set until midnight, toward where it will rise after. The game stops a turning panel within its rotation tolerance, up to about 0.6 degrees short in Horizontal (under 1% of Ratio)."
+      }
+    },
+    "shared": ["logic"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
-    "properties": {"reference_id": {"type": "string", "description": "Reference ID of the solar panel."}},
+    "properties": {"reference_id": {"type": "string", "description": "The solar panel."}},
     "required": ["reference_id"],
     "additionalProperties": false
   },

@@ -1,29 +1,34 @@
 {
   "name": "plan_pipe_route",
-  "description": [
-    "plan_cable_route for pipes: the same ends (and from or to {reference_id} of an in-line tank or passive vent: the cell beyond its free end, 1.3.5+), reserve_cells and reserve_ports, reroute, rules and search (never through a cell holding a pipe, nor along a cable's axis in a cell), dry-run with place_pipes and its pipe guards. grade is required (gas, liquid, insulated_gas, insulated_liquid). Read only. Host only. No gateway is needed. join_to, join_trunk, root and network handles as plan_cable_route (1.3.0+). 1.14.0+: a chute network's riding items (networks_before items) are listed only with include_network_devices too (items_riding counts them); a brief job poll's log counts the placed pieces (placed_count) instead of naming each (created_ids holds every id built; verbose names them).",
-    {"$include": "defs/text/lint_dry_run.txt"}
-  ],
+  "summary": "Find a pipe route between ends, ports, tanks or networks, and dry-run it with place_pipes and its pipe guards; grade required. Answers place_arguments to build it. Read only.",
+  "help": {
+    "text": "plan_cable_route for pipes: the same ends, rules, trees, trunks and reroutes; the search never passes through a cell holding a pipe, nor along a cable's axis in a cell.",
+    "shared": ["routing", "runs", "networks", "doors", "lint", "materials", "pipes"]
+  },
   "class": "read",
   "cost": "plan",
   "params": {
     "type": "object",
     "properties": {
       "from": {
-        "description": "A start: {at}, {reference_id} of a pipe piece, {reference_id, port} of a device, or {reference_id} of an in-line tank or passive vent (its free end; port when several are free); or several starts (up to 16) as one tree: {reference_id, ports: [..]} (several ports of one device) or an array of starts. The first start routes to the target; each other start routes to the nearest cell of the tree so far and joins it with a junction, so a device with separate ports gets one run, never a loop."
+        "description": "A start: {at}, {reference_id} of a piece, {reference_id, port} of a device; or several starts (see routing/starts)."
       },
       "to": {
         "type": "object",
-        "description": "{at}, {reference_id} of a pipe piece (a long straight: any of its cells, split in the same job), {reference_id, port} of a device, {reference_id} of an in-line tank or passive vent (its free end), or {network_id}: the nearest cell of any piece of that network (network_id may be a piece or device id or {reference_id, port})."
+        "description": "The target: {at}, {reference_id} of a piece, {reference_id, port}, or {network_id} (see routing/ends)."
       },
       "reroute": {"$ref": "defs/reroute.json"},
       "allow_door_keepout": {
         "type": "boolean",
-        "description": "Default false: the search never enters a door's keep-out (its face and the configured band either side inside its rectangle; the route's own end cells released). true lets it, and passes on to the dry run."
+        "description": "true: the search may enter a door keep-out (a warning). Default false (see doors)."
       },
       "reserve_cells": {"$ref": "defs/reserve_cells.json"},
       "reserve_ports": {"$ref": "defs/reserve_ports.json"},
-      "grade": {"type": "string", "enum": ["gas", "liquid", "insulated_gas", "insulated_liquid"]},
+      "grade": {
+        "type": "string",
+        "enum": ["gas", "liquid", "insulated_gas", "insulated_liquid"],
+        "description": "gas, liquid, insulated_gas or insulated_liquid; required."
+      },
       "frames_first": {"$ref": "defs/frames_first.json"},
       "prefer": {"$ref": "defs/prefer.json"},
       "assume_removed": {
@@ -50,20 +55,24 @@
             {"type": "string"},
             {
               "type": "object",
-              "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+              "properties": {
+                "reference_id": {"type": "string", "description": "A device on the network."},
+                "port": {"type": "integer", "minimum": 0, "maximum": 64, "description": "The device's port index."}
+              },
               "required": ["reference_id"],
               "additionalProperties": false
             }
           ],
-          "description": "A network (its id, or {reference_id, port} of a device on it) or a device id."
-        }
+          "description": "A network id, {reference_id, port}, or a device id."
+        },
+        "description": "Passed on: networks and devices whose joining is meant (see networks/bridging)."
       },
       "root": {"type": "string", "description": "Passed on: the device would_split measures against."},
       "join_to": {"$ref": "defs/join_to.json"},
       "join_trunk": {"type": "boolean", "description": "Add a missing tap to join_to (tap_added). Default false."},
-      "allow_split": {"type": "boolean"},
+      "allow_split": {"type": "boolean", "description": "Passed on: let removals split networks. Default false."},
       "allow_split_long": {"type": "boolean", "description": "Default true: long straights met are split in the same job."},
-      "from_id": {"type": "string"},
+      "from_id": {"type": "string", "description": "Passed on: the thing whose slots pay (see materials)."},
       "include_links": {"$ref": "defs/include_links.json"},
       "include_notes": {"$ref": "defs/include_notes.json"},
       "include_network_devices": {"$ref": "defs/include_network_devices.json"},
@@ -71,7 +80,7 @@
         "type": "integer",
         "minimum": 0,
         "maximum": 1024,
-        "description": "Cells the embedded dry run lists, default 5 (200 before 1.14.0); 0 lists none."
+        "description": "Cells the embedded dry run lists; default 5, 0 for none."
       }
     },
     "additionalProperties": false

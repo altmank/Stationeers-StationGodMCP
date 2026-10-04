@@ -74,9 +74,9 @@ internal static class RunConsoleCommandApi
         if (ConsoleBridge.WouldBeDeferredToLaunchQueue(definition))
         {
             throw ApiErrors.Refused("command_not_ready",
-                $"'{key}' needs an initialised GameManager. The console would not run it now: it would be queued " +
-                "and fired later during world init, out of band and with its output attributed to nothing. Retry " +
-                "once the game has finished loading.");
+                $"'{key}' needs a loaded world. The console would not run it now: it would be queued and fired " +
+                "later while the world loads, with its output attributed to nothing. Retry once the game has finished " +
+                "loading.");
         }
 
         return definition;

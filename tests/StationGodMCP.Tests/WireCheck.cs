@@ -24,12 +24,44 @@ internal static class WireCheck
 
     internal static string Old(object? shape) => JsonConvert.SerializeObject(shape, OldSettings);
 
-    /// <summary>The view's wire text; on the way, ShapingChecks holds the shaping writer to it.</summary>
+    /// <summary>
+    /// The view's wire text; on the way, ShapingChecks holds the shaping writer to it. Every error view also carries
+    /// see, the help node its code has in the catalogue, a key the old shapes predate: it is the one added key every
+    /// comparison here takes out (ToolInfoTests holds what it says).
+    /// </summary>
     internal static string New(object? view)
     {
         string text = JsonConvert.SerializeObject(view, ApiJson.Settings);
         ShapingChecks.HoldFor(view, text);
-        return text;
+        JToken parsed = JToken.Parse(text);
+        return WithoutErrorPointers(parsed) ? parsed.ToString(Formatting.None) : text;
+    }
+
+    // Takes see out of every error object ({code, message, see}); true when it took any.
+    private static bool WithoutErrorPointers(JToken token)
+    {
+        bool took = false;
+        if (token is JObject obj)
+        {
+            if (obj["code"] != null && obj["message"] != null && obj.Remove("see"))
+            {
+                took = true;
+            }
+
+            foreach (JProperty property in obj.Properties())
+            {
+                took |= WithoutErrorPointers(property.Value);
+            }
+        }
+        else if (token is JArray array)
+        {
+            foreach (JToken item in array)
+            {
+                took |= WithoutErrorPointers(item);
+            }
+        }
+
+        return took;
     }
 
     internal static void Same(object? oldShape, object? newView) => Assert.Equal(Old(oldShape), New(newView));

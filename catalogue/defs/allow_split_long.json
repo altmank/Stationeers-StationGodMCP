@@ -1,4 +1,4 @@
 {
   "type": "boolean",
-  "description": "Default true: a long straight (3, 5 or 10 cells) the run must join in its middle or cross is split into singles in the same job (same line, grade, colour and owner; removal refund and single costs as split_long_straights) and then joined; warning long_split. false refuses with long_piece."
+  "description": "Default true: split a long straight the run joins or crosses; false refuses (see runs/long_straights)."
 }

@@ -1,4 +1,4 @@
 {
   "type": "object",
-  "description": "{reference_ids: [...]} or {between: [end, end]} (an end is a reference id or {reference_id, port} of a device): replace an old run; leave out from and to."
+  "description": "{reference_ids} or {between: [end, end]}: replace an old run; leave out from and to (see routing/reroute)."
 }

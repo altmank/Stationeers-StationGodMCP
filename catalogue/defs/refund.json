@@ -1,1 +1,1 @@
-{"type": "boolean", "description": "Default true; false is refund_to none."}
+{"type": "boolean", "description": "Default true; false gives nothing back, as refund_to none (see refunds)."}

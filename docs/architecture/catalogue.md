@@ -37,7 +37,8 @@ catalogue/
   errors.json               every error code
   shared.json               reply keys the mod adds to many methods
   defs/<name>.json          shared pieces of argument and reply schemas (refund_to, network handles, item filters, ...)
-  defs/text/<name>.txt      shared description texts (the dry-run lint text, the gas-hold text, ...)
+  help.json                 tool_info's intro and shared topics (see Help and the text rubric)
+  text-allow.json           exceptions to the text rubric, each with its reason
   methods/<method>.json     one file per method
 catalogue.json              assembled from catalogue/, checked in, embedded in the mod and the sidecar
 ```
@@ -50,7 +51,7 @@ SHA-256 of them, and nobody re-serialises it before hashing.
 
 One file per method, because a method is what changes together, and a diff of one JSON file per method reads well.
 Plain JSON, because the mod has no other parser available without new dependencies. In sources only, a `description`
-may be an array whose items are strings or `{"$include": "defs/text/<name>.txt"}`; assembly joins them into one
+may be an array whose items are strings or `{"$include": "<file>.txt"}` (no source uses one at present); assembly joins them into one
 string, so a text shared by dozens of tools is written once.
 
 ## The format
@@ -444,3 +445,72 @@ Where the code disagreed with the text above, the build followed the code; this 
   cannot be told apart by method.
 - The mod reads neither `x-costly` nor `x-entry-views`; the handlers ask with literals and the tests hold the two
   together. `thing_health` is the one method with entry schemas and `x-costly` so far.
+
+## Help and the text rubric
+
+Tool descriptions are short; the long help is read through the `tool_info` tool, one small node at a time. Both come
+from the catalogue sources, and `CatalogueTextTests` holds every text to the rubric below, so `build.ps1` fails on a
+tool, argument or error code that skips any of it.
+
+### Where the text lives
+
+- `methods/<name>.json`: `summary` (two or three lines: what the tool does, the arguments that matter, its safety
+  flags) and `help` {`text`, `topics`, `shared`}. Assembly writes `description` = `summary` plus the last line
+  `More: tool_info {tool: "<name>"}`. A topic is {`summary` (one line), `text`, `subtopics`}; a subtopic is
+  {`summary`, `text`}. `shared` lists the shared topics the tool leads to. Argument descriptions stay in `params`, one
+  line each.
+- `help.json`: `intro` and the shared topics: `topics` (listed by `tool_info {}`: positions, turns, refunds, paging,
+  shaping, truncation, cheats, jobs, gateways, player, networks, errors) and `families` (shared by a family of tools,
+  listed by those tools: runs, routing, removals, swaps, pipes, gas_hold, materials, placing, doors, lint, logic,
+  chips, items, slots, trading, vaults, rockets).
+- `errors.json`: every code's `description` (a plain message: what went wrong, what to do) and `see`
+  ({tool, topic, subtopic}, the node that explains it). The mod adds `see` to every error it answers.
+- `text-allow.json`: exceptions to the banned patterns, each `{rule, text, reason}`. An entry that no longer matches
+  anything fails the lint.
+
+`tool_info` levels: `{}` intro and root topics; `{tool}` its text, its topics and the shared topics it lists;
+`{tool, topic}` or `{topic}` a topic and its subtopics; `{tool, topic, subtopic}` or `{topic, subtopic}` the detail.
+Three levels, no search. It is a catalogue method with `x-runs-in: sidecar`: the MCP server answers it from its
+catalogue (the mod's when the hashes differ) with `ToolHelp` (`src/StationGodMCP.Client`), without the game.
+
+Pointers in text: `(see X)` and `(see X/Y)` name a shared topic and subtopic; `(topic X)` names a topic of the same
+tool; `tool_info {tool: "a", topic: "b"}` names any node.
+
+### The rubric
+
+- Present tense: say what the tool does now. No history.
+- Banned:
+  - version numbers and "since", "new in", "added in", "as of" (`1.4.3+`, `v1.5`);
+  - change words describing the past: "now", "no longer", "was", "were", "used to", "previously", "changed",
+    "renamed", "replaces", "formerly", "anymore"; phrase the text without them;
+  - dates;
+  - code internals: C# type and member names (`Foo.Bar`, `Foo()`), file and file:line citations, Harmony and patch
+    talk, the game's internal method names;
+  - person names (the lint refuses decisions credited to someone; set `STATIONGOD_BANNED_NAMES` to a comma list
+    of names to refuse them too), URLs, em dashes.
+- Allowed: game terms players see (prefab names, logic types, item names), units, JSON argument examples, limits and
+  defaults, safety rules.
+- Each node states its effect, its limits and defaults, and at most one example.
+- A rule a check already enforces is not explained in advance: the error explains it when it fires.
+- Every change note goes to CHANGELOG.md only.
+
+### The lint (`tests/StationGodMCP.Tests/Catalogue/CatalogueTextTests.cs`)
+
+- (a) Each tool description is 2 to 4 lines, at most 440 characters with the More line, ends with the More line, says
+  "Cheat" when its class or a class rule is cheat, and "dry run" when it dry-runs by default.
+- (b) Every `tool_info` node (root, each tool, topic and subtopic) is at most 1,536 bytes; argument descriptions are
+  one line of at most 200 characters; topic summaries one line of at most 100.
+- (c) No text breaks a banned pattern (descriptions, argument descriptions, help, error messages, server
+  instructions, the sidecar's own argument texts), except `text-allow.json` entries; every entry names a rule and a
+  reason and still matches something.
+- (d) Every property in every tool's params, nested ones included, has a description; every tool has help.
+- (e) Every pointer, `shared` entry and error `see` resolves; a family topic a tool's text points at is in its
+  `shared`; no family topic is orphaned.
+- (f) Every error code the mod's code can return (scanned as test 6 scans them) and the sidecar's own codes have a
+  message and a `see`; error messages written in the mod's code name no code internals.
+- (g) `catalogue.json` matches its sources (test 1).
+- (h) The size of tools/list as the MCP server writes it is reported (`STATIONGOD_SIZE_REPORT=<file>` also writes the
+  report and the list) and capped: tool descriptions at most 30,000 bytes, the whole list at most 200,000.
+
+The schema structure (types, enums, bounds, `additionalProperties`) is about 70 KB of the list and is not text; the
+caps hold the rest.

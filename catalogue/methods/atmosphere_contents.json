@@ -1,15 +1,29 @@
 {
   "name": "atmosphere_contents",
-  "description": "What gas or liquid one thing holds: a canister, portable tank, tank, suit, a pipe (its whole pipe network), any landing pad piece (the pad network's one shared atmosphere, source landing_pad_network), a device mounted on a pipe (1.14.0+: a Pipe Analyzer, a gauge: the network of the pipe it sits on, as the game reads it, source mounted_pipe_network), a device (every pipe network it is connected to) and the canisters in its slots (a tank storage, an air conditioner), or a pipe or landing pad network by its own reference id, or an atmosphere_id from water_sources or an earlier reply. Each atmosphere has a source (internal, pipe_network, landing_pad_network, mounted_pipe_network, connected_network or slot) and lists every gas and liquid with amount_mol and, for liquids, liquid_l, plus volume_l, pressure_kpa, temperature_k and total_mol, and a water summary: liquid water (liquid_mol, liquid_l and the hydration drinking it would give), polluted water (polluted_mol, polluted_l) and steam (steam_mol, steam_if_condensed_l). liquid_l comes from each liquid's molar volume; hydration is HydrationBase's 5 per litre of liquid water (55.56 mol per litre); polluted water needs a water purifier first and steam must condense before it can be drunk. Owners have kind item, structure, dynamic (a portable tank: find_things' kinds) or pipe_network. Read only; no gateway is needed.",
+  "summary": "What gas or liquid one thing holds: a canister, tank, suit, pipe network, landing pad network, a device's networks and the canisters in its slots, or an atmosphere_id. With a water summary. Read only.",
+  "help": {
+    "text": "Each atmosphere has a source and lists every gas and liquid with amount_mol (and liquid_l for liquids), plus volume_l, pressure_kpa, temperature_k, total_mol and a water summary. Owners have kind item, structure, dynamic (a portable tank) or pipe_network.",
+    "topics": {
+      "sources": {
+        "summary": "What each source means.",
+        "text": "internal: the thing's own atmosphere. pipe_network: a pipe's whole network, or a network named by its id. landing_pad_network: any landing pad piece, the pad network's one shared atmosphere. mounted_pipe_network: a device mounted on a pipe (a Pipe Analyzer, a gauge), the network of the pipe it sits on, as the game reads it. connected_network: every pipe network a device is connected to. slot: the canisters in its slots (a tank storage, an air conditioner)."
+      },
+      "water": {
+        "summary": "The water summary and drinking.",
+        "text": "liquid water (liquid_mol, liquid_l, and the hydration drinking it gives: 5 per litre, 55.56 mol per litre), polluted water (polluted_mol, polluted_l) and steam (steam_mol, steam_if_condensed_l). liquid_l comes from each liquid's molar volume. Polluted water needs a water purifier first, and steam must condense before it can be drunk."
+      },
+      "refusals": {
+        "summary": "no_atmosphere.",
+        "text": "no_atmosphere: the thing has no internal atmosphere, is not a pipe or landing pad piece, joins no pipe network, and holds nothing with an atmosphere. thing_not_found: nothing has that id; room and world air cannot be read this way (rooms reads room air)."
+      }
+    }
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
-      "reference_id": {
-        "type": "string",
-        "description": "Reference ID of a thing (find_items, list_devices, list_containers), of a pipe or landing pad network, or an atmosphere_id (water_sources)."
-      }
+      "reference_id": {"type": "string", "description": "A thing, a pipe or landing pad network, or an atmosphere_id (water_sources)."}
     },
     "required": ["reference_id"],
     "additionalProperties": false

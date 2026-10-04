@@ -165,7 +165,7 @@ Errors:
 
 | Exception | When |
 | --- | --- |
-| `stationgod.GameError(code, message, data)` | The mod answered with an error. Subclasses for codes callers often branch on: `InvalidArgument`, `NotFound` (`thing_not_found`, `device_not_found`, ...), `SubscriptionRefused` (`subscription_limit`). |
+| `stationgod.GameError(code, message, data, see)` | The mod answered with an error; `see` is the `tool_info` node that explains the code (`{}` when none). Methods the MCP server answers itself (`tool_info`) are not in the table and get no stub. Subclasses for codes callers often branch on: `InvalidArgument`, `NotFound` (`thing_not_found`, `device_not_found`, ...), `SubscriptionRefused` (`subscription_limit`). |
 | `stationgod.Unreachable(message, maybe_ran)` | No answer: no pipe, the connection broke, or no reply in time. `maybe_ran` is true when the call was written and is not a read. |
 | `stationgod.TooOld(message)` | The server cannot do what was asked: a feature not in `welcome.features` (subscriptions), a protocol it does not speak (`unsupported_protocol`), or a method it does not have. |
 

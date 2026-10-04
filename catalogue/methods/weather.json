@@ -1,6 +1,19 @@
 {
   "name": "weather",
-  "description": "The storm schedule, the world's weather events and the season, from the game's own weather manager. Returns world_has_weather, state (the game's WeatherState: None, StormScheduled, Storm, RainScheduled, Rain, SnowScheduled, Snow), current (null, or the scheduled or running event: {id, name, running, starts_in_s (game seconds until it starts; negative once running), length_s, ends_in_s (null unless running)}), days_past, days_since_last (days since the last event ended), cooldown_days (the cooldown drawn when it ended), world_start_delay_days (7 x the difficulty's starting weather multiplier), can_schedule_now and schedulable_in_days (whole days until both day rules pass: days_since_last > cooldown_days and days_past > world_start_delay_days; 0 once they do). The game picks an event at random the moment both pass and no event is current, and draws its start delay and length then, so starts_in_s is exact from that moment; while an event is current nothing new schedules, and when it ends days_since_last goes to 0 and a new cooldown is drawn. events: every weather event this world can roll, {id, name, cooldown_days_min, cooldown_days_max (the largest cooldown the game can actually draw), start_delay_s_min, start_delay_s_max, duration_s_min, duration_s_max, temperature_offset_day_k, temperature_offset_night_k (null when none or a curve), solar_ratio, active_in_orbit}. season: null before the orbit loads, else {true_anomaly_deg (the orbit angle, 0 at perihelion, advancing evenly in time), year_length_days (solar days per orbit, as the game counts days), solar_energy_percent (as planet reports it), day_of_year (solar days since perihelion, fractional)}. Terraforming Reloaded can stop a stripped world scheduling its own storms (its own setting); this does not model that. Read only; no gateway is needed.",
+  "summary": "The storm schedule, the world's weather events and the season: what is coming, when, and when the next event can schedule. Read only.",
+  "help": {
+    "text": "Returns world_has_weather, state (None, StormScheduled, Storm, RainScheduled, Rain, SnowScheduled, Snow), current, days_past, days_since_last, cooldown_days, world_start_delay_days, can_schedule_now, schedulable_in_days, events and season.",
+    "topics": {
+      "schedule": {
+        "summary": "How the game schedules an event.",
+        "text": "current: null, or {id, name, running, starts_in_s (negative once running), length_s, ends_in_s}. An event can schedule once days_since_last > cooldown_days and days_past > world_start_delay_days (7 times the difficulty's starting weather multiplier); schedulable_in_days counts the whole days until both pass. The game then picks an event at random and draws its start delay and length, so starts_in_s is exact from that moment. While an event is current nothing new schedules; when it ends days_since_last goes to 0 and a new cooldown is drawn."
+      },
+      "events": {
+        "summary": "The events a world can roll, and the season.",
+        "text": "events [{id, name, cooldown_days_min, cooldown_days_max (the largest the game can draw), start_delay_s_min, start_delay_s_max, duration_s_min, duration_s_max, temperature_offset_day_k, temperature_offset_night_k, solar_ratio, active_in_orbit}]. season: null before the orbit loads, else {true_anomaly_deg (0 at perihelion), year_length_days, solar_energy_percent, day_of_year}. Terraforming Reloaded can stop a stripped world scheduling storms by its own setting; this tool does not model that."
+      }
+    }
+  },
   "class": "read",
   "cost": "instant",
   "params": {"type": "object", "properties": {}, "additionalProperties": false},

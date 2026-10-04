@@ -2,6 +2,6 @@
   "type": "array",
   "minItems": 1,
   "maxItems": 1024,
-  "items": {"description": "[x, y, z] or {x, y, z} in metres; snapped to the small cell it falls in."},
-  "description": "Every cell of the run, each a neighbour of the one before."
+  "items": {"description": "[x, y, z] in metres, snapped to its 0.5 m cell."},
+  "description": "Every cell of the run, each next to the one before (see runs/forms)."
 }

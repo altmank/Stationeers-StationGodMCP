@@ -1,1 +1,1 @@
-{"type": "boolean"}
+{"type": "boolean", "description": "Extra cost for room cells on no face plane. Default false."}

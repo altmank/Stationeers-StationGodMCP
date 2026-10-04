@@ -1,1 +1,4 @@
-{"type": "boolean"}
+{
+  "type": "boolean",
+  "description": "Only cells inside a frame cell or on its surface. Default false (see routing/rules)."
+}

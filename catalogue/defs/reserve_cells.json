@@ -1,6 +1,6 @@
 {
   "type": "array",
   "maxItems": 1024,
-  "items": {"description": "[x, y, z] or {x, y, z} in metres."},
-  "description": "Cells the search treats as blocked (kept free for another run); a cell that is one of this route's own ends is released."
+  "items": {"description": "[x, y, z] in metres, snapped to its 0.5 m cell."},
+  "description": "Cells the search treats as blocked, kept for another run (see routing/reserve)."
 }

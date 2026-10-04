@@ -1,6 +1,44 @@
 {
   "name": "move_gas",
-  "description": "A cheat tool: it bypasses the game's physics. Gas and liquid jump between atmospheres with no pipe, pump or valve between them, no flow time and no power; nothing a player can build does this. Move gas and liquid from one atmosphere to another, or delete it, with the game's own gas calls: each gas leaves with its own share of its heat and arrives with it. from and to are each a reference id: a thing with an internal atmosphere (canister, portable tank, tank, suit), a pipe (its network), any landing pad piece (the pad network's shared atmosphere: every piece of one pad holds the same gas; content type all, so it holds liquids and never changes their state), a pipe or landing pad network id, or an atmosphere id as atmosphere_contents reports; a device without its own atmosphere is refused (no_atmosphere), and so is a single world cell (refused). A room is {\"room_id\": \"<id>\"} (room_id as the rooms tool reports it) or {\"room_of\": \"<reference id>\"} (the room that thing is in, e.g. the player's id for the current room; an item in a slot is in the room of its outermost holder): every cell of the closed room with air of its own (cells without are left out; none at all is no_atmosphere). From a room, gases is required (a room's breathable air is never emptied by omission) and each named gas is taken from every cell in proportion to what the cell holds (amount_mol caps the room's total), each with its own share of energy, in one atmospherics tick; into a room, each gas is spread over the cells by volume with its energy, so the room is at once where the game's mixing would settle it (no one-cell pressure spike). A room has no burst rating; the other side keeps every check. Into a room, liquid the room's air would lose is refused (would_burst; force moves it anyway): a room's cells freeze any amount out of their air (ice per 50 mol in a cell, smaller amounts held out of the air), so the move is refused when more would freeze at the settled temperature than before, or when an arriving liquid would sit under its minimum liquid pressure (Water 6.3 kPa of gas around it) in a room without the heat to boil it all: it keeps evaporating and cooling the room until the rest freezes. from: \"planet\" with delete: true and named gases takes those gases out of the planet's own air (the mix Terraforming Reloaded reads), and out of its clouds and ice caps; it needs Terraforming Reloaded (terraforming_mod_required without it, since the stock game keeps the planet read-only; the arguments are checked first, so a malformed call is invalid_argument either way), refuses without gases, and with no amount_mol repeats for 30 ticks to take back what outdoor cells hand back; the reply is queued, read the planet tool for the result. Pass to, or delete: true to destroy the gas. gases: names as atmosphere_contents reports them (Oxygen, Nitrogen, CarbonDioxide, NitrousOxide, LiquidOxygen, Steam...); omit for every gas and liquid (not from a room). amount_mol: moles of each listed gas, capped at what is there; omit for all of it. Joined sets (joined, default true): the game mixes some atmospheres to one composition every tick, so gas taken from one flows back from the others. The joins followed: a Gas Tank Storage's canisters with its pipe networks; a portables connector's tank with its gas network (gases) and liquid network (liquids); a connector pipe's tank with its network; a portable tank with the canister in its slot; a tank or other internal-atmosphere device with its network; a hydroponics tray with its networks; an open valve's two networks. From a joined set, each gas is taken from every member in proportion to what it holds (amount_mol caps the set's total), each with its own share of energy, in the same tick; a liquid follows the joins that carry liquids. Into a joined set, the gas goes into the named atmosphere and the game spreads it. to inside from's set is refused (same_joined_set). joined: false moves from and to the named atmospheres only. Burst check (refused with would_burst, predicted and limit kPa in the message; force skips it): each side's settled pressure, its members pooled as if mixed, against every member's rating (a canister's MaxPressure or a portable tank's MaxSetting across its walls, or each pipe network member's MaxPressure at its cells, each against the pressure outside; a landing pad's pieces at the gas pipe rating); things without a rating are not checked. The receiving side is also refused when the move makes it worse: liquid over 2% of a gas pipe network's volume (the game damages it every tick; the liquid spreads over the members joined for liquids by volume), gas or liquid freezing in a network at the settled temperature, and the settled pressure once arriving liquids have boiled (where the atmosphere changes state: not a landing pad), each liquid turned into its gas and paying its latent heat. Timing: the game only changes gas on its atmospherics thread, so the move is queued and applied at the start of the next atmospherics tick (about half a second; never while paused). The reply is the prediction from last tick's values: {transfer_id, status: queued, predicted: true, joined, from, to (null when deleted), deleted, moved, error: null}. from and to are {members: [{owner {kind (thing, pipe_network or landing_pad_network), reference_id, prefab_name, display_name}, atmosphere_id, before, after}] (the named atmosphere first), total {before, after, after_boiling} (the members pooled: pressure and temperature as if mixed; after_boiling is after once every liquid that can boil has boiled; null when nothing would boil, when any one of them would not all boil (it stays liquid at the pressure after, or its boiling would cool it under 0.5 K above its freezing point, where the game freezes the last of it out of a room; one such liquid, e.g. water beside boiling liquid nitrogen, makes it null for the whole side, and the pressure check after boiling is then skipped for that side), or when the atmosphere never changes state), joined_by: [{reference_id, prefab_name, display_name}] (the joining devices), room (null, or for a room {room_id, room_type, cell_count, cells_with_air, volume_l}: then members is empty and total is the room's air over its cells with air, so total.before.pressure_kpa and total.after.pressure_kpa are the room's pressure before and after)}; before and after are {pressure_kpa, temperature_k, total_mol, gases: [{gas, amount_mol}]}; moved is [{gas, amount_mol, energy_j}] summed over the members. dry_run: true (1.3.5+): the same prediction with the same checks (a refusal is the same error), nothing queued: status dry_run, transfer_id null; not with from planet. Call again with only transfer_id for the outcome: status queued (also while it is being applied), applied (the same shape from live values, predicted: false) or failed (error {code, message}: atmosphere_not_found when an atmosphere was destroyed before the tick, nothing_to_move when the source held none of the gases by then, move_failed when the game's gas call threw); the last 64 are kept, so transfer_not_found means an id never issued or older than those. To undo, move each gas back by amount_mol; it returns at the other side's temperature by then, so energy_j tells you how far that differs. Errors: invalid_argument (also from and to the same atmosphere or room), unknown_gas, atmosphere_not_found, no_atmosphere, refused, room_not_found, not_in_room, thing_not_found (room_of), not_ready, same_joined_set, joined_too_large (over 64 joined atmospheres), nothing_to_move, would_burst, busy (64 moves waiting), transfer_not_found, terraforming_mod_required (from planet), not_host (multiplayer clients cannot move gas). No gateway is needed.",
+  "summary": "Cheat: move gas and liquid between atmospheres or rooms, or delete it, with no pipe, pump or power; it bypasses the game's physics. Ask the user first. dry_run predicts; applied at the next atmospherics tick.",
+  "help": {
+    "text": "Each gas leaves with its own share of its heat and arrives with it. Give from and to (or delete: true), gases and amount_mol. Burst, liquid, freezing and boiling checks refuse a move that would harm the receiving side; force skips the burst check only. Host only.",
+    "topics": {
+      "places": {
+        "summary": "What from and to can name.",
+        "text": "A reference id: a thing with an internal atmosphere (canister, portable tank, tank, suit), a pipe (its network), any landing pad piece (the pad network's shared atmosphere, which holds liquids without changing their state), a pipe or landing pad network id, or an atmosphere id from atmosphere_contents. A room: {\"room_id\": \"<id>\"} or {\"room_of\": \"<reference id>\"}. \"planet\", from only. A device without its own atmosphere is no_atmosphere; a single world cell is refused (name its room); from and to the same is invalid_argument."
+      },
+      "rooms": {
+        "summary": "Moving from and into a room.",
+        "text": "A room is every cell of the closed room with air of its own (none at all is no_atmosphere). From a room, gases is required (its breathable air is never emptied by leaving gases out) and each gas is taken from every cell in proportion, in one tick. Into a room, each gas is spread over the cells by volume, settling it at once where the game's mixing would. A room has no burst rating. Into a room, liquid the room's air would lose is would_burst (force moves it anyway): more freezing out than before, or a liquid under its minimum liquid pressure (Water 6.3 kPa) without the heat to boil it all."
+      },
+      "planet": {
+        "summary": "Taking gas out of the planet.",
+        "text": "from \"planet\" with delete: true and named gases takes those gases out of the planet's air (the mix Terraforming Reloaded reads) and out of its clouds and ice caps. It needs Terraforming Reloaded (terraforming_mod_required; the stock game keeps the planet read-only). Without amount_mol it repeats for 30 ticks to take back what outdoor cells hand back. The reply is queued: read planet for the result. No dry run."
+      },
+      "joined": {
+        "summary": "Joined sets the game mixes every tick.",
+        "text": "joined (default true) follows the joins the game mixes to one composition every tick: a Gas Tank Storage's canisters and its networks; a portables connector's tank and its gas and liquid networks; a connector pipe's tank and its network; a portable tank and the canister in it; a tank or other device with its network; a hydroponics tray with its networks; an open valve's two networks. From a set, each gas comes from every member in proportion; into a set, it goes into the named atmosphere and the game spreads it. to inside from's set is same_joined_set; over 64 members is joined_too_large; joined: false uses the named atmospheres only."
+      },
+      "checks": {
+        "summary": "Burst, liquid, freezing and boiling checks.",
+        "text": "would_burst (predicted and limit kPa in the message; force skips it): each side's settled pressure, members pooled, against every member's rating (a canister's MaxPressure, a portable tank's MaxSetting, each pipe's rating at its cells), each against the pressure outside; things without a rating are not checked. The receiving side is also refused when the move makes it worse: liquid over 2% of a gas pipe network's volume (the game damages it every tick), gas or liquid freezing at the settled temperature, or the pressure once arriving liquids have boiled."
+      },
+      "timing": {
+        "summary": "The queue, transfer_id polls and undo.",
+        "text": "The game changes gas only on its atmospherics thread, so a move is queued and applied at the start of the next atmospherics tick (about half a second; never while paused). The reply predicts from last tick's values: status queued, transfer_id. Call again with only transfer_id: queued, applied (the same shape from live values) or failed (atmosphere_not_found, nothing_to_move, move_failed). The last 64 are kept; up to 64 wait (busy beyond). To undo, move each gas back by amount_mol; energy_j says how far its temperature differs."
+      },
+      "refusals": {
+        "summary": "The move_gas errors and what to do.",
+        "text": "unknown_gas: use names as atmosphere_contents gives them. atmosphere_not_found, no_atmosphere and refused (a single world cell: name its room): see places. same_joined_set and joined_too_large: see joined. would_burst: see checks; force skips the burst check. nothing_to_move: the source holds none of the gases. busy: 64 moves already wait (is the game paused?). transfer_not_found: an id never issued or older than the last 64. terraforming_mod_required: see planet. not_host: only the host moves gas."
+      },
+      "reply": {
+        "summary": "The shape of from, to and moved.",
+        "text": "{transfer_id, status, predicted, joined, from, to, deleted, moved, error}. from and to: {members [{owner, atmosphere_id, before, after}] (the named one first), total {before, after, after_boiling}, joined_by (the joining devices), room}. before and after: {pressure_kpa, temperature_k, total_mol, gases}. after_boiling is null when nothing boils, a liquid would not all boil, or the atmosphere never changes state. For a room, members is empty and total is the room's air. moved: [{gas, amount_mol, energy_j}]."
+      }
+    },
+    "shared": ["cheats", "pipes"]
+  },
   "class": "cheat",
   "x-class-when": [
     {"when": {"dry_run": {"equals": true}}, "class": "read"},
@@ -16,15 +54,15 @@
           {
             "type": "object",
             "properties": {
-              "room_id": {"type": "string", "description": "A room's room_id, as the rooms tool reports it."},
-              "room_of": {"type": "string", "description": "Reference id of a thing in the room (the player: the current room)."}
+              "room_id": {"type": "string", "description": "A room's room_id, as the rooms tool gives it."},
+              "room_of": {"type": "string", "description": "A thing in the room (the player: the current room)."}
             },
             "minProperties": 1,
             "maxProperties": 1,
             "additionalProperties": false
           }
         ],
-        "description": "The source: a reference id (a thing with an internal atmosphere, a pipe, a landing pad piece, a pipe or landing pad network or an atmosphere), \"planet\" (with delete: true and gases), or a room: {\"room_id\": \"<id>\"} or {\"room_of\": \"<reference id>\"} (needs gases)."
+        "description": "The source: a reference id, \"planet\" (with delete and gases), or a room {room_id} or {room_of}."
       },
       "to": {
         "oneOf": [
@@ -32,37 +70,31 @@
           {
             "type": "object",
             "properties": {
-              "room_id": {"type": "string", "description": "A room's room_id, as the rooms tool reports it."},
-              "room_of": {"type": "string", "description": "Reference id of a thing in the room (the player: the current room)."}
+              "room_id": {"type": "string", "description": "A room's room_id, as the rooms tool gives it."},
+              "room_of": {"type": "string", "description": "A thing in the room (the player: the current room)."}
             },
             "minProperties": 1,
             "maxProperties": 1,
             "additionalProperties": false
           }
         ],
-        "description": "The target: a reference id, same forms, or a room: {\"room_id\": \"<id>\"} or {\"room_of\": \"<reference id>\"}. Omit and pass delete: true to destroy the gas."
+        "description": "The target: a reference id or a room; leave out with delete: true."
       },
       "delete": {"type": "boolean", "description": "Destroy the gas instead of moving it. Default false."},
       "gases": {
         "type": "array",
         "minItems": 1,
         "items": {"type": "string"},
-        "description": "Gas names, e.g. [\"Oxygen\"]; omit for all gases and liquids."
+        "description": "Gas names as atmosphere_contents gives them ([\"Oxygen\"]); left out, every gas and liquid."
       },
       "amount_mol": {
         "type": "number",
         "exclusiveMinimum": 0,
-        "description": "Moles of each listed gas, capped at what is there; omit for all."
+        "description": "Moles of each gas, capped at what is there; left out, all of it."
       },
-      "force": {"type": "boolean", "description": "Move even if an end would pass its burst rating. Default false."},
-      "joined": {
-        "type": "boolean",
-        "description": "Treat atmospheres the game mixes every tick as one unit. Default true; false moves from and to the named atmospheres only."
-      },
-      "dry_run": {
-        "type": "boolean",
-        "description": "Predict and check only; nothing is queued (status dry_run, transfer_id null). Default false."
-      },
+      "force": {"type": "boolean", "description": "Move even past a burst rating. Default false."},
+      "joined": {"type": "boolean", "description": "Treat atmospheres the game mixes every tick as one. Default true."},
+      "dry_run": {"type": "boolean", "description": "Predict and check only; nothing is queued. Default false."},
       "transfer_id": {"type": "string", "description": "Alone: the outcome of an earlier move."}
     },
     "additionalProperties": false

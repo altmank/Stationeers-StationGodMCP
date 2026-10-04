@@ -1,18 +1,22 @@
 {
   "name": "plan_removal",
-  "description": "Price a removal without doing it: the dry run of remove_cables, remove_pipes or remove_chutes (kind cable, the default, pipe or chute) under a read-only name. reference_ids, waypoints, cells (positions in metres) or network_id (every piece of that network, up to 1024). Returns the remove tools' own report: removals (each piece with its refund), materials.refund (the total remove_* would give back), would_split (networks that would fall apart, ports left joined to nothing), networks_before and networks_after, problems (cannot_remove...) and warnings. Changes nothing, ever. With no player (no local player, and not exactly one connected player), no from_id and refund_to \"source\", no_local_player is only a warning here (1.3.1+): the refund is priced, and a real remove run with refund_to \"source\" needs from_id; the default refund_to skips the inventory there and gives to the ground. Burnt cables are priced as remove_cables removes them (nothing back). Host only. No gateway is needed. would_split (1.3.0+) lists per resulting network its devices, the root (root, else every supplier on it) and cut_off (the devices cut off from it). root: the device to measure against. Network handles (1.3.0+): wherever a network id is taken (network_id, to.network_id, join_to, allow_bridge entries) a reference id of any piece or device on the network, or {reference_id, port} of a device port, works too and is resolved to the current id when the call runs (ids change after almost every edit); the reply lists each in resolved_networks [{argument, given, network_id}]. In allow_bridge a bare device id stays the device (its ports may share a network); name one of its networks with {reference_id, port}. 1.14.0+: a chute network's riding items (networks_before items) are listed only with include_network_devices too (items_riding counts them); a brief job poll's log counts the placed pieces (placed_count) instead of naming each (created_ids holds every id built; verbose names them).",
+  "summary": "Price a removal without doing it: the dry run of remove_cables, remove_pipes or remove_chutes (kind) for ids, cells or a whole network. Changes nothing, ever. Read only.",
+  "help": {
+    "text": "Returns the remove tools' own report: removals with their refunds, materials.refund (the total), would_split, networks_before and networks_after, problems and warnings. With no player, no from_id and refund_to source, no_local_player is a warning here: the refund is priced, and a real run would need from_id. Burnt cables price at nothing back.",
+    "shared": ["removals", "networks", "refunds", "materials"]
+  },
   "class": "read",
   "cost": "plan",
   "params": {
     "type": "object",
     "properties": {
-      "kind": {"type": "string", "enum": ["cable", "pipe", "chute"], "description": "Default cable."},
+      "kind": {"type": "string", "enum": ["cable", "pipe", "chute"], "description": "cable (default), pipe or chute."},
       "reference_ids": {
         "type": "array",
         "minItems": 1,
         "maxItems": 1024,
         "items": {"type": "string"},
-        "description": "Pieces to price. Give one of reference_ids, waypoints, cells or network_id."
+        "description": "Pieces to price; or give waypoints, cells or network_id."
       },
       "waypoints": {
         "type": "array",
@@ -33,12 +37,15 @@
           {"type": "string"},
           {
             "type": "object",
-            "properties": {"reference_id": {"type": "string"}, "port": {"type": "integer", "minimum": 0, "maximum": 64}},
+            "properties": {
+              "reference_id": {"type": "string", "description": "A device or piece on the network."},
+              "port": {"type": "integer", "minimum": 0, "maximum": 64, "description": "The device's port index."}
+            },
             "required": ["reference_id"],
             "additionalProperties": false
           }
         ],
-        "description": "Every piece of this network: its id, a piece or device on it, or {reference_id, port}."
+        "description": "Every piece of this network, up to 1024 (see networks)."
       },
       "root": {
         "type": "string",
@@ -48,18 +55,10 @@
       "from_id": {"$ref": "defs/from_id.json"},
       "refund": {"$ref": "defs/refund.json"},
       "refund_to": {"$ref": "defs/refund_to.json"},
-      "include_links": {
-        "type": "boolean",
-        "description": "Default false (1.7.0+): links has counts only; true lists every added and lost link."
-      },
-      "include_notes": {"type": "boolean", "description": "Default false (1.7.0+): notes is left out."},
+      "include_links": {"type": "boolean", "description": "true: list every added and lost link; default counts only."},
+      "include_notes": {"type": "boolean", "description": "true: include notes, the tool's fixed explanations. Default false."},
       "include_network_devices": {"$ref": "defs/include_network_devices.json"},
-      "limit": {
-        "type": "integer",
-        "minimum": 0,
-        "maximum": 1024,
-        "description": "Cells listed, default 5 (200 before 1.14.0); 0 lists none."
-      }
+      "limit": {"type": "integer", "minimum": 0, "maximum": 1024, "description": "Pieces listed; default 5, 0 for none."}
     },
     "additionalProperties": false
   },

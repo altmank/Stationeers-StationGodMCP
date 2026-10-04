@@ -25,7 +25,7 @@ public sealed class AtmosphereSourceTests
         {
             if (method.GetProperty("name").GetString() == "atmosphere_contents")
             {
-                description = method.GetProperty("description").GetString()!;
+                description = CatalogueChecks.CatalogueTextTests.DocsOf("atmosphere_contents");
             }
         }
 

@@ -1,21 +1,17 @@
 {
   "name": "container_contents",
-  "description": "Show the slots of any one thing in the world and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Works whether or not the thing is on a data network. position and distance_m are where the thing is in the world: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Read only; no gateway is needed.",
+  "summary": "Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Read only.",
+  "help": {
+    "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes.",
+    "shared": ["slots", "player"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
-      "reference_id": {
-        "type": "string",
-        "description": "Reference ID of any thing (from find_items, list_containers or list_devices), or 'player' for the player."
-      },
-      "depth": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 6,
-        "description": "How many levels of nested slots to show, default 3."
-      }
+      "reference_id": {"type": "string", "description": "Any thing's reference id, or 'player' for the player."},
+      "depth": {"type": "integer", "minimum": 1, "maximum": 6, "description": "Levels of nested slots to show; default 3."}
     },
     "required": ["reference_id"],
     "additionalProperties": false

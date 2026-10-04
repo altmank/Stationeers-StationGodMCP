@@ -29,6 +29,10 @@ internal sealed class DeclaredArguments
     internal ArgumentNames? NamesOf(string method) =>
         _catalogue.TryGet(method, out CatalogueMethod? found) ? found.ArgumentNames : null;
 
+    /// <summary>Whether the catalogue marks the method as answered by the MCP server, not the mod.</summary>
+    internal bool RunsInSidecar(string method) =>
+        _catalogue.TryGet(method, out CatalogueMethod? found) && found.RunsInSidecar;
+
     /// <summary>Refuses (invalid_argument) a request that gives an argument its method does not take.</summary>
     internal void Check(string method, JObject? parameters)
     {
@@ -47,6 +51,12 @@ internal sealed class DeclaredArguments
             }
 
             problems ??= new StringBuilder();
+            if (_catalogue.TryGet(method, out CatalogueMethod? declared) && declared.ServerOnlyArgument(property.Name) is string note)
+            {
+                problems.Append(note).Append(' ');
+                continue;
+            }
+
             string? nearest = NearestName.Of(property.Name, names.Sorted);
             problems.Append(nearest != null
                 ? $"Unknown argument '{property.Name}'; did you mean '{nearest}'? "

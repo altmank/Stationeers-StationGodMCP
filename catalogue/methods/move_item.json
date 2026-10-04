@@ -1,22 +1,36 @@
 {
   "name": "move_item",
-  "description": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: slot to slot, never through the world, so ice and other perishables are never loose in the air. A whole item moves with OnServer.MoveToSlot (the source container's bookkeeping, e.g. a vending machine's, is kept by the game); part of a stack is split straight into the slot (Stackable.SplitStack, as the Stacker does); a whole stack can join a matching stack in the slot (Stackable.Merge). One move: reference_id (the item), optional quantity (take that many off the stack; the rest stays; an item that is not a stack, e.g. a water packet or a canister, moves whole and counts as 1 whatever it holds), to_id (the thing holding the slot: a container, a belt, a suit, a player) and to_slot (the slot index as container_contents gives it for any thing, and inspect_slots for a device, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it); only slots a player can reach are used: a hidden slot (not interactable in the game, e.g. a cable coil's internal slot, whose contents the game destroys with the coil, or a vending machine's store) is refused, and auto also skips slots the game's quick moves skip (not swappable); an item may still be moved out of a hidden slot (meant to rescue one put there by mistake, but it also unpacks a package's items one by one and takes items out of a vending machine's store, and since nothing can be put back into a hidden slot such a move cannot be undone); a grower's plant and fertiliser slots follow its hand interactions instead, hidden or not (a planter's slots and a hydroponics station's fertiliser slots are hidden in the inventory window but filled by hand): a seed or plant into a grower's plant slot (a hydroponics tray, planter, station or device) is planted as a player plants it: one unit is used off the stack and a new plant grows in the slot with that unit's genes, so quantity must be 1 (or the stack hold 1), an occupied plant slot is refused slot_occupied and auto never merges into one; a plant slot takes nothing but a seed or plant (fertiliser or any other item slot_refuses: a player's hand sends fertiliser to the grower's fertiliser slot, and auto puts it there); a grower's fertiliser slot takes only fertiliser, one unit (quantity 1) into an empty slot, as a player adds it (anything else slot_refuses, a seed or plant because the game would take it there for the grower's plant; occupied slot_occupied), and auto never puts anything else there nor merges into it; a plant growing in a plant slot is never taken out (planted: a player only harvests or clears it), though a seed bag left in one may be; merge (default true) lets the items join a matching stack. Or moves: up to 64 such objects, applied in order. A move returns {index, ok, reference_id, from {id, slot} (null when the item lay in the world), to {id, slot}, quantity_moved, merged_into (the stack it joined, or null), destination_reference_id (the stack now in the slot: the item, the new stack a split made, the plant planting made, or merged_into), warning (null, or the game's error when one of its calls threw part way but the slot holds the result: the move is done and quantity_moved is read back, so do not repeat it)}; a refused move {index, ok: false, reference_id, error {code, message}} and nothing is changed for it. The batch form returns results, count, success_count and error_count; the one-move form returns the move itself, or the refusal as the error. Refusals: thing_not_found (item or destination gone), not_movable (a structure), invalid_destination (the destination is the item or inside it), no_slots, slot_not_found, same_slot, slot_locked (source or destination), slot_refuses (the game's slot rules: a hidden slot, the slot class, CanEnter with the game's reason, or a draggable such as a crate or portable tank, which the game only drags into a slot), slot_occupied (by something it cannot join, or merge false, or a grower's plant or fertiliser slot already filled), planted (the item is a plant growing in a grower's plant slot), partial_merge (part of a stack can only go into an empty slot), stack_full (the joined stack would pass its maximum), no_free_slot, invalid_argument (e.g. more than the stack holds, or a quantity other than 1 for an item that is not a stack), move_failed (the game did not do it, with its error when it threw; read the slots), not_host (multiplayer clients cannot move items). No gateway is needed.",
+  "summary": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose.",
+  "help": {
+    "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it.",
+    "topics": {
+      "rules": {
+        "summary": "Stacks, merging, hidden slots, vending machines.",
+        "text": "A whole item moves as the game moves it (a vending machine keeps its own bookkeeping); part of a stack splits straight into the slot, as the Stacker does; a whole stack can join a matching stack (merge, default true). An item that is not a stack (a water packet, a canister) moves whole and counts as 1. auto skips slots the game's quick moves skip. An item may be moved out of a hidden slot (to rescue one put there by mistake); that also unpacks a package's items one by one and takes items out of a vending machine's store, and nothing goes back into a hidden slot, so such a move cannot be undone."
+      },
+      "reply": {
+        "summary": "What a move answers.",
+        "text": "{index, ok, reference_id, from {id, slot} (null for an item in the world), to {id, slot}, quantity_moved, merged_into, destination_reference_id (the stack in the slot after the move), warning}. warning is the game's error when one of its calls failed part way but the slot holds the result: the move is done, so do not repeat it. The batch form adds count, success_count and error_count."
+      }
+    },
+    "shared": ["slots"]
+  },
   "class": "write",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
-      "reference_id": {"type": "string", "description": "Reference ID of the item to move."},
+      "reference_id": {"type": "string", "description": "The item to move."},
       "quantity": {
         "type": "integer",
         "minimum": 1,
-        "description": "How many to take off the stack; omit for the whole item.",
+        "description": "How many to take off the stack; left out, the whole item.",
         "maximum": 2147483647
       },
-      "to_id": {"type": "string", "description": "Reference ID of the thing holding the destination slot."},
+      "to_id": {"type": "string", "description": "The thing holding the destination slot: a container, belt, suit or player."},
       "to_slot": {
         "oneOf": [{"type": "integer", "minimum": 0}, {"type": "string", "enum": ["auto"]}],
-        "description": "Slot index, or \"auto\"."
+        "description": "The slot index, or \"auto\"."
       },
       "merge": {"type": "boolean", "description": "Let the items join a matching stack in the slot. Default true."},
       "moves": {
@@ -26,11 +40,14 @@
         "items": {
           "type": "object",
           "properties": {
-            "reference_id": {"type": "string"},
-            "quantity": {"type": "integer", "minimum": 1},
-            "to_id": {"type": "string"},
-            "to_slot": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "string", "enum": ["auto"]}]},
-            "merge": {"type": "boolean"}
+            "reference_id": {"type": "string", "description": "The item to move."},
+            "quantity": {"type": "integer", "minimum": 1, "description": "How many to take off the stack."},
+            "to_id": {"type": "string", "description": "The thing holding the destination slot."},
+            "to_slot": {
+              "oneOf": [{"type": "integer", "minimum": 0}, {"type": "string", "enum": ["auto"]}],
+              "description": "The slot index, or \"auto\"."
+            },
+            "merge": {"type": "boolean", "description": "Let the items join a matching stack. Default true."}
           },
           "required": ["reference_id", "to_id", "to_slot"],
           "additionalProperties": false

@@ -1,48 +1,44 @@
 {
   "name": "set_ic_pins",
-  "description": "Set an IC Housing's device pins d0..d5, as turning its screws with a screwdriver would: each listed pin gets a device reference ID, or null to clear it, and pins not listed keep their device. When the housing is on a data network, a device must be on that network, because the chip only reaches a pin's device there; otherwise the call is refused unless allow_off_network is true. A housing with no data network reaches any pinned device, so any device is accepted. Also refused: a device outside the gateway's scope, the housing itself, and a thing with no readable logic. Every pin is checked before any is written, so a refused call changes nothing. A running chip uses the new devices from its next instruction; nothing is recompiled or reset, and a multiplayer host sends the new pins to clients. Returns what changed and all six pins as get_ic_status lists them. Works on rocket IC Housings too; suits and other worn circuit holders are refused. Refusal codes: not_ic_housing (not an IC Housing, e.g. a suit), device_not_found (the housing, or a pin's device, is outside the scope), thing_not_found (nothing has a pin's id), not_logic_device (a pin's id is not a device: a frame, a pipe), logic_not_readable (a device with no readable logic), not_on_data_network (off the housing's data network without allow_off_network), invalid_argument (bad pins object, pin name or id, a pin listed twice, the housing itself).",
+  "summary": "Set an IC Housing's pins d0 to d5 as a screwdriver does: a device id per pin, null to clear. Every pin is checked before any is written.",
+  "help": {
+    "text": "Pins left out keep their device. A running chip uses the new devices from its next instruction; nothing recompiles or resets, and a multiplayer host sends the pins to clients. Returns what it altered and all six pins as get_ic_status lists them. Rocket IC Housings work too; suits and other worn holders are not_ic_housing.",
+    "topics": {
+      "network": {
+        "summary": "Devices off the housing's data network.",
+        "text": "On a data network, the chip reaches a pin's device only on that network, so a device off it is refused (not_on_data_network) unless allow_off_network is true; then reachable is false and the pin reads as unset until the device is cabled in. A housing with no data network reaches pinned devices anywhere."
+      },
+      "refusals": {
+        "summary": "Why a pin is refused.",
+        "text": "device_not_found: the housing or a pin's device is outside the scope. thing_not_found: nothing has a pin's id. not_logic_device: the id is not a device (a frame, a pipe). logic_not_readable: a device with no readable logic. not_on_data_network: see network. invalid_argument: a bad pins object, pin name or id, a pin listed twice, or the housing itself. A refused call writes no pin."
+      }
+    },
+    "shared": ["gateways", "chips"]
+  },
   "class": "write",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
       "gateway_id": {"$ref": "defs/gateway_id.json"},
-      "reference_id": {"type": "string", "description": "IC Housing reference ID returned by list_devices."},
+      "reference_id": {"type": "string", "description": "The IC Housing (list_devices)."},
       "pins": {
         "type": "object",
         "properties": {
-          "d0": {
-            "type": ["string", "null"],
-            "description": "Device reference ID (from list_devices) to put on this pin, or null to clear it."
-          },
-          "d1": {
-            "type": ["string", "null"],
-            "description": "Device reference ID (from list_devices) to put on this pin, or null to clear it."
-          },
-          "d2": {
-            "type": ["string", "null"],
-            "description": "Device reference ID (from list_devices) to put on this pin, or null to clear it."
-          },
-          "d3": {
-            "type": ["string", "null"],
-            "description": "Device reference ID (from list_devices) to put on this pin, or null to clear it."
-          },
-          "d4": {
-            "type": ["string", "null"],
-            "description": "Device reference ID (from list_devices) to put on this pin, or null to clear it."
-          },
-          "d5": {
-            "type": ["string", "null"],
-            "description": "Device reference ID (from list_devices) to put on this pin, or null to clear it."
-          }
+          "d0": {"type": ["string", "null"], "description": "A device id for this pin, or null to clear it."},
+          "d1": {"type": ["string", "null"], "description": "A device id for this pin, or null to clear it."},
+          "d2": {"type": ["string", "null"], "description": "A device id for this pin, or null to clear it."},
+          "d3": {"type": ["string", "null"], "description": "A device id for this pin, or null to clear it."},
+          "d4": {"type": ["string", "null"], "description": "A device id for this pin, or null to clear it."},
+          "d5": {"type": ["string", "null"], "description": "A device id for this pin, or null to clear it."}
         },
         "minProperties": 1,
         "additionalProperties": false,
-        "description": "The pins to change, by name. Pins left out keep their device."
+        "description": "Pins to set, by name; pins left out keep their device."
       },
       "allow_off_network": {
         "type": "boolean",
-        "description": "Store a device that is not on the housing's data network. While the housing is on a data network its chip does not reach such a device (reachable is false and the pin reads as unset), so this is for a device about to be cabled in; a housing with no data network at all reaches its pin devices anywhere. Default false."
+        "description": "Store a device not on the housing's data network (about to be cabled in). Default false."
       }
     },
     "required": ["reference_id", "pins"],

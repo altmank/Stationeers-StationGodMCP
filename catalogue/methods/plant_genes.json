@@ -1,30 +1,56 @@
 {
   "name": "plant_genes",
-  "description": "Read or edit the genes of plants, seeds and harvested produce. A plant item holds the game's list of gene sets, one per unit of its stack, though the game sometimes keeps one more (seed bags from crates: gene_set_count is then the quantity + 1, and the extra set is unit 0, which planting never reaches, since planting copies and using takes the top set); the top set (the last in the list) is the one planting copies, the planted plant's stats read, harvests inherit (with mutation) and the network sends. Read: reference_id (one thing, optionally unit: which set, 0-based, default the top) or reference_ids (up to 256, top sets; a result per id with index and ok, or error {code, message}). Each read returns thing {reference_id, prefab_name, display_name}, holder (planted_plant, seed or produce), gene_set_count, unit, is_top and genes: all 19, each {gene, value and stability (both from -1 to 1; stability positive = steadier: smaller random mutation, and it decays toward 0 each generation), meaning (what it does in the game; 1.14.0+ only with include_notes: true, the same text for every plant), effect} (1.14.0+: min, max, stability_min and stability_max, the same -1 and 1 in every gene, are gone). effect is the stat the gene sets now and at both ends of the range: for the fifteen scalar genes {stat, base_<unit>, now_<unit>, at_min_<unit>, at_max_<unit>} with unit s (seconds) or factor (a multiplier); for the four band genes {stat (GrowTemperature or GrowPressure), now, at_min, at_max}, each {ideal_min_k and min_k} or {ideal_max_k and max_k} (kPa for pressure). Genes: GrowthSpeedMultiplier (the save calls it GrowthTimeMultiplier; both are accepted), DarkPerDay, LightPerDay, DroughtTolerance, WaterUsage, LowPressureResistance, LowTemperatureResistance, UndesiredGasTolerance, GasProduction, HighPressureResistance, HighTemperatureResistance, SuffocationTolerance, LowPressureTolerance, LowTemperatureTolerance, HighPressureTolerance, HighTemperatureTolerance, UndesiredGasResistance, LightTolerance, DarknessTolerance. Write: reference_id plus genes {name: value}, as the Gene Splicer does; optional unit and force. Each gene gets a result {index, ok, gene, previous_value, value} or {index, ok: false, gene, previous_value, error {code, message}}: unknown_gene, out_of_range (outside -1..1, the game's range; force writes it anyway), the others are still written. A value that is not a number (null included) refuses the whole call (invalid_argument) and nothing is written. Plus thing, holder, unit, is_top, count, success_count, error_count. The edit is saved with the world and inherited by harvested fruit and seeds like a natural gene (then mutated); stats read the genes live, and a write to the top set recomputes the cached temperature and pressure efficiency curves and marks the genes for multiplayer sync. A plant's harvest quantity, fixed when it first matures, is not recomputed. Errors: thing_not_found, not_a_plant, no_genes, unit_out_of_range, not_host (a multiplayer client cannot write). No gateway is needed.",
+  "summary": "Read the genes of plants, seeds and produce; with genes, edit them as the Gene Splicer does. Editing is a cheat: ask the user first. Reading takes up to 256 things.",
+  "help": {
+    "text": "Read: reference_id (with unit, the gene set; default the top) or reference_ids (up to 256, top sets; a result each). Each read gives thing, holder (planted_plant, seed or produce), gene_set_count, unit, is_top and all 19 genes, each {gene, value, stability, effect} (meaning only with include_notes). Write: reference_id with genes {name: value}, optional unit and force.",
+    "topics": {
+      "gene_sets": {
+        "summary": "Gene sets, units and the top set.",
+        "text": "A plant item holds one gene set per unit of its stack; seed bags from crates hold one more, unit 0, which planting never reaches. The top set (the last) is the one planting copies, the planted plant's stats read, harvests inherit with mutation, and the network sends. value and stability run from -1 to 1; a positive stability means a smaller random mutation, and it decays toward 0 each generation."
+      },
+      "effect": {
+        "summary": "What effect reports for each gene.",
+        "text": "effect is the stat the gene sets at its value and at both ends of the range. The fifteen scalar genes: {stat, base_<unit>, now_<unit>, at_min_<unit>, at_max_<unit>} with unit s (seconds) or factor (a multiplier). The four band genes: {stat (GrowTemperature or GrowPressure), now (at its value), at_min, at_max}, each {ideal_min_k, min_k} or {ideal_max_k, max_k} (kPa for pressure)."
+      },
+      "genes": {
+        "summary": "The 19 gene names.",
+        "text": "GrowthSpeedMultiplier (the save calls it GrowthTimeMultiplier; both are accepted), DarkPerDay, LightPerDay, DroughtTolerance, WaterUsage, LowPressureResistance, LowTemperatureResistance, UndesiredGasTolerance, GasProduction, HighPressureResistance, HighTemperatureResistance, SuffocationTolerance, LowPressureTolerance, LowTemperatureTolerance, HighPressureTolerance, HighTemperatureTolerance, UndesiredGasResistance, LightTolerance, DarknessTolerance."
+      },
+      "writing": {
+        "summary": "How a write lands, and per-gene refusals.",
+        "text": "Each gene gets {index, ok, gene, previous_value, value}, or an error: unknown_gene, or out_of_range (outside -1..1; force writes it anyway); the others are still written. A value that is not a number (null too) refuses the whole call and writes nothing. The edit is saved and inherited by harvested fruit and seeds like a natural gene. Stats read genes live; a write to the top set recomputes the temperature and pressure curves and syncs to clients. A harvest quantity, fixed when the plant first matures, stays as it is."
+      },
+      "refusals": {
+        "summary": "Why a read or write is refused.",
+        "text": "thing_not_found; not_a_plant (not a plant, seed or produce); no_genes (no gene set yet); unit_out_of_range (the message gives how many sets it has); plant_not_found (plants: no plant has that id); not_host (a multiplayer client cannot write)."
+      }
+    },
+    "shared": ["cheats"]
+  },
   "class": "cheat",
   "x-class-when": [{"when": {"genes": {"absent": true}}, "class": "read"}],
   "cost": "bounded",
   "params": {
     "type": "object",
     "properties": {
-      "reference_id": {"type": "string", "description": "Reference ID of a plant (planted or not), seed or plant produce."},
+      "reference_id": {"type": "string", "description": "A plant (planted or not), seed or produce."},
       "reference_ids": {
         "type": "array",
         "minItems": 1,
         "maxItems": 256,
         "items": {"type": "string"},
-        "description": "Read only: up to 256 reference IDs."
+        "description": "Read only: up to 256 things, top sets."
       },
       "unit": {
         "type": "integer",
         "minimum": 0,
-        "description": "With reference_id: which gene set, 0-based; default the top (the last one).",
+        "description": "With reference_id: which gene set, 0-based; default the top.",
         "maximum": 2147483647
       },
       "genes": {
         "type": "object",
         "additionalProperties": {"type": "number"},
-        "description": "With reference_id: gene name to new value, e.g. {\"GrowthSpeedMultiplier\": 1}. Range -1 to 1."
+        "description": "With reference_id: gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1})."
       },
       "force": {"type": "boolean", "description": "With genes: write values outside -1..1 too. Default false."},
       "include_notes": {"$ref": "defs/include_notes.json"}

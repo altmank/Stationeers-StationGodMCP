@@ -1,6 +1,30 @@
 {
   "name": "set_ic_source",
-  "description": "Write source to the programmable chip of a visible circuit holder, as the IC editor's export does. IC10: compiled at once and restarted at line 0; a paused chip stays paused (at line 0), and registers and the stack are kept (sp is reset to 0). The chip stores IC10 source as ASCII and runs what it stores: CRLF and lone CR line ends become LF (the chip splits lines on LF only) and each non-ASCII character '?' (warnings crlf_normalised, cr_normalised, non_ascii_replaced). The chip runs source of any length, but the in-game editor holds 128 lines of up to 90 characters and 4096 characters in all, and cuts a longer source when a player opens and submits it: warnings over_editor_lines, over_editor_line_length (names every long line, 0-based; past 10, their count and the first 10), over_editor_size (the source is still written). compilation_error true comes with compile_error_line (0-based) and compile_error_type; error_line and error_type are the runtime error's (error_line is the game's own text, a string such as \"0\", while compile_error_line is an integer); error_code is the game's error text without its rich-text tags. warnings is [] for Lua. Lua (a StationeersLua chip in an IC Housing, a ScriptedScreens Console or Computer board, a tablet cartridge or a Programmable Visor): no IC10 line or byte limit; up to 262144 characters (larger is refused with source_too_large). StationeersLua stores it compressed, drops the old runtime and compiles the new source on a worker thread, running its module-level code once and then tick(dt) every game tick; a source that failed before is compiled again. No separate restart is needed. The reply's lua.compiling is usually still true: call get_ic_status until it is false, then check lua.running and lua.last_error. A holder that is off or unpowered compiles when it runs again. A holder with no programmable chip is refused with no_programmable_chip. The reply's source is null unless include_source is true (1.14.0+; source_length always counts the stored source, and warnings say what storing changed). MCP: source_file, an absolute path on the machine the MCP server runs on, sends that UTF-8 file's text as source, so a large source never passes through the caller (source or source_file, not both). Writes; sends the chip to multiplayer clients.",
+  "summary": "Write source to a circuit holder's chip, as the IC editor's export does: IC10 compiles at once and restarts at line 0; Lua compiles on a worker thread. source_file sends a large file from disk.",
+  "help": {
+    "text": "Give source or source_file, not both. The reply's source is null unless include_source; source_length counts what the chip stores and warnings say what storing it altered. A multiplayer host sends the chip to clients.",
+    "topics": {
+      "ic10": {
+        "summary": "How an IC10 source is stored and run.",
+        "text": "Compiled at once and restarted at line 0; a paused chip stays paused at line 0; registers and the stack are kept (sp goes to 0). The chip stores ASCII and runs what it stores: CRLF and lone CR become LF (crlf_normalised, cr_normalised) and each non-ASCII character becomes ? (non_ascii_replaced).",
+        "subtopics": {
+          "editor": {
+            "summary": "The in-game editor's limits and the warnings for them.",
+            "text": "The chip runs a source of any length, but the in-game editor holds 128 lines of up to 90 characters and 4096 characters in all, and cuts a longer source when a player opens and submits it. Warnings over_editor_lines, over_editor_line_length (each long line, 0-based; past 10, their count and the first 10) and over_editor_size; the source is still written."
+          },
+          "errors": {
+            "summary": "compilation_error and the error fields.",
+            "text": "compilation_error true comes with compile_error_line (0-based) and compile_error_type; error_line and error_type are the runtime error. error_line is the game's own text, a string such as \"0\", while compile_error_line is an integer. error_code is the game's error text without its rich-text tags."
+          }
+        }
+      },
+      "lua": {
+        "summary": "How a Lua source is stored and run.",
+        "text": "Up to 262144 characters (larger is source_too_large), no IC10 line limits; warnings is []. StationeersLua stores it compressed, drops the old runtime and compiles the new source on a worker thread; a source that failed before is compiled again and no restart is needed. lua.compiling is usually still true in the reply: poll get_ic_status until it is false, then check lua.running and lua.last_error."
+      }
+    },
+    "shared": ["gateways", "chips"]
+  },
   "class": "write",
   "cost": "instant",
   "params": {
@@ -8,11 +32,8 @@
     "properties": {
       "gateway_id": {"$ref": "defs/gateway_id.json"},
       "reference_id": {"$ref": "defs/reference_id.json"},
-      "source": {"type": "string", "description": "The complete source: IC10, or Lua for a Lua chip (up to 262144 characters)."},
-      "include_source": {
-        "type": "boolean",
-        "description": "1.14.0+: true echoes the source as the chip stores it; default false (source null, source_length still counts it)."
-      }
+      "source": {"type": "string", "description": "The complete source: IC10, or Lua for a Lua chip."},
+      "include_source": {"type": "boolean", "description": "true: echo the source as the chip stores it. Default false."}
     },
     "required": ["reference_id", "source"],
     "additionalProperties": false
@@ -42,7 +63,7 @@
   "x-file-arguments": {
     "source_file": {
       "into": "source",
-      "description": "Instead of source: an absolute path on the MCP server's machine to a UTF-8 text file (up to 1 MiB) whose text is sent as source."
+      "description": "An absolute path on the MCP server's machine whose UTF-8 text is sent as source."
     }
   },
   "x-shaping": "none"

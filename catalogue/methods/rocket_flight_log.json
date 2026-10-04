@@ -1,6 +1,16 @@
 {
   "name": "rocket_flight_log",
-  "description": "A flight recorder in the mod. action start (rocket_id; interval_s, default 1 s of game time; capacity, default 3600 samples kept in a ring, oldest dropped; csv true also appends every sample to rocket-log-<id>-<time>.csv in the save's folder), stop, read (default), list, clear. Each sample: game time, state, node, target, progress, altitude, velocity, acceleration, mass, fuel mol, first tank K and kPa, throttle, thrust, recorded thrust peak, confidence, battery J, filled cargo slots, the game's burn-time estimate, flight rule. A reply is a summary (held, recorded, time span, fuel used, lowest altitude, fastest descent, peak thrust, lowest confidence and battery, the last sample, and state, target and node changes as events) plus one page of rows: offset, limit (default 12 since 1.14.0, 20 before, at most 200) and every (each n-th row), so a long log never comes back whole; has_more says more rows follow. Recording only reads the game; it stops by itself when the rocket is gone. Logs live in memory until the game closes.",
+  "summary": "A flight recorder: action start records a rocket every interval_s of game time; read answers a summary and one page of rows; also stop, list, clear. Recording only reads the game.",
+  "help": {
+    "text": "start: rocket_id, interval_s (default 1 s of game time), capacity (default 3600 samples kept, oldest dropped), csv (also appends every sample to rocket-log-<id>-<time>.csv in the save's folder). It stops by itself when the rocket is gone. Logs live in memory until the game closes.",
+    "topics": {
+      "samples": {
+        "summary": "What a sample holds, and a read reply.",
+        "text": "Each sample: game time, state, node, target, progress, altitude, velocity, acceleration, mass, fuel mol, first tank K and kPa, throttle, thrust, recorded thrust peak, confidence, battery J, filled cargo slots, the game's burn-time estimate, flight rule. A read answers a summary (held, recorded, time span, fuel used, lowest altitude, fastest descent, peak thrust, lowest confidence and battery, the last sample, and state, target and node changes as events) plus one page of rows: offset, limit (default 12, at most 200) and every (each n-th row); has_more says more rows follow."
+      }
+    },
+    "shared": ["rockets", "paging"]
+  },
   "class": "write",
   "x-class-when": [
     {"when": {"action": {"absent": true}}, "class": "read"},
@@ -11,22 +21,23 @@
   "params": {
     "type": "object",
     "properties": {
-      "action": {"type": "string", "enum": ["start", "stop", "read", "list", "clear"], "description": "Default read."},
-      "rocket_id": {
+      "action": {
         "type": "string",
-        "description": "A rocket, its rocket network, or any of its parts. Omit when there is one rocket."
+        "enum": ["start", "stop", "read", "list", "clear"],
+        "description": "start, stop, read (default), list or clear."
       },
+      "rocket_id": {"type": "string", "description": "A rocket, its rocket network, or any part; left out when there is one rocket."},
       "interval_s": {
         "type": "number",
         "minimum": 0.1,
         "maximum": 600,
-        "description": "start: seconds of game time between samples. Default 1."
+        "description": "start: seconds of game time between samples; default 1."
       },
-      "capacity": {"type": "integer", "minimum": 10, "maximum": 100000, "description": "start: samples kept. Default 3600."},
+      "capacity": {"type": "integer", "minimum": 10, "maximum": 100000, "description": "start: samples kept; default 3600."},
       "csv": {"type": "boolean", "description": "start: also write a CSV next to the save. Default false."},
       "offset": {"type": "integer", "minimum": 0, "description": "read: first row, oldest first.", "maximum": 2147483647},
-      "limit": {"type": "integer", "minimum": 1, "maximum": 200, "description": "read: rows. Default 20."},
-      "every": {"type": "integer", "minimum": 1, "description": "read: every n-th row. Default 1.", "maximum": 100000}
+      "limit": {"type": "integer", "minimum": 1, "maximum": 200, "description": "read: rows; default 12."},
+      "every": {"type": "integer", "minimum": 1, "description": "read: every n-th row; default 1.", "maximum": 100000}
     },
     "additionalProperties": false
   },

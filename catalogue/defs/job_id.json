@@ -1,1 +1,1 @@
-{"type": "string", "description": "Poll a confirmed run; give nothing else but verbose."}
+{"type": "string", "description": "Poll a confirmed run; nothing else but verbose (see jobs/polling)."}

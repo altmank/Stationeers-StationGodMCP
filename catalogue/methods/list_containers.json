@@ -1,24 +1,20 @@
 {
   "name": "list_containers",
-  "description": "List every outermost holder that has at least one item in it (lockers, crates, machines, a backpack on the floor), not held by a player, with slots used, item totals per type, position and distance, nearest first. A holder inside another (a crate in a lander, a box in a locker) is not listed on its own: its items count towards the outermost holder, and prefab_contains and name_contains match that holder; use container_contents or find_items within_id to look inside. Empty containers are not listed. Read only; no gateway is needed.",
+  "summary": "List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first. 12 per page. Read only.",
+  "help": {
+    "text": "A holder inside another (a crate in a lander, a box in a locker) is not listed alone: its items count toward the outermost holder, and the filters match that holder. Look inside with container_contents or find_items within_id. Empty containers are not listed.",
+    "shared": ["paging", "player"]
+  },
   "class": "read",
   "cost": "world",
   "params": {
     "type": "object",
     "properties": {
-      "prefab_contains": {
-        "type": "string",
-        "description": "Case-insensitive substring of the container's prefab name, e.g. 'Locker', 'Crate'."
-      },
-      "name_contains": {"type": "string", "description": "Case-insensitive substring of the container's display name (its label)."},
+      "prefab_contains": {"type": "string", "description": "Part of the container's prefab name, any case ('Locker', 'Crate')."},
+      "name_contains": {"type": "string", "description": "Part of the container's shown name (its label), any case."},
       "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Only containers within this many metres of the player."},
-      "limit": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 500,
-        "description": "Containers per page, default 12 (100 before 1.14.0)."
-      },
-      "offset": {"type": "integer", "minimum": 0, "description": "Containers to skip, for paging.", "maximum": 2147483647}
+      "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Containers per page; default 12."},
+      "offset": {"type": "integer", "minimum": 0, "description": "Containers to skip (see paging).", "maximum": 2147483647}
     },
     "additionalProperties": false
   },

@@ -1,13 +1,31 @@
 {
   "name": "describe_device",
-  "description": "Describe one network device and dynamically enumerate every vanilla logic type it reports as readable or writable. A device in a rocket also gets rocket {network_id, name, state, dry_mass_kg, hull_pieces, internals} (1.6.0+); a rocket umbilical (gas, power, chute, crew; male or socket) gets umbilical {role, open, partner, partner_distance, search}: the partner the game holds and the game's partner search replayed now (found, partner_distance, how, and per column why it stopped: a device between, a non-matching umbilical, one not facing back). A Logic Rocket Uplink gets uplink (1.14.0+) {downlink ({reference_id, prefab_name, display_name, rocket} of the Logic Rocket Downlink it follows, rocket as above or null; null when it follows none), connected (its data connection is live: on, powered, built, and the downlink on a data network), choices (every downlink it may follow, as a screwdriver press steps through them: built and logic readable)}; set_uplink changes it. Mod logic types without an enum name are read and written by numeric id (1.14.0+: this note is no longer repeated in every reply).",
+  "summary": "Describe one device: every logic type it can read and write, and its rocket, umbilical and uplink details where it has them. Read only.",
+  "help": {
+    "text": "Lists every logic type the device reports as readable or writable. Mod logic types without a name are read and written by number.",
+    "topics": {
+      "rocket": {
+        "summary": "A device in a rocket: the rocket it belongs to.",
+        "text": "A device in a rocket also gets rocket {network_id, name, state, dry_mass_kg, hull_pieces, internals}."
+      },
+      "umbilical": {
+        "summary": "A rocket umbilical: its partner and the partner search.",
+        "text": "A rocket umbilical (gas, power, chute or crew; male or socket) gets umbilical {role, open, partner, partner_distance, search}: the partner the game holds, and the game's partner search replayed: found, partner_distance, how, and per column why it stopped (a device between, an umbilical that does not match, or one not facing back)."
+      },
+      "uplink": {
+        "summary": "A Logic Rocket Uplink: the downlink it follows and its choices.",
+        "text": "A Logic Rocket Uplink gets uplink {downlink, connected, choices}. downlink: the Logic Rocket Downlink it follows {reference_id, prefab_name, display_name, rocket}, null when none. connected: its data connection is live (on, powered, built, and the downlink on a data network). choices: every downlink it may follow, in the order screwdriver presses step through them. set_uplink changes it."
+      }
+    },
+    "shared": ["gateways", "logic"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
       "gateway_id": {"$ref": "defs/gateway_id.json"},
-      "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."}
+      "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."}
     },
     "required": ["reference_id"],
     "additionalProperties": false

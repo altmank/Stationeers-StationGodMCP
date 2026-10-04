@@ -1,19 +1,18 @@
 {
   "name": "inspect_slots",
-  "description": "Inspect generic device slots, occupants, slot constraints (interactable false: a hidden slot, which move_item refuses), and every readable LogicSlotType value without changing inventory contents. Devices only (things with logic): a crate, a lander or a tool answers device_not_found saying it is not a device; container_contents shows the slots of any thing. 1.14.0+: by default the reply keeps the first entries of its list (slots 5); truncated gives each cut list's returned and total counts, and list_limits {list: count} keeps more.",
+  "summary": "Inspect a device's slots: occupants, what each slot takes, and every readable slot logic value. Lists 5 slots by default; slot_index reads one. Read only.",
+  "help": {
+    "text": "Devices only (things with logic): a crate, a lander or a tool answers device_not_found saying it is not a device; container_contents shows the slots of any thing. interactable false marks a hidden slot, which move_item refuses. truncated gives the slot count; list_limits {slots: n} keeps more.",
+    "shared": ["gateways", "logic", "truncation"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
       "gateway_id": {"$ref": "defs/gateway_id.json"},
-      "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
-      "slot_index": {
-        "type": "integer",
-        "minimum": 0,
-        "description": "Optional single slot index; omit to inspect every slot.",
-        "maximum": 2147483647
-      }
+      "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
+      "slot_index": {"type": "integer", "minimum": 0, "description": "One slot index; left out, every slot.", "maximum": 2147483647}
     },
     "required": ["reference_id"],
     "additionalProperties": false

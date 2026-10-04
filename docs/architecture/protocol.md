@@ -205,6 +205,14 @@ Every error is `{code, message}` with an optional `data` object, today's shape p
 (`src/StationGodMCP.Mod/Api/Shared/CommonViews.cs:78-89`). `message` is for people and may change; `code` is for
 programs and does not.
 
+Every error also carries `see`, `{tool, topic, subtopic}` with only `topic` always present: the `tool_info` node
+that explains its code (a shared topic when `tool` is absent), taken from the code's entry in the catalogue's
+`errors` (its `see`). The mod adds it to every error view, a batch item's included (`ErrorGuide`, filled when the
+catalogue loads); the MCP server adds it to its own errors (`invalid_argument`, `game_unavailable`,
+`help_not_found`). A code the catalogue does not register has no `see`. `tool_info` is answered by the MCP server
+from the catalogue, with or without the game ([catalogue.md](catalogue.md), *Help and the text rubric*); a pipe
+client that calls it gets `method_not_found` saying so.
+
 Tool errors keep their codes (well over a hundred, from `thing_not_found` to `gas_check_failed`); the catalogue lists
 them all with a description ([catalogue.md](catalogue.md), *Errors*). The protocol adds or fixes the meaning of these.
 "Caller may resend" is advice to the program that made the call; the client libraries never resend an error reply on

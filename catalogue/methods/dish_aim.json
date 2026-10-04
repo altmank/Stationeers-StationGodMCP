@@ -1,13 +1,27 @@
 {
   "name": "dish_aim",
-  "description": "Work out the exact Horizontal and Vertical (logic degrees) that point a satellite dish at a trader contact, found on the dish's own model: the mod poses the dish's model at trial angles (through its animator; the Small Satellite Dish, which has none, through its pivots), reads where it would point and restores it within one frame, so nothing moves or changes. Returns horizontal, vertical, the angle left over (error_deg; under 2 degrees the contact gets the dish's whole Setting), finished, powered, on and can_rotate (all three: the game's own check for whether the dish turns now), the dish's current angles and error (current.forward is the game's DishForward; the Small dish sets it at each step of a turn just before moving, so it trails the model by that last step, up to a few tenths of a degree once the turn ends), stale_pose_deg (above 1 means the dish's animator was not being evaluated, so the game's own pointing may lag) and samples (how many trial poses the search took). To turn the dish, write the returned values to its Horizontal and Vertical with write_logic, with the dish powered and on first: a dish that cannot rotate stores the angles as its target but never turns, and the game ignores a write of the target it already holds, so writing the same angles again after powering it does nothing (write another value first). Refusals: invalid_argument, thing_not_found (no satellite dish has that id, including an id that is not a dish), contact_not_found, dish_not_ready (the dish's model has no pivots or does not move when posed). Read only; no gateway is needed.",
+  "summary": "Work out the Horizontal and Vertical (logic degrees) that point a satellite dish at a trader contact, from the dish's own model; nothing moves. Read only: write them with write_logic.",
+  "help": {
+    "text": "Poses the dish's model at trial angles, reads where it would point and restores it within one frame. Returns horizontal, vertical and error_deg (under 2 degrees the contact gets the dish's whole Setting), finished, powered, on, can_rotate, current, stale_pose_deg and samples.",
+    "topics": {
+      "turning": {
+        "summary": "How to turn the dish with the answer.",
+        "text": "Power the dish and turn it on first, then write horizontal and vertical with write_logic. A dish that cannot rotate stores the angles as its target but never turns, and the game ignores a write of the target it already holds: after powering it, write another value first, then the answer."
+      },
+      "reply": {
+        "summary": "current, stale_pose_deg and samples.",
+        "text": "can_rotate is the game's own check that the dish can turn (finished, powered and on). current gives the dish's angles and error as they stand; current.forward trails the model by the last step of a turn on the Small Satellite Dish, up to a few tenths of a degree. stale_pose_deg above 1 means the dish's animation is not running, so the game's own pointing may lag. samples: how many trial poses the search took."
+      }
+    },
+    "shared": ["trading"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
-      "dish_id": {"type": "string", "description": "Reference ID of the satellite dish (see trader_contacts dishes)."},
-      "contact_id": {"type": "string", "description": "Reference ID of the trader contact (see trader_contacts contacts)."}
+      "dish_id": {"type": "string", "description": "The satellite dish (trader_contacts lists dishes)."},
+      "contact_id": {"type": "string", "description": "The trader contact (trader_contacts lists contacts)."}
     },
     "required": ["dish_id", "contact_id"],
     "additionalProperties": false

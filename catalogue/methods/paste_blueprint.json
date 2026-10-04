@@ -1,6 +1,28 @@
 {
   "name": "paste_blueprint",
-  "description": "Paste a BlueprintMod blueprint at an exact place and turn, with no player needed (BlueprintMod spawns every piece without the game's placement checks, so a paste can leave a piece no player could place there again, e.g. a vent with nothing behind it: run check_replaceable over the pasted pieces, or lint_layout for not_replaceable) (console bppaste takes both from the local player, so it cannot run on a dedicated server). Needs BlueprintMod loaded; host only. Makes the D.B.P.U.'s own call: the blueprint's copy angle plus rotation 0, 90, 180 or 270, so every piece lands on the grid. Three forms. Paste: name (a file in BlueprintMod's Blueprints folder, or an absolute path, either with or without .blueprint; an absolute path with another extension is taken as given), anchor [x, y, z] (the world position in metres where the blueprint's own reference point lands: the large-grid point BlueprintMod snapped the copying player to, x and z odd whole metres, y even; a paste lines up with the grid when the anchor is such a point) and rotation (default 0); returns {started: true, file (full path), entries, anchor, rotation, copy_y_angle, expected_duration_s}. The pieces are then placed over 2 to 30 s (0.15 s per entry) by BlueprintMod's coroutine, so the reply comes before they exist; the coroutine runs only while the game does, so in a paused world the paste waits. status: true alone: progress of the last paste this tool started, {known (false until this tool has started one; the other fields are then null), active (still placing), complete, cancelled, created, failed, skipped, pasted (things kept for undo), standing (of those, the ones that still exist: created and pasted are BlueprintMod's counts, which include a piece the game then refused to register, e.g. its spot taken, 'Grid face may be open' in the log), fingerprint, file, entries, other_active (a paste this tool did not start is running)}; the counts are kept after the paste ends, and are null when the paste finished inside the call that started it. undo: true alone: BlueprintMod's bpundo (cancels a running paste and removes what it placed, else removes the last completed paste) and returns {message}, its own answer. BlueprintMod keeps one undo stack for every paste in the world (bppaste, the D.B.P.U., every caller of this tool), so undo removes the newest paste of anyone, which need not be the paste status reports; in a shared world check status and what stands before undoing. Rooms are not re-evaluated after a paste or an undo: run the console command regeneraterooms before rooms. In survival BlueprintMod charges DeanamicMatter from the local player, which a dedicated server does not have, so use a creative world there. Errors: invalid_argument (a missing file names the path it looked at; a blueprint with no entries; a rotation not 0, 90, 180 or 270), paste_refused (BlueprintMod's own message verbatim: the same blueprint already pasted at this position and rotation, no local player in survival, not enough DeanamicMatter; 1.4.4+ also while a paste, anyone's, is still placing: nothing is started, wait until status is no longer active), blueprint_failed (a BlueprintMod call threw: its exception type and message, e.g. a file that is not a blueprint), mod_missing (BlueprintMod is not loaded), game_changed (BlueprintMod no longer has a member this tool calls, named), not_host. No gateway is needed.",
+  "summary": "Cheat: paste a BlueprintMod blueprint at an exact anchor and turn, with no player needed; it skips the game's placement checks. Ask the user first. status reads progress; undo removes the newest paste.",
+  "help": {
+    "text": "Needs BlueprintMod; host only. Paste: name (in BlueprintMod's Blueprints folder, or an absolute path), anchor [x, y, z] (where the blueprint's reference point lands: x and z odd whole metres, y even, for the paste to line up with the grid) and rotation (0, 90, 180 or 270, added to its copy angle). Answers {started, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}; the pieces appear over 2 to 30 s, only while the game runs. Run check_replaceable over the pasted pieces.",
+    "topics": {
+      "status": {
+        "summary": "status: true and its counts.",
+        "text": "Progress of the last paste this tool started: {known, active, complete, cancelled, created, failed, skipped, pasted (kept for undo), standing (of those, the ones that exist: a piece the game refused to register counts as created), fingerprint, file, entries, other_active}. Null counts when the paste finished inside the call that started it."
+      },
+      "undo": {
+        "summary": "undo: true, and the shared undo stack.",
+        "text": "BlueprintMod's bpundo: cancels a running paste and removes what it placed, else removes the last completed paste; returns {message}. BlueprintMod keeps one undo stack for every paste in the world, so undo removes the newest paste of anyone: check status and what stands first in a shared world."
+      },
+      "notes": {
+        "summary": "Rooms after a paste, and the survival cost.",
+        "text": "Rooms are not re-evaluated after a paste or undo: run the console command regeneraterooms before rooms. In survival BlueprintMod charges DeanamicMatter from the local player, which a dedicated server lacks: use a creative world there."
+      },
+      "refusals": {
+        "summary": "The paste errors and what to do.",
+        "text": "paste_refused: BlueprintMod's own message (the same blueprint already pasted there, no local player in survival, not enough DeanamicMatter, or a paste still placing: wait until status is not active). blueprint_failed: a BlueprintMod call failed (a file that is not a blueprint). mod_missing: BlueprintMod has no Blueprints folder yet; pass an absolute path. invalid_argument: a missing file (the message names the path tried), a blueprint with no entries, a rotation not 0, 90, 180 or 270. game_changed: this BlueprintMod lacks a member the tool calls."
+      }
+    },
+    "shared": ["cheats"]
+  },
   "class": "cheat",
   "x-class-when": [{"when": {"status": {"equals": true}}, "class": "read"}],
   "cost": "job",
@@ -17,17 +39,17 @@
         "minItems": 3,
         "maxItems": 3,
         "items": {"type": "number"},
-        "description": "World position [x, y, z] in metres of the blueprint's large-grid anchor."
+        "description": "World position [x, y, z] in metres of the blueprint's anchor."
       },
       "rotation": {
         "type": "integer",
         "enum": [0, 90, 180, 270],
-        "description": "Degrees added to the blueprint's copy angle. Default 0.",
+        "description": "Degrees added to the blueprint's copy angle: 0, 90, 180 or 270. Default 0.",
         "minimum": 0,
         "maximum": 270
       },
       "status": {"type": "boolean", "description": "true alone: progress of the last paste this tool started."},
-      "undo": {"type": "boolean", "description": "true alone: undo the last paste (BlueprintMod's bpundo)."}
+      "undo": {"type": "boolean", "description": "true alone: BlueprintMod's undo of the newest paste."}
     },
     "additionalProperties": false
   },

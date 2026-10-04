@@ -1,37 +1,30 @@
 {
   "name": "find_items",
-  "description": "Find items anywhere in the world, not only on a gateway's network: on the ground, in lockers, crates and machines, and carried by players (suit, backpack, toolbelt, hands, nested to any depth). Each item reports its quantity (stack size for stackables, 1 otherwise), location (ground, player or stored), the chain of holders from its own slot outwards, the outermost holder's position and the distance from the player. Also lists material machines hold as reagent stock rather than as items, with location machine_stock: ingots loaded into a fabricator (Autolathe, Electronics Printer, Pipe Bender, Tool Manufactory...) listed as the ingot it ejects (1 reagent unit = 1 ingot), and a furnace's, centrifuge's or mixer's working load listed under its reagent name (prefab_name null). A stock entry has reference_id null, held_in naming the machine with slot_index -1, and machine_stock {reagent, reagent_name, kind (fabricator or processing), movable false}: move_item cannot move it; open a fabricator (on, powered, not printing) and it ejects its stock as ingots into its export slot, one stack per tick (EjectReagent on its logic stack ejects one reagent); a processing load is not ingots yet: the machine smelts or processes it, or drops it as Reagent Mix (1.14.0+: how_to_get, which said this in every stock entry, is gone). Sorted nearest first. Organs are left out. Read only; no gateway is needed.",
+  "summary": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first. 10 per page. Read only.",
+  "help": {
+    "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type.",
+    "shared": ["items", "paging", "shaping", "player"]
+  },
   "class": "read",
   "cost": "world",
   "params": {
     "type": "object",
     "properties": {
-      "prefab_contains": {
-        "type": "string",
-        "description": "Case-insensitive substring of the prefab name, e.g. 'IngotIron', 'Ore', 'Battery'."
-      },
-      "name_contains": {"type": "string", "description": "Case-insensitive substring of the display name, e.g. 'Iron Ingot'."},
+      "prefab_contains": {"type": "string", "description": "Part of the prefab name, any case ('IngotIron', 'Ore', 'Battery')."},
+      "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
       "location": {
         "type": "string",
         "enum": ["any", "ground", "player", "stored", "machine_stock"],
-        "description": "ground = loose in the world, player = carried by a player at any depth, stored = in any other holder, machine_stock = held as reagents inside a machine (fabricator stock, a furnace's load). Default any, which includes machine_stock."
+        "description": "ground, player, stored or machine_stock; default any (see items)."
       },
-      "within_id": {
-        "type": "string",
-        "description": "Only items inside this thing at any depth (a locker, crate, suit, backpack or player reference ID), and a machine's own stock. An id that names nothing is refused with thing_not_found, never read as an empty holder."
-      },
+      "within_id": {"type": "string", "description": "Only items inside this thing at any depth, and its machine stock."},
       "near_player_m": {
         "type": "number",
         "exclusiveMinimum": 0,
-        "description": "Only items whose outermost holder is within this many metres of the player."
+        "description": "Only things whose outermost holder is within this many metres of the player."
       },
-      "limit": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 500,
-        "description": "Items per page, default 10 (100 before 1.14.0)."
-      },
-      "offset": {"type": "integer", "minimum": 0, "description": "Items to skip, for paging.", "maximum": 2147483647}
+      "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Items per page; default 10."},
+      "offset": {"type": "integer", "minimum": 0, "description": "Items to skip (see paging).", "maximum": 2147483647}
     },
     "additionalProperties": false
   },

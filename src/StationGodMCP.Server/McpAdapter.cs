@@ -22,10 +22,13 @@ internal sealed class McpAdapter : IAsyncDisposable
 
     private static readonly JsonElement NullId = JsonSerializer.SerializeToElement<object?>(null);
     private static readonly JsonElement NoArguments = JsonSerializer.SerializeToElement(new Dictionary<string, object>());
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    // Plain JSON escaping: the default encoder writes every quote inside a string as a six-character \u escape, and
+    // apostrophes and pluses too, which makes the tool list and each reply's text copy larger for nothing.
+    internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
     private readonly SidecarOptions _options;
@@ -156,13 +159,18 @@ internal sealed class McpAdapter : IAsyncDisposable
             : ArgumentCheck.ProblemsOf(schema, arguments, SidecarArguments.Names.Concat(files.Select(file => file.Name)));
         if (problems.Count > 0)
         {
-            return ToolReplies.Error(ToolFailure.InvalidArgument, string.Join(" ", problems));
+            return ToolReplies.Error(ToolFailure.InvalidArgument, string.Join(" ", problems), tools.SeeOf(ToolFailure.InvalidArgument));
+        }
+
+        if (tool == ToolHelp.Method)
+        {
+            return HelpReply(tools.Help, arguments);
         }
 
         switch (FileArguments.Read(arguments, files))
         {
             case FileRead.Refused refusedFile:
-                return ToolReplies.Error(ToolFailure.InvalidArgument, refusedFile.Message);
+                return ToolReplies.Error(ToolFailure.InvalidArgument, refusedFile.Message, tools.SeeOf(ToolFailure.InvalidArgument));
             case FileRead.Ready ready:
                 arguments = ready.Arguments;
                 break;
@@ -171,7 +179,7 @@ internal sealed class McpAdapter : IAsyncDisposable
         SidecarArguments call = SidecarArguments.Take(arguments);
         if (call.Output is OutputChoice.Refused refused)
         {
-            return ToolReplies.Error(ToolFailure.InvalidArgument, refused.Message);
+            return ToolReplies.Error(ToolFailure.InvalidArgument, refused.Message, tools.SeeOf(ToolFailure.InvalidArgument));
         }
 
         (JsonElement? shape, Unparsed unparsed) = call.Shape();
@@ -180,7 +188,21 @@ internal sealed class McpAdapter : IAsyncDisposable
         return outcome.Match(
             answered => ToolReplies.Of(Delivered(tool, call.Output, SidecarArguments.WithUnmatched(answered.Result, unparsed)), isError: false),
             gameError => ToolReplies.Of(gameError.Error, isError: true),
-            noAnswer => ToolReplies.Error(ToolFailure.GameUnavailable, noAnswer.Message));
+            noAnswer => ToolReplies.Error(ToolFailure.GameUnavailable, noAnswer.Message, tools.SeeOf(ToolFailure.GameUnavailable)));
+    }
+
+    // tool_info: answered here from the catalogue's help, with or without the game.
+    private static object HelpReply(ToolHelp help, JsonElement arguments)
+    {
+        string? Text(string name) =>
+            arguments.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+        return help.Answer(Text("tool"), Text("topic"), Text("subtopic")) switch
+        {
+            HelpAnswer.Found found => ToolReplies.Of(found.Reply, isError: false),
+            HelpAnswer.Refused refused => ToolReplies.Error(refused.Code, refused.Message, refused.See),
+            _ => throw new InvalidOperationException("tool_info gave no answer.")
+        };
     }
 
     // The reply inline, or written to a file when output_file asks or when it is larger than the inline limit.

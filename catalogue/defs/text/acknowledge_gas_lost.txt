@@ -1,1 +1,0 @@
-The job id (run-N, upgrade-N, place-N, remove-N) whose gas_lost check holds pipe jobs: accepts that loss and lifts the hold for this run and later ones. Only after the user has agreed; a wrong id is refused (gas_hold_mismatch).

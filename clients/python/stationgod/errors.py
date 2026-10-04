@@ -7,13 +7,15 @@ class StationGodError(Exception):
 
 
 class GameError(StationGodError):
-    """The mod answered with an error: code is for programs, message for people, data is the error's data object."""
+    """The mod answered with an error: code is for programs, message for people, data is the error's data object, see
+    the tool_info node that explains the code ({tool, topic, subtopic}; empty when the error carries none)."""
 
-    def __init__(self, code, message, data=None):
+    def __init__(self, code, message, data=None, see=None):
         super().__init__(f"{code}: {message}")
         self.code = code
         self.message = message
         self.data = data or {}
+        self.see = see or {}
 
 
 class InvalidArgument(GameError):
@@ -71,5 +73,6 @@ def game_error(error):
     code = str(error.get("code") or "unknown")
     message = str(error.get("message") or "")
     data = error.get("data") if isinstance(error.get("data"), dict) else None
+    see = error.get("see") if isinstance(error.get("see"), dict) else None
     kind = _BY_CODE.get(code) or (NotFound if code.endswith("_not_found") else GameError)
-    return kind(code, message, data)
+    return kind(code, message, data, see)

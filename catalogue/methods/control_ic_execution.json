@@ -1,6 +1,24 @@
 {
   "name": "control_ic_execution",
-  "description": "Pause, execute exactly one IC10 instruction while remaining paused, or resume the chip of a visible circuit holder; or restart a Lua chip. Pausing holds only IC Housings and suits; other holders (toolbelts, tablets, mining robots, logic I/O devices) report paused but keep running. A Lua chip (StationeersLua) cannot pause or step (lua_chip_unsupported): restart compiles its current source again and runs it from the start, clearing a latched error, as the Lua debugger's restart does; like set_ic_source it compiles on a worker thread, so poll get_ic_status. restart on an IC10 chip is refused (not_a_lua_chip). step on a running chip pauses it first; step is refused, with nothing changed, while the source has a compile error (ic_compile_error) or the holder is off, unpowered or not built (ic_not_operable). action ignores case. set_ic_source leaves a paused chip paused. A pause lasts until resume or until the world is left (1.9.1+: loading a save, a new game or the menu resumes every paused chip). A holder with no programmable chip is refused with no_programmable_chip.",
+  "summary": "Pause, step one instruction, or resume a circuit holder's IC10 chip; or restart a Lua chip from the start.",
+  "help": {
+    "text": "action is pause, step, resume (IC10) or restart (Lua), any case. step on a running chip pauses it first. set_ic_source leaves a paused chip paused.",
+    "topics": {
+      "pausing": {
+        "summary": "Which holders pause, and how long.",
+        "text": "Pausing holds only IC Housings and suits; other holders (toolbelts, tablets, mining robots, logic I/O devices) report paused but keep running. A pause lasts until resume or until the world is left: loading a save, a new game or the menu resumes every paused chip."
+      },
+      "restart": {
+        "summary": "restart for Lua chips.",
+        "text": "restart compiles the Lua chip's current source again and runs it from the start, clearing a latched error, as the Lua debugger's restart does. It compiles on a worker thread: poll get_ic_status. restart on an IC10 chip is not_a_lua_chip; pause and step on a Lua chip are lua_chip_unsupported."
+      },
+      "refusals": {
+        "summary": "When step refuses.",
+        "text": "step changes nothing while the source has a compile error (ic_compile_error) or the holder is off, unpowered or not built (ic_not_operable). A holder without a chip is no_programmable_chip."
+      }
+    },
+    "shared": ["gateways", "chips"]
+  },
   "class": "write",
   "cost": "instant",
   "params": {
@@ -11,7 +29,7 @@
       "action": {
         "type": "string",
         "enum": ["pause", "step", "resume", "restart"],
-        "description": "pause, step and resume: IC10 chips. restart: Lua chips."
+        "description": "pause, step or resume (IC10), or restart (Lua)."
       }
     },
     "required": ["reference_id", "action"],

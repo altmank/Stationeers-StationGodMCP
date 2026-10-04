@@ -86,11 +86,11 @@ public sealed class DevicesRound5Tests
         Assert.True(tools.Count >= 17, $"only {tools.Count} tools take gateway_id");
         foreach (string tool in tools)
         {
-            string description = Program.InputSchemas[tool].GetProperty("properties").GetProperty("gateway_id")
-                .GetProperty("description").GetString()!;
-            Assert.Contains("gateway_not_found", description);
-            Assert.Contains("gateway_unavailable", description);
-            Assert.Contains("no_data_network", description);
+            // The gateway refusals are documented once, in the shared gateways topic every such tool leads to.
+            string docs = CatalogueChecks.CatalogueTextTests.DocsOf(tool);
+            Assert.Contains("gateway_not_found", docs);
+            Assert.Contains("gateway_unavailable", docs);
+            Assert.Contains("no_data_network", docs);
         }
     }
 
@@ -114,8 +114,6 @@ public sealed class DevicesRound5Tests
         Assert.Contains("MCP tool results do not carry it", description);
     }
 
-    private static string ToolDescription(string name) =>
-        ToolCatalogue.Tools.EnumerateArray()
-            .Single(tool => tool.GetProperty("name").GetString() == name)
-            .GetProperty("description").GetString()!;
+    // A tool's whole documentation: its description and everything tool_info leads to from it.
+    private static string ToolDescription(string name) => CatalogueChecks.CatalogueTextTests.DocsOf(name);
 }

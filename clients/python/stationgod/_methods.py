@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:d3e47a6325b4e4cf475d662f9b31ce596b7dfd92a4c59dcf2cacafcee5959067'
-MOD_VERSION = '1.14.0'
+CATALOGUE_HASH = 'sha256:03545ae6acdb4571d35a919d3d0ddfe99aee6ce8e1940852b94fac50367d036e'
+MOD_VERSION = '1.15.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -1473,651 +1473,651 @@ class Methods:
         raise NotImplementedError
 
     def atmosphere_contents(self, *, reference_id: str | None = None, **options) -> dict:
-        """What gas or liquid one thing holds: a canister, portable tank, tank, suit, a pipe (its whole pipe network), any landing pad piece (the pad network's one shared atmosphere, source landing_pad_network), a device mounted on a pipe (1.14.0+: a Pipe Analyzer, a gauge: the network of the pipe it sits o...
+        """What gas or liquid one thing holds: a canister, tank, suit, pipe network, landing pad network, a device's networks and the canisters in its slots, or an atmosphere_id.
 
         Class: read. Arguments: reference_id (required).
         """
         return self.call('atmosphere_contents', **{'reference_id': reference_id}, **options)
 
     def check_replaceable(self, *, reference_ids: list | None = None, **options) -> dict:
-        """For each thing (reference_ids, 1 to 1024), could a player place it again exactly where it stands, with every neighbour present (1.5.0+)? The game's own placement cursor for its prefab is put at the thing's position and turn and asked as a player's cursor asks: the class's CanConstruct (a frame be...
+        """For each thing, could a player place it again exactly where it stands, with every neighbour present? Asks the game's own placement cursor.
 
         Class: read. Arguments: reference_ids (required).
         """
         return self.call('check_replaceable', **{'reference_ids': reference_ids}, **options)
 
     def clean_cables(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, reference_ids: list | None = None, keep_ids: list | None = None, only_ids: list | None = None, older_than_id: str | None = None, root: str | None = None, wait: bool | None = None, operations: list | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
-        """Tidy cable networks in place with one or more operations, each usable alone or together (operations, default ["simplify_junctions"]; they run in the order remove_dead_ends, remove_loops, split_long_straights or merge_straights, simplify_junctions, each on what the earlier ones leave).
+        """Tidy cable networks in place: remove dead ends, break loops, remove what no device needs, split or merge straights, simplify junctions; alone or together.
 
         Class: write (other classes at some arguments). Arguments: include_notes, network_id, reference_ids, keep_ids, only_ids, older_than_id, root, wait, operations, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
         return self.call('clean_cables', **{'include_notes': include_notes, 'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
     def clean_pipes(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, reference_ids: list | None = None, keep_ids: list | None = None, only_ids: list | None = None, older_than_id: str | None = None, root: str | None = None, wait: bool | None = None, operations: list | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
-        """clean_cables for pipe networks: the same five operations (remove_loops included, with keep_ids), alone or together, with the same order, reports, refusals, jobs and material rules, for every pipe grade (gas, liquid, insulated gas, insulated liquid; grade and content always stay; long pipes where...
+        """Tidy pipe networks in place with clean_cables' operations, keeping every network's contents: removals that would empty one stop.
 
         Class: write (other classes at some arguments). Arguments: include_notes, network_id, reference_ids, keep_ids, only_ids, older_than_id, root, wait, operations, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id, acknowledge_gas_lost.
         """
         return self.call('clean_pipes', **{'include_notes': include_notes, 'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def connections(self, *, reference_id: str | None = None, network_id: str | dict | None = None, kind: str | None = None, prefab_contains: str | None = None, open_ends_only: bool | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """How pipes, cables and chutes connect, read from the game's own connection ends and networks.
+        """How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (40 per page) with filters and a summary.
 
         Class: read. Arguments: reference_id, network_id, kind, prefab_contains, open_ends_only, min, max, near, radius_m, limit, offset.
         """
         return self.call('connections', **{'reference_id': reference_id, 'network_id': network_id, 'kind': kind, 'prefab_contains': prefab_contains, 'open_ends_only': open_ends_only, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'limit': limit, 'offset': offset}, **options)
 
     def consumables(self, **options) -> dict:
-        """Every food and drink in the world wherever it is (carried, stored, on the ground, inside boxes and packages), with its holders and location like find_items.
+        """Every food and drink in the world, wherever it is, with nutrition, hydration and decay, packages counted by contents, and totals.
 
         Class: read.
         """
         return self.call('consumables', **options)
 
     def container_contents(self, *, reference_id: str | None = None, depth: int | None = None, **options) -> dict:
-        """Show the slots of any one thing in the world and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory.
+        """Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory.
 
         Class: read. Arguments: reference_id (required), depth.
         """
         return self.call('container_contents', **{'reference_id': reference_id, 'depth': depth}, **options)
 
     def control_ic_execution(self, *, gateway_id: str | None = None, reference_id: str | None = None, action: str | None = None, **options) -> dict:
-        """Pause, execute exactly one IC10 instruction while remaining paused, or resume the chip of a visible circuit holder; or restart a Lua chip.
+        """Pause, step one instruction, or resume a circuit holder's IC10 chip; or restart a Lua chip from the start.
 
         Class: write. Arguments: gateway_id, reference_id (required), action (required).
         """
         return self.call('control_ic_execution', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'action': action}, **options)
 
     def deep_miner_spots(self, *, at: object | None = None, ores: list | None = None, radius_m: float | None = None, count: int | None = None, min_separation_m: float | None = None, step_m: float | None = None, **options) -> dict:
-        """Where a deep miner would mine what (1.7.0+).
+        """Where a deep miner would mine what: the profile at a point, and with ores the nearest spots whose profile holds them all.
 
         Class: read. Arguments: at, ores, radius_m, count, min_separation_m, step_m.
         """
         return self.call('deep_miner_spots', **{'at': at, 'ores': ores, 'radius_m': radius_m, 'count': count, 'min_separation_m': min_separation_m, 'step_m': step_m}, **options)
 
     def describe_device(self, *, gateway_id: str | None = None, reference_id: str | None = None, **options) -> dict:
-        """Describe one network device and dynamically enumerate every vanilla logic type it reports as readable or writable.
+        """Describe one device: every logic type it can read and write, and its rocket, umbilical and uplink details where it has them.
 
         Class: read. Arguments: gateway_id, reference_id (required).
         """
         return self.call('describe_device', **{'gateway_id': gateway_id, 'reference_id': reference_id}, **options)
 
     def describe_prefab(self, *, prefab: str | int | None = None, **options) -> dict:
-        """What a buildable prefab is before it stands anywhere (1.4.3+), in its own frame (unturned, x right, y up, z forward, origin snapped as the cursor snaps it): prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_...
+        """What a buildable prefab is before it stands anywhere, in its own frame: placement kind, the turns it takes, its cells, render box, ports, visual top and controls side.
 
         Class: read. Arguments: prefab (required).
         """
         return self.call('describe_prefab', **{'prefab': prefab}, **options)
 
     def dish_aim(self, *, dish_id: str | None = None, contact_id: str | None = None, **options) -> dict:
-        """Work out the exact Horizontal and Vertical (logic degrees) that point a satellite dish at a trader contact, found on the dish's own model: the mod poses the dish's model at trial angles (through its animator; the Small Satellite Dish, which has none, through its pivots), reads where it would poin...
+        """Work out the Horizontal and Vertical (logic degrees) that point a satellite dish at a trader contact, from the dish's own model; nothing moves.
 
         Class: read. Arguments: dish_id (required), contact_id (required).
         """
         return self.call('dish_aim', **{'dish_id': dish_id, 'contact_id': contact_id}, **options)
 
     def feed_paths(self, *, root: str | None = None, network_id: str | dict | None = None, port: int | None = None, kind: str | None = None, **options) -> dict:
-        """Trace how a network feeds its devices from a root device (an APC's output, a generator): kind cable (default), pipe or chute; root (reference id); network_id or port (the root's port) when the root is on several networks of the kind (an APC's input and output).
+        """Trace how a network feeds its devices from a root device (an APC output, a generator): the pieces and rooms each feed passes through, daisy chains, and devices no run reaches.
 
         Class: read. Arguments: root (required), network_id, port, kind.
         """
         return self.call('feed_paths', **{'root': root, 'network_id': network_id, 'port': port, 'kind': kind}, **options)
 
     def find_items(self, *, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """Find items anywhere in the world, not only on a gateway's network: on the ground, in lockers, crates and machines, and carried by players (suit, backpack, toolbelt, hands, nested to any depth).
+        """Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock.
 
         Class: read. Arguments: prefab_contains, name_contains, location, within_id, near_player_m, limit, offset.
         """
         return self.call('find_items', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset}, **options)
 
     def find_spot(self, *, prefab: str | int | None = None, near: object | None = None, plane: str | None = None, side: str | None = None, looking: bool | None = None, around: object | None = None, room_id: str | None = None, facing: str | None = None, radius_m: float | None = None, require: dict | None = None, limit: int | None = None, max_checks: int | None = None, **options) -> dict:
-        """Ranked places for a prefab near a point (1.4.3+), on one face plane (plane with side, or looking: true) or on the walls of a room (room_id: every level face of a room cell toward outside the room carrying a wall or window, seen from inside; its floor and ceiling are not searched, name one with pl...
+        """Ranked places for a prefab near a point, on one face plane or on a room's walls, each checked with the game's placement cursor and the layout preview; answers place_arguments.
 
         Class: read. Arguments: prefab (required), near, plane, side, looking, around, room_id, facing, radius_m, require, limit, max_checks.
         """
         return self.call('find_spot', **{'prefab': prefab, 'near': near, 'plane': plane, 'side': side, 'looking': looking, 'around': around, 'room_id': room_id, 'facing': facing, 'radius_m': radius_m, 'require': require, 'limit': limit, 'max_checks': max_checks}, **options)
 
     def find_things(self, *, name_contains: str | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """Find anything in the world by name, not only items: portable tanks and canisters, crates and other movable things, structures and devices (tanks, lockers, pipes, frames), items, players and animals.
+        """Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals.
 
         Class: read. Arguments: name_contains, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, near_player_m, location, limit, offset.
         """
         return self.call('find_things', **{'name_contains': name_contains, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset}, **options)
 
     def game_clock(self, **options) -> dict:
-        """Read the game clock: game_time_s (seconds, stops while paused, restarts from 0 on every launch), paused, time_of_day_ratio (fraction of the local day, 0 to 1) and days_past.
+        """Read the game clock: game_time_s, paused, time_of_day_ratio and days_past.
 
         Class: read.
         """
         return self.call('game_clock', **options)
 
     def get_ic_source(self, *, gateway_id: str | None = None, reference_id: str | None = None, **options) -> dict:
-        """Read the source stored in the programmable chip of a visible circuit holder: IC10, or Lua for a StationeersLua chip (Integrated Circuit (Lua)) in an IC Housing, a ScriptedScreens board in a Console or Computer, a tablet cartridge or a Programmable Visor.
+        """Read the source in a circuit holder's chip: IC10, or Lua for a StationeersLua chip.
 
         Class: read. Arguments: gateway_id, reference_id (required).
         """
         return self.call('get_ic_source', **{'gateway_id': gateway_id, 'reference_id': reference_id}, **options)
 
     def get_ic_status(self, *, gateway_id: str | None = None, reference_id: str | None = None, stack_start: int | None = None, stack_count: int | None = None, log_lines: int | None = None, include_source: bool | None = None, **options) -> dict:
-        """Inspect a visible circuit holder's source, current instruction, registers, stack window, aliases, defines, jump tags, power state, pause state, compile/runtime diagnostics, and its device pins d0..d5 (pins: each pin's device reference ID, prefab and display name or null when empty, the alias the...
+        """Inspect a circuit holder's chip: current line, registers, stack window, aliases, defines, pins d0 to d5, power and pause state, compile and runtime errors, a Lua chip's log.
 
         Class: read. Arguments: gateway_id, reference_id (required), stack_start, stack_count, log_lines, include_source.
         """
         return self.call('get_ic_status', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'stack_start': stack_start, 'stack_count': stack_count, 'log_lines': log_lines, 'include_source': include_source}, **options)
 
     def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, kinds: list | None = None, compact: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """Read the grid around a place before routing: the 2 m cells of a box (min and max, positions in metres) or of a room (room_id from rooms), a page at a time (limit default 8 since 1.14.0, 27 before; max 125; offset); pieces and devices are those in the page's cells, so a device spanning cells of se...
+        """Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), with frames, walls, each small cell's occupant and support, the pieces, devices and their ports, and networks.
 
         Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, kinds, compact, limit, offset.
         """
         return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'kinds': kinds, 'compact': compact, 'limit': limit, 'offset': offset}, **options)
 
     def highlight(self, *, targets: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, **options) -> dict:
-        """Show the player where things are, through walls, frames and terrain (1.7.0+), on the player's screen only (other players see nothing; nothing in the world changes; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod): targets [{...}] (up to 64), each exactly on...
+        """Show the player where things are, through walls and terrain, on their screen only: things, a network, or far points, tinted and labelled for a while.
 
         Class: read. Arguments: targets, seconds, keep, clear.
         """
         return self.call('highlight', **{'targets': targets, 'seconds': seconds, 'keep': keep, 'clear': clear}, **options)
 
     def ignition_risk(self, *, include_prefabs: bool | None = None, **options) -> dict:
-        """Whether the things the player carries would catch fire, by the game's own fire rule.
+        """Whether the things the player carries would catch fire, by the game's own fire rule: the air around the player and every burnable item with its flashpoint.
 
         Class: read. Arguments: include_prefabs.
         """
         return self.call('ignition_risk', **{'include_prefabs': include_prefabs}, **options)
 
     def inspect_slots(self, *, gateway_id: str | None = None, reference_id: str | None = None, slot_index: int | None = None, **options) -> dict:
-        """Inspect generic device slots, occupants, slot constraints (interactable false: a hidden slot, which move_item refuses), and every readable LogicSlotType value without changing inventory contents.
+        """Inspect a device's slots: occupants, what each slot takes, and every readable slot logic value.
 
         Class: read. Arguments: gateway_id, reference_id (required), slot_index.
         """
         return self.call('inspect_slots', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'slot_index': slot_index}, **options)
 
     def item_totals(self, *, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, holders_limit: int | None = None, **options) -> dict:
-        """Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock (material held as reagents inside machines, e.g.
+        """Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most.
 
         Class: read. Arguments: prefab_contains, name_contains, location, within_id, near_player_m, limit, holders_limit.
         """
         return self.call('item_totals', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'holders_limit': holders_limit}, **options)
 
     def label(self, *, reference_id: str | None = None, name: str | None = None, labels: list | None = None, **options) -> dict:
-        """Rename a thing as the hand Labeller does, with the game's own rename (Thing.RenameThing on the host, which syncs to clients and is saved; a multiplayer client sends the rename to the host).
+        """Rename things as the hand Labeller does: one with reference_id and name, or up to 64 with labels.
 
         Class: write. Arguments: reference_id, name, labels.
         """
         return self.call('label', **{'reference_id': reference_id, 'name': name, 'labels': labels}, **options)
 
     def landing_pads(self, **options) -> dict:
-        """Every trader landing pad in the world, measured by the game's own checks: no guessing from tiles.
+        """Every trader landing pad, measured by the game's own checks: its largest square, runway threshold, which ships fit, and whether each contact in the sky can land.
 
         Class: read.
         """
         return self.call('landing_pads', **options)
 
     def lint_layout(self, *, room_id: str | None = None, min: object | None = None, max: object | None = None, limit: int | None = None, **options) -> dict:
-        """Check a room (room_id) or a box (min, max; the 2 m cells it overlaps, a side on a face plane taking nothing beyond it; at most 4000) against the layout rules (1.4.3+), from what stands there now.
+        """Check a room or a box against the layout rules (lint-rules.json, the save's file over the mod's), from what stands there: replaceability, doors, ports, floating runs, overlaps, solar, oxidiser venting and more.
 
         Class: read. Arguments: room_id, min, max, limit.
         """
         return self.call('lint_layout', **{'room_id': room_id, 'min': min, 'max': max, 'limit': limit}, **options)
 
     def lint_rules(self, *, action: str | None = None, rule_id: str | None = None, full: bool | None = None, text: str | None = None, reference_id: str | None = None, port: int | None = None, other_id: str | None = None, at: object | None = None, **options) -> dict:
-        """The lint rule set (1.7.0+) lint_layout audits with and the place and plan tools run on what they would place: lint-rules.json in the mod's folder, with lint-rules.json in the loaded save's folder (saves/<station>/) taking priority.
+        """The lint rule set lint_layout audits with and the building tools run on dry runs: list the rules, validate a rule file, list fields and functions, run the examples, explain a finding.
 
         Class: read. Arguments: action, rule_id, full, text, reference_id, port, other_id, at.
         """
         return self.call('lint_rules', **{'action': action, 'rule_id': rule_id, 'full': full, 'text': text, 'reference_id': reference_id, 'port': port, 'other_id': other_id, 'at': at}, **options)
 
     def list_containers(self, *, prefab_contains: str | None = None, name_contains: str | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """List every outermost holder that has at least one item in it (lockers, crates, machines, a backpack on the floor), not held by a player, with slots used, item totals per type, position and distance, nearest first.
+        """List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first.
 
         Class: read. Arguments: prefab_contains, name_contains, near_player_m, limit, offset.
         """
         return self.call('list_containers', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset}, **options)
 
     def list_devices(self, *, gateway_id: str | None = None, prefab_hash: int | None = None, name_contains: str | None = None, **options) -> dict:
-        """List every device in the world, or with a gateway_id only those on that gateway's data networks.
+        """List devices: every one in the world, or those on a gateway's data networks; filter by prefab_hash or name_contains.
 
         Class: read. Arguments: gateway_id, prefab_hash, name_contains.
         """
         return self.call('list_devices', **{'gateway_id': gateway_id, 'prefab_hash': prefab_hash, 'name_contains': name_contains}, **options)
 
     def list_gateways(self, **options) -> dict:
-        """List the scopes device tools accept as gateway_id: first 'world', every device in the world (status 'bypass', kept for older clients), then every StationGod Gateway in the loaded world with its availability and network status; a gateway id only narrows a call to that gateway's data networks.
+        """List the scopes device tools take as gateway_id: 'world' (every device), then each StationGod Gateway with its status: ready, incomplete or no_data_network.
 
         Class: read.
         """
         return self.call('list_gateways', **options)
 
     def looking_at(self, *, max_distance_m: float | None = None, **options) -> dict:
-        """What the player's crosshair is on: the game's own CursorManager.CursorThing, the thing its interaction ray (3 m from the camera) hits this frame.
+        """What the player's crosshair is on: the thing the 3 m interaction ray hits, the button or slot under it, plus the view and a longer look ray.
 
         Class: read. Arguments: max_distance_m.
         """
         return self.call('looking_at', **{'max_distance_m': max_distance_m}, **options)
 
     def mod_info(self, **options) -> dict:
-        """The running mod's identity and health: mod_id, mod_version, assembly_version, informational_version, pipe_name (the local named pipe this game listens on, the sidecar's --pipe: tells which game a sidecar reached when two run on one machine), and methods: every method the mod answers, each {method...
+        """The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game.
 
         Class: read.
         """
         return self.call('mod_info', **options)
 
     def move_gas(self, *, from_: str | dict | None = None, to: str | dict | None = None, delete: bool | None = None, gases: list | None = None, amount_mol: float | None = None, force: bool | None = None, joined: bool | None = None, dry_run: bool | None = None, transfer_id: str | None = None, **options) -> dict:
-        """A cheat tool: it bypasses the game's physics.
+        """Cheat: move gas and liquid between atmospheres or rooms, or delete it, with no pipe, pump or power; it bypasses the game's physics.
 
         Class: cheat (other classes at some arguments). Arguments: from_, to, delete, gases, amount_mol, force, joined, dry_run, transfer_id.
         """
         return self.call('move_gas', **{'from': from_, 'to': to, 'delete': delete, 'gases': gases, 'amount_mol': amount_mol, 'force': force, 'joined': joined, 'dry_run': dry_run, 'transfer_id': transfer_id}, **options)
 
     def move_item(self, *, reference_id: str | None = None, quantity: int | None = None, to_id: str | None = None, to_slot: int | str | None = None, merge: bool | None = None, moves: list | None = None, **options) -> dict:
-        """Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: slot to slot, never through the world, so ice and other perishables are never loose in the air.
+        """Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order.
 
         Class: write. Arguments: reference_id, quantity, to_id, to_slot, merge, moves.
         """
         return self.call('move_item', **{'reference_id': reference_id, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'merge': merge, 'moves': moves}, **options)
 
     def network_snapshot(self, *, gateway_id: str | None = None, reference_ids: list | None = None, prefab_hash: int | None = None, name_contains: str | None = None, logic_types: list | None = None, max_devices: int | None = None, **options) -> dict:
-        """Capture one main-thread snapshot of filtered network devices and their readable logic values.
+        """Snapshot devices and their readable logic values in one frame, filtered by reference_ids, prefab_hash, name_contains and logic_types.
 
         Class: read. Arguments: gateway_id, reference_ids, prefab_hash, name_contains, logic_types, max_devices.
         """
         return self.call('network_snapshot', **{'gateway_id': gateway_id, 'reference_ids': reference_ids, 'prefab_hash': prefab_hash, 'name_contains': name_contains, 'logic_types': logic_types, 'max_devices': max_devices}, **options)
 
     def outer_frames(self, *, near_player_m: float | None = None, include_inner: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """Which frames (iron, steel, corner, side) are outer frames: frames with a face on a cell whose gas is the world's, i.e.
+        """Which frames are outer frames: a face on a cell of the planet's outside air.
 
         Class: read. Arguments: near_player_m, include_inner, limit, offset.
         """
         return self.call('outer_frames', **{'near_player_m': near_player_m, 'include_inner': include_inner, 'limit': limit, 'offset': offset}, **options)
 
     def paint(self, *, reference_ids: list | None = None, color: str | None = None, items: list | None = None, **options) -> dict:
-        """Paint things with the game's own paint, as a spray can does (the same OnServer.SetCustomColor call, but no paint is used), or list the colours.
+        """Paint things as a spray can does (no paint used), one colour for reference_ids or a colour each with items; with neither, list the colours.
 
         Class: write. Arguments: reference_ids, color, items.
         """
         return self.call('paint', **{'reference_ids': reference_ids, 'color': color, 'items': items}, **options)
 
     def paste_blueprint(self, *, name: str | None = None, anchor: list | None = None, rotation: int | None = None, status: bool | None = None, undo: bool | None = None, **options) -> dict:
-        """Paste a BlueprintMod blueprint at an exact place and turn, with no player needed (BlueprintMod spawns every piece without the game's placement checks, so a paste can leave a piece no player could place there again, e.g.
+        """Cheat: paste a BlueprintMod blueprint at an exact anchor and turn, with no player needed; it skips the game's placement checks.
 
         Class: cheat (other classes at some arguments). Arguments: name, anchor, rotation, status, undo.
         """
         return self.call('paste_blueprint', **{'name': name, 'anchor': anchor, 'rotation': rotation, 'status': status, 'undo': undo}, **options)
 
     def place_cables(self, *, waypoints: list | None = None, cells: list | None = None, piece: dict | None = None, pieces: list | None = None, grade: str | None = None, join: str | None = None, branches: list | None = None, allow_door_keepout: bool | None = None, allow_split_long: bool | None = None, extra_ends: list | None = None, remove_ids: list | None = None, assume_removed: list | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, wait: bool | None = None, allow_split: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, **options) -> dict:
-        """Lay a cable run, or one piece, the way a coil builds it, choosing for every small-grid cell (0.5 m) the one-cell piece of the grade whose ends exactly match that cell's connections (straight, corner, tee, corner3, cross, corner4, 5- and 6-way; turned as needed; read from the loaded coil, never a...
+        """Lay a cable run, or pieces, as a coil builds it: the one-cell piece whose ends match each cell, of a grade (heavy by default).
 
         Class: write (other classes at some arguments). Arguments: waypoints, cells, piece, pieces, grade, join, branches, allow_door_keepout, allow_split_long, extra_ends, remove_ids, assume_removed, allow_bridge, root, join_to, join_trunk, wait, allow_split, dry_run, confirm, from_id, refund, refund_to, include_links, include_notes, include_network_devices, limit, verbose, job_id.
         """
         return self.call('place_cables', **{'waypoints': waypoints, 'cells': cells, 'piece': piece, 'pieces': pieces, 'grade': grade, 'join': join, 'branches': branches, 'allow_door_keepout': allow_door_keepout, 'allow_split_long': allow_split_long, 'extra_ends': extra_ends, 'remove_ids': remove_ids, 'assume_removed': assume_removed, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'wait': wait, 'allow_split': allow_split, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id}, **options)
 
     def place_chutes(self, *, waypoints: list | None = None, cells: list | None = None, piece: dict | None = None, pieces: list | None = None, grade: str | None = None, join: str | None = None, branches: list | None = None, allow_door_keepout: bool | None = None, allow_split_long: bool | None = None, extra_ends: list | None = None, remove_ids: list | None = None, assume_removed: list | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, wait: bool | None = None, allow_split: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, **options) -> dict:
-        """Lay a chute run, or one piece, from Kit (Chute) as a player builds it, choosing for every small-grid cell (0.5 m) the one-cell piece whose ends match that cell's connections: a straight or corner (1 kit each) or, where three ends meet in a T, a junction (2 kits) turned so its output faces downstr...
+        """Lay a chute run, or pieces, from Kit (Chute) as a player builds it, from the source to the sink; straights, corners and junctions, with flow guards.
 
         Class: write (other classes at some arguments). Arguments: waypoints, cells, piece, pieces, grade, join, branches, allow_door_keepout, allow_split_long, extra_ends, remove_ids, assume_removed, allow_bridge, root, join_to, join_trunk, wait, allow_split, dry_run, confirm, from_id, refund, refund_to, include_links, include_notes, include_network_devices, limit, verbose, job_id.
         """
         return self.call('place_chutes', **{'waypoints': waypoints, 'cells': cells, 'piece': piece, 'pieces': pieces, 'grade': grade, 'join': join, 'branches': branches, 'allow_door_keepout': allow_door_keepout, 'allow_split_long': allow_split_long, 'extra_ends': extra_ends, 'remove_ids': remove_ids, 'assume_removed': assume_removed, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'wait': wait, 'allow_split': allow_split, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id}, **options)
 
     def place_pipes(self, *, waypoints: list | None = None, cells: list | None = None, piece: dict | None = None, pieces: list | None = None, grade: str | None = None, join: str | None = None, branches: list | None = None, allow_door_keepout: bool | None = None, allow_split_long: bool | None = None, extra_ends: list | None = None, remove_ids: list | None = None, assume_removed: list | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, wait: bool | None = None, allow_split: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
-        """place_cables for pipes: the same run forms, joins, piece choice (from the kit of the grade: gas, liquid, insulated_gas or insulated_liquid; grade is required), placement check (a cable in the cell blocks only along its own axis), removals, dry run, job and checks, with the pipe guards.
+        """Lay a pipe run, or pieces, as place_cables lays cable: one-cell pieces from the grade's kit (gas, liquid, insulated_gas, insulated_liquid; grade required), with the pipe guards and a gas check.
 
         Class: write (other classes at some arguments). Arguments: waypoints, cells, piece, pieces, grade, join, branches, allow_door_keepout, allow_split_long, extra_ends, remove_ids, assume_removed, allow_bridge, root, join_to, join_trunk, wait, allow_split, dry_run, confirm, from_id, refund, refund_to, include_links, include_notes, include_network_devices, limit, verbose, job_id, acknowledge_gas_lost.
         """
         return self.call('place_pipes', **{'waypoints': waypoints, 'cells': cells, 'piece': piece, 'pieces': pieces, 'grade': grade, 'join': join, 'branches': branches, 'allow_door_keepout': allow_door_keepout, 'allow_split_long': allow_split_long, 'extra_ends': extra_ends, 'remove_ids': remove_ids, 'assume_removed': assume_removed, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'wait': wait, 'allow_split': allow_split, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def place_structure(self, *, include_notes: bool | None = None, placements: list | None = None, prefab: str | int | None = None, at: object | None = None, rotation: list | None = None, facing: str | None = None, up: str | None = None, face: str | None = None, orient: dict | None = None, above_floor_m: float | None = None, build_state: str | int | None = None, label: str | None = None, color: str | int | None = None, from_id: str | None = None, include_footprint_cells: bool | None = None, free: bool | None = None, allow_door_keepout: bool | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, verbose: bool | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
-        """Place any structure some kit builds (a light, sign, device, frame, wall, tank...) by prefab name or prefab hash, at a position with a turn, at a build state, with an optional label and colour; several placements are one job.
+        """Place any structure a kit builds (light, sign, device, frame, wall, tank, rocket part) by prefab, at a point with a turn, build state, label and colour; several placements are one job.
 
         Class: write (other classes at some arguments). Arguments: include_notes, placements, prefab, at, rotation, facing, up, face, orient, above_floor_m, build_state, label, color, from_id, include_footprint_cells, free, allow_door_keepout, wait, dry_run, confirm, verbose, job_id, acknowledge_gas_lost.
         """
         return self.call('place_structure', **{'include_notes': include_notes, 'placements': placements, 'prefab': prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient': orient, 'above_floor_m': above_floor_m, 'build_state': build_state, 'label': label, 'color': color, 'from_id': from_id, 'include_footprint_cells': include_footprint_cells, 'free': free, 'allow_door_keepout': allow_door_keepout, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def plan_cable_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
-        """Find a cable route on the small grid and dry-run it.
+        """Find a cable route on the small grid between ends, ports or networks, and dry-run it with place_cables: frames first, trees from several starts, trunks, reroutes.
 
         Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, limit.
         """
         return self.call('plan_cable_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit}, **options)
 
     def plan_chute_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
-        """plan_cable_route for chutes: from is the source and to the sink, since items travel from the route's first cell to its last.
+        """Find a chute route from a source to a sink and dry-run it with place_chutes and every flow guard.
 
         Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, limit.
         """
         return self.call('plan_chute_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit}, **options)
 
     def plan_pipe_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
-        """plan_cable_route for pipes: the same ends (and from or to {reference_id} of an in-line tank or passive vent: the cell beyond its free end, 1.3.5+), reserve_cells and reserve_ports, reroute, rules and search (never through a cell holding a pipe, nor along a cable's axis in a cell), dry-run with pl...
+        """Find a pipe route between ends, ports, tanks or networks, and dry-run it with place_pipes and its pipe guards; grade required.
 
         Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, limit.
         """
         return self.call('plan_pipe_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit}, **options)
 
     def plan_removal(self, *, kind: str | None = None, reference_ids: list | None = None, waypoints: list | None = None, cells: list | None = None, network_id: str | dict | None = None, root: str | None = None, allow_split: bool | None = None, from_id: str | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
-        """Price a removal without doing it: the dry run of remove_cables, remove_pipes or remove_chutes (kind cable, the default, pipe or chute) under a read-only name.
+        """Price a removal without doing it: the dry run of remove_cables, remove_pipes or remove_chutes (kind) for ids, cells or a whole network.
 
         Class: read. Arguments: kind, reference_ids, waypoints, cells, network_id, root, allow_split, from_id, refund, refund_to, include_links, include_notes, include_network_devices, limit.
         """
         return self.call('plan_removal', **{'kind': kind, 'reference_ids': reference_ids, 'waypoints': waypoints, 'cells': cells, 'network_id': network_id, 'root': root, 'allow_split': allow_split, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit}, **options)
 
     def planet(self, **options) -> dict:
-        """The planet's own atmosphere, the one every outdoor cell relaxes toward.
+        """The planet's own atmosphere, the one outdoor cells relax toward: gases, pressure, temperature and its parts, the day's range, sea, clouds and ice caps, and the starting air.
 
         Class: read.
         """
         return self.call('planet', **options)
 
     def plant_genes(self, *, reference_id: str | None = None, reference_ids: list | None = None, unit: int | None = None, genes: dict | None = None, force: bool | None = None, include_notes: bool | None = None, **options) -> dict:
-        """Read or edit the genes of plants, seeds and harvested produce.
+        """Read the genes of plants, seeds and produce; with genes, edit them as the Gene Splicer does.
 
         Class: cheat (other classes at some arguments). Arguments: reference_id, reference_ids, unit, genes, force, include_notes.
         """
         return self.call('plant_genes', **{'reference_id': reference_id, 'reference_ids': reference_ids, 'unit': unit, 'genes': genes, 'force': force, 'include_notes': include_notes}, **options)
 
     def plants(self, *, reference_id: str | None = None, include_unplanted: bool | None = None, verbose: bool | None = None, **options) -> dict:
-        """Every plant in short by default (1.14.0+): reference_id, prefab_name, display_name, planted, tray, stage (index), stage_count, maturity_ratio, ready_to_harvest, dead, health_percent, problems and harvest_in_s; reference_id (one plant) or verbose gives each plant in full as follows.
+        """Every plant in trays, planters and stations, read from the plant itself: stage, maturity, health, problems, time to harvest.
 
         Class: read. Arguments: reference_id, include_unplanted, verbose.
         """
         return self.call('plants', **{'reference_id': reference_id, 'include_unplanted': include_unplanted, 'verbose': verbose}, **options)
 
     def player_vitals(self, **options) -> dict:
-        """The player's hunger and thirst: nutrition and hydration now and their capacities, food quality and its multiplier, mood, sleeping, brain online, helmet closed, the temperature thirst depends on right now and where it is taken (suit, room or world), the difficulty's hunger rate, hydration rate and...
+        """The player's hunger and thirst: nutrition and hydration and their capacities, the drain per second as the game works it out, and the time until each runs out.
 
         Class: read.
         """
         return self.call('player_vitals', **options)
 
     def read_console(self, *, lines: int | None = None, **options) -> dict:
-        """Read the most recent lines from the in-game console, oldest first, including command output, Unity errors and their stack traces.
+        """Read the latest in-game console lines, oldest first: command output, errors and their stack traces.
 
         Class: read. Arguments: lines.
         """
         return self.call('read_console', **{'lines': lines}, **options)
 
     def read_devices(self, *, gateway_id: str | None = None, include: list | None = None, items: list | None = None, **options) -> dict:
-        """Read many things in one request, every item in the same frame (one game update; not tied to the atmospherics tick), for a control loop's whole read per tick (1.10.0+).
+        """Read many things in one frame: logic, slot logic, an atmosphere and reagents per item; up to 128 items and 1,024 values.
 
         Class: read. Arguments: gateway_id, include, items (required).
         """
         return self.call('read_devices', **{'gateway_id': gateway_id, 'include': include, 'items': items}, **options)
 
     def read_logic(self, *, gateway_id: str | None = None, reference_id: str | None = None, logic_type: str | int | None = None, **options) -> dict:
-        """Read a generic logic value from a device using a logic-type name or numeric ID.
+        """Read one logic value from a device, by logic type name or number.
 
         Class: read. Arguments: gateway_id, reference_id (required), logic_type (required).
         """
         return self.call('read_logic', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'logic_type': logic_type}, **options)
 
     def read_logic_many(self, *, gateway_id: str | None = None, reads: list | None = None, **options) -> dict:
-        """Read up to 256 generic logic values in one main-thread request.
+        """Read up to 256 logic values in one call; each result stands alone, by index, with its own error.
 
         Class: read. Arguments: gateway_id, reads (required).
         """
         return self.call('read_logic_many', **{'gateway_id': gateway_id, 'reads': reads}, **options)
 
     def read_memory(self, *, gateway_id: str | None = None, reference_id: str | None = None, start_address: int | None = None, count: int | None = None, **options) -> dict:
-        """Read a contiguous range of up to 512 values from a visible device with readable memory, as a chip's get instruction does: an IC Housing or suit (its chip's stack), a Logic Sorter, a satellite dish, a fabricator, rocket avionics and the like.
+        """Read up to 512 values of a device's memory from start_address, as a chip's get does: an IC Housing or suit (its chip's stack), Logic Sorter, dish, fabricator, rocket avionics.
 
         Class: read. Arguments: gateway_id, reference_id (required), start_address (required), count (required).
         """
         return self.call('read_memory', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'start_address': start_address, 'count': count}, **options)
 
     def reagents(self, *, reference_id: str | None = None, **options) -> dict:
-        """The reagents a thing holds, one by one: a furnace's or arc furnace's melted load (Iron, Carbon, Silicon...), a centrifuge's, a mixer's, a microwave's.
+        """The reagents a thing holds, one by one: a furnace's melted load (Iron, Carbon, Silicon...), a centrifuge's, a mixer's, a microwave's.
 
         Class: read. Arguments: reference_id (required).
         """
         return self.call('reagents', **{'reference_id': reference_id}, **options)
 
     def remove_cables(self, *, reference_ids: list | None = None, waypoints: list | None = None, cells: list | None = None, allow_split: bool | None = None, root: str | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, **options) -> dict:
-        """Remove cable pieces as wire cutters would: reference_ids, or the cable in each cell of waypoints or cells (positions in metres).
+        """Remove cable pieces as wire cutters do: by id, or the cable in each cell of waypoints or cells.
 
         Class: write (other classes at some arguments). Arguments: reference_ids, waypoints, cells, allow_split, root, wait, dry_run, confirm, from_id, refund, refund_to, include_links, include_notes, include_network_devices, limit, verbose, job_id.
         """
         return self.call('remove_cables', **{'reference_ids': reference_ids, 'waypoints': waypoints, 'cells': cells, 'allow_split': allow_split, 'root': root, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id}, **options)
 
     def remove_chutes(self, *, reference_ids: list | None = None, waypoints: list | None = None, cells: list | None = None, allow_split: bool | None = None, root: str | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, **options) -> dict:
-        """Remove chute pieces (straights, corners, junctions, and also valves, overflows and splitters) as a player's deconstruction does: reference_ids, or the chute in each cell of waypoints or cells (positions in metres).
+        """Remove chute pieces (straights, corners, junctions, valves, overflows, splitters) as a player's deconstruction does: by id or cell.
 
         Class: write (other classes at some arguments). Arguments: reference_ids, waypoints, cells, allow_split, root, wait, dry_run, confirm, from_id, refund, refund_to, include_links, include_notes, include_network_devices, limit, verbose, job_id.
         """
         return self.call('remove_chutes', **{'reference_ids': reference_ids, 'waypoints': waypoints, 'cells': cells, 'allow_split': allow_split, 'root': root, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id}, **options)
 
     def remove_pipes(self, *, reference_ids: list | None = None, waypoints: list | None = None, cells: list | None = None, allow_split: bool | None = None, root: str | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
-        """remove_cables for pipes, with the pipe guards: a removal that would empty a network holding gas or liquid (holds_contents) or split one (contents_would_move) is refused; otherwise removed pipes leave their network first, so its contents stay and the pressure rises (would_burst refuses).
+        """Remove pipe pieces as remove_cables removes cable, with the pipe guards: never emptying or splitting a network that holds gas or liquid.
 
         Class: write (other classes at some arguments). Arguments: reference_ids, waypoints, cells, allow_split, root, wait, dry_run, confirm, from_id, refund, refund_to, include_links, include_notes, include_network_devices, limit, verbose, job_id, acknowledge_gas_lost.
         """
         return self.call('remove_pipes', **{'reference_ids': reference_ids, 'waypoints': waypoints, 'cells': cells, 'allow_split': allow_split, 'root': root, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def remove_structure(self, *, include_notes: bool | None = None, reference_ids: list | None = None, allow_contents: bool | None = None, allow_breach: bool | None = None, allow_broken: bool | None = None, allow_burst: bool | None = None, refund_to: str | int | list | None = None, wait: bool | None = None, from_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, verbose: bool | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
-        """Remove structures by reference id (up to 256, one job) as deconstructing them by hand would, giving back what that gives back: every build state's items down to the kit, where refund_to says: a list of targets tried in turn per item until it fits, default ["inventory", "source", "storage", "groun...
+        """Remove structures by id (up to 256, one job) as deconstructing by hand would, refunding every build state down to the kit where refund_to says.
 
         Class: write (other classes at some arguments). Arguments: include_notes, reference_ids, allow_contents, allow_breach, allow_broken, allow_burst, refund_to, wait, from_id, dry_run, confirm, verbose, job_id, acknowledge_gas_lost.
         """
         return self.call('remove_structure', **{'include_notes': include_notes, 'reference_ids': reference_ids, 'allow_contents': allow_contents, 'allow_breach': allow_breach, 'allow_broken': allow_broken, 'allow_burst': allow_burst, 'refund_to': refund_to, 'wait': wait, 'from_id': from_id, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def replace_frames(self, *, include_notes: bool | None = None, reference_ids: list | None = None, room_id: str | None = None, to: str | None = None, from_prefabs: list | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
-        """Replace frames in place with another frame prefab (to, e.g.
+        """Replace frames in place with another frame prefab, or finish unfinished frames, without ever opening a cell; pieces by id or a room's frames.
 
         Class: write (other classes at some arguments). Arguments: include_notes, reference_ids, room_id, to, from_prefabs, wait, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
         return self.call('replace_frames', **{'include_notes': include_notes, 'reference_ids': reference_ids, 'room_id': room_id, 'to': to, 'from_prefabs': from_prefabs, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
     def replace_walls(self, *, include_notes: bool | None = None, reference_ids: list | None = None, room_id: str | None = None, to: str | None = None, from_prefabs: list | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
-        """Replace walls and windows in place with another wall or window prefab (to, required: e.g.
+        """Replace walls and windows in place with another wall or window prefab without ever opening a face; pieces by id or every wall of a room.
 
         Class: write (other classes at some arguments). Arguments: include_notes, reference_ids, room_id, to, from_prefabs, wait, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
         return self.call('replace_walls', **{'include_notes': include_notes, 'reference_ids': reference_ids, 'room_id': room_id, 'to': to, 'from_prefabs': from_prefabs, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
     def resolve_ic_selectors(self, *, gateway_id: str | None = None, reference_id: str | None = None, target_reference_ids: list | None = None, **options) -> dict:
-        """Resolve a circuit holder's db/d0...
+        """Resolve a circuit holder's db and d0 to d5 pins and aliases, and report prefab and name-hash selectors (lbn, sbn) for the devices its batch instructions reach.
 
         Class: read. Arguments: gateway_id, reference_id (required), target_reference_ids.
         """
         return self.call('resolve_ic_selectors', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'target_reference_ids': target_reference_ids}, **options)
 
     def rocket_flight_log(self, *, action: str | None = None, rocket_id: str | None = None, interval_s: float | None = None, capacity: int | None = None, csv: bool | None = None, offset: int | None = None, limit: int | None = None, every: int | None = None, **options) -> dict:
-        """A flight recorder in the mod.
+        """A flight recorder: action start records a rocket every interval_s of game time; read answers a summary and one page of rows; also stop, list, clear.
 
         Class: write (other classes at some arguments). Arguments: action, rocket_id, interval_s, capacity, csv, offset, limit, every.
         """
         return self.call('rocket_flight_log', **{'action': action, 'rocket_id': rocket_id, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'offset': offset, 'limit': limit, 'every': every}, **options)
 
     def rocket_forecast(self, *, rocket_id: str | None = None, to: str | None = None, profile: str | None = None, park_s: float | None = None, mine: bool | None = None, fill_holds: bool | None = None, add_cargo_slots: int | None = None, park_load_w: float | None = None, then_return: bool | None = None, return_to: str | None = None, deploy_payload: bool | None = None, transfer_mol: float | None = None, transfer_with: str | None = None, transfer_battery_j: float | None = None, fuel_mol: float | None = None, fuel_temperature_k: float | None = None, fuel_mix: dict | None = None, thrust_scale: float | None = None, throttle: float | None = None, cargo_slots: int | None = None, add_cargo_kg: float | None = None, payload_kg: float | None = None, battery_j: float | None = None, battery_percent: float | None = None, extra_load_w: float | None = None, min_confidence: float | None = None, limits: bool | None = None, column_check: bool | None = None, **options) -> dict:
-        """Fly a copy of a rocket to a node and report each leg; the game is not touched.
+        """Fly a copy of a rocket to a node, tick by tick, and report each leg: launch, hops, parking, re-entry and landing, fuel, power, thrust and the verdict.
 
         Class: read. Arguments: rocket_id, to, profile, park_s, mine, fill_holds, add_cargo_slots, park_load_w, then_return, return_to, deploy_payload, transfer_mol, transfer_with, transfer_battery_j, fuel_mol, fuel_temperature_k, fuel_mix, thrust_scale, throttle, cargo_slots, add_cargo_kg, payload_kg, battery_j, battery_percent, extra_load_w, min_confidence, limits, column_check.
         """
         return self.call('rocket_forecast', **{'rocket_id': rocket_id, 'to': to, 'profile': profile, 'park_s': park_s, 'mine': mine, 'fill_holds': fill_holds, 'add_cargo_slots': add_cargo_slots, 'park_load_w': park_load_w, 'then_return': then_return, 'return_to': return_to, 'deploy_payload': deploy_payload, 'transfer_mol': transfer_mol, 'transfer_with': transfer_with, 'transfer_battery_j': transfer_battery_j, 'fuel_mol': fuel_mol, 'fuel_temperature_k': fuel_temperature_k, 'fuel_mix': fuel_mix, 'thrust_scale': thrust_scale, 'throttle': throttle, 'cargo_slots': cargo_slots, 'add_cargo_kg': add_cargo_kg, 'payload_kg': payload_kg, 'battery_j': battery_j, 'battery_percent': battery_percent, 'extra_load_w': extra_load_w, 'min_confidence': min_confidence, 'limits': limits, 'column_check': column_check}, **options)
 
     def rocket_mining_options(self, *, rocket_id: str | None = None, to: str | None = None, collectable_only: bool | None = None, **options) -> dict:
-        """What a rocket can collect, by the game's own mining formulas.
+        """What a rocket can collect, by the game's own mining formulas: its loadout, and per site the yield per cycle and hour, cycles to deplete, and what stops it.
 
         Class: read. Arguments: rocket_id, to, collectable_only.
         """
         return self.call('rocket_mining_options', **{'rocket_id': rocket_id, 'to': to, 'collectable_only': collectable_only}, **options)
 
     def rocket_status(self, *, rocket_id: str | None = None, self_test: bool | None = None, compact: bool | None = None, parts: bool | None = None, **options) -> dict:
-        """Every rocket (or rocket_id: the rocket's, its rocket network's or any part's id), read from the game.
+        """Every rocket, or one, read from the game: where it is and where it goes, mass, fuel lines, engines, thrust, landing confidence, cargo, power, burn time.
 
         Class: read. Arguments: rocket_id, self_test, compact, parts.
         """
         return self.call('rocket_status', **{'rocket_id': rocket_id, 'self_test': self_test, 'compact': compact, 'parts': parts}, **options)
 
     def rooms(self, *, reference_id: str | None = None, include_cells: bool | None = None, include_devices: bool | None = None, **options) -> dict:
-        """The game's closed rooms measured cell by cell: every room in the world, or with reference_id only the room that thing (a device, item or player; an item in a slot counts where its outermost holder is) is in.
+        """The game's closed rooms measured cell by cell: volume, pressure, temperature, gases, heat, bounds.
 
         Class: read. Arguments: reference_id, include_cells, include_devices.
         """
         return self.call('rooms', **{'reference_id': reference_id, 'include_cells': include_cells, 'include_devices': include_devices}, **options)
 
     def run_console_command(self, *, command: str | None = None, max_output_lines: int | None = None, **options) -> dict:
-        """Run any Stationeers console command on the game's main thread and return the console lines it printed.
+        """Cheat: run any console command and answer the lines it printed.
 
         Class: cheat. Arguments: command (required), max_output_lines.
         """
         return self.call('run_console_command', **{'command': command, 'max_output_lines': max_output_lines}, **options)
 
     def sample_logic(self, *, gateway_id: str | None = None, targets: list | None = None, duration_seconds: float | None = None, interval_seconds: float | None = None, **options) -> dict:
-        """Sample up to 32 logic values for at most 30 seconds and return their initial readings plus timestamped changes.
+        """Watch up to 32 logic values for up to 30 s; answers their first readings and every change with its time.
 
         Class: read. Arguments: gateway_id, targets (required), duration_seconds, interval_seconds.
         """
         return self.call('sample_logic', **{'gateway_id': gateway_id, 'targets': targets, 'duration_seconds': duration_seconds, 'interval_seconds': interval_seconds}, **options)
 
     def set_ic_pins(self, *, gateway_id: str | None = None, reference_id: str | None = None, pins: dict | None = None, allow_off_network: bool | None = None, **options) -> dict:
-        """Set an IC Housing's device pins d0..d5, as turning its screws with a screwdriver would: each listed pin gets a device reference ID, or null to clear it, and pins not listed keep their device.
+        """Set an IC Housing's pins d0 to d5 as a screwdriver does: a device id per pin, null to clear.
 
         Class: write. Arguments: gateway_id, reference_id (required), pins (required), allow_off_network.
         """
         return self.call('set_ic_pins', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'pins': pins, 'allow_off_network': allow_off_network}, **options)
 
     def set_ic_source(self, *, gateway_id: str | None = None, reference_id: str | None = None, source: str | None = None, include_source: bool | None = None, **options) -> dict:
-        """Write source to the programmable chip of a visible circuit holder, as the IC editor's export does.
+        """Write source to a circuit holder's chip, as the IC editor's export does: IC10 compiles at once and restarts at line 0; Lua compiles on a worker thread.
 
         Class: write. Arguments: gateway_id, reference_id (required), source (required), include_source.
         """
         return self.call('set_ic_source', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'source': source, 'include_source': include_source}, **options)
 
     def set_uplink(self, *, gateway_id: str | None = None, reference_id: str | None = None, downlink_id: str | None = None, **options) -> dict:
-        """Point a Logic Rocket Uplink at a Logic Rocket Downlink (1.14.0+), as screwdriver presses on the uplink's first button do: the uplink then reads the downlink's data network (its rocket's devices).
+        """Point a Logic Rocket Uplink at a Logic Rocket Downlink, as screwdriver presses on its first button do; the uplink then reads that downlink's data network.
 
         Class: write. Arguments: gateway_id, reference_id (required), downlink_id (required).
         """
         return self.call('set_uplink', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'downlink_id': downlink_id}, **options)
 
     def show_preview(self, *, placements: list | None = None, prefab: str | int | None = None, at: object | None = None, rotation: list | None = None, facing: str | None = None, up: str | None = None, face: str | None = None, orient: dict | None = None, above_floor_m: float | None = None, build_state: object | None = None, allow_door_keepout: bool | None = None, cells: list | None = None, boxes: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, xray: bool | None = None, **options) -> dict:
-        """Draw in-game wire boxes for a planned layout (1.4.3+), on the player's screen only (other players see nothing; never the game's construction cursor; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod: drawn_on names the player): the same placement fields as pl...
+        """Draw wire boxes for a planned layout on the player's screen only: place_structure's dry run of the placements (footprint, render box, port cells), plus cells and boxes.
 
         Class: read. Arguments: placements, prefab, at, rotation, facing, up, face, orient, above_floor_m, build_state, allow_door_keepout, cells, boxes, seconds, keep, clear, xray.
         """
         return self.call('show_preview', **{'placements': placements, 'prefab': prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient': orient, 'above_floor_m': above_floor_m, 'build_state': build_state, 'allow_door_keepout': allow_door_keepout, 'cells': cells, 'boxes': boxes, 'seconds': seconds, 'keep': keep, 'clear': clear, 'xray': xray}, **options)
 
     def solar_aim(self, *, reference_id: str | None = None, **options) -> dict:
-        """The exact Horizontal and Vertical (logic degrees) that point a solar panel's cells straight at the sun, worked out from the panel's own pivots and the game's sun vector: no daylight sensor and no calibration.
+        """Work out the Horizontal and Vertical (logic degrees) that point a solar panel straight at the sun, from the panel's own pivots and the sun's position.
 
         Class: read. Arguments: reference_id (required).
         """
         return self.call('solar_aim', **{'reference_id': reference_id}, **options)
 
     def thing_health(self, *, reference_id: str | None = None, reference_ids: list | None = None, network_id: str | dict | None = None, kind: str | None = None, damaged_only: bool | None = None, min_damage_ratio: float | None = None, min_ratio: float | None = None, structures_only: bool | None = None, broken_only: bool | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """The damage state of any thing (solar panel, pipe, cable, wall, frame, door, vent, device, item), read from the game's own DamageState: no LogicType exposes damage.
+        """The damage state of any thing (panel, pipe, cable, wall, frame, door, vent, device, item), which no logic type exposes.
 
         Class: read. Arguments: reference_id, reference_ids, network_id, kind, damaged_only, min_damage_ratio, min_ratio, structures_only, broken_only, near_player_m, limit, offset.
         """
         return self.call('thing_health', **{'reference_id': reference_id, 'reference_ids': reference_ids, 'network_id': network_id, 'kind': kind, 'damaged_only': damaged_only, 'min_damage_ratio': min_damage_ratio, 'min_ratio': min_ratio, 'structures_only': structures_only, 'broken_only': broken_only, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset}, **options)
 
     def trader_buy(self, *, reference_id: str | None = None, credit_card_id: str | None = None, items: list | None = None, dry_run: bool | None = None, **options) -> dict:
-        """Buy from the trader that has landed and is ready at the landing pad (any other contact is refused with not_landed, naming the landed one), exactly as the trade window's Buy button does on the host (TradeDataHelper.BuyItem): the card is charged, the trader's stock drops, and the goods are made str...
+        """Buy from the landed trader as the trade window's Buy does: the card is charged, stock drops, goods appear in the pad network's vending machines, then the card holder's inventory.
 
         Class: write (other classes at some arguments). Arguments: reference_id (required), credit_card_id, items (required), dry_run.
         """
         return self.call('trader_buy', **{'reference_id': reference_id, 'credit_card_id': credit_card_id, 'items': items, 'dry_run': dry_run}, **options)
 
     def trader_contacts(self, **options) -> dict:
-        """Returns game_time_s, contacts and dishes.
+        """Every trader contact in the sky and every satellite dish with where it points.
 
         Class: read.
         """
         return self.call('trader_contacts', **options)
 
     def trader_inventory(self, *, contact_id: str | None = None, credit_card_id: str | None = None, **options) -> dict:
-        """What each trader contact in the sky buys and sells: item or gas name, prefab, credits per unit, how many it wants or has in stock, the conditions a sold-to-it item or gas must meet (purity, moles per unit, temperature range), and for each line it buys how many units of what you hold meet its cond...
+        """What each trader contact buys and sells: prices, stock and wanted counts, the conditions goods must meet, and how much of what you hold meets them.
 
         Class: read. Arguments: contact_id, credit_card_id.
         """
         return self.call('trader_inventory', **{'contact_id': contact_id, 'credit_card_id': credit_card_id}, **options)
 
     def trader_sell(self, *, reference_id: str | None = None, credit_card_id: str | None = None, items: list | None = None, dry_run: bool | None = None, **options) -> dict:
-        """Sell to the trader that has landed and is ready at the landing pad (any other contact is refused with not_landed), exactly as the trade window's Sell button does on the host (TradeDataHelper.SellItem): the trader must still want the item, the goods are taken from the vending machines on the pad's...
+        """Sell to the landed trader as the trade window's Sell does: goods come from the pad network's vending machines, then the card holder's inventory; the card is paid.
 
         Class: write (other classes at some arguments). Arguments: reference_id (required), credit_card_id, items (required), dry_run.
         """
         return self.call('trader_sell', **{'reference_id': reference_id, 'credit_card_id': credit_card_id, 'items': items, 'dry_run': dry_run}, **options)
 
     def undo_job(self, *, job_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, allow_bridge: list | None = None, from_id: str | None = None, refund_to: str | int | list | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
-        """Undo a finished place or remove job (1.4.3+): place_cables, place_pipes, place_chutes, remove_cables, remove_pipes, remove_chutes, place_structure, remove_structure, among the last 16 jobs.
+        """Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure; the last 16): remove what it built, build back what it removed.
 
         Class: write (other classes at some arguments). Arguments: job_id (required), dry_run, confirm, allow_bridge, from_id, refund_to, acknowledge_gas_lost.
         """
         return self.call('undo_job', **{'job_id': job_id, 'dry_run': dry_run, 'confirm': confirm, 'allow_bridge': allow_bridge, 'from_id': from_id, 'refund_to': refund_to, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def upgrade_cables(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, wait: bool | None = None, reference_ids: list | None = None, to: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
-        """Replace cable pieces with heavy (default) or super heavy cable in place, piece for piece, as the coil's own merge placement builds them (the game refuses to place heavy cable over normal: Cable.CanReplace).
+        """Swap cable pieces for heavy (default) or super heavy cable in place, piece for piece, as the coil's merge builds them; a whole network or chosen pieces.
 
         Class: write (other classes at some arguments). Arguments: include_notes, network_id, wait, reference_ids, to, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
         return self.call('upgrade_cables', **{'include_notes': include_notes, 'network_id': network_id, 'wait': wait, 'reference_ids': reference_ids, 'to': to, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
     def upgrade_pipes(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, wait: bool | None = None, reference_ids: list | None = None, to: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
-        """Replace normal pipe pieces with insulated pipe in place, gas pipe to insulated gas pipe and liquid pipe to insulated liquid pipe (never mixed), piece for piece as the kit's own merge placement builds them, keeping the network's gas and liquid: each replacement joins the network before its old pie...
+        """Swap normal pipe for insulated pipe in place (gas to insulated gas, liquid to insulated liquid), keeping the network's contents whole.
 
         Class: write (other classes at some arguments). Arguments: include_notes, network_id, wait, reference_ids, to, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id, acknowledge_gas_lost.
         """
         return self.call('upgrade_pipes', **{'include_notes': include_notes, 'network_id': network_id, 'wait': wait, 'reference_ids': reference_ids, 'to': to, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def vault_contents(self, *, vault_id: str | None = None, **options) -> dict:
-        """What each Ingot Vault (IngotVault Workshop mod 3749011679) stores, read from the vault's own store, exact to 1e-6 rather than the screen's one decimal: ingots as grams of reagent (kind ingot, reagent = the stored reagent, prefab_name = the ingot a vend makes), ores and ices as counts (kind ore).
+        """What each Ingot Vault stores, read from its own store to 1e-6: ingots as grams of reagent, ores and ices as counts; plus every Remote Vault's link.
 
         Class: read. Arguments: vault_id.
         """
         return self.call('vault_contents', **{'vault_id': vault_id}, **options)
 
     def vault_deposit(self, *, vault_id: str | None = None, items: list | None = None, reference_ids: list | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, kind: str | None = None, limit: int | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
-        """Put ingots, ores and ices straight into an Ingot Vault's store, as a move: taken from wherever they are (a player's inventory at any depth, a container, the ground) and added to the store with the vault's own import bookkeeping (IngotVault CollectResource: an ingot adds its reagents times its gra...
+        """Put ingots, ores and ices straight into an Ingot Vault's store from wherever they are, with the vault's own bookkeeping; by id, in part, or by a filter over the world.
 
         Class: write (other classes at some arguments). Arguments: vault_id (required), items, reference_ids, prefab_contains, name_contains, location, within_id, near_player_m, kind, limit, dry_run, confirm.
         """
         return self.call('vault_deposit', **{'vault_id': vault_id, 'items': items, 'reference_ids': reference_ids, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'kind': kind, 'limit': limit, 'dry_run': dry_run, 'confirm': confirm}, **options)
 
     def vault_withdraw(self, *, vault_id: str | None = None, prefab_name: str | None = None, prefab_hash: int | None = None, reagent: str | None = None, quantity: float | None = None, to_id: str | None = None, to_slot: int | str | None = None, allow_ground: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
-        """Take an amount of one stored thing out of an Ingot Vault's store and make it straight into a holder's slots, as a move: the store goes down exactly as the vault's own vend takes it (an ingot's reagent set to what is left; an ore entry removed when 0.01 or less is left) and the same amount is made...
+        """Take an amount of one stored thing out of an Ingot Vault and make it straight into a holder's slots, as the vault's own vend counts it.
 
         Class: write (other classes at some arguments). Arguments: vault_id (required), prefab_name, prefab_hash, reagent, quantity (required), to_id, to_slot, allow_ground, dry_run, confirm.
         """
         return self.call('vault_withdraw', **{'vault_id': vault_id, 'prefab_name': prefab_name, 'prefab_hash': prefab_hash, 'reagent': reagent, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'allow_ground': allow_ground, 'dry_run': dry_run, 'confirm': confirm}, **options)
 
     def wall_map(self, *, plane: str | None = None, side: str | None = None, looking: bool | None = None, around: object | None = None, radius_m: float | None = None, free_rects: dict | None = None, **options) -> dict:
-        """A text elevation of one 2 m face plane as seen from one side (1.4.3+), 0.5 m per character: plane (e.g.
+        """A text elevation of one 2 m face plane as seen from one side, 0.5 m per character: walls, windows, doors, frames, pieces and devices; with free_rects, where a rectangle fits.
 
         Class: read. Arguments: plane, side, looking, around, radius_m, free_rects.
         """
         return self.call('wall_map', **{'plane': plane, 'side': side, 'looking': looking, 'around': around, 'radius_m': radius_m, 'free_rects': free_rects}, **options)
 
     def water_sources(self, *, min_mol: float | None = None, min_moles: float | None = None, **options) -> dict:
-        """Every canister, tank, device and pipe network in the world that holds water, polluted water or steam, with its holder or its network's devices, location, pressure, temperature and the water in moles, litres and hydration; largest first, with totals.
+        """Every canister, tank, device and pipe network holding water, polluted water or steam, with location, pressure, temperature and water in moles, litres and hydration; largest first.
 
         Class: read. Arguments: min_mol, min_moles.
         """
         return self.call('water_sources', **{'min_mol': min_mol, 'min_moles': min_moles}, **options)
 
     def weather(self, **options) -> dict:
-        """The storm schedule, the world's weather events and the season, from the game's own weather manager.
+        """The storm schedule, the world's weather events and the season: what is coming, when, and when the next event can schedule.
 
         Class: read.
         """
         return self.call('weather', **options)
 
     def write_logic(self, *, gateway_id: str | None = None, reference_id: str | None = None, logic_type: str | int | None = None, value: float | None = None, **options) -> dict:
-        """Write a generic logic value to a device using a logic-type name or numeric ID.
+        """Write one logic value to a device, by logic type name or number, as a chip or console would.
 
         Class: write. Arguments: gateway_id, reference_id (required), logic_type (required), value (required).
         """
         return self.call('write_logic', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'logic_type': logic_type, 'value': value}, **options)
 
     def write_logic_many(self, *, gateway_id: str | None = None, writes: list | None = None, **options) -> dict:
-        """Write up to 256 generic logic values in order in one main-thread request.
+        """Write up to 256 logic values in order in one call; each result stands alone, by index, with its own error.
 
         Class: write. Arguments: gateway_id, writes (required).
         """
         return self.call('write_logic_many', **{'gateway_id': gateway_id, 'writes': writes}, **options)
 
     def write_memory(self, *, gateway_id: str | None = None, reference_id: str | None = None, start_address: int | None = None, values: list | None = None, **options) -> dict:
-        """Write a contiguous range of up to 512 finite values to a visible device with writable memory, as a chip's put instruction does (the devices read_memory lists; a Logic Memory has none: memory_not_writable).
+        """Cheat: write up to 512 values into a device's memory from start_address, as a chip's put does.
 
         Class: cheat. Arguments: gateway_id, reference_id (required), start_address (required), values (required).
         """

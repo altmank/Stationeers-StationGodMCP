@@ -4,10 +4,14 @@
   "items": {
     "type": "object",
     "properties": {
-      "at": {"description": "[x, y, z] or {x, y, z} in metres; snapped to the small cell it falls in."},
-      "toward": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]}
+      "at": {"description": "A run cell."},
+      "toward": {
+        "type": "string",
+        "enum": ["+x", "-x", "+y", "-y", "+z", "-z"],
+        "description": "The end to add: +x, -x, +y, -y, +z or -z."
+      }
     },
     "required": ["at", "toward"]
   },
-  "description": "Extra ends on run cells."
+  "description": "Extra ends on run cells, each {at, toward}."
 }

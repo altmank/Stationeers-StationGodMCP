@@ -1,3 +1,1 @@
-{
-  "description": "true, or a list of network ids (network handles) to keep away from; an id naming no network is network_not_found."
-}
+{"description": "true, or network handles, to keep the route beside no other network (see routing/rules)."}

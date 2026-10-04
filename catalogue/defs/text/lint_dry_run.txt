@@ -1,1 +1,0 @@
- Lint (1.7.0+): the dry_run rules of lint-rules.json (the mod's, with the save's file over it; lint_rules lists them) run on what the request would place, in the world around it, and each finding about a placed thing is a warning lint_<rule id> (e.g. lint_floating_run, lint_run_in_door_keepout), whatever the rule's level: nothing is refused for one.

@@ -35,6 +35,8 @@ def extract(catalogue):
     table = {}
     for protocol, entries in ((True, catalogue.get("protocol_methods") or []), (False, catalogue.get("methods") or [])):
         for method in entries:
+            if method.get("x-runs-in") == "sidecar":
+                continue  # answered by the MCP server from the catalogue (tool_info), never by the game
             params = method.get("params") or {}
             table[method["name"]] = {
                 "class": method.get("class", "write"),

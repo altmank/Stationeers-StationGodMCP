@@ -1,4 +1,1 @@
-{
-  "type": "boolean",
-  "description": "Default false (1.7.0+): notes (the tool's fixed explanations) is left out; true includes it."
-}
+{"type": "boolean", "description": "true: add notes, the tool's fixed text."}

@@ -1,1 +1,1 @@
-{"type": "boolean", "description": "Must be true, with dry_run false, for a real run."}
+{"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."}

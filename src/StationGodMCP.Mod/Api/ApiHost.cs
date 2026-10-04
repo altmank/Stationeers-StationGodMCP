@@ -188,7 +188,9 @@ internal static class ApiHost
                                          throw ApiErrors.Refused("internal_error", Declared.Value.Problem!);
             if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
             {
-                throw ApiErrors.Refused("method_not_found", $"Unknown StationGodMCP method '{method}'.");
+                throw ApiErrors.Refused("method_not_found", method != null && declared.RunsInSidecar(method)
+                    ? $"{method} is answered by the MCP server (the sidecar) from the catalogue, not by the game; call it through MCP, or read the catalogue's help."
+                    : $"Unknown StationGodMCP method '{method}'.");
             }
 
             declared.Check(method, parameters);
@@ -248,6 +250,7 @@ internal static class ApiHost
             Catalogue catalogue = Catalogue.Load(new System.Text.UTF8Encoding(false).GetString(raw));
             ArgumentDrift.FirstMiss = static (method, name) =>
                 StationGodMod.LogWarning($"Catalogue drift: {method} read the argument '{name}', which its catalogue entry does not declare.");
+            ErrorGuide.Use(catalogue);
             StationGodMod.Log($"Catalogue loaded: {catalogue.MethodCount} methods, mod version {catalogue.ModVersion}.");
             return LoadedCatalogue.Of(new DeclaredArguments(catalogue), new CatalogueFile(raw, catalogue));
         }

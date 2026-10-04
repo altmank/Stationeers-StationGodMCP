@@ -1,45 +1,65 @@
 {
   "name": "grid_survey",
-  "description": "Read the grid around a place before routing: the 2 m cells of a box (min and max, positions in metres) or of a room (room_id from rooms), a page at a time (limit default 8 since 1.14.0, 27 before; max 125; offset); pieces and devices are those in the page's cells, so a device spanning cells of several pages (a locker) is listed on each. Each cell: at (its centre, odd metres), room_id (null outside), frame {reference_id, prefab_name, build_state, build_states, blocks_air, blocks_gravity}, walls [{face +x..-z, reference_id, prefab_name, blocks_air}] and small: 64 characters for its small-grid cells (0.5 m) at -1, -0.5, 0, +0.5 m from the centre on each axis (index 0 to 3; index 0 lies on the cell's minimum face plane, shared with the neighbour), character index x + 4y + 16z: '.' empty, 'c' cable, 'p' pipe, 'b' both, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's empty cell (legend repeats this); support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell the small cell touches holds a frame, so a piece there is hidden in the frame's body), 'e' a frame edge or corner, 'f' on a frame's face (a frame's top face is the minimum plane of the cell above), 'w' on a wall's plane, 'a' air (plan_*_route frames_first avoids 'a'). Then pieces [{reference_id, kind cable|pipe|chute, prefab_name, at, cells (long pieces), ends (world axes), network_id, grade; chutes also flow {in, out} (which ends take items in and let them out, where a device port or directed piece fixes it) and carries (the item riding in it)}], devices [{reference_id, prefab_name, display_name, at, rotation {facing (its front: +x, -x, +y, -y, +z, -z), up, euler {x, y, z} (degrees)} in the forms place_structure takes, so it can be placed again as it stands or turned (facing reversed: 180 degrees; facing and up are null for a piece turned off the grid's axes) (1.3.5+), ports [{index, at (the cell a piece joining it stands in), toward (the end that piece needs, into the device), type (PowerAndData, Pipe, Chute...), role (Input, Output...), network_id}], umbilical (a rocket umbilical only, 1.6.0+: as describe_device reports it)}] and networks (include_networks, default true: cable networks with loads and lowest ratings, pipe networks with contents, pressure and gases, chute networks with chute_count, items riding and devices). network_visibility [{network_id, kind, pieces, cells {inside, frame_surface, wall, air}, air_at (floating cells, up to 32), refund}]: per network of the pieces listed, their cells by visibility and the floating ones. include_refund (default false): each piece's refund and each network's total, what remove_* would give back (read only; plan_removal adds would_split). Placement rules (CODE): frames and walls never block cables or pipes, so runs may pass through frame cells and along wall planes; a device, chute or 'o' blocks both; a pipe blocks a cable only along its own axis (their ends would meet), and the other way round; a chute is blocked by any cable, pipe, device, chute or 'o' in its cell. Smaller replies (1.7.0+; the default reply is unchanged): sections (any of cells, pieces, devices, networks, network_visibility, doors) keeps only the parts named, the others left out of the reply (count, offset, limit, total and has_more still describe the page of cells, and pieces are still found from those cells); network_ids (network ids, or the reference id of any cable, pipe or chute piece standing for its network; listed in resolved_networks) keeps only the pieces on those networks, the devices with a port on one of them, and those networks; compact: true leaves each cell's small and support strings and the legend out (frame, walls and room stay). kinds (1.14.0+, any of cable, pipe, chute) keeps only pieces of those kinds, their networks, and the devices with a port of a kind named. A page lists at most 40 pieces and 20 devices by default (truncated gives how many there were; list_limits {\"pieces\": n, \"devices\": n} lists more, or narrow with kinds, network_ids, sections or a smaller box). Read only. No gateway is needed.",
+  "summary": "Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), with frames, walls, each small cell's occupant and support, the pieces, devices and their ports, and networks. Read only.",
+  "help": {
+    "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. sections, network_ids, kinds and compact narrow it.",
+    "topics": {
+      "cells": {
+        "summary": "Each cell and its small and support strings.",
+        "text": "at (its centre, odd metres), room_id, frame {reference_id, prefab_name, build_state, build_states, blocks_air, blocks_gravity}, walls [{face, reference_id, prefab_name, blocks_air}], small and support: 64 characters for its 0.5 m cells at -1, -0.5, 0, +0.5 m on each axis, index x + 4y + 16z. small: '.' empty, 'c' cable, 'p' pipe, 'b' both, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's empty cell. support: 'i' inside a frame, 'e' a frame edge or corner, 'f' on a frame's face, 'w' on a wall's plane, 'a' air, 'x' a door's keep-out, 'g' a window."
+      },
+      "pieces": {
+        "summary": "pieces, devices and their ports.",
+        "text": "pieces [{reference_id, kind, prefab_name, at, cells (long pieces), ends, network_id, grade; chutes also flow {in, out} and carries}]. devices [{reference_id, prefab_name, display_name, at, rotation {facing, up, euler}, ports [{index, at (the cell a piece joining it stands in), toward (the end that piece needs), type, role, network_id}], umbilical}]."
+      },
+      "networks": {
+        "summary": "networks, network_visibility and refunds.",
+        "text": "networks (include_networks, default true): cable networks with loads and lowest ratings, pipe networks with contents, pressure and gases, chute networks with chute_count, riding items and devices. network_visibility [{network_id, kind, pieces, cells {inside, frame_surface, wall, air}, air_at, refund}]. include_refund adds each piece's refund and each network's total, what remove_* would give back."
+      },
+      "rules": {
+        "summary": "What blocks what.",
+        "text": "Frames and walls never block cables or pipes, so runs may pass through frame cells and along wall planes. A device, chute or other small-grid thing blocks both. A pipe blocks a cable only along its own axis, and the other way round. A chute is blocked by any cable, pipe, device, chute or other thing in its cell."
+      }
+    },
+    "shared": ["routing", "networks", "truncation", "paging"]
+  },
   "class": "read",
   "cost": "world",
   "params": {
     "type": "object",
     "properties": {
-      "min": {"description": "Box corner, [x, y, z] or {x, y, z} in metres. With max."},
-      "max": {"description": "The other corner. At most 20000 2 m cells."},
-      "room_id": {"type": "string", "description": "A room id from rooms, instead of a box."},
-      "include_networks": {"type": "boolean", "description": "Default true."},
-      "include_refund": {"type": "boolean", "description": "Default false: add each piece's removal refund and each network's total."},
+      "min": {"description": "Box corner, [x, y, z] in metres; with max."},
+      "max": {"description": "The other corner; at most 20000 2 m cells."},
+      "room_id": {"type": "string", "description": "A room id (rooms), instead of a box."},
+      "include_networks": {"type": "boolean", "description": "Include the networks of the pieces. Default true."},
+      "include_refund": {"type": "boolean", "description": "Add each piece's removal refund and each network's total. Default false."},
       "sections": {
         "type": "array",
         "minItems": 1,
         "maxItems": 6,
         "items": {"type": "string", "enum": ["cells", "pieces", "devices", "networks", "network_visibility", "doors"]},
-        "description": "Only these parts of the reply; default all of them."
+        "description": "Only these parts: cells, pieces, devices, networks, network_visibility, doors; default all."
       },
       "network_ids": {
         "type": "array",
         "minItems": 1,
         "maxItems": 64,
         "items": {"type": "string"},
-        "description": "Only pieces on these networks (a network id, or a cable, pipe or chute piece on it) and devices with a port on one."
+        "description": "Only pieces on these networks (ids or pieces) and devices with a port on one."
       },
       "kinds": {
         "type": "array",
         "minItems": 1,
         "maxItems": 3,
         "items": {"type": "string", "enum": ["cable", "pipe", "chute"]},
-        "description": "1.14.0+: only pieces of these kinds (with their networks) and devices with a port of a kind named."
+        "description": "Only pieces of these kinds (cable, pipe, chute) and devices with such a port."
       },
-      "compact": {"type": "boolean", "description": "Default false. true: cells without small and support, no legend."},
-      "limit": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 125,
-        "description": "2 m cells per page, default 8 (27 before 1.14.0)."
+      "compact": {
+        "type": "boolean",
+        "description": "Leave out each cell's small and support strings and the legend. Default false."
       },
-      "offset": {"type": "integer", "minimum": 0, "maximum": 2147483647}
+      "limit": {"type": "integer", "minimum": 1, "maximum": 125, "description": "2 m cells per page; default 8, max 125."},
+      "offset": {"type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Cells to skip (see paging)."}
     },
     "additionalProperties": false
   },

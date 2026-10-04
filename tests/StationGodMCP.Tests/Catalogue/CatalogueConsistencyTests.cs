@@ -144,11 +144,15 @@ public sealed class CatalogueConsistencyTests
     [Fact]
     public void TheCatalogueListsExactlyTheModsMethods()
     {
-        // sample_logic runs over many frames in the subscription lane (SubscriptionHub), not as an ApiHost handler.
+        // sample_logic runs over many frames in the subscription lane (SubscriptionHub), not as an ApiHost handler;
+        // an x-runs-in sidecar method (tool_info) is answered by the MCP server from the catalogue.
         HashSet<string> catalogued = Methods()
+            .Where(method => (string?)method["x-runs-in"] != "sidecar")
             .Select(method => (string)method["name"]!)
             .Where(name => name != StationGodMCP.Protocol.SubscriptionHub.SampleLogicMethod)
             .ToHashSet(StringComparer.Ordinal);
+        Assert.Equal(new[] { "tool_info" }, Methods().Where(method => (string?)method["x-runs-in"] == "sidecar")
+            .Select(method => (string)method["name"]!));
         HashSet<string> handled = Handler.All.Keys.ToHashSet(StringComparer.Ordinal);
 
         Assert.True(catalogued.SetEquals(handled),
@@ -172,8 +176,11 @@ public sealed class CatalogueConsistencyTests
         {
             CatalogueFiles.CollectPropertyNames(method["params"]!, declared);
             CollectDescriptions(method["params"]!, described);
+            CollectHelp(method["help"], described);
         }
 
+        // The forms of an object documented in prose (at's crosshair and relative forms) are written in the help topics.
+        CollectHelp(Assembled.Value["help"], described);
         string prose = described.ToString();
         List<string> missing = new List<string>();
         foreach (SourceFile file in ModSource.Instance.Files.Where(file => file.Path.StartsWith("Api/", StringComparison.Ordinal)))
@@ -548,6 +555,23 @@ public sealed class CatalogueConsistencyTests
         JsonValue single => new HashSet<string> { (string)single! },
         _ => new HashSet<string>()
     };
+
+    // Every text of a help section: its intro or text and each topic's and subtopic's summary and text.
+    private static void CollectHelp(JsonNode? help, StringBuilder into)
+    {
+        foreach (JsonNode? text in Strings(help))
+        {
+            into.Append((string)text!).Append('\n');
+        }
+
+        static IEnumerable<JsonNode?> Strings(JsonNode? node) => node switch
+        {
+            JsonObject obj => obj.SelectMany(pair => Strings(pair.Value)),
+            JsonArray array => array.SelectMany(Strings),
+            JsonValue value when value.TryGetValue(out string? _) => new[] { node },
+            _ => Array.Empty<JsonNode?>()
+        };
+    }
 
     private static void CollectDescriptions(JsonNode node, StringBuilder into)
     {

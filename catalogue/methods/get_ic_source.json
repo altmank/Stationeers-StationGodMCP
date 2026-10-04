@@ -1,6 +1,10 @@
 {
   "name": "get_ic_source",
-  "description": "Read the source stored in the programmable chip of a visible circuit holder: IC10, or Lua for a StationeersLua chip (Integrated Circuit (Lua)) in an IC Housing, a ScriptedScreens board in a Console or Computer, a tablet cartridge or a Programmable Visor. reference_id may name the holder, the device or worn item holding it, or the chip (see the reference_id description). Returns source, source_length, language (ic10 or lua), holder, chip, line_number (IC10 only) and, for a Lua chip, lua (see get_ic_status). A holder with no programmable chip is refused with no_programmable_chip.",
+  "summary": "Read the source in a circuit holder's chip: IC10, or Lua for a StationeersLua chip. Answers source, language, holder and chip. Read only.",
+  "help": {
+    "text": "Returns source, source_length, language (ic10 or lua), holder, chip, line_number (IC10 only) and, for a Lua chip, lua as get_ic_status gives it. A large source reads best with output_file.",
+    "shared": ["gateways", "chips", "shaping"]
+  },
   "class": "read",
   "cost": "instant",
   "params": {

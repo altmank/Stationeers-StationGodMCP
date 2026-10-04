@@ -1,6 +1,10 @@
 {
   "name": "list_devices",
-  "description": "List every device in the world, or with a gateway_id only those on that gateway's data networks. Reference IDs are returned as strings. 1.14.0+: by default the reply keeps the first entries of its list (devices 25); truncated gives each cut list's returned and total counts, and list_limits {list: count} keeps more.",
+  "summary": "List devices: every one in the world, or those on a gateway's data networks; filter by prefab_hash or name_contains. Reference ids are strings. Lists 25 by default. Read only.",
+  "help": {
+    "text": "Each device comes with its reference id (a string), prefab and name. The reply lists the first 25; truncated gives the total and list_limits {devices: n} keeps more.",
+    "shared": ["gateways", "truncation", "shaping"]
+  },
   "class": "read",
   "cost": "world",
   "x-cost-when": [
@@ -13,11 +17,11 @@
       "gateway_id": {"$ref": "defs/gateway_id.json"},
       "prefab_hash": {
         "type": "integer",
-        "description": "Optional exact signed PrefabHash filter.",
+        "description": "Exact prefab hash (a signed integer).",
         "minimum": -2147483648,
         "maximum": 2147483647
       },
-      "name_contains": {"type": "string", "description": "Optional case-insensitive DisplayName substring filter."}
+      "name_contains": {"type": "string", "description": "Part of the device's name, any case."}
     },
     "additionalProperties": false
   },

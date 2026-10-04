@@ -1,4 +1,4 @@
 {
   "type": "boolean",
-  "description": "With join_to: add the missing tap (a run end next to, or one free cell short of, a piece of join_to) instead of only warning. Default false."
+  "description": "With join_to: add the missing tap instead of only warning. Default false (see runs/taps)."
 }

@@ -1,1 +1,4 @@
-{"type": "string", "description": [{"$include": "defs/text/ic_holder_id.txt"}]}
+{
+  "type": "string",
+  "description": "The circuit holder: an IC Housing, a worn holder, a Lua board or cartridge, or the chip itself (see chips)."
+}

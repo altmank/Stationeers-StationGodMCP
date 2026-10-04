@@ -138,10 +138,10 @@ public sealed class Round11FixesTests
     [Fact]
     public void TheDescriptionsSayWhatRound11Found()
     {
-        string all = ToolCatalogue.Tools.GetRawText();
+        string all = CatalogueChecks.CatalogueTextTests.AllText();
 
         Assert.Contains("not capped by wanted", all);
-        Assert.Contains("or pipe pieces alone, which remove_pipes refuses outright", all);
+        Assert.Contains("pipe pieces alone, which remove_pipes refuses outright", all);
         Assert.Contains("an in-line tank or passive vent removed alone too", all);
         Assert.Contains("as does every poll of that job with job_id", all);
         Assert.Contains("credits_spent (signed", all);

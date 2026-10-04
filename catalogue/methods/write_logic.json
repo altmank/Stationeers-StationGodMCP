@@ -1,18 +1,22 @@
 {
   "name": "write_logic",
-  "description": "Write a generic logic value to a device using a logic-type name or numeric ID. Any device in the world that supports writing that type; a gateway_id limits it to devices on that gateway's data networks. Returns requested_value, previous_value and current_value: current_value is read back at once and can differ from the request, because the device clamps it (On 7 reads 1), ignores it (a paint-only colour index), or moves toward it over time (a solar panel's angle); the write still succeeds.",
+  "summary": "Write one logic value to a device, by logic type name or number, as a chip or console would. Answers the value read back at once.",
+  "help": {
+    "text": "Returns requested_value, previous_value and current_value. current_value is read back at once and can differ from the request: the device clamps it (On 7 reads 1), ignores it (a colour index only paint sets), or moves toward it over time (a solar panel turning). The write still succeeds.",
+    "shared": ["gateways", "logic"]
+  },
   "class": "write",
   "cost": "instant",
   "params": {
     "type": "object",
     "properties": {
       "gateway_id": {"$ref": "defs/gateway_id.json"},
-      "reference_id": {"type": "string", "description": "Target device reference ID returned by list_devices."},
+      "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
       "logic_type": {
         "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
-        "description": "LogicType enum name or numeric ushort ID."
+        "description": "A logic type name (Temperature) or number."
       },
-      "value": {"type": "number", "description": "Finite double value to write."}
+      "value": {"type": "number", "description": "The value to write: a finite number."}
     },
     "required": ["reference_id", "logic_type", "value"],
     "additionalProperties": false

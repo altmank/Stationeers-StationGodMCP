@@ -1,52 +1,71 @@
 {
   "name": "rocket_forecast",
-  "description": "Fly a copy of a rocket to a node and report each leg; the game is not touched. Every engine the game builds is flown by its own feed law from the code: Pumped Gas Engine 18 x throttle/100 mol a tick from input 1 whatever the pressure; Pressure Fed Gas Engine (and Heavy) moles from each input by its own gas pressure (up to 5,000 or 8,500 kPa x (3 - 2.999/(1 + (p/60,795/2)^0.7)) over a 10 L pipe), both inputs needed; Pumped Liquid Engine 0.55 L a tick x throttle, Setting % from input 1 and the rest from input 2, liquid only (hydrazine alone works: Setting 100); Pressure Fed Liquid Engine (and Heavy) 0.04-0.8 (1.5) L of liquid by input 1's gas pressure plus a pressure-fed gas draw, input 2 a heat exchanger only. Lines hold gas and liquid; tanks mix with their pipe by volume every tick; the gas pressure the pressure-fed engines read falls as the line drains, so their thrust sags. Thrust is the game's own combustion run on a copy of what each tick draws (cached per mix of the inputs' gas and liquid). Route: the game's pathfinder, re-planned at every node; a rocket in transit to another target turns round as Rocket.ChangeTarget does; a landing rocket cannot be retargeted here. A manned rocket (someone in a Crew Module Chair) may only target launch mounts (refused: manned_target). Simulated tick by tick: physics steps at Time.fixedDeltaTime and the 0.5 s game tick (gas mass, landing autopilot, engine draws, tanks mixing, batteries paying every device's watts per tick); launch with gravity and the game's abort; space hops; re-entry (the confidence check once at the start with the pad's own hop and gravity, 1 m/s2 at an Orbital Launch Mount; 0 aborts back to orbit); the landing autopilot's rules; touchdown (soft under 2 m/s; under 4 m/s harmless, 4 to 25 m/s engine damage, faster explodes). Not simulated (named in assumptions): heat the tanks trade with the air and boiling or condensing in the lines (the thrust 100 K colder and warmer is given), a Pressure Fed Liquid Engine's heat exchange, a mod's engine class (refused: engine_not_modelled), the RocketCollisionDetector trigger. Each leg: kind (launch, hop, park, landing), from, to, distance (delta-v), outcome and detail, seconds, burn_seconds, delta_v spent, fuel start/used/left mol, first tank gas kPa at the end, mass, battery, peak and recorded thrust; a landing adds confidence and band, thrusts, start altitude and mass, lowest stop altitude, touchdown speed, last rule, power_lost, fuel_ran_out. With limits (default true): landing_limits, profiles (Low 25 km, Medium 40 km, High 70 km, Max 120 km) and least_fuel_mol. column (column_check, default true). Plus route, uncharted, assumptions, succeeded, verdict. Destination: to, else the rocket's target, else its pad ('pad' means this rocket's pad: the one it stands on, launches from or lands on, else the only ground launch mount). A stop at a space node: park_s, mine (miners, collectors and holds draw power; with no cargo arguments the stop fills the slots the site's yield fills in park_s), fill_holds or add_cargo_slots (1 kg each), park_load_w, deploy_payload (at a node with Deploy, the planet's orbit: the payloads' mass leaves, 20 s), transfer_mol (fuel received, negative given, spread over the lines), transfer_with (another rocket: each pair of compatible gas or liquid umbilical sockets equalises the two networks by volume, as the Transfer action does; a pump moves more), transfer_battery_j, then_return (fly back to return_to, any launch mount, ground or orbital). mining: when the destination has a deposit, whether this loadout collects it, units per hour, units and slots in the stop, and problems (e.g. an ice head at an ore site); a site the loadout cannot collect is also a warning in assumptions and the verdict. What-ifs: fuel_mol, fuel_temperature_k, fuel_mix (gas and liquid names, e.g. {\"LiquidHydrazine\": 1}), thrust_scale, throttle, cargo_slots, add_cargo_kg, payload_kg, battery_j or battery_percent, extra_load_w, profile. Combustion: the game's rate (0.96), or Terraforming Reloaded's when that mod is loaded. Read only; no gateway.",
+  "summary": "Fly a copy of a rocket to a node, tick by tick, and report each leg: launch, hops, parking, re-entry and landing, fuel, power, thrust and the verdict. What-ifs for fuel, cargo and power. The game is not touched.",
+  "help": {
+    "text": "Destination: to, else the rocket's target, else its pad. Each engine flies by its own feed law; thrust is the game's own combustion run on a copy of what each tick draws. Lines hold gas and liquid; tanks mix with their pipe by volume every tick. Plus route, uncharted, assumptions, succeeded and verdict.",
+    "topics": {
+      "simulation": {
+        "summary": "What is simulated, and what is not.",
+        "text": "Physics steps and the 0.5 s game tick: gas mass, the landing autopilot, engine draws, tanks mixing, batteries paying every device's watts. Launch with gravity and the game's abort; space hops; re-entry (the confidence check once at the start, with the pad's own hop and gravity, 1 m/s2 at an Orbital Launch Mount; 0 aborts back to orbit); touchdown (soft under 2 m/s, harmless under 4, engine damage 4 to 25, faster explodes). Route: the game's pathfinder, re-planned at every node; a rocket in transit to another target turns round as the game does; a landing rocket cannot be retargeted. Not simulated, and named in assumptions: heat the tanks trade with the air, boiling or condensing in the lines (the thrust 100 K colder and warmer is given), a Pressure Fed Liquid Engine's heat exchange, a mod's engine class (engine_not_modelled), the collision trigger."
+      },
+      "legs": {
+        "summary": "What each leg reports, and the limits.",
+        "text": "Each leg: kind (launch, hop, park, landing), from, to, distance (delta-v), outcome and detail, seconds, burn_seconds, delta_v spent, fuel start, used and left mol, first tank gas kPa at the end, mass, battery, peak and recorded thrust. A landing adds confidence and band, thrusts, start altitude and mass, lowest stop altitude, touchdown speed, last rule, power_lost, fuel_ran_out. limits (default true): landing_limits, profiles (Low 25 km, Medium 40 km, High 70 km, Max 120 km) and least_fuel_mol. column_check scans the landing column above the pad."
+      },
+      "stops": {
+        "summary": "A stop at a space node: park, mine, deploy, transfer, return.",
+        "text": "park_s: seconds at the destination. mine: miners, collectors and holds draw power; with no cargo arguments the stop fills the slots the site's yield fills in park_s. fill_holds or add_cargo_slots (1 kg each). park_load_w. deploy_payload: at a node with Deploy (the planet's orbit) the payloads leave, 20 s. transfer_mol: fuel received (negative: given). transfer_with: another rocket whose compatible gas or liquid umbilical sockets equalise by volume, as the Transfer action does. transfer_battery_j. then_return: fly back to return_to. mining: whether this loadout collects the destination's deposit, units per hour, units and slots in the stop, and problems (also warned in assumptions and the verdict)."
+      },
+      "what_ifs": {
+        "summary": "The what-if arguments.",
+        "text": "fuel_mol, fuel_temperature_k, fuel_mix (gas and liquid names, {\"LiquidHydrazine\": 1}), thrust_scale (the recorded peak the landing check uses stays), throttle, cargo_slots, add_cargo_kg, payload_kg, battery_j or battery_percent, extra_load_w, profile, min_confidence (the floor for confident_mass_kg and the verdict; default 0.25)."
+      }
+    },
+    "shared": ["rockets"]
+  },
   "class": "read",
   "cost": "plan",
   "params": {
     "type": "object",
     "properties": {
-      "rocket_id": {
-        "type": "string",
-        "description": "A rocket, its rocket network, or any of its parts. Omit when there is one rocket."
-      },
+      "rocket_id": {"type": "string", "description": "A rocket, its rocket network, or any part; left out when there is one rocket."},
       "to": {
         "type": "string",
-        "description": "Destination node: its name, map code (as shown, or its number), reference id, or 'pad'. Default the rocket's target, else its pad."
+        "description": "Destination node: name, map code, reference id, or 'pad'. Default the rocket's target, else its pad."
       },
       "profile": {
         "type": "string",
         "enum": ["Low", "Medium", "High", "Max"],
-        "description": "Re-entry profile. Default the rocket's."
+        "description": "Re-entry profile; default the rocket's."
       },
-      "park_s": {"type": "number", "minimum": 0, "description": "Seconds spent at the destination (mining, scanning)."},
+      "park_s": {"type": "number", "minimum": 0, "description": "Seconds spent at the destination."},
       "mine": {"type": "boolean", "description": "Miners and cargo holds draw their power while parked. Default false."},
       "fill_holds": {"type": "boolean", "description": "Every cargo slot is filled by the end of the stop."},
       "add_cargo_slots": {"type": "integer", "minimum": 0, "description": "Cargo slots filled during the stop.", "maximum": 100000},
       "park_load_w": {
         "type": "number",
         "minimum": 0,
-        "description": "Power draw per tick while parked. Default what AutoShutOff leaves on, plus the mining gear with mine."
+        "description": "Power draw per tick while parked; default what auto shut-off leaves on, plus mining gear with mine."
       },
       "then_return": {"type": "boolean", "description": "After the stop, fly back and land. Default false."},
       "return_to": {
         "type": "string",
-        "description": "The pad to land on after the stop: any launch mount, ground or orbital. Default this rocket's pad."
+        "description": "The launch mount to land on after the stop, ground or orbital; default this rocket's pad."
       },
       "deploy_payload": {
         "type": "boolean",
-        "description": "At the stop (a node with Deploy, the planet's orbit) the payloads leave: their mass goes, 20 s. Default false."
+        "description": "At a node with Deploy, the payloads leave (their mass goes, 20 s). Default false."
       },
       "transfer_mol": {
         "type": "number",
-        "description": "Fuel received at the stop from another rocket (negative: given), spread over the fuel lines."
+        "description": "Fuel received at the stop from another rocket (negative: given), spread over the lines."
       },
       "transfer_with": {
         "type": "string",
-        "description": "Another rocket at the stop: its compatible gas or liquid umbilical sockets equalise with this rocket's by volume (the Transfer action)."
+        "description": "Another rocket at the stop: compatible umbilical sockets equalise with this rocket's by volume."
       },
       "transfer_battery_j": {"type": "number", "description": "Battery charge received at the stop through power sockets (negative: given)."},
-      "fuel_mol": {"type": "number", "minimum": 0, "description": "What-if: total fuel in the engines' lines now."},
+      "fuel_mol": {"type": "number", "minimum": 0, "description": "What-if: total fuel in the engines' lines."},
       "fuel_temperature_k": {"type": "number", "exclusiveMinimum": 0, "description": "What-if: fuel temperature."},
       "fuel_mix": {
         "type": "object",
@@ -56,39 +75,31 @@
         "type": "number",
         "minimum": 0,
         "maximum": 10,
-        "description": "What-if: share of the measured thrust the engines give; the recorded peak the landing check uses stays."
+        "description": "What-if: share of the measured thrust the engines give."
       },
       "throttle": {
         "type": "number",
         "minimum": 0,
         "maximum": 100,
-        "description": "What-if: throttle for launch and hops. Default the engines' own."
+        "description": "What-if: throttle for launch and hops; default the engines' own."
       },
-      "cargo_slots": {
-        "type": "integer",
-        "minimum": 0,
-        "description": "What-if: filled cargo slots now (1 kg each).",
-        "maximum": 100000
-      },
-      "add_cargo_kg": {"type": "number", "minimum": 0, "description": "What-if: extra mass now."},
+      "cargo_slots": {"type": "integer", "minimum": 0, "description": "What-if: filled cargo slots (1 kg each).", "maximum": 100000},
+      "add_cargo_kg": {"type": "number", "minimum": 0, "description": "What-if: extra mass."},
       "payload_kg": {
         "type": "number",
         "minimum": 0,
-        "description": "What-if: the payloads on the bays weigh this together (a Payload Delivery Container or Orbital Launch Mount Payload is 200)."
+        "description": "What-if: the payloads on the bays weigh this together (a Payload Delivery Container is 200)."
       },
-      "battery_j": {"type": "number", "minimum": 0, "description": "What-if: battery charge now (J)."},
-      "battery_percent": {"type": "number", "minimum": 0, "maximum": 100, "description": "What-if: battery charge now (%)."},
+      "battery_j": {"type": "number", "minimum": 0, "description": "What-if: battery charge (J)."},
+      "battery_percent": {"type": "number", "minimum": 0, "maximum": 100, "description": "What-if: battery charge (%)."},
       "extra_load_w": {"type": "number", "minimum": 0, "description": "What-if: more power draw per tick all trip."},
       "min_confidence": {
         "type": "number",
         "minimum": 0,
         "maximum": 1,
-        "description": "Confidence floor for confident_mass_kg and the verdict. Default 0.25."
+        "description": "Confidence floor for confident_mass_kg and the verdict; default 0.25."
       },
-      "limits": {
-        "type": "boolean",
-        "description": "Landing limits, profiles and least fuel (bisection on the simulator). Default true."
-      },
+      "limits": {"type": "boolean", "description": "Landing limits, profiles and least fuel. Default true."},
       "column_check": {"type": "boolean", "description": "Scan the landing column above the pad. Default true."}
     },
     "additionalProperties": false

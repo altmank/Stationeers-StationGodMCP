@@ -106,9 +106,8 @@ public sealed class DevicesRound3Tests
         Assert.DoesNotContain("every visible device", description);
     }
 
-    private static string ReferenceIdDescription(string tool) =>
-        Program.InputSchemas[tool].GetProperty("properties").GetProperty("reference_id").GetProperty("description")
-            .GetString()!;
+    // The holder forms and not_ic_housing are documented once, in the chips topic reference_id points every IC tool at.
+    private static string ReferenceIdDescription(string tool) => CatalogueChecks.CatalogueTextTests.DocsOf(tool);
 
     private static IReadOnlyList<string> Problems(string tool, string arguments)
     {

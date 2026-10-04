@@ -1,8 +1,16 @@
 {
   "type": "object",
-  "description": "Bus mode, instead of to: {waypoints} or {cells} of a trunk laid as given; every start branches from it (one job).",
+  "description": "Bus mode instead of to: a trunk {waypoints} or {cells} every start branches from (see routing/trunk).",
   "properties": {
-    "waypoints": {"type": "array", "items": {"description": "[x, y, z] or {x, y, z} in metres."}},
-    "cells": {"type": "array", "items": {"description": "[x, y, z] or {x, y, z} in metres."}}
+    "waypoints": {
+      "type": "array",
+      "items": {"description": "[x, y, z] in metres, snapped to its 0.5 m cell."},
+      "description": "The trunk's points."
+    },
+    "cells": {
+      "type": "array",
+      "items": {"description": "[x, y, z] in metres, snapped to its 0.5 m cell."},
+      "description": "The trunk's cells."
+    }
   }
 }

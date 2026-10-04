@@ -3,7 +3,8 @@
   Build StationGod MCP and stage the Steam Workshop package.
 
 .DESCRIPTION
-  Builds the mod DLL against the local game install, checks the one version is the same everywhere, and stages
+  Runs every test (the catalogue's text lint included), builds the mod DLL against the local game install, checks the
+  one version is the same everywhere, and stages
   .\package\: the About and GameData folders, the DLL, the LICENSE and the Sidecar folder with both sidecar ZIPs.
   With -Deploy it also replaces Documents\My Games\Stationeers\mods\StationGodMCP with the package and installs the
   portable sidecar the MCP client runs into %LOCALAPPDATA%\StationGodMCP\server.
@@ -58,6 +59,12 @@ $pageLength = $about.ModMetadata.Description.Length
 if ($pageLength -ge 8000) { throw "About.xml Description is $pageLength characters; the Workshop limit is under 8000." }
 $changeLength = $about.ModMetadata.ChangeLog.Length
 if ($changeLength -ge 8000) { throw "About.xml ChangeLog is $changeLength characters; the limit is under 8000." }
+
+# Every test, the catalogue's text lint (CatalogueTextTests) included: a tool, argument or error code that skips the
+# text rubric, a stale catalogue.json or any failing test stops the build before anything is staged.
+Write-Host "Testing $version"
+dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q
+if ($LASTEXITCODE -ne 0) { throw "Tests failed with exit code $LASTEXITCODE; nothing was built." }
 
 Write-Host "Building $version against $GameDir (Workshop page $pageLength characters)"
 dotnet build (Join-Path $root 'StationGodMCP.csproj') -c Release -p:StationeersPath="$GameDir" -nologo -v q

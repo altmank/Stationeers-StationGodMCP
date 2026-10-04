@@ -1,1 +1,4 @@
-{"type": "string", "description": [{"$include": "defs/text/acknowledge_gas_lost.txt"}]}
+{
+  "type": "string",
+  "description": "Accept this job's gas loss and lift the hold; only with the user's agreement (see gas_hold)."
+}
