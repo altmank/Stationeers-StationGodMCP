@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.21.1
+
+- **A network id given to a logic tool** (`read_logic_many` with a pipe network's id, say) is refused naming it as a
+  network, with where to read it instead (`atmosphere_contents` for a pipe network's gas, `connections` for its
+  members).
+- **`rocket_status` lists every pipe network on the rocket** in `pipe_networks`: engine lines and the rest, such as a
+  tanker's cargo or socket line, with volume, moles, pressure, temperature and each gas, and `feeds` naming the engine
+  inputs that draw from it.
+
 ## 1.21.0
 
 - **`remove_structure` `gas_to` keeps a device's gas.** The game deletes a device's own gas when it is deconstructed

@@ -493,7 +493,8 @@ internal sealed class RocketStatusView
 {
     internal RocketStatusView(ThingId referenceId, ThingId networkId, string name, bool automatedLanding,
         bool autoShutOff, string reEntryProfile, double reEntryAltitudeM, RocketWhereView where, RocketMassView mass,
-        List<FuelLineView> fuel, List<RocketEngineView> engines, RocketThrustView thrust, LandingCheckView landingCheck,
+        List<FuelLineView> fuel, List<RocketPipeNetworkView> pipeNetworks, List<RocketEngineView> engines,
+        RocketThrustView thrust, LandingCheckView landingCheck,
         List<CargoHoldView> cargo, RocketPowerView power, BurnTimeView burnTime, List<SelfCheckView>? checks,
         List<string> notes, bool manned = false, LandingAtPadView? landingAtPad = null, List<string>? collects = null,
         List<PartPoseView>? parts = null)
@@ -512,6 +513,7 @@ internal sealed class RocketStatusView
         Where = where;
         Mass = mass;
         Fuel = fuel;
+        PipeNetworks = pipeNetworks;
         Engines = engines;
         Thrust = thrust;
         LandingCheck = landingCheck;
@@ -544,6 +546,9 @@ internal sealed class RocketStatusView
     public RocketMassView Mass { get; }
 
     public List<FuelLineView> Fuel { get; }
+
+    /// <summary>Every pipe network on the rocket in short, engine lines and the rest (cargo, sockets).</summary>
+    public List<RocketPipeNetworkView> PipeNetworks { get; }
 
     public List<RocketEngineView> Engines { get; }
 
@@ -725,4 +730,36 @@ internal sealed class PartPoseView
     /// <summary>Prefabs in its slots (drill head, scanner head, payload, canisters, batteries).</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<string>? Contents { get; }
+}
+
+/// <summary>One pipe network on a rocket in short: its contents, and the engine inputs it feeds (empty for a cargo line).</summary>
+internal sealed class RocketPipeNetworkView
+{
+    internal RocketPipeNetworkView(ThingId networkId, double volumeL, double totalMol, double pressureKpa,
+        double temperatureK, Dictionary<string, double> gasesMol, List<string> feeds)
+    {
+        NetworkId = networkId;
+        VolumeL = RocketRound.Of(volumeL, 1);
+        TotalMol = RocketRound.Of(totalMol, 3);
+        PressureKpa = RocketRound.Of(pressureKpa, 1);
+        TemperatureK = RocketRound.Of(temperatureK, 1);
+        GasesMol = gasesMol;
+        Feeds = feeds;
+    }
+
+    public ThingId NetworkId { get; }
+
+    public double VolumeL { get; }
+
+    public double TotalMol { get; }
+
+    public double PressureKpa { get; }
+
+    public double TemperatureK { get; }
+
+    /// <summary>Moles of each gas or liquid it holds, by game name.</summary>
+    public Dictionary<string, double> GasesMol { get; }
+
+    /// <summary>The engine inputs it feeds ("Pumped Gas Engine input 1"); empty for a line no engine draws from.</summary>
+    public List<string> Feeds { get; }
 }

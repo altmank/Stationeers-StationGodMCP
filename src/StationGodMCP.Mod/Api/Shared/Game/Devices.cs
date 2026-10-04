@@ -6,6 +6,8 @@ using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Objects.Pipes;
 using Assets.Scripts.Util;
+using Assets.Scripts.Networks;
+using Networks;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 
@@ -67,9 +69,19 @@ internal static class Devices
             Thing thing when thing != null && !(thing is Device) => ApiErrors.Refused("device_not_found",
                 $"{Names.Of(thing)} ({id}) is not a device: it has logic of its own but is not in the game's device "
                 + "list, so the device tools do not reach it (list_devices shows what they reach)."),
+            _ when NetworkKindOf(id.Value) is string kind => ApiErrors.Refused("device_not_found",
+                $"{id} is a {kind} network, not a device: the logic tools read devices. connections lists its " +
+                $"members{(kind == "pipe" ? "; atmosphere_contents reads its gas (TotalMoles and the rest)" : string.Empty)}."),
             _ => ApiErrors.Refused("device_not_found",
                 $"Device {id} is not visible {scope.Where} and is not worn or held by a player."),
         };
+
+    // A network id given where a device was meant: which kind it is, or null when it names no network.
+    private static string? NetworkKindOf(long id) =>
+        Referencable.Find<PipeNetwork>(id) != null ? "pipe"
+        : Referencable.Find<CableNetwork>(id) != null ? "cable"
+        : Referencable.Find<ChuteNetwork>(id) != null ? "chute"
+        : null;
 
     /// <summary>The scoped target Require would return, or null when the scope does not reach that id.</summary>
     internal static ScopedTarget? Find(DeviceScope scope, long referenceId)

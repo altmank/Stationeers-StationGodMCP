@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.21.0",
+  "mod_version": "1.21.1",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -6460,7 +6460,7 @@
       "name": "read_logic_many",
       "description": "Read up to 256 logic values in one call; each result stands alone, by index, with its own error. Read only.\nMore: tool_info {tool: \"read_logic_many\"}",
       "help": {
-        "text": "Each result is {index, ok, reference_id, logic_type, value}, or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read. read_devices also reads slots, atmospheres and reagents in one frame.",
+        "text": "Each result is {index, ok, reference_id, logic_type, value}, or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read. read_devices also reads slots, atmospheres and reagents in one frame. A network id is no device (device_not_found says so): a pipe network's gas is atmosphere_contents', its members connections'.",
         "keys": "gateway_id, results, count, success_count, error_count.",
         "shared": ["gateways", "logic"]
       },
@@ -7748,7 +7748,7 @@
           },
           "mass_fuel": {
             "summary": "mass and fuel.",
-            "text": "mass: total, structure (1 kg per filled cargo slot included), gas (in the rocket's pipes, tanks and engine chambers), payload_kg, parts by kind. fuel: each engine input network (input 1 and 2 of every engine; a Pressure Fed Liquid Engine's input 2 is a heat exchanger) with pipe litres and mol, total mol, liquid mol and litres, pipe gas kPa (what pressure-fed engines read), feeds (which engine inputs draw from it), mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass)."
+            "text": "mass: total, structure (1 kg per filled cargo slot included), gas (in the rocket's pipes, tanks and engine chambers), payload_kg, parts by kind. fuel: each engine input network (input 1 and 2 of every engine; a Pressure Fed Liquid Engine's input 2 is a heat exchanger) with pipe litres and mol, total mol, liquid mol and litres, pipe gas kPa (what pressure-fed engines read), feeds (which engine inputs draw from it), mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass). pipe_networks: every pipe network on the rocket in short, engine lines and the rest such as a tanker's cargo or socket line: network_id, volume_l, total_mol, pressure_kpa, temperature_k, gases_mol, feeds (empty when no engine draws from it)."
           },
           "engines": {
             "summary": "engines, thrust and burn time.",

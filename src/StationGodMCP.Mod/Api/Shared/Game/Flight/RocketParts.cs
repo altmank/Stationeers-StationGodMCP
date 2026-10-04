@@ -151,6 +151,9 @@ internal sealed class RocketParts
 
     internal List<FuelLineRead> Lines { get; } = new List<FuelLineRead>(2);
 
+    /// <summary>Every pipe network the rocket's own pipes make, engine lines and the rest (cargo, sockets), each once.</summary>
+    internal List<PipeNetwork> PipeNetworks { get; } = new List<PipeNetwork>(4);
+
     internal List<Battery> Batteries { get; } = new List<Battery>(2);
 
     internal List<RocketChuteStorage> Holds { get; } = new List<RocketChuteStorage>(2);
@@ -334,6 +337,13 @@ internal sealed class RocketParts
                 break;
             case RocketPowerUmbilicalFemale power:
                 PowerSockets.Add(power);
+                break;
+            case Pipe { PipeNetwork: { } network }:
+                if (network.Atmosphere != null && !PipeNetworks.Contains(network))
+                {
+                    PipeNetworks.Add(network);
+                }
+
                 break;
         }
     }

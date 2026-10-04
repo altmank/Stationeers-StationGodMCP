@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.Inventory;
+using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Objects.Rockets;
@@ -69,7 +70,8 @@ internal static class RocketStatusApi
         RocketStatusView view = new RocketStatusView(new ThingId(rocket.ReferenceId),
             new ThingId(rocket.RocketNetwork.ReferenceId), rocket.DisplayName, rocket.AutomatedLanding,
             rocket.AutomatedShutOff, rocket.ReEntryProfile.ToString(), profileAltitude, Where(rocket, notes),
-            Mass(rocket, parts, compact), Fuel(parts, compact), Engines(parts), Thrust(rocket, craft, notes),
+            Mass(rocket, parts, compact), Fuel(parts, compact), PipeNetworks(parts), Engines(parts),
+            Thrust(rocket, craft, notes),
             LandingCheck(rocket, parts, profileAltitude), Cargo(parts), Power(parts, compact),
             BurnTime(rocket, parts, craft), selfTest ? Checks(rocket, parts, craft, profileAltitude) : null, notes,
             rocket.IsManned, LandingAtPad(rocket, profileAltitude), MiningPlans.Loadout(parts).Collects,
@@ -144,6 +146,42 @@ internal static class RocketStatusApi
         }
 
         return lines;
+    }
+
+    // Every pipe network on the rocket in short: an engine's line (feeds names the inputs) and the rest, such as a
+    // tanker's cargo line or a socket's line (feeds empty). Engine lines come first, in fuel's order.
+    private static List<RocketPipeNetworkView> PipeNetworks(RocketParts parts)
+    {
+        List<PipeNetwork> networks = new List<PipeNetwork>(parts.PipeNetworks.Count + parts.Lines.Count);
+        parts.Lines.ForEach(line => networks.Add(line.Network));
+        parts.PipeNetworks.ForEach(network =>
+        {
+            if (!networks.Contains(network))
+            {
+                networks.Add(network);
+            }
+        });
+        List<RocketPipeNetworkView> views = new List<RocketPipeNetworkView>(networks.Count);
+        foreach (PipeNetwork network in networks)
+        {
+            Atmosphere pipe = network.Atmosphere;
+            int line = parts.Lines.FindIndex(read => ReferenceEquals(read.Network, network));
+            Dictionary<string, double> gases = new Dictionary<string, double>(4);
+            foreach (Chemistry.GasType type in GasTypes.All)
+            {
+                double moles = pipe.GasMixture.GetMoleValue(type).Quantity.ToDouble();
+                if (moles >= 0.001)
+                {
+                    gases[type.ToString()] = RocketRound.Of(moles, 3);
+                }
+            }
+
+            views.Add(new RocketPipeNetworkView(new ThingId(network.ReferenceId), pipe.Volume.ToDouble(),
+                pipe.TotalMoles.ToDouble(), pipe.PressureGassesAndLiquids.ToDouble(), pipe.Temperature.ToDouble(),
+                gases, line >= 0 ? Feeds(parts, line) : new List<string>()));
+        }
+
+        return views;
     }
 
     private static List<string> Feeds(RocketParts parts, int line)

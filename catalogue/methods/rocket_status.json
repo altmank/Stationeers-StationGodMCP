@@ -11,7 +11,7 @@
       },
       "mass_fuel": {
         "summary": "mass and fuel.",
-        "text": "mass: total, structure (1 kg per filled cargo slot included), gas (in the rocket's pipes, tanks and engine chambers), payload_kg, parts by kind. fuel: each engine input network (input 1 and 2 of every engine; a Pressure Fed Liquid Engine's input 2 is a heat exchanger) with pipe litres and mol, total mol, liquid mol and litres, pipe gas kPa (what pressure-fed engines read), feeds (which engine inputs draw from it), mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass)."
+        "text": "mass: total, structure (1 kg per filled cargo slot included), gas (in the rocket's pipes, tanks and engine chambers), payload_kg, parts by kind. fuel: each engine input network (input 1 and 2 of every engine; a Pressure Fed Liquid Engine's input 2 is a heat exchanger) with pipe litres and mol, total mol, liquid mol and litres, pipe gas kPa (what pressure-fed engines read), feeds (which engine inputs draw from it), mix fractions, temperature, and its tanks (litres, mol, K, kPa, whether the game counts them for mass). pipe_networks: every pipe network on the rocket in short, engine lines and the rest such as a tanker's cargo or socket line: network_id, volume_l, total_mol, pressure_kpa, temperature_k, gases_mol, feeds (empty when no engine draws from it)."
       },
       "engines": {
         "summary": "engines, thrust and burn time.",
