@@ -3,6 +3,7 @@
   "summary": "Sell to the landed trader as the trade window's Sell does: goods come from the pad network's vending machines, then the card holder's inventory; the card is paid. dry_run prices and checks.",
   "help": {
     "text": "Whole stacks are destroyed and the last one trimmed; gas comes from the pad network's atmosphere. Returns the shape trader_buy returns, with credits_earned and wanted_after per line; delivered is empty. Credits are rounded to the cent.",
+    "keys": "reference_id, name, dry_run, credit_card_id, credits_before, credits_after, results, count, success_count, error_count, delivered [{reference_id, slot, item, quantity}], gas_atmosphere_id.",
     "topics": {
       "lines": {
         "summary": "How lines add up, and selling one entry twice.",

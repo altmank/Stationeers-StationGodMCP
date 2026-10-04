@@ -3,6 +3,7 @@
   "summary": "What gas or liquid one thing holds: a canister, tank, suit, pipe network, landing pad network, a device's networks and the canisters in its slots, or an atmosphere_id. With a water summary. Read only.",
   "help": {
     "text": "Each atmosphere has a source and lists every gas and liquid with amount_mol (and liquid_l for liquids), plus volume_l, pressure_kpa, temperature_k, total_mol and a water summary. Owners have kind item, structure, dynamic (a portable tank) or pipe_network.",
+    "keys": "reference_id, subject, atmospheres [{source, owner, slot_index, slot_name, atmosphere}], count.",
     "topics": {
       "sources": {
         "summary": "What each source means.",

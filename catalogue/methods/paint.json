@@ -3,6 +3,7 @@
   "summary": "Paint things as a spray can does (no paint used), one colour for reference_ids or a colour each with items; with neither, list the colours.",
   "help": {
     "text": "Uses the game's own paint: synced to clients and saved. A colour is a name (any case, as the colour list gives it), an index, or 'default' for the thing's own prefab colour. Each result gives previous_color, so a later items call can put the old colours back.",
+    "keys": "colors [{index, name, paint_only}], count, results, success_count, error_count.",
     "topics": {
       "colours": {
         "summary": "The colour list and paint_only colours.",

@@ -3,6 +3,7 @@
   "summary": "Lay a pipe run, or pieces, as place_cables lays cable: one-cell pieces from the grade's kit (gas, liquid, insulated_gas, insulated_liquid; grade required), with the pipe guards and a gas check. Dry run by default; confirm to build.",
   "help": {
     "text": "The same run forms, joins, placement check, removals, dry run, job and guards as place_cables, with kits instead of coils (not_enough_coils names what is missing). networks_before lists each pipe network with content, total_mol, temperature, pressure, volume, main gases and devices. A long straight split to be joined keeps its network and contents, even as the network's only pipe: its singles take its network on and the new pieces are built outward from them.",
+    "keys": "job_id, status, ready, problems [], warnings [], cells [], removals [], final_check, log, gas_check, error.",
     "shared": ["runs", "jobs", "networks", "refunds", "materials", "doors", "lint", "pipes", "gas_hold"]
   },
   "class": "write",

@@ -3,6 +3,7 @@
   "summary": "List devices: every one in the world, or those on a gateway's data networks; filter by prefab_hash or name_contains. Reference ids are strings. Lists 25 by default. Read only.",
   "help": {
     "text": "Each device comes with its reference id (a string), prefab and name. The reply lists the first 25; truncated gives the total and list_limits {devices: n} keeps more.",
+    "keys": "gateway_id, devices [{reference_id, prefab_name, prefab_hash, display_name, runtime_type, slot_count, is_gateway, worn_by, ...}], count.",
     "shared": ["gateways", "truncation", "shaping"]
   },
   "class": "read",

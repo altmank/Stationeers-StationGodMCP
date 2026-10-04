@@ -48,7 +48,8 @@ public sealed class ToolHelp
             {
                 string name = (string)method["name"]!;
                 tools[name] = new ToolEntry(name, (string?)toolHelp["text"] ?? string.Empty, NodesOf(toolHelp["topics"]),
-                    (toolHelp["shared"] as JsonArray ?? []).Select(topic => (string)topic!).ToList());
+                    (toolHelp["shared"] as JsonArray ?? []).Select(topic => (string)topic!).ToList(),
+                    (string?)toolHelp["keys"]);
             }
         }
 
@@ -163,6 +164,10 @@ public sealed class ToolHelp
     private JsonObject ToolNode(ToolEntry entry)
     {
         JsonObject reply = new() { ["tool"] = entry.Name, ["text"] = entry.Text };
+        if (entry.Keys != null)
+        {
+            reply["reply_keys"] = entry.Keys;
+        }
         if (entry.Topics.Count > 0)
         {
             reply["topics"] = Listing(entry.Topics, "topic");
@@ -223,7 +228,9 @@ public sealed class ToolHelp
 
     private sealed record HelpNode(string Name, string Summary, string Text, IReadOnlyList<HelpNode> Children);
 
-    private sealed record ToolEntry(string Name, string Text, IReadOnlyList<HelpNode> Topics, IReadOnlyList<string> Shared);
+    /// <summary>A tool's help: Keys names its main reply keys (the keys fields and omit take), when it has them.</summary>
+    private sealed record ToolEntry(string Name, string Text, IReadOnlyList<HelpNode> Topics, IReadOnlyList<string> Shared,
+        string? Keys);
 }
 
 /// <summary>A help node to read: tool (absent for a shared topic), topic, and subtopic when it is one.</summary>

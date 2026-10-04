@@ -2,7 +2,8 @@
   "name": "grid_survey",
   "summary": "Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), with frames, walls, each small cell's occupant and support, the pieces, devices and their ports, and networks. Read only.",
   "help": {
-    "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. sections, network_ids, kinds and compact narrow it.",
+    "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. sections, network_ids, kinds, occupied_only and compact narrow it.",
+    "keys": "legend, cells [{at, room_id, frame, walls, small, support}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, ...}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}], resolved_networks.",
     "topics": {
       "cells": {
         "summary": "Each cell and its small and support strings.",
@@ -10,7 +11,7 @@
       },
       "pieces": {
         "summary": "pieces, devices and their ports.",
-        "text": "pieces [{reference_id, kind, prefab_name, at, cells (long pieces), ends, network_id, grade; chutes also flow {in, out} and carries}]. devices [{reference_id, prefab_name, display_name, at, rotation {facing, up, euler}, ports [{index, at (the cell a piece joining it stands in), toward (the end that piece needs), type, role, network_id}], umbilical}]."
+        "text": "pieces [{reference_id, kind, prefab_name, at, cell_count and cell_box {min, max, size} (a piece filling more than one small cell; cells lists each with include_piece_cells), ends, network_id, grade; chutes also flow {in, out} and carries}]. devices [{reference_id, prefab_name, display_name, at, rotation {facing, up, euler}, ports [{index, at (the cell a piece joining it stands in), toward (the end that piece needs), type, role, network_id}], umbilical}]."
       },
       "networks": {
         "summary": "networks, network_visibility and refunds.",
@@ -57,6 +58,14 @@
       "compact": {
         "type": "boolean",
         "description": "Leave out each cell's small and support strings and the legend. Default false."
+      },
+      "occupied_only": {
+        "type": "boolean",
+        "description": "Only cells holding a frame, a wall or other face structure, or anything in their small cells; total counts those. Default false."
+      },
+      "include_piece_cells": {
+        "type": "boolean",
+        "description": "List every small cell of a piece that fills more than one. Default false: cell_count and cell_box only."
       },
       "limit": {"type": "integer", "minimum": 1, "maximum": 125, "description": "2 m cells per page; default 8, max 125."},
       "offset": {"type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Cells to skip (see paging)."}

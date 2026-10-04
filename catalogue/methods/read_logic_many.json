@@ -3,6 +3,7 @@
   "summary": "Read up to 256 logic values in one call; each result stands alone, by index, with its own error. Read only.",
   "help": {
     "text": "Each result is {index, ok, reference_id, logic_type, value}, or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read. read_devices also reads slots, atmospheres and reagents in one frame.",
+    "keys": "gateway_id, results, count, success_count, error_count.",
     "shared": ["gateways", "logic"]
   },
   "class": "read",

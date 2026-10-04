@@ -3,6 +3,7 @@
   "summary": "The damage state of any thing (panel, pipe, cable, wall, frame, door, vent, device, item), which no logic type exposes. One thing, up to 256, a network's pieces, or a world scan of damaged and broken things. Read only.",
   "help": {
     "text": "Four forms. reference_id: one thing. reference_ids: up to 256, a result each with its own error. network_id: every piece of one pipe (default), cable or chute network, worst first, paged (damaged_only narrows it). None of them: scan the world for damaged and broken things, broken first then worst first, paged (8 per page).",
+    "keys": "reference_id, prefab_name, display_name, custom_name, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage, is_broken, broken_build_state, being_destroyed, pipe_burst, position, distance_m, networks [{kind, id}], results [{index, ok, reference_id, prefab_name, display_name, ...}], count, success_count, error_count, network_id, pieces, damaged_only, things [{reference_id, prefab_name, display_name, custom_name, condition, ...}], total, offset, limit, has_more, structures, broken, scanned, min_damage_ratio, local_player, resolved_networks.",
     "topics": {
       "reply": {
         "summary": "What each thing reports.",

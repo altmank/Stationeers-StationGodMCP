@@ -76,9 +76,10 @@ internal sealed class FoundThingView
     internal FoundThingView(ThingView thing, string? customName, string gameName, string kind, string runtimeType,
         bool labelable, string location, string? carriedBy, List<HeldInView> heldIn, PositionView position,
         double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null, bool isBroken = false,
-        string condition = "intact", PrintView? made = null)
+        string condition = "intact", PrintView? made = null, string? rocketState = null)
     {
         Made = made;
+        RocketState = rocketState;
         IsBroken = isBroken;
         Condition = condition;
         Rotation = rotation;
@@ -160,4 +161,11 @@ internal sealed class FoundThingView
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public OrientationView? Rotation { get; }
+
+    /// <summary>
+    /// The state of the rocket a structure is part of (OnLaunchMount, Launching, Landing...), so a position taken while
+    /// it flies is read as such; left out for anything not part of a rocket.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? RocketState { get; }
 }

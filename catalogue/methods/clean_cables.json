@@ -3,6 +3,7 @@
   "summary": "Tidy cable networks in place: remove dead ends, break loops, remove what no device needs, split or merge straights, simplify junctions; alone or together. Dry run by default; confirm to run.",
   "help": {
     "text": "Replacements come from the loaded coil; grade, colour and owner stay. The report is upgrade_cables' (target minimal), each piece giving operation, ends, connected_ends, replacement_count, round, merged_reference_ids, cost and refund_count; plus dead_end_pieces, kept_pieces and unmatched_pieces (no_smaller_piece, no_single_piece, no_long_piece, special_piece, no_kit). The links after must equal the links before less exactly those of removed pieces.",
+    "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
     "topics": {
       "operations": {
         "summary": "The operations and their order.",

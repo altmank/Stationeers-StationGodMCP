@@ -3,6 +3,7 @@
   "summary": "Replace frames in place with another frame prefab, or finish unfinished frames, without ever opening a cell; pieces by id or a room's frames. As replace_walls. Dry run by default; confirm to swap.",
   "help": {
     "text": "Without to, each frame is rebuilt as its own prefab at its final state, which finishes it (finished frames are already_at_target). The swap, dry run, job, materials, refund and checks are replace_walls'. Only plain frames are taken or built (rocket towers are special_piece). Frames are never pressure-stressed.",
+    "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], materials [], swapped [], not_swapped [], preflight_summary, final_check, error.",
     "topics": {
       "scope": {
         "summary": "Which frames a room names, and the footprint.",

@@ -11,7 +11,7 @@ these tools need a gateway.
 | --- | --- | --- |
 | `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock. | `prefab_contains`, `name_contains`, `location`, `within_id`, `near_player_m`, `limit`, `offset` |
 | `item_totals` | Total quantity of each item type, split into on the ground, carried, stored and machine stock, with the holder that holds the most (`holders_limit` holders; one by default). | as `find_items`, and `holders_limit` (0 leaves the holders out) |
-| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, `made_by`, `made_since`, `location` |
+| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, `min` and `max` (a box), `made_by`, `made_since`, `location` |
 | `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. | `reference_id`, `depth` (default 3) |
 | `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
@@ -25,6 +25,8 @@ these tools need a gateway.
   fabricator count as the ingots it would eject (`location: machine_stock`). Stock cannot be moved with `move_item`:
   open the fabricator to eject it.
 - `find_things` finds what `find_items` does not: a tank labelled `T1` is found by `T1` and by `Portable Liquid Tank`.
+  `min` and `max` keep only things in a box (`kind: "structure"` with a box gives the walls of one building). A
+  rocket's part reports `rocket_state`: its position moves while the rocket flies.
   `location` keeps things where they are: `ground` (loose), `player` (carried), `stored` (in any other slot), `built`
   (structures) or `world` (players, animals). For many hits, ask only the keys you need with `fields` (for example
   `["reference_id", "position"]`), or write the reply to a file with `output_file` (README, *Large replies*).

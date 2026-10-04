@@ -93,6 +93,7 @@
           "required": ["text"],
           "properties": {
             "text": {"type": "string", "minLength": 1},
+            "keys": {"type": "string", "minLength": 1},
             "shared": {"type": "array", "items": {"type": "string"}},
             "topics": {"type": "object", "additionalProperties": {"$ref": "#/$defs/topic"}}
           }

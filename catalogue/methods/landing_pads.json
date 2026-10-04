@@ -3,6 +3,7 @@
   "summary": "Every trader landing pad, measured by the game's own checks: its largest square, runway threshold, which ships fit, and whether each contact in the sky can land. Read only.",
   "help": {
     "text": "The game's pad check moves the landing point of the pad it measures; every check here puts it back, so a landing in progress is never affected. Also count.",
+    "keys": "pads [{reference_id, prefab_name, display_name, position, forward, is_network_center, piece_count, extent, ...}], count.",
     "topics": {
       "pad": {
         "summary": "What each pad reports.",

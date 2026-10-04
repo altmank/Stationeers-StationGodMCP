@@ -3,6 +3,7 @@
   "summary": "Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure; the last 16): remove what it built, build back what it removed. Dry run by default; confirm to undo.",
   "help": {
     "text": "The inverse, from a snapshot taken when the job started (position, turn, build state, label). Pieces come back through place_cables, place_pipes and place_chutes (the pieces form, one run per tool and grade; a long straight as singles), so every guard applies; everything else through place_structure. paste_blueprint has its own undo. Host only.",
+    "keys": "job_id, tool, status, plan {remove, restore, diverged, notes, ready, ...}, remove_arguments, place_arguments, removal, placement, piece_runs [{tool, arguments, reply}], resolved_networks, gas_hold.",
     "topics": {
       "removal": {
         "summary": "Who removes what.",

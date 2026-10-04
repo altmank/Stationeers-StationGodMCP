@@ -3,6 +3,7 @@
   "summary": "Every trader contact in the sky and every satellite dish with where it points. Read only.",
   "help": {
     "text": "Returns game_time_s, contacts and dishes. Whether a contact fits and can land on a pad: landing_pads. What it trades: trader_inventory. Aiming a dish: dish_aim.",
+    "keys": "game_time_s, contacts [{reference_id, trader, display_name, shuttle, pad_size_tiles, direction, elevation_deg, min_power_to_resolve_w, ...}], dishes [{reference_id, display_name, prefab_name, forward, transform_up, horizontal, vertical, finished, ...}].",
     "topics": {
       "contacts": {
         "summary": "What each contact reports.",

@@ -3,6 +3,7 @@
   "summary": "What a rocket can collect, by the game's own mining formulas: its loadout, and per site the yield per cycle and hour, cycles to deplete, and what stops it. Lists 3 sites. Read only.",
   "help": {
     "text": "sites: the node 'to' and its discovered sites, else every charted node with a deposit. collectable and not_collectable list the sites by name; collectable_only keeps the first.",
+    "keys": "rocket_id, rocket_name, loadout {miners, collectors, scanners, cargo, gas_tank_litres, ...}, collectable, not_collectable, sites [{node, parent, kind, density, richness, size, survey_percent, depleted, ...}], count, notes.",
     "topics": {
       "loadout": {
         "summary": "What the loadout reports.",

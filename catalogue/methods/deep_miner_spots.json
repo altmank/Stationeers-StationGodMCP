@@ -3,6 +3,7 @@
   "summary": "Where a deep miner would mine what: the profile at a point, and with ores the nearest spots whose profile holds them all. Follows the world's own region maps. Read only.",
   "help": {
     "text": "The game gives a deep miner the first deep-mining profile whose region condition holds where it is built; this asks the same profiles the same way. Always returns at {position, regions, profile_id (null: a miner there mines nothing)} and profiles [{id, reagents [{reagent, grams}] per dirty ore, quantity [min, max) ores per drop, time_s [min, max) per drop at 200 RPM, regions}] in the order the miner tries them.",
+    "keys": "at {position, regions, profile_id}, profiles [{id, reagents, quantity, time_s, regions}], search {ores, profiles, radius_m, step_m, min_separation_m, ...}, spots [{at, distance_m, bearing_deg, compass, profile_id, regions, terrain}], beacons [{at, label}].",
     "topics": {
       "search": {
         "summary": "Searching for spots with ores.",

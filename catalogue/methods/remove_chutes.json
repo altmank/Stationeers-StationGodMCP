@@ -3,6 +3,7 @@
   "summary": "Remove chute pieces (straights, corners, junctions, valves, overflows, splitters) as a player's deconstruction does: by id or cell. Refunds the kits. Dry run by default; confirm to remove.",
   "help": {
     "text": "A piece with an item riding in it is cannot_remove (the game would lose the item; let it pass or take it out with move_item). drops_items warns where the removal leaves an end items would fall out of. The networks around every removed chute take new ids.",
+    "keys": "job_id, status, ready, problems [], warnings [], cells [], materials, removals [], networks_before [], networks_after [], would_split [], preflight_summary, result, final_check, log, verification, gas_check, error.",
     "shared": ["removals", "runs", "jobs", "refunds", "networks", "materials"]
   },
   "class": "write",

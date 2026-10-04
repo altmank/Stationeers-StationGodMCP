@@ -3,6 +3,7 @@
   "summary": "The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game. Read only.",
   "help": {
     "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 15 and reflection 10 by default; list_limits keeps more.",
+    "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, ...}.",
     "topics": {
       "methods": {
         "summary": "Per-method counts and times.",

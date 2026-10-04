@@ -3,6 +3,7 @@
   "summary": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first. 10 per page. Read only.",
   "help": {
     "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type.",
+    "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
     "shared": ["items", "paging", "shaping", "player"]
   },
   "class": "read",

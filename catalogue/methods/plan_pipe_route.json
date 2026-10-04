@@ -3,6 +3,7 @@
   "summary": "Find a pipe route between ends, ports, tanks or networks, and dry-run it with place_pipes and its pipe guards; grade required. Answers place_arguments to build it. Read only.",
   "help": {
     "text": "plan_cable_route for pipes: the same ends, rules, trees, trunks and reroutes; the search never passes through a cell holding a pipe, nor along a cable's axis in a cell.",
+    "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
     "shared": ["routing", "runs", "networks", "doors", "lint", "materials", "pipes"]
   },
   "class": "read",

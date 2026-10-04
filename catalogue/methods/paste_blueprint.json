@@ -3,6 +3,7 @@
   "summary": "Cheat: paste a BlueprintMod blueprint at an exact anchor and turn, with no player needed; it skips the game's placement checks. Ask the user first. status reads progress; undo removes the newest paste.",
   "help": {
     "text": "Needs BlueprintMod; host only. Paste: name (in BlueprintMod's Blueprints folder, or an absolute path), anchor [x, y, z] (where the blueprint's reference point lands: x and z odd whole metres, y even, for the paste to line up with the grid) and rotation (0, 90, 180 or 270, added to its copy angle). Answers {started, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}; the pieces appear over 2 to 30 s, only while the game runs. Run check_replaceable over the pasted pieces.",
+    "keys": "known, active, complete, cancelled, created, failed, skipped, pasted, standing, fingerprint, file, entries, other_active, message, started, anchor, rotation, copy_y_angle, expected_duration_s.",
     "topics": {
       "status": {
         "summary": "status: true and its counts.",

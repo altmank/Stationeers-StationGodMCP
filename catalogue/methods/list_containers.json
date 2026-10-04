@@ -3,6 +3,7 @@
   "summary": "List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first. 12 per page. Read only.",
   "help": {
     "text": "A holder inside another (a crate in a lander, a box in a locker) is not listed alone: its items count toward the outermost holder, and the filters match that holder. Look inside with container_contents or find_items within_id. Empty containers are not listed.",
+    "keys": "containers [{reference_id, prefab_name, display_name, slots_total, slots_used, item_count, items, position, ...}], count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
     "shared": ["paging", "player"]
   },
   "class": "read",

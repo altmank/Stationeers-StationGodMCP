@@ -3,6 +3,7 @@
   "summary": "Read up to 512 values of a device's memory from start_address, as a chip's get does: an IC Housing or suit (its chip's stack), Logic Sorter, dish, fabricator, rocket avionics. Read only.",
   "help": {
     "text": "A Logic Memory has only its Setting, no memory (memory_not_readable). A range past the memory's last address is invalid_argument; the reply gives stack_size. An IC Housing or suit without a chip is no_programmable_chip.",
+    "keys": "gateway_id, reference_id, start_address, values, count, stack_size.",
     "shared": ["gateways", "logic"]
   },
   "class": "read",

@@ -3,6 +3,7 @@
   "summary": "Lay a cable run, or pieces, as a coil builds it: the one-cell piece whose ends match each cell, of a grade (heavy by default). Guards for bridging, splitting and overload. Dry run by default; confirm to build.",
   "help": {
     "text": "Pieces come from the loaded coil of the grade (normal, heavy or super_heavy), never a table. Coils come from from_id (default the player); not_enough_coils names what is missing. A burnt cable an overload left may be named in remove_ids, freeing its cell.",
+    "keys": "job_id, status, ready, problems [], warnings [], cells [], materials, removals [], networks_before [], networks_after [], would_split [], preflight_summary, result, final_check, log, verification, gas_check, error.",
     "topics": {
       "overload": {
         "summary": "would_overload and would_overload_when_on.",

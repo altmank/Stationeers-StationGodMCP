@@ -7,6 +7,8 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Build;
+using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
@@ -39,8 +41,9 @@ internal static class FindThingsApi
         {
             if (thing != null && !thing.IsCursor && !thing.IsBeingDestroyed && !(thing is Organ) && filter.Keeps(thing))
             {
-                double? distance = origin.ExactDistanceTo(PositionOf(thing));
-                if (filter.IsNear(distance))
+                Vector3 position = PositionOf(thing);
+                double? distance = origin.ExactDistanceTo(position);
+                if (filter.IsNear(distance) && filter.IsInside(position))
                 {
                     hits.Add(new ThingHit(thing, distance));
                 }
@@ -83,8 +86,14 @@ internal static class FindThingsApi
             thing is Structure ? Orientations.Of(thing) : null,
             Wrecks.IsBroken(thing),
             ConditionOf(thing),
-            Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null);
+            Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null,
+            RocketOf(thing));
     }
+
+    private static string? RocketOf(Thing thing) =>
+        thing is Structure structure && Rockets.NetworkOf(structure)?.Rocket is { } rocket
+            ? rocket.RocketState.ToString()
+            : null;
 
     /// <summary>Where a thing is, as the reply's location: its holder chain's for a dynamic thing, else built or world.</summary>
     internal static string LocationOf(Thing thing, HolderChain? chain) =>
@@ -110,8 +119,10 @@ internal sealed class ThingFilter
     private readonly Dictionary<Type, bool> _typeMatches = new Dictionary<Type, bool>();
 
     private ThingFilter(string? nameContains, string? prefabContains, string kind, string? runtimeType,
-        bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM, bool? broken, PrintFilter made, string location)
+        bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM, bool? broken, PrintFilter made, string location,
+        Box3? box)
     {
+        Box = box;
         Location = location;
         Made = made;
         Broken = broken;
@@ -140,6 +151,9 @@ internal sealed class ThingFilter
 
     internal double? NearPlayerM { get; }
 
+    /// <summary>min and max: only things whose outermost holder stands in this box (edges included).</summary>
+    internal Box3? Box { get; }
+
     /// <summary>any, or the one location kept (ThingLocations).</summary>
     internal string Location { get; }
 
@@ -165,7 +179,25 @@ internal sealed class ThingFilter
         return new ThingFilter(args.OptionalString("name_contains"), args.OptionalString("prefab_contains"), kind,
             string.IsNullOrEmpty(runtimeType) ? null : runtimeType, args.OptionalBool("labelled_only") ?? false,
             args.OptionalBool("has_atmosphere"), args.OptionalPositiveDouble("near_player_m"),
-            args.OptionalBool("broken"), MadeOf(args), ThingLocations.Parse(args.OptionalString("location")));
+            args.OptionalBool("broken"), MadeOf(args), ThingLocations.Parse(args.OptionalString("location")),
+            BoxOf(args));
+    }
+
+    private static Box3? BoxOf(Args args)
+    {
+        if (!args.Has("min") && !args.Has("max"))
+        {
+            return null;
+        }
+
+        if (!args.Has("min") || !args.Has("max"))
+        {
+            throw ApiErrors.InvalidArgument("Pass min and max together: the corners of a box, in metres.");
+        }
+
+        Vector3 min = RunArgs.PositionOf(args.Optional("min")!, "min");
+        Vector3 max = RunArgs.PositionOf(args.Optional("max")!, "max");
+        return new Box3(new Vec3(min.x, min.y, min.z), new Vec3(max.x, max.y, max.z));
     }
 
     // made_by: a maker's reference id, or text in its prefab or shown name; made_since: a game time (game_clock's
@@ -230,6 +262,9 @@ internal sealed class ThingFilter
 
     internal bool IsNear(double? distance) =>
         !NearPlayerM.HasValue || (distance.HasValue && distance.Value <= NearPlayerM.Value);
+
+    internal bool IsInside(Vector3 position) =>
+        !Box.HasValue || Box.Value.Contains(new Vec3(position.x, position.y, position.z));
 }
 
 /// <summary>A matching thing and its unrounded distance, for sorting before the page is described.</summary>

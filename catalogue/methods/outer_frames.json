@@ -3,6 +3,7 @@
   "summary": "Which frames are outer frames: a face on a cell of the planet's outside air. Each with its exposed faces, airtightness, build state and colour; nearest first, 20 per page. Read only.",
   "help": {
     "text": "Each frame: reference_id, prefab_name, display_name, position, distance_m, exposed_faces (+z north, +y up), exposed_face_count, blocks_air (its build state is airtight), build_state (0 bare up to the prefab's finished state; a finished steel frame is 3) and color. Also count, total_frames, total_outer, paging and local_player. include_inner lists every frame.",
+    "keys": "frames [{reference_id, prefab_name, display_name, position, distance_m, exposed_faces, exposed_face_count, blocks_air, ...}], count, total_frames, total_outer, offset, limit, total, has_more, include_inner, local_player {reference_id, display_name, position}.",
     "topics": {
       "exposed": {
         "summary": "When a face counts as exposed.",

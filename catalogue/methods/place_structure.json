@@ -2,7 +2,8 @@
   "name": "place_structure",
   "summary": "Place any structure a kit builds (light, sign, device, frame, wall, tank, rocket part) by prefab, at a point with a turn, build state, label and colour; several placements are one job. Checked as the player's cursor checks. Dry run by default; confirm to build. free is a cheat.",
   "help": {
-    "text": "Cost: every build state's items up to the state built (state 0 is the kit), from the player's inventory at any depth or from_id. Cables, pipes and chutes are placed as exactly the piece given (warning network_piece); place_cables, place_pipes and place_chutes choose pieces by connections. The dry run gives each placement's snapped position, orientation, face, build state, cost, materials, ports and layout preview.",
+    "text": "With placements, label, color and so on go in each placement. Cost: every build state's items up to the state built (state 0 is the kit), from the player's inventory or from_id. Cables, pipes and chutes are placed as exactly the piece given; place_cables, place_pipes and place_chutes choose pieces. The dry run describes each placement: position, cost, ports, layout.",
+    "keys": "job_id, status, ready, problems [], warnings [], placements [], materials [], result, error.",
     "topics": {
       "position": {
         "summary": "How at snaps, and setting a piece down.",

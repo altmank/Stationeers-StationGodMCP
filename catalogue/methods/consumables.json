@@ -3,6 +3,7 @@
   "summary": "Every food and drink in the world, wherever it is, with nutrition, hydration and decay, packages counted by contents, and totals. Lists 3 of each by default. Read only.",
   "help": {
     "text": "Food: nutrition per unit and in total, quality and decay_time_left_s (the game's estimate at the current decay rate; null when it does not decay). Drinks: liquid_l and the hydration they give. Boxes and packages hold real items, so their contents are counted and listed per package. Decayed food, seeds, plants still growing, pills and empty drinks are listed as not counted. Totals of nutrition and hydration, and how much is still packed. Lists food, drinks and packages 3 each, not_counted 5; list_limits keeps more.",
+    "keys": "food [{reference_id, prefab_name, display_name, quantity, max_quantity, location, carried_by, held_in, ...}], drinks [{reference_id, prefab_name, display_name, quantity, max_quantity, location, carried_by, held_in, ...}], packages [{reference_id, prefab_name, display_name, location, carried_by, held_in, position, distance_m, ...}], not_counted [{prefab_name, display_name, reason, items, quantity}], totals {nutrition, nutrition_in_packages, liquid_l, liquid_in_packages_l, hydration, ...}, local_player {reference_id, display_name, position}.",
     "shared": ["items", "truncation"]
   },
   "class": "read",

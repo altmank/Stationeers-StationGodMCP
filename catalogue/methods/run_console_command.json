@@ -3,6 +3,7 @@
   "summary": "Cheat: run any console command and answer the lines it printed. Unrestricted and not undoable: it can spawn and delete things, teleport, start storms, change settings, quit. Ask the user first.",
   "help": {
     "text": "Runs on the game's main thread. Refusals such as 'requires creative mode' and bad arguments come back as red output lines, not as a call error. On a network client some commands only queue a request to the host; run_simulation says which applies.",
+    "keys": "command, command_key, scope, help_text, arguments, run_simulation, console_available, completes_asynchronously, output_complete, output_line_count, truncated, concurrent_log_lines, output [{time, level, text}], note.",
     "topics": {
       "output": {
         "summary": "What the reply covers, and background commands.",

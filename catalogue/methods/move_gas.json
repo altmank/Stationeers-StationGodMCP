@@ -3,6 +3,7 @@
   "summary": "Cheat: move gas and liquid between atmospheres or rooms, or delete it, with no pipe, pump or power; it bypasses the game's physics. Ask the user first. dry_run predicts; applied at the next atmospherics tick.",
   "help": {
     "text": "Each gas leaves with its own share of its heat and arrives with it. Give from and to (or delete: true), gases and amount_mol. Burst, liquid, freezing and boiling checks refuse a move that would harm the receiving side; force skips the burst check only. Host only.",
+    "keys": "transfer_id, status, predicted, joined, from, to, deleted, moved, error, before, amount_mol, ticks, note.",
     "topics": {
       "places": {
         "summary": "What from and to can name.",

@@ -3,6 +3,7 @@
   "summary": "What each trader contact buys and sells: prices, stock and wanted counts, the conditions goods must meet, and how much of what you hold meets them. Lists 2 contacts. Read only.",
   "help": {
     "text": "The game rolls a trader's inventory when the contact appears, so this works before the trader is interrogated. Leave contact_id out for every contact. Each line: item or gas name, prefab, credits per unit, wanted or in stock, and the conditions a sold item or gas must meet (purity, moles per unit, temperature range).",
+    "keys": "contacts [{reference_id, trader, display_name, shuttle, pad_size_tiles, contacted, buys, sells}].",
     "topics": {
       "have": {
         "summary": "have and sellable on lines it buys.",

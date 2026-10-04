@@ -3,6 +3,7 @@
   "summary": "Check a room or a box against the layout rules (lint-rules.json, the save's file over the mod's), from what stands there: replaceability, doors, ports, floating runs, overlaps, solar, oxidiser venting and more. 25 findings. Read only.",
   "help": {
     "text": "Returns region, cells, pieces, devices, structures, doors, counts {rule id: n}, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}] problems first, then warnings, then info, total, has_more, rule_source and elapsed_ms. A rule that cannot run on a subject gives a rule_error finding and the rest still run; a rule that does not load is listed in rule_source.errors. lint_rules lists, validates, tests and explains the rules.",
+    "keys": "region, cells, pieces, devices, structures, doors, counts, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}], total, has_more, rule_source {mod_file, save_file, rules, from_save, disabled, ...}, elapsed_ms.",
     "topics": {
       "files": {
         "summary": "The mod's rule file and the save's.",

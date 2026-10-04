@@ -31,6 +31,9 @@ internal readonly struct SmallOccupancy
 
     /// <summary>The cell belongs to a rocket (SmallCell.Owner).</summary>
     internal bool Rocket { get; }
+
+    /// <summary>Something stands in the cell: a cable, pipe, chute, device or other small-grid thing.</summary>
+    internal bool Any => Cable || Pipe || Chute || Device || Other;
 }
 
 /// <summary>

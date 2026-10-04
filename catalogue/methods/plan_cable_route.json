@@ -3,6 +3,7 @@
   "summary": "Find a cable route on the small grid between ends, ports or networks, and dry-run it with place_cables: frames first, trees from several starts, trunks, reroutes. Answers place_arguments to build it. Read only.",
   "help": {
     "text": "grade (default heavy), join, allow_bridge, allow_split and from_id pass on to the dry run. A device on several cable networks, such as an APC, needs its port named.",
+    "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
     "shared": ["routing", "runs", "networks", "doors", "lint", "materials"]
   },
   "class": "read",

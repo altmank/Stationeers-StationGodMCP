@@ -172,6 +172,34 @@ internal sealed class SelectorNode
         return distinct.ToArray();
     }
 
+    /// <summary>A new node holding what this node and other keep, below every key.</summary>
+    internal SelectorNode With(SelectorNode other)
+    {
+        SelectorNode merged = new SelectorNode();
+        merged.Absorb(this);
+        merged.Absorb(other);
+        return merged;
+    }
+
+    private void Absorb(SelectorNode other)
+    {
+        if (other._ends != null)
+        {
+            foreach (int selector in other._ends)
+            {
+                EndHere(selector);
+            }
+        }
+
+        if (other._children != null)
+        {
+            foreach (KeyValuePair<string, SelectorNode> child in other._children)
+            {
+                Add(child.Key).Absorb(child.Value);
+            }
+        }
+    }
+
     internal void EndHere(int selector)
     {
         Whole = true;
@@ -181,10 +209,11 @@ internal sealed class SelectorNode
 }
 
 /// <summary>
-/// shape.fields parsed: the selectors in the order given, without repeats, and per top-level list the node that
-/// says what to keep in each of its entries. Every entry of every list is matched against the single names and against
-/// each path read from the entry itself (occupant.prefab_name keeps prefab_name of each entry's occupant, at any
-/// depth); a path whose first name is a top-level list is also read from that list's entries (things.position.x).
+/// shape.fields parsed: the selectors in the order given, without repeats, the tree read from the reply's top (Top),
+/// and per top-level key the node that says what to keep in each entry of that list, or inside that object. Every entry
+/// of every top-level list, and every top-level object, is matched against the single names and against each path read
+/// from the entry itself (occupant.prefab_name keeps prefab_name of each entry's occupant, at any depth); a path whose
+/// first name is a top-level key is also read from inside that key's value (things.position.x, target.reference_id).
 /// </summary>
 internal sealed class FieldSelectors
 {
@@ -192,18 +221,26 @@ internal sealed class FieldSelectors
     private readonly SelectorNode _singleNames;
     private readonly Dictionary<string, SelectorNode> _byList;
 
-    private FieldSelectors(FieldSelector[] selectors, SelectorNode singleNames, Dictionary<string, SelectorNode> byList)
+    private FieldSelectors(FieldSelector[] selectors, SelectorNode singleNames, Dictionary<string, SelectorNode> byList,
+        SelectorNode top)
     {
         _selectors = selectors;
         _singleNames = singleNames;
         _byList = byList;
+        Top = top;
     }
 
     internal int Count => _selectors.Length;
 
     internal FieldSelector this[int index] => _selectors[index];
 
-    /// <summary>What to keep in each object entry of the top-level list of that name.</summary>
+    /// <summary>
+    /// Every selector read from the reply's top: a single name that is a top-level key keeps it whole, a path keeps
+    /// only what it reaches inside it.
+    /// </summary>
+    internal SelectorNode Top { get; }
+
+    /// <summary>What to keep in each object entry of the top-level list of that name, or inside the top-level object.</summary>
     internal SelectorNode EntryNodeFor(string list) =>
         _byList.TryGetValue(list, out SelectorNode node) ? node : _singleNames;
 
@@ -235,23 +272,51 @@ internal sealed class FieldSelectors
             }
         }
 
-        return new FieldSelectors(selectors, singleNames, byList);
+        SelectorNode top = new SelectorNode();
+        top.AddEach(selectors);
+        return new FieldSelectors(selectors, singleNames, byList, top);
     }
 }
 
 /// <summary>
 /// shape.omit parsed: paths read from the reply's root, each naming a key to leave out wherever the path reaches it
-/// (source; runtime.registers; a list on the way applies the rest to each of its entries: members.position). Selectors
-/// are kept in the order given, without repeats; Root is the tree the writer walks.
+/// (source; runtime.registers; a list on the way applies the rest to each of its entries: members.position). A single
+/// name is also left out of each top-level object and each entry of a top-level list (body leaves out target.body),
+/// as fields reads single names. Selectors are kept in the order given, without repeats; Root is the tree the writer
+/// walks.
 /// </summary>
 internal sealed class OmitSelectors
 {
     private readonly FieldSelector[] _selectors;
+    private readonly SelectorNode? _singleNames;
+    private readonly Dictionary<string, SelectorNode> _below = new Dictionary<string, SelectorNode>(StringComparer.Ordinal);
 
-    private OmitSelectors(FieldSelector[] selectors, SelectorNode root)
+    private OmitSelectors(FieldSelector[] selectors, SelectorNode root, SelectorNode? singleNames)
     {
         _selectors = selectors;
         Root = root;
+        _singleNames = singleNames;
+    }
+
+    /// <summary>
+    /// What omit leaves out inside the value of the top-level key: the paths through it and every single name; null
+    /// when nothing.
+    /// </summary>
+    internal SelectorNode? Below(string key)
+    {
+        SelectorNode? paths = Root.Child(key);
+        if (_singleNames == null)
+        {
+            return paths;
+        }
+
+        if (!_below.TryGetValue(key, out SelectorNode merged))
+        {
+            merged = paths != null ? paths.With(_singleNames) : _singleNames;
+            _below.Add(key, merged);
+        }
+
+        return merged;
     }
 
     internal int Count => _selectors.Length;
@@ -265,6 +330,15 @@ internal sealed class OmitSelectors
         FieldSelector[] selectors = SelectorNode.Distinct(given);
         SelectorNode root = new SelectorNode();
         root.AddEach(selectors);
-        return new OmitSelectors(selectors, root);
+        SelectorNode? singleNames = null;
+        for (int index = 0; index < selectors.Length; index++)
+        {
+            if (selectors[index] is FieldSelector.Name name)
+            {
+                (singleNames ??= new SelectorNode()).Add(name.Key).EndHere(index);
+            }
+        }
+
+        return new OmitSelectors(selectors, root, singleNames);
     }
 }

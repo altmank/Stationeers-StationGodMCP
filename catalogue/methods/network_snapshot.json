@@ -3,6 +3,7 @@
   "summary": "Snapshot devices and their readable logic values in one frame, filtered by reference_ids, prefab_hash, name_contains and logic_types. Returns 2 devices by default (max_devices). Read only.",
   "help": {
     "text": "Narrow it with the filters first: every matching device reads every logic type it exposes unless logic_types names some. max_devices sets how many devices come back (default 2).",
+    "keys": "gateway_id, devices [{device, logic_values, logic_value_count}], count, matched_count, truncated.",
     "shared": ["gateways", "logic"]
   },
   "class": "read",

@@ -3,6 +3,7 @@
   "summary": "What each Ingot Vault stores, read from its own store to 1e-6: ingots as grams of reagent, ores and ices as counts; plus every Remote Vault's link. Read only.",
   "help": {
     "text": "Returns {vaults [{vault, position, on_off, powered, stock [{kind (ingot or ore), prefab_name (the item a vend makes), display_name, reagent, max_stack, quantity}], pending_vends}], remote_vaults [{remote, vault_id, connection (None, NoVaultDetected, MultipleVaultsDetected, VaultPoweredOff)}], count}. pending_vends: vends taken off the store and not yet made into the export slot.",
+    "keys": "vaults [{vault, position, on_off, powered, stock, pending_vends}], remote_vaults [{remote, vault_id, connection}], count.",
     "shared": ["vaults"]
   },
   "class": "read",

@@ -3,6 +3,7 @@
   "summary": "Buy from the landed trader as the trade window's Buy does: the card is charged, stock drops, goods appear in the pad network's vending machines, then the card holder's inventory. dry_run prices and checks.",
   "help": {
     "text": "Goods go into the first empty tradable slots, stacked to their maximum; gas into the pad network's atmosphere. Returns {reference_id, name, dry_run, credit_card_id, credits_before, credits_after, results, count, success_count, error_count, delivered, gas_atmosphere_id}. Credits are rounded to the cent; the game keeps no trader currency.",
+    "keys": "reference_id, name, dry_run, credit_card_id, credits_before, credits_after, results, count, success_count, error_count, delivered [{reference_id, slot, item, quantity}], gas_atmosphere_id.",
     "topics": {
       "lines": {
         "summary": "Each line's result and a dry run.",

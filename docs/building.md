@@ -136,8 +136,10 @@ Then every piece with its ends and network, every device with its `rotation` and
 and role, and the networks with their loads or contents. `rotation` is `{facing, up, euler}` in the forms
 `place_structure` takes, so a device can be placed again as it stands, or turned: `facing` reversed is a half turn.
 `find_things`, `looking_at` and `connections` report the same `rotation` for structures. `network_visibility` counts each network's cells by class and lists the floating
-ones; `include_refund: true` adds what removing each piece would give back. Pages of 27 cells (`limit` up to 125,
-`offset`).
+ones; `include_refund: true` adds what removing each piece would give back. A piece filling more than one small cell
+(a long straight, an in-line tank) gives `cell_count` and `cell_box`; `include_piece_cells: true` lists every cell.
+`occupied_only: true` pages only through cells holding a frame, a face structure or a small-grid thing, so a large,
+mostly empty box takes few pages. Pages of 27 cells (`limit` up to 125, `offset`).
 
 A whole survey of a small box can run to tens of kilobytes. Ask for what you need:
 

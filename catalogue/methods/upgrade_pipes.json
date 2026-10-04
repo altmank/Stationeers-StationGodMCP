@@ -3,6 +3,7 @@
   "summary": "Swap normal pipe for insulated pipe in place (gas to insulated gas, liquid to insulated liquid), keeping the network's contents whole. As upgrade_cables, with a gas check. Dry run by default; confirm to swap.",
   "help": {
     "text": "Each replacement joins the network before its old piece leaves, so the network's gas is never split, vented or divided; only its volume changes by the pieces' volume difference. Pieces already insulated and members that are not pipes (vents, drains, radiators) stay. Kits instead of coils; refund gives back the normal kits.",
+    "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
     "topics": {
       "report": {
         "summary": "The pipe numbers in the report.",

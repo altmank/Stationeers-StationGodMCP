@@ -133,7 +133,7 @@ public sealed class FileOutputTests : IDisposable
             """{"count":2,"things":[{"reference_id":"1","prefab_name":"Ore","position":{"x":1}},{"reference_id":"2","held_in":[]}],"local_player":{"reference_id":"9","name":"LU"}}"""));
 
         Assert.Equal(
-            """{"count":2,"things":[{"reference_id":"1","position":{"x":1}},{"reference_id":"2"}],"local_player":{"reference_id":"9","name":"LU"}}""",
+            """{"count":2,"things":[{"reference_id":"1","position":{"x":1}},{"reference_id":"2"}],"local_player":{"reference_id":"9"}}""",
             reply.GetRawText());
     }
 

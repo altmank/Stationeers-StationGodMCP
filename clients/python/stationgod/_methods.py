@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:9b5436cbd3cfac07886345074be9ccfb19e2e1a5b3c33cd6aa7480cac51fb502'
-MOD_VERSION = '1.16.0'
+CATALOGUE_HASH = 'sha256:4d68a61b02c08cd2cf3ecf0e54bdb51602878eeb55688b8b673fceab3c5f878d'
+MOD_VERSION = '1.17.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -297,6 +297,8 @@ TABLE = {'catalogue': {'class': 'read',
                             'has_atmosphere',
                             'made_by',
                             'made_since',
+                            'min',
+                            'max',
                             'near_player_m',
                             'location',
                             'limit',
@@ -356,6 +358,8 @@ TABLE = {'catalogue': {'class': 'read',
                             'network_ids',
                             'kinds',
                             'compact',
+                            'occupied_only',
+                            'include_piece_cells',
                             'limit',
                             'offset'],
                  'required': [],
@@ -1609,12 +1613,12 @@ class Methods:
         """
         return self.call('find_spot', **{'prefab': prefab, 'near': near, 'plane': plane, 'side': side, 'looking': looking, 'around': around, 'room_id': room_id, 'facing': facing, 'radius_m': radius_m, 'require': require, 'limit': limit, 'max_checks': max_checks}, **options)
 
-    def find_things(self, *, name_contains: str | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+    def find_things(self, *, name_contains: str | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
         """Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals.
 
-        Class: read. Arguments: name_contains, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, near_player_m, location, limit, offset.
+        Class: read. Arguments: name_contains, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near_player_m, location, limit, offset.
         """
-        return self.call('find_things', **{'name_contains': name_contains, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset}, **options)
+        return self.call('find_things', **{'name_contains': name_contains, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset}, **options)
 
     def game_clock(self, **options) -> dict:
         """Read the game clock: game_time_s, paused, time_of_day_ratio and days_past.
@@ -1637,12 +1641,12 @@ class Methods:
         """
         return self.call('get_ic_status', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'stack_start': stack_start, 'stack_count': stack_count, 'log_lines': log_lines, 'include_source': include_source}, **options)
 
-    def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, kinds: list | None = None, compact: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+    def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, kinds: list | None = None, compact: bool | None = None, occupied_only: bool | None = None, include_piece_cells: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
         """Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), with frames, walls, each small cell's occupant and support, the pieces, devices and their ports, and networks.
 
-        Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, kinds, compact, limit, offset.
+        Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, kinds, compact, occupied_only, include_piece_cells, limit, offset.
         """
-        return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'kinds': kinds, 'compact': compact, 'limit': limit, 'offset': offset}, **options)
+        return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'kinds': kinds, 'compact': compact, 'occupied_only': occupied_only, 'include_piece_cells': include_piece_cells, 'limit': limit, 'offset': offset}, **options)
 
     def highlight(self, *, targets: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, **options) -> dict:
         """Show the player where things are, through walls and terrain, on their screen only: things, a network, or far points, tinted and labelled for a while.

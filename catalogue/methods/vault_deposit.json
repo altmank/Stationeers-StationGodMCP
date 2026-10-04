@@ -3,6 +3,7 @@
   "summary": "Put ingots, ores and ices straight into an Ingot Vault's store from wherever they are, with the vault's own bookkeeping; by id, in part, or by a filter over the world. Dry run by default; confirm to do it.",
   "help": {
     "text": "Each item is added to the store (an ingot's reagents times its grams; an ore's or ice's count) and destroyed, or only the part asked is taken off a stack. The vault's rule decides what it takes: ingots and ores (ices, slag and organics are ores) whose slot class fits its import slot. Host only.",
+    "keys": "dry_run, vault {reference_id, prefab_name, display_name}, via {reference_id, prefab_name, display_name}, matched, skipped, truncated, items {results, count, success_count, error_count}, stock [{kind, prefab_name, display_name, reagent, before, change, after}].",
     "topics": {
       "forms": {
         "summary": "items, reference_ids, or a filter.",

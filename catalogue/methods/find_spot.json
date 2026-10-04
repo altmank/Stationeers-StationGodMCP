@@ -3,6 +3,7 @@
   "summary": "Ranked places for a prefab near a point, on one face plane or on a room's walls, each checked with the game's placement cursor and the layout preview; answers place_arguments. Read only.",
   "help": {
     "text": "near is a point, \"player\", \"crosshair\" (default) or {reference_id}; radius_m default 4, max 12. A mounted piece faces out of the plane with its top up (facing overrides); a standing piece stands on a floor. Returns prefab_name, planes, spots best first (limit 5) [{position, orientation, distance_m, penalty, plane, conflicts, place_arguments}], tried, filtered, checked, rejected and reasons.",
+    "keys": "prefab_name, planes, spots [{position, orientation, distance_m, penalty, plane, conflicts, place_arguments}], tried, filtered, checked, rejected, reasons [{reason, count}], view {source, age_s}.",
     "topics": {
       "planes": {
         "summary": "plane, looking and room_id.",

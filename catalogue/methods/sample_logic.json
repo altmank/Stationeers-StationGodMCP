@@ -3,6 +3,7 @@
   "summary": "Watch up to 32 logic values for up to 30 s; answers their first readings and every change with its time. Read only.",
   "help": {
     "text": "Samples every interval_seconds (default 0.5) for duration_seconds (default 5), at most 120 samples. The game takes each sample in the first frame at or after it is due, so an interval shorter than a frame yields fewer samples than asked; sample_count says how many it took.",
+    "keys": "gateway_id, started_at_utc, duration_seconds, interval_seconds, sample_count, change_count, changes.",
     "shared": ["gateways", "logic"]
   },
   "class": "read",

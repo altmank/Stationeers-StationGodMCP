@@ -3,6 +3,7 @@
   "summary": "Replace walls and windows in place with another wall or window prefab without ever opening a face; pieces by id or every wall of a room. Pressure and air checked. Dry run by default; confirm to swap.",
   "help": {
     "text": "With the tick held, the new piece is built in the old one's slot (owner and colour kept) at its final state, and only when it holds every slot and blocks what the old one blocked is the old one removed; no gas moves and no room is re-evaluated until every piece stands. from_prefabs narrows the pieces. A player's cursor must accept the new piece where the old one stands (cannot_place otherwise).",
+    "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], materials [], swapped [], not_swapped [], preflight_summary, final_check, error.",
     "topics": {
       "rules": {
         "summary": "What is taken, footprint, and never opening.",

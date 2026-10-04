@@ -13,7 +13,8 @@ namespace StationGodMCP.Api.Shared.Game;
 /// A circuit holder's pins d0..dN as stored (CircuitHousing.Devices), with the alias the chip gave each
 /// (CircuitHousing._DeviceLabels, written by the chip's alias instruction through CircuitHousing.SetDeviceLabel) and
 /// whether the chip reaches the device through it right now (CircuitHousing.GetLogicableFromIndex: an IC Housing only
-/// reaches devices on its own data network).
+/// reaches devices on its own data network). A pin with no device and no alias is left out: the index of each pin
+/// listed names it.
 /// </summary>
 internal static class IcPins
 {
@@ -30,7 +31,7 @@ internal static class IcPins
                 pins.Add(new IcPinView(index, DeviceView(worn[index]), null, worn[index] != null));
             }
 
-            return pins;
+            return pins.FindAll(pin => !pin.HoldsNothing);
         }
 
         string[]? labels = GameMembers.HousingDeviceLabels.GetValue(housing) as string[];
@@ -42,7 +43,7 @@ internal static class IcPins
             pins.Add(new IcPinView(index, DeviceView(devices[index]), label, reachable));
         }
 
-        return pins;
+        return pins.FindAll(pin => !pin.HoldsNothing);
     }
 
     private static bool Reaches(CircuitHousing housing, int index)

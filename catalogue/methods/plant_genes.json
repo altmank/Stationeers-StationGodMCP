@@ -3,6 +3,7 @@
   "summary": "Read the genes of plants, seeds and produce; with genes, edit them as the Gene Splicer does. Editing is a cheat: ask the user first. Reading takes up to 256 things.",
   "help": {
     "text": "Read: reference_id (with unit, the gene set; default the top) or reference_ids (up to 256, top sets; a result each). Each read gives thing, holder (planted_plant, seed or produce), gene_set_count, unit, is_top and all 19 genes, each {gene, value, stability, effect} (meaning only with include_notes). Write: reference_id with genes {name: value}, optional unit and force.",
+    "keys": "thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}], results, count, success_count, error_count.",
     "topics": {
       "gene_sets": {
         "summary": "Gene sets, units and the top set.",

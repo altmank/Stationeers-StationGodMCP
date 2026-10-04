@@ -3,6 +3,7 @@
   "summary": "Read the source in a circuit holder's chip: IC10, or Lua for a StationeersLua chip. Answers source, language, holder and chip. Read only.",
   "help": {
     "text": "Returns source, source_length, language (ic10 or lua), holder, chip, line_number (IC10 only) and, for a Lua chip, lua as get_ic_status gives it. A large source reads best with output_file.",
+    "keys": "gateway_id, reference_id, source, line_number, language, holder {reference_id, prefab_name, display_name}, chip {reference_id, prefab_name, display_name}, source_length, lua {compiling, has_runtime, init_complete, running, library, ...}.",
     "shared": ["gateways", "chips", "shaping"]
   },
   "class": "read",

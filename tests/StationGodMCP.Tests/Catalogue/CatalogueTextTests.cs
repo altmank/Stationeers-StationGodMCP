@@ -21,7 +21,8 @@ namespace StationGodMCP.Tests.CatalogueChecks;
 /// (c) no banned pattern anywhere (history, versions, dates, code internals, names, URLs, em dashes), except entries
 /// of catalogue/text-allow.json, each with its reason and each still needed; (d) every argument described and every
 /// tool with help; (e) every pointer resolves and no family topic is orphaned; (f) every error code the code can
-/// return has a message and a see; (h) the size of tools/list, reported and capped. (g), the assembled file matching
+/// return has a message and a see; (h) the size of tools/list, reported and capped; (i) every tool that takes fields
+/// names its reply keys (help.keys), each one its reply can carry. (g), the assembled file matching
 /// its sources, is CatalogueConsistencyTests.CatalogueFileIsCurrent.
 /// </summary>
 public sealed class CatalogueTextTests
@@ -228,6 +229,47 @@ public sealed class CatalogueTextTests
                 wrong.Add($"{name}: no help (tool_info has nothing to say about it)");
             }
         }
+
+        Assert.True(wrong.Count == 0, string.Join("\n", wrong));
+    }
+
+    // ---- (i) reply keys ----
+
+    private static readonly Regex KeyName = new(@"\b[a-z][a-z0-9_]*\b", RegexOptions.Compiled);
+
+    [Fact]
+    public void EveryToolThatTakesFieldsNamesItsReplyKeys()
+    {
+        JsonArray shared = Catalogue.Value["shared_reply_keys"]!.AsArray();
+        List<string> wrong = [];
+        foreach (JsonObject method in Tools().Where(method => (string?)method["x-shaping"] == "lists"))
+        {
+            string name = Name(method);
+            if (method["help"]?["keys"] is not JsonValue keys)
+            {
+                wrong.Add($"{name}: takes fields but its help names no reply keys (help.keys)");
+                continue;
+            }
+
+            HashSet<string> known = ReplyKeys.All(method, shared);
+            foreach (string key in KeyName.Matches((string)keys!).Select(match => match.Value).Distinct())
+            {
+                if (!known.Contains(key))
+                {
+                    wrong.Add($"{name}: help.keys names {key}, which its reply never carries");
+                }
+            }
+        }
+
+        Assert.True(wrong.Count == 0, string.Join("\n", wrong));
+    }
+
+    [Fact]
+    public void AToolThatTakesNoFieldsNamesNoReplyKeys()
+    {
+        List<string> wrong = Tools()
+            .Where(method => (string?)method["x-shaping"] != "lists" && method["help"]?["keys"] != null)
+            .Select(method => $"{Name(method)}: help.keys without fields to use them on").ToList();
 
         Assert.True(wrong.Count == 0, string.Join("\n", wrong));
     }

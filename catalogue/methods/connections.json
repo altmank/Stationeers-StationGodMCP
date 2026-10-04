@@ -3,6 +3,7 @@
   "summary": "How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (40 per page) with filters and a summary. Read only.",
   "help": {
     "text": "Two forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. A big network reads best with an area and fields [\"reference_id\", \"prefab_name\"] or omit [\"members.position\"].",
+    "keys": "thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, ends [{index, type, type_name, role, role_name, position, network, connected}], count, network {kind, id}, summary, members [{reference_id, prefab_name, display_name, member, position, open_ends}], structure_count, device_count, offset, limit, total, has_more, resolved_networks.",
     "topics": {
       "ends": {
         "summary": "The ends form.",

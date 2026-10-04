@@ -3,6 +3,7 @@
   "summary": "Take an amount of one stored thing out of an Ingot Vault and make it straight into a holder's slots, as the vault's own vend counts it. Dry run by default; confirm to do it.",
   "help": {
     "text": "Name it by one of prefab_name, prefab_hash or reagent; quantity (grams of ingot, a whole count of ore) at most what the vault holds. The store goes down as a vend takes it and the same amount is made as items, never more per item than a full stack. If a game call fails part way, whatever it did not make goes back into the store. Host only.",
+    "keys": "dry_run, vault {reference_id, prefab_name, display_name}, via {reference_id, prefab_name, display_name}, to {reference_id, prefab_name, display_name}, quantity, placed [{where, slot, quantity, reference_id}], stock [{kind, prefab_name, display_name, reagent, before, change, after}].",
     "topics": {
       "delivery": {
         "summary": "Where the items go.",

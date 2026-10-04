@@ -72,12 +72,12 @@
       "text": "Tools whose replies can grow take fields, omit, list_limits and output_file. Prefer filters, limit, fields and omit; use output_file when you need all of a large reply. Errors are always answered inline.",
       "subtopics": {
         "fields": {
-          "summary": "fields: keep only these keys in each list entry.",
-          "text": "fields [names] keeps only those keys in each entry of the reply's top-level lists, e.g. find_things fields [\"reference_id\", \"position\"]. A dotted name is a path read from each entry through nested objects and lists (occupant.prefab_name), or from one list's entries when it starts with that list's name (things.position.x). Dictionary keys keep their case (results.logic.Temperature). A name no entry has is listed in fields_unmatched."
+          "summary": "fields: keep only these keys, in list entries and objects.",
+          "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matched nothing is listed in fields_unmatched, with fields_valid. tool_info {tool} gives reply_keys."
         },
         "omit": {
           "summary": "omit: leave key paths out of the reply.",
-          "text": "omit [paths] leaves those keys out wherever they are, each a path from the reply's top, e.g. get_ic_status omit [\"lua.log\", \"pins\"]. A list on the way applies the rest of the path to each entry (connections omit [\"members.position\"]). A path that matched nothing is listed in omit_unmatched."
+          "text": "omit [paths] leaves those keys out wherever they are, each a path from the reply's top, on any reply, e.g. get_ic_status omit [\"lua.log\", \"pins\"]. A list on the way applies the rest of the path to each entry (connections omit [\"members.position\"]). A single name also leaves that key out of each top-level object and list entry (looking_at omit [\"body\"] drops target.body). A path that matched nothing is listed in omit_unmatched."
         },
         "output_file": {
           "summary": "output_file: the whole reply as a file, answered by a pointer.",

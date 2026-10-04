@@ -456,7 +456,9 @@ tool, argument or error code that skips any of it.
 
 - `methods/<name>.json`: `summary` (two or three lines: what the tool does, the arguments that matter, its safety
   flags) and `help` {`text`, `topics`, `shared`}. Assembly writes `description` = `summary` plus the last line
-  `More: tool_info {tool: "<name>"}`. A topic is {`summary` (one line), `text`, `subtopics`}; a subtopic is
+  `More: tool_info {tool: "<name>"}`. `help.keys` (every tool with `x-shaping: lists`, no other) is one line naming the
+  tool's main reply keys, the names `fields` and `omit` take (`things [{reference_id, prefab_name, ...}], count`);
+  `tool_info {tool}` answers it as `reply_keys`. A topic is {`summary` (one line), `text`, `subtopics`}; a subtopic is
   {`summary`, `text`}. `shared` lists the shared topics the tool leads to. Argument descriptions stay in `params`, one
   line each.
 - `help.json`: `intro` and the shared topics: `topics` (listed by `tool_info {}`: positions, turns, refunds, paging,
@@ -493,6 +495,12 @@ tool; `tool_info {tool: "a", topic: "b"}` names any node.
 - Each node states its effect, its limits and defaults, and at most one example.
 - A rule a check already enforces is not explained in advance: the error explains it when it fires.
 - Every change note goes to CHANGELOG.md only.
+- A tool that takes `fields` names its main reply keys in its tool_info node (`help.keys`).
+- Shaping arguments act on every reply a tool gives, single-object replies included: `fields` and `omit` read from the
+  reply's top (a top-level key, or a path into it), and `fields` shapes each top-level object as it shapes a list
+  entry. A tool whose reply they cannot shape does not offer them (`x-shaping: none`).
+- Replies leave out entries that hold only nulls or defaults (an IC pin with no device and no alias) unless asked;
+  what identifies an entry (its index or name) stays in each entry kept.
 
 ### The lint (`tests/StationGodMCP.Tests/Catalogue/CatalogueTextTests.cs`)
 
@@ -509,6 +517,11 @@ tool; `tool_info {tool: "a", topic: "b"}` names any node.
 - (f) Every error code the mod's code can return (scanned as test 6 scans them) and the sidecar's own codes have a
   message and a `see`; error messages written in the mod's code name no code internals.
 - (g) `catalogue.json` matches its sources (test 1).
+- (i) Every tool with `x-shaping: lists` has `help.keys`, and every name in it is a key its reply can carry (its reply
+  schema, its views at any depth, shared reply keys and shaping's own keys); a tool without `fields` has no
+  `help.keys`. The shaping rule itself is held by `ShapingTests` (single-object replies, whole lists, empty lists) and
+  `FieldSelection`, the reference every view's wire test is checked against. The empty-entries rule has no general
+  lint; each tool that drops empty entries tests it (`IcPinEmptyTests`).
 - (h) The size of tools/list as the MCP server writes it is reported (`STATIONGOD_SIZE_REPORT=<file>` also writes the
   report and the list) and capped: tool descriptions at most 30,000 bytes, the whole list at most 200,000.
 

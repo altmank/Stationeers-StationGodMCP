@@ -2,7 +2,7 @@
   "name": "set_ic_pins",
   "summary": "Set an IC Housing's pins d0 to d5 as a screwdriver does: a device id per pin, null to clear. Every pin is checked before any is written.",
   "help": {
-    "text": "Pins left out keep their device. A running chip uses the new devices from its next instruction; nothing recompiles or resets, and a multiplayer host sends the pins to clients. Returns what it altered and all six pins as get_ic_status lists them. Rocket IC Housings work too; suits and other worn holders are not_ic_housing.",
+    "text": "Pins left out keep their device. A running chip uses the new devices from its next instruction; nothing recompiles or resets, and a multiplayer host sends the pins to clients. Returns what it altered and the pins as get_ic_status lists them. Rocket IC Housings work too; suits and other worn holders are not_ic_housing.",
     "topics": {
       "network": {
         "summary": "Devices off the housing's data network.",

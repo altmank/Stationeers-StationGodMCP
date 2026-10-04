@@ -3,6 +3,7 @@
   "summary": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose.",
   "help": {
     "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it.",
+    "keys": "index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
     "topics": {
       "rules": {
         "summary": "Stacks, merging, hidden slots, vending machines.",

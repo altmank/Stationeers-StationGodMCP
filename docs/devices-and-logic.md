@@ -236,8 +236,8 @@ carry it, so read the per-method `mean_ms` and `max_ms` instead.
 Pipe clients can shape a reply with an optional `shape` object beside `params` in the request line:
 `{"id": "1", "method": "thing_health", "params": {...}, "shape": {"fields": ["reference_id", "damage_ratio"],
 "limit": {"things": 20}, "max_bytes": 65536}}`. `fields` works as the tools' `fields` argument (single names and
-dotted paths, read from each list entry at any depth or from the list a path starts with; a name that matches nothing,
-or is not a name, comes back in `fields_unmatched`); `omit` as the tools' `omit` argument (paths from the reply's top,
+dotted paths, read from each list entry and top-level object at any depth or from the top-level key a path starts
+with; a name that matches nothing, or is not a name, comes back in `fields_unmatched`, with `fields_valid`); `omit` as the tools' `omit` argument (paths from the reply's top,
 left out wherever they reach, top-level keys included; unused ones come back in `omit_unmatched`); `limit` keeps the
 first entries of a top-level list and adds `truncated` (each cut list's length before the cut); `max_bytes`
 (1,024 to 16,777,216) answers `reply_too_large`, with `data` holding the reply's `bytes`, the `limit` and the length

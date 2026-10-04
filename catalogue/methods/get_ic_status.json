@@ -3,10 +3,11 @@
   "summary": "Inspect a circuit holder's chip: current line, registers, stack window, aliases, defines, pins d0 to d5, power and pause state, compile and runtime errors, a Lua chip's log. Read only.",
   "help": {
     "text": "Works on IC Housings, suits and other worn holders, and Lua holders (a Console or Computer board, a tablet cartridge, a Programmable Visor). The source comes only with include_source; source_length always counts it.",
+    "keys": "gateway_id, reference_id, has_chip, pins [{index, name, reference_id, prefab_name, display_name, label, reachable}], holder {reference_id, prefab_name, display_name}, source, line_number, compilation_error, error_line, error_type, error_code, compile_error_line, compile_error_type, housing {kind, on, powered, operable}, runtime {execution, registers, register_count, stack_pointer_register, stack_pointer, ...}, language, chip {reference_id, prefab_name, display_name}, source_length, lua {compiling, has_runtime, init_complete, running, library, ...}.",
     "topics": {
       "holder": {
         "summary": "housing, operable, pins, and an empty holder.",
-        "text": "housing.kind is ic_housing, worn_item, computer_board, cartridge or inserted_item. operable says whether the holder runs its chip: a board needs its computer on, powered and fully built; a cartridge its tablet on and powered; a suit or visor a charged battery. pins: each pin's device reference id, prefab and name (null when empty), the alias the chip gave it, and reachable (false when the device is not on the housing's data network). A holder with no chip answers only has_chip false, reference_id, gateway_id, holder and pins."
+        "text": "housing.kind is ic_housing, worn_item, computer_board, cartridge or inserted_item. operable says whether the holder runs its chip: a board needs its computer on, powered and fully built; a cartridge its tablet on and powered; a suit or visor a charged battery. pins: each pin with a device or an alias (a pin with neither is left out; name says which pin): the device's reference id, prefab and name, the alias the chip gave it, and reachable (false when the device is not on the housing's data network). A holder with no chip answers only has_chip false, reference_id, gateway_id, holder and pins."
       },
       "ic10": {
         "summary": "IC10 runtime: registers, stack, errors.",

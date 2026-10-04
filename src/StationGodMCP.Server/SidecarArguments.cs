@@ -99,11 +99,12 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
 
     /// <summary>
     /// The reply with the unparsed selectors added: fields ones to fields_unmatched when it has an object entry in a
-    /// list (as the mod reports fields), omit ones to omit_unmatched always.
+    /// list or no empty list (as the mod reports fields), omit ones to omit_unmatched always.
     /// </summary>
     internal static JsonElement WithUnmatched(JsonElement reply, Unparsed unparsed)
     {
-        bool fields = unparsed.Fields.Count > 0 && reply.ValueKind == JsonValueKind.Object && HasListEntry(reply);
+        bool fields = unparsed.Fields.Count > 0 && reply.ValueKind == JsonValueKind.Object &&
+                      (HasListEntry(reply) || !HasEmptyList(reply));
         bool omit = unparsed.Omit.Count > 0 && reply.ValueKind == JsonValueKind.Object;
         if (!fields && !omit)
         {
@@ -138,6 +139,10 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
 
     private static JsonElement? Given(JsonElement arguments, string name) =>
         IsGiven(arguments, name) ? arguments.GetProperty(name).Clone() : null;
+
+    private static bool HasEmptyList(JsonElement reply) =>
+        reply.EnumerateObject().Any(property => property.Value.ValueKind == JsonValueKind.Array &&
+                                                property.Value.GetArrayLength() == 0);
 
     private static bool HasListEntry(JsonElement reply) =>
         reply.EnumerateObject().Any(property => property.Value.ValueKind == JsonValueKind.Array &&

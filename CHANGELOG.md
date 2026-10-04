@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.17.0
+
+Shaping that works on every reply, and smaller replies where agents found them heavy.
+
+- **`fields` shapes single-object replies.** A single name that is a top-level key keeps it whole (`looking_at`
+  `fields ["target"]`); a path keeps part of it (`target.reference_id`). Every other top-level object is shaped like a
+  list entry, so `looking_at fields ["reference_id", "display_name"]` keeps those keys of `target` and `player`.
+  Numbers, strings, booleans and nulls at the top stay (counts, paging); a top-level list or object that had something
+  and kept none of it is left out; an empty list stays.
+- **A bare `omit` name reaches one level down**: `looking_at omit ["body"]` leaves out `target.body`, as a bare
+  `fields` name does; paths still read from the top.
+- **A list named by a single name keeps whole entries**: `describe_prefab fields ["ports"]` gives the ports, not
+  empty objects.
+- **`fields_unmatched` comes with `fields_valid`**: the keys the reply had, sorted, so a wrong name (`label` for
+  `custom_name`) shows the right one. Each tool that takes `fields` names its main reply keys in `tool_info`
+  (`reply_keys`).
+- **Empty pins left out.** `get_ic_status` and `set_ic_pins` list only pins with a device or an alias,
+  `resolve_ic_selectors` only pins with a device; each pin keeps its name.
+- **`grid_survey`**: a piece filling more than one small cell gives `cell_count` and `cell_box` instead of every cell
+  (an in-line tank listed 392); `include_piece_cells` lists them. New `occupied_only`: only cells holding a frame, a
+  face structure or a small-grid thing, so a large sparse box takes fewer pages.
+- **`find_things`**: `min` and `max` keep things standing in a box; a rocket's part reports `rocket_state`, so a
+  position read while the rocket flies is not mistaken for where it parks.
+- **`place_structure`** with `placements` says to give per-thing arguments such as `label` in each placement, in the
+  help and in the refusal.
+
 ## 1.16.0
 
 Chute networks get a clean-up tool. 95 tools (94 plus tool_info).

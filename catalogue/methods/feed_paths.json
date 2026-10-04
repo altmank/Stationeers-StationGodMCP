@@ -3,6 +3,7 @@
   "summary": "Trace how a network feeds its devices from a root device (an APC output, a generator): the pieces and rooms each feed passes through, daisy chains, and devices no run reaches. Read only.",
   "help": {
     "text": "Breadth first over the network's links, so each device gets its shortest path; a device is an end, never passed through. Returns root, network_id, root_room_id, devices [{reference_id, prefab_name, display_name, room_id, pieces, rooms, through, fed_through_other_rooms}], daisy_chains, rooms [{room_id, devices, entries, entry_at, multiple_feeds}], multiple_feeds and unreached. Lists devices 15 and unreached 10 by default.",
+    "keys": "root {reference_id, prefab_name, display_name}, network_id, kind, root_room_id, daisy_chains, multiple_feeds, devices [{reference_id, prefab_name, display_name, room_id, pieces, rooms, through, fed_through_other_rooms}], rooms [{room_id, devices, entries, entry_at, multiple_feeds}], unreached [{reference_id, prefab_name, display_name}], resolved_networks.",
     "topics": {
       "rooms": {
         "summary": "How pieces and devices are placed in rooms.",

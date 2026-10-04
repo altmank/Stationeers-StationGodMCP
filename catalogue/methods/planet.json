@@ -3,6 +3,7 @@
   "summary": "The planet's own atmosphere, the one outdoor cells relax toward: gases, pressure, temperature and its parts, the day's range, sea, clouds and ice caps, and the starting air. Read only.",
   "help": {
     "text": "Before a world is loaded it answers only loaded false and terraforming_mod. Then: loaded, world_time_s, day_length_s, volumes, cells (outdoor 2 m cells), size_ratio, moles and litres, sea, pressure_kpa, game_pressure_kpa, temperature_k, sun, storm, gases, reservoirs, starting_air and terraforming_mod.",
+    "keys": "loaded, terraforming_mod {name, version, state, live, temperature_adjustment_k}, world_time_s, day_length_s, volume_l, gas_volume_l, cells, size_ratio, gas_mol, liquid_mol, liquid_l, sea {liquid_l, threshold_l, shown}, pressure_kpa, game_pressure_kpa, temperature_k, temperature_parts {sun_angle_k, sun_distance_k, greenhouse_k, density_k, weather_k, ...}, sun_angle_deg, solar_energy_percent, range {today_min_k, today_min_sun_angle_deg, today_max_k, today_max_sun_angle_deg, orbit_min_k, ...}, storm {id}, oxygen_kpa, toxins_kpa, fuel_mol, oxidiser_mol, carbon_dioxide_ratio, gases [{gas, display_name, state, amount_mol, per_cell_mol, partial_kpa, freezes_below_k, min_liquid_pressure_kpa, ...}], reservoirs {liquid_clouds, ice_clouds, ice_caps}, starting_air {per_cell_mol, mol, gases}.",
     "topics": {
       "temperature": {
         "summary": "temperature_parts and range.",

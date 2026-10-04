@@ -3,6 +3,7 @@
   "summary": "Remove cable pieces as wire cutters do: by id, or the cable in each cell of waypoints or cells. Refuses a split unless allow_split; refunds where refund_to says. Dry run by default; confirm to remove.",
   "help": {
     "text": "A burnt cable an overload left (on no network, built by no coil) is removed too, by id or cell, and refunds nothing. A piece with a fuse or analyser mounted, an indestructible piece, or a launching or landing rocket's piece is refused, as the game refuses.",
+    "keys": "job_id, status, ready, problems [], warnings [], cells [], materials, removals [], networks_before [], networks_after [], would_split [], preflight_summary, result, final_check, log, verification, gas_check, error.",
     "shared": ["removals", "runs", "jobs", "refunds", "networks", "materials"]
   },
   "class": "write",

@@ -3,6 +3,7 @@
   "summary": "For each thing, could a player place it again exactly where it stands, with every neighbour present? Asks the game's own placement cursor. Up to 1024 ids. Read only.",
   "help": {
     "text": "The thing itself is treated as gone; a refusal naming only it means its rules held, and its neighbours are checked again without it. It must also stand where the cursor snaps it, at a quarter turn. Run it over every piece a paste_blueprint placed: BlueprintMod skips these checks. place_structure and replace_walls refuse with the same rule (cannot_place).",
+    "keys": "results [{reference_id, prefab_name, replaceable, rule, reason}].",
     "topics": {
       "reply": {
         "summary": "What each result says.",

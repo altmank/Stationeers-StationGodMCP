@@ -62,11 +62,17 @@ internal static class GridSurveyApi
         bool compact = args.OptionalBool("compact") ?? false;
         bool includeNetworks = args.OptionalBool("include_networks") ?? true;
         bool includeRefund = args.OptionalBool("include_refund") ?? false;
+        bool includePieceCells = args.OptionalBool("include_piece_cells") ?? false;
         SurveyNetworkFilter filter = NetworkFilter(args);
         SurveyKinds kinds = SurveyKinds.Parse(args);
-        List<GridCell> cells = Cells(args);
-        Slice<GridCell> slice = Slice<GridCell>.Of(cells, page);
         GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
+        List<GridCell> cells = Cells(args);
+        if (args.OptionalBool("occupied_only") ?? false)
+        {
+            cells = cells.FindAll(cell => Holds(facts, cell));
+        }
+
+        Slice<GridCell> slice = Slice<GridCell>.Of(cells, page);
         List<SurveyCellView> views = new List<SurveyCellView>(slice.Items.Count);
         if (sections.Includes(SurveySection.Cells))
         {
@@ -77,10 +83,37 @@ internal static class GridSurveyApi
         }
 
         SurveyContents contents = Contents(facts, slice.Items, sections, new SurveyFilter(filter, kinds), includeNetworks,
-            includeRefund);
+            includeRefund, includePieceCells);
         string? legend = sections.Includes(SurveySection.Cells) && !compact ? Legend : null;
         page.Note("cells", slice.Items.Count, cells.Count);
         return new GridSurveyView(Slice<SurveyCellView>.Page(views, page, cells.Count), contents, sections, legend);
+    }
+
+    // occupied_only: a 2 m cell holding a frame, a structure on one of its faces, or anything in its small cells.
+    private static bool Holds(GridFacts facts, GridCell large)
+    {
+        if (facts.FrameAt(large) != null)
+        {
+            return true;
+        }
+
+        foreach (GridStep face in GridStep.All)
+        {
+            if (facts.FaceStructures(large, face).Count > 0)
+            {
+                return true;
+            }
+        }
+
+        for (int index = 0; index < SmallCellCode.PerCell; index++)
+        {
+            if (facts.Occupancy(SmallCellCode.SmallAt(large, index)).Any)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static SurveyNetworkFilter NetworkFilter(Args args)
@@ -251,7 +284,7 @@ internal static class GridSurveyApi
     }
 
     private static SurveyContents Contents(GridFacts facts, List<GridCell> cells, SurveySections sections,
-        SurveyFilter filter, bool includeNetworks, bool includeRefund)
+        SurveyFilter filter, bool includeNetworks, bool includeRefund, bool includePieceCells)
     {
         Dictionary<long, SmallGrid> pieces = new Dictionary<long, SmallGrid>();
         Dictionary<long, Device> devices = new Dictionary<long, Device>();
@@ -284,7 +317,7 @@ internal static class GridSurveyApi
         bool tally = sections.Includes(SurveySection.NetworkVisibility);
         foreach (long id in ids)
         {
-            SurveyPieceView view = PieceView(pieces[id], networks, flow, includeRefund);
+            SurveyPieceView view = PieceView(pieces[id], networks, flow, includeRefund, includePieceCells);
             pieceViews.Add(view);
             if (tally)
             {
@@ -370,11 +403,14 @@ internal static class GridSurveyApi
     }
 
     private static SurveyPieceView PieceView(SmallGrid piece, Dictionary<long, IReferencable> networks,
-        ChuteFlowResult? flow, bool includeRefund)
+        ChuteFlowResult? flow, bool includeRefund, bool includePieceCells)
     {
         PieceModel model = PieceShapes.Live(piece);
         List<PositionView>? cells = null;
-        if (model.Cells.Count > 1)
+        PieceCellsView? extent = model.Cells.Count > 1
+            ? new PieceCellsView(model.Cells.Count, new BoxView(Box3.OfSmallCells(model.Cells)))
+            : null;
+        if (includePieceCells && model.Cells.Count > 1)
         {
             cells = new List<PositionView>(model.Cells.Count);
             foreach (GridCell cell in model.Cells)
@@ -391,7 +427,7 @@ internal static class GridSurveyApi
         }
 
         DynamicThing? item = ChuteFamily.ItemIn(piece);
-        return new SurveyPieceView(GameLookup.ViewOf(piece), kind, GameLookup.ViewOf(piece.Position), cells,
+        return new SurveyPieceView(GameLookup.ViewOf(piece), kind, GameLookup.ViewOf(piece.Position), extent, cells,
             EndCleanup.DirectionsOf(model.Ends), network != null ? new ThingId(network.ReferenceId) : null,
             GradeOf(piece), piece is Chute && flow != null ? FlowView(model, flow) : null,
             item != null ? GameLookup.ViewOf(item) : null,

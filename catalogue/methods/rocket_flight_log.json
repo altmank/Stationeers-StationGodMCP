@@ -3,6 +3,7 @@
   "summary": "A flight recorder: action start records a rocket every interval_s of game time; read answers a summary and one page of rows; also stop, list, clear. Recording only reads the game.",
   "help": {
     "text": "start: rocket_id, interval_s (default 1 s of game time), capacity (default 3600 samples kept, oldest dropped), csv (also appends every sample to rocket-log-<id>-<time>.csv in the save's folder). It stops by itself when the rocket is gone. Logs live in memory until the game closes.",
+    "keys": "rocket_id, rocket_name, recording, interval_s, csv_path, capacity, held, recorded, from_t, to_t, fuel_used_mol, lowest_altitude_m, fastest_descent_ms, peak_thrust_n, lowest_confidence, lowest_battery_j, last {t, state, node, target, progress, ...}, events [{t, what}], events_dropped, rows [{t, state, node, target, progress, altitude_m, velocity_ms, acceleration_ms2, ...}], offset, every, has_more, cleared, logs [{rocket_id, rocket_name, recording, interval_s, csv_path, capacity, held, recorded, ...}], count.",
     "topics": {
       "samples": {
         "summary": "What a sample holds, and a read reply.",

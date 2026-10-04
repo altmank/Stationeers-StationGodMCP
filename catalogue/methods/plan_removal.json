@@ -3,6 +3,7 @@
   "summary": "Price a removal without doing it: the dry run of remove_cables, remove_pipes or remove_chutes (kind) for ids, cells or a whole network. Changes nothing, ever. Read only.",
   "help": {
     "text": "Returns the remove tools' own report: removals with their refunds, materials.refund (the total), would_split, networks_before and networks_after, problems and warnings. With no player, no from_id and refund_to source, no_local_player is a warning here: the refund is priced, and a real run would need from_id. Burnt cables price at nothing back.",
+    "keys": "tool, status, job_id, grade, ready, problems [{code, message, reference_id, at}], warnings [{code, message, reference_id, at}], cells_total, placed, changed, kept, removed_count, air_cells, cells [{at, action, prefab_name, rotation_deg, shape, ends, cost, refund, ...}], removals [{reference_id, prefab_name, at, network_id, refund, assumed}], materials {from, needed, refund_enabled, refund, refund_plan}, networks_before, networks_after [{index, networks_before, new_pieces, device_count, devices, guard}], would_bridge [{kind, networks, device, ports, allowed}], would_split [{network_id, parts, cut_ports, allowed, components, root, cut_off}], links {count_before, count_after, added, lost, added_count, ...}, notes, resolved_networks.",
     "shared": ["removals", "networks", "refunds", "materials"]
   },
   "class": "read",

@@ -302,7 +302,14 @@ internal static class BuildArgs
         List<PlacementArgs> placements = new List<PlacementArgs>();
         if (args.Has("placements"))
         {
-            args.Reject("placements", PlacementFields);
+            foreach (string field in PlacementFields)
+            {
+                if (args.Declares(field) && args.Has(field))
+                {
+                    throw ApiErrors.InvalidArgument(
+                        $"Argument '{field}' does not go with placements: give it in each placement (placements[0].{field}).");
+                }
+            }
             List<Args?> items = args.Objects("placements", MaximumPlacements);
             for (int index = 0; index < items.Count; index++)
             {

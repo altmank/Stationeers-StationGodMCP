@@ -72,11 +72,25 @@ internal sealed class ShapeRequest
 
     /// <summary>
     /// Whether the written reply keeps key in the object entries of the top-level list of that name: always without
-    /// fields; with fields, when a single name or a path through that list reaches the key. A handler may skip
+    /// fields; with fields, when a single name keeps the whole list, or a single name or a path through that list reaches the key. A handler may skip
     /// building a costly part (the catalogue's x-costly) this answers false for, because the writer would leave it
     /// out anyway.
     /// </summary>
-    internal bool Wants(string list, string key) => Fields == null || Fields.EntryNodeFor(list).Child(key) != null;
+    internal bool Wants(string list, string key)
+    {
+        if (Fields == null || Fields.Top.Child(list)?.Whole == true || Fields.EntryNodeFor(list).Child(key) != null)
+        {
+            return true;
+        }
+
+        (_skipped ??= new HashSet<string>(StringComparer.Ordinal)).Add(key);
+        return false;
+    }
+
+    private HashSet<string>? _skipped;
+
+    /// <summary>The keys Wants answered false for: the reply lacks them, but fields_valid still names them.</summary>
+    internal IEnumerable<string> SkippedKeys => _skipped ?? (IEnumerable<string>)Array.Empty<string>();
 
     /// <summary>
     /// Whether omit leaves out the top-level key: a handler may skip building a costly part the written reply would

@@ -37,7 +37,7 @@ public sealed class CostlySkippingTests
     [InlineData("reference_id", false, false)]
     [InlineData("Networks", false, false)]
     [InlineData("networks.kind", true, true)]
-    [InlineData("things", false, false)]
+    [InlineData("things", true, false)]
     [InlineData("networks-x", false, false)]
     [InlineData("things.position.x", false, false)]
     public void FieldsWantOnlyWhatTheWriterKeeps(string selector, bool inThings, bool inResults)

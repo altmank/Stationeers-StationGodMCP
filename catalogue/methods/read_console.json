@@ -2,7 +2,8 @@
   "name": "read_console",
   "summary": "Read the latest in-game console lines, oldest first: command output, errors and their stack traces. Default 40 lines. Read only.",
   "help": {
-    "text": "On a dedicated server it reads the last 500 lines the game wrote to the server's own console after the mod loaded. run_console_command's background commands print here a moment later."
+    "text": "On a dedicated server it reads the last 500 lines the game wrote to the server's own console after the mod loaded. run_console_command's background commands print here a moment later.",
+    "keys": "requested_lines, line_count, console_available, lines [{time, level, text}]."
   },
   "class": "read",
   "cost": "instant",

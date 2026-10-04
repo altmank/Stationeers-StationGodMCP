@@ -2,7 +2,7 @@
   "name": "tool_info",
   "summary": "The long help, in small steps: {} lists the shared topics, {tool} a tool's topics, {tool, topic} or {topic} one topic and its subtopics, {tool, topic, subtopic} the detail.\nAnswered without the game. Errors carry see: {tool, topic} naming the node that explains them.",
   "help": {
-    "text": "tool_info answers one help node per call, each under 1.5 KB. Start with {tool: \"<name>\"} for any tool, or {} for the topics every tool shares.",
+    "text": "tool_info answers one help node per call, each under 1.5 KB. Start with {tool: \"<name>\"} for any tool, or {} for the topics every tool shares. A tool that takes fields also answers reply_keys: its main reply keys, the names fields and omit take.",
     "topics": {
       "levels": {
         "summary": "The three levels and how to name a node.",
@@ -34,6 +34,7 @@
       "topic": {"type": "string"},
       "subtopic": {"type": "string"},
       "text": {"type": "string"},
+      "reply_keys": {"type": "string"},
       "topics": {"type": "array"},
       "shared_topics": {"type": "array"},
       "subtopics": {"type": "array"}

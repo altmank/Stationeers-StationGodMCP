@@ -3,6 +3,7 @@
   "summary": "What the player's crosshair is on: the thing the 3 m interaction ray hits, the button or slot under it, plus the view and a longer look ray. Read only.",
   "help": {
     "text": "Returns player, target (null for nothing, terrain or past 3 m), interactable, view and hit. Hand target.reference_id to any other tool. Needs the player's view.",
+    "keys": "player {reference_id, display_name, position}, target {reference_id, prefab_name, display_name, custom_name, kind, ...}, interactable {action, display_name, contextual_name, state, slot}, view {eye, forward, right, up, yaw_deg, ...}, hit {point, distance_m, normal, face, face_plane, ...}.",
     "topics": {
       "target": {
         "summary": "The thing under the crosshair.",

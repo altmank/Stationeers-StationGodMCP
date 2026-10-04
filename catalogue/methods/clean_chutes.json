@@ -3,6 +3,7 @@
   "summary": "Remove chute pieces no item can pass through to a consumer; a junction, overflow or splitter left with one way in and out becomes a straight or corner. Select by network_id, reference_ids or a min/max box. Pieces holding items stay. Dry run by default; confirm to run.",
   "help": {
     "text": "Judges whole chute networks, even when only some pieces are selected; only selected pieces change. Kit (Chute) pays and takes back; a replacement keeps paint and owner. The report is clean_cables' (target minimal): pieces lists each removal (operation remove_dead_chute, with why) and each swap (simplify_junction, with connected_ends); dead_end_pieces the dead pieces that stay, with stopped_by; kept_pieces each piece on a path left with an open end, with why; riding the pieces that hold items.",
+    "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
     "topics": {
       "dead": {
         "summary": "Which chute pieces are dead.",

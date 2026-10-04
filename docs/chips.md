@@ -66,6 +66,8 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
   goes for `set_ic_source`'s reply: it echoes the stored program only with `include_source: true`.
 - `source_file` (MCP only) instead of `source`: an absolute path, on the machine the MCP server runs on, to a UTF-8
   text file whose text is written as the source. A 60 KB Lua hub then never passes through the agent's context.
+- `pins` lists only pins with a device or an alias (each keeps its `name`, `d0`...); `resolve_ic_selectors` only pins
+  with a device.
 - A holder with no chip: `get_ic_status` answers only `has_chip: false`, the holder and its pins (no `housing`, power
   or runtime fields); the other tools refuse with `no_programmable_chip`, `resolve_ic_selectors` too. Arguments are
   checked before the chip, so a bad `action` or `source`, or a malformed id in `target_reference_ids`, is

@@ -2,11 +2,12 @@
   "name": "find_things",
   "summary": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for kind, class, labels, broken state, atmosphere, maker and location. 8 per page, nearest first. Read only.",
   "help": {
-    "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. find_items is the tool for item quantities and machine stock.",
+    "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. min and max keep only things standing in a box (a thing in a slot stands where its outermost holder is). find_items is the tool for item quantities and machine stock.",
+    "keys": "things [{made, reference_id, prefab_name, display_name, custom_name, game_name, kind, runtime_type, ...}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}.",
     "topics": {
       "reply": {
         "summary": "What each thing reports.",
-        "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes)."
+        "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A rocket's part adds rocket_state (OnLaunchMount, Launching, Landing...): its position moves while it flies. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes)."
       },
       "broken": {
         "summary": "is_broken and condition.",
@@ -61,6 +62,10 @@
         "type": "number",
         "description": "Only items made at or after this game time (game_clock game_time_s); negative: within that many seconds back."
       },
+      "min": {
+        "description": "Box corner, [x, y, z] in metres; with max: only things whose outermost holder stands in the box."
+      },
+      "max": {"description": "The other corner of the box; with min."},
       "near_player_m": {
         "type": "number",
         "exclusiveMinimum": 0,

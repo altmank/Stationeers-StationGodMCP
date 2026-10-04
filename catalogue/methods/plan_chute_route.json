@@ -3,6 +3,7 @@
   "summary": "Find a chute route from a source to a sink and dry-run it with place_chutes and every flow guard. Answers place_arguments to build it. Read only.",
   "help": {
     "text": "plan_cable_route for chutes: from is the source and to the sink. The search never passes through a cell holding a chute, cable, pipe, device or other small-grid thing; a reroute keeps the old run's direction where the flow fixes it.",
+    "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
     "topics": {
       "ends": {
         "summary": "Which ends can be a from or a to.",

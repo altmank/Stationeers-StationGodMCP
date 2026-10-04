@@ -3,6 +3,7 @@
   "summary": "Read many things in one frame: logic, slot logic, an atmosphere and reagents per item; up to 128 items and 1,024 values. A control loop's whole read per tick. Read only.",
   "help": {
     "text": "Every item is read in the same frame (one game update, not tied to the atmospherics tick). Values come back keyed by the string sent (\"Pressure\", \"280\"), never altered. include [\"clock\"] adds the game clock.",
+    "keys": "gateway_id, clock {game_time_s, paused, time_of_day_ratio, days_past}, count, success_count, error_count, results.",
     "topics": {
       "items": {
         "summary": "What an item reads: logic, slots, atmosphere, reagents.",

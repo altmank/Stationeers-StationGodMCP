@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.16.0",
+  "mod_version": "1.17.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -79,12 +79,12 @@
         "text": "Tools whose replies can grow take fields, omit, list_limits and output_file. Prefer filters, limit, fields and omit; use output_file when you need all of a large reply. Errors are always answered inline.",
         "subtopics": {
           "fields": {
-            "summary": "fields: keep only these keys in each list entry.",
-            "text": "fields [names] keeps only those keys in each entry of the reply's top-level lists, e.g. find_things fields [\"reference_id\", \"position\"]. A dotted name is a path read from each entry through nested objects and lists (occupant.prefab_name), or from one list's entries when it starts with that list's name (things.position.x). Dictionary keys keep their case (results.logic.Temperature). A name no entry has is listed in fields_unmatched."
+            "summary": "fields: keep only these keys, in list entries and objects.",
+            "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matched nothing is listed in fields_unmatched, with fields_valid. tool_info {tool} gives reply_keys."
           },
           "omit": {
             "summary": "omit: leave key paths out of the reply.",
-            "text": "omit [paths] leaves those keys out wherever they are, each a path from the reply's top, e.g. get_ic_status omit [\"lua.log\", \"pins\"]. A list on the way applies the rest of the path to each entry (connections omit [\"members.position\"]). A path that matched nothing is listed in omit_unmatched."
+            "text": "omit [paths] leaves those keys out wherever they are, each a path from the reply's top, on any reply, e.g. get_ic_status omit [\"lua.log\", \"pins\"]. A list on the way applies the rest of the path to each entry (connections omit [\"members.position\"]). A single name also leaves that key out of each top-level object and list entry (looking_at omit [\"body\"] drops target.body). A path that matched nothing is listed in omit_unmatched."
           },
           "output_file": {
             "summary": "output_file: the whole reply as a file, answered by a pointer.",
@@ -1420,6 +1420,7 @@
       "description": "What gas or liquid one thing holds: a canister, tank, suit, pipe network, landing pad network, a device's networks and the canisters in its slots, or an atmosphere_id. With a water summary. Read only.\nMore: tool_info {tool: \"atmosphere_contents\"}",
       "help": {
         "text": "Each atmosphere has a source and lists every gas and liquid with amount_mol (and liquid_l for liquids), plus volume_l, pressure_kpa, temperature_k, total_mol and a water summary. Owners have kind item, structure, dynamic (a portable tank) or pipe_network.",
+        "keys": "reference_id, subject, atmospheres [{source, owner, slot_index, slot_name, atmosphere}], count.",
         "topics": {
           "sources": {
             "summary": "What each source means.",
@@ -1465,6 +1466,7 @@
       "description": "For each thing, could a player place it again exactly where it stands, with every neighbour present? Asks the game's own placement cursor. Up to 1024 ids. Read only.\nMore: tool_info {tool: \"check_replaceable\"}",
       "help": {
         "text": "The thing itself is treated as gone; a refusal naming only it means its rules held, and its neighbours are checked again without it. It must also stand where the cursor snaps it, at a quarter turn. Run it over every piece a paste_blueprint placed: BlueprintMod skips these checks. place_structure and replace_walls refuse with the same rule (cannot_place).",
+        "keys": "results [{reference_id, prefab_name, replaceable, rule, reason}].",
         "topics": {
           "reply": {
             "summary": "What each result says.",
@@ -1503,6 +1505,7 @@
       "description": "Tidy cable networks in place: remove dead ends, break loops, remove what no device needs, split or merge straights, simplify junctions; alone or together. Dry run by default; confirm to run.\nMore: tool_info {tool: \"clean_cables\"}",
       "help": {
         "text": "Replacements come from the loaded coil; grade, colour and owner stay. The report is upgrade_cables' (target minimal), each piece giving operation, ends, connected_ends, replacement_count, round, merged_reference_ids, cost and refund_count; plus dead_end_pieces, kept_pieces and unmatched_pieces (no_smaller_piece, no_single_piece, no_long_piece, special_piece, no_kit). The links after must equal the links before less exactly those of removed pieces.",
+        "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
         "topics": {
           "operations": {
             "summary": "The operations and their order.",
@@ -1702,6 +1705,7 @@
       "description": "Remove chute pieces no item can pass through to a consumer; a junction, overflow or splitter left with one way in and out becomes a straight or corner. Select by network_id, reference_ids or a min/max box. Pieces holding items stay. Dry run by default; confirm to run.\nMore: tool_info {tool: \"clean_chutes\"}",
       "help": {
         "text": "Judges whole chute networks, even when only some pieces are selected; only selected pieces change. Kit (Chute) pays and takes back; a replacement keeps paint and owner. The report is clean_cables' (target minimal): pieces lists each removal (operation remove_dead_chute, with why) and each swap (simplify_junction, with connected_ends); dead_end_pieces the dead pieces that stay, with stopped_by; kept_pieces each piece on a path left with an open end, with why; riding the pieces that hold items.",
+        "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
         "topics": {
           "dead": {
             "summary": "Which chute pieces are dead.",
@@ -1876,6 +1880,7 @@
       "description": "Tidy pipe networks in place with clean_cables' operations, keeping every network's contents: removals that would empty one stop. Gas checked before and after. Dry run by default; confirm to run.\nMore: tool_info {tool: \"clean_pipes\"}",
       "help": {
         "text": "Every pipe grade; grade and content stay; kits instead of coils. A removed pipe leaves the network before it is destroyed, so its volume goes and its contents stay: moles and energy hold and the pressure rises (would_burst refuses past the weakest pipe; burst_pipe, no_atmosphere, atmosphere_busy and content_mismatch refuse too).",
+        "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
         "topics": {
           "operations": {
             "summary": "The operations and their order.",
@@ -2087,6 +2092,7 @@
       "description": "How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (40 per page) with filters and a summary. Read only.\nMore: tool_info {tool: \"connections\"}",
       "help": {
         "text": "Two forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. A big network reads best with an area and fields [\"reference_id\", \"prefab_name\"] or omit [\"members.position\"].",
+        "keys": "thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, ends [{index, type, type_name, role, role_name, position, network, connected}], count, network {kind, id}, summary, members [{reference_id, prefab_name, display_name, member, position, open_ends}], structure_count, device_count, offset, limit, total, has_more, resolved_networks.",
         "topics": {
           "ends": {
             "summary": "The ends form.",
@@ -2198,6 +2204,7 @@
       "description": "Every food and drink in the world, wherever it is, with nutrition, hydration and decay, packages counted by contents, and totals. Lists 3 of each by default. Read only.\nMore: tool_info {tool: \"consumables\"}",
       "help": {
         "text": "Food: nutrition per unit and in total, quality and decay_time_left_s (the game's estimate at the current decay rate; null when it does not decay). Drinks: liquid_l and the hydration they give. Boxes and packages hold real items, so their contents are counted and listed per package. Decayed food, seeds, plants still growing, pills and empty drinks are listed as not counted. Totals of nutrition and hydration, and how much is still packed. Lists food, drinks and packages 3 each, not_counted 5; list_limits keeps more.",
+        "keys": "food [{reference_id, prefab_name, display_name, quantity, max_quantity, location, carried_by, held_in, ...}], drinks [{reference_id, prefab_name, display_name, quantity, max_quantity, location, carried_by, held_in, ...}], packages [{reference_id, prefab_name, display_name, location, carried_by, held_in, position, distance_m, ...}], not_counted [{prefab_name, display_name, reason, items, quantity}], totals {nutrition, nutrition_in_packages, liquid_l, liquid_in_packages_l, hydration, ...}, local_player {reference_id, display_name, position}.",
         "shared": ["items", "truncation"]
       },
       "class": "read",
@@ -2223,6 +2230,7 @@
       "description": "Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Read only.\nMore: tool_info {tool: \"container_contents\"}",
       "help": {
         "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes.",
+        "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, name, slot_class, empty, occupant}].",
         "shared": ["slots", "player"]
       },
       "class": "read",
@@ -2322,6 +2330,7 @@
       "description": "Where a deep miner would mine what: the profile at a point, and with ores the nearest spots whose profile holds them all. Follows the world's own region maps. Read only.\nMore: tool_info {tool: \"deep_miner_spots\"}",
       "help": {
         "text": "The game gives a deep miner the first deep-mining profile whose region condition holds where it is built; this asks the same profiles the same way. Always returns at {position, regions, profile_id (null: a miner there mines nothing)} and profiles [{id, reagents [{reagent, grams}] per dirty ore, quantity [min, max) ores per drop, time_s [min, max) per drop at 200 RPM, regions}] in the order the miner tries them.",
+        "keys": "at {position, regions, profile_id}, profiles [{id, reagents, quantity, time_s, regions}], search {ores, profiles, radius_m, step_m, min_separation_m, ...}, spots [{at, distance_m, bearing_deg, compass, profile_id, regions, terrain}], beacons [{at, label}].",
         "topics": {
           "search": {
             "summary": "Searching for spots with ores.",
@@ -2382,6 +2391,7 @@
       "description": "Describe one device: every logic type it can read and write, and its rocket, umbilical and uplink details where it has them. Read only.\nMore: tool_info {tool: \"describe_device\"}",
       "help": {
         "text": "Lists every logic type the device reports as readable or writable. Mod logic types without a name are read and written by number.",
+        "keys": "device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, rocket {network_id, name, state, dry_mass_kg, hull_pieces, ...}, umbilical {role, open, partner, partner_distance, search}, uplink {downlink, connected, choices}, logic_types [{id, name, readable, writable}], logic_type_count.",
         "topics": {
           "rocket": {
             "summary": "A device in a rocket: the rocket it belongs to.",
@@ -2431,6 +2441,7 @@
       "description": "What a buildable prefab is before it stands anywhere, in its own frame: placement kind, the turns it takes, its cells, render box, ports, visual top and controls side. Read only.\nMore: tool_info {tool: \"describe_prefab\"}",
       "help": {
         "text": "Its own frame is unturned, x right, y up, z forward, origin snapped as the cursor snaps it. Returns prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells, render_box, grid_box, ports [{index, type, role, flow, at, outward}], visual_up, reversible_flow, has_cursor and controls.",
+        "keys": "prefab_name, prefab_hash, display_name, build_states, runtime_type, placement, grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells [{x, y, z}], render_box {min, max, size}, grid_box {min, max, size}, ports [{index, type, role, flow, at, outward}], visual_up {local, lying_allowed, source, verified}, reversible_flow {logic_type, value, reason}, has_cursor, controls {local, votes, considered, source, fallback}.",
         "topics": {
           "visual_up": {
             "summary": "visual_up and controls.",
@@ -2533,6 +2544,7 @@
       "description": "Trace how a network feeds its devices from a root device (an APC output, a generator): the pieces and rooms each feed passes through, daisy chains, and devices no run reaches. Read only.\nMore: tool_info {tool: \"feed_paths\"}",
       "help": {
         "text": "Breadth first over the network's links, so each device gets its shortest path; a device is an end, never passed through. Returns root, network_id, root_room_id, devices [{reference_id, prefab_name, display_name, room_id, pieces, rooms, through, fed_through_other_rooms}], daisy_chains, rooms [{room_id, devices, entries, entry_at, multiple_feeds}], multiple_feeds and unreached. Lists devices 15 and unreached 10 by default.",
+        "keys": "root {reference_id, prefab_name, display_name}, network_id, kind, root_room_id, daisy_chains, multiple_feeds, devices [{reference_id, prefab_name, display_name, room_id, pieces, rooms, through, fed_through_other_rooms}], rooms [{room_id, devices, entries, entry_at, multiple_feeds}], unreached [{reference_id, prefab_name, display_name}], resolved_networks.",
         "topics": {
           "rooms": {
             "summary": "How pieces and devices are placed in rooms.",
@@ -2595,6 +2607,7 @@
       "description": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first. 10 per page. Read only.\nMore: tool_info {tool: \"find_items\"}",
       "help": {
         "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type.",
+        "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
         "shared": ["items", "paging", "shaping", "player"]
       },
       "class": "read",
@@ -2648,6 +2661,7 @@
       "description": "Ranked places for a prefab near a point, on one face plane or on a room's walls, each checked with the game's placement cursor and the layout preview; answers place_arguments. Read only.\nMore: tool_info {tool: \"find_spot\"}",
       "help": {
         "text": "near is a point, \"player\", \"crosshair\" (default) or {reference_id}; radius_m default 4, max 12. A mounted piece faces out of the plane with its top up (facing overrides); a standing piece stands on a floor. Returns prefab_name, planes, spots best first (limit 5) [{position, orientation, distance_m, penalty, plane, conflicts, place_arguments}], tried, filtered, checked, rejected and reasons.",
+        "keys": "prefab_name, planes, spots [{position, orientation, distance_m, penalty, plane, conflicts, place_arguments}], tried, filtered, checked, rejected, reasons [{reason, count}], view {source, age_s}.",
         "topics": {
           "planes": {
             "summary": "plane, looking and room_id.",
@@ -2729,11 +2743,12 @@
       "name": "find_things",
       "description": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for kind, class, labels, broken state, atmosphere, maker and location. 8 per page, nearest first. Read only.\nMore: tool_info {tool: \"find_things\"}",
       "help": {
-        "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. find_items is the tool for item quantities and machine stock.",
+        "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. min and max keep only things standing in a box (a thing in a slot stands where its outermost holder is). find_items is the tool for item quantities and machine stock.",
+        "keys": "things [{made, reference_id, prefab_name, display_name, custom_name, game_name, kind, runtime_type, ...}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}.",
         "topics": {
           "reply": {
             "summary": "What each thing reports.",
-            "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes)."
+            "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A rocket's part adds rocket_state (OnLaunchMount, Launching, Landing...): its position moves while it flies. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes)."
           },
           "broken": {
             "summary": "is_broken and condition.",
@@ -2788,6 +2803,10 @@
             "type": "number",
             "description": "Only items made at or after this game time (game_clock game_time_s); negative: within that many seconds back."
           },
+          "min": {
+            "description": "Box corner, [x, y, z] in metres; with max: only things whose outermost holder stands in the box."
+          },
+          "max": {"description": "The other corner of the box; with min."},
           "near_player_m": {
             "type": "number",
             "exclusiveMinimum": 0,
@@ -2853,6 +2872,7 @@
       "description": "Read the source in a circuit holder's chip: IC10, or Lua for a StationeersLua chip. Answers source, language, holder and chip. Read only.\nMore: tool_info {tool: \"get_ic_source\"}",
       "help": {
         "text": "Returns source, source_length, language (ic10 or lua), holder, chip, line_number (IC10 only) and, for a Lua chip, lua as get_ic_status gives it. A large source reads best with output_file.",
+        "keys": "gateway_id, reference_id, source, line_number, language, holder {reference_id, prefab_name, display_name}, chip {reference_id, prefab_name, display_name}, source_length, lua {compiling, has_runtime, init_complete, running, library, ...}.",
         "shared": ["gateways", "chips", "shaping"]
       },
       "class": "read",
@@ -2894,10 +2914,11 @@
       "description": "Inspect a circuit holder's chip: current line, registers, stack window, aliases, defines, pins d0 to d5, power and pause state, compile and runtime errors, a Lua chip's log. Read only.\nMore: tool_info {tool: \"get_ic_status\"}",
       "help": {
         "text": "Works on IC Housings, suits and other worn holders, and Lua holders (a Console or Computer board, a tablet cartridge, a Programmable Visor). The source comes only with include_source; source_length always counts it.",
+        "keys": "gateway_id, reference_id, has_chip, pins [{index, name, reference_id, prefab_name, display_name, label, reachable}], holder {reference_id, prefab_name, display_name}, source, line_number, compilation_error, error_line, error_type, error_code, compile_error_line, compile_error_type, housing {kind, on, powered, operable}, runtime {execution, registers, register_count, stack_pointer_register, stack_pointer, ...}, language, chip {reference_id, prefab_name, display_name}, source_length, lua {compiling, has_runtime, init_complete, running, library, ...}.",
         "topics": {
           "holder": {
             "summary": "housing, operable, pins, and an empty holder.",
-            "text": "housing.kind is ic_housing, worn_item, computer_board, cartridge or inserted_item. operable says whether the holder runs its chip: a board needs its computer on, powered and fully built; a cartridge its tablet on and powered; a suit or visor a charged battery. pins: each pin's device reference id, prefab and name (null when empty), the alias the chip gave it, and reachable (false when the device is not on the housing's data network). A holder with no chip answers only has_chip false, reference_id, gateway_id, holder and pins."
+            "text": "housing.kind is ic_housing, worn_item, computer_board, cartridge or inserted_item. operable says whether the holder runs its chip: a board needs its computer on, powered and fully built; a cartridge its tablet on and powered; a suit or visor a charged battery. pins: each pin with a device or an alias (a pin with neither is left out; name says which pin): the device's reference id, prefab and name, the alias the chip gave it, and reachable (false when the device is not on the housing's data network). A holder with no chip answers only has_chip false, reference_id, gateway_id, holder and pins."
           },
           "ic10": {
             "summary": "IC10 runtime: registers, stack, errors.",
@@ -2980,7 +3001,8 @@
       "name": "grid_survey",
       "description": "Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), with frames, walls, each small cell's occupant and support, the pieces, devices and their ports, and networks. Read only.\nMore: tool_info {tool: \"grid_survey\"}",
       "help": {
-        "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. sections, network_ids, kinds and compact narrow it.",
+        "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. sections, network_ids, kinds, occupied_only and compact narrow it.",
+        "keys": "legend, cells [{at, room_id, frame, walls, small, support}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, ...}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}], resolved_networks.",
         "topics": {
           "cells": {
             "summary": "Each cell and its small and support strings.",
@@ -2988,7 +3010,7 @@
           },
           "pieces": {
             "summary": "pieces, devices and their ports.",
-            "text": "pieces [{reference_id, kind, prefab_name, at, cells (long pieces), ends, network_id, grade; chutes also flow {in, out} and carries}]. devices [{reference_id, prefab_name, display_name, at, rotation {facing, up, euler}, ports [{index, at (the cell a piece joining it stands in), toward (the end that piece needs), type, role, network_id}], umbilical}]."
+            "text": "pieces [{reference_id, kind, prefab_name, at, cell_count and cell_box {min, max, size} (a piece filling more than one small cell; cells lists each with include_piece_cells), ends, network_id, grade; chutes also flow {in, out} and carries}]. devices [{reference_id, prefab_name, display_name, at, rotation {facing, up, euler}, ports [{index, at (the cell a piece joining it stands in), toward (the end that piece needs), type, role, network_id}], umbilical}]."
           },
           "networks": {
             "summary": "networks, network_visibility and refunds.",
@@ -3035,6 +3057,14 @@
           "compact": {
             "type": "boolean",
             "description": "Leave out each cell's small and support strings and the legend. Default false."
+          },
+          "occupied_only": {
+            "type": "boolean",
+            "description": "Only cells holding a frame, a wall or other face structure, or anything in their small cells; total counts those. Default false."
+          },
+          "include_piece_cells": {
+            "type": "boolean",
+            "description": "List every small cell of a piece that fills more than one. Default false: cell_count and cell_box only."
           },
           "limit": {"type": "integer", "minimum": 1, "maximum": 125, "description": "2 m cells per page; default 8, max 125."},
           "offset": {"type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Cells to skip (see paging)."}
@@ -3173,6 +3203,7 @@
       "description": "Whether the things the player carries would catch fire, by the game's own fire rule: the air around the player and every burnable item with its flashpoint. Lists 12 items. Read only.\nMore: tool_info {tool: \"ignition_risk\"}",
       "help": {
         "text": "Returns player, cell (the air the player stands in: temperature_k, pressure_kpa, energy_j, inflamed, oxygen_mol, in_room), autoignition_min_energy_j (1e7), minimum_ignition_pressure_kpa (1.5) and items. include_prefabs adds every prefab with a flashpoint or autoignition temperature.",
+        "keys": "player {reference_id, display_name, position}, cell {temperature_k, pressure_kpa, energy_j, inflamed, oxygen_mol, ...}, autoignition_min_energy_j, minimum_ignition_pressure_kpa, items [{reference_id, prefab_name, display_name, slot, in_hand, holder, atmosphere, burning, ...}], prefabs [{prefab_name, display_name, flashpoint_k, autoignition_k}].",
         "topics": {
           "rule": {
             "summary": "When a thing lights and keeps burning.",
@@ -3214,6 +3245,7 @@
       "description": "Inspect a device's slots: occupants, what each slot takes, and every readable slot logic value. Lists 5 slots by default; slot_index reads one. Read only.\nMore: tool_info {tool: \"inspect_slots\"}",
       "help": {
         "text": "Devices only (things with logic): a crate, a lander or a tool answers device_not_found saying it is not a device; container_contents shows the slots of any thing. interactable false marks a hidden slot, which move_item refuses. truncated gives the slot count; list_limits {slots: n} keeps more.",
+        "keys": "gateway_id, reference_id, device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, slots [{index, underlying_slot_index, display_name, string_key, slot_class, empty, interactable, locked, ...}], count, total_slots.",
         "shared": ["gateways", "logic", "truncation"]
       },
       "class": "read",
@@ -3256,6 +3288,7 @@
       "description": "Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most. Same filters as find_items. 12 types by default. Read only.\nMore: tool_info {tool: \"item_totals\"}",
       "help": {
         "text": "Answers 'how much iron ingot do I have and where'. quantity includes machine stock (a furnace's or centrifuge's load gets its own row with prefab_name null and reagent set); item_count counts items only, machine_stock_entries the machine and reagent pairs. top_holders lists holders_limit holders per type (default 1, 0 leaves it out), each with kind (player, stored or machine_stock) and position.",
+        "keys": "totals [{prefab_name, display_name, items, quantity, on_ground, carried, stored, machine_stock, ...}], prefab_count, item_count, machine_stock_entries.",
         "shared": ["items", "truncation"]
       },
       "class": "read",
@@ -3364,6 +3397,7 @@
       "description": "Every trader landing pad, measured by the game's own checks: its largest square, runway threshold, which ships fit, and whether each contact in the sky can land. Read only.\nMore: tool_info {tool: \"landing_pads\"}",
       "help": {
         "text": "The game's pad check moves the landing point of the pad it measures; every check here puts it back, so a landing in progress is never affected. Also count.",
+        "keys": "pads [{reference_id, prefab_name, display_name, position, forward, is_network_center, piece_count, extent, ...}], count.",
         "topics": {
           "pad": {
             "summary": "What each pad reports.",
@@ -3388,6 +3422,7 @@
       "description": "Check a room or a box against the layout rules (lint-rules.json, the save's file over the mod's), from what stands there: replaceability, doors, ports, floating runs, overlaps, solar, oxidiser venting and more. 25 findings. Read only.\nMore: tool_info {tool: \"lint_layout\"}",
       "help": {
         "text": "Returns region, cells, pieces, devices, structures, doors, counts {rule id: n}, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}] problems first, then warnings, then info, total, has_more, rule_source and elapsed_ms. A rule that cannot run on a subject gives a rule_error finding and the rest still run; a rule that does not load is listed in rule_source.errors. lint_rules lists, validates, tests and explains the rules.",
+        "keys": "region, cells, pieces, devices, structures, doors, counts, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}], total, has_more, rule_source {mod_file, save_file, rules, from_save, disabled, ...}, elapsed_ms.",
         "topics": {
           "files": {
             "summary": "The mod's rule file and the save's.",
@@ -3437,6 +3472,7 @@
       "description": "The lint rule set lint_layout audits with and the building tools run on dry runs: list the rules, validate a rule file, list fields and functions, run the examples, explain a finding. Read only.\nMore: tool_info {tool: \"lint_rules\"}",
       "help": {
         "text": "action: list (default), validate, fields, functions, test or explain. Every reply has rule_source {mod_file, save_file, rules, from_save, disabled, errors}. Nothing is written. rule_not_found and subject_not_found name what is missing.",
+        "keys": "action, rule_source {mod_file, save_file, rules, from_save, disabled, ...}, rules [{id, level, level_when, on, source, file, description, select, ...}], types [{name, doc, fields}], sets, functions [{name, signature, doc, form, cached}], tests [{id, passed, examples}], all_passed, explained [{rule, subject, outcome, level, message, error, values}], valid.",
         "topics": {
           "format": {
             "summary": "What a rule holds.",
@@ -3505,6 +3541,7 @@
       "description": "List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first. 12 per page. Read only.\nMore: tool_info {tool: \"list_containers\"}",
       "help": {
         "text": "A holder inside another (a crate in a lander, a box in a locker) is not listed alone: its items count toward the outermost holder, and the filters match that holder. Look inside with container_contents or find_items within_id. Empty containers are not listed.",
+        "keys": "containers [{reference_id, prefab_name, display_name, slots_total, slots_used, item_count, items, position, ...}], count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
         "shared": ["paging", "player"]
       },
       "class": "read",
@@ -3552,6 +3589,7 @@
       "description": "List devices: every one in the world, or those on a gateway's data networks; filter by prefab_hash or name_contains. Reference ids are strings. Lists 25 by default. Read only.\nMore: tool_info {tool: \"list_devices\"}",
       "help": {
         "text": "Each device comes with its reference id (a string), prefab and name. The reply lists the first 25; truncated gives the total and list_limits {devices: n} keeps more.",
+        "keys": "gateway_id, devices [{reference_id, prefab_name, prefab_hash, display_name, runtime_type, slot_count, is_gateway, worn_by, ...}], count.",
         "shared": ["gateways", "truncation", "shaping"]
       },
       "class": "read",
@@ -3607,6 +3645,7 @@
       "description": "What the player's crosshair is on: the thing the 3 m interaction ray hits, the button or slot under it, plus the view and a longer look ray. Read only.\nMore: tool_info {tool: \"looking_at\"}",
       "help": {
         "text": "Returns player, target (null for nothing, terrain or past 3 m), interactable, view and hit. Hand target.reference_id to any other tool. Needs the player's view.",
+        "keys": "player {reference_id, display_name, position}, target {reference_id, prefab_name, display_name, custom_name, kind, ...}, interactable {action, display_name, contextual_name, state, slot}, view {eye, forward, right, up, yaw_deg, ...}, hit {point, distance_m, normal, face, face_plane, ...}.",
         "topics": {
           "target": {
             "summary": "The thing under the crosshair.",
@@ -3659,6 +3698,7 @@
       "description": "The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game. Read only.\nMore: tool_info {tool: \"mod_info\"}",
       "help": {
         "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 15 and reflection 10 by default; list_limits keeps more.",
+        "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, ...}.",
         "topics": {
           "methods": {
             "summary": "Per-method counts and times.",
@@ -3702,6 +3742,7 @@
       "description": "Cheat: move gas and liquid between atmospheres or rooms, or delete it, with no pipe, pump or power; it bypasses the game's physics. Ask the user first. dry_run predicts; applied at the next atmospherics tick.\nMore: tool_info {tool: \"move_gas\"}",
       "help": {
         "text": "Each gas leaves with its own share of its heat and arrives with it. Give from and to (or delete: true), gases and amount_mol. Burst, liquid, freezing and boiling checks refuse a move that would harm the receiving side; force skips the burst check only. Host only.",
+        "keys": "transfer_id, status, predicted, joined, from, to, deleted, moved, error, before, amount_mol, ticks, note.",
         "topics": {
           "places": {
             "summary": "What from and to can name.",
@@ -3823,6 +3864,7 @@
       "description": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose.\nMore: tool_info {tool: \"move_item\"}",
       "help": {
         "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it.",
+        "keys": "index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
         "topics": {
           "rules": {
             "summary": "Stacks, merging, hidden slots, vending machines.",
@@ -3906,6 +3948,7 @@
       "description": "Snapshot devices and their readable logic values in one frame, filtered by reference_ids, prefab_hash, name_contains and logic_types. Returns 2 devices by default (max_devices). Read only.\nMore: tool_info {tool: \"network_snapshot\"}",
       "help": {
         "text": "Narrow it with the filters first: every matching device reads every logic type it exposes unless logic_types names some. max_devices sets how many devices come back (default 2).",
+        "keys": "gateway_id, devices [{device, logic_values, logic_value_count}], count, matched_count, truncated.",
         "shared": ["gateways", "logic"]
       },
       "class": "read",
@@ -3963,6 +4006,7 @@
       "description": "Which frames are outer frames: a face on a cell of the planet's outside air. Each with its exposed faces, airtightness, build state and colour; nearest first, 20 per page. Read only.\nMore: tool_info {tool: \"outer_frames\"}",
       "help": {
         "text": "Each frame: reference_id, prefab_name, display_name, position, distance_m, exposed_faces (+z north, +y up), exposed_face_count, blocks_air (its build state is airtight), build_state (0 bare up to the prefab's finished state; a finished steel frame is 3) and color. Also count, total_frames, total_outer, paging and local_player. include_inner lists every frame.",
+        "keys": "frames [{reference_id, prefab_name, display_name, position, distance_m, exposed_faces, exposed_face_count, blocks_air, ...}], count, total_frames, total_outer, offset, limit, total, has_more, include_inner, local_player {reference_id, display_name, position}.",
         "topics": {
           "exposed": {
             "summary": "When a face counts as exposed.",
@@ -4014,6 +4058,7 @@
       "description": "Paint things as a spray can does (no paint used), one colour for reference_ids or a colour each with items; with neither, list the colours.\nMore: tool_info {tool: \"paint\"}",
       "help": {
         "text": "Uses the game's own paint: synced to clients and saved. A colour is a name (any case, as the colour list gives it), an index, or 'default' for the thing's own prefab colour. Each result gives previous_color, so a later items call can put the old colours back.",
+        "keys": "colors [{index, name, paint_only}], count, results, success_count, error_count.",
         "topics": {
           "colours": {
             "summary": "The colour list and paint_only colours.",
@@ -4078,6 +4123,7 @@
       "description": "Cheat: paste a BlueprintMod blueprint at an exact anchor and turn, with no player needed; it skips the game's placement checks. Ask the user first. status reads progress; undo removes the newest paste.\nMore: tool_info {tool: \"paste_blueprint\"}",
       "help": {
         "text": "Needs BlueprintMod; host only. Paste: name (in BlueprintMod's Blueprints folder, or an absolute path), anchor [x, y, z] (where the blueprint's reference point lands: x and z odd whole metres, y even, for the paste to line up with the grid) and rotation (0, 90, 180 or 270, added to its copy angle). Answers {started, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}; the pieces appear over 2 to 30 s, only while the game runs. Run check_replaceable over the pasted pieces.",
+        "keys": "known, active, complete, cancelled, created, failed, skipped, pasted, standing, fingerprint, file, entries, other_active, message, started, anchor, rotation, copy_y_angle, expected_duration_s.",
         "topics": {
           "status": {
             "summary": "status: true and its counts.",
@@ -4161,6 +4207,7 @@
       "description": "Lay a cable run, or pieces, as a coil builds it: the one-cell piece whose ends match each cell, of a grade (heavy by default). Guards for bridging, splitting and overload. Dry run by default; confirm to build.\nMore: tool_info {tool: \"place_cables\"}",
       "help": {
         "text": "Pieces come from the loaded coil of the grade (normal, heavy or super_heavy), never a table. Coils come from from_id (default the player); not_enough_coils names what is missing. A burnt cable an overload left may be named in remove_ids, freeing its cell.",
+        "keys": "job_id, status, ready, problems [], warnings [], cells [], materials, removals [], networks_before [], networks_after [], would_split [], preflight_summary, result, final_check, log, verification, gas_check, error.",
         "topics": {
           "overload": {
             "summary": "would_overload and would_overload_when_on.",
@@ -4444,6 +4491,7 @@
       "description": "Lay a chute run, or pieces, from Kit (Chute) as a player builds it, from the source to the sink; straights, corners and junctions, with flow guards. Dry run by default; confirm to build.\nMore: tool_info {tool: \"place_chutes\"}",
       "help": {
         "text": "Items travel from the run's first cell to its last: start at the source (a device's Output port, a chute bin, a line carrying items toward it) and end at the sink (an Input port, a line carrying them away). The run forms, joins, dry run, job and materials are place_cables', with kits (not_enough_kits). Each cell reports flow {in, out}. A piece with an item riding in it is never altered or removed (cannot_change).",
+        "keys": "job_id, status, ready, problems [], warnings [], cells [], materials, removals [], networks_before [], networks_after [], would_split [], preflight_summary, result, final_check, log, verification, gas_check, error.",
         "topics": {
           "pieces": {
             "summary": "The pieces it places.",
@@ -4721,6 +4769,7 @@
       "description": "Lay a pipe run, or pieces, as place_cables lays cable: one-cell pieces from the grade's kit (gas, liquid, insulated_gas, insulated_liquid; grade required), with the pipe guards and a gas check. Dry run by default; confirm to build.\nMore: tool_info {tool: \"place_pipes\"}",
       "help": {
         "text": "The same run forms, joins, placement check, removals, dry run, job and guards as place_cables, with kits instead of coils (not_enough_coils names what is missing). networks_before lists each pipe network with content, total_mol, temperature, pressure, volume, main gases and devices. A long straight split to be joined keeps its network and contents, even as the network's only pipe: its singles take its network on and the new pieces are built outward from them.",
+        "keys": "job_id, status, ready, problems [], warnings [], cells [], removals [], final_check, log, gas_check, error.",
         "shared": ["runs", "jobs", "networks", "refunds", "materials", "doors", "lint", "pipes", "gas_hold"]
       },
       "class": "write",
@@ -4999,7 +5048,8 @@
       "name": "place_structure",
       "description": "Place any structure a kit builds (light, sign, device, frame, wall, tank, rocket part) by prefab, at a point with a turn, build state, label and colour; several placements are one job. Checked as the player's cursor checks. Dry run by default; confirm to build. free is a cheat.\nMore: tool_info {tool: \"place_structure\"}",
       "help": {
-        "text": "Cost: every build state's items up to the state built (state 0 is the kit), from the player's inventory at any depth or from_id. Cables, pipes and chutes are placed as exactly the piece given (warning network_piece); place_cables, place_pipes and place_chutes choose pieces by connections. The dry run gives each placement's snapped position, orientation, face, build state, cost, materials, ports and layout preview.",
+        "text": "With placements, label, color and so on go in each placement. Cost: every build state's items up to the state built (state 0 is the kit), from the player's inventory or from_id. Cables, pipes and chutes are placed as exactly the piece given; place_cables, place_pipes and place_chutes choose pieces. The dry run describes each placement: position, cost, ports, layout.",
+        "keys": "job_id, status, ready, problems [], warnings [], placements [], materials [], result, error.",
         "topics": {
           "position": {
             "summary": "How at snaps, and setting a piece down.",
@@ -5303,6 +5353,7 @@
       "description": "Find a cable route on the small grid between ends, ports or networks, and dry-run it with place_cables: frames first, trees from several starts, trunks, reroutes. Answers place_arguments to build it. Read only.\nMore: tool_info {tool: \"plan_cable_route\"}",
       "help": {
         "text": "grade (default heavy), join, allow_bridge, allow_split and from_id pass on to the dry run. A device on several cable networks, such as an APC, needs its port named.",
+        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
         "shared": ["routing", "runs", "networks", "doors", "lint", "materials"]
       },
       "class": "read",
@@ -5486,6 +5537,7 @@
       "description": "Find a chute route from a source to a sink and dry-run it with place_chutes and every flow guard. Answers place_arguments to build it. Read only.\nMore: tool_info {tool: \"plan_chute_route\"}",
       "help": {
         "text": "plan_cable_route for chutes: from is the source and to the sink. The search never passes through a cell holding a chute, cable, pipe, device or other small-grid thing; a reroute keeps the old run's direction where the flow fixes it.",
+        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
         "topics": {
           "ends": {
             "summary": "Which ends can be a from or a to.",
@@ -5671,6 +5723,7 @@
       "description": "Find a pipe route between ends, ports, tanks or networks, and dry-run it with place_pipes and its pipe guards; grade required. Answers place_arguments to build it. Read only.\nMore: tool_info {tool: \"plan_pipe_route\"}",
       "help": {
         "text": "plan_cable_route for pipes: the same ends, rules, trees, trunks and reroutes; the search never passes through a cell holding a pipe, nor along a cable's axis in a cell.",
+        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
         "shared": ["routing", "runs", "networks", "doors", "lint", "materials", "pipes"]
       },
       "class": "read",
@@ -5854,6 +5907,7 @@
       "description": "Price a removal without doing it: the dry run of remove_cables, remove_pipes or remove_chutes (kind) for ids, cells or a whole network. Changes nothing, ever. Read only.\nMore: tool_info {tool: \"plan_removal\"}",
       "help": {
         "text": "Returns the remove tools' own report: removals with their refunds, materials.refund (the total), would_split, networks_before and networks_after, problems and warnings. With no player, no from_id and refund_to source, no_local_player is a warning here: the refund is priced, and a real run would need from_id. Burnt cables price at nothing back.",
+        "keys": "tool, status, job_id, grade, ready, problems [{code, message, reference_id, at}], warnings [{code, message, reference_id, at}], cells_total, placed, changed, kept, removed_count, air_cells, cells [{at, action, prefab_name, rotation_deg, shape, ends, cost, refund, ...}], removals [{reference_id, prefab_name, at, network_id, refund, assumed}], materials {from, needed, refund_enabled, refund, refund_plan}, networks_before, networks_after [{index, networks_before, new_pieces, device_count, devices, guard}], would_bridge [{kind, networks, device, ports, allowed}], would_split [{network_id, parts, cut_ports, allowed, components, root, cut_off}], links {count_before, count_after, added, lost, added_count, ...}, notes, resolved_networks.",
         "shared": ["removals", "networks", "refunds", "materials"]
       },
       "class": "read",
@@ -5967,6 +6021,7 @@
       "description": "The planet's own atmosphere, the one outdoor cells relax toward: gases, pressure, temperature and its parts, the day's range, sea, clouds and ice caps, and the starting air. Read only.\nMore: tool_info {tool: \"planet\"}",
       "help": {
         "text": "Before a world is loaded it answers only loaded false and terraforming_mod. Then: loaded, world_time_s, day_length_s, volumes, cells (outdoor 2 m cells), size_ratio, moles and litres, sea, pressure_kpa, game_pressure_kpa, temperature_k, sun, storm, gases, reservoirs, starting_air and terraforming_mod.",
+        "keys": "loaded, terraforming_mod {name, version, state, live, temperature_adjustment_k}, world_time_s, day_length_s, volume_l, gas_volume_l, cells, size_ratio, gas_mol, liquid_mol, liquid_l, sea {liquid_l, threshold_l, shown}, pressure_kpa, game_pressure_kpa, temperature_k, temperature_parts {sun_angle_k, sun_distance_k, greenhouse_k, density_k, weather_k, ...}, sun_angle_deg, solar_energy_percent, range {today_min_k, today_min_sun_angle_deg, today_max_k, today_max_sun_angle_deg, orbit_min_k, ...}, storm {id}, oxygen_kpa, toxins_kpa, fuel_mol, oxidiser_mol, carbon_dioxide_ratio, gases [{gas, display_name, state, amount_mol, per_cell_mol, partial_kpa, freezes_below_k, min_liquid_pressure_kpa, ...}], reservoirs {liquid_clouds, ice_clouds, ice_caps}, starting_air {per_cell_mol, mol, gases}.",
         "topics": {
           "temperature": {
             "summary": "temperature_parts and range.",
@@ -6026,6 +6081,7 @@
       "description": "Read the genes of plants, seeds and produce; with genes, edit them as the Gene Splicer does. Editing is a cheat: ask the user first. Reading takes up to 256 things.\nMore: tool_info {tool: \"plant_genes\"}",
       "help": {
         "text": "Read: reference_id (with unit, the gene set; default the top) or reference_ids (up to 256, top sets; a result each). Each read gives thing, holder (planted_plant, seed or produce), gene_set_count, unit, is_top and all 19 genes, each {gene, value, stability, effect} (meaning only with include_notes). Write: reference_id with genes {name: value}, optional unit and force.",
+        "keys": "thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}], results, count, success_count, error_count.",
         "topics": {
           "gene_sets": {
             "summary": "Gene sets, units and the top set.",
@@ -6103,6 +6159,7 @@
       "description": "Every plant in trays, planters and stations, read from the plant itself: stage, maturity, health, problems, time to harvest. Short by default; verbose or reference_id gives a plant in full. Lists 15. Read only.\nMore: tool_info {tool: \"plants\"}",
       "help": {
         "text": "In short: reference_id, prefab_name, display_name, planted, tray, stage, stage_count, maturity_ratio, ready_to_harvest, dead, health_percent, problems and harvest_in_s. Works for trays with no data port. include_unplanted adds harvested crops and seed bags. Times are game seconds, efficiency parts are multipliers, temperatures kelvin.",
+        "keys": "game_time_s, day_length_s, debug_fast_growth, plants, count.",
         "topics": {
           "full": {
             "summary": "What a plant in full reports.",
@@ -6196,7 +6253,8 @@
       "name": "read_console",
       "description": "Read the latest in-game console lines, oldest first: command output, errors and their stack traces. Default 40 lines. Read only.\nMore: tool_info {tool: \"read_console\"}",
       "help": {
-        "text": "On a dedicated server it reads the last 500 lines the game wrote to the server's own console after the mod loaded. run_console_command's background commands print here a moment later."
+        "text": "On a dedicated server it reads the last 500 lines the game wrote to the server's own console after the mod loaded. run_console_command's background commands print here a moment later.",
+        "keys": "requested_lines, line_count, console_available, lines [{time, level, text}]."
       },
       "class": "read",
       "cost": "instant",
@@ -6224,6 +6282,7 @@
       "description": "Read many things in one frame: logic, slot logic, an atmosphere and reagents per item; up to 128 items and 1,024 values. A control loop's whole read per tick. Read only.\nMore: tool_info {tool: \"read_devices\"}",
       "help": {
         "text": "Every item is read in the same frame (one game update, not tied to the atmospherics tick). Values come back keyed by the string sent (\"Pressure\", \"280\"), never altered. include [\"clock\"] adds the game clock.",
+        "keys": "gateway_id, clock {game_time_s, paused, time_of_day_ratio, days_past}, count, success_count, error_count, results.",
         "topics": {
           "items": {
             "summary": "What an item reads: logic, slots, atmosphere, reagents.",
@@ -6385,6 +6444,7 @@
       "description": "Read up to 256 logic values in one call; each result stands alone, by index, with its own error. Read only.\nMore: tool_info {tool: \"read_logic_many\"}",
       "help": {
         "text": "Each result is {index, ok, reference_id, logic_type, value}, or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read. read_devices also reads slots, atmospheres and reagents in one frame.",
+        "keys": "gateway_id, results, count, success_count, error_count.",
         "shared": ["gateways", "logic"]
       },
       "class": "read",
@@ -6437,6 +6497,7 @@
       "description": "Read up to 512 values of a device's memory from start_address, as a chip's get does: an IC Housing or suit (its chip's stack), Logic Sorter, dish, fabricator, rocket avionics. Read only.\nMore: tool_info {tool: \"read_memory\"}",
       "help": {
         "text": "A Logic Memory has only its Setting, no memory (memory_not_readable). A range past the memory's last address is invalid_argument; the reply gives stack_size. An IC Housing or suit without a chip is no_programmable_chip.",
+        "keys": "gateway_id, reference_id, start_address, values, count, stack_size.",
         "shared": ["gateways", "logic"]
       },
       "class": "read",
@@ -6473,7 +6534,8 @@
       "name": "reagents",
       "description": "The reagents a thing holds, one by one: a furnace's melted load (Iron, Carbon, Silicon...), a centrifuge's, a mixer's, a microwave's. Logic gives only the total. Read only.\nMore: tool_info {tool: \"reagents\"}",
       "help": {
-        "text": "Returns reference_id, prefab_name, display_name, total (every reagent's quantity added as the game adds them, units mixed) and reagents [{reagent, name, quantity, unit}]. unit is the game's unit for that reagent: g, or ml for alcohol, milk and oil."
+        "text": "Returns reference_id, prefab_name, display_name, total (every reagent's quantity added as the game adds them, units mixed) and reagents [{reagent, name, quantity, unit}]. unit is the game's unit for that reagent: g, or ml for alcohol, milk and oil.",
+        "keys": "reference_id, prefab_name, display_name, total, reagents [{reagent, name, quantity, unit}]."
       },
       "class": "read",
       "cost": "instant",
@@ -6501,6 +6563,7 @@
       "description": "Remove cable pieces as wire cutters do: by id, or the cable in each cell of waypoints or cells. Refuses a split unless allow_split; refunds where refund_to says. Dry run by default; confirm to remove.\nMore: tool_info {tool: \"remove_cables\"}",
       "help": {
         "text": "A burnt cable an overload left (on no network, built by no coil) is removed too, by id or cell, and refunds nothing. A piece with a fuse or analyser mounted, an indestructible piece, or a launching or landing rocket's piece is refused, as the game refuses.",
+        "keys": "job_id, status, ready, problems [], warnings [], cells [], materials, removals [], networks_before [], networks_after [], would_split [], preflight_summary, result, final_check, log, verification, gas_check, error.",
         "shared": ["removals", "runs", "jobs", "refunds", "networks", "materials"]
       },
       "class": "write",
@@ -6621,6 +6684,7 @@
       "description": "Remove chute pieces (straights, corners, junctions, valves, overflows, splitters) as a player's deconstruction does: by id or cell. Refunds the kits. Dry run by default; confirm to remove.\nMore: tool_info {tool: \"remove_chutes\"}",
       "help": {
         "text": "A piece with an item riding in it is cannot_remove (the game would lose the item; let it pass or take it out with move_item). drops_items warns where the removal leaves an end items would fall out of. The networks around every removed chute take new ids.",
+        "keys": "job_id, status, ready, problems [], warnings [], cells [], materials, removals [], networks_before [], networks_after [], would_split [], preflight_summary, result, final_check, log, verification, gas_check, error.",
         "shared": ["removals", "runs", "jobs", "refunds", "networks", "materials"]
       },
       "class": "write",
@@ -6741,6 +6805,7 @@
       "description": "Remove pipe pieces as remove_cables removes cable, with the pipe guards: never emptying or splitting a network that holds gas or liquid. Gas checked before and after. Dry run by default; confirm to remove.\nMore: tool_info {tool: \"remove_pipes\"}",
       "help": {
         "text": "Removed pipes leave their network first, so its contents stay and the pressure rises (would_burst refuses). A pipe with a meter or other device mounted is refused.",
+        "keys": "job_id, status, ready, problems [], warnings [], cells [], materials, removals [], networks_before [], networks_after [], would_split [], preflight_summary, result, final_check, log, verification, gas_check, error.",
         "shared": ["removals", "runs", "jobs", "refunds", "networks", "materials", "pipes", "gas_hold"]
       },
       "class": "write",
@@ -6869,6 +6934,7 @@
       "description": "Remove structures by id (up to 256, one job) as deconstructing by hand would, refunding every build state down to the kit where refund_to says. Guards for contents, breaches, bursts and broken pieces. Dry run by default; confirm to remove.\nMore: tool_info {tool: \"remove_structure\"}",
       "help": {
         "text": "Cable, pipe and chute pieces are removed as the remove tools remove them, their checks applying (would_split is only a warning here). The job holds the tick, checks again, removes everything in one frame, delivers the refund and verifies every piece is gone. ground as one word puts each refund where its piece stood.",
+        "keys": "job_id, status, ready, problems [], warnings [], placements [], materials [], removals [], refund [], will_burst [], preflight_summary, result, final_check, log, verification, gas_check, error.",
         "topics": {
           "refusals": {
             "summary": "Always refused.",
@@ -7011,6 +7077,7 @@
       "description": "Replace frames in place with another frame prefab, or finish unfinished frames, without ever opening a cell; pieces by id or a room's frames. As replace_walls. Dry run by default; confirm to swap.\nMore: tool_info {tool: \"replace_frames\"}",
       "help": {
         "text": "Without to, each frame is rebuilt as its own prefab at its final state, which finishes it (finished frames are already_at_target). The swap, dry run, job, materials, refund and checks are replace_walls'. Only plain frames are taken or built (rocket towers are special_piece). Frames are never pressure-stressed.",
+        "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], materials [], swapped [], not_swapped [], preflight_summary, final_check, error.",
         "topics": {
           "scope": {
             "summary": "Which frames a room names, and the footprint.",
@@ -7145,6 +7212,7 @@
       "description": "Replace walls and windows in place with another wall or window prefab without ever opening a face; pieces by id or every wall of a room. Pressure and air checked. Dry run by default; confirm to swap.\nMore: tool_info {tool: \"replace_walls\"}",
       "help": {
         "text": "With the tick held, the new piece is built in the old one's slot (owner and colour kept) at its final state, and only when it holds every slot and blocks what the old one blocked is the old one removed; no gas moves and no room is re-evaluated until every piece stands. from_prefabs narrows the pieces. A player's cursor must accept the new piece where the old one stands (cannot_place otherwise).",
+        "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], materials [], swapped [], not_swapped [], preflight_summary, final_check, error.",
         "topics": {
           "rules": {
             "summary": "What is taken, footprint, and never opening.",
@@ -7289,7 +7357,8 @@
       "name": "resolve_ic_selectors",
       "description": "Resolve a circuit holder's db and d0 to d5 pins and aliases, and report prefab and name-hash selectors (lbn, sbn) for the devices its batch instructions reach. Lists 12 by default. Read only.\nMore: tool_info {tool: \"resolve_ic_selectors\"}",
       "help": {
-        "text": "lb, lbn, sb and sbn walk only the holder's data network, so stable_selectors lists the devices on it the scope shows; batch_device_count is how many (null: no data network, and batch instructions fail). A selector is unique when exactly one device on that network has the pair. Renaming a device alters its name hash. For a Console or Computer Lua board, db is the computer.",
+        "text": "lb, lbn, sb and sbn walk only the holder's data network, so stable_selectors lists the devices on it the scope shows; batch_device_count is how many (null: no data network, and batch instructions fail). A selector is unique when exactly one device on that network has the pair. Renaming a device alters its name hash. For a Console or Computer Lua board, db is the computer. pins lists only the pins with a device on them.",
+        "keys": "gateway_id, reference_id, db {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, pins [{selector, connected, target}], aliases [{name, target, index}], stable_selectors [{reference_id, display_name, prefab_name, prefab_hash, name_hash, selector_kind, reachable, unique, ...}], stable_selector_count, batch_device_count.",
         "topics": {
           "targets": {
             "summary": "target_reference_ids and devices off the network.",
@@ -7344,6 +7413,7 @@
       "description": "A flight recorder: action start records a rocket every interval_s of game time; read answers a summary and one page of rows; also stop, list, clear. Recording only reads the game.\nMore: tool_info {tool: \"rocket_flight_log\"}",
       "help": {
         "text": "start: rocket_id, interval_s (default 1 s of game time), capacity (default 3600 samples kept, oldest dropped), csv (also appends every sample to rocket-log-<id>-<time>.csv in the save's folder). It stops by itself when the rocket is gone. Logs live in memory until the game closes.",
+        "keys": "rocket_id, rocket_name, recording, interval_s, csv_path, capacity, held, recorded, from_t, to_t, fuel_used_mol, lowest_altitude_m, fastest_descent_ms, peak_thrust_n, lowest_confidence, lowest_battery_j, last {t, state, node, target, progress, ...}, events [{t, what}], events_dropped, rows [{t, state, node, target, progress, altitude_m, velocity_ms, acceleration_ms2, ...}], offset, every, has_more, cleared, logs [{rocket_id, rocket_name, recording, interval_s, csv_path, capacity, held, recorded, ...}], count.",
         "topics": {
           "samples": {
             "summary": "What a sample holds, and a read reply.",
@@ -7431,6 +7501,7 @@
       "description": "Fly a copy of a rocket to a node, tick by tick, and report each leg: launch, hops, parking, re-entry and landing, fuel, power, thrust and the verdict. What-ifs for fuel, cargo and power. The game is not touched.\nMore: tool_info {tool: \"rocket_forecast\"}",
       "help": {
         "text": "Destination: to, else the rocket's target, else its pad. Each engine flies by its own feed law; thrust is the game's own combustion run on a copy of what each tick draws. Lines hold gas and liquid; tanks mix with their pipe by volume every tick. Plus route, uncharted, assumptions, succeeded and verdict.",
+        "keys": "rocket_id, rocket_name, start_state, destination {reference_id, name, code, code_value, type, ...}, route [{from, to, to_code, distance, done, charted}], uncharted, assumptions, legs [{kind, from, to, distance, outcome, detail, seconds, burn_seconds, ...}], succeeded, verdict, fuel_now_mol, least_fuel_mol, landing_limits {max_landing_mass_kg, max_fuel_plus_cargo_kg, min_fuel_mol, max_fuel_mol, survivable_thrust_drop_pct, ...}, profiles [{profile, altitude_m, outcome, fuel_used_mol, confidence, seconds, touchdown_speed_ms, survivable_thrust_drop_pct}], column {clear, from_y, to_y, blockers, more}, combustion {rate, source, note}, mining {site, kind, collectable, units_per_hour, units_in_stop, ...}.",
         "topics": {
           "simulation": {
             "summary": "What is simulated, and what is not.",
@@ -7583,6 +7654,7 @@
       "description": "What a rocket can collect, by the game's own mining formulas: its loadout, and per site the yield per cycle and hour, cycles to deplete, and what stops it. Lists 3 sites. Read only.\nMore: tool_info {tool: \"rocket_mining_options\"}",
       "help": {
         "text": "sites: the node 'to' and its discovered sites, else every charted node with a deposit. collectable and not_collectable list the sites by name; collectable_only keeps the first.",
+        "keys": "rocket_id, rocket_name, loadout {miners, collectors, scanners, cargo, gas_tank_litres, ...}, collectable, not_collectable, sites [{node, parent, kind, density, richness, size, survey_percent, depleted, ...}], count, notes.",
         "topics": {
           "loadout": {
             "summary": "What the loadout reports.",
@@ -7638,6 +7710,7 @@
       "description": "Every rocket, or one, read from the game: where it is and where it goes, mass, fuel lines, engines, thrust, landing confidence, cargo, power, burn time. compact and parts shape it. Read only.\nMore: tool_info {tool: \"rocket_status\"}",
       "help": {
         "text": "explanations (what the thrust and landing numbers mean) come once per reply. compact leaves out mass parts, fuel tanks, power devices and checks. parts lists every part with its pose, enough to build the rocket again.",
+        "keys": "rockets [{reference_id, network_id, name, automated_landing, auto_shut_off, manned, re_entry_profile, re_entry_altitude_m, ...}], count, explanations.",
         "topics": {
           "where": {
             "summary": "State, nodes and the route.",
@@ -7695,6 +7768,7 @@
       "description": "The game's closed rooms measured cell by cell: volume, pressure, temperature, gases, heat, bounds. Every room, or the room one thing is in. Lists 10. Read only.\nMore: tool_info {tool: \"rooms\"}",
       "help": {
         "text": "A room is a closed flood fill of 2 m cells (at most 1200; a bigger or open space is outside). The air is summed fresh from each cell, as the game pools a room. Largest room first, with count and local_player_room_id. Devices come with include_devices, cell centres with include_cells.",
+        "keys": "rooms [{room_id, room_type, cell_count, volume_l, pressure_kpa, temperature_k, total_mol, heat_capacity_j_per_k, ...}], count, local_player_room_id.",
         "topics": {
           "reply": {
             "summary": "What each room reports.",
@@ -7732,6 +7806,7 @@
       "description": "Cheat: run any console command and answer the lines it printed. Unrestricted and not undoable: it can spawn and delete things, teleport, start storms, change settings, quit. Ask the user first.\nMore: tool_info {tool: \"run_console_command\"}",
       "help": {
         "text": "Runs on the game's main thread. Refusals such as 'requires creative mode' and bad arguments come back as red output lines, not as a call error. On a network client some commands only queue a request to the host; run_simulation says which applies.",
+        "keys": "command, command_key, scope, help_text, arguments, run_simulation, console_available, completes_asynchronously, output_complete, output_line_count, truncated, concurrent_log_lines, output [{time, level, text}], note.",
         "topics": {
           "output": {
             "summary": "What the reply covers, and background commands.",
@@ -7795,6 +7870,7 @@
       "description": "Watch up to 32 logic values for up to 30 s; answers their first readings and every change with its time. Read only.\nMore: tool_info {tool: \"sample_logic\"}",
       "help": {
         "text": "Samples every interval_seconds (default 0.5) for duration_seconds (default 5), at most 120 samples. The game takes each sample in the first frame at or after it is due, so an interval shorter than a frame yields fewer samples than asked; sample_count says how many it took.",
+        "keys": "gateway_id, started_at_utc, duration_seconds, interval_seconds, sample_count, change_count, changes.",
         "shared": ["gateways", "logic"]
       },
       "class": "read",
@@ -7849,7 +7925,7 @@
       "name": "set_ic_pins",
       "description": "Set an IC Housing's pins d0 to d5 as a screwdriver does: a device id per pin, null to clear. Every pin is checked before any is written.\nMore: tool_info {tool: \"set_ic_pins\"}",
       "help": {
-        "text": "Pins left out keep their device. A running chip uses the new devices from its next instruction; nothing recompiles or resets, and a multiplayer host sends the pins to clients. Returns what it altered and all six pins as get_ic_status lists them. Rocket IC Housings work too; suits and other worn holders are not_ic_housing.",
+        "text": "Pins left out keep their device. A running chip uses the new devices from its next instruction; nothing recompiles or resets, and a multiplayer host sends the pins to clients. Returns what it altered and the pins as get_ic_status lists them. Rocket IC Housings work too; suits and other worn holders are not_ic_housing.",
         "topics": {
           "network": {
             "summary": "Devices off the housing's data network.",
@@ -8139,6 +8215,7 @@
       "description": "The damage state of any thing (panel, pipe, cable, wall, frame, door, vent, device, item), which no logic type exposes. One thing, up to 256, a network's pieces, or a world scan of damaged and broken things. Read only.\nMore: tool_info {tool: \"thing_health\"}",
       "help": {
         "text": "Four forms. reference_id: one thing. reference_ids: up to 256, a result each with its own error. network_id: every piece of one pipe (default), cable or chute network, worst first, paged (damaged_only narrows it). None of them: scan the world for damaged and broken things, broken first then worst first, paged (8 per page).",
+        "keys": "reference_id, prefab_name, display_name, custom_name, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage, is_broken, broken_build_state, being_destroyed, pipe_burst, position, distance_m, networks [{kind, id}], results [{index, ok, reference_id, prefab_name, display_name, ...}], count, success_count, error_count, network_id, pieces, damaged_only, things [{reference_id, prefab_name, display_name, custom_name, condition, ...}], total, offset, limit, has_more, structures, broken, scanned, min_damage_ratio, local_player, resolved_networks.",
         "topics": {
           "reply": {
             "summary": "What each thing reports.",
@@ -8365,7 +8442,7 @@
       "name": "tool_info",
       "description": "The long help, in small steps: {} lists the shared topics, {tool} a tool's topics, {tool, topic} or {topic} one topic and its subtopics, {tool, topic, subtopic} the detail.\nAnswered without the game. Errors carry see: {tool, topic} naming the node that explains them.\nMore: tool_info {tool: \"tool_info\"}",
       "help": {
-        "text": "tool_info answers one help node per call, each under 1.5 KB. Start with {tool: \"<name>\"} for any tool, or {} for the topics every tool shares.",
+        "text": "tool_info answers one help node per call, each under 1.5 KB. Start with {tool: \"<name>\"} for any tool, or {} for the topics every tool shares. A tool that takes fields also answers reply_keys: its main reply keys, the names fields and omit take.",
         "topics": {
           "levels": {
             "summary": "The three levels and how to name a node.",
@@ -8397,6 +8474,7 @@
           "topic": {"type": "string"},
           "subtopic": {"type": "string"},
           "text": {"type": "string"},
+          "reply_keys": {"type": "string"},
           "topics": {"type": "array"},
           "shared_topics": {"type": "array"},
           "subtopics": {"type": "array"}
@@ -8410,6 +8488,7 @@
       "description": "Buy from the landed trader as the trade window's Buy does: the card is charged, stock drops, goods appear in the pad network's vending machines, then the card holder's inventory. dry_run prices and checks.\nMore: tool_info {tool: \"trader_buy\"}",
       "help": {
         "text": "Goods go into the first empty tradable slots, stacked to their maximum; gas into the pad network's atmosphere. Returns {reference_id, name, dry_run, credit_card_id, credits_before, credits_after, results, count, success_count, error_count, delivered, gas_atmosphere_id}. Credits are rounded to the cent; the game keeps no trader currency.",
+        "keys": "reference_id, name, dry_run, credit_card_id, credits_before, credits_after, results, count, success_count, error_count, delivered [{reference_id, slot, item, quantity}], gas_atmosphere_id.",
         "topics": {
           "lines": {
             "summary": "Each line's result and a dry run.",
@@ -8472,6 +8551,7 @@
       "description": "Every trader contact in the sky and every satellite dish with where it points. Read only.\nMore: tool_info {tool: \"trader_contacts\"}",
       "help": {
         "text": "Returns game_time_s, contacts and dishes. Whether a contact fits and can land on a pad: landing_pads. What it trades: trader_inventory. Aiming a dish: dish_aim.",
+        "keys": "game_time_s, contacts [{reference_id, trader, display_name, shuttle, pad_size_tiles, direction, elevation_deg, min_power_to_resolve_w, ...}], dishes [{reference_id, display_name, prefab_name, forward, transform_up, horizontal, vertical, finished, ...}].",
         "topics": {
           "contacts": {
             "summary": "What each contact reports.",
@@ -8499,6 +8579,7 @@
       "description": "What each trader contact buys and sells: prices, stock and wanted counts, the conditions goods must meet, and how much of what you hold meets them. Lists 2 contacts. Read only.\nMore: tool_info {tool: \"trader_inventory\"}",
       "help": {
         "text": "The game rolls a trader's inventory when the contact appears, so this works before the trader is interrogated. Leave contact_id out for every contact. Each line: item or gas name, prefab, credits per unit, wanted or in stock, and the conditions a sold item or gas must meet (purity, moles per unit, temperature range).",
+        "keys": "contacts [{reference_id, trader, display_name, shuttle, pad_size_tiles, contacted, buys, sells}].",
         "topics": {
           "have": {
             "summary": "have and sellable on lines it buys.",
@@ -8530,6 +8611,7 @@
       "description": "Sell to the landed trader as the trade window's Sell does: goods come from the pad network's vending machines, then the card holder's inventory; the card is paid. dry_run prices and checks.\nMore: tool_info {tool: \"trader_sell\"}",
       "help": {
         "text": "Whole stacks are destroyed and the last one trimmed; gas comes from the pad network's atmosphere. Returns the shape trader_buy returns, with credits_earned and wanted_after per line; delivered is empty. Credits are rounded to the cent.",
+        "keys": "reference_id, name, dry_run, credit_card_id, credits_before, credits_after, results, count, success_count, error_count, delivered [{reference_id, slot, item, quantity}], gas_atmosphere_id.",
         "topics": {
           "lines": {
             "summary": "How lines add up, and selling one entry twice.",
@@ -8592,6 +8674,7 @@
       "description": "Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure; the last 16): remove what it built, build back what it removed. Dry run by default; confirm to undo.\nMore: tool_info {tool: \"undo_job\"}",
       "help": {
         "text": "The inverse, from a snapshot taken when the job started (position, turn, build state, label). Pieces come back through place_cables, place_pipes and place_chutes (the pieces form, one run per tool and grade; a long straight as singles), so every guard applies; everything else through place_structure. paste_blueprint has its own undo. Host only.",
+        "keys": "job_id, tool, status, plan {remove, restore, diverged, notes, ready, ...}, remove_arguments, place_arguments, removal, placement, piece_runs [{tool, arguments, reply}], resolved_networks, gas_hold.",
         "topics": {
           "removal": {
             "summary": "Who removes what.",
@@ -8694,6 +8777,7 @@
       "description": "Swap cable pieces for heavy (default) or super heavy cable in place, piece for piece, as the coil's merge builds them; a whole network or chosen pieces. Dry run by default; confirm to swap.\nMore: tool_info {tool: \"upgrade_cables\"}",
       "help": {
         "text": "Each piece's replacement is the first piece of the target coil whose cells and connection ends match the old piece exactly, at the old rotation or turned: straights, corners, junctions and long straights all map. Pieces at or above the target stay. Devices connect to any cable type.",
+        "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
         "topics": {
           "report": {
             "summary": "What the dry run reports.",
@@ -8849,6 +8933,7 @@
       "description": "Swap normal pipe for insulated pipe in place (gas to insulated gas, liquid to insulated liquid), keeping the network's contents whole. As upgrade_cables, with a gas check. Dry run by default; confirm to swap.\nMore: tool_info {tool: \"upgrade_pipes\"}",
       "help": {
         "text": "Each replacement joins the network before its old piece leaves, so the network's gas is never split, vented or divided; only its volume changes by the pieces' volume difference. Pieces already insulated and members that are not pipes (vents, drains, radiators) stay. Kits instead of coils; refund gives back the normal kits.",
+        "keys": "job_id, status, ready, problems [], pieces [], by_prefab [], kept_pieces [], swapped [], removed [], not_swapped [], refund [], preflight_summary, final_check, verification, gas_check, error.",
         "topics": {
           "report": {
             "summary": "The pipe numbers in the report.",
@@ -9012,6 +9097,7 @@
       "description": "What each Ingot Vault stores, read from its own store to 1e-6: ingots as grams of reagent, ores and ices as counts; plus every Remote Vault's link. Read only.\nMore: tool_info {tool: \"vault_contents\"}",
       "help": {
         "text": "Returns {vaults [{vault, position, on_off, powered, stock [{kind (ingot or ore), prefab_name (the item a vend makes), display_name, reagent, max_stack, quantity}], pending_vends}], remote_vaults [{remote, vault_id, connection (None, NoVaultDetected, MultipleVaultsDetected, VaultPoweredOff)}], count}. pending_vends: vends taken off the store and not yet made into the export slot.",
+        "keys": "vaults [{vault, position, on_off, powered, stock, pending_vends}], remote_vaults [{remote, vault_id, connection}], count.",
         "shared": ["vaults"]
       },
       "class": "read",
@@ -9034,6 +9120,7 @@
       "description": "Put ingots, ores and ices straight into an Ingot Vault's store from wherever they are, with the vault's own bookkeeping; by id, in part, or by a filter over the world. Dry run by default; confirm to do it.\nMore: tool_info {tool: \"vault_deposit\"}",
       "help": {
         "text": "Each item is added to the store (an ingot's reagents times its grams; an ore's or ice's count) and destroyed, or only the part asked is taken off a stack. The vault's rule decides what it takes: ingots and ores (ices, slag and organics are ores) whose slot class fits its import slot. Host only.",
+        "keys": "dry_run, vault {reference_id, prefab_name, display_name}, via {reference_id, prefab_name, display_name}, matched, skipped, truncated, items {results, count, success_count, error_count}, stock [{kind, prefab_name, display_name, reagent, before, change, after}].",
         "topics": {
           "forms": {
             "summary": "items, reference_ids, or a filter.",
@@ -9130,6 +9217,7 @@
       "description": "Take an amount of one stored thing out of an Ingot Vault and make it straight into a holder's slots, as the vault's own vend counts it. Dry run by default; confirm to do it.\nMore: tool_info {tool: \"vault_withdraw\"}",
       "help": {
         "text": "Name it by one of prefab_name, prefab_hash or reagent; quantity (grams of ingot, a whole count of ore) at most what the vault holds. The store goes down as a vend takes it and the same amount is made as items, never more per item than a full stack. If a game call fails part way, whatever it did not make goes back into the store. Host only.",
+        "keys": "dry_run, vault {reference_id, prefab_name, display_name}, via {reference_id, prefab_name, display_name}, to {reference_id, prefab_name, display_name}, quantity, placed [{where, slot, quantity, reference_id}], stock [{kind, prefab_name, display_name, reagent, before, change, after}].",
         "topics": {
           "delivery": {
             "summary": "Where the items go.",
@@ -9200,6 +9288,7 @@
       "description": "A text elevation of one 2 m face plane as seen from one side, 0.5 m per character: walls, windows, doors, frames, pieces and devices; with free_rects, where a rectangle fits. Read only.\nMore: tool_info {tool: \"wall_map\"}",
       "help": {
         "text": "plane (\"z=668\") with around and side (default the side in a room), or looking: true (the face your look ray hits, seen from your side); radius_m default 4, max 16. Returns plane, side, right and up (the axes a column and a row step along), rows, top_left, sections, things, legend and free_rects.",
+        "keys": "plane, side, right, up, rows, top_left {x, y, z}, sections [{face, look, reference_id, prefab_name}], things [{key, reference_id, prefab_name, display_name, position}], free_rects [{row, column, centre, cells_wide, cells_high}], legend, view {source, age_s}.",
         "topics": {
           "rows": {
             "summary": "How to read the rows.",
@@ -9275,6 +9364,7 @@
       "description": "Every canister, tank, device and pipe network holding water, polluted water or steam, with location, pressure, temperature and water in moles, litres and hydration; largest first. Lists 15. Read only.\nMore: tool_info {tool: \"water_sources\"}",
       "help": {
         "text": "Room and world air, bodies, organs, bottles and packets (consumables lists those) are left out. Sources under min_mol (default 1 mol, 0.018 L) are skipped. Water is drunk through a water bottle filler or a drinking fountain on a pipe network; polluted water needs a water purifier first and steam must condense. owner.kind is item, structure, dynamic (a portable tank) or pipe_network.",
+        "keys": "sources [{kind, owner, atmosphere_id, volume_l, pressure_kpa, temperature_k, water}], count, totals {liquid_mol, liquid_l, hydration, polluted_mol, polluted_l, ...}, min_mol, local_player {reference_id, display_name, position}.",
         "topics": {
           "timing": {
             "summary": "When new sources appear.",
@@ -9400,6 +9490,7 @@
       "description": "Write up to 256 logic values in order in one call; each result stands alone, by index, with its own error.\nMore: tool_info {tool: \"write_logic_many\"}",
       "help": {
         "text": "Each result is {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value read back as write_logic does), or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read.",
+        "keys": "gateway_id, results, count, success_count, error_count.",
         "shared": ["gateways", "logic"]
       },
       "class": "write",

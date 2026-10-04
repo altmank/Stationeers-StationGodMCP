@@ -164,7 +164,7 @@ public sealed class ShapingTests
         string shaped = ShapingChecks.ModFields(
             """{"slots":[{"index":0,"occupant":{"prefab_name":"A"}}]}""", new[] { "index", "occupant.colour" });
 
-        Assert.Equal("""{"slots":[{"index":0,"occupant":{}}],"fields_unmatched":["occupant.colour"]}""", shaped);
+        Assert.Equal("""{"slots":[{"index":0,"occupant":{}}],"fields_unmatched":["occupant.colour"],"fields_valid":["index","occupant","slots"]}""", shaped);
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public sealed class ShapingTests
         string shaped = ShapingChecks.ModFields(
             """{"things":[{"position":{"x":1}}]}""", new[] { "position", "things.position.x", "things.position.w" });
 
-        Assert.Equal("""{"things":[{"position":{"x":1}}],"fields_unmatched":["things.position.w"]}""", shaped);
+        Assert.Equal("""{"things":[{"position":{"x":1}}],"fields_unmatched":["things.position.w"],"fields_valid":["position","things"]}""", shaped);
     }
 
     [Theory]
@@ -276,7 +276,7 @@ public sealed class ShapingTests
         string shaped = ShapingChecks.ModFields(
             """{"count":1,"things":[{"x":1,"prefab-name":"a"}]}""", new[] { "x", selector });
 
-        Assert.Equal($$"""{"count":1,"things":[{"x":1}],"fields_unmatched":["{{selector}}"]}""", shaped);
+        Assert.Equal($$"""{"count":1,"things":[{"x":1}],"fields_unmatched":["{{selector}}"],"fields_valid":["count","prefab-name","things","x"]}""", shaped);
     }
 
     [Fact]
@@ -284,8 +284,77 @@ public sealed class ShapingTests
     {
         ShapeRequest shape = ShapeRequest.Lenient(JObject.Parse("""{"fields":["x",7,{"a":1}]}"""))!;
 
-        Assert.Equal("""{"things":[{"x":1}],"fields_unmatched":["7","{\"a\":1}"]}""",
+        Assert.Equal("""{"things":[{"x":1}],"fields_unmatched":["7","{\"a\":1}"],"fields_valid":["things","x","y"]}""",
             ShapingChecks.Mod(ShapingChecks.Parse("""{"things":[{"x":1,"y":2}]}"""), shape).Json);
+    }
+
+    // ---- fields on single-object replies (looking_at, describe_prefab) ----
+
+    private const string LookingAt =
+        """{"player":{"reference_id":"1","name":"Me"},"target":{"reference_id":"5","prefab_name":"StructureTank","display_name":"Tank","custom_name":"Fuel"},"interactable":null,"view":{"eye":{"x":1},"yaw_deg":90.0},"hit":{"point":{"x":2},"thing":"5"}}""";
+
+    [Fact]
+    public void ASingleNameKeepsATopLevelKeyWhole()
+    {
+        Assert.Equal("""{"target":{"reference_id":"5","prefab_name":"StructureTank","display_name":"Tank","custom_name":"Fuel"},"interactable":null}""",
+            ShapingChecks.ModFields(LookingAt, new[] { "target" }));
+    }
+
+    [Fact]
+    public void APathKeepsPartOfATopLevelObject()
+    {
+        Assert.Equal("""{"target":{"reference_id":"5","custom_name":"Fuel"},"interactable":null}""",
+            ShapingChecks.ModFields(LookingAt, new[] { "target.reference_id", "target.custom_name" }));
+    }
+
+    [Fact]
+    public void SingleNamesShapeEachTopLevelObjectAsAnEntry()
+    {
+        Assert.Equal(
+            """{"player":{"reference_id":"1"},"target":{"reference_id":"5","prefab_name":"StructureTank","display_name":"Tank"},"interactable":null,"fields_unmatched":["label"],"fields_valid":["custom_name","display_name","eye","hit","interactable","name","player","point","prefab_name","reference_id","target","thing","view","yaw_deg"]}""",
+            ShapingChecks.ModFields(LookingAt, new[] { "reference_id", "prefab_name", "display_name", "label" }));
+    }
+
+    [Fact]
+    public void OmitShapesASingleObjectReply()
+    {
+        Assert.Equal("""{"target":{"reference_id":"5","prefab_name":"StructureTank","display_name":"Tank","custom_name":"Fuel"},"interactable":null}""",
+            ShapingChecks.ModOmit(LookingAt, new[] { "player", "view", "hit" }));
+    }
+
+    [Fact]
+    public void ABareOmitNameReachesIntoEachTopLevelObjectAndEntry()
+    {
+        string reply = """{"target":{"reference_id":"5","body":{"origin":{"x":1}}},"view":{"eye":{"x":1}},"things":[{"id":"1","body":{}},{"id":"2"}],"interactable":null}""";
+
+        Assert.Equal("""{"target":{"reference_id":"5"},"things":[{"id":"1"},{"id":"2"}],"interactable":null}""",
+            ShapingChecks.ModOmit(reply, new[] { "view", "body" }));
+        Assert.Equal("""{"target":{"reference_id":"5"},"view":{"eye":{"x":1}},"things":[{"id":"1","body":{}},{"id":"2"}],"interactable":null}""",
+            ShapingChecks.ModOmit(reply, new[] { "target.body" }));
+        Assert.Equal("""{"target":{"reference_id":"5","body":{"origin":{"x":1}}},"view":{"eye":{"x":1}},"things":[{"id":"1","body":{}},{"id":"2"}],"interactable":null,"omit_unmatched":["origin"]}""",
+            ShapingChecks.ModOmit(reply, new[] { "origin" }));
+    }
+
+    [Fact]
+    public void ANamedListKeepsWholeEntriesAndOtherListsGo()
+    {
+        string prefab = """{"prefab_name":"StructurePump","allowed_rotations":[{"facing":"+x"}],"small_cells":[[0,0,0]],"ports":[{"index":0,"type":"Pipe","role":"Input"}],"render_box":{"min":{"x":0}}}""";
+
+        Assert.Equal("""{"prefab_name":"StructurePump","ports":[{"index":0,"type":"Pipe","role":"Input"}]}""",
+            ShapingChecks.ModFields(prefab, new[] { "ports" }));
+    }
+
+    [Fact]
+    public void AnEmptyListStaysAndReportsNothing()
+    {
+        Assert.Equal("""{"count":0,"things":[]}""",
+            ShapingChecks.ModFields("""{"count":0,"things":[],"local_player":{"reference_id":"1"}}""", new[] { "custom_name" }));
+    }
+
+    [Fact]
+    public void WithoutFieldsASingleObjectReplyIsWrittenWhole()
+    {
+        Assert.Equal(LookingAt, ShapingChecks.Mod(ShapingChecks.Parse(LookingAt), ShapingChecks.Nothing).Json);
     }
 
     [Fact]

@@ -268,9 +268,13 @@ selector = name *( "." name )
 name     = 1*( ALPHA / DIGIT / "_" )
 ```
 
-A selector with one name, such as `reference_id`, means what `fields` means today in the sidecar
-(`ReplyShaping.cs:55-98`): in every object entry of every top-level list of the reply, keep that key. It does not touch
-top-level keys that are not lists, nor entries that are not objects.
+At the reply's top-level object: a key that a single-name selector names is kept whole; a key a path starts at is kept
+with only what the paths reach inside it; a number, string, boolean or null is kept; every other list or object is
+shaped as below and left out when it had something and kept none of it (an empty list stays). A list nothing names
+keeps only its object entries.
+
+A selector with one name, such as `reference_id`, keeps that key in every object entry of every top-level list and
+inside every top-level object (each treated as one entry).
 
 A selector with two or more names is a path, read two ways. From each object entry of every top-level list:
 `occupant.prefab_name` keeps the key `occupant` of each entry and, inside its object value, only `prefab_name`, and so
@@ -283,9 +287,9 @@ When several selectors keep the same key at the same place, the key is kept with
 it; a selector that names a key without going deeper keeps that key's whole value.
 
 After applying the selectors, the mod adds `fields_unmatched` to the reply's top-level object, an array of every
-selector that matched no key in any entry, when the reply had at least one object entry in a top-level list. This is
-today's rule (`ReplyShaping.cs:89-94`) extended to paths. A reply with no list entries gets no `fields_unmatched`, as
-today.
+selector that matched no key, and `fields_valid`, the keys the reply had (its top-level keys and the keys of the
+entries and objects it shaped, sorted, at most 100, including costly keys the handler skipped). A reply with an empty
+top-level list and no list entry gets neither: the name may be missing only because nothing was listed.
 
 Compatibility. Every `fields` value the sidecar accepts (an array of at least one string, no further limits) is
 accepted through the sidecar, with the old results for single names: a selector that does not follow the grammar (a
@@ -296,8 +300,9 @@ lists such a selector in `fields_unmatched`.
 
 `omit` leaves keys out instead of keeping them. Each selector is a path from the reply's top-level object: `source`
 leaves out the key `source`, `runtime.registers` leaves `registers` out of the object `runtime`; a list on the way
-applies the rest of the path to each of its object entries (`members.position`). `omit` reaches top-level keys that are
-not lists, which `fields` never touches, and wins over `fields` where both name a key. The mod adds `omit_unmatched`,
+applies the rest of the path to each of its object entries (`members.position`). A selector with one name also leaves
+that key out of every top-level object and every object entry of a top-level list (`body` leaves out `target.body`).
+`omit` wins over `fields` where both name a key. The mod adds `omit_unmatched`,
 an array of every `omit` selector that left nothing out (a path below an omitted key counts as applied), to the reply's
 top-level object. Selectors that do not follow the grammar are treated as for `fields`, reported in `omit_unmatched`.
 

@@ -3,6 +3,7 @@
   "summary": "Every rocket, or one, read from the game: where it is and where it goes, mass, fuel lines, engines, thrust, landing confidence, cargo, power, burn time. compact and parts shape it. Read only.",
   "help": {
     "text": "explanations (what the thrust and landing numbers mean) come once per reply. compact leaves out mass parts, fuel tanks, power devices and checks. parts lists every part with its pose, enough to build the rocket again.",
+    "keys": "rockets [{reference_id, network_id, name, automated_landing, auto_shut_off, manned, re_entry_profile, re_entry_altitude_m, ...}], count, explanations.",
     "topics": {
       "where": {
         "summary": "State, nodes and the route.",

@@ -3,6 +3,7 @@
   "summary": "The lint rule set lint_layout audits with and the building tools run on dry runs: list the rules, validate a rule file, list fields and functions, run the examples, explain a finding. Read only.",
   "help": {
     "text": "action: list (default), validate, fields, functions, test or explain. Every reply has rule_source {mod_file, save_file, rules, from_save, disabled, errors}. Nothing is written. rule_not_found and subject_not_found name what is missing.",
+    "keys": "action, rule_source {mod_file, save_file, rules, from_save, disabled, ...}, rules [{id, level, level_when, on, source, file, description, select, ...}], types [{name, doc, fields}], sets, functions [{name, signature, doc, form, cached}], tests [{id, passed, examples}], all_passed, explained [{rule, subject, outcome, level, message, error, values}], valid.",
     "topics": {
       "format": {
         "summary": "What a rule holds.",

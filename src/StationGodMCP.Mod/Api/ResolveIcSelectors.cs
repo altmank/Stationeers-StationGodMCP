@@ -35,6 +35,12 @@ internal static class ResolveIcSelectorsApi
         IList<ILogicable?> devices = ic.GetPins();
         for (int index = 0; index < devices.Count; index++)
         {
+            // A pin with no device carries nothing: left out, the selector of each pin listed names it.
+            if (devices[index] == null)
+            {
+                continue;
+            }
+
             ScopedTarget? target = ScopedTarget.From(devices[index]);
             pins.Add(new PinTargetView(index, devices[index] != null,
                 target == null ? null : Devices.ViewOf(target, scope)));

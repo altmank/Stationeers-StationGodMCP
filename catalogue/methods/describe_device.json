@@ -3,6 +3,7 @@
   "summary": "Describe one device: every logic type it can read and write, and its rocket, umbilical and uplink details where it has them. Read only.",
   "help": {
     "text": "Lists every logic type the device reports as readable or writable. Mod logic types without a name are read and written by number.",
+    "keys": "device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, rocket {network_id, name, state, dry_mass_kg, hull_pieces, ...}, umbilical {role, open, partner, partner_distance, search}, uplink {downlink, connected, choices}, logic_types [{id, name, readable, writable}], logic_type_count.",
     "topics": {
       "rocket": {
         "summary": "A device in a rocket: the rocket it belongs to.",

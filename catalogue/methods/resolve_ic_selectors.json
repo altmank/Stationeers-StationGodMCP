@@ -2,7 +2,8 @@
   "name": "resolve_ic_selectors",
   "summary": "Resolve a circuit holder's db and d0 to d5 pins and aliases, and report prefab and name-hash selectors (lbn, sbn) for the devices its batch instructions reach. Lists 12 by default. Read only.",
   "help": {
-    "text": "lb, lbn, sb and sbn walk only the holder's data network, so stable_selectors lists the devices on it the scope shows; batch_device_count is how many (null: no data network, and batch instructions fail). A selector is unique when exactly one device on that network has the pair. Renaming a device alters its name hash. For a Console or Computer Lua board, db is the computer.",
+    "text": "lb, lbn, sb and sbn walk only the holder's data network, so stable_selectors lists the devices on it the scope shows; batch_device_count is how many (null: no data network, and batch instructions fail). A selector is unique when exactly one device on that network has the pair. Renaming a device alters its name hash. For a Console or Computer Lua board, db is the computer. pins lists only the pins with a device on them.",
+    "keys": "gateway_id, reference_id, db {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, pins [{selector, connected, target}], aliases [{name, target, index}], stable_selectors [{reference_id, display_name, prefab_name, prefab_hash, name_hash, selector_kind, reachable, unique, ...}], stable_selector_count, batch_device_count.",
     "topics": {
       "targets": {
         "summary": "target_reference_ids and devices off the network.",

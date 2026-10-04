@@ -80,6 +80,9 @@ internal sealed class IcPinView
     /// <summary>Whether the chip reaches the device through the pin right now.</summary>
     public bool Reachable { get; }
 
+    /// <summary>No device and no alias: a pin replies leave out.</summary>
+    internal bool HoldsNothing => ReferenceId == null && Label == null;
+
     internal static string PinName(int index) =>
         "d" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

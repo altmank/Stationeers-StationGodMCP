@@ -3,6 +3,7 @@
   "summary": "Remove structures by id (up to 256, one job) as deconstructing by hand would, refunding every build state down to the kit where refund_to says. Guards for contents, breaches, bursts and broken pieces. Dry run by default; confirm to remove.",
   "help": {
     "text": "Cable, pipe and chute pieces are removed as the remove tools remove them, their checks applying (would_split is only a warning here). The job holds the tick, checks again, removes everything in one frame, delivers the refund and verifies every piece is gone. ground as one word puts each refund where its piece stood.",
+    "keys": "job_id, status, ready, problems [], warnings [], placements [], materials [], removals [], refund [], will_burst [], preflight_summary, result, final_check, log, verification, gas_check, error.",
     "topics": {
       "refusals": {
         "summary": "Always refused.",

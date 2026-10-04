@@ -3,6 +3,7 @@
   "summary": "Fly a copy of a rocket to a node, tick by tick, and report each leg: launch, hops, parking, re-entry and landing, fuel, power, thrust and the verdict. What-ifs for fuel, cargo and power. The game is not touched.",
   "help": {
     "text": "Destination: to, else the rocket's target, else its pad. Each engine flies by its own feed law; thrust is the game's own combustion run on a copy of what each tick draws. Lines hold gas and liquid; tanks mix with their pipe by volume every tick. Plus route, uncharted, assumptions, succeeded and verdict.",
+    "keys": "rocket_id, rocket_name, start_state, destination {reference_id, name, code, code_value, type, ...}, route [{from, to, to_code, distance, done, charted}], uncharted, assumptions, legs [{kind, from, to, distance, outcome, detail, seconds, burn_seconds, ...}], succeeded, verdict, fuel_now_mol, least_fuel_mol, landing_limits {max_landing_mass_kg, max_fuel_plus_cargo_kg, min_fuel_mol, max_fuel_mol, survivable_thrust_drop_pct, ...}, profiles [{profile, altitude_m, outcome, fuel_used_mol, confidence, seconds, touchdown_speed_ms, survivable_thrust_drop_pct}], column {clear, from_y, to_y, blockers, more}, combustion {rate, source, note}, mining {site, kind, collectable, units_per_hour, units_in_stop, ...}.",
     "topics": {
       "simulation": {
         "summary": "What is simulated, and what is not.",

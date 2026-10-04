@@ -253,12 +253,13 @@ internal sealed class SurveyDoorView
 }
 
 /// <summary>
-/// A cable, pipe or chute piece: where it stands, its cells when more than one, its ends as world axes from its own
-/// cells, its network and grade.
+/// A cable, pipe or chute piece: where it stands, when it fills more than one small cell their count and box (and with
+/// include_piece_cells each cell), its ends as world axes from its own cells, its network and grade.
 /// </summary>
 internal sealed class SurveyPieceView
 {
-    internal SurveyPieceView(ThingView piece, string kind, PositionView at, List<PositionView>? cells,
+    internal SurveyPieceView(ThingView piece, string kind, PositionView at, PieceCellsView? extent,
+        List<PositionView>? cells,
         List<string> ends, ThingId? networkId, string? grade, RunFlowView? flow = null, ThingView? carries = null,
         List<UpgradeAmountView>? refund = null)
     {
@@ -267,6 +268,8 @@ internal sealed class SurveyPieceView
         Kind = kind;
         PrefabName = piece.PrefabName;
         At = at;
+        CellCount = extent?.Count;
+        CellBox = extent?.Box;
         Cells = cells;
         Ends = ends;
         NetworkId = networkId;
@@ -284,6 +287,15 @@ internal sealed class SurveyPieceView
 
     public PositionView At { get; }
 
+    /// <summary>The small cells a piece of more than one fills; left out for a one-cell piece.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? CellCount { get; }
+
+    /// <summary>The box those cells fill; left out for a one-cell piece.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public BoxView? CellBox { get; }
+
+    /// <summary>include_piece_cells: each cell's centre, for a piece of more than one cell.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<PositionView>? Cells { get; }
 
@@ -305,6 +317,20 @@ internal sealed class SurveyPieceView
     /// <summary>include_refund: what removing the piece gives back (remove_* refunds the same).</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<UpgradeAmountView>? Refund { get; }
+}
+
+/// <summary>How many small cells a piece fills, and the box they fill.</summary>
+internal sealed class PieceCellsView
+{
+    internal PieceCellsView(int count, BoxView box)
+    {
+        Count = count;
+        Box = box;
+    }
+
+    internal int Count { get; }
+
+    internal BoxView Box { get; }
 }
 
 internal sealed class SurveyDeviceView

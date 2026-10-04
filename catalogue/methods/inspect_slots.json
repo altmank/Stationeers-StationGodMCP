@@ -3,6 +3,7 @@
   "summary": "Inspect a device's slots: occupants, what each slot takes, and every readable slot logic value. Lists 5 slots by default; slot_index reads one. Read only.",
   "help": {
     "text": "Devices only (things with logic): a crate, a lander or a tool answers device_not_found saying it is not a device; container_contents shows the slots of any thing. interactable false marks a hidden slot, which move_item refuses. truncated gives the slot count; list_limits {slots: n} keeps more.",
+    "keys": "gateway_id, reference_id, device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, slots [{index, underlying_slot_index, display_name, string_key, slot_class, empty, interactable, locked, ...}], count, total_slots.",
     "shared": ["gateways", "logic", "truncation"]
   },
   "class": "read",

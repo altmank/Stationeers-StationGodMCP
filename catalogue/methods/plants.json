@@ -3,6 +3,7 @@
   "summary": "Every plant in trays, planters and stations, read from the plant itself: stage, maturity, health, problems, time to harvest. Short by default; verbose or reference_id gives a plant in full. Lists 15. Read only.",
   "help": {
     "text": "In short: reference_id, prefab_name, display_name, planted, tray, stage, stage_count, maturity_ratio, ready_to_harvest, dead, health_percent, problems and harvest_in_s. Works for trays with no data port. include_unplanted adds harvested crops and seed bags. Times are game seconds, efficiency parts are multipliers, temperatures kelvin.",
+    "keys": "game_time_s, day_length_s, debug_fast_growth, plants, count.",
     "topics": {
       "full": {
         "summary": "What a plant in full reports.",

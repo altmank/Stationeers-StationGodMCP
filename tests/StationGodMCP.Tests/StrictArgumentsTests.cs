@@ -135,7 +135,7 @@ public sealed class StrictArgumentsTests
             new HashSet<string> { "things" }, problems);
 
         Assert.NotNull(lenient);
-        Assert.Equal("""{"things":[{"x":1}],"fields_unmatched":["prefab-name"]}""",
+        Assert.Equal("""{"things":[{"x":1}],"fields_unmatched":["prefab-name"],"fields_valid":["things","x","y"]}""",
             ShapingChecks.Mod(ShapingChecks.Parse("""{"things":[{"x":1,"y":2}]}"""), lenient!).Json);
         Assert.Null(strict);
         Assert.Equal(2, problems.Count);

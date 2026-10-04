@@ -3,6 +3,7 @@
   "summary": "The game's closed rooms measured cell by cell: volume, pressure, temperature, gases, heat, bounds. Every room, or the room one thing is in. Lists 10. Read only.",
   "help": {
     "text": "A room is a closed flood fill of 2 m cells (at most 1200; a bigger or open space is outside). The air is summed fresh from each cell, as the game pools a room. Largest room first, with count and local_player_room_id. Devices come with include_devices, cell centres with include_cells.",
+    "keys": "rooms [{room_id, room_type, cell_count, volume_l, pressure_kpa, temperature_k, total_mol, heat_capacity_j_per_k, ...}], count, local_player_room_id.",
     "topics": {
       "reply": {
         "summary": "What each room reports.",

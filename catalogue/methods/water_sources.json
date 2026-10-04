@@ -3,6 +3,7 @@
   "summary": "Every canister, tank, device and pipe network holding water, polluted water or steam, with location, pressure, temperature and water in moles, litres and hydration; largest first. Lists 15. Read only.",
   "help": {
     "text": "Room and world air, bodies, organs, bottles and packets (consumables lists those) are left out. Sources under min_mol (default 1 mol, 0.018 L) are skipped. Water is drunk through a water bottle filler or a drinking fountain on a pipe network; polluted water needs a water purifier first and steam must condense. owner.kind is item, structure, dynamic (a portable tank) or pipe_network.",
+    "keys": "sources [{kind, owner, atmosphere_id, volume_l, pressure_kpa, temperature_k, water}], count, totals {liquid_mol, liquid_l, hydration, polluted_mol, polluted_l, ...}, min_mol, local_player {reference_id, display_name, position}.",
     "topics": {
       "timing": {
         "summary": "When new sources appear.",
