@@ -24,8 +24,8 @@ public sealed class PlantGenesWireTests
     {
         new
         {
-            gene = "LightPerDay", value = (float?)0.25f, min = -1f, max = 1f, stability = (float?)0.1f,
-            stability_min = -1f, stability_max = 1f, meaning = "Seconds of light.",
+            gene = "LightPerDay", value = (float?)0.25f, stability = (float?)0.1f,
+            meaning = "Seconds of light.",
             effect = new JObject
             {
                 ["stat"] = "LightPerDay", ["base_s"] = 300f, ["now_s"] = 281.25f, ["at_min_s"] = 375f,
@@ -34,8 +34,8 @@ public sealed class PlantGenesWireTests
         },
         new
         {
-            gene = "WaterUsage", value = (float?)-0.5f, min = -1f, max = 1f, stability = (float?)0f,
-            stability_min = -1f, stability_max = 1f, meaning = "Multiplies water.",
+            gene = "WaterUsage", value = (float?)-0.5f, stability = (float?)0f,
+            meaning = "Multiplies water.",
             effect = new JObject
             {
                 ["stat"] = "WaterUsage", ["base_factor"] = 1f, ["now_factor"] = 0.875f, ["at_min_factor"] = 0.75f,
@@ -44,8 +44,8 @@ public sealed class PlantGenesWireTests
         },
         new
         {
-            gene = "LowTemperatureResistance", value = (float?)0f, min = -1f, max = 1f, stability = (float?)0f,
-            stability_min = -1f, stability_max = 1f, meaning = "Moves the low end.",
+            gene = "LowTemperatureResistance", value = (float?)0f, stability = (float?)0f,
+            meaning = "Moves the low end.",
             effect = new JObject
             {
                 ["stat"] = "GrowTemperature",
@@ -56,8 +56,8 @@ public sealed class PlantGenesWireTests
         },
         new
         {
-            gene = "HighPressureResistance", value = (float?)0f, min = -1f, max = 1f, stability = (float?)0f,
-            stability_min = -1f, stability_max = 1f, meaning = "Moves the high end.",
+            gene = "HighPressureResistance", value = (float?)0f, stability = (float?)0f,
+            meaning = "Moves the high end.",
             effect = new JObject
             {
                 ["stat"] = "GrowPressure",
@@ -68,8 +68,8 @@ public sealed class PlantGenesWireTests
         },
         new
         {
-            gene = "DarknessTolerance", value = (float?)null, min = -1f, max = 1f, stability = (float?)null,
-            stability_min = -1f, stability_max = 1f, meaning = (string?)null, effect = (JObject?)null
+            gene = "DarknessTolerance", value = (float?)null, stability = (float?)null,
+            effect = (JObject?)null
         }
     };
 

@@ -40,7 +40,7 @@
         "type": "integer",
         "minimum": 1,
         "maximum": 1000,
-        "description": "network_id only: members per page, default 200."
+        "description": "network_id only: members per page, default 40 (200 before 1.14.0)."
       },
       "offset": {
         "type": "integer",

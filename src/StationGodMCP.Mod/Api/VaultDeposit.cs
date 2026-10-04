@@ -122,7 +122,7 @@ internal sealed class DepositEntry
 /// <summary>The three forms: items [{reference_id, quantity}], reference_ids [...], or a filter over every item.</summary>
 internal sealed class DepositRequest
 {
-    private const int DefaultLimit = 256;
+    private const int DefaultLimit = ReplyDefaults.VaultDepositItems;
 
     private static readonly string[] FilterArguments =
         { "prefab_contains", "name_contains", "location", "within_id", "near_player_m", "kind", "limit" };

@@ -31,7 +31,12 @@
         },
         "description": "Optional logic types to read. Omit to read every logic type each matching device exposes."
       },
-      "max_devices": {"type": "integer", "minimum": 1, "maximum": 256, "description": "Maximum returned devices; defaults to 256."}
+      "max_devices": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 256,
+        "description": "Maximum returned devices; defaults to 2 (256 before 1.14.0; narrow with the filters)."
+      }
     },
     "additionalProperties": false
   },

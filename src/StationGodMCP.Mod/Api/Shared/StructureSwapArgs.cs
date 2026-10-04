@@ -80,6 +80,7 @@ internal sealed class StructureSwapArguments
         RefundTo = options.RefundTo;
         SkipUnmatched = options.SkipUnmatched;
         Limit = options.Limit;
+        IncludeNotes = options.IncludeNotes;
     }
 
     /// <summary>The target prefab name; null for replace_frames' default (each frame's own prefab).</summary>
@@ -102,15 +103,19 @@ internal sealed class StructureSwapArguments
     internal bool SkipUnmatched { get; }
 
     internal int Limit { get; }
+
+    /// <summary>include_notes: the report carries the tool's fixed explanations.</summary>
+    internal bool IncludeNotes { get; }
 }
 
 internal sealed class StructureSwapOptions
 {
-    internal StructureSwapOptions(RefundRoute refundTo, bool skipUnmatched, int limit)
+    internal StructureSwapOptions(RefundRoute refundTo, bool skipUnmatched, int limit, bool includeNotes = false)
     {
         RefundTo = refundTo;
         SkipUnmatched = skipUnmatched;
         Limit = limit;
+        IncludeNotes = includeNotes;
     }
 
     internal RefundRoute RefundTo { get; }
@@ -118,6 +123,8 @@ internal sealed class StructureSwapOptions
     internal bool SkipUnmatched { get; }
 
     internal int Limit { get; }
+
+    internal bool IncludeNotes { get; }
 }
 
 /// <summary>
@@ -127,13 +134,13 @@ internal sealed class StructureSwapOptions
 internal static class StructureSwapArgs
 {
     internal const int MaximumPieces = 4096;
-    internal const int DefaultLimit = 200;
+    internal const int DefaultLimit = ReplyDefaults.SwapListed;
     internal const int MaximumPrefabs = 64;
 
     private static readonly string[] RunArguments =
     {
         "to", "reference_ids", "room_id", "from_prefabs", "dry_run", "confirm", "from_id", "refund",
-        "refund_to", "skip_unmatched", "limit"
+        "refund_to", "skip_unmatched", "limit", "include_notes"
     };
 
     internal static StructureSwapForm Parse(Args args, bool targetRequired)
@@ -160,7 +167,8 @@ internal static class StructureSwapArgs
         StructureSwapArguments arguments = new StructureSwapArguments(Target(args, targetRequired), Scope(args),
             FromPrefabs(args), args.OptionalThingId("from_id"),
             new StructureSwapOptions(RefundArgs.RouteWithFlag(args), args.OptionalBool("skip_unmatched") ?? false,
-                args.OptionalInt("limit", 1, MaximumPieces) ?? DefaultLimit));
+                args.OptionalInt("limit", 1, MaximumPieces) ?? DefaultLimit,
+                args.OptionalBool("include_notes") ?? false));
         return new StructureSwapForm.Run(arguments, !dryRun);
     }
 

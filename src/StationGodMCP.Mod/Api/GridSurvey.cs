@@ -34,7 +34,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class GridSurveyApi
 {
-    private const int DefaultLimit = 27;
+    private const int DefaultLimit = ReplyDefaults.GridSurveyCells;
     private const int MaximumLimit = 125;
     private const long MaximumCells = 20000;
 
@@ -63,6 +63,7 @@ internal static class GridSurveyApi
         bool includeNetworks = args.OptionalBool("include_networks") ?? true;
         bool includeRefund = args.OptionalBool("include_refund") ?? false;
         SurveyNetworkFilter filter = NetworkFilter(args);
+        SurveyKinds kinds = SurveyKinds.Parse(args);
         List<GridCell> cells = Cells(args);
         Slice<GridCell> slice = Slice<GridCell>.Of(cells, page);
         GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
@@ -75,7 +76,8 @@ internal static class GridSurveyApi
             }
         }
 
-        SurveyContents contents = Contents(facts, slice.Items, sections, filter, includeNetworks, includeRefund);
+        SurveyContents contents = Contents(facts, slice.Items, sections, new SurveyFilter(filter, kinds), includeNetworks,
+            includeRefund);
         string? legend = sections.Includes(SurveySection.Cells) && !compact ? Legend : null;
         return new GridSurveyView(Slice<SurveyCellView>.Page(views, page, cells.Count), contents, sections, legend);
     }
@@ -248,7 +250,7 @@ internal static class GridSurveyApi
     }
 
     private static SurveyContents Contents(GridFacts facts, List<GridCell> cells, SurveySections sections,
-        SurveyNetworkFilter filter, bool includeNetworks, bool includeRefund)
+        SurveyFilter filter, bool includeNetworks, bool includeRefund)
     {
         Dictionary<long, SmallGrid> pieces = new Dictionary<long, SmallGrid>();
         Dictionary<long, Device> devices = new Dictionary<long, Device>();
@@ -315,7 +317,7 @@ internal static class GridSurveyApi
     }
 
     // The devices by id, those with a port on a network the filter names (every device when it names none).
-    private static List<SurveyDeviceView> DeviceViews(Dictionary<long, Device> devices, SurveyNetworkFilter filter)
+    private static List<SurveyDeviceView> DeviceViews(Dictionary<long, Device> devices, SurveyFilter filter)
     {
         List<long> ids = new List<long>(devices.Keys);
         ids.Sort();
@@ -323,7 +325,8 @@ internal static class GridSurveyApi
         foreach (long id in ids)
         {
             SurveyDeviceView view = DeviceView(devices[id]);
-            if (filter.AdmitsAny(view.Ports.ConvertAll(static port => port.NetworkId)))
+            if (filter.Networks.AdmitsAny(view.Ports.ConvertAll(static port => port.NetworkId)) &&
+                filter.Kinds.AdmitsDevice(view.Ports.ConvertAll(static port => (string?)port.Type)))
             {
                 views.Add(view);
             }
@@ -332,9 +335,10 @@ internal static class GridSurveyApi
         return views;
     }
 
-    private static void AddPiece(Dictionary<long, SmallGrid> pieces, SmallGrid? piece, SurveyNetworkFilter filter)
+    private static void AddPiece(Dictionary<long, SmallGrid> pieces, SmallGrid? piece, SurveyFilter filter)
     {
-        if (piece != null && !piece.IsBeingDestroyed && filter.Admits(NetworkIdOf(piece)))
+        if (piece != null && !piece.IsBeingDestroyed && filter.Networks.Admits(NetworkIdOf(piece)) &&
+            filter.Kinds.AdmitsPiece(KindOf(piece)))
         {
             pieces[piece.ReferenceId] = piece;
         }
@@ -378,7 +382,7 @@ internal static class GridSurveyApi
             }
         }
 
-        string kind = piece is Cable ? "cable" : piece is Pipe ? "pipe" : "chute";
+        string kind = KindOf(piece);
         IReferencable? network = NetworkOf(piece);
         if (network != null)
         {
@@ -560,5 +564,21 @@ internal static class GridSurveyApi
                cell.Chute.ChuteNetwork != null
             ? new ThingId(cell.Chute.ChuteNetwork.ReferenceId)
             : null;
+    }
+
+    private static string KindOf(SmallGrid piece) => piece is Cable ? "cable" : piece is Pipe ? "pipe" : "chute";
+
+    /// <summary>network_ids and kinds together: what a page's pieces and devices must pass.</summary>
+    private readonly struct SurveyFilter
+    {
+        internal SurveyFilter(SurveyNetworkFilter networks, SurveyKinds kinds)
+        {
+            Networks = networks;
+            Kinds = kinds;
+        }
+
+        internal SurveyNetworkFilter Networks { get; }
+
+        internal SurveyKinds Kinds { get; }
     }
 }

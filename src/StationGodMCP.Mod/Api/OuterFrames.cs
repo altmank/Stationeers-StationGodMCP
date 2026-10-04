@@ -45,7 +45,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class OuterFramesApi
 {
-    private const int DefaultLimit = 200;
+    private const int DefaultLimit = ReplyDefaults.OuterFrames;
     private const int MaximumLimit = 1000;
 
     internal static OuterFramesView Handle(Args args)

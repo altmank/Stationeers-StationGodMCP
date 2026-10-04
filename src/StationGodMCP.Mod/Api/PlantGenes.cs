@@ -51,12 +51,13 @@ internal static class PlantGenesApi
 
     internal static object Handle(Args args)
     {
+        bool meanings = args.OptionalBool("include_notes") ?? false;
         switch (GenesRequest.Parse(args))
         {
             case GenesRequest.Read read:
-                return GeneReader.Read(RequirePlant(read.Id), read.Unit);
+                return GeneReader.Read(RequirePlant(read.Id), read.Unit, meanings);
             case GenesRequest.ReadMany many:
-                return ReadMany(many.Ids);
+                return ReadMany(many.Ids, meanings);
             case GenesRequest.Write write:
                 return GeneWriter.Write(RequirePlant(write.Id), write);
             default:
@@ -64,7 +65,7 @@ internal static class PlantGenesApi
         }
     }
 
-    private static BatchResultView ReadMany(JArray ids)
+    private static BatchResultView ReadMany(JArray ids, bool meanings)
     {
         BatchBuilder batch = new BatchBuilder(ids.Count);
         for (int index = 0; index < ids.Count; index++)
@@ -78,7 +79,7 @@ internal static class PlantGenesApi
             {
                 batch.Failed(index, error!);
             }
-            else if (!GeneReader.TryRead(plant!, null, out PlantGenesView? view, out error))
+            else if (!GeneReader.TryRead(plant!, null, meanings, out PlantGenesView? view, out error))
             {
                 batch.Failed(index, error!);
             }
@@ -378,9 +379,9 @@ internal static class GeneReader
 {
     private const double CelsiusToKelvin = 273.15;
 
-    internal static PlantGenesView Read(Plant plant, int? unit)
+    internal static PlantGenesView Read(Plant plant, int? unit, bool meanings)
     {
-        if (!TryRead(plant, unit, out PlantGenesView? view, out ApiException? error))
+        if (!TryRead(plant, unit, meanings, out PlantGenesView? view, out ApiException? error))
         {
             throw error!;
         }
@@ -388,7 +389,9 @@ internal static class GeneReader
         return view!;
     }
 
-    internal static bool TryRead(Plant plant, int? unit, out PlantGenesView? view, out ApiException? error)
+    /// <summary>A plant's genes; meanings (include_notes) adds each gene's fixed explanation.</summary>
+    internal static bool TryRead(Plant plant, int? unit, bool meanings, out PlantGenesView? view,
+        out ApiException? error)
     {
         view = null;
         if (!GeneSets.TryPick(plant, unit, out GeneCollection? set, out GeneSetHeader? header, out error))
@@ -402,7 +405,8 @@ internal static class GeneReader
             set!.Lookup.TryGetValue(gene, out GeneWrapper? wrapper);
             GeneInfo? info = GeneTable.Of(gene);
             object? effect = wrapper == null ? null : EffectOf(plant, gene, wrapper.Value);
-            genes.Add(new GeneView(gene.ToString(), wrapper?.Value, wrapper?.Stability, info?.Meaning, effect));
+            genes.Add(new GeneView(gene.ToString(), wrapper?.Value, wrapper?.Stability, meanings ? info?.Meaning : null,
+                effect));
         }
 
         view = new PlantGenesView(header!, plant.StackedGeneCollections.Count, genes);

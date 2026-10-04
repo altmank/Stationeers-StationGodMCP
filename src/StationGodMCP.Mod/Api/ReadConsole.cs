@@ -11,7 +11,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class ReadConsoleApi
 {
-    private const int DefaultLines = 50;
+    private const int DefaultLines = ReplyDefaults.ConsoleLines;
 
     internal static ConsoleReadView Handle(Args args)
     {

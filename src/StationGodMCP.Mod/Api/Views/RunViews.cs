@@ -393,7 +393,7 @@ internal sealed class RunNetworksView
 /// </summary>
 internal interface IListsDevices
 {
-    /// <summary>The same view with devices left out; device_count stays.</summary>
+    /// <summary>The same view with its device (and riding item) lists left out; the counts stay.</summary>
     object WithoutDevices();
 }
 
@@ -518,8 +518,12 @@ internal sealed class RunChuteNetworkView : IListsDevices
     /// <summary>How many of its pieces carry an item now.</summary>
     public int ItemsRiding { get; }
 
-    /// <summary>The first of those items, with the piece each rides in.</summary>
-    public List<RunChuteItemView> Items { get; }
+    /// <summary>
+    /// The first of those items, with the piece each rides in; left out of a run report unless
+    /// include_network_devices, as the devices are (items_riding counts them).
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<RunChuteItemView>? Items { get; private set; }
 
     public int DeviceCount { get; }
 
@@ -531,6 +535,7 @@ internal sealed class RunChuteNetworkView : IListsDevices
     {
         RunChuteNetworkView copy = (RunChuteNetworkView)MemberwiseClone();
         copy.Devices = null;
+        copy.Items = null;
         return copy;
     }
 }
@@ -930,8 +935,8 @@ internal sealed class RunJobView
     /// <summary>The job as a brief poll gives it, with the preflight in short when summary is given.</summary>
     internal static RunJobView Brief(RunJobView job, JobPreflightSummaryView? summary) =>
         new RunJobView(job.JobId, job.Tool, job.Status, null,
-            new RunJobResultView(job.Status == RefusedStatus ? job.FinalCheck : null, job.Log, job.Verification,
-                job.Error, job.GasCheck), summary);
+            new RunJobResultView(job.Status == RefusedStatus ? job.FinalCheck : null, job.Log?.Brief(),
+                job.Verification, job.Error, job.GasCheck), summary);
 }
 
 internal sealed class RunJobResultView
@@ -957,14 +962,26 @@ internal sealed class RunJobResultView
     internal ErrorView? Error { get; }
 }
 
-/// <summary>What a run did: pieces removed, changed (old for new) and placed, coils used and given back.</summary>
+/// <summary>
+/// What a run did: pieces removed, changed (old for new) and placed, coils used and given back. A brief poll's log
+/// (Brief) counts the placed pieces instead of naming each: created_ids already holds every id built.
+/// </summary>
 internal sealed class RunLogView
 {
+    private bool _brief;
+
     public List<ThingId> Removed { get; } = new List<ThingId>();
 
     public List<UpgradeSwappedView> Changed { get; } = new List<UpgradeSwappedView>();
 
-    public List<ThingView> Placed { get; } = new List<ThingView>();
+    /// <summary>The new pieces, each named; left out of a brief poll (placed_count counts them).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ThingView>? Placed => _brief ? null : PlacedPieces;
+
+    public int PlacedCount => PlacedPieces.Count;
+
+    /// <summary>The new pieces as the builder records them.</summary>
+    internal List<ThingView> PlacedPieces { get; } = new List<ThingView>();
 
     public List<UpgradeAmountView> Used { get; } = new List<UpgradeAmountView>();
 
@@ -985,6 +1002,14 @@ internal sealed class RunLogView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ErrorView? RefundError { get; set; }
+
+    /// <summary>The same log as a brief poll gives it: placed counted, not listed.</summary>
+    internal RunLogView Brief()
+    {
+        RunLogView brief = (RunLogView)MemberwiseClone();
+        brief._brief = true;
+        return brief;
+    }
 
     internal void AddCreated(string part, ThingId id)
     {

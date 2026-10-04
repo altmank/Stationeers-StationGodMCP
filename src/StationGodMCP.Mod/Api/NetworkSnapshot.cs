@@ -26,7 +26,7 @@ internal static class NetworkSnapshotApi
         DeviceScope scope = Devices.Scope(args);
         int? prefabHash = args.OptionalInt("prefab_hash", int.MinValue, int.MaxValue);
         string? nameContains = args.OptionalString("name_contains");
-        int maximum = args.OptionalInt("max_devices", 1, MaximumDevices) ?? MaximumDevices;
+        int maximum = args.OptionalInt("max_devices", 1, MaximumDevices) ?? ReplyDefaults.SnapshotDevices;
         HashSet<long>? ids = args.Has("reference_ids") ? IdSet(args.ThingIds("reference_ids", MaximumIds)) : null;
         List<LogicType>? requested =
             args.Has("logic_types") ? Types(args.Array("logic_types", MaximumLogicTypes)) : null;

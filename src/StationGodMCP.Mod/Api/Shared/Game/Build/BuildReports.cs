@@ -48,10 +48,12 @@ internal static class BuildReports
 
     internal static PlaceReportView Of(PlacePlan plan, string status, string? jobId)
     {
+        // A report that is not ready answers its verdict in short: the layout previews only with verbose.
+        bool layouts = plan.Ready || plan.Arguments.Detail.LayoutsWhenRefused;
         List<PlacementView> placements = new List<PlacementView>(plan.Placements.Count);
         foreach (PlannedPlacement placement in plan.Placements)
         {
-            placements.Add(ViewOf(placement, plan.Arguments.FootprintCells));
+            placements.Add(ViewOf(placement, plan.Arguments.FootprintCells, layouts));
         }
 
         List<BuildMaterialView> materials = new List<BuildMaterialView>(plan.Stocks.Count);
@@ -60,7 +62,8 @@ internal static class BuildReports
             materials.Add(new BuildMaterialView(stock.Item.PrefabName, stock.Needed, stock.Available));
         }
 
-        return new PlaceReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings, PlaceNotes),
+        return new PlaceReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings,
+                plan.Arguments.Detail.Notes ? PlaceNotes : null),
             placements, materials, plan.From != null ? GameLookup.ViewOf(plan.From) : null, plan.Arguments.Free);
     }
 
@@ -78,7 +81,8 @@ internal static class BuildReports
             all.AddRange(refund);
         }
 
-        return new RemoveReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings, RemoveNotes),
+        return new RemoveReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings,
+                plan.Arguments.IncludeNotes ? RemoveNotes : null),
             removals, Amounts(all), RefundArgs.View(plan.Arguments.RefundTo),
             plan.From != null ? GameLookup.ViewOf(plan.From) : null,
             plan.Bursts.ConvertAll(static burst => new BurstView(burst)), RemovalRefundPlan(plan, all));
@@ -102,9 +106,9 @@ internal static class BuildReports
         return new RefundPlanView(RefundArgs.View(plan.Arguments.RefundTo), new List<string>(), destinations);
     }
 
-    internal static PlacementView ViewOf(PlannedPlacement placement, bool footprintCells)
+    internal static PlacementView ViewOf(PlannedPlacement placement, bool footprintCells, bool withLayout = true)
     {
-        PlacementLayoutView? layout = placement.Layout?.View;
+        PlacementLayoutView? layout = withLayout ? placement.Layout?.View : null;
         Structure? prefab = placement.Prefab;
         PlacementPrefabView prefabView = prefab != null
             ? new PlacementPrefabView(prefab.PrefabName, prefab.PrefabHash, prefab.DisplayName,

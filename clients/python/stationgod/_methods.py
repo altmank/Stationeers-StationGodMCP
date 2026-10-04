@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:f1e1174e8fc541e922bc3d63fe1083d6e5603d2d0745633ea6417b49717cde5d'
-MOD_VERSION = '1.13.0'
+CATALOGUE_HASH = 'sha256:6209343549cddd70e2559ca446943645fa42a7ae4ca770dc893c5d5a44a2892f'
+MOD_VERSION = '1.14.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -67,7 +67,8 @@ TABLE = {'catalogue': {'class': 'read',
                   'effects': [],
                   'paging': None,
                   'duration': None,
-                  'params': ['network_id',
+                  'params': ['include_notes',
+                             'network_id',
                              'reference_ids',
                              'keep_ids',
                              'only_ids',
@@ -92,7 +93,8 @@ TABLE = {'catalogue': {'class': 'read',
                  'effects': [],
                  'paging': None,
                  'duration': None,
-                 'params': ['network_id',
+                 'params': ['include_notes',
+                            'network_id',
                             'reference_ids',
                             'keep_ids',
                             'only_ids',
@@ -327,6 +329,7 @@ TABLE = {'catalogue': {'class': 'read',
                             'include_refund',
                             'sections',
                             'network_ids',
+                            'kinds',
                             'compact',
                             'limit',
                             'offset'],
@@ -658,7 +661,8 @@ TABLE = {'catalogue': {'class': 'read',
                      'effects': [],
                      'paging': None,
                      'duration': None,
-                     'params': ['placements',
+                     'params': ['include_notes',
+                                'placements',
                                 'prefab',
                                 'at',
                                 'rotation',
@@ -836,7 +840,7 @@ TABLE = {'catalogue': {'class': 'read',
                  'effects': [],
                  'paging': None,
                  'duration': None,
-                 'params': ['reference_id', 'reference_ids', 'unit', 'genes', 'force'],
+                 'params': ['reference_id', 'reference_ids', 'unit', 'genes', 'force', 'include_notes'],
                  'required': [],
                  'shaping': 'lists',
                  'protocol': False},
@@ -845,7 +849,7 @@ TABLE = {'catalogue': {'class': 'read',
             'effects': [],
             'paging': None,
             'duration': None,
-            'params': ['reference_id', 'include_unplanted'],
+            'params': ['reference_id', 'include_unplanted', 'verbose'],
             'required': [],
             'shaping': 'lists',
             'protocol': False},
@@ -997,7 +1001,8 @@ TABLE = {'catalogue': {'class': 'read',
                       'effects': [],
                       'paging': None,
                       'duration': None,
-                      'params': ['reference_ids',
+                      'params': ['include_notes',
+                                 'reference_ids',
                                  'allow_contents',
                                  'allow_breach',
                                  'allow_broken',
@@ -1019,7 +1024,8 @@ TABLE = {'catalogue': {'class': 'read',
                     'effects': [],
                     'paging': None,
                     'duration': None,
-                    'params': ['reference_ids',
+                    'params': ['include_notes',
+                               'reference_ids',
                                'room_id',
                                'to',
                                'from_prefabs',
@@ -1041,7 +1047,8 @@ TABLE = {'catalogue': {'class': 'read',
                    'effects': [],
                    'paging': None,
                    'duration': None,
-                   'params': ['reference_ids',
+                   'params': ['include_notes',
+                              'reference_ids',
                               'room_id',
                               'to',
                               'from_prefabs',
@@ -1313,7 +1320,8 @@ TABLE = {'catalogue': {'class': 'read',
                     'effects': [],
                     'paging': None,
                     'duration': None,
-                    'params': ['network_id',
+                    'params': ['include_notes',
+                               'network_id',
                                'wait',
                                'reference_ids',
                                'to',
@@ -1334,7 +1342,8 @@ TABLE = {'catalogue': {'class': 'read',
                    'effects': [],
                    'paging': None,
                    'duration': None,
-                   'params': ['network_id',
+                   'params': ['include_notes',
+                              'network_id',
                               'wait',
                               'reference_ids',
                               'to',
@@ -1477,19 +1486,19 @@ class Methods:
         """
         return self.call('check_replaceable', **{'reference_ids': reference_ids}, **options)
 
-    def clean_cables(self, *, network_id: str | dict | None = None, reference_ids: list | None = None, keep_ids: list | None = None, only_ids: list | None = None, older_than_id: str | None = None, root: str | None = None, wait: bool | None = None, operations: list | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
+    def clean_cables(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, reference_ids: list | None = None, keep_ids: list | None = None, only_ids: list | None = None, older_than_id: str | None = None, root: str | None = None, wait: bool | None = None, operations: list | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
         """Tidy cable networks in place with one or more operations, each usable alone or together (operations, default ["simplify_junctions"]; they run in the order remove_dead_ends, remove_loops, split_long_straights or merge_straights, simplify_junctions, each on what the earlier ones leave).
 
-        Class: write (other classes at some arguments). Arguments: network_id, reference_ids, keep_ids, only_ids, older_than_id, root, wait, operations, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
+        Class: write (other classes at some arguments). Arguments: include_notes, network_id, reference_ids, keep_ids, only_ids, older_than_id, root, wait, operations, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
-        return self.call('clean_cables', **{'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
+        return self.call('clean_cables', **{'include_notes': include_notes, 'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
-    def clean_pipes(self, *, network_id: str | dict | None = None, reference_ids: list | None = None, keep_ids: list | None = None, only_ids: list | None = None, older_than_id: str | None = None, root: str | None = None, wait: bool | None = None, operations: list | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
+    def clean_pipes(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, reference_ids: list | None = None, keep_ids: list | None = None, only_ids: list | None = None, older_than_id: str | None = None, root: str | None = None, wait: bool | None = None, operations: list | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
         """clean_cables for pipe networks: the same five operations (remove_loops included, with keep_ids), alone or together, with the same order, reports, refusals, jobs and material rules, for every pipe grade (gas, liquid, insulated gas, insulated liquid; grade and content always stay; long pipes where...
 
-        Class: write (other classes at some arguments). Arguments: network_id, reference_ids, keep_ids, only_ids, older_than_id, root, wait, operations, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id, acknowledge_gas_lost.
+        Class: write (other classes at some arguments). Arguments: include_notes, network_id, reference_ids, keep_ids, only_ids, older_than_id, root, wait, operations, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id, acknowledge_gas_lost.
         """
-        return self.call('clean_pipes', **{'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
+        return self.call('clean_pipes', **{'include_notes': include_notes, 'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def connections(self, *, reference_id: str | None = None, network_id: str | dict | None = None, kind: str | None = None, prefab_contains: str | None = None, open_ends_only: bool | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
         """How pipes, cables and chutes connect, read from the game's own connection ends and networks.
@@ -1596,12 +1605,12 @@ class Methods:
         """
         return self.call('get_ic_status', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'stack_start': stack_start, 'stack_count': stack_count, 'log_lines': log_lines, 'include_source': include_source}, **options)
 
-    def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, compact: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """Read the grid around a place before routing: the 2 m cells of a box (min and max, positions in metres) or of a room (room_id from rooms), a page at a time (limit default 27, max 125; offset); pieces and devices are those in the page's cells, so a device spanning cells of several pages (a locker)...
+    def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, kinds: list | None = None, compact: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+        """Read the grid around a place before routing: the 2 m cells of a box (min and max, positions in metres) or of a room (room_id from rooms), a page at a time (limit default 8 since 1.14.0, 27 before; max 125; offset); pieces and devices are those in the page's cells, so a device spanning cells of se...
 
-        Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, compact, limit, offset.
+        Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, kinds, compact, limit, offset.
         """
-        return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'compact': compact, 'limit': limit, 'offset': offset}, **options)
+        return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'kinds': kinds, 'compact': compact, 'limit': limit, 'offset': offset}, **options)
 
     def highlight(self, *, targets: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, **options) -> dict:
         """Show the player where things are, through walls, frames and terrain (1.7.0+), on the player's screen only (other players see nothing; nothing in the world changes; 1.12.0+ on a dedicated server the player's own game draws them, when it runs StationGod): targets [{...}] (up to 64), each exactly on...
@@ -1757,12 +1766,12 @@ class Methods:
         """
         return self.call('place_pipes', **{'waypoints': waypoints, 'cells': cells, 'piece': piece, 'pieces': pieces, 'grade': grade, 'join': join, 'branches': branches, 'allow_door_keepout': allow_door_keepout, 'allow_split_long': allow_split_long, 'extra_ends': extra_ends, 'remove_ids': remove_ids, 'assume_removed': assume_removed, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'wait': wait, 'allow_split': allow_split, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
-    def place_structure(self, *, placements: list | None = None, prefab: str | int | None = None, at: object | None = None, rotation: list | None = None, facing: str | None = None, up: str | None = None, face: str | None = None, orient: dict | None = None, above_floor_m: float | None = None, build_state: str | int | None = None, label: str | None = None, color: str | int | None = None, from_id: str | None = None, include_footprint_cells: bool | None = None, free: bool | None = None, allow_door_keepout: bool | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, verbose: bool | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
+    def place_structure(self, *, include_notes: bool | None = None, placements: list | None = None, prefab: str | int | None = None, at: object | None = None, rotation: list | None = None, facing: str | None = None, up: str | None = None, face: str | None = None, orient: dict | None = None, above_floor_m: float | None = None, build_state: str | int | None = None, label: str | None = None, color: str | int | None = None, from_id: str | None = None, include_footprint_cells: bool | None = None, free: bool | None = None, allow_door_keepout: bool | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, verbose: bool | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
         """Place any structure some kit builds (a light, sign, device, frame, wall, tank...) by prefab name or prefab hash, at a position with a turn, at a build state, with an optional label and colour; several placements are one job.
 
-        Class: write (other classes at some arguments). Arguments: placements, prefab, at, rotation, facing, up, face, orient, above_floor_m, build_state, label, color, from_id, include_footprint_cells, free, allow_door_keepout, wait, dry_run, confirm, verbose, job_id, acknowledge_gas_lost.
+        Class: write (other classes at some arguments). Arguments: include_notes, placements, prefab, at, rotation, facing, up, face, orient, above_floor_m, build_state, label, color, from_id, include_footprint_cells, free, allow_door_keepout, wait, dry_run, confirm, verbose, job_id, acknowledge_gas_lost.
         """
-        return self.call('place_structure', **{'placements': placements, 'prefab': prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient': orient, 'above_floor_m': above_floor_m, 'build_state': build_state, 'label': label, 'color': color, 'from_id': from_id, 'include_footprint_cells': include_footprint_cells, 'free': free, 'allow_door_keepout': allow_door_keepout, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
+        return self.call('place_structure', **{'include_notes': include_notes, 'placements': placements, 'prefab': prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient': orient, 'above_floor_m': above_floor_m, 'build_state': build_state, 'label': label, 'color': color, 'from_id': from_id, 'include_footprint_cells': include_footprint_cells, 'free': free, 'allow_door_keepout': allow_door_keepout, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def plan_cable_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
         """Find a cable route on the small grid and dry-run it.
@@ -1799,19 +1808,19 @@ class Methods:
         """
         return self.call('planet', **options)
 
-    def plant_genes(self, *, reference_id: str | None = None, reference_ids: list | None = None, unit: int | None = None, genes: dict | None = None, force: bool | None = None, **options) -> dict:
+    def plant_genes(self, *, reference_id: str | None = None, reference_ids: list | None = None, unit: int | None = None, genes: dict | None = None, force: bool | None = None, include_notes: bool | None = None, **options) -> dict:
         """Read or edit the genes of plants, seeds and harvested produce.
 
-        Class: cheat (other classes at some arguments). Arguments: reference_id, reference_ids, unit, genes, force.
+        Class: cheat (other classes at some arguments). Arguments: reference_id, reference_ids, unit, genes, force, include_notes.
         """
-        return self.call('plant_genes', **{'reference_id': reference_id, 'reference_ids': reference_ids, 'unit': unit, 'genes': genes, 'force': force}, **options)
+        return self.call('plant_genes', **{'reference_id': reference_id, 'reference_ids': reference_ids, 'unit': unit, 'genes': genes, 'force': force, 'include_notes': include_notes}, **options)
 
-    def plants(self, *, reference_id: str | None = None, include_unplanted: bool | None = None, **options) -> dict:
-        """Every plant growing in a hydroponics tray, planter or station, read from the plant itself, so it works for trays with no data port: its tray, growth stage (index, count, first mature and seeding stages, progress and length of the current stage, every stage's length), whether it is mature, seeding...
+    def plants(self, *, reference_id: str | None = None, include_unplanted: bool | None = None, verbose: bool | None = None, **options) -> dict:
+        """Every plant in short by default (1.14.0+): reference_id, prefab_name, display_name, planted, tray, stage (index), stage_count, maturity_ratio, ready_to_harvest, dead, health_percent, problems and harvest_in_s; reference_id (one plant) or verbose gives each plant in full as follows.
 
-        Class: read. Arguments: reference_id, include_unplanted.
+        Class: read. Arguments: reference_id, include_unplanted, verbose.
         """
-        return self.call('plants', **{'reference_id': reference_id, 'include_unplanted': include_unplanted}, **options)
+        return self.call('plants', **{'reference_id': reference_id, 'include_unplanted': include_unplanted, 'verbose': verbose}, **options)
 
     def player_vitals(self, **options) -> dict:
         """The player's hunger and thirst: nutrition and hydration now and their capacities, food quality and its multiplier, mood, sleeping, brain online, helmet closed, the temperature thirst depends on right now and where it is taken (suit, room or world), the difficulty's hunger rate, hydration rate and...
@@ -1883,26 +1892,26 @@ class Methods:
         """
         return self.call('remove_pipes', **{'reference_ids': reference_ids, 'waypoints': waypoints, 'cells': cells, 'allow_split': allow_split, 'root': root, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
-    def remove_structure(self, *, reference_ids: list | None = None, allow_contents: bool | None = None, allow_breach: bool | None = None, allow_broken: bool | None = None, allow_burst: bool | None = None, refund_to: str | int | list | None = None, wait: bool | None = None, from_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, verbose: bool | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
+    def remove_structure(self, *, include_notes: bool | None = None, reference_ids: list | None = None, allow_contents: bool | None = None, allow_breach: bool | None = None, allow_broken: bool | None = None, allow_burst: bool | None = None, refund_to: str | int | list | None = None, wait: bool | None = None, from_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, verbose: bool | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
         """Remove structures by reference id (up to 256, one job) as deconstructing them by hand would, giving back what that gives back: every build state's items down to the kit, where refund_to says: a list of targets tried in turn per item until it fits, default ["inventory", "source", "storage", "groun...
 
-        Class: write (other classes at some arguments). Arguments: reference_ids, allow_contents, allow_breach, allow_broken, allow_burst, refund_to, wait, from_id, dry_run, confirm, verbose, job_id, acknowledge_gas_lost.
+        Class: write (other classes at some arguments). Arguments: include_notes, reference_ids, allow_contents, allow_breach, allow_broken, allow_burst, refund_to, wait, from_id, dry_run, confirm, verbose, job_id, acknowledge_gas_lost.
         """
-        return self.call('remove_structure', **{'reference_ids': reference_ids, 'allow_contents': allow_contents, 'allow_breach': allow_breach, 'allow_broken': allow_broken, 'allow_burst': allow_burst, 'refund_to': refund_to, 'wait': wait, 'from_id': from_id, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
+        return self.call('remove_structure', **{'include_notes': include_notes, 'reference_ids': reference_ids, 'allow_contents': allow_contents, 'allow_breach': allow_breach, 'allow_broken': allow_broken, 'allow_burst': allow_burst, 'refund_to': refund_to, 'wait': wait, 'from_id': from_id, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
-    def replace_frames(self, *, reference_ids: list | None = None, room_id: str | None = None, to: str | None = None, from_prefabs: list | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
+    def replace_frames(self, *, include_notes: bool | None = None, reference_ids: list | None = None, room_id: str | None = None, to: str | None = None, from_prefabs: list | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
         """Replace frames in place with another frame prefab (to, e.g.
 
-        Class: write (other classes at some arguments). Arguments: reference_ids, room_id, to, from_prefabs, wait, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
+        Class: write (other classes at some arguments). Arguments: include_notes, reference_ids, room_id, to, from_prefabs, wait, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
-        return self.call('replace_frames', **{'reference_ids': reference_ids, 'room_id': room_id, 'to': to, 'from_prefabs': from_prefabs, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
+        return self.call('replace_frames', **{'include_notes': include_notes, 'reference_ids': reference_ids, 'room_id': room_id, 'to': to, 'from_prefabs': from_prefabs, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
-    def replace_walls(self, *, reference_ids: list | None = None, room_id: str | None = None, to: str | None = None, from_prefabs: list | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
+    def replace_walls(self, *, include_notes: bool | None = None, reference_ids: list | None = None, room_id: str | None = None, to: str | None = None, from_prefabs: list | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
         """Replace walls and windows in place with another wall or window prefab (to, required: e.g.
 
-        Class: write (other classes at some arguments). Arguments: reference_ids, room_id, to, from_prefabs, wait, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
+        Class: write (other classes at some arguments). Arguments: include_notes, reference_ids, room_id, to, from_prefabs, wait, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
-        return self.call('replace_walls', **{'reference_ids': reference_ids, 'room_id': room_id, 'to': to, 'from_prefabs': from_prefabs, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
+        return self.call('replace_walls', **{'include_notes': include_notes, 'reference_ids': reference_ids, 'room_id': room_id, 'to': to, 'from_prefabs': from_prefabs, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
     def resolve_ic_selectors(self, *, gateway_id: str | None = None, reference_id: str | None = None, target_reference_ids: list | None = None, **options) -> dict:
         """Resolve a circuit holder's db/d0...
@@ -2037,19 +2046,19 @@ class Methods:
         """
         return self.call('undo_job', **{'job_id': job_id, 'dry_run': dry_run, 'confirm': confirm, 'allow_bridge': allow_bridge, 'from_id': from_id, 'refund_to': refund_to, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
-    def upgrade_cables(self, *, network_id: str | dict | None = None, wait: bool | None = None, reference_ids: list | None = None, to: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
+    def upgrade_cables(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, wait: bool | None = None, reference_ids: list | None = None, to: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, **options) -> dict:
         """Replace cable pieces with heavy (default) or super heavy cable in place, piece for piece, as the coil's own merge placement builds them (the game refuses to place heavy cable over normal: Cable.CanReplace).
 
-        Class: write (other classes at some arguments). Arguments: network_id, wait, reference_ids, to, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
+        Class: write (other classes at some arguments). Arguments: include_notes, network_id, wait, reference_ids, to, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id.
         """
-        return self.call('upgrade_cables', **{'network_id': network_id, 'wait': wait, 'reference_ids': reference_ids, 'to': to, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
+        return self.call('upgrade_cables', **{'include_notes': include_notes, 'network_id': network_id, 'wait': wait, 'reference_ids': reference_ids, 'to': to, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id}, **options)
 
-    def upgrade_pipes(self, *, network_id: str | dict | None = None, wait: bool | None = None, reference_ids: list | None = None, to: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
+    def upgrade_pipes(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, wait: bool | None = None, reference_ids: list | None = None, to: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
         """Replace normal pipe pieces with insulated pipe in place, gas pipe to insulated gas pipe and liquid pipe to insulated liquid pipe (never mixed), piece for piece as the kit's own merge placement builds them, keeping the network's gas and liquid: each replacement joins the network before its old pie...
 
-        Class: write (other classes at some arguments). Arguments: network_id, wait, reference_ids, to, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id, acknowledge_gas_lost.
+        Class: write (other classes at some arguments). Arguments: include_notes, network_id, wait, reference_ids, to, dry_run, confirm, from_id, skip_unmatched, refund, refund_to, limit, job_id, acknowledge_gas_lost.
         """
-        return self.call('upgrade_pipes', **{'network_id': network_id, 'wait': wait, 'reference_ids': reference_ids, 'to': to, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
+        return self.call('upgrade_pipes', **{'include_notes': include_notes, 'network_id': network_id, 'wait': wait, 'reference_ids': reference_ids, 'to': to, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def vault_contents(self, *, vault_id: str | None = None, **options) -> dict:
         """What each Ingot Vault (IngotVault Workshop mod 3749011679) stores, read from the vault's own store, exact to 1e-6 rather than the screen's one decimal: ingots as grams of reagent (kind ingot, reagent = the stored reagent, prefab_name = the ingot a vend makes), ores and ices as counts (kind ore).

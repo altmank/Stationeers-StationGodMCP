@@ -44,7 +44,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class ConnectionsApi
 {
-    private const int DefaultLimit = 200;
+    private const int DefaultLimit = ReplyDefaults.ConnectionMembers;
     private const int MaximumLimit = 1000;
 
     internal static object Handle(Args args)

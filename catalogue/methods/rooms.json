@@ -1,6 +1,6 @@
 {
   "name": "rooms",
-  "description": "The game's closed rooms measured cell by cell: every room in the world, or with reference_id only the room that thing (a device, item or player; an item in a slot counts where its outermost holder is) is in. A room is a closed flood fill of 2 m cells (at most 1200; a bigger or open space is outside and has no room). Each room: room_id, room_type (the game's RoomType), cell_count, volume_l, pressure_kpa, temperature_k, total_mol, heat_capacity_j_per_k, thermal_energy_j (the air's total energy; sample twice and its change over the seconds between is the room's net heat flow in watts, gas moved in or out included), gases [{gas, amount_mol, ratio}] largest first (traces under 1e-9 mol left out), bounds {min, max} (the box of the cell centres, world metres), contains_local_player, devices [{reference_id, prefab_name, display_name}] (devices whose cell is in the room; left out with include_devices false) and, with include_cells, cells [{x, y, z}] (every cell centre). The air is summed fresh from each cell's atmosphere, as the game pools a room. Largest room first. Also count and local_player_room_id (null outside a room or without a player). Errors: thing_not_found, not_in_room. Read only; no gateway is needed.",
+  "description": "The game's closed rooms measured cell by cell: every room in the world, or with reference_id only the room that thing (a device, item or player; an item in a slot counts where its outermost holder is) is in. A room is a closed flood fill of 2 m cells (at most 1200; a bigger or open space is outside and has no room). Each room: room_id, room_type (the game's RoomType), cell_count, volume_l, pressure_kpa, temperature_k, total_mol, heat_capacity_j_per_k, thermal_energy_j (the air's total energy; sample twice and its change over the seconds between is the room's net heat flow in watts, gas moved in or out included), gases [{gas, amount_mol, ratio}] largest first (traces under 1e-9 mol left out), bounds {min, max} (the box of the cell centres, world metres), contains_local_player, devices [{reference_id, prefab_name, display_name}] (devices whose cell is in the room; only with include_devices: true since 1.14.0, listed by default before) and, with include_cells, cells [{x, y, z}] (every cell centre). The air is summed fresh from each cell's atmosphere, as the game pools a room. Largest room first. Also count and local_player_room_id (null outside a room or without a player). Errors: thing_not_found, not_in_room. Read only; no gateway is needed. 1.14.0+: by default the reply keeps the first entries of its list (rooms 10); shape_truncated gives each cut list's full length, and limits {list: count} keeps more.",
   "class": "read",
   "cost": "world",
   "x-cost-when": [{"when": {"reference_id": {"present": true}}, "cost": "bounded"}],
@@ -9,7 +9,7 @@
     "properties": {
       "reference_id": {"type": "string", "description": "Any thing: return only the room its cell is in."},
       "include_cells": {"type": "boolean", "description": "List every cell centre of each room. Default false."},
-      "include_devices": {"type": "boolean", "description": "List the devices in each room. Default true."}
+      "include_devices": {"type": "boolean", "description": "List the devices in each room. Default false since 1.14.0 (true before)."}
     },
     "additionalProperties": false
   },
@@ -18,5 +18,6 @@
     "properties": {"rooms": {"type": "array"}, "count": {"type": "integer"}, "local_player_room_id": {"type": ["string", "null"]}}
   },
   "x-views": ["RoomsView"],
+  "x-default-limits": {"rooms": 10},
   "x-shaping": "lists"
 }

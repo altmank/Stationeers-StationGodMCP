@@ -229,7 +229,7 @@ internal abstract class HealthRequest
 
     internal sealed class Scan : HealthRequest
     {
-        internal const int DefaultLimit = 200;
+        internal const int DefaultLimit = ReplyDefaults.HealthThings;
         internal const int MaximumLimit = 500;
 
         private Scan(double minDamageRatio, bool structuresOnly, bool brokenOnly, double? nearPlayerM,

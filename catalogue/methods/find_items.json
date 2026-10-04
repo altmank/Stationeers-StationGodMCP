@@ -1,6 +1,6 @@
 {
   "name": "find_items",
-  "description": "Find items anywhere in the world, not only on a gateway's network: on the ground, in lockers, crates and machines, and carried by players (suit, backpack, toolbelt, hands, nested to any depth). Each item reports its quantity (stack size for stackables, 1 otherwise), location (ground, player or stored), the chain of holders from its own slot outwards, the outermost holder's position and the distance from the player. Also lists material machines hold as reagent stock rather than as items, with location machine_stock: ingots loaded into a fabricator (Autolathe, Electronics Printer, Pipe Bender, Tool Manufactory...) listed as the ingot it ejects (1 reagent unit = 1 ingot), and a furnace's, centrifuge's or mixer's working load listed under its reagent name (prefab_name null). A stock entry has reference_id null, held_in naming the machine with slot_index -1, and machine_stock {reagent, reagent_name, kind (fabricator or processing), movable false, how_to_get}: move_item cannot move it; open the fabricator (on, powered, not printing) to eject it as ingots. Sorted nearest first. Organs are left out. Read only; no gateway is needed.",
+  "description": "Find items anywhere in the world, not only on a gateway's network: on the ground, in lockers, crates and machines, and carried by players (suit, backpack, toolbelt, hands, nested to any depth). Each item reports its quantity (stack size for stackables, 1 otherwise), location (ground, player or stored), the chain of holders from its own slot outwards, the outermost holder's position and the distance from the player. Also lists material machines hold as reagent stock rather than as items, with location machine_stock: ingots loaded into a fabricator (Autolathe, Electronics Printer, Pipe Bender, Tool Manufactory...) listed as the ingot it ejects (1 reagent unit = 1 ingot), and a furnace's, centrifuge's or mixer's working load listed under its reagent name (prefab_name null). A stock entry has reference_id null, held_in naming the machine with slot_index -1, and machine_stock {reagent, reagent_name, kind (fabricator or processing), movable false}: move_item cannot move it; open a fabricator (on, powered, not printing) and it ejects its stock as ingots into its export slot, one stack per tick (EjectReagent on its logic stack ejects one reagent); a processing load is not ingots yet: the machine smelts or processes it, or drops it as Reagent Mix (1.14.0+: how_to_get, which said this in every stock entry, is gone). Sorted nearest first. Organs are left out. Read only; no gateway is needed.",
   "class": "read",
   "cost": "world",
   "params": {
@@ -25,7 +25,12 @@
         "exclusiveMinimum": 0,
         "description": "Only items whose outermost holder is within this many metres of the player."
       },
-      "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Items per page, default 100."},
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "description": "Items per page, default 10 (100 before 1.14.0)."
+      },
       "offset": {"type": "integer", "minimum": 0, "description": "Items to skip, for paging.", "maximum": 2147483647}
     },
     "additionalProperties": false

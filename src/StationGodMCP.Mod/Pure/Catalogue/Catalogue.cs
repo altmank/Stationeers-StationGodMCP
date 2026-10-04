@@ -184,6 +184,14 @@ internal sealed class CatalogueMethod
     /// <summary>The reply's top-level keys that are lists (reply properties whose type includes array): what limit may name.</summary>
     internal HashSet<string> ReplyLists { get; }
 
+    /// <summary>
+    /// x-default-limits: how many entries of a top-level list the reply keeps when the call's shape sets no limit for
+    /// it; the writer cuts the rest and says so in shape_truncated. Empty for most methods.
+    /// </summary>
+    internal IReadOnlyDictionary<string, int> DefaultLimits { get; private set; } = NoLimits;
+
+    private static readonly Dictionary<string, int> NoLimits = new Dictionary<string, int>(StringComparer.Ordinal);
+
     /// <summary>The class at these arguments: the first class rule that matches, else the method's class.</summary>
     internal MethodClass ClassAt(JObject? arguments)
     {
@@ -248,6 +256,24 @@ internal sealed class CatalogueMethod
             (string?)method["x-mcp"] == "hidden",
             effects,
             ReplyListsOf(method["reply"]));
+        if (method["x-default-limits"] is JObject limits)
+        {
+            Dictionary<string, int> defaults = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (JProperty limit in limits.Properties())
+            {
+                if (!compiled.ReplyLists.Contains(limit.Name) || limit.Value.Type != JTokenType.Integer ||
+                    (int)limit.Value < 0)
+                {
+                    throw new CatalogueException(
+                        $"{at}.x-default-limits.{limit.Name}: must name a list of the reply and be a count from 0.");
+                }
+
+                defaults[limit.Name] = (int)limit.Value;
+            }
+
+            compiled.DefaultLimits = defaults;
+        }
+
         if (method["x-duration"] is JObject duration)
         {
             compiled.DurationParameter = duration["param"]?.Type == JTokenType.String

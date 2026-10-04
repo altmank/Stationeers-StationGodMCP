@@ -63,11 +63,6 @@ public sealed class SurvivalWireTests
             seconds_left = (double?)5000.0, seconds_left_awake = (double?)2500.0, factors
         };
 
-        string note = new PlayerVitalsView(new ThingView(new ThingId(1), null, null),
-            new BodyStores(0, 0, 0, 0, 0, 0, 0), new BodyState(false, false, false, false, false, false, null),
-            new VitalsRates(new ThirstTemperatureView(null, "none"),
-                new DrainView(0, 0, 0, new object()), null, 0.5f),
-            new DifficultyView(null, 0, 0, 0), new VitalsWarningsView(0, 0, 0, 0)).Note;
         var old = new
         {
             reference_id = "1", display_name = "Player", nutrition = 50f, nutrition_capacity = 50f, hydration = 5f,
@@ -82,8 +77,7 @@ public sealed class SurvivalWireTests
             {
                 nutrition_warning = 2f, nutrition_critical = 1f, hydration_warning = 2f, hydration_critical = 1f
             },
-            game_tick_seconds = 0.5f,
-            note
+            game_tick_seconds = 0.5f
         };
 
         DrainView NewDrain(object factors) => new DrainView(50f, 0.02, 0.01, factors);
@@ -160,8 +154,7 @@ public sealed class SurvivalWireTests
                 nutrition = 10.0, nutrition_in_packages = 10.0, litres = 1.5, litres_in_packages = 0.0,
                 hydration = 7.5, hydration_in_packages = 0.0, food_items = 1, drink_items = 1
             },
-            local_player = (object?)null,
-            note = NewConsumables().Note
+            local_player = (object?)null
         };
         Dictionary<string, string> renames = new Dictionary<string, string>
         {
@@ -234,8 +227,7 @@ public sealed class SurvivalWireTests
                     }
                 }
             },
-            count = 1,
-            note = NewContents().Note
+            count = 1
         };
         Dictionary<string, string> renames = WaterRenames("atmospheres[].atmosphere.water.");
         renames["atmospheres[].atmosphere.total_moles"] = "total_mol";
@@ -317,8 +309,7 @@ public sealed class SurvivalWireTests
             count = 1,
             totals = OldWater(),
             min_moles = 1.0,
-            local_player = (object?)null,
-            note = view.Note
+            local_player = (object?)null
         };
         Dictionary<string, string> renames = WaterRenames("sources[].water.");
         foreach (KeyValuePair<string, string> total in WaterRenames("totals."))

@@ -16,7 +16,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class ListContainersApi
 {
-    private const int DefaultLimit = 100;
+    private const int DefaultLimit = ReplyDefaults.Containers;
     private const int MaximumLimit = 500;
 
     internal static ListContainersView Handle(Args args)

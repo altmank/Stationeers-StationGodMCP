@@ -8,11 +8,6 @@ namespace StationGodMCP.Api.Views;
 /// <summary>atmosphere_contents: every atmosphere one thing, pipe network or atmosphere id holds.</summary>
 internal sealed class AtmosphereContentsView
 {
-    private const string NoteText =
-        "amount_mol per gas or liquid; liquid_l for liquids comes from each liquid's molar volume (Mole.Volume). " +
-        "water.hydration is what drinking that liquid water would give (HydrationBase: 5 per litre, 55.56 mol per " +
-        "litre). Polluted water needs a water purifier first and steam must condense before it can be drunk.";
-
     internal AtmosphereContentsView(ThingId referenceId, object subject, List<HeldAtmosphereEntryView> atmospheres)
     {
         ReferenceId = referenceId;
@@ -29,8 +24,6 @@ internal sealed class AtmosphereContentsView
     public List<HeldAtmosphereEntryView> Atmospheres { get; }
 
     public int Count { get; }
-
-    public string Note => NoteText;
 }
 
 /// <summary>Where an atmosphere_contents entry comes from: the reply's source values.</summary>
@@ -89,12 +82,6 @@ internal sealed class SlotRef
 /// <summary>water_sources: every canister, tank and pipe network holding water, largest first.</summary>
 internal sealed class WaterSourcesView
 {
-    private const string NoteText =
-        "Water in canisters, tanks and pipe networks, not in bottles or packets (see consumables). It is drunk " +
-        "through a water bottle filler or a drinking fountain on a pipe network. Polluted water needs a water " +
-        "purifier first; steam has to condense. Room and world air, bodies and organs are left out. Sources under " +
-        "min_mol (default 1 mol, 0.018 L) are skipped.";
-
     internal WaterSourcesView(List<WaterSourceView> sources, WaterView totals, double minMol,
         LocalPlayerView? localPlayer)
     {
@@ -114,8 +101,6 @@ internal sealed class WaterSourcesView
     public double MinMol { get; }
 
     public LocalPlayerView? LocalPlayer { get; }
-
-    public string Note => NoteText;
 }
 
 internal sealed class WaterSourceView

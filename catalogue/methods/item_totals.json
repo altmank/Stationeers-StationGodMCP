@@ -1,6 +1,6 @@
 {
   "name": "item_totals",
-  "description": "Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock (material held as reagents inside machines, e.g. electrum ingots loaded into a Pipe Bender, counted as the ingots the machine ejects; a furnace's or centrifuge's working load gets a row of its own with prefab_name null and reagent set), with the holders that hold the most in top_holders (holders_limit of them, default 5; 0 leaves top_holders out, 1.7.0+), each with kind (player, stored or machine_stock) and position. quantity includes machine_stock; item_count counts items only and machine_stock_entries the machine and reagent pairs. Takes the same filters as find_items, so it answers 'how much iron ingot do I have and where'. Read only; no gateway is needed.",
+  "description": "Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock (material held as reagents inside machines, e.g. electrum ingots loaded into a Pipe Bender, counted as the ingots the machine ejects; a furnace's or centrifuge's working load gets a row of its own with prefab_name null and reagent set), with the holders that hold the most in top_holders (holders_limit of them, default 1 since 1.14.0, 5 before; 0 leaves top_holders out, 1.7.0+), each with kind (player, stored or machine_stock) and position. quantity includes machine_stock; item_count counts items only and machine_stock_entries the machine and reagent pairs. Takes the same filters as find_items, so it answers 'how much iron ingot do I have and where'. Read only; no gateway is needed.",
   "class": "read",
   "cost": "world",
   "params": {
@@ -25,12 +25,17 @@
         "exclusiveMinimum": 0,
         "description": "Only items whose outermost holder is within this many metres of the player."
       },
-      "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Item types returned, default 200."},
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "description": "Item types returned, default 12 (200 before 1.14.0)."
+      },
       "holders_limit": {
         "type": "integer",
         "minimum": 0,
         "maximum": 100,
-        "description": "Holders listed per item type in top_holders, most first; default 5. 0 leaves top_holders out."
+        "description": "Holders listed per item type in top_holders, most first; default 1 (5 before 1.14.0). 0 leaves top_holders out."
       }
     },
     "additionalProperties": false
@@ -41,8 +46,7 @@
       "totals": {"type": "array"},
       "prefab_count": {"type": "integer"},
       "item_count": {"type": "integer"},
-      "machine_stock_entries": {"type": "integer"},
-      "note": {"type": "string"}
+      "machine_stock_entries": {"type": "integer"}
     }
   },
   "x-views": ["ItemTotalsView"],

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
 
@@ -24,8 +25,14 @@ internal sealed class RuntimeView
         RequestBudgetMs = budget.Unlimited ? null : budget.LimitMs;
         Frames = new FrameStatsView(frames);
         Memory = memory;
-        Methods = methods.ConvertAll(static timing => new MethodRuntimeView(timing));
-        MethodCount = Methods.Count;
+        int listed = Math.Min(methods.Count, ReplyDefaults.RuntimeMethods);
+        Methods = new List<MethodRuntimeView>(listed);
+        for (int index = 0; index < listed; index++)
+        {
+            Methods.Add(new MethodRuntimeView(methods[index]));
+        }
+
+        MethodCount = methods.Count;
         CatalogueDrift = drift.ConvertAll(static count => new CatalogueDriftView(count));
     }
 
@@ -42,7 +49,10 @@ internal sealed class RuntimeView
 
     public MemoryView Memory { get; }
 
-    /// <summary>Methods called at least once, the most main-thread time (handler + serialise) first.</summary>
+    /// <summary>
+    /// The methods called at least once that cost the most main-thread time (handler + serialise), most first, up to
+    /// ReplyDefaults.RuntimeMethods; method_count counts them all.
+    /// </summary>
     public List<MethodRuntimeView> Methods { get; }
 
     public int MethodCount { get; }

@@ -124,3 +124,87 @@ internal sealed class SurveyNetworkFilter
         return false;
     }
 }
+
+/// <summary>
+/// grid_survey kinds: which kinds of piece (cable, pipe, chute) a reply lists, with their networks, and which devices:
+/// those with a port of a kind named. Every kind when kinds is left out.
+/// </summary>
+internal sealed class SurveyKinds
+{
+    internal const string KindsArgument = "kinds";
+
+    private static readonly Dictionary<string, int> Words = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["cable"] = 1,
+        ["pipe"] = 2,
+        ["chute"] = 4
+    };
+
+    private readonly int _kinds;
+
+    private SurveyKinds(int kinds)
+    {
+        _kinds = kinds;
+    }
+
+    internal static SurveyKinds Every { get; } = new SurveyKinds(7);
+
+    internal static SurveyKinds Parse(Args args)
+    {
+        if (!args.Has(KindsArgument))
+        {
+            return Every;
+        }
+
+        JArray array = args.Array(KindsArgument, Words.Count);
+        int kinds = 0;
+        foreach (JToken entry in array)
+        {
+            string? word = entry.Type == JTokenType.String ? entry.Value<string>()?.Trim() : null;
+            if (word == null || !Words.TryGetValue(word, out int kind))
+            {
+                throw ApiErrors.InvalidArgument(
+                    $"Argument '{KindsArgument}' takes {string.Join(", ", Words.Keys)}; '{entry}' is not one of them.");
+            }
+
+            kinds |= kind;
+        }
+
+        return new SurveyKinds(kinds);
+    }
+
+    /// <summary>A piece of this kind (cable, pipe or chute) is listed.</summary>
+    internal bool AdmitsPiece(string kind) => Words.TryGetValue(kind, out int bit) && (_kinds & bit) != 0;
+
+    /// <summary>
+    /// A device is listed when kinds is left out, or when one of its ports is of a kind named: a NetworkType name
+    /// with Pipe is a pipe's, with Chute a chute's, with Power or Data a cable's.
+    /// </summary>
+    internal bool AdmitsDevice(IEnumerable<string?> portTypes)
+    {
+        if (_kinds == 7)
+        {
+            return true;
+        }
+
+        foreach (string? type in portTypes)
+        {
+            if (type == null)
+            {
+                continue;
+            }
+
+            string? kind = type.IndexOf("Pipe", StringComparison.Ordinal) >= 0 ? "pipe"
+                : type.IndexOf("Chute", StringComparison.Ordinal) >= 0 ? "chute"
+                : type.IndexOf("Power", StringComparison.Ordinal) >= 0 || type.IndexOf("Data", StringComparison.Ordinal) >= 0
+                    ? "cable"
+                    : null;
+            if (kind != null && AdmitsPiece(kind))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

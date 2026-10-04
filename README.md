@@ -101,7 +101,7 @@ get the same checks: a filter misspelt as `prefab` for `prefab_contains` is refu
 answered or the game took the request but did not reply in time (it may still have run).
 
 **Large replies.** Every tool that can answer a lot (lists, surveys, plans, dry runs, job polls, rocket forecasts,
-chip sources) takes three shaping arguments. `fields: ["reference_id", "position"]` keeps only those keys in each
+chip sources) takes the shaping arguments `fields`, `omit` and `limits`. `fields: ["reference_id", "position"]` keeps only those keys in each
 entry of the reply's top-level lists (a name no entry has comes back in `fields_unmatched`). A dotted name is a path
 read from each entry, through nested objects and lists at any depth (`occupant.prefab_name`, `held_in.reference_id`),
 or from one list when it starts with that list's name: `things.position.x` keeps only `x` inside `position` in each
@@ -118,7 +118,10 @@ on (the agent's), or the folder given with `--output-dir`; a named file is overw
 beyond the newest 200 are deleted. A reply larger than 200 KB that did not ask for `output_file` is written to a file
 on its own and answered with the pointer, marked `auto_output_file: true` (`--inline-limit-kb` changes the size).
 Errors always come back in the reply. Run replies are compact by default: a confirmed run answers its job and a
-`preflight_summary`, and network device lists are counts unless asked for.
+`preflight_summary`, and network device lists are counts unless asked for. Every tool's default reply is kept under
+8 KB on a large base: lists come a short page at a time (`limit`, `offset`), a long list is cut to its first entries
+and named in `shape_truncated` with its full length (`limits: {"devices": 100}` keeps more), and fixed explanations
+are in the tool descriptions, not the replies (`include_notes: true` where a report has them).
 
 Things are named by `display_name`, the game's own name (the label, else the localised name). Where the game has no
 English name for a prefab it shows a placeholder such as `<N:EN:StructureCrewUmbilicalDoor>`; `display_name` and every

@@ -256,14 +256,16 @@ internal sealed class PlaceReportView
 
     public bool Free { get; }
 
-    public List<string> Notes { get; }
+    /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Notes { get; }
 }
 
 /// <summary>The fields every build report starts with.</summary>
 internal sealed class BuildHeader
 {
     internal BuildHeader(string status, string? jobId, List<BuildIssueView> problems, List<BuildIssueView> warnings,
-        List<string> notes)
+        List<string>? notes)
     {
         Status = status;
         JobId = jobId;
@@ -280,7 +282,8 @@ internal sealed class BuildHeader
 
     internal List<BuildIssueView> Warnings { get; }
 
-    internal List<string> Notes { get; }
+    /// <summary>The tool's fixed explanations, with include_notes; null otherwise.</summary>
+    internal List<string>? Notes { get; }
 }
 
 /// <summary>One piece to remove: what it is, where, and what deconstructing it gives back.</summary>
@@ -367,7 +370,9 @@ internal sealed class RemoveReportView
     /// <summary>Networks left over their weakest pipe that allow_burst lets the request leave so; empty otherwise.</summary>
     public List<BurstView> WillBurst { get; }
 
-    public List<string> Notes { get; }
+    /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Notes { get; }
 }
 
 /// <summary>

@@ -19,7 +19,7 @@ internal static class RunArgs
 {
     internal const int MaximumPoints = 256;
     internal const int MaximumExtraEnds = 64;
-    internal const int DefaultListLimit = 200;
+    internal const int DefaultListLimit = ReplyDefaults.RunListed;
 
     internal static GridCell CellOf(Vector3 position) =>
         PieceShapes.Cell(GridController.World.WorldToLocalGrid(position, SmallGrid.SmallGridSize,

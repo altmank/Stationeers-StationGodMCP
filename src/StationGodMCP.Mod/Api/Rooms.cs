@@ -36,7 +36,7 @@ internal static class RoomsApi
     {
         ThingId? only = args.OptionalThingId("reference_id");
         bool includeCells = args.OptionalBool("include_cells") ?? false;
-        bool includeDevices = args.OptionalBool("include_devices") ?? true;
+        bool includeDevices = args.OptionalBool("include_devices") ?? false;
         RoomController rooms = RoomController.World;
         AtmosphericsController air = AtmosphericsController.World;
         if (rooms == null || air == null)

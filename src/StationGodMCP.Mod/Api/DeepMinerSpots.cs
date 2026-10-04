@@ -33,7 +33,7 @@ internal static class DeepMinerSpotsApi
 {
     private const double DefaultRadiusM = 500.0;
     private const double MaximumRadiusM = 3000.0;
-    private const int DefaultCount = 5;
+    private const int DefaultCount = ReplyDefaults.DeepMinerSpots;
     private const int MaximumCount = 20;
     private const double DefaultSeparationM = 100.0;
     private const int MaximumOres = 4;

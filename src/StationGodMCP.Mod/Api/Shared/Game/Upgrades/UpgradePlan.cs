@@ -54,6 +54,7 @@ internal sealed class UpgradeRequest
         SkipUnmatched = options.SkipUnmatched;
         RefundTo = options.RefundTo;
         ListLimit = options.ListLimit;
+        IncludeNotes = options.IncludeNotes;
     }
 
     internal UpgradeFamily Family { get; }
@@ -75,15 +76,19 @@ internal sealed class UpgradeRequest
     internal RefundRoute RefundTo { get; }
 
     internal int ListLimit { get; }
+
+    /// <summary>include_notes: the report carries the tool's fixed explanations.</summary>
+    internal bool IncludeNotes { get; }
 }
 
 internal sealed class UpgradeOptions
 {
-    internal UpgradeOptions(bool skipUnmatched, RefundRoute refundTo, int listLimit)
+    internal UpgradeOptions(bool skipUnmatched, RefundRoute refundTo, int listLimit, bool includeNotes = false)
     {
         SkipUnmatched = skipUnmatched;
         RefundTo = refundTo;
         ListLimit = listLimit;
+        IncludeNotes = includeNotes;
     }
 
     internal bool SkipUnmatched { get; }
@@ -91,6 +96,9 @@ internal sealed class UpgradeOptions
     internal RefundRoute RefundTo { get; }
 
     internal int ListLimit { get; }
+
+    /// <summary>include_notes: the report carries the tool's fixed explanations.</summary>
+    internal bool IncludeNotes { get; }
 }
 
 /// <summary>A piece a swap takes away, with its model as it stands now.</summary>

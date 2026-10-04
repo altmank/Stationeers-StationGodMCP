@@ -12,7 +12,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
-| `rooms` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas, its devices. | `reference_id` (only the room that thing is in), `include_cells`, `include_devices` |
+| `rooms` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas; its devices with `include_devices`. | `reference_id` (only the room that thing is in), `include_cells`, `include_devices` |
 | `atmosphere_contents` | What gas or liquid one thing holds: a canister, tank, suit, a pipe's whole network, a landing pad's shared atmosphere, or every network a device is on. | `reference_id` |
 | `water_sources` | Every canister, tank, device and pipe network that holds water, polluted water or steam, largest first. | `min_mol` |
 | `move_gas` | Move gas and liquid between atmospheres, or delete it. A cheat: it bypasses the game's physics. | `from`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `force`, `dry_run`; `transfer_id` to poll |
@@ -20,8 +20,8 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | `planet` | The planet's atmosphere: pressure, temperature and its parts, every gas, today's and the orbit's temperature range, ice and cloud reservoirs. | none |
 | `deep_miner_spots` | Where a deep miner mines what: the region and ore profile at a point, and the nearest spots whose profile gives the ores you name, with distance, bearing, the ground there and beacons for `highlight` (1.7.0+). | `at`, `ores`, `radius_m`, `count`, `min_separation_m`, `step_m` |
 | `weather` | The storm schedule, when the next event can come, every event this world can roll, and the season. | none |
-| `plants` | Every plant in a tray, planter or station: growth stage, health, problems in plain words, needs, and forecasts to the next stage, harvest and seeds. | `reference_id`, `include_unplanted` |
-| `plant_genes` | Read or edit the genes of plants, seeds and produce, as the Gene Splicer does. | `reference_id` or `reference_ids`, `genes`, `unit`, `force` |
+| `plants` | Every plant in a tray, planter or station in short (stage, health, problems in plain words, time to harvest); one plant, or `verbose`, in full: needs, conditions and forecasts to the next stage, harvest and seeds. | `reference_id`, `include_unplanted`, `verbose` |
+| `plant_genes` | Read or edit the genes of plants, seeds and produce, as the Gene Splicer does. | `reference_id` or `reference_ids`, `genes`, `unit`, `force`, `include_notes` (each gene's meaning) |
 | `reagents` | What a furnace, centrifuge, mixer or microwave holds, reagent by reagent (logic only gives the total). | `reference_id` |
 | `player_vitals` | Your hunger and thirst: stores, capacities, drain rates and time until empty, awake and asleep. | none |
 | `ignition_risk` | Whether anything you carry would catch fire in the air around you, by the game's fire rule. | `include_prefabs` |

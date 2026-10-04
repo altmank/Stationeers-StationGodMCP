@@ -30,9 +30,9 @@ memory, but for any device in the world at once and without a chip.
 | `read_memory` | Up to 512 consecutive values from a device with memory (an IC Housing's or suit's chip stack, a Logic Sorter, a satellite dish, a fabricator; a Logic Memory has only `Setting`). | `reference_id`, `start_address`, `count` |
 | `write_memory` | Up to 512 consecutive values into such a device. | `reference_id`, `start_address`, `values` |
 | `inspect_slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. Devices only: for a crate, the lander or a tool use `container_contents`. | `reference_id`, `slot_index` |
-| `network_snapshot` | Many devices and their logic values at one instant, in one game frame. | `reference_ids`, `prefab_hash`, `name_contains`, `logic_types`, `max_devices` |
+| `network_snapshot` | Many devices and their logic values at one instant, in one game frame. | `reference_ids`, `prefab_hash`, `name_contains`, `logic_types`, `max_devices` (default 2) |
 | `sample_logic` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `targets: [{reference_id, logic_type}]`, `duration_seconds` (default 5), `interval_seconds` (default 0.5) |
-| `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents. | `reference_id`, or `network_id` with `kind` (filters `prefab_contains`, `open_ends_only`) |
+| `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents, 40 a page. | `reference_id`, or `network_id` with `kind` (filters `prefab_contains`, `open_ends_only`, an area: `min` and `max`, or `near` with `radius_m`) |
 | `list_gateways` | The scopes device tools accept: `world` and every StationGod Gateway. | none |
 | `looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.3+), the surface the look ray hits and the grid there, and the target's body. | `max_distance_m` |
 | `game_clock` | Game time, paused or not, time of day, days past. | none |

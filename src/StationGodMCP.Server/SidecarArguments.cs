@@ -7,22 +7,23 @@ namespace StationGodMCP.Server;
 
 /// <summary>
 /// The sidecar's own arguments on every tool that can give a large reply (the catalogue's x-shaping lists), taken out
-/// before the call goes to the game. fields and omit go to the mod as the call's shape.fields and shape.omit; the mod
-/// applies them and marks the reply shaped, and the sidecar never shapes a reply the mod sent. output_file never
-/// reaches the game: the reply is written on this machine.
+/// before the call goes to the game. fields, omit and limits go to the mod as the call's shape.fields, shape.omit and
+/// shape.limit; the mod applies them and marks the reply shaped, and the sidecar never shapes a reply the mod sent.
+/// output_file never reaches the game: the reply is written on this machine.
 /// </summary>
 internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonElement? Fields, OutputChoice Output,
-    JsonElement? Omit = null)
+    JsonElement? Omit = null, JsonElement? Limits = null)
 {
     internal const string FieldsArgument = "fields";
     internal const string OmitArgument = "omit";
+    internal const string LimitsArgument = "limits";
     internal const string OutputFileArgument = "output_file";
     internal const string UnmatchedKey = "fields_unmatched";
     internal const string OmitUnmatchedKey = "omit_unmatched";
 
-    internal static readonly string[] Names = [FieldsArgument, OmitArgument, OutputFileArgument];
+    internal static readonly string[] Names = [FieldsArgument, OmitArgument, LimitsArgument, OutputFileArgument];
 
-    /// <summary>The arguments for the game without fields, omit and output_file, and what those ask for.</summary>
+    /// <summary>The arguments for the game without fields, omit, limits and output_file, and what those ask for.</summary>
     internal static SidecarArguments Take(JsonElement arguments)
     {
         if (arguments.ValueKind != JsonValueKind.Object || !Names.Any(name => IsGiven(arguments, name)))
@@ -34,7 +35,8 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
             Without(arguments, Names),
             Given(arguments, FieldsArgument),
             OutputChoice.Of(IsGiven(arguments, OutputFileArgument) ? arguments.GetProperty(OutputFileArgument) : null),
-            Given(arguments, OmitArgument));
+            Given(arguments, OmitArgument),
+            Given(arguments, LimitsArgument));
     }
 
     /// <summary>
@@ -44,7 +46,7 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
     /// </summary>
     internal (JsonElement? Shape, Unparsed Unparsed) Shape()
     {
-        if (Fields is null && Omit is null)
+        if (Fields is null && Omit is null && Limits is null)
         {
             return (null, new Unparsed([], []));
         }
@@ -52,6 +54,11 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
         Dictionary<string, object> shape = [];
         List<string> fieldsUnparsed = Selectors(Fields, FieldsArgument, shape);
         List<string> omitUnparsed = Selectors(Omit, OmitArgument, shape);
+        if (Limits is { } limits)
+        {
+            shape["limit"] = limits;
+        }
+
         return (shape.Count > 0 ? JsonSerializer.SerializeToElement(shape) : null,
             new Unparsed(fieldsUnparsed, omitUnparsed));
     }

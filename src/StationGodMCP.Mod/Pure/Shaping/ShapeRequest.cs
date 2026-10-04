@@ -42,6 +42,31 @@ internal sealed class ShapeRequest
 
     internal int? MaxBytes { get; }
 
+    /// <summary>
+    /// The shape with a method's default limits (x-default-limits) for every list the call itself does not limit; the
+    /// shape as given when the method has none. A call without a shape gets one that only limits.
+    /// </summary>
+    internal static ShapeRequest? WithDefaultLimits(ShapeRequest? given, IReadOnlyDictionary<string, int> defaults)
+    {
+        if (defaults.Count == 0)
+        {
+            return given;
+        }
+
+        Dictionary<string, int> limits = new Dictionary<string, int>(defaults, StringComparer.Ordinal);
+        if (given == null)
+        {
+            return new ShapeRequest(null, limits, null);
+        }
+
+        foreach (KeyValuePair<string, int> limit in given.Limits)
+        {
+            limits[limit.Key] = limit.Value;
+        }
+
+        return new ShapeRequest(given.Fields, limits, given.MaxBytes, given.Omit);
+    }
+
     /// <summary>The largest number of entries to keep of a top-level list; int.MaxValue when not limited.</summary>
     internal int LimitOf(string list) => Limits.TryGetValue(list, out int limit) ? limit : int.MaxValue;
 

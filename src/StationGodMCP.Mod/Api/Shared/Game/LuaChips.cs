@@ -22,7 +22,7 @@ internal static class LuaChips
     /// </summary>
     internal const int MaximumSourceLength = 262144;
 
-    internal const int DefaultLogLines = 20;
+    internal const int DefaultLogLines = ReplyDefaults.LuaLogLines;
     internal const int MaximumLogLines = 200;
 
     internal static bool IsInstalled => GameMembers.LuaRuntimeManager.OrNull != null;

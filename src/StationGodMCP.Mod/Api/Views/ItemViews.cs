@@ -121,18 +121,10 @@ internal sealed class StockItemView : IFoundItemView
     public MachineStockView MachineStock { get; }
 }
 
-/// <summary>What a stock entry is and how to get it out.</summary>
+/// <summary>What a stock entry is: how to get it out is the tool's description's to say, not every entry's.</summary>
 internal sealed class MachineStockView
 {
     internal const string Location = "machine_stock";
-
-    private const string FabricatorHow =
-        "Open the machine while it is on, powered and not printing: it ejects its stock as ingots into its export " +
-        "slot, one stack per tick (EjectReagent on its logic stack ejects one reagent). Not movable with move_item.";
-
-    private const string ProcessingHow =
-        "A working load, not ingots yet: the machine smelts or processes it, or drops it as Reagent Mix. Not " +
-        "movable with move_item.";
 
     internal MachineStockView(string reagent, string? reagentName, string kind)
     {
@@ -150,8 +142,6 @@ internal sealed class MachineStockView
     public string Kind { get; }
 
     public bool Movable => false;
-
-    public string HowToGet => Kind == "fabricator" ? FabricatorHow : ProcessingHow;
 }
 
 /// <summary>An item's identity, amount and place, to build any item view from.</summary>

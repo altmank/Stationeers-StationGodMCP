@@ -1,5 +1,50 @@
 # Changelog
 
+## 1.14.0
+
+2026-10-03. Small default replies everywhere; the fixes from LU's dedicated server. 93 tools.
+
+- **Every tool's default reply stays under 8 KB on a large base.** A test now holds every tool to it, measured on a
+  large world (a 1,257-member cable network, a 60 KB Lua chip, 150 devices, 6,000 things), so a heavy default cannot
+  come back unnoticed. Changed defaults, each still lifted by the tool's own argument: pages of `find_things` (8),
+  `find_items` (10), `list_containers` (12), `outer_frames` (20), `thing_health` scans and networks (8), `connections`
+  members (40), `item_totals` (12 types, 1 holder), `lint_layout` (25), `read_console` (40 lines),
+  `rocket_flight_log` (12 rows), `network_snapshot` (2 devices), `grid_survey` (8 cells); run reports list 5 cells,
+  upgrade and clean reports 5 pieces per list (their networks give `device_count`, the devices only in a
+  job's verification), replace reports 5; `rooms` lists devices only with `include_devices`;
+  `plants` lists every plant in short unless `verbose` or one plant is asked for.
+- **Long lists are cut to their first entries by default** where a tool has no page of its own (`list_devices`,
+  `consumables`, `feed_paths`, `rooms`, `water_sources`, `inspect_slots`, `mod_info`, `resolve_ic_selectors`,
+  `ignition_risk`, `trader_inventory`, `rocket_mining_options`, a survey page's pieces and devices, an upgrade
+  report's devices). The reply names each cut list in `shape_truncated` with its full length; the new `limits`
+  argument (`{"devices": 100}`) keeps more.
+- **Fixed explanations left the replies.** The notes of eight read tools, `how_to_get` in every machine-stock entry,
+  the fixed reminders of `highlight` and `show_preview`, `describe_device`'s note and the four range numbers of
+  every gene are in the tool descriptions instead; report notes (`place_structure`, `remove_structure`, upgrade,
+  clean and replace tools) and gene meanings come with `include_notes: true`. A `place_structure` report that is not
+  ready answers its verdict without the layout previews (`verbose: true` keeps them). A brief job poll counts the
+  placed pieces instead of naming each, and a chute network's riding items are listed only with
+  `include_network_devices`.
+- **`fields` reaches nested keys; new `omit`.** A dotted name in `fields` is also read from each list entry, through
+  nested objects and lists at any depth (`inspect_slots` `occupant.prefab_name`, `find_items`
+  `held_in.reference_id`). `omit` leaves keys out wherever a path from the top of the reply reaches them, top-level
+  keys included (`get_ic_status` `omit: ["lua.log"]`, `connections` `omit: ["members.position"]`); an unused path comes
+  back in `omit_unmatched`. A tool whose reply stays small now refuses `fields`, `omit`, `limits` and `output_file`
+  instead of taking them silently; `paint` (up to 256 results) takes them.
+- **Chips.** `get_ic_status` leaves the source out unless `include_source: true` (was in by default), and a Lua chip's
+  `runtime` (IC10 registers and stack) is null. `set_ic_source` takes `source_file`, an absolute path on the machine
+  the MCP server runs on, so a 60 KB Lua source never passes through the agent, and echoes the source back only with
+  `include_source: true`.
+- **`connections`: an area filter** on a network's members: `min` and `max` (a box) or `near` with `radius_m`.
+- **`atmosphere_contents` on a pipe-mounted device** (a Pipe Analyzer, a gauge) reads the pipe network it sits on, as
+  the game does (source `mounted_pipe_network`), instead of answering `no_atmosphere`.
+- **Console on a dedicated server.** `run_console_command` captures what a command prints there (the lines the game
+  writes to the server's console window), and `read_console` reads the last 500. `thing spawn <prefab> <amount>`
+  spawns `amount` full stacks, not that many items; the description says so.
+- **Logic Rocket Uplink.** `describe_device` on an uplink shows the downlink it follows, that downlink's rocket,
+  whether the link is live and the downlinks it may follow; new `set_uplink` points it at one of those, as a
+  screwdriver would.
+
 ## 1.13.0
 
 2026-10-03. Every rocket design. 92 tools.

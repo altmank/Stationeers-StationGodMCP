@@ -88,10 +88,6 @@ internal static class ShowPreviewApi
             notes.Add("Nothing to draw: pass placements (or prefab and at), cells or boxes.");
         }
 
-        notes.Add("Green: footprint (red with a problem); white: render box; cyan: port joining cells (red when " +
-                  "blocked); yellow: cells. " + (screen.DrawnOn != null
-                      ? $"Drawn by {screen.DrawnOn}'s game, on their screen only."
-                      : "Only this game draws them."));
         return new ShowPreviewView(boxes.Count, cleared, seconds, report, notes, screen.DrawnOn, player.Source);
     }
 

@@ -12,7 +12,12 @@
       },
       "name_contains": {"type": "string", "description": "Case-insensitive substring of the container's display name (its label)."},
       "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Only containers within this many metres of the player."},
-      "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Containers per page, default 100."},
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "description": "Containers per page, default 12 (100 before 1.14.0)."
+      },
       "offset": {"type": "integer", "minimum": 0, "description": "Containers to skip, for paging.", "maximum": 2147483647}
     },
     "additionalProperties": false
@@ -26,8 +31,7 @@
       "offset": {"type": "integer"},
       "limit": {"type": "integer"},
       "has_more": {"type": "boolean"},
-      "local_player": {"type": ["object", "null"]},
-      "note": {"type": "string"}
+      "local_player": {"type": ["object", "null"]}
     }
   },
   "x-views": ["ListContainersView"],

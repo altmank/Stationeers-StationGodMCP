@@ -18,7 +18,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class RunConsoleCommandApi
 {
-    private const int DefaultOutputLines = 100;
+    private const int DefaultOutputLines = ReplyDefaults.ConsoleOutputLines;
 
     private const string NoCapture =
         "The console's printed lines cannot be read here (no console buffer yet, or on a dedicated server the " +

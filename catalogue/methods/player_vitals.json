@@ -28,8 +28,7 @@
       "hunger": {"type": "object"},
       "thirst": {"type": ["object", "null"]},
       "warnings": {"type": "object"},
-      "game_tick_s": {"type": "number"},
-      "note": {"type": "string"}
+      "game_tick_s": {"type": "number"}
     }
   },
   "x-views": ["PlayerVitalsView"],

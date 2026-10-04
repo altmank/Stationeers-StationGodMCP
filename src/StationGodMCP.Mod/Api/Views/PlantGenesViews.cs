@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
@@ -91,18 +92,14 @@ internal sealed class GeneView
 
     public string Gene { get; }
 
+    /// <summary>From Minimum to Maximum, as every gene's.</summary>
     public float? Value { get; }
 
-    public float Min => Minimum;
-
-    public float Max => Maximum;
-
+    /// <summary>From Minimum to Maximum, as every gene's.</summary>
     public float? Stability { get; }
 
-    public float StabilityMin => Minimum;
-
-    public float StabilityMax => Maximum;
-
+    /// <summary>What the gene does, the same text for every plant: with include_notes only.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Meaning { get; }
 
     /// <summary>A SecondsEffectView, FactorEffectView or BandEffectView; null when the gene is missing.</summary>

@@ -87,7 +87,9 @@ internal sealed class StructureSwapReportView
     /// <summary>Every room next to a piece to swap, as it is now.</summary>
     public List<StructureRoomView> Rooms { get; }
 
-    public List<string> Notes { get; }
+    /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Notes { get; }
 }
 
 internal sealed class StructureSwapLists

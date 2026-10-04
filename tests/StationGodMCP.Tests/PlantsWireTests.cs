@@ -152,7 +152,7 @@ public sealed class PlantsWireTests
         count = 1
     };
 
-    private static PlantsView NewShape()
+    internal static PlantsView NewShape()
     {
         PlantIdentity identity = new PlantIdentity(new ThingView(new ThingId(70), "SeedBag_Tomato", "Tomato_Tray 1"),
             "Tomato", true,
@@ -188,6 +188,6 @@ public sealed class PlantsWireTests
             new SortedDictionary<string, float> { ["DarkPerDay"] = 0.1f, ["WaterUsage"] = -0.2f },
             new PlantForecastView(0.9f, 52.8, 100.0, 200.0, new RegrowTimes(null, null)));
         return new PlantsView(1234.5f, 1200, false,
-            new List<PlantView> { new PlantView(identity, growth, care, supply, history) });
+            new List<object> { new PlantView(identity, growth, care, supply, history) });
     }
 }

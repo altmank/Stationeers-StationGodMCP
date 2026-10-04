@@ -15,7 +15,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class GetIcStatusApi
 {
-    private const int DefaultStackCount = 64;
+    private const int DefaultStackCount = ReplyDefaults.IcStackWindow;
 
     internal static object Handle(Args args)
     {

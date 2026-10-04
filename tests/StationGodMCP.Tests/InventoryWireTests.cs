@@ -92,13 +92,10 @@ public sealed class InventoryWireTests
             position = new { x = 1.0, y = 2.0, z = 3.0 }, distance_m = (double?)4.5,
             machine_stock = new
             {
-                reagent = "Electrum", reagent_name = (string?)"Electrum", kind = "fabricator", movable = false,
-                how_to_get = stock.MachineStock.HowToGet
+                reagent = "Electrum", reagent_name = (string?)"Electrum", kind = "fabricator", movable = false
             }
         };
         WireCheck.Same(expected, stock);
-        Assert.Contains("Open the machine", stock.MachineStock.HowToGet);
-        Assert.Contains("working load", new MachineStockView("Iron", "Iron", "processing").HowToGet);
     }
 
     [Fact]
@@ -118,7 +115,7 @@ public sealed class InventoryWireTests
                     }
                 }
             },
-            prefab_count = 1, item_count = 2, note = string.Empty
+            prefab_count = 1, item_count = 2
         };
         ItemTotalsView view = new ItemTotalsView(
             new List<PrefabTotalView>
@@ -132,7 +129,6 @@ public sealed class InventoryWireTests
             },
             1, 2, 0);
         JObject oldShape = JObject.FromObject(old);
-        oldShape["note"] = view.Note;
         WireCheck.SameAfterRenames(oldShape, view, new Dictionary<string, string>(),
             "totals[].machine_stock", "totals[].reagent", "totals[].top_holders[].kind",
             "totals[].top_holders[].position", "machine_stock_entries");
@@ -181,10 +177,9 @@ public sealed class InventoryWireTests
                     top_holders = new List<object>()
                 }
             },
-            prefab_count = 2, item_count = 1, machine_stock_entries = 2, note = view.Note
+            prefab_count = 2, item_count = 1, machine_stock_entries = 2
         };
         WireCheck.Same(expected, view);
-        Assert.Contains("machine_stock", view.Note);
     }
 
     [Fact]
@@ -213,8 +208,7 @@ public sealed class InventoryWireTests
                     position = new { x = 4.0, y = 5.0, z = 6.0 }, distance_m = (double?)12.3
                 }
             },
-            count = 1, total_matches = 4, offset = 0, limit = 1, has_more = true, local_player = (object?)null,
-            note = view.Note
+            count = 1, total_matches = 4, offset = 0, limit = 1, has_more = true, local_player = (object?)null
         };
         WireCheck.SameAfterRenames(old, view, TotalRename);
     }

@@ -7,13 +7,6 @@ namespace StationGodMCP.Api.Views;
 /// <summary>player_vitals: the player's stores, state, and hunger and thirst drain.</summary>
 internal sealed class PlayerVitalsView
 {
-    private const string NoteText =
-        "Rates are per game second, from the game's own per-tick formulas. per_second is the rate right now: 0 while " +
-        "lying in a bed, powered sleeper or working cryo tube (the game skips hunger and thirst there) and halved " +
-        "while sleeping elsewhere. awake_per_second is the rate when up and about. time_left_s is the store in the " +
-        "body divided by the current rate: food and water carried or stored are not counted here (see consumables " +
-        "and water_sources).";
-
     internal PlayerVitalsView(ThingView player, BodyStores stores, BodyState state, VitalsRates rates,
         DifficultyView difficulty, VitalsWarningsView warnings)
     {
@@ -82,8 +75,6 @@ internal sealed class PlayerVitalsView
     public VitalsWarningsView Warnings { get; }
 
     public float GameTickS { get; }
-
-    public string Note => NoteText;
 }
 
 /// <summary>What the body holds.</summary>

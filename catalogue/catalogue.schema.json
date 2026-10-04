@@ -123,6 +123,7 @@
         "x-needs-mod": {"type": "array", "items": {"enum": ["StationeersLua", "BlueprintMod", "IngotVault", "TerraformingReloaded"]}},
         "x-mcp": {"enum": ["tool", "hidden"], "default": "tool"},
         "x-read-by": {"type": "object", "additionalProperties": {"type": "string"}},
+        "x-default-limits": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
         "x-file-arguments": {
           "type": "object",
           "additionalProperties": {

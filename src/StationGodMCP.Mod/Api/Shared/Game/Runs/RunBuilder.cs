@@ -245,7 +245,7 @@ internal static class RunBuilder
             }
             else
             {
-                outcome.Log.Placed.Add(GameLookup.ViewOf(built));
+                outcome.Log.PlacedPieces.Add(GameLookup.ViewOf(built));
             }
 
             return built;

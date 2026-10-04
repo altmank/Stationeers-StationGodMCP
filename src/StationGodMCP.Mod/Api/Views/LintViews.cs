@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
@@ -90,7 +91,7 @@ internal sealed class LintRuleView
         LevelWhen = (string?)rule.Source["level_when"];
         On = new List<string>(rule.On);
         Source = rule.Origin == LintRuleOrigin.Save ? "save" : "mod";
-        File = rule.File;
+        File = full ? rule.File : null;
         Description = rule.Description;
         Select = full ? rule.SelectText : null;
         Let = full && rule.Lets.Count > 0 ? new Dictionary<string, string>() : null;
@@ -111,25 +112,33 @@ internal sealed class LintRuleView
 
     public string Level { get; }
 
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? LevelWhen { get; }
 
     public List<string> On { get; }
 
-    /// <summary>mod or save.</summary>
+    /// <summary>mod or save: rule_source names both files once.</summary>
     public string Source { get; }
 
-    public string File { get; }
+    /// <summary>The file the rule comes from; with full or rule_id only.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? File { get; }
 
     public string? Description { get; }
 
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Select { get; }
 
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public Dictionary<string, string>? Let { get; }
 
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Assert { get; }
 
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Message { get; }
 
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Other { get; }
 
     public int Examples { get; }

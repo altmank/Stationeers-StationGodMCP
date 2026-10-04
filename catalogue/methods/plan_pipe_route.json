@@ -1,7 +1,7 @@
 {
   "name": "plan_pipe_route",
   "description": [
-    "plan_cable_route for pipes: the same ends (and from or to {reference_id} of an in-line tank or passive vent: the cell beyond its free end, 1.3.5+), reserve_cells and reserve_ports, reroute, rules and search (never through a cell holding a pipe, nor along a cable's axis in a cell), dry-run with place_pipes and its pipe guards. grade is required (gas, liquid, insulated_gas, insulated_liquid). Read only. Host only. No gateway is needed. join_to, join_trunk, root and network handles as plan_cable_route (1.3.0+).",
+    "plan_cable_route for pipes: the same ends (and from or to {reference_id} of an in-line tank or passive vent: the cell beyond its free end, 1.3.5+), reserve_cells and reserve_ports, reroute, rules and search (never through a cell holding a pipe, nor along a cable's axis in a cell), dry-run with place_pipes and its pipe guards. grade is required (gas, liquid, insulated_gas, insulated_liquid). Read only. Host only. No gateway is needed. join_to, join_trunk, root and network handles as plan_cable_route (1.3.0+). 1.14.0+: a chute network's riding items (networks_before items) are listed only with include_network_devices too (items_riding counts them); a brief job poll's log counts the placed pieces (placed_count) instead of naming each (created_ids holds every id built; verbose names them).",
     {"$include": "defs/text/lint_dry_run.txt"}
   ],
   "class": "read",
@@ -71,7 +71,7 @@
         "type": "integer",
         "minimum": 0,
         "maximum": 1024,
-        "description": "Cells the embedded dry run lists, default 200; 0 lists none."
+        "description": "Cells the embedded dry run lists, default 5 (200 before 1.14.0); 0 lists none."
       }
     },
     "additionalProperties": false

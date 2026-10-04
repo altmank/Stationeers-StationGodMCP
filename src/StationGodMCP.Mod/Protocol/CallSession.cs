@@ -203,6 +203,11 @@ internal sealed class CallSession : Session
             shape = ShapeRequest.Lenient(call.Shape);
         }
 
+        if (method != null)
+        {
+            shape = ShapeRequest.WithDefaultLimits(shape, method.DefaultLimits);
+        }
+
         CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape);
         CallProfile profile = method != null
             ? new CallProfile(method.Name, method.ClassAt(call.Params), method.CostAt(call.Params))

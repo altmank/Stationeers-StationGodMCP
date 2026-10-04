@@ -21,7 +21,7 @@ namespace StationGodMCP.Api;
 internal static class RocketFlightLogApi
 {
     private const int DefaultCapacity = 3600;
-    private const int DefaultLimit = 20;
+    private const int DefaultLimit = ReplyDefaults.FlightLogRows;
     private const int MaximumLimit = 200;
 
     internal static object Handle(Args args)

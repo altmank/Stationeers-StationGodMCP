@@ -20,7 +20,8 @@ internal static class UpgradeReports
     {
         UpgradeRequest request = plan.Request;
         SwapGoal goal = request.Goal;
-        UpgradeHeader header = new UpgradeHeader(goal.Tool, goal.Target, status, jobId, goal.Notes(request.Family));
+        UpgradeHeader header = new UpgradeHeader(goal.Tool, goal.Target, status, jobId,
+            request.IncludeNotes ? goal.Notes(request.Family) : null);
         UpgradeCounts counts = new UpgradeCounts(plan.Total, plan.Swaps.Count, plan.Kept.Count, plan.Unmatched.Count);
         UpgradeLists lists = new UpgradeLists(plan.Problems, Pieces(plan), ByPrefab(plan),
             Skipped(plan.Kept, request.ListLimit), Skipped(plan.Unmatched, request.ListLimit));
@@ -272,7 +273,8 @@ internal static class UpgradeReports
         List<object> networks = new List<object>(plan.Networks.Count);
         foreach (NetworkRecord record in plan.Networks)
         {
-            networks.Add(record.Report());
+            object report = record.Report();
+            networks.Add(report is IListsDevices listing ? listing.WithoutDevices() : report);
         }
 
         return networks;

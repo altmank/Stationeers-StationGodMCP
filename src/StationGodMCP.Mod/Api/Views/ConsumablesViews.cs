@@ -9,12 +9,6 @@ namespace StationGodMCP.Api.Views;
 /// <summary>consumables: every food and drink in the world, the packages they are in, and totals.</summary>
 internal sealed class ConsumablesView
 {
-    private const string NoteText =
-        "Totals include everything in the world wherever it is: carried, stored, on the ground and inside boxes and " +
-        "packages. not_counted lists what is edible in form only: decayed food, seeds, plants still growing in a " +
-        "tray (harvest them first), items with no nutrition (pills) and empty drinks. decay_time_left_s is the " +
-        "game's own estimate at the item's current decay rate, null when it does not decay.";
-
     internal ConsumablesView(List<FoodView> food, List<DrinkView> drinks, List<PackageView> packages,
         List<NotCountedView> notCounted, ConsumableTotalsView totals, LocalPlayerView? localPlayer)
     {
@@ -37,8 +31,6 @@ internal sealed class ConsumablesView
     public ConsumableTotalsView Totals { get; }
 
     public LocalPlayerView? LocalPlayer { get; }
-
-    public string Note => NoteText;
 }
 
 /// <summary>The package (a CardboardBox) an item is packed in, if any.</summary>

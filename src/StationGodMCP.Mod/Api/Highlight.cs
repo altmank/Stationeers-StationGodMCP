@@ -47,12 +47,7 @@ internal static class HighlightApi
         }
 
         PlayerScreen screen = camera.Screen;
-        List<string> notes = new List<string>
-        {
-            (screen.DrawnOn != null ? $"Drawn by {screen.DrawnOn}'s game, on their screen only" : "Drawn on this game's screen only") +
-            ", through walls, frames and terrain; nothing in the world changed.",
-            "distance_m and bearing_deg are from the camera when the call ran (bearing: 0 north, +z; 90 east, +x)."
-        };
+        List<string> notes = new List<string>();
         int cleared = screen.Highlight(!request.Keep, marks, request.Seconds, notes);
         return new HighlightView(views, cleared, request.Seconds, screen.Renderer, notes, screen.DrawnOn, camera.Source);
     }

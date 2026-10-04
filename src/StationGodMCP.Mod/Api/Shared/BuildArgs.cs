@@ -150,11 +150,31 @@ internal sealed class PlacementArgs
     internal JObject? Orient { get; }
 }
 
+/// <summary>
+/// What a build report lists beyond its verdict: notes (include_notes: the tool's fixed explanations) and, on a report
+/// that is not ready, each placement's layout preview (verbose).
+/// </summary>
+internal sealed class ReportDetail
+{
+    internal ReportDetail(bool notes, bool layoutsWhenRefused)
+    {
+        Notes = notes;
+        LayoutsWhenRefused = layoutsWhenRefused;
+    }
+
+    internal static ReportDetail Brief { get; } = new ReportDetail(false, false);
+
+    internal bool Notes { get; }
+
+    internal bool LayoutsWhenRefused { get; }
+}
+
 internal sealed class PlaceArguments
 {
     internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free, bool allowDoorKeepOut = false,
-        bool footprintCells = false)
+        bool footprintCells = false, ReportDetail? detail = null)
     {
+        Detail = detail ?? ReportDetail.Brief;
         FootprintCells = footprintCells;
         AllowDoorKeepOut = allowDoorKeepOut;
         Placements = placements;
@@ -175,12 +195,16 @@ internal sealed class PlaceArguments
 
     /// <summary>include_footprint_cells: each layout preview lists its footprint's cells, not only a count.</summary>
     internal bool FootprintCells { get; }
+
+    internal ReportDetail Detail { get; }
 }
 
 internal sealed class RemoveArguments
 {
-    internal RemoveArguments(List<ThingId> ids, RemovalAllowance allow, RefundRoute refundTo, ThingId? from)
+    internal RemoveArguments(List<ThingId> ids, RemovalAllowance allow, RefundRoute refundTo, ThingId? from,
+        bool includeNotes = false)
     {
+        IncludeNotes = includeNotes;
         Ids = ids;
         Allow = allow;
         RefundTo = refundTo;
@@ -195,6 +219,9 @@ internal sealed class RemoveArguments
     internal RefundRoute RefundTo { get; }
 
     internal ThingId? From { get; }
+
+    /// <summary>include_notes: the report carries the tool's fixed explanations.</summary>
+    internal bool IncludeNotes { get; }
 }
 
 /// <summary>A request of place_structure or remove_structure: a job to poll, or a run (dry or confirmed).</summary>
@@ -255,6 +282,9 @@ internal static class BuildArgs
 
     /// <summary>place_structure's switch for the footprint's cell lists in each layout preview.</summary>
     private const string FootprintCellsArgument = "include_footprint_cells";
+
+    /// <summary>The switch for the tool's fixed explanations in a report.</summary>
+    private const string NotesArgument = "include_notes";
     internal const int MaximumRemovals = 256;
 
     private static readonly string[] PlacementFields =
@@ -266,7 +296,7 @@ internal static class BuildArgs
         {
             return Poll<PlaceArguments>(args, "placements", "from_id", "free", "prefab", "at", "rotation", "facing",
                 "up", "face", "build_state", "label", "color", "allow_door_keepout", "orient", "above_floor_m",
-                FootprintCellsArgument);
+                FootprintCellsArgument, NotesArgument);
         }
 
         List<PlacementArgs> placements = new List<PlacementArgs>();
@@ -291,11 +321,13 @@ internal static class BuildArgs
         }
 
         bool confirmed = Confirmed(args);
+        bool verbose = args.OptionalBool(VerboseArgument) ?? false;
         return new BuildForm<PlaceArguments>.Run(
             new PlaceArguments(placements, args.OptionalThingId("from_id"), args.OptionalBool("free") ?? false,
                 args.OptionalBool("allow_door_keepout") ?? false,
-                args.OptionalBool(FootprintCellsArgument) ?? false),
-            confirmed, VerboseOfRun(args, confirmed));
+                args.OptionalBool(FootprintCellsArgument) ?? false,
+                new ReportDetail(args.OptionalBool(NotesArgument) ?? false, verbose)),
+            confirmed, confirmed && verbose);
     }
 
     internal static BuildForm<RemoveArguments> ParseRemove(Args args)
@@ -303,7 +335,7 @@ internal static class BuildArgs
         if (args.Has("job_id"))
         {
             return Poll<RemoveArguments>(args, "reference_ids", "allow_contents", "allow_breach", "allow_broken",
-                "allow_burst", "refund_to", "from_id");
+                "allow_burst", "refund_to", "from_id", NotesArgument);
         }
 
         if (!args.Has("reference_ids"))
@@ -318,7 +350,8 @@ internal static class BuildArgs
         RefundRoute refundTo = RefundArgs.Route(args);
         bool confirmed = Confirmed(args);
         return new BuildForm<RemoveArguments>.Run(
-            new RemoveArguments(ids, allow, refundTo, args.OptionalThingId("from_id")), confirmed,
+            new RemoveArguments(ids, allow, refundTo, args.OptionalThingId("from_id"),
+                args.OptionalBool(NotesArgument) ?? false), confirmed,
             VerboseOfRun(args, confirmed));
     }
 

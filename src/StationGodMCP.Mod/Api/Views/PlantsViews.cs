@@ -6,11 +6,12 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// plants: every plant in a tray, planter or hydroponics station, and the clock its forecasts run on.
+/// plants: every plant in a tray, planter or hydroponics station, and the clock its forecasts run on. Each plant is a
+/// PlantView, or a PlantBriefView where the caller asked for every plant without verbose.
 /// </summary>
 internal sealed class PlantsView
 {
-    internal PlantsView(float gameTime, int dayLengthS, bool debugFastGrowth, List<PlantView> plants)
+    internal PlantsView(float gameTime, int dayLengthS, bool debugFastGrowth, List<object> plants)
     {
         GameTimeS = gameTime;
         DayLengthS = dayLengthS;
@@ -26,9 +27,60 @@ internal sealed class PlantsView
     /// <summary>A debug switch (SyncCustomGrowSpeed): while on, every plant jumps a stage each tick.</summary>
     public bool DebugFastGrowth { get; }
 
-    public List<PlantView> Plants { get; }
+    public List<object> Plants { get; }
 
     public int Count { get; }
+}
+
+/// <summary>
+/// One plant in short, as every plant of a world is listed by default: where it grows, how far along it is, and
+/// whether anything is wrong. plants with its reference_id, or verbose, gives the whole PlantView.
+/// </summary>
+internal sealed class PlantBriefView
+{
+    internal PlantBriefView(PlantView plant)
+    {
+        ReferenceId = plant.ReferenceId;
+        PrefabName = plant.PrefabName;
+        DisplayName = plant.DisplayName;
+        Planted = plant.Planted;
+        Tray = plant.Tray;
+        Stage = plant.Stage.Index;
+        StageCount = plant.Stage.Count;
+        MaturityRatio = plant.MaturityRatio;
+        ReadyToHarvest = plant.ReadyToHarvest;
+        Dead = plant.Dead;
+        HealthPercent = plant.Health?.HealthPercent;
+        Problems = plant.Problems;
+        HarvestInS = plant.Forecast.HarvestInS;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public string? PrefabName { get; }
+
+    public string? DisplayName { get; }
+
+    public bool Planted { get; }
+
+    public PlantTrayView? Tray { get; }
+
+    public int Stage { get; }
+
+    public int StageCount { get; }
+
+    public double MaturityRatio { get; }
+
+    public bool ReadyToHarvest { get; }
+
+    public bool Dead { get; }
+
+    public int? HealthPercent { get; }
+
+    public List<string> Problems { get; }
+
+    /// <summary>Seconds until it can be harvested at its growth rate now; null when it will not get there.</summary>
+    public double? HarvestInS { get; }
 }
 
 /// <summary>One plant: where it grows, its stage, what slows it, what it needs, and when it will be ready.</summary>

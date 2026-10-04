@@ -40,11 +40,6 @@ internal sealed class FindItemsView
 /// <summary>item_totals: the matching items summed per prefab, largest first.</summary>
 internal sealed class ItemTotalsView
 {
-    private const string NoteText =
-        "quantity is the stack size for stackable items and 1 for anything else; machine_stock is material held as " +
-        "reagents inside machines (fabricator stock counts as the ingots it ejects; a furnace's or centrifuge's " +
-        "working load counts under its reagent, with prefab_name null), included in quantity";
-
     internal ItemTotalsView(List<PrefabTotalView> totals, int prefabCount, int itemCount, int machineStockEntries)
     {
         Totals = totals;
@@ -61,8 +56,6 @@ internal sealed class ItemTotalsView
 
     /// <summary>Machine and reagent pairs counted (not in item_count).</summary>
     public int MachineStockEntries { get; }
-
-    public string Note => NoteText;
 }
 
 internal sealed class PrefabTotalView
@@ -163,10 +156,6 @@ internal sealed class HolderTotalView
 /// <summary>list_containers: one page of the holders with at least one item in them, nearest first.</summary>
 internal sealed class ListContainersView
 {
-    private const string NoteText =
-        "Lists every holder with at least one item in it, nested items included: lockers, crates, machines, a " +
-        "tablet on the floor. Empty containers are not listed.";
-
     internal ListContainersView(Slice<ContainerView> page, LocalPlayerView? localPlayer)
     {
         Containers = page.Items;
@@ -191,8 +180,6 @@ internal sealed class ListContainersView
     public bool HasMore { get; }
 
     public LocalPlayerView? LocalPlayer { get; }
-
-    public string Note => NoteText;
 }
 
 internal sealed class ContainerView

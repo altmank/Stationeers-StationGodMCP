@@ -20,7 +20,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class LintLayoutApi
 {
-    private const int DefaultLimit = 100;
+    private const int DefaultLimit = ReplyDefaults.LintFindings;
     private const int MaximumLimit = 500;
     private const long MaximumCells = 4000;
 

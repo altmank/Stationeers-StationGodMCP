@@ -600,12 +600,6 @@ internal readonly struct IcControlOutcome
 /// <summary>resolve_ic_selectors: what the chip's pins reach, its aliases, and batch selectors for devices.</summary>
 internal sealed class IcSelectorsView
 {
-    private const string NoteText =
-        "Batch instructions (lb, lbn, sb, sbn) reach only the devices on the holder's data network " +
-        "(batch_device_count; null: no network, and they fail with DeviceListNull). A prefab/name-hash selector is " +
-        "unique only while exactly one of those devices has that pair; reachable false: the chip's batch " +
-        "instructions do not reach the device. Renaming a device changes its NameHash.";
-
     internal IcSelectorsView(IcPlace place, DeviceView db, List<PinTargetView> pins, List<AliasView> aliases,
         List<StableSelectorView> stableSelectors, int? batchDeviceCount)
     {
@@ -636,8 +630,6 @@ internal sealed class IcSelectorsView
 
     /// <summary>How many devices the chip's batch instructions walk; null when the holder has no data network.</summary>
     public int? BatchDeviceCount { get; }
-
-    public string Note => NoteText;
 }
 
 internal sealed class PinTargetView

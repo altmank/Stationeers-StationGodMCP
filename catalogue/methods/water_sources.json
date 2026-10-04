@@ -1,6 +1,6 @@
 {
   "name": "water_sources",
-  "description": "Every canister, tank, device and pipe network in the world that holds water, polluted water or steam, with its holder or its network's devices, location, pressure, temperature and the water in moles, litres and hydration; largest first, with totals. Room and world air, bodies and organs are left out, and so are bottles and packets (see consumables). A pipe network is listed from the moment it exists, even while paused; a thing's own atmosphere made since the last atmospherics tick (a canister spawned while paused) is listed from the next tick on. owner.kind: item, structure, dynamic (a portable tank) or pipe_network. Read only; no gateway is needed.",
+  "description": "Every canister, tank, device and pipe network in the world that holds water, polluted water or steam, with its holder or its network's devices, location, pressure, temperature and the water in moles, litres and hydration; largest first, with totals. Room and world air, bodies and organs are left out, and so are bottles and packets (see consumables). A pipe network is listed from the moment it exists, even while paused; a thing's own atmosphere made since the last atmospherics tick (a canister spawned while paused) is listed from the next tick on. Water is drunk through a water bottle filler or a drinking fountain on a pipe network; polluted water needs a water purifier first and steam has to condense. Sources under min_mol (default 1 mol, 0.018 L) are skipped. owner.kind: item, structure, dynamic (a portable tank) or pipe_network. Read only; no gateway is needed. 1.14.0+: by default the reply keeps the first entries of its list (sources 15); shape_truncated gives each cut list's full length, and limits {list: count} keeps more.",
   "class": "read",
   "cost": "world",
   "params": {
@@ -27,11 +27,11 @@
       "count": {"type": "integer"},
       "totals": {"type": "object"},
       "min_mol": {"type": "number"},
-      "local_player": {"type": ["object", "null"]},
-      "note": {"type": "string"}
+      "local_player": {"type": ["object", "null"]}
     }
   },
   "x-views": ["WaterSourcesView"],
+  "x-default-limits": {"sources": 15},
   "x-shaping": "lists",
   "deprecated_aliases": {"min_moles": "min_mol"}
 }

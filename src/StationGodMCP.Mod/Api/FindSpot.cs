@@ -28,7 +28,7 @@ internal static class FindSpotApi
 {
     private const double DefaultRadiusM = 4.0;
     private const double MaximumRadiusM = 12.0;
-    private const int DefaultLimit = 5;
+    private const int DefaultLimit = ReplyDefaults.FindSpots;
     private const int DefaultChecks = 40;
     private const int MaximumChecks = 200;
     private const int MaximumCandidates = 4000;

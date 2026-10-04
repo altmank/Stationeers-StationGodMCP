@@ -14,7 +14,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class FindItemsApi
 {
-    private const int DefaultLimit = 100;
+    private const int DefaultLimit = ReplyDefaults.FindItems;
     private const int MaximumLimit = 500;
 
     internal static FindItemsView Handle(Args args)

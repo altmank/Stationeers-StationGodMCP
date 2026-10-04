@@ -43,7 +43,7 @@ internal static class StructureReports
         StructureSwapRequest request = plan.Request;
         int limit = request.Arguments.Limit;
         UpgradeHeader header = new UpgradeHeader(request.Family.Tool, request.TargetLabel, status, jobId,
-            new List<string>(Notes));
+            request.Arguments.IncludeNotes ? new List<string>(Notes) : null);
         UpgradeCounts counts = new UpgradeCounts(plan.Total, plan.Swaps.Count, plan.Kept.Count, plan.Unmatched.Count);
         StructureSwapLists lists = new StructureSwapLists(plan.Problems, Pieces(plan, limit), ByPrefab(plan),
             Skipped(plan.Kept, limit), Skipped(plan.Unmatched, limit));

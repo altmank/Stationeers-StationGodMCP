@@ -137,7 +137,7 @@ internal static class CleanApi
 /// <summary>The request forms the swap tools share: a dry run, a confirmed run, or a job's status.</summary>
 internal static class UpgradeApi
 {
-    private const int DefaultListLimit = 200;
+    private const int DefaultListLimit = ReplyDefaults.UpgradeListed;
 
     internal static object Handle(Args args, UpgradeFamily family, SwapGoal goal)
     {
@@ -145,7 +145,7 @@ internal static class UpgradeApi
         {
             args.Reject("job_id", "network_id", "reference_ids", "to", "operations", "keep_ids", "only_ids",
                 "older_than_id", "root", "wait", "dry_run",
-                "confirm", "from_id", "skip_unmatched", "refund", "refund_to", "limit",
+                "confirm", "from_id", "skip_unmatched", "refund", "refund_to", "limit", "include_notes",
                 GasHoldVerdict.AcknowledgeArgument);
             return HeldTickJobs.Status(args.String("job_id").Trim());
         }
@@ -193,7 +193,8 @@ internal static class UpgradeApi
         UpgradeOptions options = new UpgradeOptions(
             args.OptionalBool("skip_unmatched") ?? false,
             RefundArgs.RouteWithFlag(args),
-            args.OptionalInt("limit", 1, UpgradePlanner.MaximumPieces) ?? DefaultListLimit);
+            args.OptionalInt("limit", 1, UpgradePlanner.MaximumPieces) ?? DefaultListLimit,
+            args.OptionalBool("include_notes") ?? false);
         return new UpgradeRequest(family, goal, selection, args.OptionalThingId("from_id"), options);
     }
 }

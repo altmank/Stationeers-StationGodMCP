@@ -26,7 +26,8 @@ namespace StationGodMCP.Api;
 ///
 /// Which plants: Plant.AllPlants is what the game ticks, planted plants until they reach their last (dead) stage. A
 /// dead plant is still in its tray, so plants are also found among every dynamic thing (OcclusionManager
-/// .AllDynamicThings), planted ones only unless include_unplanted.
+/// .AllDynamicThings), planted ones only unless include_unplanted. Every plant is listed in short (PlantBriefView)
+/// unless verbose; one plant (reference_id) is always given whole.
 /// </summary>
 internal static class PlantsApi
 {
@@ -34,12 +35,14 @@ internal static class PlantsApi
     {
         bool includeUnplanted = args.OptionalBool("include_unplanted") ?? false;
         ThingId? only = args.OptionalThingId("reference_id");
+        bool whole = only.HasValue || (args.OptionalBool("verbose") ?? false);
         List<Plant> plants = only.HasValue ? One(only.Value) : All(includeUnplanted);
         plants.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
-        List<PlantView> views = new List<PlantView>(plants.Count);
+        List<object> views = new List<object>(plants.Count);
         foreach (Plant plant in plants)
         {
-            views.Add(PlantReader.Read(plant));
+            PlantView view = PlantReader.Read(plant);
+            views.Add(whole ? view : new PlantBriefView(view));
         }
 
         return new PlantsView(GameManager.GameTime, OrbitalSimulation.GetDayLengthSeconds(),

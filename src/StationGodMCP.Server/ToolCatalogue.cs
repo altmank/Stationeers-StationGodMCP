@@ -26,6 +26,9 @@ internal sealed record ToolSet(
     private const string FieldsDescription =
         "Keys kept in each entry of the reply's lists; a dotted name is a path read from each entry (occupant.prefab_name) or from one list's entries (things.position.x).";
 
+    private const string LimitsDescription =
+        "Entries kept per top-level list, {list: count}; lifts a list's default cut (shape_truncated names the full length).";
+
     private const string OmitDescription =
         "Keys left out of the reply, as paths from its top (source, runtime.registers; through a list each entry: members.position).";
 
@@ -107,6 +110,12 @@ internal sealed record ToolSet(
                     ["minItems"] = 1,
                     ["items"] = new JsonObject { ["type"] = "string" },
                     ["description"] = OmitDescription
+                };
+                properties[SidecarArguments.LimitsArgument] = new JsonObject
+                {
+                    ["type"] = "object",
+                    ["additionalProperties"] = new JsonObject { ["type"] = "integer", ["minimum"] = 0 },
+                    ["description"] = LimitsDescription
                 };
             }
 

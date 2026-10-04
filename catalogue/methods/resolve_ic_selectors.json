@@ -1,6 +1,6 @@
 {
   "name": "resolve_ic_selectors",
-  "description": "Resolve a circuit holder's db/d0... pins and compiled aliases (IC10), and report prefab/name-hash selectors (lbn/sbn) for the devices its batch instructions reach: lb, lbn, sb and sbn walk only the holder's data network (an IC Housing's), so stable_selectors defaults to the devices on it the scope shows, batch_device_count is how many it holds (null: no data network, and batch instructions fail with DeviceListNull), and a selector is unique when exactly one device on that network has the pair. target_reference_ids lists just those devices, each of which must be a device the scope shows (device_not_found otherwise); one off the network is listed with reachable false, unique false and ic10_example null (the chip cannot read it: an lbn with its pair reads the reachable devices that share it, or none). collision_count counts only reachable devices, so for an unreachable one it is the number of other devices that pair would read. For a Console or Computer Lua board, db is the computer. Needs a chip in the holder (no_programmable_chip otherwise); get_ic_status lists the pins of an empty holder. Arguments are checked first, so a malformed id in target_reference_ids is invalid_argument on any holder; the holder itself is checked (not_ic_housing, no_programmable_chip) before the ids are looked up.",
+  "description": "Resolve a circuit holder's db/d0... pins and compiled aliases (IC10), and report prefab/name-hash selectors (lbn/sbn) for the devices its batch instructions reach: lb, lbn, sb and sbn walk only the holder's data network (an IC Housing's), so stable_selectors defaults to the devices on it the scope shows, batch_device_count is how many it holds (null: no data network, and batch instructions fail with DeviceListNull), and a selector is unique when exactly one device on that network has the pair. target_reference_ids lists just those devices, each of which must be a device the scope shows (device_not_found otherwise); one off the network is listed with reachable false, unique false and ic10_example null (the chip cannot read it: an lbn with its pair reads the reachable devices that share it, or none). collision_count counts only reachable devices, so for an unreachable one it is the number of other devices that pair would read. Renaming a device changes its NameHash. For a Console or Computer Lua board, db is the computer. Needs a chip in the holder (no_programmable_chip otherwise); get_ic_status lists the pins of an empty holder. Arguments are checked first, so a malformed id in target_reference_ids is invalid_argument on any holder; the holder itself is checked (not_ic_housing, no_programmable_chip) before the ids are looked up. 1.14.0+: by default the reply keeps the first entries of its list (stable_selectors 12); shape_truncated gives each cut list's full length, and limits {list: count} keeps more.",
   "class": "read",
   "cost": "instant",
   "params": {
@@ -29,10 +29,10 @@
       "aliases": {"type": "array"},
       "stable_selectors": {"type": "array"},
       "stable_selector_count": {"type": "integer"},
-      "batch_device_count": {"type": ["integer", "null"]},
-      "note": {"type": "string"}
+      "batch_device_count": {"type": ["integer", "null"]}
     }
   },
   "x-views": ["IcSelectorsView"],
+  "x-default-limits": {"stable_selectors": 12},
   "x-shaping": "lists"
 }

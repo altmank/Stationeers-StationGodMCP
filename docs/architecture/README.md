@@ -11,6 +11,7 @@ in plain words. The other pages hold the exact rules:
 | [scheduling.md](scheduling.md) | How the game's main thread is shared between clients, what requests cost today, and the limits on subscriptions. |
 | [clients.md](clients.md) | The Python library, the C# client inside the sidecar, where `output_file` lives, and moving every existing client over. |
 | [stages.md](stages.md) | The plan: small stages, each shippable on its own, with tests and who builds it. |
+| [reply-budget.md](reply-budget.md) | The 8 KB default reply budget: why heavy replies slipped through, the test that holds every tool to it, and what each tool lists by default. |
 
 Claims about how things work today cite the code as `file:line`. Paths without a repository name are in this
 repository. Anything not checked against code or a live game is marked GUESS.

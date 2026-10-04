@@ -11,7 +11,12 @@
         "type": "boolean",
         "description": "List every frame, with exposed_faces empty for inner ones. Default false: outer frames only."
       },
-      "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Frames per page, default 200."},
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000,
+        "description": "Frames per page, default 20 (200 before 1.14.0)."
+      },
       "offset": {"type": "integer", "minimum": 0, "description": "Frames to skip, for paging.", "maximum": 2147483647}
     },
     "additionalProperties": false

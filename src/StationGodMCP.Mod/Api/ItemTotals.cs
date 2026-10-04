@@ -18,9 +18,9 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class ItemTotalsApi
 {
-    private const int DefaultLimit = 200;
+    private const int DefaultLimit = ReplyDefaults.ItemTotals;
     private const int MaximumLimit = 500;
-    private const int DefaultHolders = 5;
+    private const int DefaultHolders = ReplyDefaults.ItemTotalHolders;
     private const int MaximumHolders = 100;
 
     // Row key of a working-load reagent, apart from every prefab name.

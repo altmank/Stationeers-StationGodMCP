@@ -117,13 +117,15 @@ internal sealed class UpgradeReportView
     /// <summary>Null when no piece has a replacement: the links are surveyed around pieces to swap only.</summary>
     public UpgradeConnectivityView? Connectivity { get; }
 
-    public List<string> Notes { get; }
+    /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Notes { get; }
 }
 
 /// <summary>The report's identity: which tool, which target, what happened to the request.</summary>
 internal sealed class UpgradeHeader
 {
-    internal UpgradeHeader(string tool, string target, string status, string? jobId, List<string> notes)
+    internal UpgradeHeader(string tool, string target, string status, string? jobId, List<string>? notes)
     {
         Tool = tool;
         Target = target;
@@ -140,7 +142,8 @@ internal sealed class UpgradeHeader
 
     internal string? JobId { get; }
 
-    internal List<string> Notes { get; }
+    /// <summary>The tool's fixed explanations, with include_notes; null otherwise.</summary>
+    internal List<string>? Notes { get; }
 }
 
 internal sealed class UpgradeCounts
@@ -796,7 +799,7 @@ internal sealed class UpgradeMountedView
 }
 
 /// <summary>A cable network a swapped piece is in, before and as predicted after.</summary>
-internal sealed class CableNetworkReportView
+internal sealed class CableNetworkReportView : IListsDevices
 {
     internal CableNetworkReportView(ThingId networkId, CableNetworkCounts counts, CableNetworkRatings ratings,
         List<ThingView> devices, ThingId? renumberedFrom = null)
@@ -813,6 +816,7 @@ internal sealed class CableNetworkReportView
         LowestCableMaxWAfter = ratings.LowestAfter;
         LowestFuseBreakW = ratings.LowestFuse;
         Devices = devices;
+        DeviceCount = devices.Count;
     }
 
     public ThingId NetworkId { get; }
@@ -843,7 +847,18 @@ internal sealed class CableNetworkReportView
 
     public double? LowestFuseBreakW { get; }
 
-    public List<ThingView> Devices { get; }
+    public int DeviceCount { get; }
+
+    /// <summary>Left out of a dry run's report (device_count counts them); a job's verification lists them.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ThingView>? Devices { get; private set; }
+
+    public object WithoutDevices()
+    {
+        CableNetworkReportView copy = (CableNetworkReportView)MemberwiseClone();
+        copy.Devices = null;
+        return copy;
+    }
 }
 
 internal sealed class CableNetworkCounts
@@ -889,7 +904,7 @@ internal sealed class CableNetworkRatings
 }
 
 /// <summary>A pipe network a swapped piece is in: its contents, and its volume and pressure before and after.</summary>
-internal sealed class PipeNetworkReportView
+internal sealed class PipeNetworkReportView : IListsDevices
 {
     internal PipeNetworkReportView(ThingId networkId, string content, PipeNetworkCounts counts,
         PipeNetworkAir before, PipeNetworkAir after, double? lowestMaxPressureKpaAfter, List<ThingView> devices,
@@ -909,6 +924,7 @@ internal sealed class PipeNetworkReportView
         PressureKpaAfter = after.PressureKpa;
         LowestMaxPressureKpaAfter = lowestMaxPressureKpaAfter;
         Devices = devices;
+        DeviceCount = devices.Count;
     }
 
     public ThingId NetworkId { get; }
@@ -944,7 +960,18 @@ internal sealed class PipeNetworkReportView
     /// <summary>The lowest Pipe.MaxPressure among the network's pipes once the swap is done.</summary>
     public double? LowestMaxPressureKpaAfter { get; }
 
-    public List<ThingView> Devices { get; }
+    public int DeviceCount { get; }
+
+    /// <summary>Left out of a dry run's report (device_count counts them); a job's verification lists them.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ThingView>? Devices { get; private set; }
+
+    public object WithoutDevices()
+    {
+        PipeNetworkReportView copy = (PipeNetworkReportView)MemberwiseClone();
+        copy.Devices = null;
+        return copy;
+    }
 }
 
 internal sealed class PipeNetworkCounts

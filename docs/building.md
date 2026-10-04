@@ -14,8 +14,12 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    gives back, the networks before and after, and every problem at once. Read `ready`, `problems` and `warnings`.
    The run tools (`place_*`, `remove_*`, `plan_*_route`, `plan_removal`) give `links` as counts (`added_count`,
    `lost_count`) and leave their fixed `notes` out; `include_links: true` lists every link, `include_notes: true`
-   adds the notes. `limit` caps the cells listed (default 200; 0 lists none, the counts stay). `networks_before` and
-   `networks_after` give each network's `device_count`; `include_network_devices: true` lists the devices too.
+   adds the notes. `limit` caps the cells listed (default 5; 0 lists none, the counts stay). `networks_before` and
+   `networks_after` give each network's `device_count` (and a chute network's `items_riding`);
+   `include_network_devices: true` lists the devices and riding items too. `upgrade_*` and `clean_*` list up to 5
+   pieces per list by default, `replace_walls` and `replace_frames` 5, and their fixed notes, as `place_structure`'s
+   and `remove_structure`'s, only with `include_notes: true`. A `place_structure` dry run that is not ready answers
+   its verdict without each placement's layout preview; `verbose: true` keeps the previews.
 2. **A real run** needs `dry_run: false` and `confirm: true`, and starts only when the checks find no problem. It
    returns the `job_id`, the status and a `preflight_summary` (pieces placed, changed and removed, and the warning
    codes); the dry run you already read is left out unless `verbose: true`. This holds for the run tools,
