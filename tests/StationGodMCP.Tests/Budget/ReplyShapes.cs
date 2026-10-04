@@ -140,9 +140,14 @@ internal static class ReplyShapes
             S<FindSpotView>().List("FindSpotView.Planes", 2).List("FindSpotView.Spots", D.FindSpots)
                 .List("SpotView.Conflicts", 1).List("FindSpotView.Reasons", 8)
         };
+        // A structure stands in no slot (no carrier, no holder chain) and has a rotation and a rocket; a dynamic thing
+        // has neither. Either can carry a colour.
         shapes["find_things"] = new[]
         {
             S<FindThingsView>().List("FindThingsView.Things", D.FindThings).Absent("FoundThingView.Made")
+                .Absent("FoundThingView.CarriedBy").List("FoundThingView.HeldIn", 0),
+            S<FindThingsView>().List("FindThingsView.Things", D.FindThings).Absent("FoundThingView.Made")
+                .Absent("FoundThingView.Rotation", "FoundThingView.RocketState")
         };
         shapes["game_clock"] = new[] { S<GameClockView>() };
         shapes["get_ic_status"] = new[]

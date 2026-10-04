@@ -159,6 +159,17 @@ public sealed class ShapingTests
     }
 
     [Fact]
+    public void APathThroughANestedListAppliesToEachEntry()
+    {
+        string reply = """{"count":1,"rockets":[{"reference_id":"9","name":"R1","fuel":[{"line":1,"total_mol":40.5,"gases":[{"gas":"Methane"}]},{"line":2,"total_mol":12}]}]}""";
+
+        Assert.Equal("""{"count":1,"rockets":[{"name":"R1","fuel":[{"total_mol":40.5},{"total_mol":12}]}]}""",
+            ShapingChecks.ModFields(reply, new[] { "rockets.fuel.total_mol", "name" }));
+        Assert.Equal("""{"count":1,"rockets":[{"fuel":[{"total_mol":40.5},{"total_mol":12}]}]}""",
+            ShapingChecks.ModFields(reply, new[] { "fuel.total_mol" }));
+    }
+
+    [Fact]
     public void AnEntryPathNoEntryHasIsUnmatched()
     {
         string shaped = ShapingChecks.ModFields(

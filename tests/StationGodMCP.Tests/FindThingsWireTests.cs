@@ -57,6 +57,19 @@ public sealed class FindThingsWireTests
     }
 
     [Fact]
+    public void APaintedThingGivesItsColourAndAnUnpaintableOneLeavesItOut()
+    {
+        FoundThingView Wall(ThingColorView? color) => new FoundThingView(
+            new ThingView(new ThingId(5), "StructureWallIron", "Iron Wall"), null, "Iron Wall", "structure",
+            "Wall", false, FoundThingView.Built, null, new List<HeldInView>(), new PositionView(1, 2, 3), null, false,
+            false, color: color);
+
+        Assert.Contains("\"color\":{\"index\":3,\"name\":\"Blue\",\"is_default\":false}",
+            WireCheck.New(Wall(ThingColorView.Of(3, "Blue", false))));
+        Assert.DoesNotContain("\"color\"", WireCheck.New(Wall(null)));
+    }
+
+    [Fact]
     public void CarriedCanisterHasItsHolders()
     {
         var expected = new

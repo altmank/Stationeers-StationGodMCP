@@ -207,6 +207,23 @@ public sealed class OpeningsTests
     }
 
     [Fact]
+    public void OnlyReleasedEndsOnOrBesideTheRouteAreReported()
+    {
+        GridCell onRoute = new GridCell(0, 0, 0);
+        GridCell diagonal = new GridCell(10, 5, 5);
+        GridCell far = new GridCell(500, 0, 0);
+        GridCell clearEnd = new GridCell(5, 0, 0);
+        OpeningGuard guard = new OpeningGuard(
+            cell => cell.Equals(clearEnd) ? OpeningZone.Clear : OpeningZone.DoorKeepOut(1),
+            new[] { onRoute, diagonal, far, clearEnd }, false);
+
+        List<GridCell> route = new List<GridCell> { onRoute, new GridCell(5, 0, 0) };
+        Assert.Equal(new HashSet<GridCell> { onRoute, diagonal },
+            new HashSet<GridCell>(guard.ReleasedInKeepOutBeside(route)));
+        Assert.Equal(3, guard.ReleasedInKeepOut().Count);
+    }
+
+    [Fact]
     public void TheSurveyNamesEachFaceStructuresKindAndListsDoors()
     {
         string wall = WireCheck.New(new SurveyWallView("+z", new ThingView(new ThingId(983), "StructureGlassDoor",

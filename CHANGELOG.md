@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.21.2
+
+- **`find_things` gives a thing's colour**: a paintable thing reports `color {index, name, is_default}` as `paint`
+  reads it (a state-coloured thing, such as an LED display, its state colour).
+- **Run reports count devices one way.** `networks_after` `device_count` counts each device once, as
+  `networks_before` does; the new `port_count` counts the device ports (a device on a cable network by its power and
+  its data port counts twice). Before, `networks_after` counted ports under `device_count`, so a one-piece join read
+  as dozens of new devices.
+- **`plan_*_route` names only the door keep-out end cells on or beside the route**, not those of a target network's
+  far ends.
+- The shaping help gives an example of a path through a nested list (`rocket_status` `fields
+  ["rockets.fuel.total_mol"]`).
+
 ## 1.21.1
 
 - **A network id given to a logic tool** (`read_logic_many` with a pipe network's id, say) is refused naming it as a

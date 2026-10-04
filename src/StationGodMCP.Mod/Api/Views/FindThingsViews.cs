@@ -76,8 +76,10 @@ internal sealed class FoundThingView
     internal FoundThingView(ThingView thing, string? customName, string gameName, string kind, string runtimeType,
         bool labelable, string location, string? carriedBy, List<HeldInView> heldIn, PositionView position,
         double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null, bool isBroken = false,
-        string condition = "intact", PrintView? made = null, string? rocketState = null)
+        string condition = "intact", PrintView? made = null, string? rocketState = null,
+        ThingColorView? color = null)
     {
+        Color = color;
         Made = made;
         RocketState = rocketState;
         IsBroken = isBroken;
@@ -168,4 +170,11 @@ internal sealed class FoundThingView
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? RocketState { get; }
+
+    /// <summary>
+    /// Its colour {index, name, is_default} as paint reads it: a paintable thing's paint, a state-coloured thing's
+    /// state colour; left out for a thing with neither.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ThingColorView? Color { get; }
 }

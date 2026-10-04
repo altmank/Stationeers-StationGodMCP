@@ -308,6 +308,28 @@ internal sealed class OpeningGuard
         return released;
     }
 
+    /// <summary>
+    /// The route's own ends in a door's keep-out that the route stands on or beside (one small cell away, diagonals
+    /// included). A target network's far ends are ends too, but a route that never comes near them passes no door
+    /// there.
+    /// </summary>
+    internal List<GridCell> ReleasedInKeepOutBeside(IReadOnlyList<GridCell> route) =>
+        ReleasedInKeepOut().FindAll(end => IsBeside(end, route));
+
+    private static bool IsBeside(GridCell end, IReadOnlyList<GridCell> route)
+    {
+        foreach (GridCell cell in route)
+        {
+            if (Math.Abs(cell.X - end.X) <= GridStep.CellSize && Math.Abs(cell.Y - end.Y) <= GridStep.CellSize &&
+                Math.Abs(cell.Z - end.Z) <= GridStep.CellSize)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     internal Func<GridCell, CellCost> Guard(Func<GridCell, CellCost> cost) =>
         cell =>
         {

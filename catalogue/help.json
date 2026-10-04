@@ -73,7 +73,7 @@
       "subtopics": {
         "fields": {
           "summary": "fields: keep only these keys, in list entries and objects.",
-          "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matched nothing is listed in fields_unmatched, with fields_valid. tool_info {tool} gives reply_keys."
+          "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). A list on the way applies the rest of the path to each of its entries: rocket_status fields [\"rockets.fuel.total_mol\"] keeps each fuel line's total_mol. Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matched nothing is listed in fields_unmatched, with fields_valid. tool_info {tool} gives reply_keys."
         },
         "omit": {
           "summary": "omit: leave key paths out of the reply.",
@@ -301,7 +301,7 @@
         },
         "report": {
           "summary": "The dry run report and the reply switches.",
-          "text": "cells [{at, action place, change or keep, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end}], removals, materials, networks_before, networks_after (each with its guard numbers), would_bridge, would_split, links {count_before, count_after, added_count, lost_count, model_matches_game}, problems, warnings, ready. limit lists 5 cells (0 none); include_links, include_network_devices and include_notes add detail. A job's log lists created_ids and created_by_part. Status applied, applied_with_differences, stopped, applied_unchecked or refused."
+          "text": "cells [{at, action place, change or keep, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end}], removals, materials, networks_before, networks_after (each with its guard numbers; device_count counts each device once in both, port_count counts the device ports after), would_bridge, would_split, links {count_before, count_after, added_count, lost_count, model_matches_game}, problems, warnings, ready. limit lists 5 cells (0 none); include_links, include_network_devices and include_notes add detail. A job's log lists created_ids and created_by_part. Status applied, applied_with_differences, stopped, applied_unchecked or refused."
         }
       }
     },

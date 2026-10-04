@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.21.1",
+  "mod_version": "1.21.2",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -80,7 +80,7 @@
         "subtopics": {
           "fields": {
             "summary": "fields: keep only these keys, in list entries and objects.",
-            "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matched nothing is listed in fields_unmatched, with fields_valid. tool_info {tool} gives reply_keys."
+            "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). A list on the way applies the rest of the path to each of its entries: rocket_status fields [\"rockets.fuel.total_mol\"] keeps each fuel line's total_mol. Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matched nothing is listed in fields_unmatched, with fields_valid. tool_info {tool} gives reply_keys."
           },
           "omit": {
             "summary": "omit: leave key paths out of the reply.",
@@ -308,7 +308,7 @@
           },
           "report": {
             "summary": "The dry run report and the reply switches.",
-            "text": "cells [{at, action place, change or keep, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end}], removals, materials, networks_before, networks_after (each with its guard numbers), would_bridge, would_split, links {count_before, count_after, added_count, lost_count, model_matches_game}, problems, warnings, ready. limit lists 5 cells (0 none); include_links, include_network_devices and include_notes add detail. A job's log lists created_ids and created_by_part. Status applied, applied_with_differences, stopped, applied_unchecked or refused."
+            "text": "cells [{at, action place, change or keep, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end}], removals, materials, networks_before, networks_after (each with its guard numbers; device_count counts each device once in both, port_count counts the device ports after), would_bridge, would_split, links {count_before, count_after, added_count, lost_count, model_matches_game}, problems, warnings, ready. limit lists 5 cells (0 none); include_links, include_network_devices and include_notes add detail. A job's log lists created_ids and created_by_part. Status applied, applied_with_differences, stopped, applied_unchecked or refused."
           }
         }
       },
@@ -2758,7 +2758,7 @@
         "topics": {
           "reply": {
             "summary": "What each thing reports.",
-            "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A rocket's part adds rocket_state (OnLaunchMount, Launching, Landing...): its position moves while it flies. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes)."
+            "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A rocket's part adds rocket_state (OnLaunchMount, Launching, Landing...): its position moves while it flies. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes). A paintable thing adds color {index, name, is_default}, as paint reads it."
           },
           "broken": {
             "summary": "is_broken and condition.",

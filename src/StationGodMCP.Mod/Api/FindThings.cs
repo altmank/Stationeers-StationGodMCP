@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
+using Assets.Scripts.Util;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
@@ -53,9 +54,12 @@ internal static class FindThingsApi
         hits.Sort(static (a, b) => ThingHit.NearestFirst(a, b));
         Slice<ThingHit> slice = Slice<ThingHit>.Of(hits, page);
         List<FoundThingView> views = new List<FoundThingView>(slice.Items.Count);
+        List<ColorSwatch> swatches = Singleton<GameManager>.Instance != null
+            ? Singleton<GameManager>.Instance.CustomColors
+            : new List<ColorSwatch>();
         foreach (ThingHit hit in slice.Items)
         {
-            views.Add(ViewOf(hit.Thing, origin));
+            views.Add(ViewOf(hit.Thing, origin, swatches));
         }
 
         page.Note("things", views.Count, hits.Count);
@@ -65,7 +69,7 @@ internal static class FindThingsApi
     // Where a thing is for distances: a thing in a slot is where its outermost holder is, as find_items measures.
     private static Vector3 PositionOf(Thing thing) => HolderChain.PlaceOf(thing).Position;
 
-    private static FoundThingView ViewOf(Thing thing, PlayerOrigin origin)
+    private static FoundThingView ViewOf(Thing thing, PlayerOrigin origin, List<ColorSwatch> swatches)
     {
         HolderChain? chain = thing is DynamicThing dynamic ? HolderChain.Of(dynamic) : null;
         Vector3 position = chain != null ? chain.Root.Position : thing.Position;
@@ -87,8 +91,13 @@ internal static class FindThingsApi
             Wrecks.IsBroken(thing),
             ConditionOf(thing),
             Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null,
-            RocketOf(thing));
+            RocketOf(thing),
+            ColorOf(thing, swatches));
     }
+
+    // The colour paint reads: a paintable thing's paint, or the state colour a state-coloured thing shows.
+    private static ThingColorView? ColorOf(Thing thing, List<ColorSwatch> swatches) =>
+        thing.IsPaintable || thing.HasColorState ? PaintApi.ColorOf(thing, swatches) : null;
 
     private static string? RocketOf(Thing thing) =>
         thing is Structure structure && Rockets.NetworkOf(structure)?.Rocket is { } rocket

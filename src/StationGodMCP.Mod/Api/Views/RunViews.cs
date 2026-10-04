@@ -614,7 +614,8 @@ internal sealed class RunNetworkAfterView : IListsDevices
         NetworksBefore = networksBefore;
         NewPieces = newPieces;
         Devices = devices;
-        DeviceCount = devices.Count;
+        DeviceCount = DistinctDevices(devices);
+        PortCount = devices.Count;
         Guard = guard;
     }
 
@@ -624,9 +625,13 @@ internal sealed class RunNetworkAfterView : IListsDevices
 
     public int NewPieces { get; }
 
+    /// <summary>The devices on it, each once, as networks_before counts its devices.</summary>
     public int DeviceCount { get; }
 
-    /// <summary>The device ports on it; left out unless include_network_devices (device_count counts them).</summary>
+    /// <summary>The device ports on it: a device joined by two ports (power and data) counts twice.</summary>
+    public int PortCount { get; }
+
+    /// <summary>The device ports on it; left out unless include_network_devices (port_count counts them).</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<RunPortView>? Devices { get; private set; }
 
@@ -639,6 +644,17 @@ internal sealed class RunNetworkAfterView : IListsDevices
         RunNetworkAfterView copy = (RunNetworkAfterView)MemberwiseClone();
         copy.Devices = null;
         return copy;
+    }
+
+    private static int DistinctDevices(List<RunPortView> ports)
+    {
+        HashSet<long> devices = new HashSet<long>();
+        foreach (RunPortView port in ports)
+        {
+            devices.Add(port.Device.ReferenceId.Value);
+        }
+
+        return devices.Count;
     }
 }
 

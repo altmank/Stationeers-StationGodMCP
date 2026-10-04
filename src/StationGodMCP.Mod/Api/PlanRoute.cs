@@ -105,6 +105,7 @@ internal static class PlanRouteApi
             return new PlanRouteView(tool, null, Failure(tree), null, null, notes);
         }
 
+        ReleasedNote(openings, tree, notes);
         string? blocked = BlockedCell(NewCells(tree, facts), kind, mask, ignore);
         if (blocked != null)
         {
@@ -241,20 +242,25 @@ internal static class PlanRouteApi
 
         bool allow = args.OptionalBool("allow_door_keepout") ?? false;
         OpeningGuard guard = new OpeningGuard(facts.Opening, ends, allow);
-        List<GridCell> released = guard.ReleasedInKeepOut();
-        if (released.Count > 0)
-        {
-            notes.Add($"door keep-out: {released.Count} of this route's own end cells stand in a door's keep-out " +
-                      "and were not blocked: " + string.Join(", ", released.ConvertAll(cell =>
-                          PieceShapes.CentreOf(cell).ToString())) + ".");
-        }
-
         notes.Add(allow
             ? "allow_door_keepout: the route may pass through doorways (their face and the band either side)."
             : System.FormattableString.Invariant($"Doors: the route keeps out of every door's face and {facts.Band.Metres} m either side of it inside ") +
               "the door's rectangle (jambs, top edge and threshold; not inside the floor slab); cells on a window " +
               $"cost {OpeningGuard.WindowPenalty} more (crosses_window when it still does).");
         return guard;
+    }
+
+    // The route's own end cells in a door's keep-out, which the search did not block: only those on or beside the
+    // route, since a target network's ends far from it say nothing about this route.
+    private static void ReleasedNote(OpeningGuard openings, RouteTree tree, List<string> notes)
+    {
+        List<GridCell> released = openings.ReleasedInKeepOutBeside(tree.Cells);
+        if (released.Count > 0)
+        {
+            notes.Add($"door keep-out: {released.Count} of this route's own end cells stand in a door's keep-out " +
+                      "and were not blocked: " + string.Join(", ", released.ConvertAll(cell =>
+                          PieceShapes.CentreOf(cell).ToString())) + ".");
+        }
     }
 
     /// <summary>trunk: {waypoints} or {cells}, a run laid as given that every start branches from; null without one.</summary>

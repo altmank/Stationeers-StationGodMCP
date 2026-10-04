@@ -199,15 +199,21 @@ public sealed class ReplySlimmingTests
     }
 
     [Fact]
-    public void ANetworkAfterTheEditCountsItsDevicePorts()
+    public void ANetworkAfterTheEditCountsItsDevicesOnceAndItsPorts()
     {
         RunNetworkAfterView after = new RunNetworkAfterView(0, new List<ThingId> { new ThingId(5) }, 4,
-            new List<RunPortView> { new RunPortView(Device(1), 0, false, new ThingId(5)) }, null);
+            new List<RunPortView>
+            {
+                new RunPortView(Device(1), 0, false, new ThingId(5)),
+                new RunPortView(Device(1), 1, false, new ThingId(5)),
+                new RunPortView(Device(2), 0, false, new ThingId(5))
+            }, null);
 
         JObject slim = JObject.Parse(WireCheck.New(after.WithoutDevices()));
 
         Assert.Null(slim["devices"]);
-        Assert.Equal(1, (int)slim["device_count"]!);
+        Assert.Equal(2, (int)slim["device_count"]!);
+        Assert.Equal(3, (int)slim["port_count"]!);
         Assert.Equal(4, (int)slim["new_pieces"]!);
     }
 
