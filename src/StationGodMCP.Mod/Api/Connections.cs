@@ -65,7 +65,7 @@ internal static class ConnectionsApi
         if (thing)
         {
             args.Reject("reference_id", "kind", "limit", "offset", "prefab_contains", "open_ends_only", "min", "max",
-                "near", "radius_m");
+                "near", "radius_m", "summarize");
             return EndsReader.Read(GameLookup.RequireThing(args.ThingId("reference_id")));
         }
 
@@ -78,6 +78,13 @@ internal static class ConnectionsApi
             _ => throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.")
         };
         ThingId id = NetworkHandles.Resolve(args, "network_id", family);
+        if (args.OptionalBool("summarize") ?? false)
+        {
+            args.Reject("summarize", "offset", "open_ends_only");
+            return NetworkReader.Overview(kind, id,
+                PageRequest.From(args, ReplyDefaults.NetworkOverviewLists, MaximumLimit), NetworkMemberFilter.Parse(args));
+        }
+
         return NetworkReader.Read(kind, id, PageRequest.From(args, DefaultLimit, MaximumLimit),
             NetworkMemberFilter.Parse(args));
     }
@@ -86,7 +93,7 @@ internal static class ConnectionsApi
     // that nothing is attached at, across every network; cells by y, then z, then x, kinds in that order.
     private static AreaOpenEndsView OpenEndsInArea(Args args)
     {
-        args.Reject("the box form (it lists open ends in a box)", "near", "radius_m");
+        args.Reject("the box form (it lists open ends in a box)", "near", "radius_m", "summarize");
         if (args.OptionalBool("open_ends_only") == false)
         {
             throw ApiErrors.InvalidArgument(
@@ -111,6 +118,7 @@ internal static class ConnectionsApi
         }
 
         List<NetworkMemberView> found = new List<NetworkMemberView>();
+        List<ColorSwatch> swatches = PaintApi.Swatches();
         foreach (UpgradeFamily family in families)
         {
             foreach (SmallGrid piece in UpgradePlanner.InBox(family, box))
@@ -126,7 +134,8 @@ internal static class ConnectionsApi
                     IReferencable? owner = family.NetworkOf(piece);
                     found.Add(new NetworkMemberView(GameLookup.ViewOf(piece), family.NetworkKind,
                         GameLookup.ViewOf(piece.Position), open,
-                        owner != null ? new ThingId(owner.ReferenceId) : (ThingId?)null));
+                        owner != null ? new ThingId(owner.ReferenceId) : (ThingId?)null,
+                        PaintApi.ShownColorOf(piece, swatches)));
                 }
             }
         }
@@ -163,7 +172,7 @@ internal static class EndsReader
 
         return new ConnectionsView(
             GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position), OwnNetwork(grid), views,
-            Orientations.Of(thing));
+            Orientations.Of(thing), PaintApi.ShownColorOf(thing, PaintApi.Swatches()));
     }
 
     private static ConnectionEndView ReadEnd(SmallGrid grid, Connection end, int index)
@@ -380,22 +389,90 @@ internal static class NetworkReader
 {
     internal static NetworkMembersView Read(string kind, ThingId id, PageRequest page, NetworkMemberFilter filter)
     {
+        Found network = Find(kind, id);
+        return Page(kind, id, network.Members, network.Summary, page, filter);
+    }
+
+    /// <summary>
+    /// summarize: the members the filters keep counted by prefab and colour, and the first limit of its devices and
+    /// of its members with an open end.
+    /// </summary>
+    internal static NetworkOverviewView Overview(string kind, ThingId id, PageRequest limit, NetworkMemberFilter filter)
+    {
+        Found network = Find(kind, id);
+        List<ColorSwatch> swatches = PaintApi.Swatches();
+        MemberTally tally = new MemberTally();
+        List<NetworkMemberView> devices = new List<NetworkMemberView>();
+        List<NetworkMemberView> openEnds = new List<NetworkMemberView>();
+        int structureCount = 0;
+        int deviceCount = 0;
+        int openEndCount = 0;
+        foreach (Thing member in network.Members.All)
+        {
+            if (!Keeps(filter, member))
+            {
+                continue;
+            }
+
+            string role = member is Device ? "device" : kind;
+            ThingColorView? color = PaintApi.ShownColorOf(member, swatches);
+            tally.Add(member.PrefabName, () => GameLookup.ViewOf(member).DisplayName, role, color?.Name);
+            if (member is Device)
+            {
+                deviceCount++;
+                if (devices.Count < limit.Limit)
+                {
+                    devices.Add(MemberView(member, role, null, color));
+                }
+            }
+            else
+            {
+                structureCount++;
+            }
+
+            List<int> open = OpenEnds(member, kind);
+            if (open.Count > 0)
+            {
+                openEndCount++;
+                if (openEnds.Count < limit.Limit)
+                {
+                    openEnds.Add(MemberView(member, role, open, color));
+                }
+            }
+        }
+
+        limit.Note("devices", devices.Count, deviceCount);
+        limit.Note("open_ends", openEnds.Count, openEndCount);
+        return new NetworkOverviewView(new NetworkRefView(kind, id), network.Summary, structureCount, deviceCount,
+            tally.MostFirst().ConvertAll(static count => new PrefabCountView(count)), devices, openEnds, openEndCount);
+    }
+
+    private static Found Find(string kind, ThingId id)
+    {
         switch (kind)
         {
             case "pipe":
                 PipeNetwork pipes = Referencable.Find<PipeNetwork>(id.Value) ?? throw NotFound(kind, id);
-                return Page(kind, id, Members(pipes.StructureList, pipes.DeviceList), PipeSummary(pipes), page, filter);
+                return new Found(Members(pipes.StructureList, pipes.DeviceList), PipeSummary(pipes));
             case "cable":
                 CableNetwork cables = Referencable.Find<CableNetwork>(id.Value) ?? throw NotFound(kind, id);
-                return CableNetworkView(cables, id, page, filter);
+                return OfCables(cables);
             case "chute":
                 ChuteNetwork chutes = Referencable.Find<ChuteNetwork>(id.Value) ?? throw NotFound(kind, id);
                 NetworkMembers members = Members(chutes.StructureList, chutes.DeviceList);
-                return Page(kind, id, members, new ChuteSummaryView(members.All.Count), page, filter);
+                return new Found(members, new ChuteSummaryView(members.All.Count));
             default:
                 throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.");
         }
     }
+
+    private static bool Keeps(NetworkMemberFilter filter, Thing member) =>
+        filter.KeepsPrefab(member.PrefabName) &&
+        filter.KeepsPosition(new Vec3(member.Position.x, member.Position.y, member.Position.z));
+
+    private static NetworkMemberView MemberView(Thing member, string role, List<int>? openEnds, ThingColorView? color) =>
+        new NetworkMemberView(GameLookup.ViewOf(member), role, GameLookup.ViewOf(member.Position), openEnds, null,
+            color);
 
     private static ApiException NotFound(string kind, ThingId id) =>
         ApiErrors.Refused("network_not_found", $"No {kind} network has id {id}.");
@@ -426,8 +503,7 @@ internal static class NetworkReader
             mixture.GetTotalMolesGassesAndLiquids.ToDouble(), mixture.VolumeLiquids.ToDouble(), gases);
     }
 
-    private static NetworkMembersView CableNetworkView(CableNetwork network, ThingId id, PageRequest page,
-        NetworkMemberFilter filter)
+    private static Found OfCables(CableNetwork network)
     {
         List<Cable> cables = NonNull(network.CableList);
         List<CableFuse> fuses = NonNull(network.FuseList);
@@ -435,7 +511,7 @@ internal static class NetworkReader
             network.RequiredLoad, network.PotentialLoad, network.CurrentLoad, network.ShortfallLoad);
         CableSummaryView summary = new CableSummaryView(
             loads, Lowest(cables), Lowest(fuses), cables.Count, fuses.Count);
-        return Page("cable", id, Members(cables, network.DeviceList), summary, page, filter);
+        return new Found(Members(cables, network.DeviceList), summary);
     }
 
     private static List<T> NonNull<T>(List<T> list) where T : Thing
@@ -508,8 +584,7 @@ internal static class NetworkReader
         List<KeptMember> kept = new List<KeptMember>(members.All.Count);
         foreach (Thing member in members.All)
         {
-            if (!filter.KeepsPrefab(member.PrefabName) ||
-                !filter.KeepsPosition(new Vec3(member.Position.x, member.Position.y, member.Position.z)))
+            if (!Keeps(filter, member))
             {
                 continue;
             }
@@ -523,10 +598,11 @@ internal static class NetworkReader
 
         Slice<KeptMember> page = Slice<KeptMember>.Of(kept, request);
         List<NetworkMemberView> views = new List<NetworkMemberView>(page.Items.Count);
+        List<ColorSwatch> swatches = PaintApi.Swatches();
         foreach (KeptMember member in page.Items)
         {
-            views.Add(new NetworkMemberView(GameLookup.ViewOf(member.Thing), member.Thing is Device ? "device" : kind,
-                GameLookup.ViewOf(member.Thing.Position), member.OpenEnds));
+            views.Add(MemberView(member.Thing, member.Thing is Device ? "device" : kind, member.OpenEnds,
+                PaintApi.ShownColorOf(member.Thing, swatches)));
         }
 
         request.Note("members", views.Count, page.Total);
@@ -561,6 +637,20 @@ internal static class NetworkReader
         }
 
         return open;
+    }
+
+    /// <summary>A network's members and its summary.</summary>
+    private readonly struct Found
+    {
+        internal Found(NetworkMembers members, object? summary)
+        {
+            Members = members;
+            Summary = summary;
+        }
+
+        internal NetworkMembers Members { get; }
+
+        internal object? Summary { get; }
     }
 
     private readonly struct KeptMember

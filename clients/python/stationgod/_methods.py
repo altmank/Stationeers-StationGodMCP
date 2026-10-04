@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:95dcb99b1e9b7586af76a0ece5063b9b886cf8a4fb95f11027d9df43dafaefd7'
-MOD_VERSION = '1.21.2'
+CATALOGUE_HASH = 'sha256:81abf15dc890c741c14d145ab27c9f0388cd73bb53ffb36f29ebc04941d0544c'
+MOD_VERSION = '1.22.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -43,6 +43,18 @@ TABLE = {'catalogue': {'class': 'read',
                  'required': ['subscription'],
                  'shaping': 'none',
                  'protocol': True},
+ 'advance_build_state': {'class': 'write',
+                         'class_when': [{'when': {'free': {'equals': True}, 'dry_run': {'equals': False}},
+                                         'class': 'cheat'},
+                                        {'when': {'dry_run': {'absent': True}}, 'class': 'read'},
+                                        {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
+                         'effects': [],
+                         'paging': None,
+                         'duration': None,
+                         'params': ['reference_id', 'to_state', 'from_id', 'free', 'dry_run', 'confirm'],
+                         'required': ['reference_id'],
+                         'shaping': 'none',
+                         'protocol': False},
  'atmosphere_contents': {'class': 'read',
                          'class_when': [],
                          'effects': [],
@@ -158,6 +170,7 @@ TABLE = {'catalogue': {'class': 'read',
                             'network_id',
                             'kind',
                             'prefab_contains',
+                            'summarize',
                             'open_ends_only',
                             'min',
                             'max',
@@ -1510,6 +1523,13 @@ class Methods:
     def call(self, method, /, **params):  # provided by Client
         raise NotImplementedError
 
+    def advance_build_state(self, *, reference_id: str | None = None, to_state: int | None = None, from_id: str | list | None = None, free: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
+        """Build a placed structure on to a later build state, paying each state's materials from from_id (default the player) as a player's construction does.
+
+        Class: write (other classes at some arguments). Arguments: reference_id (required), to_state, from_id, free, dry_run, confirm.
+        """
+        return self.call('advance_build_state', **{'reference_id': reference_id, 'to_state': to_state, 'from_id': from_id, 'free': free, 'dry_run': dry_run, 'confirm': confirm}, **options)
+
     def atmosphere_contents(self, *, reference_id: str | None = None, **options) -> dict:
         """What gas or liquid one thing holds: a canister, tank, suit, pipe network, landing pad network, a device's networks and the canisters in its slots, or an atmosphere_id.
 
@@ -1545,12 +1565,12 @@ class Methods:
         """
         return self.call('clean_pipes', **{'include_notes': include_notes, 'network_id': network_id, 'reference_ids': reference_ids, 'keep_ids': keep_ids, 'only_ids': only_ids, 'older_than_id': older_than_id, 'root': root, 'wait': wait, 'operations': operations, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'skip_unmatched': skip_unmatched, 'refund': refund, 'refund_to': refund_to, 'limit': limit, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
-    def connections(self, *, reference_id: str | None = None, network_id: str | dict | None = None, kind: str | None = None, prefab_contains: str | None = None, open_ends_only: bool | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (40 per page) with filters and a summary.
+    def connections(self, *, reference_id: str | None = None, network_id: str | dict | None = None, kind: str | None = None, prefab_contains: str | None = None, summarize: bool | None = None, open_ends_only: bool | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+        """How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (30 per page) with filters and a summary; summarize counts them by prefab.
 
-        Class: read. Arguments: reference_id, network_id, kind, prefab_contains, open_ends_only, min, max, near, radius_m, limit, offset.
+        Class: read. Arguments: reference_id, network_id, kind, prefab_contains, summarize, open_ends_only, min, max, near, radius_m, limit, offset.
         """
-        return self.call('connections', **{'reference_id': reference_id, 'network_id': network_id, 'kind': kind, 'prefab_contains': prefab_contains, 'open_ends_only': open_ends_only, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'limit': limit, 'offset': offset}, **options)
+        return self.call('connections', **{'reference_id': reference_id, 'network_id': network_id, 'kind': kind, 'prefab_contains': prefab_contains, 'summarize': summarize, 'open_ends_only': open_ends_only, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'limit': limit, 'offset': offset}, **options)
 
     def consumables(self, **options) -> dict:
         """Every food and drink in the world, wherever it is, with nutrition, hydration and decay, packages counted by contents, and totals.

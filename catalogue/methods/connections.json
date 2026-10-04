@@ -1,9 +1,9 @@
 {
   "name": "connections",
-  "summary": "How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (40 per page) with filters and a summary. Read only.",
+  "summary": "How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (30 per page) with filters and a summary; summarize counts them by prefab. Read only.",
   "help": {
-    "text": "Three forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. min and max alone: every cable, pipe and chute piece in the box with an open end, across all networks, each with its network_id and open_ends (kind narrows it; at most a 32 m cube). A big network reads best with an area and fields [\"reference_id\", \"prefab_name\"] or omit [\"members.position\"].",
-    "keys": "thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, ends [{index, type, type_name, role, role_name, position, network, connected}], count, network {kind, id}, summary, members [{reference_id, prefab_name, display_name, member, position, open_ends}], structure_count, device_count, offset, limit, total, has_more, resolved_networks.",
+    "text": "Three forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. min and max alone: every cable, pipe and chute piece in the box with an open end, across all networks, each with its network_id and open_ends (kind narrows it; at most a 32 m cube). A big network reads best with summarize true (topic summarize) or an area.",
+    "keys": "thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, color {index, name, is_default}, ends [{index, type, type_name, role, role_name, position, network, connected}], count, network {kind, id}, summary, members [{reference_id, prefab_name, display_name, member, position, color, open_ends}], structure_count, device_count, by_prefab [{prefab_name, display_name, member, count, colors}], devices, open_ends, open_end_count, offset, limit, total, has_more, resolved_networks.",
     "topics": {
       "ends": {
         "summary": "The ends form.",
@@ -11,7 +11,11 @@
       },
       "network": {
         "summary": "The network form, its filters and summary.",
-        "text": "members [{reference_id, prefab_name, display_name, member, position}] with count, structure_count, device_count, paging, network {kind, id} and summary. Filters, applied before paging (total counts the members kept): prefab_contains, open_ends_only (each member then lists open_ends), and an area: min and max (a box) or near with radius_m. Pipe summary: content, volume_l, pressure_kpa, temperature_k, total_mol, liquid_volume_l, gases (null on a multiplayer client). Cable summary, from the last power tick as the Cable Analyser shows it: required_w, potential_w, actual_w, shortfall_w, lowest_cable_max_w, lowest_fuse_break_w, overloaded, fuse_overloaded, cable_count, fuse_count. Chute summary: member_count."
+        "text": "members [{reference_id, prefab_name, display_name, member, position, color (as paint reads it; left out when none)}] with count, structure_count, device_count, paging, network {kind, id} and summary. Filters, applied before paging (total counts the members kept): prefab_contains, open_ends_only (each member then lists open_ends), and an area: min and max (a box) or near with radius_m. Pipe summary: content, volume_l, pressure_kpa, temperature_k, total_mol, liquid_volume_l, gases (null on a multiplayer client). Cable summary, from the last power tick as the Cable Analyser shows it: required_w, potential_w, actual_w, shortfall_w, lowest_cable_max_w, lowest_fuse_break_w, overloaded, fuse_overloaded, cable_count, fuse_count. Chute summary: member_count."
+      },
+      "summarize": {
+        "summary": "What is on a network in one reply.",
+        "text": "Network form with summarize true: by_prefab [{prefab_name, display_name, member, count, colors {name: count}}] (most first), devices and open_ends (members with an end nothing is attached at, each with open_ends), each list up to limit (default 10), with structure_count, device_count, open_end_count, network and summary. prefab_contains and the area apply first; offset and open_ends_only do not go with it."
       },
       "refusals": {
         "summary": "not_connectable.",
@@ -47,6 +51,10 @@
         "description": "Kind of network_id; box form: only this kind."
       },
       "prefab_contains": {"type": "string", "description": "Only members whose prefab name holds this, any case."},
+      "summarize": {
+        "type": "boolean",
+        "description": "Network form: counts by prefab and colour, devices and open ends instead of members. Default false."
+      },
       "open_ends_only": {
         "type": "boolean",
         "description": "Network form: only members with an end nothing is attached at. Default false."
@@ -55,7 +63,12 @@
       "max": {"description": "The other box corner."},
       "near": {"description": "Network form: a point, [x, y, z] in metres; with radius_m."},
       "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000, "description": "Network form: with near, up to 1000."},
-      "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Members per page; default 40, box form 25."},
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000,
+        "description": "Members per page; default 30, box form 25; summarize: devices and open ends listed, default 10."
+      },
       "offset": {
         "type": "integer",
         "minimum": 0,
@@ -79,13 +92,18 @@
       "members": {"type": "array"},
       "structure_count": {"type": "integer"},
       "device_count": {"type": "integer"},
+      "color": {"type": "object"},
+      "by_prefab": {"type": "array"},
+      "devices": {"type": "array"},
+      "open_ends": {"type": "array"},
+      "open_end_count": {"type": "integer"},
       "offset": {"type": "integer"},
       "limit": {"type": "integer"},
       "total": {"type": "integer"},
       "has_more": {"type": "boolean"}
     }
   },
-  "x-views": ["ConnectionsView", "NetworkMembersView", "AreaOpenEndsView"],
+  "x-views": ["ConnectionsView", "NetworkMembersView", "NetworkOverviewView", "AreaOpenEndsView"],
   "x-shaping": "lists",
   "x-paging": {
     "list": "members",

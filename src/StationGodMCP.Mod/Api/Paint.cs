@@ -104,6 +104,19 @@ internal static class PaintApi
         batch.Succeeded(new PaintedView(index, id, previous!, ColorOf(thing!, swatches)));
     }
 
+    /// <summary>The game's colour list, its position in the list being each colour's index; empty with no game loaded.</summary>
+    internal static List<ColorSwatch> Swatches() =>
+        Singleton<GameManager>.Instance != null
+            ? Singleton<GameManager>.Instance.CustomColors
+            : new List<ColorSwatch>();
+
+    /// <summary>
+    /// The colour a thing shows when it has one, as paint reads it (a paintable thing's paint, a state-coloured
+    /// thing's state colour); null for a thing with neither.
+    /// </summary>
+    internal static ThingColorView? ShownColorOf(Thing thing, List<ColorSwatch> swatches) =>
+        thing.IsPaintable || thing.HasColorState ? ColorOf(thing, swatches) : null;
+
     /// <summary>
     /// The colour a thing shows: for a thing whose colour is a state (Thing.HasColorState, e.g. the LED display) the
     /// state the Color logic type reads and writes (Thing.ColorState, an index into the colour list), which is what it

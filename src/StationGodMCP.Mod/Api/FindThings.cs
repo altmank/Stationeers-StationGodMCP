@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
-using Assets.Scripts.Util;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
@@ -54,9 +53,7 @@ internal static class FindThingsApi
         hits.Sort(static (a, b) => ThingHit.NearestFirst(a, b));
         Slice<ThingHit> slice = Slice<ThingHit>.Of(hits, page);
         List<FoundThingView> views = new List<FoundThingView>(slice.Items.Count);
-        List<ColorSwatch> swatches = Singleton<GameManager>.Instance != null
-            ? Singleton<GameManager>.Instance.CustomColors
-            : new List<ColorSwatch>();
+        List<ColorSwatch> swatches = PaintApi.Swatches();
         foreach (ThingHit hit in slice.Items)
         {
             views.Add(ViewOf(hit.Thing, origin, swatches));
@@ -92,12 +89,9 @@ internal static class FindThingsApi
             ConditionOf(thing),
             Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null,
             RocketOf(thing),
-            ColorOf(thing, swatches));
+            PaintApi.ShownColorOf(thing, swatches),
+            BuildStates.Unfinished(thing));
     }
-
-    // The colour paint reads: a paintable thing's paint, or the state colour a state-coloured thing shows.
-    private static ThingColorView? ColorOf(Thing thing, List<ColorSwatch> swatches) =>
-        thing.IsPaintable || thing.HasColorState ? PaintApi.ColorOf(thing, swatches) : null;
 
     private static string? RocketOf(Thing thing) =>
         thing is Structure structure && Rockets.NetworkOf(structure)?.Rocket is { } rocket

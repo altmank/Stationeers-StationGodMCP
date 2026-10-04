@@ -32,6 +32,6 @@ internal static class DescribeDeviceApi
         }
 
         return new DescribeDeviceView(Devices.ViewOf(device, scope), types, RocketReadings.PartOf(device.Thing),
-            RocketReadings.UmbilicalOf(device.Thing), DataLinks.UplinkOf(device.Thing));
+            RocketReadings.UmbilicalOf(device.Thing), DataLinks.UplinkOf(device.Thing), BuildStates.Of(device.Thing));
     }
 }

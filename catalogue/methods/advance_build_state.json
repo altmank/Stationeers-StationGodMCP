@@ -1,0 +1,56 @@
+{
+  "name": "advance_build_state",
+  "summary": "Build a placed structure on to a later build state, paying each state's materials from from_id (default the player) as a player's construction does. Dry run by default; confirm to build. Cheat with free.",
+  "help": {
+    "text": "to_state defaults to the next state; the last state is complete. A damaged structure is refused, as the game refuses it. Tools a state uses are listed but not needed or worn. find_things, thing_health and describe_device give build_state {current, last, complete, next} for a structure.",
+    "topics": {
+      "reply": {
+        "summary": "What a step answers.",
+        "text": "{dry_run, thing, from_state, to_state, last_state, cost [{prefab_name, display_name, quantity, available, paid_by}], tools [{prefab_name, display_name, tool}], ready, problems, build_state}. available is what the sources hold (null with free); build_state is read back after a real run."
+      },
+      "refusals": {
+        "summary": "Why a structure is not built on.",
+        "text": "no_build_states (not a structure with two or more states), already_complete, structure_broken (its broken state), structure_damaged (repair it first), not_enough_materials (a real run; a dry run lists problems), not_creative (free outside creative), no_local_player (no player to pay; give from_id)."
+      }
+    },
+    "shared": ["materials", "jobs"]
+  },
+  "class": "write",
+  "x-class-when": [
+    {"when": {"free": {"equals": true}, "dry_run": {"equals": false}}, "class": "cheat"},
+    {"when": {"dry_run": {"absent": true}}, "class": "read"},
+    {"when": {"dry_run": {"equals": true}}, "class": "read"}
+  ],
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "reference_id": {"type": "string", "description": "The placed structure."},
+      "to_state": {"type": "integer", "minimum": 0, "maximum": 64, "description": "The build state to reach; default the next one."},
+      "from_id": {"$ref": "defs/pay_from.json"},
+      "free": {"type": "boolean", "description": "Creative worlds only: take no materials. Default false."},
+      "dry_run": {"$ref": "defs/dry_run.json"},
+      "confirm": {"$ref": "defs/confirm.json"}
+    },
+    "required": ["reference_id"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "dry_run": {"type": "boolean"},
+      "thing": {"type": "object"},
+      "from_state": {"type": "integer"},
+      "to_state": {"type": "integer"},
+      "last_state": {"type": "integer"},
+      "cost": {"type": "array"},
+      "tools": {"type": "array"},
+      "ready": {"type": "boolean"},
+      "problems": {"type": "array"},
+      "build_state": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["AdvanceBuildStateView"],
+  "x-shaping": "none",
+  "x-read-by": {"from_id": "Api/Shared/SourceArgs.cs"}
+}

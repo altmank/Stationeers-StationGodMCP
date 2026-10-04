@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.22.0
+
+- **New tool `advance_build_state`**: builds a placed structure on to a later build state (`to_state`, default the
+  next), paying each state's materials from `from_id` (default the player) as a player's construction does. Dry run
+  by default; `confirm` to build. A damaged or broken structure is refused, as the game refuses it; tools a state uses
+  are listed, not needed. `free` (creative only) takes no materials.
+- **Build states are reported.** `describe_device` and `thing_health` (one thing by `reference_id`) give
+  `build_state {current, last, complete, next}`, `next` naming what one more state takes. `find_things` gives
+  `build_state {current, last, complete}` for a structure short of its last state.
+- **`connections` gives colours**: the one-thing form, network members and box-form pieces report
+  `color {index, name, is_default}` as `paint` reads it.
+- **`connections` `summarize`**: the network form counts its members by prefab (and by colour), and lists its devices
+  and the members with an open end (up to `limit`, default 10) in one reply, without paging pieces.
+- `connections`' network form gives 30 members per page by default (40 before), to make room for the colours.
+
 ## 1.21.2
 
 - **`find_things` gives a thing's colour**: a paintable thing reports `color {index, name, is_default}` as `paint`

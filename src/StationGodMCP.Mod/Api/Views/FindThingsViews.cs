@@ -77,8 +77,9 @@ internal sealed class FoundThingView
         bool labelable, string location, string? carriedBy, List<HeldInView> heldIn, PositionView position,
         double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null, bool isBroken = false,
         string condition = "intact", PrintView? made = null, string? rocketState = null,
-        ThingColorView? color = null)
+        ThingColorView? color = null, BuildStateView? buildState = null)
     {
+        BuildState = buildState;
         Color = color;
         Made = made;
         RocketState = rocketState;
@@ -177,4 +178,8 @@ internal sealed class FoundThingView
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ThingColorView? Color { get; }
+
+    /// <summary>A structure not yet built to its last state: its build state, current of last.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public BuildStateView? BuildState { get; }
 }

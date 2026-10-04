@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.21.2",
+  "mod_version": "1.22.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -393,6 +393,11 @@
     }
   },
   "errors": {
+    "already_complete": {
+      "description": "The structure stands at its last build state; there is nothing more to build on it.",
+      "origin": "tool",
+      "see": {"tool": "advance_build_state", "topic": "refusals"}
+    },
     "ambiguous_axis": {
       "description": "A relative point or named facing lies within 10 degrees of a diagonal from the player, so the axis is unclear. Use frame world or target, or turn toward an axis.",
       "origin": "tool",
@@ -751,6 +756,11 @@
       "origin": "tool",
       "see": {"tool": "atmosphere_contents", "topic": "refusals"}
     },
+    "no_build_states": {
+      "description": "The thing is not a structure with two or more build states, so it cannot be built on.",
+      "origin": "tool",
+      "see": {"tool": "advance_build_state", "topic": "refusals"}
+    },
     "no_credit_card": {
       "description": "The player carries no credit card. Carry one, or give credit_card_id.",
       "origin": "tool",
@@ -891,6 +901,11 @@
       "origin": "tool",
       "see": {"tool": "connections", "topic": "refusals"}
     },
+    "not_creative": {
+      "description": "free takes no materials and is only for creative worlds. Pay from an inventory with from_id instead.",
+      "origin": "tool",
+      "see": {"topic": "materials"}
+    },
     "not_enough_coils": {
       "description": "The source holds fewer coils or pipes than the run needs. The message names what is missing; bring more or use another from_id.",
       "origin": "tool",
@@ -898,6 +913,11 @@
     },
     "not_enough_kits": {
       "description": "The source holds fewer chute kits than the run needs. The message names what is missing; bring more or use another from_id.",
+      "origin": "tool",
+      "see": {"topic": "materials"}
+    },
+    "not_enough_materials": {
+      "description": "The sources hold fewer of a material than the build needs. The message names what is missing; bring more or add a from_id source.",
       "origin": "tool",
       "see": {"topic": "materials"}
     },
@@ -1132,6 +1152,16 @@
       "description": "The stack is full; the rest does not fit. Move fewer, or into an empty slot.",
       "origin": "tool",
       "see": {"topic": "slots"}
+    },
+    "structure_broken": {
+      "description": "The structure is in its broken build state; the game cannot build on it. Remove it and place a new one.",
+      "origin": "tool",
+      "see": {"tool": "advance_build_state", "topic": "refusals"}
+    },
+    "structure_damaged": {
+      "description": "The structure is damaged; the game builds on it only once it is repaired.",
+      "origin": "tool",
+      "see": {"tool": "advance_build_state", "topic": "refusals"}
     },
     "subject_not_found": {
       "description": "None of the things around the place given is the subject named. Check the rule's subject and the place.",
@@ -1415,6 +1445,70 @@
     }
   ],
   "methods": [
+    {
+      "name": "advance_build_state",
+      "description": "Build a placed structure on to a later build state, paying each state's materials from from_id (default the player) as a player's construction does. Dry run by default; confirm to build. Cheat with free.\nMore: tool_info {tool: \"advance_build_state\"}",
+      "help": {
+        "text": "to_state defaults to the next state; the last state is complete. A damaged structure is refused, as the game refuses it. Tools a state uses are listed but not needed or worn. find_things, thing_health and describe_device give build_state {current, last, complete, next} for a structure.",
+        "topics": {
+          "reply": {
+            "summary": "What a step answers.",
+            "text": "{dry_run, thing, from_state, to_state, last_state, cost [{prefab_name, display_name, quantity, available, paid_by}], tools [{prefab_name, display_name, tool}], ready, problems, build_state}. available is what the sources hold (null with free); build_state is read back after a real run."
+          },
+          "refusals": {
+            "summary": "Why a structure is not built on.",
+            "text": "no_build_states (not a structure with two or more states), already_complete, structure_broken (its broken state), structure_damaged (repair it first), not_enough_materials (a real run; a dry run lists problems), not_creative (free outside creative), no_local_player (no player to pay; give from_id)."
+          }
+        },
+        "shared": ["materials", "jobs"]
+      },
+      "class": "write",
+      "x-class-when": [
+        {"when": {"free": {"equals": true}, "dry_run": {"equals": false}}, "class": "cheat"},
+        {"when": {"dry_run": {"absent": true}}, "class": "read"},
+        {"when": {"dry_run": {"equals": true}}, "class": "read"}
+      ],
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {
+          "reference_id": {"type": "string", "description": "The placed structure."},
+          "to_state": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64,
+            "description": "The build state to reach; default the next one."
+          },
+          "from_id": {
+            "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8}],
+            "description": "Payer, or payers tried in order per material; default the player."
+          },
+          "free": {"type": "boolean", "description": "Creative worlds only: take no materials. Default false."},
+          "dry_run": {"type": "boolean", "description": "Default true: report only (see jobs)."},
+          "confirm": {"type": "boolean", "description": "true with dry_run false: a real run (see jobs)."}
+        },
+        "required": ["reference_id"],
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "dry_run": {"type": "boolean"},
+          "thing": {"type": "object"},
+          "from_state": {"type": "integer"},
+          "to_state": {"type": "integer"},
+          "last_state": {"type": "integer"},
+          "cost": {"type": "array"},
+          "tools": {"type": "array"},
+          "ready": {"type": "boolean"},
+          "problems": {"type": "array"},
+          "build_state": {"type": ["object", "null"]}
+        }
+      },
+      "x-views": ["AdvanceBuildStateView"],
+      "x-shaping": "none",
+      "x-read-by": {"from_id": "Api/Shared/SourceArgs.cs"}
+    },
     {
       "name": "atmosphere_contents",
       "description": "What gas or liquid one thing holds: a canister, tank, suit, pipe network, landing pad network, a device's networks and the canisters in its slots, or an atmosphere_id. With a water summary. Read only.\nMore: tool_info {tool: \"atmosphere_contents\"}",
@@ -2092,10 +2186,10 @@
     },
     {
       "name": "connections",
-      "description": "How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (40 per page) with filters and a summary. Read only.\nMore: tool_info {tool: \"connections\"}",
+      "description": "How pipes, cables and chutes connect, from the game's own ends and networks: one thing's ends, or a network's members (30 per page) with filters and a summary; summarize counts them by prefab. Read only.\nMore: tool_info {tool: \"connections\"}",
       "help": {
-        "text": "Three forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. min and max alone: every cable, pipe and chute piece in the box with an open end, across all networks, each with its network_id and open_ends (kind narrows it; at most a 32 m cube). A big network reads best with an area and fields [\"reference_id\", \"prefab_name\"] or omit [\"members.position\"].",
-        "keys": "thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, ends [{index, type, type_name, role, role_name, position, network, connected}], count, network {kind, id}, summary, members [{reference_id, prefab_name, display_name, member, position, open_ends}], structure_count, device_count, offset, limit, total, has_more, resolved_networks.",
+        "text": "Three forms. reference_id: a pipe, cable, chute or device's ends. network_id with kind (pipe, cable or chute): the network's members, pieces first then devices, paged. min and max alone: every cable, pipe and chute piece in the box with an open end, across all networks, each with its network_id and open_ends (kind narrows it; at most a 32 m cube). A big network reads best with summarize true (topic summarize) or an area.",
+        "keys": "thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, color {index, name, is_default}, ends [{index, type, type_name, role, role_name, position, network, connected}], count, network {kind, id}, summary, members [{reference_id, prefab_name, display_name, member, position, color, open_ends}], structure_count, device_count, by_prefab [{prefab_name, display_name, member, count, colors}], devices, open_ends, open_end_count, offset, limit, total, has_more, resolved_networks.",
         "topics": {
           "ends": {
             "summary": "The ends form.",
@@ -2103,7 +2197,11 @@
           },
           "network": {
             "summary": "The network form, its filters and summary.",
-            "text": "members [{reference_id, prefab_name, display_name, member, position}] with count, structure_count, device_count, paging, network {kind, id} and summary. Filters, applied before paging (total counts the members kept): prefab_contains, open_ends_only (each member then lists open_ends), and an area: min and max (a box) or near with radius_m. Pipe summary: content, volume_l, pressure_kpa, temperature_k, total_mol, liquid_volume_l, gases (null on a multiplayer client). Cable summary, from the last power tick as the Cable Analyser shows it: required_w, potential_w, actual_w, shortfall_w, lowest_cable_max_w, lowest_fuse_break_w, overloaded, fuse_overloaded, cable_count, fuse_count. Chute summary: member_count."
+            "text": "members [{reference_id, prefab_name, display_name, member, position, color (as paint reads it; left out when none)}] with count, structure_count, device_count, paging, network {kind, id} and summary. Filters, applied before paging (total counts the members kept): prefab_contains, open_ends_only (each member then lists open_ends), and an area: min and max (a box) or near with radius_m. Pipe summary: content, volume_l, pressure_kpa, temperature_k, total_mol, liquid_volume_l, gases (null on a multiplayer client). Cable summary, from the last power tick as the Cable Analyser shows it: required_w, potential_w, actual_w, shortfall_w, lowest_cable_max_w, lowest_fuse_break_w, overloaded, fuse_overloaded, cable_count, fuse_count. Chute summary: member_count."
+          },
+          "summarize": {
+            "summary": "What is on a network in one reply.",
+            "text": "Network form with summarize true: by_prefab [{prefab_name, display_name, member, count, colors {name: count}}] (most first), devices and open_ends (members with an end nothing is attached at, each with open_ends), each list up to limit (default 10), with structure_count, device_count, open_end_count, network and summary. prefab_contains and the area apply first; offset and open_ends_only do not go with it."
           },
           "refusals": {
             "summary": "not_connectable.",
@@ -2139,6 +2237,10 @@
             "description": "Kind of network_id; box form: only this kind."
           },
           "prefab_contains": {"type": "string", "description": "Only members whose prefab name holds this, any case."},
+          "summarize": {
+            "type": "boolean",
+            "description": "Network form: counts by prefab and colour, devices and open ends instead of members. Default false."
+          },
           "open_ends_only": {
             "type": "boolean",
             "description": "Network form: only members with an end nothing is attached at. Default false."
@@ -2156,7 +2258,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 1000,
-            "description": "Members per page; default 40, box form 25."
+            "description": "Members per page; default 30, box form 25; summarize: devices and open ends listed, default 10."
           },
           "offset": {
             "type": "integer",
@@ -2181,6 +2283,11 @@
           "members": {"type": "array"},
           "structure_count": {"type": "integer"},
           "device_count": {"type": "integer"},
+          "color": {"type": "object"},
+          "by_prefab": {"type": "array"},
+          "devices": {"type": "array"},
+          "open_ends": {"type": "array"},
+          "open_end_count": {"type": "integer"},
           "offset": {"type": "integer"},
           "limit": {"type": "integer"},
           "total": {"type": "integer"},
@@ -2191,7 +2298,7 @@
           }
         }
       },
-      "x-views": ["ConnectionsView", "NetworkMembersView", "AreaOpenEndsView"],
+      "x-views": ["ConnectionsView", "NetworkMembersView", "NetworkOverviewView", "AreaOpenEndsView"],
       "x-shaping": "lists",
       "x-paging": {
         "list": "members",
@@ -2395,8 +2502,8 @@
       "name": "describe_device",
       "description": "Describe one device: every logic type it can read and write, and its rocket, umbilical and uplink details where it has them. Read only.\nMore: tool_info {tool: \"describe_device\"}",
       "help": {
-        "text": "Lists every logic type the device reports as readable or writable. Mod logic types without a name are read and written by number.",
-        "keys": "device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, rocket {network_id, name, state, dry_mass_kg, hull_pieces, ...}, umbilical {role, open, partner, partner_distance, search}, uplink {downlink, connected, choices}, logic_types [{id, name, readable, writable}], logic_type_count.",
+        "text": "Lists every logic type the device reports as readable or writable. Mod logic types without a name are read and written by number. A device with build states gives build_state {current, last, complete, next}: next is what one more state takes.",
+        "keys": "device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, build_state {current, last, complete, next}, rocket {network_id, name, state, dry_mass_kg, hull_pieces, ...}, umbilical {role, open, partner, partner_distance, search}, uplink {downlink, connected, choices}, logic_types [{id, name, readable, writable}], logic_type_count.",
         "topics": {
           "rocket": {
             "summary": "A device in a rocket: the rocket it belongs to.",
@@ -2431,6 +2538,7 @@
         "type": "object",
         "properties": {
           "device": {"type": "object"},
+          "build_state": {"type": ["object", "null"]},
           "rocket": {"type": ["object", "null"]},
           "umbilical": {"type": ["object", "null"]},
           "uplink": {"type": ["object", "null"]},
@@ -2758,7 +2866,7 @@
         "topics": {
           "reply": {
             "summary": "What each thing reports.",
-            "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A rocket's part adds rocket_state (OnLaunchMount, Launching, Landing...): its position moves while it flies. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes). A paintable thing adds color {index, name, is_default}, as paint reads it."
+            "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A rocket's part adds rocket_state (OnLaunchMount, Launching, Landing...): its position moves while it flies. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes). A paintable thing adds color {index, name, is_default}, as paint reads it; a structure short of its last build state adds build_state {current, last, complete} (describe_device gives what the next state takes)."
           },
           "broken": {
             "summary": "is_broken and condition.",
@@ -8249,7 +8357,7 @@
         "topics": {
           "reply": {
             "summary": "What each thing reports.",
-            "text": "reference_id, prefab_name, display_name, kind, type, damage_state (destructible, indestructible or none), max_damage, total_damage (brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (0 like new, 1 destroyed), health_percent (as the solar panel tooltip shows), damage per type, is_broken, broken_build_state, condition, custom_name, networks [{kind, id}], being_destroyed, band (solar panels: green, yellow over 0.25, red over 0.75), pipe_burst (none, or pressure for any burst pipe), damage_record (pipes: every cause that damaged it, pressure, liquid or solid, the cause the tooltip names), position and distance_m."
+            "text": "reference_id, prefab_name, display_name, kind, type, damage_state (destructible, indestructible or none), max_damage, total_damage (brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (0 like new, 1 destroyed), health_percent (as the solar panel tooltip shows), damage per type, is_broken, broken_build_state, condition, custom_name, networks [{kind, id}], being_destroyed, band (solar panels: green, yellow over 0.25, red over 0.75), pipe_burst (none, or pressure for any burst pipe), damage_record (pipes: every cause that damaged it, pressure, liquid or solid, the cause the tooltip names), position and distance_m. With reference_id alone, a structure with build states adds build_state {current, last, complete, next [{prefab_name, display_name, quantity, tool}]}; advance_build_state builds it on."
           },
           "broken": {
             "summary": "is_broken and condition, and why health reads 100 %.",
@@ -8361,6 +8469,7 @@
           "damage_record": {"type": ["array", "null"]},
           "position": {"type": "object"},
           "distance_m": {"type": ["number", "null"]},
+          "build_state": {"type": ["object", "null"]},
           "networks": {
             "type": ["array", "null"],
             "items": {"type": "object", "properties": {"kind": {"type": "string"}, "id": {"type": "string"}}}
@@ -8435,6 +8544,7 @@
                 "damage_record": {"type": ["array", "null"]},
                 "position": {"type": "object"},
                 "distance_m": {"type": ["number", "null"]},
+                "build_state": {"type": ["object", "null"]},
                 "networks": {
                   "type": ["array", "null"],
                   "items": {"type": "object", "properties": {"kind": {"type": "string"}, "id": {"type": "string"}}}

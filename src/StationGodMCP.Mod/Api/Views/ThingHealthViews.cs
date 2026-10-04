@@ -11,8 +11,10 @@ namespace StationGodMCP.Api.Views;
 internal sealed class HealthView
 {
     internal HealthView(ThingView thing, string kind, string type, DamageReading damage, HealthFlags flags,
-        PositionView position, double? distanceM, string? customName = null, List<NetworkRefView>? networks = null)
+        PositionView position, double? distanceM, string? customName = null, List<NetworkRefView>? networks = null,
+        BuildStateView? buildState = null)
     {
+        BuildState = buildState;
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
         DisplayName = thing.DisplayName;
@@ -46,6 +48,10 @@ internal sealed class HealthView
 
     /// <summary>The Labeller's name, null when it has none.</summary>
     public string? CustomName { get; }
+
+    /// <summary>The one-thing form, a structure with build states: where it stands and what the next state takes.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public BuildStateView? BuildState { get; }
 
     /// <summary>
     /// broken (the game's broken state, whatever the numbers say), damaged, intact, indestructible or none

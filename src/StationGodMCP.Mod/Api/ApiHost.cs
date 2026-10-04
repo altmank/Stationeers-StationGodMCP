@@ -71,6 +71,7 @@ internal static class ApiHost
             ["solar_aim"] = static args => SolarAimApi.Handle(args),
             ["thing_health"] = static args => ThingHealthApi.Handle(args),
             ["paint"] = static args => PaintApi.Handle(args),
+            ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
             ["outer_frames"] = static args => OuterFramesApi.Handle(args),
             ["rooms"] = static args => RoomsApi.Handle(args),
             ["weather"] = static args => WeatherApi.Handle(args),

@@ -39,6 +39,8 @@ internal static class ReplyShapes
         .List("ReservoirView.Contents", 3).List("StartingAirView.Gases", 5).List("BurstView.Gases", 4)
         .List("PlanetView.Gases", 9).List("PlantAirView.Ratios", 8).List("FuelLineView.Mix", 3)
         // Material lines: a piece costs or gives back one or two kinds of item.
+        // A build step takes one or two items and uses a tool.
+        .List("BuildStateView.Next", 3)
         .List("*.Refund", 2).List("*.Cost", 2).List("*.Needed", 2).List("*.Stacks", 2).List("*.Used", 2)
         .List("PlacementView.Ports", 2).List("SurveyDeviceView.Ports", 3)
         // Problems and warnings a report carries on a typical large-world request.
@@ -90,6 +92,11 @@ internal static class ReplyShapes
             S<NetworkMembersView>().List("NetworkMembersView.Members", Math.Min(W.CableNetworkMembers, D.ConnectionMembers))
                 .Absent("NetworkMemberView.OpenEnds").Absent("NetworkMemberView.NetworkId")
                 .Holds("NetworkMembersView.Summary", typeof(CableSummaryView)),
+            // summarize: a network holds few prefabs; a pipe network's colours are one or two.
+            S<NetworkOverviewView>().List("NetworkOverviewView.ByPrefab", 12).List("PrefabCountView.Colors", 2)
+                .List("NetworkOverviewView.Devices", D.NetworkOverviewLists)
+                .List("NetworkOverviewView.OpenEnds", D.NetworkOverviewLists).List("NetworkMemberView.OpenEnds", 1)
+                .Absent("NetworkMemberView.NetworkId").Holds("NetworkOverviewView.Summary", typeof(CableSummaryView)),
             S<AreaOpenEndsView>().List("AreaOpenEndsView.Members", D.AreaOpenEnds).List("NetworkMemberView.OpenEnds", 2)
         };
         shapes["consumables"] = new[]
@@ -112,6 +119,12 @@ internal static class ReplyShapes
                 .List("MinerSearchView.Ores", 1).List("MinerSearchView.Profiles", 2)
                 .List("DeepMinerSpotsView.Spots", D.DeepMinerSpots).List("MinerSpotView.Regions", 2)
                 .List("DeepMinerSpotsView.Beacons", D.DeepMinerSpots)
+        };
+        // One structure's step: a state or two of one or two items each, and a tool.
+        shapes["advance_build_state"] = new[]
+        {
+            S<AdvanceBuildStateView>().List("AdvanceBuildStateView.Cost", 3).List("AdvanceBuildStateView.Tools", 1)
+                .Absent("BuildCostView.PaidBy")
         };
         shapes["describe_device"] = new[]
         {
@@ -145,9 +158,9 @@ internal static class ReplyShapes
         shapes["find_things"] = new[]
         {
             S<FindThingsView>().List("FindThingsView.Things", D.FindThings).Absent("FoundThingView.Made")
-                .Absent("FoundThingView.CarriedBy").List("FoundThingView.HeldIn", 0),
+                .Absent("FoundThingView.CarriedBy").List("FoundThingView.HeldIn", 0).Absent("BuildStateView.Next"),
             S<FindThingsView>().List("FindThingsView.Things", D.FindThings).Absent("FoundThingView.Made")
-                .Absent("FoundThingView.Rotation", "FoundThingView.RocketState")
+                .Absent("FoundThingView.Rotation", "FoundThingView.RocketState", "FoundThingView.BuildState")
         };
         shapes["game_clock"] = new[] { S<GameClockView>() };
         shapes["get_ic_status"] = new[]
@@ -379,11 +392,12 @@ internal static class ReplyShapes
             S<HealthView>().List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3),
             S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(HealthItemView))
                 .List("HealthView.Networks", 1).List("HealthItemView.Networks", 1)
-                .List("HealthView.DamageRecord", 3).List("HealthItemView.DamageRecord", 3),
+                .List("HealthView.DamageRecord", 3).List("HealthItemView.DamageRecord", 3).Absent("HealthView.BuildState"),
+            // Only the one-thing form reads build states.
             S<HealthNetworkView>().List("HealthNetworkView.Things", Math.Min(W.CableNetworkMembers, D.HealthThings))
-                .List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3),
+                .List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3).Absent("HealthView.BuildState"),
             S<HealthScanView>().List("HealthScanView.Things", D.HealthThings).List("HealthView.Networks", 1)
-                .List("HealthView.DamageRecord", 3)
+                .List("HealthView.DamageRecord", 3).Absent("HealthView.BuildState")
         };
         foreach (string tool in new[] { "trader_buy", "trader_sell" })
         {

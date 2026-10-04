@@ -60,7 +60,8 @@ internal static class ThingHealthApi
         switch (HealthRequest.Parse(args))
         {
             case HealthRequest.One one:
-                return HealthReader.Read(GameLookup.RequireThing(one.Id), PlayerOrigin.Current(), withNetworks: true);
+                return HealthReader.Read(GameLookup.RequireThing(one.Id), PlayerOrigin.Current(), withNetworks: true,
+                    withBuildState: true);
             case HealthRequest.Many many:
                 return ReadMany(many.Ids, args.Shape.Wants("results", "networks"));
             case HealthRequest.Network network:
@@ -280,8 +281,11 @@ internal static class HealthReader
     private const int RatioDecimals = 4;
     private const float FullHealthPercent = 100f;
 
-    /// <summary>withNetworks false leaves networks out (null), as if the thing had none to list.</summary>
-    internal static HealthView Read(Thing thing, PlayerOrigin origin, bool withNetworks)
+    /// <summary>
+    /// withNetworks false leaves networks out (null), as if the thing had none to list; withBuildState (the one-thing
+    /// form) adds a structure's build state with what its next state takes.
+    /// </summary>
+    internal static HealthView Read(Thing thing, PlayerOrigin origin, bool withNetworks, bool withBuildState = false)
     {
         IndestructableDamageState damage = thing.DamageState;
         DamageReading reading = ReadDamage(damage);
@@ -298,7 +302,8 @@ internal static class HealthReader
         return new HealthView(
             GameLookup.ViewOf(thing), KindOf(thing), thing.GetType().Name, reading, flags,
             GameLookup.ViewOf(place), origin.DistanceTo(place), Labels.CustomNameOf(thing),
-            withNetworks && thing is Structure ? EndsReader.NetworksOf(thing) : null);
+            withNetworks && thing is Structure ? EndsReader.NetworksOf(thing) : null,
+            withBuildState ? BuildStates.Of(thing) : null);
     }
 
     private static string KindOf(Thing thing) => thing is Structure ? "structure" : thing is Item ? "item" : "other";

@@ -7,7 +7,7 @@
     "topics": {
       "reply": {
         "summary": "What each thing reports.",
-        "text": "reference_id, prefab_name, display_name, kind, type, damage_state (destructible, indestructible or none), max_damage, total_damage (brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (0 like new, 1 destroyed), health_percent (as the solar panel tooltip shows), damage per type, is_broken, broken_build_state, condition, custom_name, networks [{kind, id}], being_destroyed, band (solar panels: green, yellow over 0.25, red over 0.75), pipe_burst (none, or pressure for any burst pipe), damage_record (pipes: every cause that damaged it, pressure, liquid or solid, the cause the tooltip names), position and distance_m."
+        "text": "reference_id, prefab_name, display_name, kind, type, damage_state (destructible, indestructible or none), max_damage, total_damage (brute, burn, oxygen, hydration, starvation, toxic, radiation and decay, clamped to max_damage; stun is not counted), damage_ratio (0 like new, 1 destroyed), health_percent (as the solar panel tooltip shows), damage per type, is_broken, broken_build_state, condition, custom_name, networks [{kind, id}], being_destroyed, band (solar panels: green, yellow over 0.25, red over 0.75), pipe_burst (none, or pressure for any burst pipe), damage_record (pipes: every cause that damaged it, pressure, liquid or solid, the cause the tooltip names), position and distance_m. With reference_id alone, a structure with build states adds build_state {current, last, complete, next [{prefab_name, display_name, quantity, tool}]}; advance_build_state builds it on."
       },
       "broken": {
         "summary": "is_broken and condition, and why health reads 100 %.",
@@ -119,6 +119,7 @@
       "damage_record": {"type": ["array", "null"]},
       "position": {"type": "object"},
       "distance_m": {"type": ["number", "null"]},
+      "build_state": {"type": ["object", "null"]},
       "networks": {
         "type": ["array", "null"],
         "items": {"type": "object", "properties": {"kind": {"type": "string"}, "id": {"type": "string"}}}
@@ -193,6 +194,7 @@
             "damage_record": {"type": ["array", "null"]},
             "position": {"type": "object"},
             "distance_m": {"type": ["number", "null"]},
+            "build_state": {"type": ["object", "null"]},
             "networks": {
               "type": ["array", "null"],
               "items": {"type": "object", "properties": {"kind": {"type": "string"}, "id": {"type": "string"}}}

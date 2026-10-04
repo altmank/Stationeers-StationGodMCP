@@ -7,7 +7,7 @@
     "topics": {
       "reply": {
         "summary": "What each thing reports.",
-        "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A rocket's part adds rocket_state (OnLaunchMount, Launching, Landing...): its position moves while it flies. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes). A paintable thing adds color {index, name, is_default}, as paint reads it."
+        "text": "reference_id, prefab_name, display_name, custom_name (the Labeller name), game_name, kind (item; dynamic: a movable thing that is not an item, such as portable tanks, crates, generators, rovers; structure; entity; other), runtime_type, labelable, location (as find_items has it, built for a structure), carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition and made. A rocket's part adds rocket_state (OnLaunchMount, Launching, Landing...): its position moves while it flies. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null off the grid's axes). A paintable thing adds color {index, name, is_default}, as paint reads it; a structure short of its last build state adds build_state {current, last, complete} (describe_device gives what the next state takes)."
       },
       "broken": {
         "summary": "is_broken and condition.",

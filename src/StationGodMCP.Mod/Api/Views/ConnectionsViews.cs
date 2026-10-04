@@ -12,8 +12,9 @@ namespace StationGodMCP.Api.Views;
 internal sealed class ConnectionsView
 {
     internal ConnectionsView(ThingView thing, PositionView position, NetworkRefView? ownNetwork,
-        List<ConnectionEndView> ends, OrientationView? rotation = null)
+        List<ConnectionEndView> ends, OrientationView? rotation = null, ThingColorView? color = null)
     {
+        Color = color;
         Rotation = rotation;
         Thing = thing;
         Position = position;
@@ -35,6 +36,10 @@ internal sealed class ConnectionsView
 
     /// <summary>A pipe, cable or chute's own network; null for a device.</summary>
     public NetworkRefView? OwnNetwork { get; }
+
+    /// <summary>Its colour {index, name, is_default} as paint reads it; left out for a thing with none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ThingColorView? Color { get; }
 
     public List<ConnectionEndView> Ends { get; }
 
@@ -191,8 +196,9 @@ internal sealed class NetworkMemberFilter
 internal sealed class NetworkMemberView
 {
     internal NetworkMemberView(ThingView thing, string member, PositionView position, List<int>? openEnds = null,
-        ThingId? networkId = null)
+        ThingId? networkId = null, ThingColorView? color = null)
     {
+        Color = color;
         NetworkId = networkId;
         OpenEnds = openEnds;
         ReferenceId = thing.ReferenceId;
@@ -213,6 +219,10 @@ internal sealed class NetworkMemberView
 
     public PositionView Position { get; }
 
+    /// <summary>Its colour {index, name, is_default} as paint reads it; left out for a thing with none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ThingColorView? Color { get; }
+
     /// <summary>With open_ends_only: the indexes (as connections lists ends) of its open ends of the network's kind.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<int>? OpenEnds { get; }
@@ -220,6 +230,74 @@ internal sealed class NetworkMemberView
     /// <summary>The box form: the network the piece is on; left out in the network form, which names it once.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ThingId? NetworkId { get; }
+}
+
+/// <summary>
+/// connections' network form with summarize: what is on the network in one reply. Its members counted by prefab (and
+/// by colour), its devices and its members with an open end, each list cut at limit; the filters apply first.
+/// </summary>
+internal sealed class NetworkOverviewView
+{
+    internal NetworkOverviewView(NetworkRefView network, object? summary, int structureCount, int deviceCount,
+        List<PrefabCountView> byPrefab, List<NetworkMemberView> devices, List<NetworkMemberView> openEnds,
+        int openEndCount)
+    {
+        Network = network;
+        Summary = summary;
+        StructureCount = structureCount;
+        DeviceCount = deviceCount;
+        ByPrefab = byPrefab;
+        Devices = devices;
+        OpenEnds = openEnds;
+        OpenEndCount = openEndCount;
+    }
+
+    public NetworkRefView Network { get; }
+
+    /// <summary>As the network form's summary.</summary>
+    public object? Summary { get; }
+
+    /// <summary>The members the filters kept that are pieces.</summary>
+    public int StructureCount { get; }
+
+    /// <summary>The members the filters kept that are devices; devices lists the first limit of them.</summary>
+    public int DeviceCount { get; }
+
+    /// <summary>Most first, then by prefab name.</summary>
+    public List<PrefabCountView> ByPrefab { get; }
+
+    public List<NetworkMemberView> Devices { get; }
+
+    /// <summary>Members with an end of the network's kind that nothing is attached at, each with open_ends.</summary>
+    public List<NetworkMemberView> OpenEnds { get; }
+
+    public int OpenEndCount { get; }
+}
+
+/// <summary>How many members of one prefab a network holds, and how many show each colour.</summary>
+internal sealed class PrefabCountView
+{
+    internal PrefabCountView(MemberPrefabCount count)
+    {
+        PrefabName = count.Prefab;
+        DisplayName = count.DisplayName;
+        Member = count.Member;
+        Count = count.Count;
+        Colors = count.Colors;
+    }
+
+    public string PrefabName { get; }
+
+    public string? DisplayName { get; }
+
+    /// <summary>pipe, cable, chute or device.</summary>
+    public string Member { get; }
+
+    public int Count { get; }
+
+    /// <summary>Colour name to how many show it; left out when none of them has a colour.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public SortedDictionary<string, int>? Colors { get; }
 }
 
 /// <summary>connections over a box: one page of the pieces of every network in it with an open end of their kind.</summary>

@@ -8,8 +8,9 @@ namespace StationGodMCP.Api.Shared;
 /// </summary>
 internal static class ReplyDefaults
 {
-    internal const int ConnectionMembers = 40;
+    internal const int ConnectionMembers = 30;
     internal const int AreaOpenEnds = 25;
+    internal const int NetworkOverviewLists = 10;
     internal const int DeepMinerSpots = 5;
     internal const int FindItems = 10;
     internal const int FindSpots = 5;

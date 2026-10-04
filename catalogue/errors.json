@@ -1,4 +1,9 @@
 {
+  "already_complete": {
+    "description": "The structure stands at its last build state; there is nothing more to build on it.",
+    "origin": "tool",
+    "see": {"tool": "advance_build_state", "topic": "refusals"}
+  },
   "ambiguous_axis": {
     "description": "A relative point or named facing lies within 10 degrees of a diagonal from the player, so the axis is unclear. Use frame world or target, or turn toward an axis.",
     "origin": "tool",
@@ -357,6 +362,11 @@
     "origin": "tool",
     "see": {"tool": "atmosphere_contents", "topic": "refusals"}
   },
+  "no_build_states": {
+    "description": "The thing is not a structure with two or more build states, so it cannot be built on.",
+    "origin": "tool",
+    "see": {"tool": "advance_build_state", "topic": "refusals"}
+  },
   "no_credit_card": {
     "description": "The player carries no credit card. Carry one, or give credit_card_id.",
     "origin": "tool",
@@ -497,6 +507,11 @@
     "origin": "tool",
     "see": {"tool": "connections", "topic": "refusals"}
   },
+  "not_creative": {
+    "description": "free takes no materials and is only for creative worlds. Pay from an inventory with from_id instead.",
+    "origin": "tool",
+    "see": {"topic": "materials"}
+  },
   "not_enough_coils": {
     "description": "The source holds fewer coils or pipes than the run needs. The message names what is missing; bring more or use another from_id.",
     "origin": "tool",
@@ -504,6 +519,11 @@
   },
   "not_enough_kits": {
     "description": "The source holds fewer chute kits than the run needs. The message names what is missing; bring more or use another from_id.",
+    "origin": "tool",
+    "see": {"topic": "materials"}
+  },
+  "not_enough_materials": {
+    "description": "The sources hold fewer of a material than the build needs. The message names what is missing; bring more or add a from_id source.",
     "origin": "tool",
     "see": {"topic": "materials"}
   },
@@ -738,6 +758,16 @@
     "description": "The stack is full; the rest does not fit. Move fewer, or into an empty slot.",
     "origin": "tool",
     "see": {"topic": "slots"}
+  },
+  "structure_broken": {
+    "description": "The structure is in its broken build state; the game cannot build on it. Remove it and place a new one.",
+    "origin": "tool",
+    "see": {"tool": "advance_build_state", "topic": "refusals"}
+  },
+  "structure_damaged": {
+    "description": "The structure is damaged; the game builds on it only once it is repaired.",
+    "origin": "tool",
+    "see": {"tool": "advance_build_state", "topic": "refusals"}
   },
   "subject_not_found": {
     "description": "None of the things around the place given is the subject named. Check the rule's subject and the place.",
