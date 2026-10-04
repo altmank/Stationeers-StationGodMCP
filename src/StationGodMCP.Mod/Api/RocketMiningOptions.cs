@@ -18,6 +18,16 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class RocketMiningOptionsApi
 {
+    private static readonly string[] HowMiningWorks =
+    {
+        "Mine mode runs every miner and gas collector on board at once (RocketMine.cs:38-61). A miner's cycle " +
+        "shrinks the deposit, then gives OreQuantity = round(baseline(size 1..10 -> 2..6) x richness^1.6 x type " +
+        "factor (ice 4) x survey bonus) units, at least 1, times the head's ore or ice factor " +
+        "(MineableDeposit.cs:109-146, 349-391). A cycle takes TimeToMine / speed, in whole 0.5 s ticks.",
+        "The rocket must be at the site's own node to mine it; ore and ice sites shrink every cycle, gas sites never " +
+        "(MineableDeposit.cs:184-190, 425-434)."
+    };
+
     internal static RocketMiningOptionsView Handle(Args args)
     {
         Rocket rocket = RocketLocator.One(args);
@@ -35,15 +45,7 @@ internal static class RocketMiningOptionsApi
             }
         }
 
-        List<string> notes = new List<string>(4)
-        {
-            "Mine mode runs every miner and gas collector on board at once (RocketMine.cs:38-61). A miner's cycle " +
-            "shrinks the deposit, then gives OreQuantity = round(baseline(size 1..10 -> 2..6) x richness^1.6 x type " +
-            "factor (ice 4) x survey bonus) units, at least 1, times the head's ore or ice factor " +
-            "(MineableDeposit.cs:109-146, 349-391). A cycle takes TimeToMine / speed, in whole 0.5 s ticks.",
-            "The rocket must be at the site's own node to mine it; ore and ice sites shrink every cycle, gas sites never " +
-            "(MineableDeposit.cs:184-190, 425-434)."
-        };
+        List<string> notes = args.OptionalBool("explain") == true ? new List<string>(HowMiningWorks) : new List<string>(1);
         if (to != null && sites.Count == 0)
         {
             notes.Add($"{to}: no deposit at that node or its discovered sites.");

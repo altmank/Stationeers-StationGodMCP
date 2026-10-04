@@ -172,16 +172,21 @@ internal sealed class DevicesView
     public int Count { get; }
 }
 
-/// <summary>describe_device: a device and every logic type it reads or writes.</summary>
+/// <summary>
+/// describe_device: a device, how many logic types it reads or writes, the writable ones by name, and every one with
+/// its access when listed.
+/// </summary>
 internal sealed class DescribeDeviceView
 {
-    internal DescribeDeviceView(DeviceView device, List<LogicAccessView> logicTypes, RocketPartView? rocket = null,
-        UmbilicalView? umbilical = null, UplinkView? uplink = null, BuildStateView? buildState = null)
+    internal DescribeDeviceView(DeviceView device, List<LogicAccessView> logicTypes, bool listed,
+        RocketPartView? rocket = null, UmbilicalView? umbilical = null, UplinkView? uplink = null,
+        BuildStateView? buildState = null)
     {
         BuildState = buildState;
         Device = device;
-        LogicTypes = logicTypes;
+        LogicTypes = listed ? logicTypes : null;
         LogicTypeCount = logicTypes.Count;
+        Writable = WritableNames(logicTypes);
         Rocket = rocket;
         Umbilical = umbilical;
         Uplink = uplink;
@@ -205,9 +210,28 @@ internal sealed class DescribeDeviceView
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public UplinkView? Uplink { get; }
 
-    public List<LogicAccessView> LogicTypes { get; }
+    /// <summary>Every logic type it reads or writes, with its access; left out unless include_logic_types.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public List<LogicAccessView>? LogicTypes { get; }
 
     public int LogicTypeCount { get; }
+
+    /// <summary>The writable logic types by name (a mod's type with no name by its number).</summary>
+    public List<string> Writable { get; }
+
+    private static List<string> WritableNames(List<LogicAccessView> logicTypes)
+    {
+        List<string> names = new List<string>(logicTypes.Count);
+        foreach (LogicAccessView type in logicTypes)
+        {
+            if (type.Writable)
+            {
+                names.Add(type.NameOrId);
+            }
+        }
+
+        return names;
+    }
 }
 
 internal sealed class LogicAccessView
@@ -227,6 +251,8 @@ internal sealed class LogicAccessView
     public bool Readable { get; }
 
     public bool Writable { get; }
+
+    internal string NameOrId => Name ?? Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
 
 /// <summary>inspect_slots: a device's logical slots, what is in each, and each slot's readable logic.</summary>

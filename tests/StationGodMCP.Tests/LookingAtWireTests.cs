@@ -55,7 +55,6 @@ public sealed class LookingAtWireTests
     {
         var held = new
         {
-            player = (object?)null,
             target = new
             {
                 reference_id = "4452", prefab_name = "ItemGasCanisterOxygen", display_name = "Canister",
@@ -67,8 +66,7 @@ public sealed class LookingAtWireTests
                     reference_id = "86457", prefab_name = "StructureGasTankStorage", display_name = "Gas Tank Storage",
                     slot_index = 0, slot_name = (string?)"Gas Canister"
                 }
-            },
-            interactable = (object?)null
+            }
         };
         WireCheck.Same(held, new LookingAtView(null,
             new LookingAtTargetView(new ThingView(new ThingId(4452), "ItemGasCanisterOxygen", "Canister"), null,
@@ -77,7 +75,7 @@ public sealed class LookingAtWireTests
                     "Gas Canister")),
             null));
 
-        var nothing = new { player = (object?)null, target = (object?)null, interactable = (object?)null };
+        var nothing = new { target = (object?)null };
         WireCheck.Same(nothing, new LookingAtView(null, null, null));
     }
 }

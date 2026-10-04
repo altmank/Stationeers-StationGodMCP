@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:9a592f120f1184f675b68a01437e3b782096f7dfe6b954c5d6641395f7b7c925'
-MOD_VERSION = '1.23.1'
+CATALOGUE_HASH = 'sha256:e8b6868289813564e0d295e2e9337fc32aef507e8d7a8a13ce6e1e9b3f14944e'
+MOD_VERSION = '1.24.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -222,7 +222,7 @@ TABLE = {'catalogue': {'class': 'read',
                      'effects': [],
                      'paging': None,
                      'duration': None,
-                     'params': ['gateway_id', 'reference_id'],
+                     'params': ['gateway_id', 'reference_id', 'include_logic_types'],
                      'required': ['reference_id'],
                      'shaping': 'lists',
                      'protocol': False},
@@ -498,7 +498,7 @@ TABLE = {'catalogue': {'class': 'read',
                 'effects': [],
                 'paging': None,
                 'duration': None,
-                'params': ['max_distance_m'],
+                'params': ['max_distance_m', 'include'],
                 'required': [],
                 'shaping': 'lists',
                 'protocol': False},
@@ -1175,6 +1175,7 @@ TABLE = {'catalogue': {'class': 'read',
                                 'extra_load_w',
                                 'min_confidence',
                                 'limits',
+                                'explain',
                                 'column_check'],
                      'required': [],
                      'shaping': 'lists',
@@ -1184,7 +1185,7 @@ TABLE = {'catalogue': {'class': 'read',
                            'effects': [],
                            'paging': None,
                            'duration': None,
-                           'params': ['rocket_id', 'to', 'collectable_only'],
+                           'params': ['rocket_id', 'to', 'collectable_only', 'explain'],
                            'required': [],
                            'shaping': 'lists',
                            'protocol': False},
@@ -1193,7 +1194,7 @@ TABLE = {'catalogue': {'class': 'read',
                    'effects': [],
                    'paging': None,
                    'duration': None,
-                   'params': ['rocket_id', 'self_test', 'compact', 'parts'],
+                   'params': ['rocket_id', 'self_test', 'compact', 'parts', 'explain'],
                    'required': [],
                    'shaping': 'lists',
                    'protocol': False},
@@ -1639,12 +1640,12 @@ class Methods:
         """
         return self.call('deep_miner_spots', **{'at': at, 'ores': ores, 'radius_m': radius_m, 'count': count, 'min_separation_m': min_separation_m, 'step_m': step_m}, **options)
 
-    def describe_device(self, *, gateway_id: str | None = None, reference_id: str | None = None, **options) -> dict:
-        """Describe one device: every logic type it can read and write, and its rocket, umbilical and uplink details where it has them.
+    def describe_device(self, *, gateway_id: str | None = None, reference_id: str | None = None, include_logic_types: bool | None = None, **options) -> dict:
+        """Describe one device: how many logic types it reads and writes, the writable ones by name (include_logic_types lists every one), and its rocket, umbilical and uplink details where it has them.
 
-        Class: read. Arguments: gateway_id, reference_id (required).
+        Class: read. Arguments: gateway_id, reference_id (required), include_logic_types.
         """
-        return self.call('describe_device', **{'gateway_id': gateway_id, 'reference_id': reference_id}, **options)
+        return self.call('describe_device', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'include_logic_types': include_logic_types}, **options)
 
     def describe_prefab(self, *, prefab: str | int | None = None, **options) -> dict:
         """What a buildable prefab is before it stands anywhere, in its own frame: placement kind, the turns it takes, its cells, render box, ports, visual top and controls side.
@@ -1793,12 +1794,12 @@ class Methods:
         """
         return self.call('list_gateways', **options)
 
-    def looking_at(self, *, max_distance_m: float | None = None, **options) -> dict:
-        """What the player's crosshair is on: the thing the 3 m interaction ray hits, the button or slot under it, plus the view and a longer look ray.
+    def looking_at(self, *, max_distance_m: float | None = None, include: list | None = None, **options) -> dict:
+        """What the player's crosshair is on: the thing the 3 m interaction ray hits and where a longer look ray lands.
 
-        Class: read. Arguments: max_distance_m.
+        Class: read. Arguments: max_distance_m, include.
         """
-        return self.call('looking_at', **{'max_distance_m': max_distance_m}, **options)
+        return self.call('looking_at', **{'max_distance_m': max_distance_m, 'include': include}, **options)
 
     def mod_info(self, **options) -> dict:
         """The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game.
@@ -2031,26 +2032,26 @@ class Methods:
         """
         return self.call('rocket_flight_log', **{'action': action, 'rocket_id': rocket_id, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'offset': offset, 'limit': limit, 'every': every}, **options)
 
-    def rocket_forecast(self, *, rocket_id: str | None = None, to: str | None = None, profile: str | None = None, park_s: float | None = None, mine: bool | None = None, fill_holds: bool | None = None, add_cargo_slots: int | None = None, park_load_w: float | None = None, then_return: bool | None = None, return_to: str | None = None, deploy_payload: bool | None = None, transfer_mol: float | None = None, transfer_with: str | None = None, transfer_battery_j: float | None = None, fuel_mol: float | None = None, fuel_temperature_k: float | None = None, fuel_mix: dict | None = None, thrust_scale: float | None = None, throttle: float | None = None, cargo_slots: int | None = None, add_cargo_kg: float | None = None, payload_kg: float | None = None, battery_j: float | None = None, battery_percent: float | None = None, extra_load_w: float | None = None, min_confidence: float | None = None, limits: bool | None = None, column_check: bool | None = None, **options) -> dict:
+    def rocket_forecast(self, *, rocket_id: str | None = None, to: str | None = None, profile: str | None = None, park_s: float | None = None, mine: bool | None = None, fill_holds: bool | None = None, add_cargo_slots: int | None = None, park_load_w: float | None = None, then_return: bool | None = None, return_to: str | None = None, deploy_payload: bool | None = None, transfer_mol: float | None = None, transfer_with: str | None = None, transfer_battery_j: float | None = None, fuel_mol: float | None = None, fuel_temperature_k: float | None = None, fuel_mix: dict | None = None, thrust_scale: float | None = None, throttle: float | None = None, cargo_slots: int | None = None, add_cargo_kg: float | None = None, payload_kg: float | None = None, battery_j: float | None = None, battery_percent: float | None = None, extra_load_w: float | None = None, min_confidence: float | None = None, limits: bool | None = None, explain: bool | None = None, column_check: bool | None = None, **options) -> dict:
         """Fly a copy of a rocket to a node, tick by tick, and report each leg: launch, hops, parking, re-entry and landing, fuel, power, thrust and the verdict.
 
-        Class: read. Arguments: rocket_id, to, profile, park_s, mine, fill_holds, add_cargo_slots, park_load_w, then_return, return_to, deploy_payload, transfer_mol, transfer_with, transfer_battery_j, fuel_mol, fuel_temperature_k, fuel_mix, thrust_scale, throttle, cargo_slots, add_cargo_kg, payload_kg, battery_j, battery_percent, extra_load_w, min_confidence, limits, column_check.
+        Class: read. Arguments: rocket_id, to, profile, park_s, mine, fill_holds, add_cargo_slots, park_load_w, then_return, return_to, deploy_payload, transfer_mol, transfer_with, transfer_battery_j, fuel_mol, fuel_temperature_k, fuel_mix, thrust_scale, throttle, cargo_slots, add_cargo_kg, payload_kg, battery_j, battery_percent, extra_load_w, min_confidence, limits, explain, column_check.
         """
-        return self.call('rocket_forecast', **{'rocket_id': rocket_id, 'to': to, 'profile': profile, 'park_s': park_s, 'mine': mine, 'fill_holds': fill_holds, 'add_cargo_slots': add_cargo_slots, 'park_load_w': park_load_w, 'then_return': then_return, 'return_to': return_to, 'deploy_payload': deploy_payload, 'transfer_mol': transfer_mol, 'transfer_with': transfer_with, 'transfer_battery_j': transfer_battery_j, 'fuel_mol': fuel_mol, 'fuel_temperature_k': fuel_temperature_k, 'fuel_mix': fuel_mix, 'thrust_scale': thrust_scale, 'throttle': throttle, 'cargo_slots': cargo_slots, 'add_cargo_kg': add_cargo_kg, 'payload_kg': payload_kg, 'battery_j': battery_j, 'battery_percent': battery_percent, 'extra_load_w': extra_load_w, 'min_confidence': min_confidence, 'limits': limits, 'column_check': column_check}, **options)
+        return self.call('rocket_forecast', **{'rocket_id': rocket_id, 'to': to, 'profile': profile, 'park_s': park_s, 'mine': mine, 'fill_holds': fill_holds, 'add_cargo_slots': add_cargo_slots, 'park_load_w': park_load_w, 'then_return': then_return, 'return_to': return_to, 'deploy_payload': deploy_payload, 'transfer_mol': transfer_mol, 'transfer_with': transfer_with, 'transfer_battery_j': transfer_battery_j, 'fuel_mol': fuel_mol, 'fuel_temperature_k': fuel_temperature_k, 'fuel_mix': fuel_mix, 'thrust_scale': thrust_scale, 'throttle': throttle, 'cargo_slots': cargo_slots, 'add_cargo_kg': add_cargo_kg, 'payload_kg': payload_kg, 'battery_j': battery_j, 'battery_percent': battery_percent, 'extra_load_w': extra_load_w, 'min_confidence': min_confidence, 'limits': limits, 'explain': explain, 'column_check': column_check}, **options)
 
-    def rocket_mining_options(self, *, rocket_id: str | None = None, to: str | None = None, collectable_only: bool | None = None, **options) -> dict:
+    def rocket_mining_options(self, *, rocket_id: str | None = None, to: str | None = None, collectable_only: bool | None = None, explain: bool | None = None, **options) -> dict:
         """What a rocket can collect, by the game's own mining formulas: its loadout, and per site the yield per cycle and hour, cycles to deplete, and what stops it.
 
-        Class: read. Arguments: rocket_id, to, collectable_only.
+        Class: read. Arguments: rocket_id, to, collectable_only, explain.
         """
-        return self.call('rocket_mining_options', **{'rocket_id': rocket_id, 'to': to, 'collectable_only': collectable_only}, **options)
+        return self.call('rocket_mining_options', **{'rocket_id': rocket_id, 'to': to, 'collectable_only': collectable_only, 'explain': explain}, **options)
 
-    def rocket_status(self, *, rocket_id: str | None = None, self_test: bool | None = None, compact: bool | None = None, parts: bool | None = None, **options) -> dict:
+    def rocket_status(self, *, rocket_id: str | None = None, self_test: bool | None = None, compact: bool | None = None, parts: bool | None = None, explain: bool | None = None, **options) -> dict:
         """Every rocket, or one, read from the game: where it is and where it goes, mass, fuel lines, engines, thrust, landing confidence, cargo, power, burn time.
 
-        Class: read. Arguments: rocket_id, self_test, compact, parts.
+        Class: read. Arguments: rocket_id, self_test, compact, parts, explain.
         """
-        return self.call('rocket_status', **{'rocket_id': rocket_id, 'self_test': self_test, 'compact': compact, 'parts': parts}, **options)
+        return self.call('rocket_status', **{'rocket_id': rocket_id, 'self_test': self_test, 'compact': compact, 'parts': parts, 'explain': explain}, **options)
 
     def rooms(self, *, reference_id: str | None = None, include_cells: bool | None = None, include_devices: bool | None = None, **options) -> dict:
         """The game's closed rooms measured cell by cell: volume, pressure, temperature, gases, heat, bounds.

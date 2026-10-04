@@ -73,7 +73,7 @@ truncations: the description names the switch that adds them.
 - Selectors: `fields` keeps keys, read from each list entry at any depth or from a named list; `omit` drops keys by
   path from the reply's top, top-level keys included (protocol.md, Shaping).
 - Fixed explanations belong in the tool description. The read tools' notes are gone from replies; report notes and
-  gene meanings come only with `include_notes`.
+  gene meanings come only with `include_notes`, the rocket tools' explanations only with `explain`.
 - Compact forms where a list's entries are heavy: plants in short unless `verbose` or one plant; a brief job poll's
   log counts placed pieces; chute items follow `include_network_devices`; a place_structure report that is not ready
   leaves its layouts out unless `verbose`; get_ic_status and set_ic_source leave the source out unless
@@ -96,7 +96,7 @@ or a text. A tool whose sizes match changed nothing.
 | container_contents | slots, nested to depth 3 | depth (default 3) | 6,908 | 6,908 |
 | control_ic_execution | none | | 621 | 621 |
 | deep_miner_spots | profiles, spots, beacons | count 5 | 6,838 | 6,838 |
-| describe_device | logic types (about 45), an uplink's choices; a fixed note | note in the description | 5,448 | 5,448 |
+| describe_device | logic types (45 to 75), an uplink's choices; a fixed note | count and writable names; the list with include_logic_types; note in the description | 5,448 | 2,854 |
 | describe_prefab | rotations, small cells, ports | the prefab | 5,173 | 5,173 |
 | dish_aim | none | | 411 | 411 |
 | feed_paths | every device on the network, rooms | devices 15, unreached 10 (x-default-limits) | 35,047 | 6,907 |
@@ -105,7 +105,7 @@ or a text. A tool whose sizes match changed nothing.
 | find_things | a page of things | page 8 (was 100) | 94,020 | 7,724 |
 | game_clock | none | | 84 | 84 |
 | get_ic_source | the source | exempt: the source is the reply; output_file | 60 KB | 60 KB |
-| get_ic_status | the source; an IC10 runtime on a Lua chip | source with include_source; runtime null for Lua | about 66,000 | 6,059 |
+| get_ic_status | the source; an IC10 runtime on a Lua chip; the Lua log | source with include_source; runtime null for Lua; log_lines 5 (was 20) | about 66,000 | 6,059 |
 | grid_survey | cells, every piece and device in them | exempt; page 8 cells (was 27), pieces 40, devices 20, kinds filter | 332,757 | 47,361 |
 | highlight | targets asked; fixed notes | the request; notes in the description | 1,219 | 1,174 |
 | ignition_risk | carried burnable items | items 12 (x-default-limits) | 9,389 | 5,773 |
@@ -118,7 +118,7 @@ or a text. A tool whose sizes match changed nothing.
 | list_containers | a page of containers; a note | page 12 (was 100) | 60,175 | 7,387 |
 | list_devices | every device | devices 25 (x-default-limits) | 38,760 | 6,510 |
 | list_gateways | gateways | the world's | 979 | 979 |
-| looking_at | none | | 2,655 | 2,655 |
+| looking_at | player, interactable, view, the full hit, a structure's body | target and a brief hit; the rest with include | 2,655 | 858 |
 | mod_info | methods, reflected members, runtime per method | methods 15, reflection 10 (x-default-limits), runtime methods 10 | 35,526 | 7,316 |
 | move_gas, sample_logic | the request's atmospheres; the samples asked | exempt: built from JSON trees, sized by the request | | |
 | network_snapshot | devices, each with every readable value | max_devices 2 (was 256) | 407,976 | 6,894 |
@@ -136,9 +136,9 @@ or a text. A tool whose sizes match changed nothing.
 | replace_walls, replace_frames | pieces with their faces; notes | limit 5 (was 200); notes with include_notes | 199,378 | 7,201 |
 | resolve_ic_selectors | a selector per device on the data network; a note | 12 (x-default-limits); note in the description | 35,176 | 6,393 |
 | rocket_flight_log | rows | 12 (was 20) | 10,988 | 7,156 |
-| rocket_forecast | legs, profiles | the route | 5,233 | 5,233 |
-| rocket_mining_options | every site | sites 3 (x-default-limits); its fixed notes left to the rocket tools | 58,160 | 7,454 |
-| rocket_status | every rocket in full | exempt, left to the rocket tools (compact, rocket_id) | 28,933 | 28,933 |
+| rocket_forecast | legs, profiles; the model's fixed rules in assumptions | the route; fixed rules with explain | 5,233 | 5,210 |
+| rocket_mining_options | every site; fixed notes | sites 3 (x-default-limits); fixed notes with explain | 58,160 | 7,431 |
+| rocket_status | every rocket in full; fixed explanations | exempt, left to the rocket tools (compact, rocket_id); explanations with explain | 28,933 | 28,933 |
 | rooms | every room with its devices | devices with include_devices (default was true); rooms 10 (x-default-limits) | 71,068 | 7,598 |
 | run_console_command | output lines | max_output_lines 100 | 873 | 873 |
 | set_ic_pins, set_uplink | pins, choices | fixed | 1,686 | 1,686 |

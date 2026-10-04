@@ -5,7 +5,10 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>looking_at: the local player, the thing under their crosshair and the interactable on it.</summary>
+/// <summary>
+/// looking_at: the thing under the crosshair and the look ray's hit; the player, the interactable on the thing and the
+/// camera view when asked for.
+/// </summary>
 internal sealed class LookingAtView
 {
     internal LookingAtView(LocalPlayerView? player, LookingAtTargetView? target,
@@ -18,17 +21,24 @@ internal sealed class LookingAtView
         Hit = hit;
     }
 
+    /// <summary>The player looking; left out unless include names player.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public LocalPlayerView? Player { get; }
 
     public LookingAtTargetView? Target { get; }
 
+    /// <summary>The button, switch, port or slot under the crosshair; left out unless asked for, or when none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public LookingAtInteractableView? Interactable { get; }
 
-    /// <summary>The camera: eye, basis, heading, pitch and the snapped axes. Left out without a camera.</summary>
+    /// <summary>The camera: eye, basis, heading, pitch and the snapped axes; left out unless include names view.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public LookView? View { get; }
 
-    /// <summary>The first surface along the look ray within max_distance_m and the grid there; left out on none.</summary>
+    /// <summary>
+    /// The first surface along the look ray within max_distance_m: in brief, or with the grid there when include names
+    /// hit; left out on none.
+    /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public LookHitView? Hit { get; }
 }
@@ -90,7 +100,10 @@ internal sealed class LookingAtTargetView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public OrientationView? Rotation { get; }
 
-    /// <summary>Structures: its visual box, that box's offset from the origin, and its small-grid footprint.</summary>
+    /// <summary>
+    /// Structures, when include names body: its visual box, that box's offset from the origin, and its small-grid
+    /// footprint.
+    /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public BodyView? Body { get; }
 

@@ -10,7 +10,7 @@ namespace StationGodMCP.Api.Views;
 /// <summary>rocket_status: every rocket asked for.</summary>
 internal sealed class RocketStatusListView
 {
-    internal RocketStatusListView(List<RocketStatusView> rockets, List<string> explanations)
+    internal RocketStatusListView(List<RocketStatusView> rockets, List<string>? explanations)
     {
         Rockets = rockets;
         Count = rockets.Count;
@@ -21,8 +21,9 @@ internal sealed class RocketStatusListView
 
     public int Count { get; }
 
-    /// <summary>What the numbers mean, said once for every rocket in the reply.</summary>
-    public List<string> Explanations { get; }
+    /// <summary>What the numbers mean, said once for every rocket in the reply; left out unless explain.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Explanations { get; }
 }
 
 /// <summary>Where a rocket is and where it goes.</summary>

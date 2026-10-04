@@ -2,12 +2,12 @@
   "name": "rocket_forecast",
   "summary": "Fly a copy of a rocket to a node, tick by tick, and report each leg: launch, hops, parking, re-entry and landing, fuel, power, thrust and the verdict. What-ifs for fuel, cargo and power. The game is not touched.",
   "help": {
-    "text": "Destination: to, else the rocket's target, else its pad. Each engine flies by its own feed law; thrust is the game's own combustion run on a copy of what each tick draws. Lines hold gas and liquid; tanks mix with their pipe by volume every tick. Plus route, uncharted, assumptions, succeeded and verdict.",
+    "text": "Destination: to, else the rocket's target, else its pad. Each engine flies by its own feed law; thrust is the game's own combustion run on a copy of what each tick draws. Lines hold gas and liquid; tanks mix with their pipe by volume every tick. Plus route, uncharted, assumptions, succeeded and verdict. explain: see topic simulation.",
     "keys": "rocket_id, rocket_name, start_state, destination {reference_id, name, code, code_value, type, ...}, route [{from, to, to_code, distance, done, charted}], uncharted, assumptions, legs [{kind, from, to, distance, outcome, detail, seconds, burn_seconds, ...}], succeeded, verdict, fuel_now_mol, least_fuel_mol, landing_limits {max_landing_mass_kg, max_fuel_plus_cargo_kg, min_fuel_mol, max_fuel_mol, survivable_thrust_drop_pct, ...}, profiles [{profile, altitude_m, outcome, fuel_used_mol, confidence, seconds, touchdown_speed_ms, survivable_thrust_drop_pct}], column {clear, from_y, to_y, blockers, more}, combustion {rate, source, note}, mining {site, kind, collectable, units_per_hour, units_in_stop, ...}.",
     "topics": {
       "simulation": {
         "summary": "What is simulated, and what is not.",
-        "text": "Physics steps and the 0.5 s game tick: gas mass, the landing autopilot, engine draws, tanks mixing, batteries paying every device's watts. Launch with gravity and the game's abort; space hops; re-entry (the confidence check once at the start, with the pad's own hop and gravity, 1 m/s2 at an Orbital Launch Mount; 0 aborts back to orbit); touchdown (soft under 2 m/s, harmless under 4, engine damage 4 to 25, faster explodes). Route: the game's pathfinder, re-planned at every node; a rocket in transit to another target turns round as the game does; a landing rocket cannot be retargeted. Not simulated, and named in assumptions: heat the tanks trade with the air, boiling or condensing in the lines (the thrust 100 K colder and warmer is given), a Pressure Fed Liquid Engine's heat exchange, a mod's engine class (engine_not_modelled), the collision trigger."
+        "text": "Physics steps and the 0.5 s game tick: gas mass, the landing autopilot, engine draws, tanks mixing, batteries paying every device's watts. Launch with gravity and the game's abort; space hops; re-entry (the confidence check once at the start, with the pad's own hop and gravity, 1 m/s2 at an Orbital Launch Mount; 0 aborts back to orbit); touchdown (soft under 2 m/s, harmless under 4, engine damage 4 to 25, faster explodes). Route: the game's pathfinder, re-planned at every node; a rocket in transit to another target turns round as the game does; a landing rocket cannot be retargeted. assumptions holds what this request and rocket change (what-ifs, stops, warnings, the first engine's thrust 100 K colder and warmer); explain adds the fixed rules: physics step, engines on, each feed law, lines keeping their make-up, power, cargo mass. Not simulated, and named with explain: heat the tanks trade with the air, boiling or condensing in the lines (the thrust 100 K colder and warmer is given), a Pressure Fed Liquid Engine's heat exchange, a mod's engine class (engine_not_modelled), the collision trigger."
       },
       "legs": {
         "summary": "What each leg reports, and the limits.",
@@ -104,6 +104,7 @@
         "description": "Confidence floor for confident_mass_kg and the verdict; default 0.25."
       },
       "limits": {"type": "boolean", "description": "Landing limits, profiles and least fuel. Default true."},
+      "explain": {"type": "boolean", "description": "Add the model's fixed rules to assumptions. Default false."},
       "column_check": {"type": "boolean", "description": "Scan the landing column above the pad. Default true."}
     },
     "additionalProperties": false

@@ -10,9 +10,9 @@ using StationGodMCP.Api.Views;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// describe_device: a device and every logic type it reads or writes (ILogicable.CanLogicRead, CanLogicWrite), each
-/// LogicType value once; its rocket, an umbilical's pairing, and a Logic Rocket Uplink's downlink (DataLinks). Read
-/// only.
+/// describe_device: a device, how many logic types it reads or writes (ILogicable.CanLogicRead, CanLogicWrite), each
+/// LogicType value once, the names of the writable ones, and with include_logic_types every one with its access; its
+/// rocket, an umbilical's pairing, and a Logic Rocket Uplink's downlink (DataLinks). Read only.
 /// </summary>
 internal static class DescribeDeviceApi
 {
@@ -20,6 +20,7 @@ internal static class DescribeDeviceApi
     {
         DeviceScope scope = Devices.Scope(args);
         ScopedTarget device = Devices.Require(scope, args.ThingId("reference_id"));
+        bool listed = args.OptionalBool("include_logic_types") ?? false;
         List<LogicAccessView> types = new List<LogicAccessView>();
         foreach (LogicType type in LogicTypes.Distinct)
         {
@@ -31,7 +32,7 @@ internal static class DescribeDeviceApi
             }
         }
 
-        return new DescribeDeviceView(Devices.ViewOf(device, scope), types, RocketReadings.PartOf(device.Thing),
+        return new DescribeDeviceView(Devices.ViewOf(device, scope), types, listed, RocketReadings.PartOf(device.Thing),
             RocketReadings.UmbilicalOf(device.Thing), DataLinks.UplinkOf(device.Thing), BuildStates.Of(device.Thing));
     }
 }

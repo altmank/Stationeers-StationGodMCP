@@ -1,6 +1,8 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
@@ -96,10 +98,31 @@ public sealed class LookingAtV2Tests
         Assert.Contains("\"axes\":{\"forward\":\"-z\",\"right\":\"-x\",\"up\":\"+y\",\"back\":\"+z\",\"left\":\"+x\"," +
                         "\"down\":\"-y\",\"look\":\"-z\"}", json);
         Assert.Contains("\"yaw_deg\":180.0", json);
-        LookHitView hit = new LookHitView(new Vec3(719, 201, 668.05), 3.0, new Vec3(0, 0, 1), "+z", "z=668",
+        LookHitView hit = new LookHitDetailView(new Vec3(719, 201, 668.05), 3.0, new Vec3(0, 0, 1), "+z", "z=668",
             new PositionView(719, 201, 669), new PointView(719, 201, 668), "w", null, null);
         string hitJson = WireCheck.New(hit);
         Assert.Contains("\"cell_2m\":{\"x\":719.0,\"y\":201.0,\"z\":669.0}", hitJson);
         Assert.Contains("\"face_plane\":\"z=668\"", hitJson);
+        Assert.Contains("\"distance_m\":3.0", hitJson);
+    }
+
+    [Fact]
+    public void TheBriefHitHoldsThePointDistanceFaceAndThing()
+    {
+        LookHitView hit = new LookHitView(new Vec3(719, 201, 668.05), 3.0, "+z",
+            new ThingView(new ThingId(7), "StructureWall", "Wall"));
+        JObject json = JObject.Parse(WireCheck.New(hit));
+        Assert.Equal(new[] { "point", "distance_m", "face", "thing" }, json.Properties().Select(p => p.Name));
+    }
+
+    [Fact]
+    public void TheDefaultReplyLeavesOutThePartsNotAskedFor()
+    {
+        LookingAtView view = new LookingAtView(null,
+            new LookingAtTargetView(new ThingView(new ThingId(7), "StructureWall", "Wall"), null, "structure",
+                "Wall", new PositionView(1, 2, 3), 1.5, false, false, null),
+            null, null, new LookHitView(new Vec3(1, 2, 3), 1.5, null, null));
+        JObject json = JObject.Parse(WireCheck.New(view));
+        Assert.Equal(new[] { "target", "hit" }, json.Properties().Select(p => p.Name));
     }
 }

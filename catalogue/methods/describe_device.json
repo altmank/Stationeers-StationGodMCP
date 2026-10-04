@@ -1,9 +1,9 @@
 {
   "name": "describe_device",
-  "summary": "Describe one device: every logic type it can read and write, and its rocket, umbilical and uplink details where it has them. Read only.",
+  "summary": "Describe one device: how many logic types it reads and writes, the writable ones by name (include_logic_types lists every one), and its rocket, umbilical and uplink details where it has them. Read only.",
   "help": {
-    "text": "Lists every logic type the device reports as readable or writable. Mod logic types without a name are read and written by number. A device with build states gives build_state {current, last, complete, next}: next is what one more state takes.",
-    "keys": "device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, build_state {current, last, complete, next}, rocket {network_id, name, state, dry_mass_kg, hull_pieces, ...}, umbilical {role, open, partner, partner_distance, search}, uplink {downlink, connected, choices}, logic_types [{id, name, readable, writable}], logic_type_count.",
+    "text": "logic_type_count counts the logic types the device reads or writes; writable names the ones it writes. include_logic_types adds logic_types: every one with id, name, readable and writable. Mod logic types without a name are read and written by number. A device with build states gives build_state {current, last, complete, next}: next is what one more state takes.",
+    "keys": "device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, build_state {current, last, complete, next}, rocket {network_id, name, state, dry_mass_kg, hull_pieces, ...}, umbilical {role, open, partner, partner_distance, search}, uplink {downlink, connected, choices}, logic_type_count, writable, logic_types [{id, name, readable, writable}].",
     "topics": {
       "rocket": {
         "summary": "A device in a rocket: the rocket it belongs to.",
@@ -26,7 +26,11 @@
     "type": "object",
     "properties": {
       "gateway_id": {"$ref": "defs/gateway_id.json"},
-      "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."}
+      "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
+      "include_logic_types": {
+        "type": "boolean",
+        "description": "true: list every logic type with its id, name and access. Default false (counts and writable names)."
+      }
     },
     "required": ["reference_id"],
     "additionalProperties": false
@@ -40,7 +44,8 @@
       "umbilical": {"type": ["object", "null"]},
       "uplink": {"type": ["object", "null"]},
       "logic_types": {"type": "array"},
-      "logic_type_count": {"type": "integer"}
+      "logic_type_count": {"type": "integer"},
+      "writable": {"type": "array"}
     }
   },
   "x-views": ["DescribeDeviceView"],

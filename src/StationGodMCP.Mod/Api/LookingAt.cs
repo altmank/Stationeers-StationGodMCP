@@ -13,12 +13,14 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.RemoteView;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// looking_at: what the local player's crosshair is on. Read only.
+/// looking_at: what the local player's crosshair is on, and where the look ray lands in brief; include adds the player,
+/// the interactable, the camera view, the full hit and a structure's body. Read only.
 ///
 /// The game keeps it in CursorManager.CursorThing (CursorManager.Instance.FoundThing): every frame
 /// CursorManager.SetCursorTarget casts a ray from the camera up to CursorManager.MaxInteractDistance (3 m) and takes
@@ -34,6 +36,19 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class LookingAtApi
 {
+    private const string IncludeArgument = "include";
+
+    private static readonly Dictionary<string, LookParts> PartWords =
+        new Dictionary<string, LookParts>(System.StringComparer.OrdinalIgnoreCase)
+        {
+            ["player"] = LookParts.Player,
+            ["interactable"] = LookParts.Interactable,
+            ["view"] = LookParts.View,
+            ["hit"] = LookParts.Hit,
+            ["body"] = LookParts.Body,
+            ["all"] = LookParts.All
+        };
+
     private const double DefaultReachM = 10.0;
     private const double MaximumReachM = 50.0;
 
@@ -42,6 +57,7 @@ internal static class LookingAtApi
 
     internal static LookingAtView Handle(Args args)
     {
+        LookParts parts = LookPartsOf(args);
         PlayerOrigin origin = PlayerOrigin.Current();
         double reach = args.OptionalPositiveDouble("max_distance_m") ?? DefaultReachM;
         if (reach > MaximumReachM)
@@ -53,22 +69,49 @@ internal static class LookingAtApi
         Thing? thing = camera.Target;
         LookView view = new LookView(camera.Eye, camera.Basis, camera.ThirdPerson, camera.Seated, camera.Source);
         CameraHit? found = camera.HitWithin(reach);
-        LookHitView? hit = found != null ? HitOf(found, thing) : null;
-        if (thing == null)
+        LookHitView? hit = found == null ? null
+            : parts.HasFlag(LookParts.Hit) ? HitOf(found, thing)
+            : BriefHitOf(found);
+        Interactable? interactable = thing != null ? camera.Interactable : null;
+        return new LookingAtView(
+            parts.HasFlag(LookParts.Player) ? origin.View : null,
+            thing != null ? TargetOf(thing, origin, view, parts.HasFlag(LookParts.Body)) : null,
+            parts.HasFlag(LookParts.Interactable) && interactable != null ? InteractableOf(interactable) : null,
+            parts.HasFlag(LookParts.View) ? view : null,
+            hit);
+    }
+
+    private static LookParts LookPartsOf(Args args)
+    {
+        if (!args.Has(IncludeArgument))
         {
-            return new LookingAtView(origin.View, null, null, view, hit);
+            return LookParts.None;
         }
 
-        Interactable? interactable = camera.Interactable;
-        return new LookingAtView(origin.View, TargetOf(thing, origin, view),
-            interactable != null ? InteractableOf(interactable) : null, view, hit);
+        LookParts parts = LookParts.None;
+        foreach (JToken entry in args.Array(IncludeArgument, PartWords.Count))
+        {
+            string? word = entry.Type == JTokenType.String ? entry.Value<string>()?.Trim() : null;
+            parts |= word != null && PartWords.TryGetValue(word, out LookParts part)
+                ? part
+                : throw ApiErrors.InvalidArgument(
+                    $"Argument '{IncludeArgument}' takes {string.Join(", ", PartWords.Keys)}; '{entry}' is not one of them.");
+        }
+
+        return parts;
     }
+
+    private static LookHitView BriefHitOf(CameraHit hit) =>
+        new LookHitView(hit.Point, hit.DistanceM, FaceOf(hit.Normal.Normalized)?.Name,
+            hit.Thing != null ? GameLookup.ViewOf(hit.Thing) : null);
+
+    private static GridStep? FaceOf(Vec3 normal) => ViewBasis.Along(normal, FaceDegrees);
 
     private static LookHitView HitOf(CameraHit hit, Thing? target)
     {
         Vec3 point = hit.Point;
         Vec3 normal = hit.Normal.Normalized;
-        GridStep? face = ViewBasis.Along(normal, FaceDegrees);
+        GridStep? face = FaceOf(normal);
         string? plane = face.HasValue
             ? FacePlane.Near(face.Value.Axis, point[face.Value.Axis], MountRect.OnPlaneM)?.ToString()
             : null;
@@ -80,13 +123,13 @@ internal static class LookingAtApi
         string support = zone.IsDoor ? "x"
             : zone.IsWindow ? "g"
             : CellSupports.Code(facts.Support(small), facts.Visibility(small)).ToString();
-        return new LookHitView(point, hit.DistanceM, normal, face?.Name, plane,
+        return new LookHitDetailView(point, hit.DistanceM, normal, face?.Name, plane,
             GameLookup.ViewOf(PieceShapes.CentreOf(large)), PointView.OfCell(small), support,
             hit.Thing != null ? GameLookup.ViewOf(hit.Thing) : null,
             target != null ? Bodies.Local(target, Bodies.U(point)) : null);
     }
 
-    private static LookingAtTargetView TargetOf(Thing thing, PlayerOrigin origin, LookView? view) =>
+    private static LookingAtTargetView TargetOf(Thing thing, PlayerOrigin origin, LookView view, bool withBody) =>
         new LookingAtTargetView(
             GameLookup.ViewOf(thing),
             string.IsNullOrEmpty(thing.CustomName) ? null : Text.Plain(thing.CustomName),
@@ -98,8 +141,8 @@ internal static class LookingAtApi
             AtmosphereContentsApi.HoldsAtmosphere(thing),
             ParentOf(thing),
             thing is Structure ? Orientations.Of(thing) : null,
-            thing is Structure structure ? Bodies.ViewOf(structure) : null,
-            thing is Structure && view != null ? FacingMe(thing, view) : (bool?)null);
+            withBody && thing is Structure structure ? Bodies.ViewOf(structure) : null,
+            thing is Structure ? FacingMe(thing, view) : (bool?)null);
 
     // Whether the thing's front points toward the camera.
     private static bool FacingMe(Thing thing, LookView view)
@@ -130,4 +173,17 @@ internal static class LookingAtApi
         return new LookingAtInteractableView(interactable.Action.ToString(), Text.Plain(interactable.DisplayName),
             Text.Plain(interactable.ContextualName), interactable.State, slotView);
     }
+}
+
+/// <summary>The parts of a looking_at reply beyond the target and the brief hit, as include names them.</summary>
+[System.Flags]
+internal enum LookParts
+{
+    None = 0,
+    Player = 1,
+    Interactable = 2,
+    View = 4,
+    Hit = 8,
+    Body = 16,
+    All = Player | Interactable | View | Hit | Body
 }

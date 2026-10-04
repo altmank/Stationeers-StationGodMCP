@@ -17,7 +17,7 @@ internal static class ReplyDefaults
     internal const int FindSpots = 5;
     internal const int FindThings = 8;
     internal const int IcStackWindow = 64;
-    internal const int LuaLogLines = 20;
+    internal const int LuaLogLines = 5;
     internal const int GridSurveyCells = 8;
     internal const int ItemTotals = 12;
     internal const int ItemTotalHolders = 1;

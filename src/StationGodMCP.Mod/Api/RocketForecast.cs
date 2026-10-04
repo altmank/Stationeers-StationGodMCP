@@ -45,7 +45,7 @@ internal static class RocketForecastApi
         ForecastMiningView? mining = AddStop(args, rocket, parts, craft, target, profile, plan, assumptions);
 
         FlightRun run = FlightForecast.Run(simulator, craft, plan.Legs);
-        Assume(simulator, parts, what, craft, profile, assumptions);
+        Assume(simulator, parts, what, craft, profile, args.OptionalBool("explain") == true, assumptions);
 
         List<ForecastLegView> legs = new List<ForecastLegView>(run.Legs.Count);
         for (int index = 0; index < run.Legs.Count; index++)
@@ -475,32 +475,20 @@ internal static class RocketForecastApi
         return table;
     }
 
+    // What the forecast takes for granted. The model's fixed rules (the same for every rocket) come only with explain;
+    // what this request or this rocket changes comes always.
     private static void Assume(FlightSimulator simulator, RocketParts parts, RocketWhatIf what, RocketCraft craft,
-        ReEntryProfile profile, List<string> assumptions)
+        ReEntryProfile profile, bool explain, List<string> assumptions)
     {
-        assumptions.Add($"Physics step {simulator.PhysicsStep:0.###} s (Time.fixedDeltaTime), one 0.5 s game tick " +
-                        $"every {simulator.StepsPerTick} steps; re-entry profile {profile} " +
-                        $"({RoutePlanner.AltitudeOf(profile):0} m).");
+        if (explain)
+        {
+            assumptions.AddRange(HowTheModelFlies(simulator, parts, craft, profile));
+        }
+
         if ((what.BatteryJ.HasValue || what.BatteryPercent.HasValue) && !craft.Power.HasBattery)
         {
             assumptions.Add("Warning: battery_j and battery_percent change nothing: the rocket has no battery, so its " +
                             "engines are unpowered off the tower. Add a battery to it.");
-        }
-
-        assumptions.Add($"Engines on for every launch and hop at throttle {craft.Throttle:0.#} (the player switches " +
-                        "them on to leave; AutoShutOff turns them off on arrival); the landing autopilot sets its own.");
-        for (int index = 0; index < parts.EngineReads.Count; index++)
-        {
-            EngineRead read = parts.EngineReads[index];
-            if (read.Feed == null)
-            {
-                continue;
-            }
-
-            assumptions.Add($"{Names.Of(read.Engine)} ({EngineSpecs.NameOf(read.ClassName)}): {read.Feed.Law}" +
-                            (read.HeatExchange != null
-                                ? " Its heat-exchange input heats that line after each burn; that heat is not simulated."
-                                : string.Empty));
         }
 
         if (craft.Engines.Count > 0)
@@ -509,18 +497,40 @@ internal static class RocketForecastApi
             double now = FullThrottleForce(craft, parts, first, what, 0.0);
             double colder = FullThrottleForce(craft, parts, first, what, -100.0);
             double warmer = FullThrottleForce(craft, parts, first, what, 100.0);
-            assumptions.Add("Each line keeps its present make-up and temperature all flight: draining takes every gas and " +
-                            "liquid in proportion (GasMixture.Remove), and boiling, condensing and the heat tanks trade " +
-                            "with the air around them (Tank.cs:25-27) are not simulated. The first engine's full-throttle " +
-                            $"thrust now is {now:0} N, {colder:0} N with its fuel 100 K colder, {warmer:0} N 100 K warmer " +
-                            "(the game's combustion).");
+            assumptions.Add($"The first engine's full-throttle thrust now is {now:0} N, {colder:0} N with its fuel 100 K " +
+                            $"colder, {warmer:0} N 100 K warmer (the game's combustion).");
         }
 
-        assumptions.Add("Power: every device's draw per 0.5 s tick comes off the batteries as now (PowerTick.cs:88-150); " +
-                        "flat batteries leave the engines unpowered and they stop (RocketEngineBase.cs:450-458).");
-        assumptions.Add("Cargo weighs 1 kg per filled slot (RocketChuteStorage.cs:30); what is in the slots weighs nothing. " +
-                        "Gas and liquid in tanks count (RocketNetwork.CalculateGasMass); canisters in tank storage do not.");
         what.Describe(assumptions);
+    }
+
+    private static IEnumerable<string> HowTheModelFlies(FlightSimulator simulator, RocketParts parts, RocketCraft craft,
+        ReEntryProfile profile)
+    {
+        yield return $"Physics step {simulator.PhysicsStep:0.###} s (Time.fixedDeltaTime), one 0.5 s game tick every " +
+                     $"{simulator.StepsPerTick} steps; re-entry profile {profile} ({RoutePlanner.AltitudeOf(profile):0} m).";
+        yield return $"Engines on for every launch and hop at throttle {craft.Throttle:0.#} (the player switches them on " +
+                     "to leave; AutoShutOff turns them off on arrival); the landing autopilot sets its own.";
+        foreach (EngineRead read in parts.EngineReads)
+        {
+            if (read.Feed == null)
+            {
+                continue;
+            }
+
+            yield return $"{Names.Of(read.Engine)} ({EngineSpecs.NameOf(read.ClassName)}): {read.Feed.Law}" +
+                         (read.HeatExchange != null
+                             ? " Its heat-exchange input heats that line after each burn; that heat is not simulated."
+                             : string.Empty);
+        }
+
+        yield return "Each line keeps its present make-up and temperature all flight: draining takes every gas and " +
+                     "liquid in proportion (GasMixture.Remove), and boiling, condensing and the heat tanks trade with the " +
+                     "air around them (Tank.cs:25-27) are not simulated.";
+        yield return "Power: every device's draw per 0.5 s tick comes off the batteries as now (PowerTick.cs:88-150); " +
+                     "flat batteries leave the engines unpowered and they stop (RocketEngineBase.cs:450-458).";
+        yield return "Cargo weighs 1 kg per filled slot (RocketChuteStorage.cs:30); what is in the slots weighs nothing. " +
+                     "Gas and liquid in tanks count (RocketNetwork.CalculateGasMass); canisters in tank storage do not.";
     }
 
     // The first tick of a full-throttle burn of the first engine on its lines as they are, the fuel shifted in temperature.

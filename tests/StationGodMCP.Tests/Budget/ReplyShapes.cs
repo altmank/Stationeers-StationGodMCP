@@ -65,8 +65,8 @@ internal static class ReplyShapes
             "sections and compact narrow it.",
         ["rocket_status"] =
             "Every rocket in full is about 7 KB (fuel lines, engines, power devices); four rockets pass the budget. " +
-            "Left to the rocket tools, whose 1.13.0 compact mode and once-per-reply explanations are their call; " +
-            "rocket_id asks for one rocket.",
+            "Left to the rocket tools: compact shortens each rocket, rocket_id asks for one, and the explanations come " +
+            "only with explain.",
         ["move_gas"] = "Its replies are built from JSON trees, not views; members of from/to are the request's atmospheres.",
         ["sample_logic"] = "A stream: its reply is the changes the caller asked to sample, built from JSON trees.",
     };
@@ -128,9 +128,10 @@ internal static class ReplyShapes
         };
         shapes["describe_device"] = new[]
         {
-            // A big machine reads and writes about 45 logic types; an uplink's choices are the world's downlinks.
-            S<DescribeDeviceView>().List("DescribeDeviceView.LogicTypes", 45).List("UmbilicalSearchView.Stops", 3)
-                .List("UplinkView.Choices", W.Rockets)
+            // The full logic type list comes with include_logic_types; a big machine writes about 12 of its 45 to 75.
+            // An uplink's choices are the world's downlinks.
+            S<DescribeDeviceView>().Absent("DescribeDeviceView.LogicTypes").List("DescribeDeviceView.Writable", 12)
+                .List("UmbilicalSearchView.Stops", 3).List("UplinkView.Choices", W.Rockets)
         };
         shapes["describe_prefab"] = new[]
         {
@@ -226,7 +227,12 @@ internal static class ReplyShapes
         };
         shapes["list_devices"] = new[] { S<DevicesView>().List("DevicesView.Devices", W.Devices) };
         shapes["list_gateways"] = new[] { S<GatewaysView>().List("GatewaysView.Gateways", W.Gateways + 1) };
-        shapes["looking_at"] = new[] { S<LookingAtView>() };
+        // The target and the brief hit; player, interactable, view, the full hit and the body come with include.
+        shapes["looking_at"] = new[]
+        {
+            S<LookingAtView>().Absent("LookingAtView.Player", "LookingAtView.Interactable", "LookingAtView.View",
+                "LookingAtTargetView.Body")
+        };
         shapes["mod_info"] = new[]
         {
             S<ModInfoView>().List("ModInfoView.Methods", W.Methods).List("ModInfoView.Reflection", W.ReflectedMembers)
@@ -354,7 +360,8 @@ internal static class ReplyShapes
         shapes["rocket_forecast"] = new[]
         {
             S<RocketForecastView>().List("RocketForecastView.Route", 4).List("RocketForecastView.Uncharted", 0)
-                .List("RocketForecastView.Assumptions", 4).List("RocketForecastView.Legs", 3)
+                // The model's fixed rules come with explain; a request's what-ifs, stop and warnings stay.
+                .List("RocketForecastView.Assumptions", 3).List("RocketForecastView.Legs", 3)
                 .List("RocketForecastView.Profiles", 4).List("ColumnView.Blockers", 0)
                 .List("ForecastMiningView.Problems", 1)
         };
@@ -365,7 +372,8 @@ internal static class ReplyShapes
                 .List("RocketMiningOptionsView.Collectable", 6).List("RocketMiningOptionsView.NotCollectable", 6)
                 .List("RocketMiningOptionsView.Sites", W.MiningSites).List("MiningSiteView.Materials", 3)
                 .List("SiteMaterialView.PerUnit", 3).List("MiningSiteView.Machines", 3)
-                .List("MachineYieldView.Problems", 1).List("RocketMiningOptionsView.Notes", 2)
+                // How mining works comes with explain; a note says why collectable_only kept nothing.
+                .List("MachineYieldView.Problems", 1).List("RocketMiningOptionsView.Notes", 1)
         };
         shapes["rooms"] = new[]
         {

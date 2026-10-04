@@ -1,25 +1,25 @@
 {
   "name": "looking_at",
-  "summary": "What the player's crosshair is on: the thing the 3 m interaction ray hits, the button or slot under it, plus the view and a longer look ray. Read only.",
+  "summary": "What the player's crosshair is on: the thing the 3 m interaction ray hits and where a longer look ray lands. include adds the player, the button or slot under it, the view, the full hit and the body. Read only.",
   "help": {
-    "text": "Returns player, target (null for nothing, terrain or past 3 m), interactable, view and hit. Hand target.reference_id to any other tool. Needs the player's view.",
-    "keys": "player {reference_id, display_name, position}, target {reference_id, prefab_name, display_name, custom_name, kind, ...}, interactable {action, display_name, contextual_name, state, slot}, view {eye, forward, right, up, yaw_deg, ...}, hit {point, distance_m, normal, face, face_plane, ...}.",
+    "text": "Returns target (null for nothing, terrain or past 3 m) and hit {point, distance_m, face, thing}. include adds parts: player, interactable, view, hit (the full hit), body (a structure target's body), or all. A part asked for that is empty (no interactable, no hit) is left out. Hand target.reference_id to any other tool. Needs the player's view.",
+    "keys": "target {reference_id, prefab_name, display_name, custom_name, kind, ...}, hit {point, distance_m, face, thing}, player {reference_id, display_name, position}, interactable {action, display_name, contextual_name, state, slot}, view {eye, forward, right, up, yaw_deg, ...}.",
     "topics": {
       "target": {
         "summary": "The thing under the crosshair.",
-        "text": "target {reference_id, prefab_name, display_name, custom_name, kind (item, dynamic: a movable thing that is not an item, structure, entity, other), runtime_type, position, distance_m, is_device (logic tools take it), has_atmosphere, parent (the holder of a thing in a slot)}. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null when turned off the grid's axes), body {origin, render_box, centre_offset, grid_box, grid_cells} and facing_me."
+        "text": "target {reference_id, prefab_name, display_name, custom_name, kind (item, dynamic: a movable thing that is not an item, structure, entity, other), runtime_type, position, distance_m, is_device (logic tools take it), has_atmosphere, parent (the holder of a thing in a slot)}. A structure adds rotation {facing, up, euler} in the forms place_structure takes (facing and up null when turned off the grid's axes) and facing_me; with include body, body {origin, render_box, centre_offset, grid_box, grid_cells}."
       },
       "interactable": {
         "summary": "The button, switch, port or slot under the crosshair.",
-        "text": "interactable: null, or what the hand would use: {action (Activate, OnOff, Open, Slot1...), display_name, contextual_name (the tooltip name), state, slot {slot_index, slot_name, occupant}}."
+        "text": "interactable (include interactable): left out when none, else what the hand would use: {action (Activate, OnOff, Open, Slot1...), display_name, contextual_name (the tooltip name), state, slot {slot_index, slot_name, occupant}}."
       },
       "view": {
         "summary": "The camera: eye, axes, yaw and pitch.",
-        "text": "view {eye, forward, right, up, yaw_deg (0 along +z, 90 +x), pitch_deg (up positive), source (local or remote), age_s, axes {forward, right, up, back, left, down: the world axes nearest the player's level heading, so a metre forward runs along the floor; look: the axis nearest the look itself}, ambiguous (heading within 10 degrees of a diagonal), third_person, seated}."
+        "text": "view (include view) {eye, forward, right, up, yaw_deg (0 along +z, 90 +x), pitch_deg (up positive), source (local or remote), age_s, axes {forward, right, up, back, left, down: the world axes nearest the player's level heading, so a metre forward runs along the floor; look: the axis nearest the look itself}, ambiguous (heading within 10 degrees of a diagonal), third_person, seated}."
       },
       "hit": {
         "summary": "The longer look ray: point, face, cells.",
-        "text": "hit casts the same ray up to max_distance_m (default 10, max 50), left out when it hits nothing: {point, distance_m, normal, face, face_plane (\"z=668\" when within 0.3 m of a 2 m face plane), cell_2m (on your side), small_cell (where a piece mounted there would stand), support (grid_survey's support letter), thing, local_on_target {right_m, up_m, forward_m}}."
+        "text": "hit casts the same ray up to max_distance_m (default 10, max 50), left out when it hits nothing: {point, distance_m, face, thing}; include hit adds normal, face_plane (\"z=668\" when within 0.3 m of a 2 m face plane), cell_2m (on your side), small_cell (where a piece mounted there would stand), support (grid_survey's support letter), local_on_target {right_m, up_m, forward_m}}."
       }
     },
     "shared": ["player", "positions"]
@@ -34,6 +34,13 @@
         "exclusiveMinimum": 0,
         "maximum": 50,
         "description": "How far hit casts the look ray; default 10, max 50."
+      },
+      "include": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 6,
+        "items": {"type": "string", "enum": ["player", "interactable", "view", "hit", "body", "all"]},
+        "description": "Parts to add: player, interactable, view, hit (the full hit), body, or all. Default none."
       }
     },
     "additionalProperties": false

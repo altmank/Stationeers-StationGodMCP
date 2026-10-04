@@ -43,7 +43,7 @@
         "type": "integer",
         "minimum": 0,
         "maximum": 200,
-        "description": "Lua chips: how many of the last printed log lines; default 20, 0 for none."
+        "description": "Lua chips: how many of the last printed log lines; default 5, max 200, 0 for none."
       },
       "include_source": {
         "type": "boolean",

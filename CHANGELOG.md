@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.24.0
+
+Default replies leave out text and lists most calls do not need; every part is still one argument away.
+
+- **`rocket_status` `explanations` only with `explain: true`.** The paragraphs on `max_recorded` thrust, the landing
+  checks and the power tick are in the tool's help (topics `engines`, `landing`, `other`).
+- **`describe_device` in short by default**: `logic_type_count` and `writable` (the writable logic types by name).
+  `include_logic_types: true` adds `logic_types`, every one with id, name and access, as before.
+- **`looking_at` gives the target and a brief `hit`** (`point`, `distance_m`, `face`, `thing`). `include` adds parts:
+  `player`, `interactable`, `view`, `hit` (the full hit), `body` (a structure target's body), or `all`. A part asked
+  for that is empty (no interactable) is left out rather than `null`.
+- **`get_ic_status` returns the last 5 Lua log lines by default** (20 before); `log_lines` takes up to 200, and the
+  reply's `truncated` says when more were printed.
+- **`rocket_forecast` and `rocket_mining_options` keep their fixed explanations for `explain: true`.** By default
+  `assumptions` holds what the request and the rocket change (what-ifs, the stop, warnings, the first engine's thrust
+  100 K colder and warmer); `explain` adds the model's rules (physics step, engines on, each engine's feed law, lines
+  keeping their make-up, power, cargo mass). `rocket_mining_options` `notes` gives how Mine mode works only with
+  `explain`; the note on why `collectable_only` kept nothing stays.
+
 ## 1.23.1
 
 - **Removed game objects are checked as the game checks them.** Taking materials from the player

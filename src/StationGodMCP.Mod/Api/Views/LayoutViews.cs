@@ -181,32 +181,44 @@ internal sealed class LocalOffsetView
     public double ForwardM { get; }
 }
 
-/// <summary>Where the look ray hits the first surface, and the grid there.</summary>
-internal sealed class LookHitView
+/// <summary>Where the look ray hits the first surface, in brief: the point, how far, the face and what it hit.</summary>
+internal class LookHitView
 {
-    internal LookHitView(Vec3 point, double distance, Vec3 normal, string? face, string? facePlane,
-        PositionView cell2M, PointView smallCell, string support, ThingView? thing, LocalOffsetView? localOnTarget)
+    internal LookHitView(Vec3 point, double distance, string? face, ThingView? thing)
     {
         Point = PointView.Of(point);
         DistanceM = System.Math.Round(distance, 2);
-        Normal = VectorView.Of(normal);
         Face = face;
-        FacePlane = facePlane;
-        Cell2M = cell2M;
-        SmallCell = smallCell;
-        Support = support;
         Thing = thing;
-        LocalOnTarget = localOnTarget;
     }
 
     public PointView Point { get; }
 
     public double DistanceM { get; }
 
-    public VectorView Normal { get; }
-
     /// <summary>The surface's facing as an axis (+x.. -z), null when it is not along one.</summary>
     public string? Face { get; }
+
+    /// <summary>What the ray hit (may be beyond the 3 m the game's own target reaches).</summary>
+    public ThingView? Thing { get; }
+}
+
+/// <summary>Where the look ray hits the first surface, and the grid there.</summary>
+internal sealed class LookHitDetailView : LookHitView
+{
+    internal LookHitDetailView(Vec3 point, double distance, Vec3 normal, string? face, string? facePlane,
+        PositionView cell2M, PointView smallCell, string support, ThingView? thing, LocalOffsetView? localOnTarget)
+        : base(point, distance, face, thing)
+    {
+        Normal = VectorView.Of(normal);
+        FacePlane = facePlane;
+        Cell2M = cell2M;
+        SmallCell = smallCell;
+        Support = support;
+        LocalOnTarget = localOnTarget;
+    }
+
+    public VectorView Normal { get; }
 
     /// <summary>The 2 m face plane the point lies on ("z=668"), null when none.</summary>
     public string? FacePlane { get; }
@@ -220,9 +232,6 @@ internal sealed class LookHitView
 
     /// <summary>That small cell's grid_survey support character (i, e, f, w, a; x a door's keep-out, g a window).</summary>
     public string Support { get; }
-
-    /// <summary>What the ray hit (may be beyond the 3 m the game's own target reaches).</summary>
-    public ThingView? Thing { get; }
 
     /// <summary>The hit point in the target's own frame, from its origin.</summary>
     public LocalOffsetView? LocalOnTarget { get; }

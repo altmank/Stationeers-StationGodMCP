@@ -2,7 +2,7 @@
   "name": "rocket_mining_options",
   "summary": "What a rocket can collect, by the game's own mining formulas: its loadout, and per site the yield per cycle and hour, cycles to deplete, and what stops it. Lists 3 sites. Read only.",
   "help": {
-    "text": "sites: the node 'to' and its discovered sites, else every charted node with a deposit. collectable and not_collectable list the sites by name; collectable_only keeps the first; when it keeps nothing, notes say why (no site, nothing on board that mines, or each site's kind and the machines' reasons).",
+    "text": "sites: the node 'to' and its discovered sites, else every charted node with a deposit. collectable and not_collectable list the sites by name; collectable_only keeps the first; when it keeps nothing, notes say why (no site, nothing on board that mines, or each site's kind and the machines' reasons). explain adds to notes how Mine mode works: every miner and collector on board runs at once, and the rocket must be at the site's own node; ore and ice sites shrink every cycle, gas sites never.",
     "keys": "rocket_id, rocket_name, loadout {miners, collectors, scanners, cargo, gas_tank_litres, ...}, collectable, not_collectable, sites [{node, parent, kind, density, richness, size, survey_percent, depleted, ...}], count, notes.",
     "topics": {
       "loadout": {
@@ -30,7 +30,8 @@
         "type": "string",
         "description": "A node (name, map code or number, reference id): its deposit and discovered sites. Left out, every charted node with a deposit."
       },
-      "collectable_only": {"type": "boolean", "description": "Only the sites this loadout collects at. Default false."}
+      "collectable_only": {"type": "boolean", "description": "Only the sites this loadout collects at. Default false."},
+      "explain": {"type": "boolean", "description": "Add to notes how Mine mode and the yield formula work. Default false."}
     },
     "additionalProperties": false
   },

@@ -38,6 +38,10 @@ internal static class RocketStatusApi
         "game makes as the rocket re-enters toward its pad, with that pad's hop and gravity (1 m/s2 at an orbital launch " +
         "mount; Rocket.cs:2174-2188). A landing whose check is 0 is aborted back to orbit.";
 
+    private const string PowerTick =
+        "power: the game takes each device's watts off the batteries once per 0.5 s tick (PowerTick.cs:88-150), so " +
+        "seconds_left = charge / load x 0.5.";
+
     internal static RocketStatusListView Handle(Args args)
     {
         ThingId? id = args.OptionalThingId("rocket_id");
@@ -51,15 +55,11 @@ internal static class RocketStatusApi
             views.Add(Describe(rockets[index], selfTest, compact, withParts));
         }
 
-        List<string> explanations = new List<string>(3) { HowRecorded, ScreenCheck };
-        if (!compact)
-        {
-            explanations.Add("power: the game takes each device's watts off the batteries once per 0.5 s tick " +
-                             "(PowerTick.cs:88-150), so seconds_left = charge / load x 0.5.");
-        }
-
-        return new RocketStatusListView(views, explanations);
+        return new RocketStatusListView(views, args.OptionalBool("explain") == true ? Explanations(compact) : null);
     }
+
+    private static List<string> Explanations(bool compact) =>
+        compact ? new List<string> { HowRecorded, ScreenCheck } : new List<string> { HowRecorded, ScreenCheck, PowerTick };
 
     internal static RocketStatusView Describe(Rocket rocket, bool selfTest, bool compact = false, bool withParts = false)
     {

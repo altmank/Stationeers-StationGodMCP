@@ -60,17 +60,36 @@ public sealed class DeviceWireTests
     {
         WireCheck.Same(new { gateway_id = "world", devices = new List<object> { OldDevice() }, count = 1 },
             new DevicesView("world", new List<DeviceView> { NewDevice() }));
-        var old = new
+        List<LogicAccessView> types = new List<LogicAccessView>
+        {
+            new LogicAccessView(new LogicTypeView(6, "Pressure"), true, false),
+            new LogicAccessView(new LogicTypeView(28, "On"), true, true)
+        };
+        var listed = new
         {
             device = OldDevice(),
             logic_types = new List<object>
             {
-                new { id = (ushort)6, name = "Pressure", readable = true, writable = false }
+                new { id = (ushort)6, name = "Pressure", readable = true, writable = false },
+                new { id = (ushort)28, name = "On", readable = true, writable = true }
             },
-            logic_type_count = 1
+            logic_type_count = 2,
+            writable = new List<string> { "On" }
         };
-        WireCheck.Same(old, new DescribeDeviceView(NewDevice(),
-            new List<LogicAccessView> { new LogicAccessView(new LogicTypeView(6, "Pressure"), true, false) }));
+        WireCheck.Same(listed, new DescribeDeviceView(NewDevice(), types, listed: true));
+    }
+
+    [Fact]
+    public void DescribeDeviceInShortCountsAndNamesTheWritableOnes()
+    {
+        List<LogicAccessView> types = new List<LogicAccessView>
+        {
+            new LogicAccessView(new LogicTypeView(6, "Pressure"), true, false),
+            new LogicAccessView(new LogicTypeView(28, "On"), true, true),
+            new LogicAccessView(new LogicTypeView(1200, null), false, true)
+        };
+        var expected = new { device = OldDevice(), logic_type_count = 3, writable = new List<string> { "On", "1200" } };
+        WireCheck.Same(expected, new DescribeDeviceView(NewDevice(), types, listed: false));
     }
 
     [Fact]

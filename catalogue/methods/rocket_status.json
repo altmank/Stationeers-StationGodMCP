@@ -2,7 +2,7 @@
   "name": "rocket_status",
   "summary": "Every rocket, or one, read from the game: where it is and where it goes, mass, fuel lines, engines, thrust, landing confidence, cargo, power, burn time. compact and parts shape it. Read only.",
   "help": {
-    "text": "explanations (what the thrust and landing numbers mean) come once per reply. compact leaves out mass parts, fuel tanks, power devices and checks. parts lists every part with its pose, enough to build the rocket again.",
+    "text": "explain adds explanations, once per reply: what max_recorded thrust and the landing checks mean (topics engines and landing say it too). compact leaves out mass parts, fuel tanks, power devices and checks. parts lists every part with its pose, enough to build the rocket again.",
     "keys": "rockets [{reference_id, network_id, name, automated_landing, auto_shut_off, manned, re_entry_profile, re_entry_altitude_m, ...}], count, explanations.",
     "topics": {
       "where": {
@@ -15,15 +15,15 @@
       },
       "engines": {
         "summary": "engines, thrust and burn time.",
-        "text": "engines: name, feed (its feed law with the game's numbers), input networks, missing_input, on, powered, throttle, thrust, mol drawn last tick, exhaust, prefab max thrust, watts, modelled. thrust: current, max_recorded, prefab_max, max_expected (what the landing check uses), achievable_full (every engine's first full-throttle tick on the lines as they are, by the game's combustion on a copy), recorded_exceeds_achievable. burn_time: the game's estimate, and ours at full and current throttle."
+        "text": "engines: name, feed (its feed law with the game's numbers), input networks, missing_input, on, powered, throttle, thrust, mol drawn last tick, exhaust, prefab max thrust, watts, modelled. thrust: current, max_recorded, prefab_max, max_expected (what the landing check uses), achievable_full (every engine's first full-throttle tick on the lines as they are, by the game's combustion on a copy), recorded_exceeds_achievable. max_recorded: the highest thrust of all engines together on any physics step from the rocket's build on, saved with the game, reset to 0 while it has no engine. The landing check uses the larger of max_recorded and the first engine's prefab max, never the thrust the fuel gives at present; achievable_full is that. burn_time: the game's estimate, and ours at full and current throttle."
       },
       "landing": {
         "summary": "landing_check and landing_at_pad.",
-        "text": "landing_check: the confidence the Rocket Control screen shows (the ground pad's hop, world gravity). landing_at_pad: the check the game makes at re-entry toward the target pad, else its home pad: {pad, orbital (an Orbital Launch Mount uses gravity 1 m/s2), delta_v, confidence, band, min required thrust}."
+        "text": "landing_check: the confidence the Rocket Control screen shows (the ground pad's hop, world gravity). landing_at_pad: the check the game makes at re-entry toward the target pad, else its home pad: {pad, orbital (an Orbital Launch Mount uses gravity 1 m/s2), delta_v, confidence, band, min required thrust}. A landing whose check is 0 is aborted back to orbit."
       },
       "other": {
         "summary": "collects, cargo, power, checks, parts.",
-        "text": "collects: what the gear can bring home or do (ore, ice, gas, chart, discover, survey, surface_scan; rocket_mining_options has the detail). cargo: holds with filled, slots and kg. power: charge, capacity, percent, load per 0.5 s tick, seconds left, every device's watts and whether auto shut-off leaves it on. checks (self_test): the forecast's formulas against the game's numbers. parts: each hull piece and internal part with prefab, label, role, offset in metres from the engine mount in its frame, rotation as place_structure takes it, and slot contents."
+        "text": "collects: what the gear can bring home or do (ore, ice, gas, chart, discover, survey, surface_scan; rocket_mining_options has the detail). cargo: holds with filled, slots and kg. power: charge, capacity, percent, load per 0.5 s tick, seconds left (charge / load x 0.5), every device's watts and whether auto shut-off leaves it on. checks (self_test): the forecast's formulas against the game's numbers. parts: each hull piece and internal part with prefab, label, role, offset in metres from the engine mount in its frame, rotation as place_structure takes it, and slot contents."
       }
     },
     "shared": ["rockets"]
@@ -45,6 +45,10 @@
       "parts": {
         "type": "boolean",
         "description": "Every part with its pose relative to the engine mount and its slot contents. Default false."
+      },
+      "explain": {
+        "type": "boolean",
+        "description": "Add explanations: what the thrust, landing and power numbers mean. Default false."
       }
     },
     "additionalProperties": false
