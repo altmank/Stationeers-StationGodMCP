@@ -141,6 +141,21 @@ public sealed class RocketForecastTests
     }
 
     [Fact]
+    public void ARocketWithoutABatteryStallsUnpoweredWhateverItsLoadReads()
+    {
+        FuelBurn burn = new FuelBurn(LiveThrust / 18f, 0.0167, 0.0167 * 7.25, 1.0, 437.0, 8.3144 * 437.0);
+        FuelLine line = new FuelLine(120.0, 6000.0 * 120.0 / 3120.0,
+            new List<FuelTank> { new FuelTank(3000.0, 6000.0 * 3000.0 / 3120.0, true) }, 1, burn);
+        RocketCraft craft = new RocketCraft(1730f, new List<FuelLine> { line }, 15800f, LiveThrust, true, 100f, false,
+            0f, new PowerBank(0.0, 0.0, 0.0, 0.0));
+
+        LegResult result = new SpaceHop("A", "B", 250f, 0f).Fly(Simulator, craft);
+
+        LegOutcome.Stalled stalled = Assert.IsType<LegOutcome.Stalled>(result.Outcome);
+        Assert.Contains("Engine unpowered: no battery", stalled.Reason);
+    }
+
+    [Fact]
     public void TheGovernedEngineDrawsEighteenTimesThrottleAndTanksRefillThePipe()
     {
         FuelBurn burn = new FuelBurn(900f, 0.0167, 0.12, 1.0, 300.0, 2494.0);

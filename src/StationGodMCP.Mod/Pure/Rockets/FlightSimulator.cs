@@ -386,9 +386,15 @@ internal sealed class FlightSimulator
             return $"No fuel left {where} that the engines' feed can take: they make no thrust.";
         }
 
+        if (!craft.Power.HasBattery)
+        {
+            return $"Engine unpowered: no battery {where}. Off the tower only a battery powers the engines, and an " +
+                   "unpowered engine burns nothing.";
+        }
+
         if (!craft.Power.Powered)
         {
-            return $"The batteries are flat {where}: an unpowered engine burns nothing (RocketEngineBase.cs:450-458).";
+            return $"The batteries are flat {where}: an unpowered engine burns nothing.";
         }
 
         if (craft.Throttle <= 0f)

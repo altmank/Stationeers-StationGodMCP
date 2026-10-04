@@ -29,7 +29,7 @@ internal sealed record ToolSet(
 
     internal const string LimitsDescription = "{list: count}: lift a default cut (see truncation).";
 
-    internal const string OmitDescription = "Key paths to leave out (see shaping).";
+    internal const string OmitDescription = "Paths to leave out (see shaping).";
 
     private static readonly Lazy<ToolSet> Embedded = new(() => From(GameCatalogue.BuiltIn.Document, fallback: null));
 

@@ -24,8 +24,9 @@ internal static class ContainerContentsApi
         Thing thing = args.IsWord("reference_id", "player") ? PlayerOrigin.RequireHuman() : Require(args);
         int depth = args.OptionalInt("depth", 1, MaximumDepth) ?? DefaultDepth;
         Vector3 position = HolderChain.PlaceOf(thing).Position;
+        SlotFilter filter = new SlotFilter(args.OptionalString("prefab_contains"), args.OptionalString("name_contains"));
         return new ContainerContentsView(GameLookup.ViewOf(thing), GameLookup.ViewOf(position),
-            origin.DistanceTo(position), SlotsOf(thing, depth));
+            origin.DistanceTo(position), filter.Apply(SlotsOf(thing, depth)));
     }
 
     private static Thing Require(Args args)

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.20.0
+
+- **`rocket_forecast` names a missing battery**: a rocket with no battery stalls with "Engine unpowered: no battery"
+  (it used the burn wording), and a `battery_j` or `battery_percent` what-if on such a rocket warns that it changes
+  nothing.
+- **`rocket_mining_options` says why `collectable_only` kept nothing**: no site, nothing on board that mines, or each
+  site's kind and the machines' own reasons.
+- **`container_contents` filters**: `prefab_contains` and `name_contains` keep the slots holding a match at any
+  depth. Its help shows the field paths through nested slots (`slots.occupant.prefab_name`,
+  `occupant.slots.occupant.prefab_name`).
+
 ## 1.19.1
 
 - **`describe_prefab` reports a rocket engine's numbers**: `engine` with the thrust, exhaust velocity, specific

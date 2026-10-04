@@ -440,7 +440,7 @@ internal sealed class PowerBank
     internal void Tick(bool enginesOn)
     {
         double load = OtherLoadW + (enginesOn ? EngineLoadW : 0.0);
-        Powered = ChargeJ >= load;
+        Powered = HasBattery && ChargeJ >= load;
         ChargeJ = Math.Max(0.0, ChargeJ - load);
     }
 
@@ -450,6 +450,12 @@ internal sealed class PowerBank
         ChargeJ = Math.Min(CapacityJ, Math.Max(0.0, ChargeJ + joules));
         Powered = ChargeJ > 0.0;
     }
+
+    /// <summary>
+    /// Whether the rocket carries a battery at all: off the tower nothing else powers its engines, whatever their load
+    /// reads.
+    /// </summary>
+    internal bool HasBattery => CapacityJ > 0.0;
 
     internal PowerBank Copy()
     {

@@ -357,4 +357,67 @@ internal sealed class OccupantView
 
     /// <summary>How many slots it has past the depth limit; null otherwise.</summary>
     public int? SlotsNotShown { get; }
+
+    /// <summary>The same occupant with only these of its slots.</summary>
+    internal OccupantView WithSlots(List<SlotView> slots) =>
+        new OccupantView(new ThingView(ReferenceId, PrefabName, DisplayName), Quantity, MaxQuantity, slots,
+            SlotsNotShown);
+}
+
+/// <summary>
+/// container_contents' prefab_contains and name_contains: the slots whose occupant matches (any case, part of the
+/// prefab name or the shown name), or holds a match at any depth, with only those inner slots. A matching occupant
+/// keeps all it holds; empty slots and slots holding no match are left out.
+/// </summary>
+internal sealed class SlotFilter
+{
+    private readonly string? _prefab;
+    private readonly string? _name;
+
+    internal SlotFilter(string? prefabContains, string? nameContains)
+    {
+        _prefab = string.IsNullOrWhiteSpace(prefabContains) ? null : prefabContains!.Trim();
+        _name = string.IsNullOrWhiteSpace(nameContains) ? null : nameContains!.Trim();
+    }
+
+    internal bool IsActive => _prefab != null || _name != null;
+
+    internal List<SlotView> Apply(List<SlotView> slots)
+    {
+        if (!IsActive)
+        {
+            return slots;
+        }
+
+        List<SlotView> kept = new List<SlotView>();
+        foreach (SlotView slot in slots)
+        {
+            OccupantView? occupant = slot.Occupant;
+            if (occupant == null)
+            {
+                continue;
+            }
+
+            if (Matches(occupant))
+            {
+                kept.Add(slot);
+                continue;
+            }
+
+            List<SlotView> inner = occupant.Slots != null ? Apply(occupant.Slots) : new List<SlotView>();
+            if (inner.Count > 0)
+            {
+                kept.Add(new SlotView(slot.Index, slot.Name, slot.SlotClass, occupant.WithSlots(inner)));
+            }
+        }
+
+        return kept;
+    }
+
+    private bool Matches(OccupantView occupant) =>
+        (_prefab == null || Contains(occupant.PrefabName, _prefab)) &&
+        (_name == null || Contains(occupant.DisplayName, _name));
+
+    private static bool Contains(string? text, string part) =>
+        text != null && text.IndexOf(part, System.StringComparison.OrdinalIgnoreCase) >= 0;
 }

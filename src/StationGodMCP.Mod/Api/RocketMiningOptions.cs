@@ -48,9 +48,38 @@ internal static class RocketMiningOptionsApi
         {
             notes.Add($"{to}: no deposit at that node or its discovered sites.");
         }
+        else if (collectableOnly && views.Count == 0)
+        {
+            notes.Add(EmptyReason(sites, parts, to));
+        }
 
         return new RocketMiningOptionsView(new ThingId(rocket.ReferenceId), rocket.DisplayName,
             MiningPlans.Loadout(parts), views, notes);
+    }
+
+    // collectable_only kept nothing: say whether there was no site, nothing on board that mines, or what each site
+    // and machine reported.
+    private static string EmptyReason(List<SiteRead> sites, RocketParts parts, string? to)
+    {
+        List<string> kinds = new List<string>(sites.Count);
+        List<string> problems = new List<string>();
+        int depleted = 0;
+        int machines = 0;
+        foreach (SiteRead site in sites)
+        {
+            MiningSiteView view = MiningPlans.SiteView(site, parts);
+            kinds.Add(view.Kind);
+            depleted += view.Depleted ? 1 : 0;
+            machines = System.Math.Max(machines, view.Machines.Count);
+            foreach (MachineYieldView machine in view.Machines)
+            {
+                problems.AddRange(machine.Problems ?? new List<string>());
+            }
+
+            problems.AddRange(view.Problems ?? new List<string>());
+        }
+
+        return MiningEmptyReason.Of(sites.Count, machines, kinds, depleted, problems, to);
     }
 }
 

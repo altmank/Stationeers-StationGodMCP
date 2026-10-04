@@ -471,6 +471,12 @@ internal static class RocketForecastApi
         assumptions.Add($"Physics step {simulator.PhysicsStep:0.###} s (Time.fixedDeltaTime), one 0.5 s game tick " +
                         $"every {simulator.StepsPerTick} steps; re-entry profile {profile} " +
                         $"({RoutePlanner.AltitudeOf(profile):0} m).");
+        if ((what.BatteryJ.HasValue || what.BatteryPercent.HasValue) && !craft.Power.HasBattery)
+        {
+            assumptions.Add("Warning: battery_j and battery_percent change nothing: the rocket has no battery, so its " +
+                            "engines are unpowered off the tower. Add a battery to it.");
+        }
+
         assumptions.Add($"Engines on for every launch and hop at throttle {craft.Throttle:0.#} (the player switches " +
                         "them on to leave; AutoShutOff turns them off on arrival); the landing autopilot sets its own.");
         for (int index = 0; index < parts.EngineReads.Count; index++)

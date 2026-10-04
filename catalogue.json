@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.19.1",
+  "mod_version": "1.20.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -2232,7 +2232,7 @@
       "name": "container_contents",
       "description": "Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Read only.\nMore: tool_info {tool: \"container_contents\"}",
       "help": {
-        "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes.",
+        "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes. prefab_contains and name_contains keep the slots holding a match at any depth (empty slots go). To shape it: fields [\"slots.index\", \"slots.occupant.prefab_name\", \"slots.occupant.quantity\"], or a path read from each slot such as occupant.slots.occupant.prefab_name for what a backpack holds; omit [\"slots.occupant.slots\"] drops the inner slots.",
         "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, name, slot_class, empty, occupant}].",
         "shared": ["slots", "player"]
       },
@@ -2242,7 +2242,9 @@
         "type": "object",
         "properties": {
           "reference_id": {"type": "string", "description": "Any thing's reference id, or 'player' for the player."},
-          "depth": {"type": "integer", "minimum": 1, "maximum": 6, "description": "Levels of nested slots to show; default 3."}
+          "depth": {"type": "integer", "minimum": 1, "maximum": 6, "description": "Levels of nested slots to show; default 3."},
+          "prefab_contains": {"type": "string", "description": "Only slots holding this prefab name part at any depth."},
+          "name_contains": {"type": "string", "description": "As prefab_contains, on shown names."}
         },
         "required": ["reference_id"],
         "additionalProperties": false
@@ -7670,7 +7672,7 @@
       "name": "rocket_mining_options",
       "description": "What a rocket can collect, by the game's own mining formulas: its loadout, and per site the yield per cycle and hour, cycles to deplete, and what stops it. Lists 3 sites. Read only.\nMore: tool_info {tool: \"rocket_mining_options\"}",
       "help": {
-        "text": "sites: the node 'to' and its discovered sites, else every charted node with a deposit. collectable and not_collectable list the sites by name; collectable_only keeps the first.",
+        "text": "sites: the node 'to' and its discovered sites, else every charted node with a deposit. collectable and not_collectable list the sites by name; collectable_only keeps the first; when it keeps nothing, notes say why (no site, nothing on board that mines, or each site's kind and the machines' reasons).",
         "keys": "rocket_id, rocket_name, loadout {miners, collectors, scanners, cargo, gas_tank_litres, ...}, collectable, not_collectable, sites [{node, parent, kind, density, richness, size, survey_percent, depleted, ...}], count, notes.",
         "topics": {
           "loadout": {

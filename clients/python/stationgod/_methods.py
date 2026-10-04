@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:a084eea3a2ebd57488e94e871ce53ab7694102f1f8b1b87b2369fffc2f6d0457'
-MOD_VERSION = '1.19.1'
+CATALOGUE_HASH = 'sha256:941246b4084e199a5d8e7c37e0446c7d30f4d261988392274741ef738d9a80be'
+MOD_VERSION = '1.20.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -182,7 +182,7 @@ TABLE = {'catalogue': {'class': 'read',
                         'effects': [],
                         'paging': None,
                         'duration': None,
-                        'params': ['reference_id', 'depth'],
+                        'params': ['reference_id', 'depth', 'prefab_contains', 'name_contains'],
                         'required': ['reference_id'],
                         'shaping': 'lists',
                         'protocol': False},
@@ -1558,12 +1558,12 @@ class Methods:
         """
         return self.call('consumables', **options)
 
-    def container_contents(self, *, reference_id: str | None = None, depth: int | None = None, **options) -> dict:
+    def container_contents(self, *, reference_id: str | None = None, depth: int | None = None, prefab_contains: str | None = None, name_contains: str | None = None, **options) -> dict:
         """Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory.
 
-        Class: read. Arguments: reference_id (required), depth.
+        Class: read. Arguments: reference_id (required), depth, prefab_contains, name_contains.
         """
-        return self.call('container_contents', **{'reference_id': reference_id, 'depth': depth}, **options)
+        return self.call('container_contents', **{'reference_id': reference_id, 'depth': depth, 'prefab_contains': prefab_contains, 'name_contains': name_contains}, **options)
 
     def control_ic_execution(self, *, gateway_id: str | None = None, reference_id: str | None = None, action: str | None = None, **options) -> dict:
         """Pause, step one instruction, or resume a circuit holder's IC10 chip; or restart a Lua chip from the start.

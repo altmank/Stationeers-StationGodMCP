@@ -2,7 +2,7 @@
   "name": "container_contents",
   "summary": "Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Read only.",
   "help": {
-    "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes.",
+    "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes. prefab_contains and name_contains keep the slots holding a match at any depth (empty slots go). To shape it: fields [\"slots.index\", \"slots.occupant.prefab_name\", \"slots.occupant.quantity\"], or a path read from each slot such as occupant.slots.occupant.prefab_name for what a backpack holds; omit [\"slots.occupant.slots\"] drops the inner slots.",
     "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, name, slot_class, empty, occupant}].",
     "shared": ["slots", "player"]
   },
@@ -12,7 +12,9 @@
     "type": "object",
     "properties": {
       "reference_id": {"type": "string", "description": "Any thing's reference id, or 'player' for the player."},
-      "depth": {"type": "integer", "minimum": 1, "maximum": 6, "description": "Levels of nested slots to show; default 3."}
+      "depth": {"type": "integer", "minimum": 1, "maximum": 6, "description": "Levels of nested slots to show; default 3."},
+      "prefab_contains": {"type": "string", "description": "Only slots holding this prefab name part at any depth."},
+      "name_contains": {"type": "string", "description": "As prefab_contains, on shown names."}
     },
     "required": ["reference_id"],
     "additionalProperties": false

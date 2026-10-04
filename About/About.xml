@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.19.1</Version>
+  <Version>1.20.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,9 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.20.0
+- Clearer rocket verdicts; container_contents filters.
+
 v1.19.1
 - describe_prefab: engine thrust, feed, limits.
 
@@ -105,7 +108,7 @@ v1.14.0
 - describe_device shows which downlink a Logic Rocket Uplink follows; new set_uplink.
 
 v1.13.0
-- Rocket tools fly every rocket the game builds: all six engines by their own fuel draw, gas and liquid lines, payload drops, transfers between rockets at a node, crewed rockets (pads only) and landings on the Orbital Launch Mount.
+- Rocket tools fly every rocket the game builds: all six engines, gas and liquid lines, payloads, transfers, crewed rockets and the Orbital Launch Mount.
 - New rocket_mining_options: what a rocket's miners, drill heads, gas collectors and scanners can bring home from each site, per cycle and per hour, and why not. rocket_forecast warns when the destination cannot be mined by the loadout.
 - rocket_status: compact mode, every part's position from the engine mount (parts), and the landing check the game makes at the pad the rocket is heading for.
 
@@ -117,7 +120,7 @@ v1.12.0
 - New setting [Multiplayer] ShareViews (default true).
 
 v1.11.0
-- Dedicated servers: everything that means "the player" (player_vitals, container_contents player, distances, default from_id/to_id/credit card) uses the one connected player when there is no local player; with none or several it still refuses, saying which.
+- Dedicated servers: "the player" means the one connected player when there is no local one; with none or several it refuses, saying which.
 - Update the mod and the sidecar together: the connection protocol changed (hello first); tool descriptions and argument checks come from one method catalogue.
 
 v1.10.0
