@@ -26,7 +26,9 @@ these tools need a gateway.
   open the fabricator to eject it.
 - `find_things` finds what `find_items` does not: a tank labelled `T1` is found by `T1` and by `Portable Liquid Tank`.
   `min` and `max` keep only things in a box (`kind: "structure"` with a box gives the walls of one building). A
-  rocket's part reports `rocket_state`: its position moves while the rocket flies.
+  rocket's part reports `rocket_state`: its position moves while the rocket flies. A paintable thing reports
+  `color {index, name, is_default}` as `paint` reads it; a structure short of its last build state reports
+  `build_state {current, last, complete}` (`advance_build_state` finishes it).
   `location` keeps things where they are: `ground` (loose), `player` (carried), `stored` (in any other slot), `built`
   (structures) or `world` (players, animals). For many hits, ask only the keys you need with `fields` (for example
   `["reference_id", "position"]`), or write the reply to a file with `output_file` (README, *Large replies*).

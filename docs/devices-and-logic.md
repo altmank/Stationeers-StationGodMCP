@@ -32,7 +32,7 @@ memory, but for any device in the world at once and without a chip.
 | `inspect_slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. Devices only: for a crate, the lander or a tool use `container_contents`. | `reference_id`, `slot_index` |
 | `network_snapshot` | Many devices and their logic values at one instant, in one game frame. | `reference_ids`, `prefab_hash`, `name_contains`, `logic_types`, `max_devices` (default 2) |
 | `sample_logic` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `targets: [{reference_id, logic_type}]`, `duration_seconds` (default 5), `interval_seconds` (default 0.5) |
-| `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents, 40 a page. | `reference_id`, or `network_id` with `kind` (filters `prefab_contains`, `open_ends_only`, an area: `min` and `max`, or `near` with `radius_m`), or `min` and `max` alone: open ends in a box |
+| `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents, 30 a page, or `summarize` for counts by prefab and colour. | `reference_id`, or `network_id` with `kind` (filters `prefab_contains`, `open_ends_only`, an area: `min` and `max`, or `near` with `radius_m`), or `min` and `max` alone: open ends in a box |
 | `list_gateways` | The scopes device tools accept: `world` and every StationGod Gateway. | none |
 | `looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.3+), the surface the look ray hits and the grid there, and the target's body. | `max_distance_m` |
 | `game_clock` | Game time, paused or not, time of day, days past. | none |
@@ -196,6 +196,14 @@ stay the whole network's): `prefab_contains` (part of the prefab name, any case)
 members with an end of the network's kind that nothing is attached at (a run's loose ends, a device port left
 unjoined) and lists those ends in each member's `open_ends`. A 32 KB chute network of plain straights answers with
 the few pieces that matter.
+
+`summarize: true` answers "what is on this network" in one reply instead of pages of near-identical pieces:
+`by_prefab` counts the members by prefab, most first, with `colors` (how many of each show each paint colour), and
+`devices` and `open_ends` list the devices and the members with a loose end (up to `limit` each, default 10), with
+`device_count` and `open_end_count`. The filters apply first.
+
+Every member, the one-thing form and the box form's pieces carry `color {index, name, is_default}` when the thing has
+a colour, as `paint` reads it, so a new run can be painted like the lines beside it.
 
 `min` and `max` without `reference_id` or `network_id` list every cable, pipe and chute piece in the box with an open
 end, across all networks, each with its `network_id` and `open_ends`; `kind` keeps one kind, `prefab_contains` works

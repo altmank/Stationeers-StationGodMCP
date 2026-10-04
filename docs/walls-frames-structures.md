@@ -24,6 +24,7 @@ connections and guard against merging networks, which `place_structure` does not
 | `highlight` | Show things, whole networks or far points through walls, frames and terrain, tinted, with labels; timed, nothing changed (1.7.0+). | `targets` (`reference_id(s)`, `network_id` or `at`, with `color`, `label`, `pulse`); `seconds`, `keep`, `clear` |
 | `describe_prefab` | A prefab in its own frame: placement, allowed turns, footprint, ports, visual up (1.4.3+). | `prefab` |
 | `place_structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]`, each with its own `label`, `color` and the rest |
+| `advance_build_state` | Build a placed structure on to a later build state, paying each state's materials as a player's construction does. | `reference_id`, `to_state` (default the next), `from_id`, `free` (creative) |
 | `remove_structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `reference_ids`, `allow_contents`, `allow_breach`, `allow_broken`, `allow_burst`, `refund_to` |
 
 ## Replacing walls and frames
@@ -334,6 +335,18 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 - `port_checks`: each port with what stands in its joining cell now (`occupant`), whether that piece `joins` it on
   build and `would_join_network`, why it is `blocked`, its `flow` (`in` or `out`) and whether its cell is in a door's
   keep-out.
+
+## Finishing a half-built structure
+
+A structure placed short of its last build state (a console with no screen, a frame without plates) has none of its
+working parts yet: a console reads no `Power` or `On`. `find_things` shows such a structure's `build_state {current,
+last, complete}`; `describe_device` and `thing_health` with one `reference_id` add `next`, what one more state takes
+(items with their quantities, and the tool it uses).
+
+`advance_build_state {reference_id}` builds it one state on (`to_state` for more), taking each state's items from
+`from_id` (default your inventory) as building it by hand would. A dry run lists the `cost`, what the sources hold
+and any `problems`; `dry_run: false, confirm: true` builds it and reads `build_state` back. As the game does, it
+refuses a damaged structure (repair it first) and one in its broken state. Tools a state uses are listed, not needed.
 
 ## Removing structures
 
