@@ -452,6 +452,7 @@ internal sealed class RemoveWork : BuildWork
     private readonly RemoveReportView _preflight;
     private readonly Dictionary<int, long> _removed = new Dictionary<int, long>();
     private RemovePlan? _plan;
+    private JobGas _gas = JobGas.Untracked;
 
     internal RemoveWork(RemoveArguments arguments, RemoveReportView preflight, bool touchesPipes)
     {
@@ -482,6 +483,7 @@ internal sealed class RemoveWork : BuildWork
     {
         RemovePlan plan = _plan!;
         gas.Expect(plan.GasLosses);
+        _gas = gas;
         List<PlannedTakedown> done = new List<PlannedTakedown>();
         foreach (RunPlan runPlan in plan.NetworkPlans)
         {
@@ -601,6 +603,12 @@ internal sealed class RemoveWork : BuildWork
                         OnServer.MoveToWorld(occupant);
                     }
                 }
+            }
+
+            // gas_to: the piece's own gas goes into the chosen pipe network first, and the gas check expects it there.
+            if (takedown.GasTarget != null && DeviceGas.HandOver(piece, takedown.GasTarget) is GasMix moved)
+            {
+                _gas.Gained(new PlannedGasGain(takedown.GasTarget.ReferenceId, moved));
             }
 
             // A filled cell is given back as the last step of hand deconstruction gives it (FreedCells).

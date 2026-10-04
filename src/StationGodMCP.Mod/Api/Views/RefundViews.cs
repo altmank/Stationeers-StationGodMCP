@@ -39,8 +39,10 @@ internal sealed class RefundPlanView
 internal sealed class RefundDestinationView
 {
     internal RefundDestinationView(string? prefabName, int quantity, string target, string where, ThingId? into,
-        bool fallback)
+        bool fallback, ThingView? container = null)
     {
+        TargetId = container?.ReferenceId;
+        TargetName = container?.DisplayName;
         PrefabName = prefabName;
         Quantity = quantity;
         Target = target;
@@ -55,6 +57,14 @@ internal sealed class RefundDestinationView
 
     /// <summary>inventory, source, storage, container or ground.</summary>
     public string Target { get; }
+
+    /// <summary>A container target: the container's reference id; left out for the other targets.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ThingId? TargetId { get; }
+
+    /// <summary>A container target: its name.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? TargetName { get; }
 
     /// <summary>merged (onto the stack into), slot (a new item in an empty slot of into) or ground.</summary>
     public string Where { get; }

@@ -62,6 +62,9 @@ internal abstract class JobGas
     /// <summary>Gas the job's plan deletes on purpose: the check expects it gone and does not put it back.</summary>
     internal abstract void Expect(IEnumerable<PlannedGasLoss> losses);
 
+    /// <summary>Gas the job put into a network on purpose: the check expects the network to hold it too.</summary>
+    internal abstract void Gained(PlannedGasGain gain);
+
     /// <summary>The job's gas check; null for a job that is not tracked.</summary>
     internal abstract GasCheckView? Close(string jobId);
 
@@ -75,6 +78,10 @@ internal abstract class JobGas
         {
         }
 
+        internal override void Gained(PlannedGasGain gain)
+        {
+        }
+
         internal override GasCheckView? Close(string jobId) => null;
     }
 
@@ -82,6 +89,7 @@ internal abstract class JobGas
     {
         private readonly PipeGasReading _before;
         private readonly List<PlannedGasLoss> _planned = new List<PlannedGasLoss>();
+        private readonly List<PlannedGasGain> _gains = new List<PlannedGasGain>();
 
         internal TrackedGas(PipeGasReading before)
         {
@@ -98,6 +106,8 @@ internal abstract class JobGas
 
         internal override void Expect(IEnumerable<PlannedGasLoss> losses) => _planned.AddRange(losses);
 
+        internal override void Gained(PlannedGasGain gain) => _gains.Add(gain);
+
         internal override GasCheckView Close(string jobId)
         {
             if (!PipeGasQueue.CanRun())
@@ -108,7 +118,7 @@ internal abstract class JobGas
 
             GasTolerance tolerance = GasTolerance.Default;
             PipeGasReading after = PipeGasReading.Take();
-            GasAudit audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned);
+            GasAudit audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned, _gains);
             List<GasRefill> refills = new List<GasRefill>();
             List<GasRefillWithheld> withheld = new List<GasRefillWithheld>();
             List<long> cleared = new List<long>();
@@ -119,12 +129,12 @@ internal abstract class JobGas
                 withheld = plan.Withheld;
                 after.Refill(refills);
                 after = PipeGasReading.Take();
-                audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned);
+                audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned, _gains);
                 if (audit.Families.TrueForAll(static family => family.Emptied || family.Conserved))
                 {
                     cleared = after.ClearGhosts(audit.Ghosts);
                     after = PipeGasReading.Take();
-                    audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned);
+                    audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned, _gains);
                 }
             }
 

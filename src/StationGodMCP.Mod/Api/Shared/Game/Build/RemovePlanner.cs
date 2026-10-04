@@ -18,6 +18,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Routing;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -49,6 +50,9 @@ internal sealed class PlannedTakedown
     internal int BuildState { get; }
 
     internal string KindName => Kind?.Noun ?? "structure";
+
+    /// <summary>gas_to: the pipe network the piece's own gas goes into before it is removed; null when none.</summary>
+    internal PipeNetwork? GasTarget { get; set; }
 }
 
 /// <summary>A remove_structure run as planned.</summary>
@@ -235,6 +239,11 @@ internal static class RemovePlanner
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
         };
+        if (plan.Arguments.GasTo != null && !(piece is Pipe) && piece.InternalAtmosphere != null &&
+            facts.GasMoles >= RemovalRule.GasFloorMol)
+        {
+            HandOver(plan.Arguments.GasTo, takedown, piece, facts, removed);
+        }
         if (piece is Pipe { PipeNetwork: { } network } &&
             gas.TryGetValue(network.ReferenceId, out NetworkTakedown taken) && taken.First == takedown)
         {
@@ -253,6 +262,44 @@ internal static class RemovePlanner
         {
             OpenPorts(plan, takedown, device, removed);
         }
+    }
+
+    // gas_to: the network that takes the piece's gas (the first connected one, or the one named, that the job leaves
+    // standing and the gas cannot burst), or why none can.
+    private static void HandOver(GasTarget target, PlannedTakedown takedown, Structure piece, RemovalFacts facts,
+        HashSet<long> removed)
+    {
+        List<PipeNetwork> networks;
+        if (target.Network.HasValue)
+        {
+            PipeNetwork? named = DeviceGas.Named(target.Network.Value);
+            if (named == null)
+            {
+                facts.GasRefusal = $"gas_to {target.Network.Value} names no pipe network and no pipe on one";
+                return;
+            }
+
+            networks = new List<PipeNetwork> { named };
+        }
+        else
+        {
+            networks = DeviceGas.ConnectedNetworks(piece);
+        }
+
+        GasMix gas = DeviceGas.MixOf(piece.InternalAtmosphere!);
+        List<GasReceiver> candidates = networks.ConvertAll(network => DeviceGas.ReceiverOf(network, gas, removed));
+        List<string> why = new List<string>();
+        GasReceiver? chosen = GasHandOver.Choose(candidates, DeviceGas.HoldsLiquid(gas), why);
+        if (chosen == null)
+        {
+            facts.GasRefusal = string.Join("; ", why) + ".";
+            return;
+        }
+
+        takedown.GasTarget = networks.Find(network => network.ReferenceId == chosen.Network);
+        facts.GasHandedTo = string.Format(CultureInfo.InvariantCulture,
+            "pipe network {0} ({1:0} kPa after, its weakest pipe {2:0})", chosen.Network, chosen.PressureAfterKpa,
+            chosen.RatingKpa ?? 0.0);
     }
 
     // What removing it gives back. A broken piece gives nothing: the game deconstructs one (Structure.AttackWith, the
@@ -913,8 +960,30 @@ internal static class RemovePlanner
     private static void NetworkGuard(RemovePlan plan, NetworkRun run)
     {
         RunKind kind = run.Kind;
+        // Without verbose, a device's cut ports are one warning (PortSplitSummary), not one per port.
+        List<ForecastPort> cut = run.Plan.Forecast?.Result.Cut ?? new List<ForecastPort>();
+        HashSet<long> summarised = new HashSet<long>();
+        if (!plan.Arguments.SplitDetail)
+        {
+            foreach (KeyValuePair<long, List<string>> device in PortSplitSummary.Of(cut))
+            {
+                summarised.Add(device.Key);
+                string name = GameLookup.TryFindThing(new ThingId(device.Key), out Thing thing)
+                    ? $"{Names.Of(thing)} ({thing.PrefabName} {device.Key})"
+                    : $"device {device.Key}";
+                plan.Warnings.Add(new BuildIssueView("would_split",
+                    PortSplitSummary.Message(kind.RemoveTool, name, device.Value), null, new ThingId(device.Key)));
+            }
+        }
+
         foreach (LayoutIssue issue in run.Plan.Problems)
         {
+            if (issue.Code == "would_split" && issue.Id.HasValue && summarised.Contains(issue.Id.Value) &&
+                issue.Message.StartsWith("Port ", System.StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             int? index = IndexOf(run.Pieces, issue.Id);
             ThingId? id = issue.Id.HasValue ? new ThingId(issue.Id.Value) : (ThingId?)null;
             string message = $"{kind.RemoveTool}'s check: {issue.Message}";

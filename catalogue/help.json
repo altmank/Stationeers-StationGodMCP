@@ -47,7 +47,7 @@
     },
     "refunds": {
       "summary": "refund_to: where removed pieces' materials go.",
-      "text": "refund_to is a list of targets tried in turn per item until it fits; default [\"inventory\", \"source\", \"storage\", \"ground\"]. Each target tops up matching stacks, then fills empty slots that take the item (never a hidden slot, a body slot or a stack's own slot); what fits none goes on the ground in front of the holder. The dry run's refund_plan shows each item's destinations; the job's refunded entries name the target.",
+      "text": "refund_to is a list of targets tried in turn per item until it fits; default [\"inventory\", \"source\", \"storage\", \"ground\"]. Each target tops up matching stacks, then fills empty slots that take the item (never a hidden slot, a body slot or a stack's own slot); what fits none goes on the ground in front of the holder. The dry run's refund_plan shows each item's destinations; the job's refunded entries name the target; a container target also gives target_id and target_name.",
       "subtopics": {
         "targets": {
           "summary": "The targets: inventory, source, storage, a container id, ground.",

@@ -239,6 +239,12 @@ internal sealed class RemovalFacts
 
     internal GasFate GasFate { get; set; }
 
+    /// <summary>gas_to: the pipe network that takes the gas before the device goes, described; null when none.</summary>
+    internal string? GasHandedTo { get; set; }
+
+    /// <summary>gas_to was given but no pipe network can take the gas: why; null otherwise.</summary>
+    internal string? GasRefusal { get; set; }
+
     /// <summary>Where the gas is when it is not inside the piece itself (the pipe network it is the last of); else empty.</summary>
     internal string GasWhere { get; set; } = string.Empty;
 
@@ -418,6 +424,9 @@ internal static class RemovalRule
 
     internal const double GasFloorMol = 0.001;
 
+    /// <summary>Warning: gas_to hands the device's gas to a pipe network before it goes.</summary>
+    internal const string GasHandedOver = "gas_handed_over";
+
     /// <summary>Warning: allowed gas let out where it stood (a tank).</summary>
     internal const string GasReleased = "gas_released";
 
@@ -494,7 +503,18 @@ internal static class RemovalRule
                 "allow_contents", "they drop where it stood"));
         }
 
-        if (facts.GasMoles >= GasFloorMol)
+        if (facts.GasMoles >= GasFloorMol && facts.GasRefusal != null)
+        {
+            Refuse(findings, true, "gas_to_refused",
+                $"it holds {facts.GasMoles:0.###} mol of gas or liquid and gas_to finds no pipe network to take it: " +
+                facts.GasRefusal);
+        }
+        else if (facts.GasMoles >= GasFloorMol && facts.GasHandedTo != null)
+        {
+            findings.Add(new GuardFinding(GasHandedOver, GuardLevel.Warning,
+                $"Its {facts.GasMoles:0.###} mol of gas or liquid go into {facts.GasHandedTo} before it is removed."));
+        }
+        else if (facts.GasMoles >= GasFloorMol)
         {
             bool released = facts.GasFate == GasFate.Released;
             string fate = released

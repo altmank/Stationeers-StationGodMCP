@@ -2,9 +2,13 @@
   "name": "remove_structure",
   "summary": "Remove structures by id (up to 256, one job) as deconstructing by hand would, refunding every build state down to the kit where refund_to says. Guards for contents, breaches, bursts and broken pieces. Dry run by default; confirm to remove.",
   "help": {
-    "text": "Cable, pipe and chute pieces are removed as the remove tools remove them, their checks applying (would_split is only a warning here). The job holds the tick, checks again, removes everything in one frame, delivers the refund and verifies every piece is gone. ground as one word puts each refund where its piece stood.",
+    "text": "Cable, pipe and chute pieces are removed as the remove tools remove them, their checks applying (would_split is only a warning here, one per device unless verbose). The job holds the tick, checks again, removes everything in one frame, delivers the refund and verifies every piece is gone. ground as one word puts each refund where its piece stood.",
     "keys": "job_id, status, ready, problems [], warnings [], placements [], materials [], removals [], refund [], will_burst [], preflight_summary, result, final_check, log, verification, gas_check, error.",
     "topics": {
+      "gas": {
+        "summary": "gas_to: keep a removed device's gas in a pipe network.",
+        "text": "The game deletes a device's own gas when it is deconstructed (a tank lets its gas out where it stood); holds_gas refuses that unless allow_contents. gas_to \"connected\" hands the gas to the first of the device's own pipe networks that the job leaves standing, that carries liquid if the gas holds any, and that stays within its weakest pipe's rating with the gas added; gas_to with a pipe network id, or a pipe on one, names the network. The warning gas_handed_over names the network and the pressure after; gas_to_refused says why no network qualifies, and nothing is removed. The job moves the gas just before the device goes, and its gas check expects the network to hold it."
+      },
       "refusals": {
         "summary": "Always refused.",
         "text": "not_a_structure (items and movable things: use move_item), being_destroyed, indestructible, rocket_moving (a part of a launching or landing rocket), game_refuses (the game's own deconstruct rule; for a fuselage piece also nothing on top and no internals in its cells unless the request removes them), has_mounted (a device mounted on it would be left hanging; remove it in the same request), refund_holder_removed (the refund holder is removed or held by what is removed)."
@@ -71,7 +75,14 @@
       "from_id": {"type": "string", "description": "The refund holder for source and storage; default the player (see refunds)."},
       "dry_run": {"$ref": "defs/dry_run.json"},
       "confirm": {"$ref": "defs/confirm.json"},
-      "verbose": {"$ref": "defs/verbose.json"},
+      "verbose": {
+        "type": "boolean",
+        "description": "Dry run: each port a split cuts as its own warning. Confirmed run or poll: the whole job (see jobs)."
+      },
+      "gas_to": {
+        "type": "string",
+        "description": "Keep a removed device's gas: connected (its pipe networks) or a pipe network id (topic gas)."
+      },
       "job_id": {"$ref": "defs/job_id.json"},
       "acknowledge_gas_lost": {"$ref": "defs/acknowledge_gas_lost.json"}
     },

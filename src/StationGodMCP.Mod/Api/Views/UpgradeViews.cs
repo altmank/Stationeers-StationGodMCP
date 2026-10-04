@@ -1379,8 +1379,10 @@ internal sealed class UpgradeStopView
 internal sealed class UpgradeRefundView
 {
     internal UpgradeRefundView(ThingId referenceId, string? prefabName, int quantity, string where,
-        string? target = null)
+        string? target = null, ThingView? container = null)
     {
+        TargetId = container?.ReferenceId;
+        TargetName = container?.DisplayName;
         ReferenceId = referenceId;
         PrefabName = prefabName;
         Quantity = quantity;
@@ -1400,6 +1402,14 @@ internal sealed class UpgradeRefundView
     /// <summary>The refund_to target it went to: inventory, source, storage, container or ground.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Target { get; }
+
+    /// <summary>A container target: the container's reference id; left out for the other targets.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ThingId? TargetId { get; }
+
+    /// <summary>A container target: its name.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? TargetName { get; }
 }
 
 /// <summary>The checks after a swap: the game's links and networks compared with those recorded before it.</summary>

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.21.0
+
+- **`remove_structure` `gas_to` keeps a device's gas.** The game deletes a device's own gas when it is deconstructed
+  (a Medium Convection Radiator's, say). `gas_to: "connected"` hands it to the first of the device's pipe networks
+  the job leaves standing that can take it (liquid only into a liquid network, never past its weakest pipe's
+  rating); `gas_to` with a pipe network id, or a pipe on one, names the network. The dry run warns
+  `gas_handed_over` with the network and the pressure after, or refuses `gas_to_refused` with the reason; the job
+  moves the gas just before the device goes and its gas check expects it there.
+- **Split warnings in short.** `remove_structure` gives one `would_split` warning per device naming every port it
+  cuts, not one per port; `verbose: true`, on a dry run too, gives each port in full.
+- **Refunds name their container.** A refund to a `container` target gives `target_id` and `target_name`, in the
+  dry run's `refund_plan` and in the job's refunded entries.
+- The 200 KB cap on the whole tool list is lifted for now; the size is still reported (descriptions keep their cap).
+
 ## 1.20.0
 
 - **`rocket_forecast` names a missing battery**: a rocket with no battery stalls with "Engine unpowered: no battery"

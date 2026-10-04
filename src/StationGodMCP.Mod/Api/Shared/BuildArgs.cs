@@ -206,8 +206,10 @@ internal sealed class PlaceArguments
 internal sealed class RemoveArguments
 {
     internal RemoveArguments(List<ThingId> ids, RemovalAllowance allow, RefundRoute refundTo, ThingId? from,
-        bool includeNotes = false)
+        bool includeNotes = false, GasTarget? gasTo = null, bool splitDetail = false)
     {
+        SplitDetail = splitDetail;
+        GasTo = gasTo;
         IncludeNotes = includeNotes;
         Ids = ids;
         Allow = allow;
@@ -226,6 +228,41 @@ internal sealed class RemoveArguments
 
     /// <summary>include_notes: the report carries the tool's fixed explanations.</summary>
     internal bool IncludeNotes { get; }
+
+    /// <summary>gas_to: where a removed device's own gas goes instead of being deleted; null to leave it to the game.</summary>
+    internal GasTarget? GasTo { get; }
+
+    /// <summary>verbose: every port a split cuts as its own warning; else one per device.</summary>
+    internal bool SplitDetail { get; }
+}
+
+/// <summary>remove_structure gas_to: a device's connected pipe networks (the first that can take it), or one network.</summary>
+internal sealed class GasTarget
+{
+    private GasTarget(ThingId? network)
+    {
+        Network = network;
+    }
+
+    internal static GasTarget AnyConnected { get; } = new GasTarget(null);
+
+    /// <summary>A pipe network id or a pipe piece on it; null for the connected networks.</summary>
+    internal ThingId? Network { get; }
+
+    internal static GasTarget? Parse(Args args)
+    {
+        if (!args.Has("gas_to"))
+        {
+            return null;
+        }
+
+        if (args.IsWord("gas_to", "connected"))
+        {
+            return AnyConnected;
+        }
+
+        return new GasTarget(args.OptionalThingId("gas_to"));
+    }
 }
 
 /// <summary>A request of place_structure or remove_structure: a job to poll, or a run (dry or confirmed).</summary>
@@ -347,7 +384,7 @@ internal static class BuildArgs
         if (args.Has("job_id"))
         {
             return Poll<RemoveArguments>(args, "reference_ids", "allow_contents", "allow_breach", "allow_broken",
-                "allow_burst", "refund_to", "from_id", NotesArgument);
+                "allow_burst", "refund_to", "from_id", "gas_to", NotesArgument);
         }
 
         if (!args.Has("reference_ids"))
@@ -361,10 +398,12 @@ internal static class BuildArgs
             args.OptionalBool("allow_burst") ?? false);
         RefundRoute refundTo = RefundArgs.Route(args);
         bool confirmed = Confirmed(args);
+        // remove_structure takes verbose on a dry run too: every port a split cuts in full.
+        bool verbose = args.OptionalBool(VerboseArgument) ?? false;
         return new BuildForm<RemoveArguments>.Run(
             new RemoveArguments(ids, allow, refundTo, args.OptionalThingId("from_id"),
-                args.OptionalBool(NotesArgument) ?? false), confirmed,
-            VerboseOfRun(args, confirmed));
+                args.OptionalBool(NotesArgument) ?? false, GasTarget.Parse(args), verbose), confirmed,
+            confirmed && verbose);
     }
 
     internal static PlacementArgs Placement(Args item, int index, string prefix)

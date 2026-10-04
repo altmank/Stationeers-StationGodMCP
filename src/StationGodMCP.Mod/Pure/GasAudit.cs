@@ -216,6 +216,23 @@ internal sealed class PlannedGasLoss
 }
 
 /// <summary>
+/// Gas the job puts into a network on purpose (remove_structure gas_to: a removed device's contents handed to one of
+/// its pipe networks): the check expects the network to hold it on top of what it held.
+/// </summary>
+internal sealed class PlannedGasGain
+{
+    internal PlannedGasGain(long network, GasMix gas)
+    {
+        Network = network;
+        Gas = gas;
+    }
+
+    internal long Network { get; }
+
+    internal GasMix Gas { get; }
+}
+
+/// <summary>
 /// Networks a job touched that belong together: every network before and after that shares a pipe or a pipe's cell,
 /// directly or through another. Its contents before (the networks live then), less what the job's plan deletes on
 /// purpose (PlannedLoss), must equal its contents after (the networks live now), unless every one of its pipes was
@@ -319,7 +336,8 @@ internal sealed class GasAudit
     /// A planned loss (PlannedGasLoss) takes its share of a network's contents before off what its family should hold.
     /// </summary>
     internal static GasAudit Of(IReadOnlyList<NetworkGas> before, IReadOnlyList<NetworkGas> after,
-        GasTolerance tolerance, IReadOnlyList<PlannedGasLoss>? planned = null)
+        GasTolerance tolerance, IReadOnlyList<PlannedGasLoss>? planned = null,
+        IReadOnlyList<PlannedGasGain>? gains = null)
     {
         Dictionary<long, NetworkGas> liveBefore = LiveById(before);
         Dictionary<long, NetworkGas> liveAfter = LiveById(after);
@@ -348,7 +366,7 @@ internal sealed class GasAudit
         }
 
         List<GasFamily> grouped = families.Group(liveBefore, liveAfter, tolerance, TypesOf(before, after),
-            SharesOf(planned, false), SharesOf(planned, true));
+            SharesOf(planned, false), SharesOf(planned, true), GainsOf(gains));
         List<NetworkGas> ghosts = new List<NetworkGas>();
         List<NetworkGas> oldGhosts = new List<NetworkGas>();
         Dictionary<long, NetworkGas> beforeById = AllById(before);
@@ -459,6 +477,18 @@ internal sealed class GasAudit
         return shares;
     }
 
+    // Each network's planned gains, added together.
+    private static Dictionary<long, GasMix> GainsOf(IReadOnlyList<PlannedGasGain>? gains)
+    {
+        Dictionary<long, GasMix> byNetwork = new Dictionary<long, GasMix>();
+        foreach (PlannedGasGain gain in gains ?? Array.Empty<PlannedGasGain>())
+        {
+            byNetwork[gain.Network] = byNetwork.TryGetValue(gain.Network, out GasMix sum) ? sum.Plus(gain.Gas) : gain.Gas;
+        }
+
+        return byNetwork;
+    }
+
     private static int TypesOf(IReadOnlyList<NetworkGas> before, IReadOnlyList<NetworkGas> after) =>
         before.Count > 0 ? before[0].Gas.Types : after.Count > 0 ? after[0].Gas.Types : 0;
 
@@ -482,7 +512,7 @@ internal sealed class GasAudit
 
         internal List<GasFamily> Group(Dictionary<long, NetworkGas> liveBefore, Dictionary<long, NetworkGas> liveAfter,
             GasTolerance tolerance, int types, Dictionary<long, double> plannedShares,
-            Dictionary<long, double> releaseShares)
+            Dictionary<long, double> releaseShares, Dictionary<long, GasMix>? gains = null)
         {
             Dictionary<long, List<long>> members = new Dictionary<long, List<long>>();
             List<long> ids = new List<long>(_parent.Keys);
@@ -503,7 +533,7 @@ internal sealed class GasAudit
             foreach (List<long> group in members.Values)
             {
                 families.Add(FamilyOf(group, liveBefore, liveAfter, tolerance, types, plannedShares,
-                    releaseShares));
+                    releaseShares, gains ?? new Dictionary<long, GasMix>()));
             }
 
             families.Sort(static (a, b) => Lowest(a).CompareTo(Lowest(b)));
@@ -512,7 +542,8 @@ internal sealed class GasAudit
 
         private static GasFamily FamilyOf(List<long> group, Dictionary<long, NetworkGas> liveBefore,
             Dictionary<long, NetworkGas> liveAfter, GasTolerance tolerance, int types,
-            Dictionary<long, double> plannedShares, Dictionary<long, double> releaseShares)
+            Dictionary<long, double> plannedShares, Dictionary<long, double> releaseShares,
+            Dictionary<long, GasMix> gains)
         {
             List<NetworkGas> before = new List<NetworkGas>();
             List<NetworkGas> after = new List<NetworkGas>();
@@ -535,6 +566,12 @@ internal sealed class GasAudit
                     if (releaseShares.TryGetValue(id, out double released))
                     {
                         plannedRelease = plannedRelease.Plus(then.Gas.Scaled(released));
+                    }
+
+                    if (gains.TryGetValue(id, out GasMix gained))
+                    {
+                        // Gas handed in on purpose: what the family should hold grows by it.
+                        plannedLoss = plannedLoss.Minus(gained);
                     }
                 }
 

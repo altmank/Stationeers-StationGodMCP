@@ -188,7 +188,7 @@ internal static class Refunds
             foreach (RefundStep step in RefundPlacement.Plan(total.Value, FullStack(total.Key), new List<int>(), 0))
             {
                 Record(delivered, MakeAt(total.Key, step.Quantity, position), total.Key, step.Quantity, Ground,
-                    RefundTarget.GroundName);
+                    new GivenTo(RefundTarget.GroundName, null));
             }
         }
     }
@@ -227,14 +227,17 @@ internal static class Refunds
             {
                 bool fallback = step.Target >= places.Count;
                 string target = fallback ? RefundTarget.GroundName : places[step.Target].Kind;
+                ThingView? holder = fallback || places[step.Target].Holder == null
+                    ? null
+                    : GameLookup.ViewOf(places[step.Target].Holder!);
                 destinations.Add(step.Step switch
                 {
                     RefundStep.Merge => new RefundDestinationView(total.Key.PrefabName, step.Step.Quantity, target,
-                        Merged, new ThingId(step.Key!.Value), false),
+                        Merged, new ThingId(step.Key!.Value), false, holder),
                     RefundStep.IntoSlot => new RefundDestinationView(total.Key.PrefabName, step.Step.Quantity, target,
-                        InSlot, HolderOf(registry.Slot(step.Key!.Value)), false),
+                        InSlot, HolderOf(registry.Slot(step.Key!.Value)), false, holder),
                     _ => new RefundDestinationView(total.Key.PrefabName, step.Step.Quantity, target, Ground, null,
-                        fallback)
+                        fallback, holder)
                 });
             }
         }
@@ -264,7 +267,7 @@ internal static class Refunds
                     Thing? thing = receivers.ContainerOf(container.Id);
                     if (thing != null)
                     {
-                        places.Add(new Place(target.Kind, null, InventorySlots(thing, null), false));
+                        places.Add(new Place(target.Kind, null, InventorySlots(thing, null), false, thing));
                     }
 
                     break;
@@ -299,12 +302,27 @@ internal static class Refunds
             foreach (RefundChainStep step in ledger.Plan(total.Value, FullStack(total.Key), offers))
             {
                 string target = step.Target < places.Count ? places[step.Target].Kind : RefundTarget.GroundName;
-                Give(total.Key, step, target, registry, ground, delivered);
+                Thing? holder = step.Target < places.Count ? places[step.Target].Holder : null;
+                Give(total.Key, step, new GivenTo(target, holder), registry, ground, delivered);
             }
         }
     }
 
-    private static void Give(Item prefab, RefundChainStep step, string target, Registry registry, GroundPosition ground,
+    // The refund_to target a part went to, and the container itself when it is a named container.
+    private readonly struct GivenTo
+    {
+        internal GivenTo(string kind, Thing? holder)
+        {
+            Kind = kind;
+            Holder = holder;
+        }
+
+        internal string Kind { get; }
+
+        internal Thing? Holder { get; }
+    }
+
+    private static void Give(Item prefab, RefundChainStep step, GivenTo target, Registry registry, GroundPosition ground,
         List<UpgradeRefundView> delivered)
     {
         int quantity = step.Step.Quantity;
@@ -343,8 +361,9 @@ internal static class Refunds
     /// <summary>One place a refund may go: its reply name, a stack to top up first, the slots it offers, or the ground.</summary>
     private sealed class Place
     {
-        internal Place(string kind, Stackable? stack, List<Slot> slots, bool ground)
+        internal Place(string kind, Stackable? stack, List<Slot> slots, bool ground, Thing? holder = null)
         {
+            Holder = holder;
             Kind = kind;
             Stack = stack;
             Slots = slots;
@@ -354,6 +373,9 @@ internal static class Refunds
         internal static Place OnGround { get; } = new Place(RefundTarget.GroundName, null, new List<Slot>(), true);
 
         internal string Kind { get; }
+
+        /// <summary>A named container target (refund_to {"container": id}): the thing itself; null otherwise.</summary>
+        internal Thing? Holder { get; }
 
         private Stackable? Stack { get; }
 
@@ -550,12 +572,12 @@ internal static class Refunds
     }
 
     private static void Record(List<UpgradeRefundView> delivered, Thing item, Item prefab, int quantity, string where,
-        string target)
+        GivenTo target)
     {
         if (quantity > 0)
         {
             delivered.Add(new UpgradeRefundView(new ThingId(item.ReferenceId), prefab.PrefabName, quantity, where,
-                target));
+                target.Kind, target.Holder != null ? GameLookup.ViewOf(target.Holder) : null));
         }
     }
 }

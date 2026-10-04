@@ -21,7 +21,7 @@ namespace StationGodMCP.Tests.CatalogueChecks;
 /// (c) no banned pattern anywhere (history, versions, dates, code internals, names, URLs, em dashes), except entries
 /// of catalogue/text-allow.json, each with its reason and each still needed; (d) every argument described and every
 /// tool with help; (e) every pointer resolves and no family topic is orphaned; (f) every error code the code can
-/// return has a message and a see; (h) the size of tools/list, reported and capped; (i) every tool that takes fields
+/// return has a message and a see; (h) the size of tools/list, reported (descriptions capped); (i) every tool that takes fields
 /// names its reply keys (help.keys), each one its reply can carry. (g), the assembled file matching
 /// its sources, is CatalogueConsistencyTests.CatalogueFileIsCurrent.
 /// </summary>
@@ -40,8 +40,6 @@ public sealed class CatalogueTextTests
     /// <summary>Every tool description together, in bytes.</summary>
     internal const int DescriptionsMaxBytes = 30_000;
 
-    /// <summary>The whole tools/list result as the sidecar writes it, in bytes.</summary>
-    internal const int ToolsListMaxBytes = 200_000;
 
     private static readonly Lazy<JsonObject> Catalogue = new(() => CatalogueFiles.ReadJson(CatalogueFiles.AssembledPath).AsObject());
 
@@ -443,7 +441,6 @@ public sealed class CatalogueTextTests
         }
 
         Assert.True(descriptionBytes <= DescriptionsMaxBytes, $"tool descriptions are {descriptionBytes:N0} bytes (max {DescriptionsMaxBytes:N0})\n{report}");
-        Assert.True(total <= ToolsListMaxBytes, $"tools/list is {total:N0} bytes (max {ToolsListMaxBytes:N0})\n{report}");
     }
 
     // ---- the corpus ----

@@ -357,6 +357,14 @@ go; see [building.md](building.md#how-every-building-tool-works), item 7.
 | `would_burst` | An in-line tank or passive vent that is not the last of its pipe network takes its volume away, and the game keeps the network's gas in what is left. The pressure of what is left would be over its weakest pipe, which would burst; the message gives the forecast and how much gas to take out first. Removed with pipe pieces of its network, or alone, the network the request leaves in one piece keeps all its gas and its id (every removed member leaves it first), so `will_burst` names the network as it stays; where the request splits it, each part is a new network with its share by volume at each split, in the job's order. The same model judges pipe pieces removed alone, so `allow_burst` also lets a request of pipe pieces leave a network over its weakest pipe, which `remove_pipes` refuses outright: use it only where a burst is acceptable, such as outdoors. | `allow_burst` |
 | `refund_holder_removed` | `from_id` (when `refund_to` uses it) or a container `refund_to` names is removed by the same request, or is inside something it removes: the refund would be destroyed with it. | another `from_id`, or `refund_to` |
 | `port_left_open` (warning) | A device end that joins a cable, pipe, chute or device now. | not needed |
+| `gas_to_refused` | `gas_to` is given but no pipe network can take the device's gas: none joined, all removed by the job, gas only where the device holds liquid, or the pressure with the gas added over the weakest pipe. | another `gas_to`, or empty the device first |
+
+**Keeping a device's gas.** The game deletes a device's own gas when it is deconstructed (a Medium Convection
+Radiator's, say). `gas_to: "connected"` hands it to the first of the device's pipe networks the job leaves standing
+that can take it (liquid only into a liquid network, never past the weakest pipe's rating); `gas_to` with a pipe
+network id, or a pipe on one, names the network. The dry run warns `gas_handed_over` with the network and its pressure
+after; the job moves the gas just before the device goes, and its gas check expects the network to hold it. A refund
+into a named container gives `target_id` and `target_name`.
 
 An allowed guard becomes a warning with its own code: `broken_removed`, `items_dropped`, `gas_released` (a tank's gas
 let out where it stood), `contents_deleted` (gas or liquid the game deletes with what is removed; not the job status
@@ -373,7 +381,7 @@ A rocket's parts go as a player takes them down: everything else in the request 
 the top down, so a whole rocket can be removed in one request (internals, then nose cone, fuselage, engine fuselage).
 
 Cable, pipe and chute pieces are removed as the remove tools remove them, with their checks (a pipe network's `holds_contents` and `would_burst` come from the same model of what the job leaves as above, as `holds_gas` and `would_burst`, pipe pieces alone too); `would_split` is only a
-warning here, so read it (it does not ask for `allow_split` or `root`, which `remove_structure` does not take; price
+warning here, one per device naming every port it cuts (`verbose: true` lists each port in full), so read it (it does not ask for `allow_split` or `root`, which `remove_structure` does not take; price
 the split against a root with `plan_removal`). Those checks run with `remove_structure`'s own refund (`refund_to`, `from_id`), so they need
 no player on a dedicated server.
 

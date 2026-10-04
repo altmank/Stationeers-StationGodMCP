@@ -523,7 +523,8 @@ tool; `tool_info {tool: "a", topic: "b"}` names any node.
   `FieldSelection`, the reference every view's wire test is checked against. The empty-entries rule has no general
   lint; each tool that drops empty entries tests it (`IcPinEmptyTests`).
 - (h) The size of tools/list as the MCP server writes it is reported (`STATIONGOD_SIZE_REPORT=<file>` also writes the
-  report and the list) and capped: tool descriptions at most 30,000 bytes, the whole list at most 200,000.
+  report and the list); tool descriptions are capped at 30,000 bytes. The whole list has no cap for now; the report
+  shows its size.
 
 The schema structure (types, enums, bounds, `additionalProperties`) is about 70 KB of the list and is not text; the
 caps hold the rest.
