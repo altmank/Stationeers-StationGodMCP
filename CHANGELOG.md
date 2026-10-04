@@ -2,7 +2,7 @@
 
 ## 1.14.0
 
-2026-10-03. Small default replies everywhere; the fixes from LU's dedicated server. 93 tools.
+2026-10-03. Small default replies everywhere; fixes found on a dedicated server. 93 tools.
 
 - **Every tool's default reply stays under 8 KB on a large base.** A test now holds every tool to it, measured on a
   large world (a 1,257-member cable network, a 60 KB Lua chip, 150 devices, 6,000 things), so a heavy default cannot

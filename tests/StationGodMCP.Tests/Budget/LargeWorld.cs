@@ -3,7 +3,7 @@
 namespace StationGodMCP.Tests.Budget;
 
 /// <summary>
-/// The large world every default reply is measured on: a long-played base, sized from LU's own saves where a number
+/// The large world every default reply is measured on: a long-played base, sized from live saves where a number
 /// was seen live (a 1,257-member cable network, a 60 KB Lua hub chip) and generous elsewhere.
 /// </summary>
 internal static class LargeWorld
