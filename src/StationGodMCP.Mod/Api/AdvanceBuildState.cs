@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Entities;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
@@ -126,7 +127,10 @@ internal static class AdvanceBuildStateApi
         }
 
         PlayerOrigin player = PlayerOrigin.Current();
-        return player.Player ?? throw ApiErrors.Refused("no_local_player",
-            $"{player.Absence} Nothing to take materials from; pass from_id.");
+        Human? human = player.Player;
+        return human != null
+            ? human
+            : throw ApiErrors.Refused("no_local_player",
+                $"{player.Absence} Nothing to take materials from; pass from_id.");
     }
 }

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Networking;
+using Assets.Scripts.Objects.Entities;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
@@ -123,10 +124,16 @@ internal static class ScreenPressApi
         List<ScreenElementData> elements = Screens.ElementsOf(host, surface);
         ScreenLayout layout = Screens.LayoutOf(elements, host.SizeOf(surface));
         ScreenElementData target = Target(args, elements, layout, surface);
-        string player = args.OptionalString("player") ?? PlayerOrigin.Current().Player?.DisplayName ?? "StationGod";
+        string player = args.OptionalString("player") ?? LocalPlayerName();
         bool accepted = host.Press(surface, target.Element.Id, eventName, value ?? string.Empty, player);
         return new ScreenPressView(host.Ic.HolderView, surface, Screens.ViewOf(target, layout, false), eventName, value,
             player, accepted);
+    }
+
+    private static string LocalPlayerName()
+    {
+        Human? human = PlayerOrigin.Current().Player;
+        return human != null ? human.DisplayName ?? "StationGod" : "StationGod";
     }
 
     private static ScreenElementData Target(Args args, List<ScreenElementData> elements, ScreenLayout layout,

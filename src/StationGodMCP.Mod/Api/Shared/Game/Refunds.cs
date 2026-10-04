@@ -546,7 +546,8 @@ internal static class Refunds
             return body.RigidBody.worldCenterOfMass + body.EntityForward * GroundDistance;
         }
 
-        Thing anchor = StoredIn(source) ?? source;
+        Thing? holder = StoredIn(source);
+        Thing anchor = holder != null ? holder : source;
         return anchor.Position + anchor.ThingTransform.forward * GroundDistance;
     }
 

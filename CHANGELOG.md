@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.23.1
+
+- **Removed game objects are checked as the game checks them.** Taking materials from the player
+  (`advance_build_state`), the toucher's name in `screen_press`, the power check on a pass-through run and where a
+  refund lands beside a stored item no longer treat a removed object as present.
+
 ## 1.23.0
 
 - **New tool `screen_read`**: what a ScriptedScreens screen (a Console or Computer board, a tablet, a visor) shows,

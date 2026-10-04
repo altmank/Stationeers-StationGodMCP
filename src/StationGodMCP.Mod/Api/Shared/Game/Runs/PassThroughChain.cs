@@ -123,10 +123,12 @@ internal sealed class PassThroughChain
     private static bool IsOn(Connection end, PowerSide side, ElectricalInputOutput? io, CableNetwork network) =>
         side switch
         {
-            PowerSide.Input => io?.InputNetwork == network,
-            PowerSide.Output => io?.OutputNetwork == network,
-            _ => CableOf(end)?.CableNetwork == network
+            PowerSide.Input => io != null && io.InputNetwork == network,
+            PowerSide.Output => io != null && io.OutputNetwork == network,
+            _ => NetworkOf(CableOf(end)) == network
         };
+
+    private static CableNetwork? NetworkOf(Cable? cable) => cable != null ? cable.CableNetwork : null;
 
     private static Cable? CableOf(Connection end)
     {
