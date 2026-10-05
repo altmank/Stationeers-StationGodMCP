@@ -11,7 +11,7 @@
       },
       "problems": {
         "summary": "The problems a dry run can list.",
-        "text": "unmatched_pieces (no replacement; skip_unmatched leaves them), not_enough_coils, link_added, link_lost, connectivity_model_mismatch, mounted_device_turned, shape_model_mismatch, not_complete, rocket_internal, no_local_player, thing_not_found."
+        "text": "unmatched_pieces (no replacement; skip_unmatched leaves them), not_enough_coils, link_added, link_lost, connectivity_model_mismatch, mounted_device_turned, shape_model_mismatch, not_complete, broken_build_state (the piece stands broken) and rocket_internal (no rocket piece is swapped), each naming the place_cables call to build a new piece in its place, no_local_player, thing_not_found."
       }
     },
     "shared": ["swaps", "jobs", "refunds", "networks", "truncation"]

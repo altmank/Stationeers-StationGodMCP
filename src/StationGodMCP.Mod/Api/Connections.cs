@@ -40,7 +40,8 @@ namespace StationGodMCP.Api;
 /// values the Cable Analyser shows. PowerTick takes actual = min(Potential, Required) and each tick breaks one fuse
 /// whose PowerBreak and one cable whose MaxVoltage is below it: that is "overloaded". ChuteNetwork keeps chutes in
 /// StructureList and devices in DeviceList. Not reported: per-device draw, per-cable ratings (only the lowest), and
-/// elevator, landing pad and robotic arm networks.
+/// elevator, landing pad and robotic arm networks. Both network forms add the broken pieces touching the network at its
+/// members' ends without being on it (BrokenNeighbours), whatever the filters keep.
 /// </summary>
 internal static class ConnectionsApi
 {
@@ -302,7 +303,7 @@ internal static class EndsReader
         }
     }
 
-    private static NetworkRefView? OwnNetwork(SmallGrid grid)
+    internal static NetworkRefView? OwnNetwork(SmallGrid grid)
     {
         switch (grid)
         {
@@ -444,7 +445,8 @@ internal static class NetworkReader
         limit.Note("devices", devices.Count, deviceCount);
         limit.Note("open_ends", openEnds.Count, openEndCount);
         return new NetworkOverviewView(new NetworkRefView(kind, id), network.Summary, structureCount, deviceCount,
-            tally.MostFirst().ConvertAll(static count => new PrefabCountView(count)), devices, openEnds, openEndCount);
+            tally.MostFirst().ConvertAll(static count => new PrefabCountView(count)), devices, openEnds, openEndCount,
+            BrokenNeighbours.Around(kind, network.Members.All, "by_prefab"));
     }
 
     private static Found Find(string kind, ThingId id)
@@ -608,7 +610,8 @@ internal static class NetworkReader
         request.Note("members", views.Count, page.Total);
         return new NetworkMembersView(new NetworkRefView(kind, id), summary,
             Slice<NetworkMemberView>.Page(views, request, page.Total), members.StructureCount,
-            members.All.Count - members.StructureCount);
+            members.All.Count - members.StructureCount,
+            BrokenNeighbours.WarningFor(kind, members.All, "members", "broken_neighbours with summarize true"));
     }
 
     // The indexes of a member's ends of the network's kind that nothing is attached at (EndsReader.AttachedAt).
@@ -620,12 +623,7 @@ internal static class NetworkReader
             return open;
         }
 
-        NetworkType types = kind switch
-        {
-            "pipe" => NetworkType.Pipe | NetworkType.PipeLiquid,
-            "cable" => NetworkType.PowerAndData,
-            _ => NetworkType.Chute
-        };
+        NetworkType types = EndTypesOf(kind);
         for (int index = 0; index < grid.OpenEnds.Count; index++)
         {
             Connection end = grid.OpenEnds[index];
@@ -638,6 +636,14 @@ internal static class NetworkReader
 
         return open;
     }
+
+    /// <summary>The NetworkType bits a member of a network of the kind joins it by.</summary>
+    internal static NetworkType EndTypesOf(string kind) => kind switch
+    {
+        "pipe" => NetworkType.Pipe | NetworkType.PipeLiquid,
+        "cable" => NetworkType.PowerAndData,
+        _ => NetworkType.Chute
+    };
 
     /// <summary>A network's members and its summary.</summary>
     private readonly struct Found

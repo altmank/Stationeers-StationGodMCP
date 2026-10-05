@@ -11,7 +11,13 @@
       },
       "network": {
         "summary": "The network form, its filters and summary.",
-        "text": "members [{reference_id, prefab_name, display_name, member, position, color (as paint reads it; left out when none)}] with count, structure_count, device_count, paging, network {kind, id} and summary. Filters, applied before paging (total counts the members kept): prefab_contains, open_ends_only (each member then lists open_ends), and an area: min and max (a box) or near with radius_m. Pipe summary: content, volume_l, pressure_kpa, temperature_k, total_mol, liquid_volume_l, gases (null on a multiplayer client). Cable summary, from the last power tick as the Cable Analyser shows it: required_w, potential_w, actual_w, shortfall_w, lowest_cable_max_w, lowest_fuse_break_w, overloaded, fuse_overloaded, cable_count, fuse_count. Chute summary: member_count."
+        "text": "members [{reference_id, prefab_name, display_name, member, position, color (as paint reads it; left out when none)}] with count, structure_count, device_count, paging, network {kind, id} and summary. Filters, applied before paging (total counts the members kept): prefab_contains, open_ends_only (each member then lists open_ends), and an area: min and max (a box) or near with radius_m. Pipe summary: content, volume_l, pressure_kpa, temperature_k, total_mol, liquid_volume_l, gases (null on a multiplayer client). Cable summary, from the last power tick as the Cable Analyser shows it: required_w, potential_w, actual_w, shortfall_w, lowest_cable_max_w, lowest_fuse_break_w, overloaded, fuse_overloaded, cable_count, fuse_count. Chute summary: member_count. Broken pieces touching the network: subtopic broken_neighbours.",
+        "subtopics": {
+          "broken_neighbours": {
+            "summary": "Broken pieces touching the network that it does not hold.",
+            "text": "A burst or broken piece stays in its cell, joined at its ends, but need not be on its network, so members and the counts do not show it, and the member's end it meets is not open. Both network forms walk every member's ends, as the game attaches them, whatever the filters keep, for broken pieces (and broken pieces beyond them) that are not on the network. The members form then adds a warning; summarize adds broken_neighbour_count (0: none), and when there are any a warning and broken_neighbours [{reference_id, prefab_name, position, pipe_burst, network (the one it is on itself, null for none), touches (the member it is attached to)}], the first one."
+          }
+        }
       },
       "summarize": {
         "summary": "What is on a network in one reply.",
@@ -97,6 +103,22 @@
       "devices": {"type": "array"},
       "open_ends": {"type": "array"},
       "open_end_count": {"type": "integer"},
+      "warning": {"type": "string"},
+      "broken_neighbour_count": {"type": "integer"},
+      "broken_neighbours": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "reference_id": {"type": "string"},
+            "prefab_name": {"type": ["string", "null"]},
+            "position": {"type": "object"},
+            "pipe_burst": {"type": "string"},
+            "network": {"type": ["object", "null"]},
+            "touches": {"type": "string"}
+          }
+        }
+      },
       "offset": {"type": "integer"},
       "limit": {"type": "integer"},
       "total": {"type": "integer"},

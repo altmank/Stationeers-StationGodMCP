@@ -90,7 +90,8 @@ public sealed class ConnectionsWireTests
                 FirstPage,
                 15),
             12,
-            3);
+            3,
+            null);
         WireCheck.Same(old, view);
     }
 

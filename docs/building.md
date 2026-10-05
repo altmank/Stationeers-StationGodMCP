@@ -407,7 +407,13 @@ insulated pipe over normal pipe, so the tools rebuild each piece the way the coi
   old and new pieces, and the run is refused if the pressure would then exceed the weakest pipe.
 - `upgrade_pipes` with `to: "repair"` swaps each burst pipe for a new piece of its own kit the same way, so a burst
   pipe that is the only pipe of its network keeps the contents (the game itself has no repair: deconstructing it
-  empties the network). Pieces that are not burst stay. Burst pieces are swapped by the other modes too.
+  empties the network). Pieces that are not burst stay. Burst pieces are swapped by the other modes too. A burst pipe
+  that is not on its line's network (`thing_health` and `connections` list it in `broken_neighbours`) is not in
+  `network_id`: name it in `reference_ids`.
+- Pieces inside a rocket, pieces in their broken build state and, for a repair, a burst pipe off its line's network are
+  not swapped (`rocket_internal`, `broken_build_state`, `off_network`): the refusal names the `place_pipes` (or
+  `place_cables`) call that builds a new piece at the same cell with the same ends and removes the old one in the same
+  job, as a player would.
 - A confirmed run answers `job_id`, `status` and `preflight_summary`; polls answer the result without the preflight
   and, unless the job was refused, without the final check. `verbose: true` gives both.
 

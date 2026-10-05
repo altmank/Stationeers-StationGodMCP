@@ -176,7 +176,8 @@ public sealed class CostlySkippingTests
                 return new HealthScanView(Slice<HealthView>.Page(views, page, 3), 2, 0, 40, 0.0,
                     new LocalPlayerView(new ThingId(1), "Player", new PositionView(0, 0, 0)));
             case "network":
-                return new HealthNetworkView(new ThingId(900), "pipe", 12, false, Slice<HealthView>.Page(views, page, 3));
+                return new HealthNetworkView(new ThingId(900), "pipe", 12, false, Slice<HealthView>.Page(views, page, 3),
+                    BrokenNeighbourReport.None);
             case "many":
                 BatchBuilder batch = new BatchBuilder(4);
                 batch.Succeeded(new HealthItemView(0, views[0]));

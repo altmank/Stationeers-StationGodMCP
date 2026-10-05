@@ -96,7 +96,8 @@ internal static class ReplyShapes
             S<NetworkOverviewView>().List("NetworkOverviewView.ByPrefab", 12).List("PrefabCountView.Colors", 2)
                 .List("NetworkOverviewView.Devices", D.NetworkOverviewLists)
                 .List("NetworkOverviewView.OpenEnds", D.NetworkOverviewLists).List("NetworkMemberView.OpenEnds", 1)
-                .Absent("NetworkMemberView.NetworkId").Holds("NetworkOverviewView.Summary", typeof(CableSummaryView)),
+                .Absent("NetworkMemberView.NetworkId").Holds("NetworkOverviewView.Summary", typeof(CableSummaryView))
+                .List("NetworkOverviewView.BrokenNeighbours", D.BrokenNeighbours),
             S<AreaOpenEndsView>().List("AreaOpenEndsView.Members", D.AreaOpenEnds).List("NetworkMemberView.OpenEnds", 2)
         };
         shapes["consumables"] = new[]
@@ -410,7 +411,8 @@ internal static class ReplyShapes
                 .List("HealthView.DamageRecord", 3).List("HealthItemView.DamageRecord", 3).Absent("HealthView.BuildState"),
             // Only the one-thing form reads build states.
             S<HealthNetworkView>().List("HealthNetworkView.Things", Math.Min(W.CableNetworkMembers, D.HealthThings))
-                .List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3).Absent("HealthView.BuildState"),
+                .List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3).Absent("HealthView.BuildState")
+                .List("HealthNetworkView.BrokenNeighbours", D.BrokenNeighbours),
             S<HealthScanView>().List("HealthScanView.Things", D.HealthThings).List("HealthView.Networks", 1)
                 .List("HealthView.DamageRecord", 3).Absent("HealthView.BuildState")
         };

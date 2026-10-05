@@ -45,7 +45,7 @@ public sealed class NetworkOverviewTests
 
         JObject wire = JObject.Parse(WireCheck.New(new NetworkOverviewView(new NetworkRefView("pipe", new ThingId(5)),
             null, 1, 1, tally.MostFirst().ConvertAll(count => new PrefabCountView(count)),
-            new List<NetworkMemberView> { vent }, new List<NetworkMemberView> { loose }, 1)));
+            new List<NetworkMemberView> { vent }, new List<NetworkMemberView> { loose }, 1, BrokenNeighbourReport.None)));
 
         Assert.Equal("{\"prefab_name\":\"StructurePipeStraight\",\"display_name\":\"Pipe (Straight)\",\"member\":\"pipe\"," +
                      "\"count\":1,\"colors\":{\"Blue\":1}}", wire["by_prefab"]![0]!.ToString(Newtonsoft.Json.Formatting.None));

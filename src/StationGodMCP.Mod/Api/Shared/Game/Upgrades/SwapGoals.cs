@@ -1,10 +1,12 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
+using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
@@ -219,7 +221,7 @@ internal sealed class PipeRepair : SwapGoal
             return;
         }
 
-        if (!(member is Pipe pipe) || pipe.IsBurst == Assets.Scripts.Networks.PipeBurst.None)
+        if (!(member is Pipe pipe) || !Wrecks.IsBroken(pipe))
         {
             context.Plan.Kept.Add(new SkippedPiece(member, "not_burst", $"{member.PrefabName} is not burst."));
             return;
@@ -233,7 +235,39 @@ internal sealed class PipeRepair : SwapGoal
             return;
         }
 
+        if (!LineMembership.OnItsLine(pipe.PipeNetwork?.ReferenceId, AttachedNetworks(pipe)))
+        {
+            context.Plan.Problem("off_network",
+                $"{member.PrefabName} {member.ReferenceId} is not on the network of the pipes its ends meet, so a " +
+                "swap would join its replacement to the network it is on and take the replacement off the line. " +
+                context.InPlaceAdvice(member), member);
+            return;
+        }
+
         GradeUpgrade.PlanSwap(context, member, kit);
+    }
+
+    // The network of every pipe attached at the piece's pipe ends (null for one on none).
+    private static List<long?> AttachedNetworks(Pipe pipe)
+    {
+        List<long?> networks = new List<long?>();
+        foreach (Connection end in pipe.OpenEnds ?? new List<Connection>())
+        {
+            if (end == null)
+            {
+                continue;
+            }
+
+            foreach (Thing attached in EndsReader.AttachedAt(pipe, end))
+            {
+                if (attached is Pipe other)
+                {
+                    networks.Add(other.PipeNetwork?.ReferenceId);
+                }
+            }
+        }
+
+        return networks;
     }
 }
 
@@ -383,7 +417,13 @@ internal sealed class PlanContext
 
     internal void CheckCondition(SmallGrid member, Twin twin)
     {
-        if (!member.IsStructureCompleted)
+        if (member.CurrentBuildStateIndex < 0)
+        {
+            Plan.Problem("broken_build_state",
+                $"{member.PrefabName} {member.ReferenceId} stands in its broken build state (damage destroyed it), " +
+                "which a swap does not replace. " + InPlaceAdvice(member), member);
+        }
+        else if (!member.IsStructureCompleted)
         {
             Plan.Problem("not_complete", $"{member.PrefabName} is not fully built.", member);
         }
@@ -396,7 +436,9 @@ internal sealed class PlanContext
         if ((member is Cable cable && cable.RocketNetwork != null) ||
             (member is Pipe rocketPipe && rocketPipe.RocketNetwork != null))
         {
-            Plan.Problem("rocket_internal", $"{member.PrefabName} is inside a rocket.", member);
+            Plan.Problem("rocket_internal",
+                $"{member.PrefabName} {member.ReferenceId} is inside a rocket, and this tool swaps no rocket pieces. " +
+                InPlaceAdvice(member), member);
         }
 
         if (twin.Prefab.BuildStates == null || twin.Prefab.BuildStates.Count != 1)
@@ -405,6 +447,23 @@ internal sealed class PlanContext
                 $"{twin.Prefab.PrefabName} is not finished when placed ({twin.Prefab.BuildStates?.Count ?? 0} build " +
                 "states).", member);
         }
+    }
+
+    /// <summary>
+    /// How to replace the piece in one job with the family's place tool instead (ReplaceInPlace): its cell, ends and
+    /// grade as it stands, the piece itself in remove_ids.
+    /// </summary>
+    internal string InPlaceAdvice(SmallGrid member)
+    {
+        RunKind kind = Family switch
+        {
+            CableFamily => new CableRunKind(),
+            ChuteFamily => new ChuteRunKind(),
+            _ => new PipeRunKind()
+        };
+        Grade? grade = Family.RunGradeOf(member);
+        return ReplaceInPlace.Advice(kind.PlaceTool, member.ReferenceId, PieceShapes.Live(member),
+            grade != null ? kind.NameOf(grade) : null);
     }
 
     // What deconstructing the piece gives back (ToolUse.Deconstruct over its build states, BuildMaterials).

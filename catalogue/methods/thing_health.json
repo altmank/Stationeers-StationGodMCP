@@ -2,8 +2,8 @@
   "name": "thing_health",
   "summary": "The damage state of any thing (panel, pipe, cable, wall, frame, door, vent, device, item), which no logic type exposes. One thing, up to 256, a network's pieces, or a world scan of damaged and broken things. Read only.",
   "help": {
-    "text": "Four forms. reference_id: one thing. reference_ids: up to 256, a result each with its own error. network_id: every piece of one pipe (default), cable or chute network, worst first, paged (damaged_only narrows it). None of them: scan the world for damaged and broken things, broken first then worst first, paged (8 per page).",
-    "keys": "reference_id, prefab_name, display_name, custom_name, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage, is_broken, broken_build_state, being_destroyed, pipe_burst, damage_record, position, distance_m, networks [{kind, id}], results [{index, ok, reference_id, prefab_name, display_name, ...}], count, success_count, error_count, network_id, pieces, damaged_only, things [{reference_id, prefab_name, display_name, custom_name, condition, ...}], total, offset, limit, has_more, structures, broken, scanned, min_damage_ratio, local_player, resolved_networks.",
+    "text": "Four forms. reference_id: one thing. reference_ids: up to 256, a result each with its own error. network_id: every piece of one pipe (default), cable or chute network, worst first, paged (damaged_only narrows it) (topic broken). None of them: scan the world for damaged and broken things, broken first then worst first, paged (8 per page).",
+    "keys": "reference_id, prefab_name, display_name, custom_name, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage, is_broken, broken_build_state, being_destroyed, pipe_burst, damage_record, position, distance_m, networks [{kind, id}], results [{index, ok, reference_id, prefab_name, display_name, ...}], count, success_count, error_count, network_id, pieces, damaged_only, warning, broken_neighbours, things [{reference_id, prefab_name, display_name, custom_name, condition, ...}], total, offset, limit, has_more, structures, broken, scanned, min_damage_ratio, local_player, resolved_networks.",
     "topics": {
       "reply": {
         "summary": "What each thing reports.",
@@ -11,7 +11,13 @@
       },
       "broken": {
         "summary": "is_broken and condition, and why health reads 100 %.",
-        "text": "is_broken: at maximum damage, a structure in its broken build state, a burst pipe (bursting leaves its damage at 0), or a burnt cable (the separate undamaged piece an overload leaves, such as StructureCableStraightBurnt, carrying no power). condition: broken, damaged, intact, indestructible or none; broken wins, because the game heals a structure it breaks to 0 damage. The numbers stay the game's own; condition and is_broken are the signal. An indestructible thing reports its damage numbers as null, never a fake 0."
+        "text": "is_broken: at maximum damage, a structure in its broken build state, a burst pipe (bursting leaves its damage at 0), or a burnt cable (the separate undamaged piece an overload leaves, such as StructureCableStraightBurnt, carrying no power). condition: broken, damaged, intact, indestructible or none; broken wins, because the game heals a structure it breaks to 0 damage. The numbers stay the game's own; condition and is_broken are the signal. An indestructible thing reports its damage numbers as null, never a fake 0. Broken pieces touching a network that it does not hold: subtopic broken_neighbours.",
+        "subtopics": {
+          "broken_neighbours": {
+            "summary": "Broken pieces touching a network that it does not hold.",
+            "text": "A burst or broken piece stays in its cell, joined at its ends, but need not be on its network, so the network form's things (damaged_only or not) cannot show it: 0 damaged is not proof of no leak. The network form therefore also walks every piece's and device's ends, as the game attaches them, and reports the broken pieces found there (and broken pieces beyond them) that are not on the network: broken_neighbour_count (0: none), and when there are any a warning and broken_neighbours [{reference_id, prefab_name, position, pipe_burst, network (the one it is on itself, null for none), touches (the piece it is attached to)}], the first one. Replace such a pipe with upgrade_pipes {reference_ids, to: repair}, whose refusal names the place_pipes call when that cannot."
+          }
+        }
       },
       "scan": {
         "summary": "What the world scan skips and counts.",
@@ -167,6 +173,22 @@
       "network_id": {"type": "string"},
       "pieces": {"type": "integer"},
       "damaged_only": {"type": "boolean"},
+      "warning": {"type": "string"},
+      "broken_neighbour_count": {"type": "integer"},
+      "broken_neighbours": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "reference_id": {"type": "string"},
+            "prefab_name": {"type": ["string", "null"]},
+            "position": {"type": "object"},
+            "pipe_burst": {"type": "string"},
+            "network": {"type": ["object", "null"]},
+            "touches": {"type": "string"}
+          }
+        }
+      },
       "things": {
         "type": "array",
         "items": {

@@ -315,8 +315,12 @@ internal sealed class HealthScanView
 /// <summary>thing_health network_id: the network's pieces, worst first, paged (only the damaged ones with damaged_only).</summary>
 internal sealed class HealthNetworkView
 {
-    internal HealthNetworkView(ThingId networkId, string kind, int pieces, bool damagedOnly, Slice<HealthView> page)
+    internal HealthNetworkView(ThingId networkId, string kind, int pieces, bool damagedOnly, Slice<HealthView> page,
+        BrokenNeighbourReport broken)
     {
+        Warning = broken.Warning;
+        BrokenNeighbourCount = broken.Count;
+        BrokenNeighbours = broken.OrNull;
         NetworkId = networkId;
         Kind = kind;
         Pieces = pieces;
@@ -338,6 +342,17 @@ internal sealed class HealthNetworkView
     public int Pieces { get; }
 
     public bool DamagedOnly { get; }
+
+    /// <summary>Broken pieces touching the network that things does not list, damaged_only or not; left out when none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Warning { get; }
+
+    /// <summary>How many broken pieces touch the network at its ends without being on it (0: none).</summary>
+    public int BrokenNeighbourCount { get; }
+
+    /// <summary>The first of them (see broken_neighbour_count); left out when none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<BrokenNeighbourView>? BrokenNeighbours { get; }
 
     public List<HealthView> Things { get; }
 

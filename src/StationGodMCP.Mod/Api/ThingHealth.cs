@@ -42,7 +42,8 @@ namespace StationGodMCP.Api;
 ///
 /// Four forms: reference_id, one thing; reference_ids, up to 256, a result per id; network_id, every piece of one pipe,
 /// cable or chute network (its StructureList; devices are not pieces), worst first, paged, damaged_only keeping the
-/// damaged and broken ones; none of them, a scan of every damaged thing registered in OcclusionManager.AllThings,
+/// damaged and broken ones, with the broken pieces that touch the network at its ends without being on it
+/// (BrokenNeighbours: the member list cannot show those, damaged_only or not); none of them, a scan of every damaged thing registered in OcclusionManager.AllThings,
 /// broken first, then worst first, paged; broken things are listed whatever their (healed) numbers say, and
 /// broken_only lists only them. The scan leaves out things being destroyed, indestructible damage states, entities
 /// (see player_vitals) and organs.
@@ -102,8 +103,11 @@ internal static class ThingHealthApi
         }
 
         request.Page.Note("things", views.Count, page.Total);
+        List<Thing> touching = new List<Thing>(pieces);
+        touching.AddRange(family.NetworkDevices(id));
         return new HealthNetworkView(id, family.NetworkKind, pieces.Count, request.DamagedOnly,
-            Slice<HealthView>.Page(views, request.Page, page.Total));
+            Slice<HealthView>.Page(views, request.Page, page.Total),
+            BrokenNeighbours.Around(family.NetworkKind, touching, "things"));
     }
 
     private static BatchResultView ReadMany(JArray ids, bool withNetworks)
@@ -329,7 +333,7 @@ internal static class HealthReader
                 damage.Toxic, damage.Radiation, damage.Decay, damage.Stun));
     }
 
-    private static string PipeBurstName(PipeBurst burst)
+    internal static string PipeBurstName(PipeBurst burst)
     {
         switch ((byte)burst)
         {

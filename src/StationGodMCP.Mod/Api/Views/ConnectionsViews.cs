@@ -119,8 +119,9 @@ internal sealed class NetworkRefView
 internal sealed class NetworkMembersView
 {
     internal NetworkMembersView(NetworkRefView network, object? summary, Slice<NetworkMemberView> page,
-        int structureCount, int deviceCount)
+        int structureCount, int deviceCount, string? warning)
     {
+        Warning = warning;
         Network = network;
         Summary = summary;
         Members = page.Items;
@@ -137,6 +138,13 @@ internal sealed class NetworkMembersView
 
     /// <summary>A PipeSummaryView, CableSummaryView or ChuteSummaryView; null for a pipe network without air.</summary>
     public object? Summary { get; }
+
+    /// <summary>
+    /// Broken pieces touching the network that members does not list, and where they are listed (summarize); left out
+    /// when none.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Warning { get; }
 
     public List<NetworkMemberView> Members { get; }
 
@@ -240,8 +248,11 @@ internal sealed class NetworkOverviewView
 {
     internal NetworkOverviewView(NetworkRefView network, object? summary, int structureCount, int deviceCount,
         List<PrefabCountView> byPrefab, List<NetworkMemberView> devices, List<NetworkMemberView> openEnds,
-        int openEndCount)
+        int openEndCount, BrokenNeighbourReport broken)
     {
+        Warning = broken.Warning;
+        BrokenNeighbourCount = broken.Count;
+        BrokenNeighbours = broken.OrNull;
         Network = network;
         Summary = summary;
         StructureCount = structureCount;
@@ -256,6 +267,17 @@ internal sealed class NetworkOverviewView
 
     /// <summary>As the network form's summary.</summary>
     public object? Summary { get; }
+
+    /// <summary>Broken pieces touching the network that the counts leave out; left out when none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Warning { get; }
+
+    /// <summary>How many broken pieces touch the network at its ends without being on it (0: none).</summary>
+    public int BrokenNeighbourCount { get; }
+
+    /// <summary>The first of them (see broken_neighbour_count); left out when none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<BrokenNeighbourView>? BrokenNeighbours { get; }
 
     /// <summary>The members the filters kept that are pieces.</summary>
     public int StructureCount { get; }
@@ -439,4 +461,61 @@ internal sealed class ChuteSummaryView
     }
 
     public int MemberCount { get; }
+}
+
+/// <summary>A broken piece that touches a network at its ends without being on it.</summary>
+internal sealed class BrokenNeighbourView
+{
+    internal BrokenNeighbourView(ThingView thing, PositionView position, string? pipeBurst, NetworkRefView? network,
+        ThingId touches)
+    {
+        ReferenceId = thing.ReferenceId;
+        PrefabName = thing.PrefabName;
+        Position = position;
+        PipeBurst = pipeBurst;
+        Network = network;
+        Touches = touches;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public string? PrefabName { get; }
+
+    public PositionView Position { get; }
+
+    /// <summary>A pipe's burst cause (pressure, liquid, solid, or none when it is broken but not burst); left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? PipeBurst { get; }
+
+    /// <summary>The network it is on itself; null when it is on none.</summary>
+    public NetworkRefView? Network { get; }
+
+    /// <summary>The member (or broken piece nearer the network) it is attached to.</summary>
+    public ThingId Touches { get; }
+}
+
+/// <summary>
+/// The broken pieces touching a network that its member list does not hold: how many, the first of them, and the
+/// reply's warning. Every network form reports it, whatever its filters, since the list it warns about cannot show them.
+/// </summary>
+internal sealed class BrokenNeighbourReport
+{
+    internal BrokenNeighbourReport(List<BrokenNeighbourView> listed, int count, string? warning)
+    {
+        Listed = listed;
+        Count = count;
+        Warning = warning;
+    }
+
+    internal static BrokenNeighbourReport None { get; } =
+        new BrokenNeighbourReport(new List<BrokenNeighbourView>(), 0, null);
+
+    internal List<BrokenNeighbourView> Listed { get; }
+
+    internal int Count { get; }
+
+    internal string? Warning { get; }
+
+    /// <summary>The list as the reply carries it: left out when empty.</summary>
+    internal List<BrokenNeighbourView>? OrNull => Count == 0 ? null : Listed;
 }

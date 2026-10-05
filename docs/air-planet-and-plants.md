@@ -155,6 +155,12 @@ Host only.
   are not pieces), worst first, paged like the scan. `damaged_only: true` keeps the damaged and broken ones, so a whole
   plant line's pipes are one small call: `{network_id: {reference_id: "<device>", port: 1}, damaged_only: true}`.
   `network_id` takes a network id, a piece or device on it, or `{reference_id, port}`; `pieces` counts them all.
+- A burst or broken piece stays in its cell, joined at its ends, but need not be on its network, so the network's
+  pieces (and `damaged_only`) cannot show it: "0 damaged" is not proof of no leak. The network form therefore also walks
+  every piece's and device's ends and reports what is broken there and not on the network: `broken_neighbour_count`
+  (0 when none), and when there are any a `warning` and `broken_neighbours` (the first one, with its `position`,
+  `pipe_burst`, its own `network` or null, and `touches`, the piece it meets). `connections` does the same for a
+  network: its members form adds the `warning`, `summarize` the count and the list.
 
 ## Deep-miner spots
 

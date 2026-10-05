@@ -28,6 +28,7 @@ internal static class ReplyDefaults
     internal const int ConsoleOutputLines = 100;
     internal const int FlightLogRows = 12;
     internal const int HealthThings = 8;
+    internal const int BrokenNeighbours = 1;
     internal const int UpgradeListed = 5;
     internal const int SwapListed = 5;
     internal const int RunListed = 5;

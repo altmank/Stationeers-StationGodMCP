@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.25.0
+
+A burst or broken piece is found even when its network does not hold it, and every swap the upgrade tools refuse
+names the one call that does it.
+
+- **`thing_health {network_id}` reports broken pieces touching the network.** A burst or broken piece stays in its
+  cell, joined at its ends, but need not be on its network, so the network's `things` (and `damaged_only`) cannot show
+  it. The network form walks every piece's and device's ends as the game attaches them and adds
+  `broken_neighbour_count`, and when there are any a `warning` and `broken_neighbours` (the first one: `position`,
+  `pipe_burst`, its own `network` or null, `touches`).
+- **`connections` does the same for a network:** the members form adds the `warning`, `summarize` adds the count and
+  the list. Filters do not hide them.
+- **Refusals that name the fix.** `upgrade_pipes` and `upgrade_cables` (and the clean tools) refuse a piece inside a
+  rocket (`rocket_internal`) and a piece in its broken build state (`broken_build_state`, which was `not_complete`);
+  `upgrade_pipes` to `repair` also refuses a burst pipe not on the network of the pipes its ends meet (`off_network`),
+  since a swap would take its replacement off the line. Each message names the `place_pipes` (`place_cables`,
+  `place_chutes`) call that builds a new piece at its cell with its ends and grade and removes the old one in the same
+  job.
+- `upgrade_pipes` to `repair` takes a broken pipe as well as a burst one.
+
 ## 1.24.0
 
 Default replies leave out text and lists most calls do not need; every part is still one argument away.

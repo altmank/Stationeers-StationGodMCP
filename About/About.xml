@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.24.0</Version>
+  <Version>1.25.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,9 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.25.0
+- Broken pieces touching a network are reported; refused rocket and broken pipe swaps name the place_pipes call.
+
 v1.24.0
 - Shorter default replies: rocket explanations, full logic type lists and looking_at extras on request.
 
@@ -117,7 +120,7 @@ v1.16.0
 v1.15.0
 - Short tool descriptions: an agent's tool list is under half its size. The long help moved into the new tool_info tool, read one small topic at a time and answered without the game.
 - Every error says what went wrong and what to do, and names the tool_info topic that explains it (see).
-- MCP replies are written with plain JSON escaping, so they are smaller.
+- MCP replies use plain JSON escaping (smaller).
 
 v1.14.1
 - Fix: removing neighbouring chute pieces no longer leaves a chute linked to a removed piece.
@@ -134,7 +137,7 @@ v1.13.0
 - rocket_status: compact mode, every part's position from the engine mount (parts), and the landing check the game makes at the pad the rocket is heading for.
 
 v1.12.1
-- Fix: on a dedicated server the views of a player who rejoined an existing character (a loaded save, a reconnect) were dropped, so the camera tools refused no_view for them.
+- Fix: a player who rejoined a dedicated server lost the camera tools (no_view).
 
 v1.12.0
 - Dedicated servers: a player whose game runs StationGod shares where they look, so the view tools work for them. StationGod stays optional on players' games; without it those calls refuse no_view, saying why.
