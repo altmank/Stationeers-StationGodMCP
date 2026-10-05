@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>StationGodMCP</AssemblyName>
     <RootNamespace>StationGodMCP</RootNamespace>
-    <Version>1.25.0</Version>
+    <Version>1.26.0</Version>
     <Authors>XCeled</Authors>
     <Description>Lets an AI agent read and operate a running Stationeers game through the Model Context Protocol.</Description>
     <LangVersion>12.0</LangVersion>

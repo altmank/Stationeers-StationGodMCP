@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.26.0
+
+Batteries can be charged one at a time, where the console's `setbatteries` fills every battery in the world.
+
+- **New tool `set_battery_charge` (a cheat: ask the user first).** Sets the charge of the batteries named, full by
+  default, or `ratio` (0 to 1) or `joules` (clamped to each battery's capacity). Targets: `reference_ids` (up to
+  256, each checked alone), `rocket_id` (every battery of that rocket) or `in_id` (every battery cell in a thing's
+  slots and their slots: a suit, a tool, a locker, `"player"`). Covers placed station batteries, rocket batteries,
+  battery cells of every size (wireless too) loose or in any slot, and a power pylon end's buffer. Each result gives
+  `kind`, `held_by`, `capacity_j` and the charge before and after; anything else is `not_a_battery`, naming what
+  it is and, when its slots hold cells, the `in_id` call that sets them. Dry run by default; host only, and clients
+  see the new charge through the game's own sync.
+
 ## 1.25.0
 
 A burst or broken piece is found even when its network does not hold it, and every swap the upgrade tools refuse

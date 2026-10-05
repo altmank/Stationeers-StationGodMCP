@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:5eae474fc82e65755af67ac6c4bcfd86940ee68ade4526254bc75eb403ec18e9'
-MOD_VERSION = '1.25.0'
+CATALOGUE_HASH = 'sha256:af8a4ff8d7e90d77183f187955d860f518f69f92a49ab1b9b8a9a0fb9a3012fa'
+MOD_VERSION = '1.26.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -1264,6 +1264,16 @@ TABLE = {'catalogue': {'class': 'read',
                  'required': ['reference_id'],
                  'shaping': 'lists',
                  'protocol': False},
+ 'set_battery_charge': {'class': 'cheat',
+                        'class_when': [{'when': {'dry_run': {'absent': True}}, 'class': 'read'},
+                                       {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
+                        'effects': [],
+                        'paging': None,
+                        'duration': None,
+                        'params': ['reference_ids', 'rocket_id', 'in_id', 'ratio', 'joules', 'dry_run', 'confirm'],
+                        'required': [],
+                        'shaping': 'lists',
+                        'protocol': False},
  'set_ic_pins': {'class': 'write',
                  'class_when': [],
                  'effects': [],
@@ -2087,6 +2097,13 @@ class Methods:
         Class: read. Arguments: gateway_id, reference_id (required), surface, type, text_contains, shown_only, include_style, image, limit, offset.
         """
         return self.call('screen_read', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'surface': surface, 'type': type, 'text_contains': text_contains, 'shown_only': shown_only, 'include_style': include_style, 'image': image, 'limit': limit, 'offset': offset}, **options)
+
+    def set_battery_charge(self, *, reference_ids: list | None = None, rocket_id: str | None = None, in_id: str | None = None, ratio: float | None = None, joules: float | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
+        """Cheat: set the charge of single batteries (station and rocket batteries, battery cells anywhere), full by default or to a ratio or joules.
+
+        Class: cheat (other classes at some arguments). Arguments: reference_ids, rocket_id, in_id, ratio, joules, dry_run, confirm.
+        """
+        return self.call('set_battery_charge', **{'reference_ids': reference_ids, 'rocket_id': rocket_id, 'in_id': in_id, 'ratio': ratio, 'joules': joules, 'dry_run': dry_run, 'confirm': confirm}, **options)
 
     def set_ic_pins(self, *, gateway_id: str | None = None, reference_id: str | None = None, pins: dict | None = None, allow_off_network: bool | None = None, **options) -> dict:
         """Set an IC Housing's pins d0 to d5 as a screwdriver does: a device id per pin, null to clear.

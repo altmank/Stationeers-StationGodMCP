@@ -372,6 +372,11 @@
     "origin": "tool",
     "see": {"tool": "atmosphere_contents", "topic": "refusals"}
   },
+  "no_batteries": {
+    "description": "The rocket or the thing named holds no battery, so there is nothing to set.",
+    "origin": "tool",
+    "see": {"tool": "set_battery_charge", "topic": "refusals"}
+  },
   "no_build_states": {
     "description": "The thing is not a structure with two or more build states, so it cannot be built on.",
     "origin": "tool",
@@ -501,6 +506,11 @@
     "description": "No space-map node has that name. Give its name, its map code, or 'pad'.",
     "origin": "tool",
     "see": {"topic": "rockets"}
+  },
+  "not_a_battery": {
+    "description": "The thing stores no power; the message names what it is, and when its slots hold battery cells, the in_id call that sets them.",
+    "origin": "tool",
+    "see": {"tool": "set_battery_charge", "topic": "batteries"}
   },
   "not_a_lua_chip": {
     "description": "restart is for Lua chips. An IC10 chip restarts at line 0 when set_ic_source writes it.",
@@ -838,6 +848,11 @@
     "description": "The game tick did not stop in time, so nothing ran. Try again.",
     "origin": "tool",
     "see": {"topic": "jobs", "subtopic": "refusals"}
+  },
+  "too_many_batteries": {
+    "description": "The rocket or holder has over 256 batteries, more than one call sets, so none is set. Name them in reference_ids calls instead.",
+    "origin": "tool",
+    "see": {"tool": "set_battery_charge", "topic": "refusals"}
   },
   "too_many_in_flight": {
     "description": "Too many calls are in flight on this connection. Nothing ran; wait for replies, then send again.",

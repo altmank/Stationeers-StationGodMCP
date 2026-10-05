@@ -37,6 +37,7 @@ memory, but for any device in the world at once and without a chip.
 | `looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.3+), the surface the look ray hits and the grid there, and the target's body. | `max_distance_m` |
 | `game_clock` | Game time, paused or not, time of day, days past. | none |
 | `run_console_command` | Any console command, with the lines it printed. | `command`, `max_output_lines` |
+| `set_battery_charge` | A cheat: set the charge of single batteries, full or to a ratio or joules (see *Batteries*). | `reference_ids`, or `rocket_id`, or `in_id`; `ratio` or `joules`; `dry_run`, `confirm` |
 | `read_console` | The latest console lines, including Unity errors and stack traces. | `lines` |
 | `mod_info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
 
@@ -213,6 +214,28 @@ Network ids change after almost every edit: when networks merge or split, the ga
 tool takes a network id it also takes the reference id of any piece or device on the network, or
 `{reference_id, port}` of a device port, and resolves it to the current id when the call runs (`resolved_networks` in
 the reply). Name networks that way rather than by a stored id.
+
+## Batteries
+
+`set_battery_charge` sets the charge of the batteries you name, where the console's `setbatteries` sets every battery
+in the world at once. It is a cheat: the power comes from nowhere, so ask before each use. Like the building tools it is
+a dry run by default (`dry_run: false` and `confirm: true` to set), and it runs on the host only; other players see
+the new charge through the game's own sync.
+
+- **Which batteries:** `reference_ids` (up to 256, each checked on its own), `rocket_id` (every battery of that
+  rocket: its id, its rocket network's or any part's), or `in_id` (every battery cell in a thing's slots and in the
+  slots of what they hold, six levels down: a suit, a tool, a locker, a rover; `"player"` for you).
+- **What counts:** placed Station Batteries and Large Station Batteries, the batteries built into rockets, battery cells
+  of every size (the wireless one too) whether loose, in a device, a suit or a tool, and a power pylon end's buffer.
+  Anything else is refused `not_a_battery`, naming what the thing is; when its slots hold cells (a suit, a drill), the
+  message gives the `in_id` call that sets them. A Disposable Battery Charger is a consumable, not a battery.
+- **How full:** full by default; `ratio` (0 to 1) sets a share of each battery's capacity, `joules` an amount, filling
+  a battery smaller than that (`clamped`). A ratio below the present charge drains it.
+- **The reply:** per battery `kind` (`station_battery`, `rocket_battery`, `battery_cell`, `pylon_buffer`), `held_by`
+  (the suit, tool or device a cell sits in), `capacity_j`, `before_j`/`after_j` and the same as ratios; `added_j`
+  for the whole call. Keep the before values: a call with that battery and its `before_j` as `joules` puts it back.
+
+A cell's charge display and its percentage catch up on the next power tick (about half a second; not while paused).
 
 ## Console
 

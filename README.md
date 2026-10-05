@@ -72,11 +72,11 @@ the APC to the new room along the frames". Each tool's own description is short;
 
 ## Tools
 
-97 tools, in these areas, plus `tool_info`, the help. Each page lists its tools with what they take and give back.
+98 tools, in these areas, plus `tool_info`, the help. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |
-| Devices, logic and console | `list_devices`, `describe_device`, `read_logic`, `write_logic`, `read_logic_many`, `write_logic_many`, `read_devices`, `read_memory`, `write_memory`, `inspect_slots`, `network_snapshot`, `sample_logic`, `connections`, `set_uplink`, `list_gateways`, `run_console_command`, `read_console`, `game_clock`, `looking_at`, `mod_info` | [devices-and-logic.md](docs/devices-and-logic.md) |
+| Devices, logic and console | `list_devices`, `describe_device`, `read_logic`, `write_logic`, `read_logic_many`, `write_logic_many`, `read_devices`, `read_memory`, `write_memory`, `inspect_slots`, `network_snapshot`, `sample_logic`, `connections`, `set_uplink`, `list_gateways`, `run_console_command`, `read_console`, `set_battery_charge`, `game_clock`, `looking_at`, `mod_info` | [devices-and-logic.md](docs/devices-and-logic.md) |
 | Chips | `get_ic_source`, `set_ic_source`, `get_ic_status`, `control_ic_execution`, `resolve_ic_selectors`, `set_ic_pins`, `screen_read`, `screen_press` | [chips.md](docs/chips.md) |
 | Items | `find_items`, `find_things`, `item_totals`, `list_containers`, `container_contents`, `move_item`, `label`, `paint`, `consumables` | [items.md](docs/items.md) |
 | Air, planet, plants and survival | `rooms`, `atmosphere_contents`, `water_sources`, `move_gas`, `outer_frames`, `planet`, `deep_miner_spots`, `weather`, `plants`, `plant_genes`, `reagents`, `player_vitals`, `ignition_risk`, `thing_health` | [air-planet-and-plants.md](docs/air-planet-and-plants.md) |
@@ -152,9 +152,9 @@ them changes instead of reading them every tick. The protocol itself is in
 ## Safety
 
 - **It can cheat.** Every tool has a class: read, write (what a player or a chip can do: logic, chips, labels, paint,
-  item moves, trading, building) or cheat (what no player can: `move_gas`, `write_memory`, the console, free
-  placement, gene edits, blueprint pastes). Every connection can call every tool; the class is there so an agent can
-  tell you when a tool is a cheat and ask first. There is no general undo: save first.
+  item moves, trading, building) or cheat (what no player can: `move_gas`, `write_memory`, the console, battery charge,
+  free placement, gene edits, blueprint pastes). Every connection can call every tool; the class is there so an agent
+  can tell you when a tool is a cheat and ask first. There is no general undo: save first.
 - **Host only.** The mod runs on the game that hosts; its changes reach other players through the game's own sync.
   Every player who joins needs the same version, because the StationGod Gateway is a new structure.
 - **The building tools refuse rather than guess.** They never make materials, never delete a pipe network's

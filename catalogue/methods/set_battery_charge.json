@@ -1,0 +1,72 @@
+{
+  "name": "set_battery_charge",
+  "summary": "Cheat: set the charge of single batteries (station and rocket batteries, battery cells anywhere), full by default or to a ratio or joules. Ask the user first. Dry run by default; confirm to set.",
+  "help": {
+    "text": "Name the batteries with reference_ids (up to 256, each checked alone), rocket_id (every battery of that rocket) or in_id (every battery cell in a thing's slots, its suit, tools and their slots too; \"player\" for the player). ratio (0 to 1) or joules sets that charge instead of full; joules over a battery's capacity fill it (clamped). Each result gives the charge before and after, so a later call can put it back. The console's setbatteries sets every battery in the world at once; this one sets only those named. Host only: clients see the new charge through the game's own sync.",
+    "keys": "dry_run, goal, found_in, results, count, success_count, error_count, added_j.",
+    "topics": {
+      "batteries": {
+        "summary": "What counts as a battery.",
+        "text": "Every power store the game has: placed batteries (Station Battery, Large Station Battery: kind station_battery), the batteries built into a rocket (rocket_battery), battery cells of every size, the wireless cell among them, loose or in any slot (battery_cell; held_by names the suit, tool, APC, charger or locker holding it), a power pylon end's small buffer (pylon_buffer), and anything else the game charges as a battery (other_chargeable). A Disposable Battery Charger is a consumable, not a battery."
+      },
+      "reply": {
+        "summary": "Each result and the totals.",
+        "text": "{dry_run, goal {kind full|ratio|joules, value}, found_in (the rocket or holder searched), results, count, success_count, error_count, added_j (joules the run adds, negative when it drains)}. A result: {index, ok, reference_id, prefab_name, display_name, kind, held_by, capacity_j, before_j, after_j, before_ratio, after_ratio, clamped}; a dry run predicts after_j, a real run reads it back. A failure: {index, ok: false, reference_id, error}."
+      },
+      "refusals": {
+        "summary": "Why a battery is not set.",
+        "text": "Per id: not_a_battery (the message names what the thing is, and points at in_id when its slots hold cells), thing_not_found, invalid_argument. For the whole call: no_batteries (the rocket or holder has none), too_many_batteries (over 256 found; name them in reference_ids calls), rocket_not_found, not_host, confirm_required."
+      }
+    },
+    "shared": ["cheats"]
+  },
+  "class": "cheat",
+  "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "reference_ids": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 256,
+        "items": {"type": "string"},
+        "description": "Batteries to set, up to 256: placed or rocket batteries, battery cells."
+      },
+      "rocket_id": {"type": "string", "description": "Every battery of this rocket (its id, its rocket network's or any part's)."},
+      "in_id": {
+        "type": "string",
+        "description": "Every battery cell in this thing's slots, nested slots too; \"player\" for the player."
+      },
+      "ratio": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "The charge as a share of each battery's capacity; default full."
+      },
+      "joules": {
+        "type": "number",
+        "minimum": 0,
+        "description": "The charge in joules, clamped to each battery's capacity; default full."
+      },
+      "dry_run": {"$ref": "defs/dry_run.json"},
+      "confirm": {"$ref": "defs/confirm.json"}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "dry_run": {"type": "boolean"},
+      "goal": {"type": "object"},
+      "found_in": {"type": "object"},
+      "results": {"type": "array"},
+      "count": {"type": "integer"},
+      "success_count": {"type": "integer"},
+      "error_count": {"type": "integer"},
+      "added_j": {"type": "number"}
+    }
+  },
+  "x-views": ["SetBatteryChargeView"],
+  "x-shaping": "lists"
+}
