@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.27.2
+
+Frames can be taken from under a device that stays.
+
+- **`allow_unsupported` on `remove_structure`.** A frame, wall or other large piece that a device is mounted on or
+  stands on, with nothing else to rest on, was always refused (`has_mounted`), though the game lets a player
+  deconstruct it: clearing the frames under a solar array whose panels stay was blocked. It is still refused by
+  default; with `allow_unsupported` it goes and warns `left_unsupported`. The device stays where it is and keeps
+  working, since the game checks support only when a thing is placed, but it cannot be rebuilt in place until
+  something supports it again (`check_replaceable` and `lint_layout` report it `not_replaceable`). A device the game
+  counts as attached to the piece, which the game takes down with it, is still refused whatever is allowed.
+
 ## 1.27.1
 
 Build parts that do not stack are found and paid like any other material.

@@ -227,7 +227,7 @@ public sealed class RemovalRuleTests
         RemovalFacts facts = new RemovalFacts
         {
             Indestructible = true, RocketMoving = "Rocket 1 is launching", Broken = true, BeingDestroyed = true,
-            GameRefusal = "a device is attached", Mounted = "Pipe Analyzer (1)"
+            GameRefusal = "a device is attached", Attached = "Pipe Analyzer (1)"
         };
         List<GuardFinding> findings = RemovalRule.Judge(facts, All);
         Assert.Equal(new[] { "being_destroyed", "indestructible", "rocket_moving", "broken", "game_refuses", "has_mounted" },
@@ -267,7 +267,7 @@ public sealed class RemovalRuleTests
     {
         RemovalFacts facts = new RemovalFacts
         {
-            Broken = true, Mounted = "Pipe Analyzer (1)", GasMoles = 3, GasFate = GasFate.Lost, BreachKpa = 50,
+            Broken = true, Unsupported = "Pipe Analyzer (1)", GasMoles = 3, GasFate = GasFate.Lost, BreachKpa = 50,
             BreachWhere = "w"
         };
         facts.Items.Add("ItemIronIngot x5 (9)");

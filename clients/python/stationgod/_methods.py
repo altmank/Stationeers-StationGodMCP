@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:be789f9c22a4b9a8308b02fee52ecae31d7d43fe5a951bc69adfe44a88c45ea3'
-MOD_VERSION = '1.27.1'
+CATALOGUE_HASH = 'sha256:c16ab31028f8fb2c05a47119ac285068d36cfa9cb72cb675e9aa5277e6c91eaa'
+MOD_VERSION = '1.27.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -1060,6 +1060,7 @@ TABLE = {'catalogue': {'class': 'read',
                                  'allow_breach',
                                  'allow_broken',
                                  'allow_burst',
+                                 'allow_unsupported',
                                  'refund_to',
                                  'wait',
                                  'from_id',
@@ -2014,12 +2015,12 @@ class Methods:
         """
         return self.call('remove_pipes', **{'reference_ids': reference_ids, 'waypoints': waypoints, 'cells': cells, 'allow_split': allow_split, 'root': root, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'from_id': from_id, 'refund': refund, 'refund_to': refund_to, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
-    def remove_structure(self, *, include_notes: bool | None = None, reference_ids: list | None = None, allow_contents: bool | None = None, allow_breach: bool | None = None, allow_broken: bool | None = None, allow_burst: bool | None = None, refund_to: str | int | list | None = None, wait: bool | None = None, from_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, verbose: bool | None = None, gas_to: str | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
+    def remove_structure(self, *, include_notes: bool | None = None, reference_ids: list | None = None, allow_contents: bool | None = None, allow_breach: bool | None = None, allow_broken: bool | None = None, allow_burst: bool | None = None, allow_unsupported: bool | None = None, refund_to: str | int | list | None = None, wait: bool | None = None, from_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, verbose: bool | None = None, gas_to: str | None = None, job_id: str | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
         """Remove structures by id (up to 256, one job) as deconstructing by hand would, refunding every build state down to the kit where refund_to says.
 
-        Class: write (other classes at some arguments). Arguments: include_notes, reference_ids, allow_contents, allow_breach, allow_broken, allow_burst, refund_to, wait, from_id, dry_run, confirm, verbose, gas_to, job_id, acknowledge_gas_lost.
+        Class: write (other classes at some arguments). Arguments: include_notes, reference_ids, allow_contents, allow_breach, allow_broken, allow_burst, allow_unsupported, refund_to, wait, from_id, dry_run, confirm, verbose, gas_to, job_id, acknowledge_gas_lost.
         """
-        return self.call('remove_structure', **{'include_notes': include_notes, 'reference_ids': reference_ids, 'allow_contents': allow_contents, 'allow_breach': allow_breach, 'allow_broken': allow_broken, 'allow_burst': allow_burst, 'refund_to': refund_to, 'wait': wait, 'from_id': from_id, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'gas_to': gas_to, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
+        return self.call('remove_structure', **{'include_notes': include_notes, 'reference_ids': reference_ids, 'allow_contents': allow_contents, 'allow_breach': allow_breach, 'allow_broken': allow_broken, 'allow_burst': allow_burst, 'allow_unsupported': allow_unsupported, 'refund_to': refund_to, 'wait': wait, 'from_id': from_id, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'gas_to': gas_to, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
     def replace_frames(self, *, include_notes: bool | None = None, reference_ids: list | None = None, room_id: str | None = None, to: str | None = None, from_prefabs: list | None = None, wait: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | list | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, **options) -> dict:
         """Replace frames in place with another frame prefab, or finish unfinished frames, without ever opening a cell; pieces by id or a room's frames.

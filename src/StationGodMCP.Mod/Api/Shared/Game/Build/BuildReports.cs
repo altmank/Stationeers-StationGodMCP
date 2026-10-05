@@ -34,9 +34,10 @@ internal static class BuildReports
         "Gives back what deconstructing by hand does: every build state's items down to the kit; a broken piece " +
         "gives nothing, as the game's deconstruction of a broken thing gives nothing.",
         "Refused: indestructible, a launching or landing rocket's part, the game's own refusal (a fuselage piece: " +
-        "nothing on top, no internals left in its cells), a mounted device; unless allowed: broken " +
+        "nothing on top, no internals left in its cells), a device attached to it; unless allowed: broken " +
         "(allow_broken), items or gas inside (allow_contents), a removal joining spaces whose pressures differ by 1 kPa or more " +
-        "(allow_breach). The breach check judges the whole request at once: a face stays sealed while anything " +
+        "(allow_breach), a device mounted on it or standing on it left with nothing else to rest on " +
+        "(allow_unsupported: it stays and works, but cannot be rebuilt in place until something supports it). The breach check judges the whole request at once: a face stays sealed while anything " +
         "left on it, or a finished frame beside it, blocks air.",
         "An in-line tank or passive vent whose removal squeezes the network left past its weakest pipe is refused " +
         "(would_burst) unless allow_burst, e.g. outdoors: then will_burst names the pipes expected to burst, where " +

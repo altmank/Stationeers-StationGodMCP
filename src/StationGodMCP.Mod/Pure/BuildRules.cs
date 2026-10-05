@@ -229,8 +229,17 @@ internal sealed class RemovalFacts
     /// <summary>The game's own refusal to deconstruct it (Structure.CanDeconstruct); null when it allows it.</summary>
     internal string? GameRefusal { get; set; }
 
-    /// <summary>A device mounted on it, as the game names it; null when none.</summary>
-    internal string? Mounted { get; set; }
+    /// <summary>
+    /// A device the game counts as attached to it (Structure.AttachedDevices), which the game takes down with it;
+    /// null when none.
+    /// </summary>
+    internal string? Attached { get; set; }
+
+    /// <summary>
+    /// A device mounted on it or standing on it that is left with nothing else to rest on once the request is done
+    /// (MountSupport); null when none. The game checks support only when a thing is placed, so it stays and works.
+    /// </summary>
+    internal string? Unsupported { get; set; }
 
     /// <summary>Items in its slots, described ("3 items: ...").</summary>
     internal List<string> Items { get; } = new List<string>();
@@ -292,12 +301,14 @@ internal sealed class NetworkSqueeze
 /// <summary>The allow flags of remove_structure.</summary>
 internal sealed class RemovalAllowance
 {
-    internal RemovalAllowance(bool contents, bool breach, bool broken = false, bool burst = false)
+    internal RemovalAllowance(bool contents, bool breach, bool broken = false, bool burst = false,
+        bool unsupported = false)
     {
         Contents = contents;
         Breach = breach;
         Broken = broken;
         Burst = burst;
+        Unsupported = unsupported;
     }
 
     internal bool Contents { get; }
@@ -312,6 +323,12 @@ internal sealed class RemovalAllowance
     /// pipe (would_burst), e.g. outdoors, where a burst into the atmosphere is acceptable; warned as will_burst.
     /// </summary>
     internal bool Burst { get; }
+
+    /// <summary>
+    /// allow_unsupported: remove a piece although a device mounted on it or standing on it is left with nothing else
+    /// to rest on; it stays and works, warned as left_unsupported.
+    /// </summary>
+    internal bool Unsupported { get; }
 }
 
 /// <summary>
@@ -410,11 +427,12 @@ internal sealed class BurstForecast
 /// <summary>
 /// remove_structure's minimal safeguards, each naming its reason. Refused outright: being destroyed, indestructible,
 /// a launching or landing rocket's part, the game's own refusal (a fuselage piece's asked as its last step would ask it),
-/// a mounted device. Refused unless allowed: broken (allow_broken: the game cannot
+/// a device the game counts as attached to it. Refused unless allowed: broken (allow_broken: the game cannot
 /// repair a broken structure, only deconstruct it, and that gives nothing back; the game does not ask CanDeconstruct
 /// on that path, so its refusal is not asked either), items in its slots or gas inside (allow_contents: items drop
 /// where it stood, as a hand deconstruction does; a tank releases its gas there, other devices lose it), and joining
-/// spaces whose pressures differ by at least BreachKpa (allow_breach), and squeezing a pipe network past its weakest
+/// spaces whose pressures differ by at least BreachKpa (allow_breach), a device mounted on it or standing on it left
+/// with nothing else to rest on (has_mounted; allow_unsupported: left_unsupported), and squeezing a pipe network past its weakest
 /// pipe (would_burst; allow_burst: will_burst). Allowed ones become warnings.
 /// </summary>
 internal static class RemovalRule
@@ -480,6 +498,13 @@ internal static class RemovalRule
     internal const string BrokenConsequence =
         "it goes as the game deconstructs a broken thing, which gives nothing back";
 
+    /// <summary>Warning: allow_unsupported let a piece go from under a device that rests on nothing else now.</summary>
+    internal const string LeftUnsupported = "left_unsupported";
+
+    internal const string UnsupportedConsequence =
+        "it stays where it is and keeps working (the game checks support only when a thing is placed), but it " +
+        "cannot be rebuilt in place until something supports it again (not_replaceable)";
+
     internal static List<GuardFinding> Judge(RemovalFacts facts, RemovalAllowance allow)
     {
         List<GuardFinding> findings = new List<GuardFinding>();
@@ -494,8 +519,15 @@ internal static class RemovalRule
 
         Refuse(findings, facts.GameRefusal != null && !(facts.Broken && allow.Broken), "game_refuses",
             $"the game refuses to deconstruct it: {facts.GameRefusal}");
-        Refuse(findings, facts.Mounted != null, "has_mounted",
-            $"{facts.Mounted} is mounted on it or stands on it, with nothing else to rest on; remove that first");
+        Refuse(findings, facts.Attached != null, "has_mounted",
+            $"{facts.Attached} is attached to it and the game takes it down with it; remove that first");
+        if (facts.Attached == null && facts.Unsupported != null)
+        {
+            findings.Add(Allowable(allow.Unsupported, "has_mounted", LeftUnsupported,
+                $"{facts.Unsupported} is mounted on it or stands on it, with nothing else to rest on",
+                "allow_unsupported", UnsupportedConsequence));
+        }
+
         if (facts.Items.Count > 0)
         {
             findings.Add(Allowable(allow.Contents, "holds_items", "items_dropped",

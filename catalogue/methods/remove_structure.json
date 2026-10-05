@@ -11,11 +11,11 @@
       },
       "refusals": {
         "summary": "Always refused.",
-        "text": "not_a_structure (items and movable things: use move_item), being_destroyed, indestructible, rocket_moving (a part of a launching or landing rocket), game_refuses (the game's own deconstruct rule; for a fuselage piece also nothing on top and no internals in its cells unless the request removes them), has_mounted (a device mounted on it would be left hanging; remove it in the same request), refund_holder_removed (the refund holder is removed or held by what is removed)."
+        "text": "not_a_structure (items and movable things: use move_item), being_destroyed, indestructible, rocket_moving (a part of a launching or landing rocket), game_refuses (the game's own deconstruct rule; for a fuselage piece also nothing on top and no internals in its cells unless the request removes them), has_mounted for a device the game counts as attached to it (the game takes it down too), refund_holder_removed (the refund holder is removed or held by what is removed)."
       },
       "allowed": {
-        "summary": "Refused unless allowed: broken, contents, breach.",
-        "text": "broken (the game's broken state; allow_broken removes it as the game does: nothing back, every other guard applies). holds_items and holds_gas (allow_contents: items drop where it stood, a tank lets its gas out, other devices lose it; the last in-line tank or passive vent of a network takes its gas with it, named in moles). contents_would_move (an in-line tank or vent whose removal splits a network holding gas; allow_contents). would_breach (an airtight piece whose removal joins spaces 1 kPa or more apart; allow_breach). Allowed, each becomes a warning: broken_removed, items_dropped, gas_released, contents_deleted, breach. port_left_open warns."
+        "summary": "Refused unless allowed: broken, contents, breach, unsupported.",
+        "text": "broken (the game's broken state; allow_broken removes it as the game does: nothing back, every other guard applies). holds_items and holds_gas (allow_contents: items drop where it stood, a tank lets its gas out, other devices lose it; the last in-line tank or passive vent of a network takes its gas with it, named in moles). contents_would_move (an in-line tank or vent whose removal splits a network holding gas; allow_contents). would_breach (an airtight piece whose removal joins spaces 1 kPa or more apart; allow_breach). has_mounted (a device mounted on it or standing on it is left with nothing else to rest on; allow_unsupported: the device stays where it is and keeps working, as the game checks support only when a thing is placed, but it cannot be rebuilt in place until something supports it again, so check_replaceable and lint_layout report it not_replaceable). Allowed, each becomes a warning: broken_removed, items_dropped, gas_released, contents_deleted, breach, left_unsupported. port_left_open warns."
       },
       "breach": {
         "summary": "How would_breach follows the game's air rule.",
@@ -62,6 +62,10 @@
       "allow_burst": {
         "type": "boolean",
         "description": "Remove where the network left would pass its weakest pipe, warning will_burst. Default false."
+      },
+      "allow_unsupported": {
+        "type": "boolean",
+        "description": "Remove from under a mounted device left resting on nothing; it stays and works. Default false."
       },
       "refund_to": {
         "oneOf": [

@@ -116,7 +116,8 @@ internal sealed class RemovePlan
 /// remove_structure's whole preflight; nothing here changes the game. Each id must be a structure. The guards
 /// (RemovalRule) read the game: being destroyed, indestructible, a launching or landing rocket's part, broken (allow_broken: nothing given back), the
 /// game's own CanDeconstruct (not asked for a broken piece taken with allow_broken, as the game does not), a
-/// mounted device, items in its slots, gas inside, and for a piece that blocks air the pressures of the spaces its
+/// device attached to it, a device mounted on it or standing on it left with nothing to rest on (allow_unsupported),
+/// items in its slots, gas inside, and for a piece that blocks air the pressures of the spaces its
 /// removal would join (the cells on both sides of each face it holds, or the open neighbours of each cell it fills,
 /// sampled as the game's atmospherics sample them). A device whose port joins something warns that the end will be
 /// open. Cable, pipe and chute pieces also go through their remove tool's own planner (RunPlanner): its would_split
@@ -235,7 +236,8 @@ internal static class RemovePlanner
             RocketMoving = Rockets.MovingRefusal(piece),
             Broken = Wrecks.IsBroken(piece),
             GameRefusal = GameRefusal(piece, removed),
-            Mounted = MountedOn(piece) ?? Unsupported(piece, removed, grid),
+            Attached = MountedOn(piece),
+            Unsupported = Unsupported(piece, removed, grid),
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
         };

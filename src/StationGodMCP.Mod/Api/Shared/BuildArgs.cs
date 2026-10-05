@@ -384,7 +384,7 @@ internal static class BuildArgs
         if (args.Has("job_id"))
         {
             return Poll<RemoveArguments>(args, "reference_ids", "allow_contents", "allow_breach", "allow_broken",
-                "allow_burst", "refund_to", "from_id", "gas_to", NotesArgument);
+                "allow_burst", "allow_unsupported", "refund_to", "from_id", "gas_to", NotesArgument);
         }
 
         if (!args.Has("reference_ids"))
@@ -395,7 +395,7 @@ internal static class BuildArgs
         List<ThingId> ids = args.ThingIds("reference_ids", MaximumRemovals);
         RemovalAllowance allow = new RemovalAllowance(args.OptionalBool("allow_contents") ?? false,
             args.OptionalBool("allow_breach") ?? false, args.OptionalBool("allow_broken") ?? false,
-            args.OptionalBool("allow_burst") ?? false);
+            args.OptionalBool("allow_burst") ?? false, args.OptionalBool("allow_unsupported") ?? false);
         RefundRoute refundTo = RefundArgs.Route(args);
         bool confirmed = Confirmed(args);
         // remove_structure takes verbose on a dry run too: every port a split cuts in full.
