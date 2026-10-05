@@ -119,22 +119,87 @@ internal static class BuildMaterials
 }
 
 /// <summary>
-/// The stacks of one item the sources hold, source by source in the order given: each source's own stacks at any depth
-/// of slots (hands, suit, backpack, belt, a locker's slots), or the source itself when it is such a stack; a stack
-/// counted once however many sources reach it. Taken in that order as a kit's own placement takes them
-/// (Stackable.OnUseItem, which removes an emptied stack).
+/// One item a source holds that pays toward a build entry: a stack (Stackable.OnUseItem takes a part and removes an
+/// emptied stack) or a whole item such as a printer mod, which pays one and is destroyed, as the game destroys a
+/// non-stackable entry item (Structure.HandleToolUse).
+/// </summary>
+internal abstract class HeldItem
+{
+    private protected HeldItem(Item item)
+    {
+        Item = item;
+    }
+
+    internal Item Item { get; }
+
+    /// <summary>How it pays, read live (a stack's quantity drops as it is used).</summary>
+    internal abstract HeldMaterial Material { get; }
+
+    internal int Quantity => Material.Units;
+
+    internal static HeldItem Of(Item item) =>
+        item is Stackable stack ? new HeldStack(stack) : new HeldWhole(item);
+
+    /// <summary>Takes the part (no more than Material.PartOf allows); returns how many were taken.</summary>
+    internal abstract int Use(int part);
+
+    private sealed class HeldStack : HeldItem
+    {
+        private readonly Stackable _stack;
+
+        internal HeldStack(Stackable stack) : base(stack)
+        {
+            _stack = stack;
+        }
+
+        internal override HeldMaterial Material => HeldMaterial.Stack(_stack.Quantity);
+
+        internal override int Use(int part)
+        {
+            int before = _stack.Quantity;
+            _stack.OnUseItem(part, null);
+            int after = _stack.Quantity;
+            if (StockTake.TookTooMuch(part, before, after))
+            {
+                throw new InvalidOperationException(
+                    $"{_stack.DisplayName} {_stack.ReferenceId} went from {before} to {after} when {part} were taken "
+                    + "from it; nothing more was taken.");
+            }
+
+            return before - after;
+        }
+    }
+
+    private sealed class HeldWhole(Item item) : HeldItem(item)
+    {
+        internal override HeldMaterial Material => HeldMaterial.Whole;
+
+        internal override int Use(int part)
+        {
+            OnServer.Destroy(Item);
+            return part;
+        }
+    }
+}
+
+/// <summary>
+/// The held items of one prefab the sources hold, source by source in the order given: each source's own items at any
+/// depth of slots (hands, suit, backpack, belt, a locker's slots), or the source itself when it is such an item; an
+/// item counted once however many sources reach it. Stacks and whole items alike (HeldItem): a build entry is matched
+/// by prefab hash, as ToolBasic.IsToolEntry does, whatever the item's class. Taken in that order as a kit's own
+/// placement takes them.
 /// </summary>
 internal sealed class ItemStock
 {
     private const int MaximumDepth = 8;
 
-    private ItemStock(Item item, List<Stackable> stacks, List<StockSource>? sources = null)
+    private ItemStock(Item item, List<HeldItem> stacks, List<StockSource>? sources = null)
     {
         Item = item;
         Stacks = stacks;
         Sources = sources ?? new List<StockSource>();
         int available = 0;
-        foreach (Stackable stack in stacks)
+        foreach (HeldItem stack in stacks)
         {
             available += stack.Quantity;
         }
@@ -144,7 +209,8 @@ internal sealed class ItemStock
 
     internal Item Item { get; }
 
-    internal List<Stackable> Stacks { get; }
+    /// <summary>The held items in take order: stacks and whole items.</summary>
+    internal List<HeldItem> Stacks { get; }
 
     internal int Available { get; }
 
@@ -153,29 +219,30 @@ internal sealed class ItemStock
     /// <summary>Each source in order with how many of the item it alone adds.</summary>
     internal List<StockSource> Sources { get; }
 
-    internal static ItemStock Empty(Item item) => new ItemStock(item, new List<Stackable>());
+    internal static ItemStock Empty(Item item) => new ItemStock(item, new List<HeldItem>());
 
     internal static ItemStock In(Thing source, Item item) => In(new List<Thing> { source }, item);
 
     internal static ItemStock In(IReadOnlyList<Thing> sources, Item item)
     {
-        List<Stackable> stacks = new List<Stackable>();
+        List<HeldItem> stacks = new List<HeldItem>();
         List<StockSource> counted = new List<StockSource>(sources.Count);
         HashSet<long> seen = new HashSet<long>();
         foreach (Thing source in sources)
         {
-            List<Stackable> own = new List<Stackable>();
-            if (source is Stackable self && self.PrefabHash == item.PrefabHash)
+            List<Item> own = new List<Item>();
+            if (source is Item self && self.PrefabHash == item.PrefabHash)
             {
                 own.Add(self);
             }
 
             Collect(source, item.PrefabHash, own, 0);
             int added = 0;
-            foreach (Stackable stack in own)
+            foreach (Item held in own)
             {
-                if (seen.Add(stack.ReferenceId))
+                if (seen.Add(held.ReferenceId))
                 {
+                    HeldItem stack = HeldItem.Of(held);
                     stacks.Add(stack);
                     added += stack.Quantity;
                 }
@@ -187,7 +254,7 @@ internal sealed class ItemStock
         return new ItemStock(item, stacks, counted);
     }
 
-    private static void Collect(Thing holder, int prefabHash, List<Stackable> stacks, int depth)
+    private static void Collect(Thing holder, int prefabHash, List<Item> items, int depth)
     {
         if (holder.Slots == null || depth >= MaximumDepth)
         {
@@ -202,46 +269,36 @@ internal sealed class ItemStock
                 continue;
             }
 
-            if (occupant is Stackable stack && stack.PrefabHash == prefabHash)
+            if (occupant is Item item && item.PrefabHash == prefabHash)
             {
-                stacks.Add(stack);
+                items.Add(item);
             }
 
-            Collect(occupant, prefabHash, stacks, depth + 1);
+            Collect(occupant, prefabHash, items, depth + 1);
         }
     }
 
     /// <summary>
-    /// Takes up to the quantity from the stacks in order (StockTake), splitting the last one used; returns how many
-    /// were taken. A stack that loses more than its part stops the build with an error naming it.
+    /// Takes up to the quantity from the held items in order (StockTake), splitting the last stack used; returns how
+    /// many were taken. A stack that loses more than its part stops the build with an error naming it.
     /// </summary>
     internal int Take(int quantity)
     {
         int taken = 0;
-        foreach (Stackable stack in Stacks)
+        foreach (HeldItem stack in Stacks)
         {
-            if (stack == null || stack.IsBeingDestroyed)
+            if (stack.Item == null || stack.Item.IsBeingDestroyed)
             {
                 continue;
             }
 
-            int part = StockTake.PartOf(quantity - taken, stack.Quantity);
+            int part = stack.Material.PartOf(quantity - taken);
             if (part == 0)
             {
                 continue;
             }
 
-            int before = stack.Quantity;
-            stack.OnUseItem(part, null);
-            int after = stack.Quantity;
-            if (StockTake.TookTooMuch(part, before, after))
-            {
-                throw new InvalidOperationException(
-                    $"{stack.DisplayName} {stack.ReferenceId} went from {before} to {after} when {part} were taken "
-                    + "from it; nothing more was taken.");
-            }
-
-            taken += before - after;
+            taken += stack.Use(part);
         }
 
         return taken;

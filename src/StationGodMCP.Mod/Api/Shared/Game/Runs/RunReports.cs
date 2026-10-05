@@ -159,10 +159,10 @@ internal static class RunReports
         foreach (ItemStock stock in plan.Stocks)
         {
             List<UpgradeStackView> stacks = new List<UpgradeStackView>(stock.Stacks.Count);
-            foreach (Stackable stack in stock.Stacks)
+            foreach (HeldItem stack in stock.Stacks)
             {
-                Slot? slot = stack.ParentSlot;
-                stacks.Add(new UpgradeStackView(new ThingId(stack.ReferenceId), stack.Quantity,
+                Slot? slot = stack.Item.ParentSlot;
+                stacks.Add(new UpgradeStackView(new ThingId(stack.Item.ReferenceId), stack.Quantity,
                     slot?.Parent != null ? new ThingId(slot.Parent.ReferenceId) : null, slot?.SlotIndex));
             }
 

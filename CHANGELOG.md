@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.27.1
+
+Build parts that do not stack are found and paid like any other material.
+
+- **Printer mods and other single items pay their build state.** A build state whose entry is an item that does not
+  stack (an Autolathe's Autolathe Printer Mod, the Electronics and Tool printer mods, the Pipe Bender mod) was
+  never counted, so placing an Autolathe to its last state answered `not_enough_materials` with the mod sitting in a
+  `from_id` locker. Every item of the entry's prefab now counts, one per item, in the player and in every `from_id`
+  container; building takes it whole, as the game does by hand. Every building tool that pays materials counts them
+  the same way, and lists them in its `stacks`.
+
 ## 1.27.0
 
 Paging a long list no longer misses or repeats entries when the player moves between pages.

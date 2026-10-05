@@ -154,10 +154,10 @@ internal static class StructureReports
             Item item = plan.Items[total.Item];
             ItemStock? stock = plan.StockOf(total.Item);
             List<UpgradeStackView> stacks = new List<UpgradeStackView>();
-            foreach (Stackable stack in stock?.Stacks ?? new List<Stackable>())
+            foreach (HeldItem stack in stock?.Stacks ?? new List<HeldItem>())
             {
-                Slot? slot = stack.ParentSlot;
-                stacks.Add(new UpgradeStackView(new ThingId(stack.ReferenceId), stack.Quantity,
+                Slot? slot = stack.Item.ParentSlot;
+                stacks.Add(new UpgradeStackView(new ThingId(stack.Item.ReferenceId), stack.Quantity,
                     slot?.Parent != null ? new ThingId(slot.Parent.ReferenceId) : null, slot?.SlotIndex));
             }
 
