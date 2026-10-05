@@ -9,10 +9,10 @@ these tools need a gateway.
 
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
-| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock. | `prefab_contains`, `name_contains`, `location`, `within_id`, `near_player_m`, `limit`, `offset` |
+| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock. | `prefab_contains`, `name_contains`, `location`, `within_id`, `near_player_m`, `limit`, `offset`, `order` |
 | `item_totals` | Total quantity of each item type, split into on the ground, carried, stored and machine stock, with the holder that holds the most (`holders_limit` holders; one by default). | as `find_items`, and `holders_limit` (0 leaves the holders out) |
-| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, `min` and `max` (a box), `made_by`, `made_since`, `location` |
-| `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m` |
+| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, `min` and `max` (a box), `made_by`, `made_since`, `location`, `order` |
+| `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m`, `order` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Shape it with paths through the slots: `fields: ["slots.index", "slots.occupant.prefab_name"]`, or `occupant.slots.occupant.prefab_name` for what a backpack holds. | `reference_id`, `depth` (default 3), `prefab_contains`, `name_contains` (slots holding a match at any depth) |
 | `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
 | `move_item` | Move an item, or part of a stack, into a slot. | `reference_id`, `quantity`, `to_id`, `to_slot`, `merge`; or `moves: [...]` |
@@ -47,7 +47,9 @@ these tools need a gateway.
   rest, insulated too) are not among them: the game has no rename for them, and StationGod keeps no names of its own,
   so `label` refuses them with `not_labelable`. The big in-line tanks take a label. To name a small one, label a sign
   or a device beside it.
-- Results are sorted nearest first and paged (`limit`, `offset`).
+- Results are sorted nearest first and paged (`limit`, `offset`). Nearest first is measured at each call, so pages
+  taken while you walk overlap and leave gaps; to page a whole list, pass `order: "reference_id"` (also on
+  `list_containers` and `outer_frames`).
 - `within_id` must name something that exists: a mistyped id answers `thing_not_found`, not an empty result.
 - `list_containers` lists only the outermost holder: a crate in the lander, or a box in a locker, is not listed on its
   own, and its items count towards the lander or locker. Look inside with `container_contents` or

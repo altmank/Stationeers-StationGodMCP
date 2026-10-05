@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:af8a4ff8d7e90d77183f187955d860f518f69f92a49ab1b9b8a9a0fb9a3012fa'
-MOD_VERSION = '1.26.0'
+CATALOGUE_HASH = 'sha256:7617299db718bd256e9dd04680a72132c7221a1b897b2e1c5c2e2ed2f5c59ce4'
+MOD_VERSION = '1.27.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -261,8 +261,10 @@ TABLE = {'catalogue': {'class': 'read',
                            'limit': 'limit',
                            'total': 'total',
                            'has_more': 'has_more',
-                           'order': 'nearest the player first (no position last), then by name, loose items before '
-                                    'stock, then reference id'},
+                           'order': 'order nearest (default): nearest the player first (no position last), then by '
+                                    'name, loose items before stock, then reference id; order reference_id: lowest '
+                                    "reference id first (stock: its machine's), then by name, loose items before "
+                                    'stock'},
                 'duration': None,
                 'params': ['prefab_contains',
                            'name_contains',
@@ -270,7 +272,8 @@ TABLE = {'catalogue': {'class': 'read',
                            'within_id',
                            'near_player_m',
                            'limit',
-                           'offset'],
+                           'offset',
+                           'order'],
                 'required': [],
                 'shaping': 'lists',
                 'protocol': False},
@@ -302,8 +305,9 @@ TABLE = {'catalogue': {'class': 'read',
                             'limit': 'limit',
                             'total': 'total',
                             'has_more': 'has_more',
-                            'order': 'nearest the player first (no position last), then prefab name, then '
-                                     'reference id'},
+                            'order': 'order nearest (default): nearest the player first (no position last), then '
+                                     'prefab name, then reference id; order reference_id: lowest reference id '
+                                     'first'},
                  'duration': None,
                  'params': ['name_contains',
                             'prefab_contains',
@@ -319,7 +323,8 @@ TABLE = {'catalogue': {'class': 'read',
                             'near_player_m',
                             'location',
                             'limit',
-                            'offset'],
+                            'offset',
+                            'order'],
                  'required': [],
                  'shaping': 'lists',
                  'protocol': False},
@@ -468,10 +473,11 @@ TABLE = {'catalogue': {'class': 'read',
                                 'limit': 'limit',
                                 'total': 'total',
                                 'has_more': 'has_more',
-                                'order': 'nearest the player first (no position last), then prefab name, then the '
-                                         'order found'},
+                                'order': 'order nearest (default): nearest the player first (no position last), '
+                                         'then prefab name, then reference id; order reference_id: lowest '
+                                         'reference id first'},
                      'duration': None,
-                     'params': ['prefab_contains', 'name_contains', 'near_player_m', 'limit', 'offset'],
+                     'params': ['prefab_contains', 'name_contains', 'near_player_m', 'limit', 'offset', 'order'],
                      'required': [],
                      'shaping': 'lists',
                      'protocol': False},
@@ -560,9 +566,10 @@ TABLE = {'catalogue': {'class': 'read',
                              'limit': 'limit',
                              'total': 'total',
                              'has_more': 'has_more',
-                             'order': 'nearest the player first, then reference id'},
+                             'order': 'order nearest (default): nearest the player first, then reference id; order '
+                                      'reference_id: lowest reference id first'},
                   'duration': None,
-                  'params': ['near_player_m', 'include_inner', 'limit', 'offset'],
+                  'params': ['near_player_m', 'include_inner', 'limit', 'offset', 'order'],
                   'required': [],
                   'shaping': 'lists',
                   'protocol': False},
@@ -1678,12 +1685,12 @@ class Methods:
         """
         return self.call('feed_paths', **{'root': root, 'network_id': network_id, 'port': port, 'kind': kind}, **options)
 
-    def find_items(self, *, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+    def find_items(self, *, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
         """Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock.
 
-        Class: read. Arguments: prefab_contains, name_contains, location, within_id, near_player_m, limit, offset.
+        Class: read. Arguments: prefab_contains, name_contains, location, within_id, near_player_m, limit, offset, order.
         """
-        return self.call('find_items', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset}, **options)
+        return self.call('find_items', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset, 'order': order}, **options)
 
     def find_spot(self, *, prefab: str | int | None = None, near: object | None = None, plane: str | None = None, side: str | None = None, looking: bool | None = None, around: object | None = None, room_id: str | None = None, facing: str | None = None, radius_m: float | None = None, require: dict | None = None, limit: int | None = None, max_checks: int | None = None, **options) -> dict:
         """Ranked places for a prefab near a point, on one face plane or on a room's walls, each checked with the game's placement cursor and the layout preview; answers place_arguments.
@@ -1692,12 +1699,12 @@ class Methods:
         """
         return self.call('find_spot', **{'prefab': prefab, 'near': near, 'plane': plane, 'side': side, 'looking': looking, 'around': around, 'room_id': room_id, 'facing': facing, 'radius_m': radius_m, 'require': require, 'limit': limit, 'max_checks': max_checks}, **options)
 
-    def find_things(self, *, name_contains: str | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+    def find_things(self, *, name_contains: str | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
         """Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals.
 
-        Class: read. Arguments: name_contains, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near_player_m, location, limit, offset.
+        Class: read. Arguments: name_contains, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near_player_m, location, limit, offset, order.
         """
-        return self.call('find_things', **{'name_contains': name_contains, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset}, **options)
+        return self.call('find_things', **{'name_contains': name_contains, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset, 'order': order}, **options)
 
     def game_clock(self, **options) -> dict:
         """Read the game clock: game_time_s, paused, time_of_day_ratio and days_past.
@@ -1783,12 +1790,12 @@ class Methods:
         """
         return self.call('lint_rules', **{'action': action, 'rule_id': rule_id, 'full': full, 'text': text, 'reference_id': reference_id, 'port': port, 'other_id': other_id, 'at': at}, **options)
 
-    def list_containers(self, *, prefab_contains: str | None = None, name_contains: str | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first.
+    def list_containers(self, *, prefab_contains: str | None = None, name_contains: str | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
+        """List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first or by reference id.
 
-        Class: read. Arguments: prefab_contains, name_contains, near_player_m, limit, offset.
+        Class: read. Arguments: prefab_contains, name_contains, near_player_m, limit, offset, order.
         """
-        return self.call('list_containers', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset}, **options)
+        return self.call('list_containers', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset, 'order': order}, **options)
 
     def list_devices(self, *, gateway_id: str | None = None, prefab_hash: int | None = None, name_contains: str | None = None, **options) -> dict:
         """List devices: every one in the world, or those on a gateway's data networks; filter by prefab_hash or name_contains.
@@ -1839,12 +1846,12 @@ class Methods:
         """
         return self.call('network_snapshot', **{'gateway_id': gateway_id, 'reference_ids': reference_ids, 'prefab_hash': prefab_hash, 'name_contains': name_contains, 'logic_types': logic_types, 'max_devices': max_devices}, **options)
 
-    def outer_frames(self, *, near_player_m: float | None = None, include_inner: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+    def outer_frames(self, *, near_player_m: float | None = None, include_inner: bool | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
         """Which frames are outer frames: a face on a cell of the planet's outside air.
 
-        Class: read. Arguments: near_player_m, include_inner, limit, offset.
+        Class: read. Arguments: near_player_m, include_inner, limit, offset, order.
         """
-        return self.call('outer_frames', **{'near_player_m': near_player_m, 'include_inner': include_inner, 'limit': limit, 'offset': offset}, **options)
+        return self.call('outer_frames', **{'near_player_m': near_player_m, 'include_inner': include_inner, 'limit': limit, 'offset': offset, 'order': order}, **options)
 
     def paint(self, *, reference_ids: list | None = None, color: str | None = None, items: list | None = None, **options) -> dict:
         """Paint things as a spray can does (no paint used), one colour for reference_ids or a colour each with items; with neither, list the colours.

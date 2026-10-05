@@ -1,0 +1,5 @@
+{
+  "type": "string",
+  "enum": ["nearest", "reference_id"],
+  "description": "nearest (default): nearest the player first; reference_id: lowest id first, pages that stay put while the player moves (see paging)."
+}

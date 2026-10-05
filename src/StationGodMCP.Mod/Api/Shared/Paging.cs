@@ -26,9 +26,28 @@ internal sealed class PageRequest
             args.OptionalInt("offset", 0, int.MaxValue) ?? 0,
             args.OptionalInt("limit", 1, maximumLimit) ?? defaultLimit, maximumLimit);
 
-    /// <summary>Notes the reply's list (its JSON key) as cut when this page holds fewer than the total.</summary>
-    internal void Note(string list, int returned, int total) =>
-        Pure.Shaping.Truncations.Page(list, Offset, returned, total, Maximum);
+    /// <summary>
+    /// Notes the reply's list (its JSON key) as cut when this page holds fewer than the total; advice is added to the
+    /// note's way to get more.
+    /// </summary>
+    internal void Note(string list, int returned, int total, string advice = "") =>
+        Pure.Shaping.Truncations.Page(list, Offset, returned, total, Maximum, advice);
+}
+
+/// <summary>The order argument of a paged world list: nearest (default) or reference_id.</summary>
+internal static class ListOrderArg
+{
+    internal static Pure.ListOrder From(Args args)
+    {
+        string? given = args.OptionalString("order");
+        if (!Pure.ListOrders.TryParse(given, out Pure.ListOrder order))
+        {
+            throw ApiErrors.InvalidArgument(
+                $"Argument 'order' must be {Pure.ListOrders.Nearest} or {Pure.ListOrders.ReferenceId}; '{given}' is neither.");
+        }
+
+        return order;
+    }
 }
 
 /// <summary>One page of an already sorted list, with the list's total and whether more follows.</summary>

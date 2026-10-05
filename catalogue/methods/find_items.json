@@ -1,6 +1,6 @@
 {
   "name": "find_items",
-  "summary": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first. 10 per page. Read only.",
+  "summary": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.",
   "help": {
     "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type.",
     "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
@@ -25,7 +25,8 @@
         "description": "Only things whose outermost holder is within this many metres of the player."
       },
       "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Items per page; default 10."},
-      "offset": {"type": "integer", "minimum": 0, "description": "Items to skip (see paging).", "maximum": 2147483647}
+      "offset": {"type": "integer", "minimum": 0, "description": "Items to skip (see paging).", "maximum": 2147483647},
+      "order": {"$ref": "defs/list_order.json"}
     },
     "additionalProperties": false
   },
@@ -49,6 +50,6 @@
     "limit": "limit",
     "total": "total",
     "has_more": "has_more",
-    "order": "nearest the player first (no position last), then by name, loose items before stock, then reference id"
+    "order": "order nearest (default): nearest the player first (no position last), then by name, loose items before stock, then reference id; order reference_id: lowest reference id first (stock: its machine's), then by name, loose items before stock"
   }
 }

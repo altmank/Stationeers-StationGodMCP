@@ -65,7 +65,7 @@
     },
     "paging": {
       "summary": "limit and offset: a long list page by page.",
-      "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order."
+      "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order. Nearest-first pages are measured from where the player stands at each call, so they do not fit together while the player moves: an entry is seen twice or skipped. To page a whole list (a box of structures, every item), pass order reference_id: find_things, find_items, list_containers and outer_frames take it."
     },
     "shaping": {
       "summary": "fields, omit, output_file: smaller replies or a file.",

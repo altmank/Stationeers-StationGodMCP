@@ -5,7 +5,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>outer_frames: one page of frames, nearest first, and the counts over all of them.</summary>
+/// <summary>outer_frames: one page of frames, in the order asked, and the counts over all of them.</summary>
 internal sealed class OuterFramesView
 {
     internal OuterFramesView(Slice<FrameView> page, int totalFrames, int totalOuter, bool includeInner,

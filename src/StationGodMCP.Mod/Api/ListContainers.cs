@@ -6,13 +6,14 @@ using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
 /// list_containers: every outermost holder with at least one item stored in it, nested items included (lockers,
 /// crates, machines, a tablet on the floor), nearest first. Found from the stored items (WorldItems), so an empty
-/// container is not listed. Read only.
+/// container is not listed. Nearest first or by reference id (order). Read only.
 /// </summary>
 internal static class ListContainersApi
 {
@@ -25,6 +26,7 @@ internal static class ListContainersApi
         string? nameContains = args.OptionalString("name_contains");
         double? near = args.OptionalPositiveDouble("near_player_m");
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
+        ListOrder order = ListOrderArg.From(args);
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(near.HasValue);
 
         List<ContainerTally> containers = new List<ContainerTally>();
@@ -39,7 +41,7 @@ internal static class ListContainersApi
             }
         }
 
-        containers.Sort(static (a, b) => ContainerTally.NearestFirst(a, b));
+        containers.Sort((a, b) => ListKey.Compare(order, a.Key, b.Key));
         Slice<ContainerTally> slice = Slice<ContainerTally>.Of(containers, page);
         List<ContainerView> views = new List<ContainerView>(slice.Items.Count);
         foreach (ContainerTally container in slice.Items)
@@ -47,29 +49,26 @@ internal static class ListContainersApi
             views.Add(container.ToView());
         }
 
-        page.Note("containers", views.Count, containers.Count);
+        page.Note("containers", views.Count, containers.Count, ListOrders.PagingAdvice(order, origin.IsPresent));
         return new ListContainersView(Slice<ContainerView>.Page(views, page, containers.Count), origin.View);
     }
 }
 
-/// <summary>The stored items of one outermost holder, and when it was first seen (the tie-break).</summary>
+/// <summary>The stored items of one outermost holder.</summary>
 internal sealed class ContainerTally
 {
     private readonly List<ItemRecord> _records = new List<ItemRecord>();
 
-    private ContainerTally(ItemRecord first, int seen)
+    private ContainerTally(ItemRecord first)
     {
         Root = first.Root;
         Distance = first.Distance;
-        Seen = seen;
     }
 
     internal Thing Root { get; }
 
     /// <summary>From the player, unrounded; null without a player.</summary>
     internal double? Distance { get; }
-
-    internal int Seen { get; }
 
     internal static List<ContainerTally> Group(List<ItemRecord> records)
     {
@@ -79,7 +78,7 @@ internal sealed class ContainerTally
         {
             if (!byRoot.TryGetValue(record.Root.ReferenceId, out ContainerTally container))
             {
-                container = new ContainerTally(record, containers.Count);
+                container = new ContainerTally(record);
                 byRoot[record.Root.ReferenceId] = container;
                 containers.Add(container);
             }
@@ -90,18 +89,8 @@ internal sealed class ContainerTally
         return containers;
     }
 
-    /// <summary>Nearest first (no player: all last), then by prefab name, then as first seen.</summary>
-    internal static int NearestFirst(ContainerTally a, ContainerTally b)
-    {
-        int byDistance = (a.Distance ?? double.MaxValue).CompareTo(b.Distance ?? double.MaxValue);
-        if (byDistance != 0)
-        {
-            return byDistance;
-        }
-
-        int byPrefab = string.CompareOrdinal(a.Root.PrefabName, b.Root.PrefabName);
-        return byPrefab != 0 ? byPrefab : a.Seen.CompareTo(b.Seen);
-    }
+    /// <summary>Sorted by distance, then prefab name and the holder's reference id; or by reference id.</summary>
+    internal ListKey Key => new ListKey(Distance, Root.PrefabName, 0, Root.ReferenceId);
 
     internal ContainerView ToView()
     {

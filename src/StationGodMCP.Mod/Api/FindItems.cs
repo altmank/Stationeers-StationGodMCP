@@ -4,13 +4,14 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
 /// find_items: every item in the world that matches, wherever it is (WorldItems: OcclusionManager.AllDynamicThings,
 /// organs left out), and material machines hold as reagent stock (MachineStock, location machine_stock), nearest
-/// first. Read only.
+/// first or by reference id (order). Read only.
 /// </summary>
 internal static class FindItemsApi
 {
@@ -22,6 +23,7 @@ internal static class FindItemsApi
         ItemFilter filter = ItemFilter.Parse(args);
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
+        ListOrder order = ListOrderArg.From(args);
         List<ItemRecord> records = WorldItems.Collect(filter, origin);
         List<StockRecord> stock = MachineStock.Collect(filter, origin);
         List<FoundRow> rows = new List<FoundRow>(records.Count + stock.Count);
@@ -35,7 +37,7 @@ internal static class FindItemsApi
             rows.Add(new FoundRow(record));
         }
 
-        rows.Sort(static (a, b) => FoundRow.NearestFirst(a, b));
+        rows.Sort((a, b) => ListKey.Compare(order, a.Key, b.Key));
         Slice<FoundRow> slice = Slice<FoundRow>.Of(rows, page);
         List<IFoundItemView> items = new List<IFoundItemView>(slice.Items.Count);
         foreach (FoundRow row in slice.Items)
@@ -43,7 +45,7 @@ internal static class FindItemsApi
             items.Add(row.ToView());
         }
 
-        page.Note("items", items.Count, rows.Count);
+        page.Note("items", items.Count, rows.Count, ListOrders.PagingAdvice(order, origin.IsPresent));
         return new FindItemsView(Slice<IFoundItemView>.Page(items, page, rows.Count), origin.View);
     }
 }
@@ -73,24 +75,8 @@ internal sealed class FoundRow
     // An item's own reference id; stock has none, so its machine's.
     private long Id => _item != null ? _item.Item.ReferenceId : _stock!.Machine.ReferenceId;
 
-    /// <summary>Nearest first (no player: all last), then prefab or reagent name, items before stock, id.</summary>
-    internal static int NearestFirst(FoundRow a, FoundRow b)
-    {
-        int byDistance = (a.Distance ?? double.MaxValue).CompareTo(b.Distance ?? double.MaxValue);
-        if (byDistance != 0)
-        {
-            return byDistance;
-        }
-
-        int byName = string.CompareOrdinal(a.Name, b.Name);
-        if (byName != 0)
-        {
-            return byName;
-        }
-
-        int byKind = a.IsStock.CompareTo(b.IsStock);
-        return byKind != 0 ? byKind : a.Id.CompareTo(b.Id);
-    }
+    /// <summary>Sorted by distance or id, with prefab or reagent name and items before stock telling rows apart.</summary>
+    internal ListKey Key => new ListKey(Distance, Name, IsStock ? 1 : 0, Id);
 
     internal IFoundItemView ToView() => _item != null ? _item.ToView() : _stock!.ToView();
 }

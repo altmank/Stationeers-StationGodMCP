@@ -1,6 +1,6 @@
 {
   "name": "find_things",
-  "summary": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for kind, class, labels, broken state, atmosphere, maker and location. 8 per page, nearest first. Read only.",
+  "summary": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for kind, class, labels, broken state, atmosphere, maker and location. 8 per page, nearest first or by reference id. Read only.",
   "help": {
     "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. min and max keep only things standing in a box (a thing in a slot stands where its outermost holder is). find_items is the tool for item quantities and machine stock.",
     "keys": "things [{made, reference_id, prefab_name, display_name, custom_name, game_name, kind, runtime_type, ...}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}.",
@@ -75,7 +75,8 @@
         "description": "ground, player, stored, built (a structure) or world (players, animals); default any."
       },
       "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Things per page; default 8."},
-      "offset": {"type": "integer", "minimum": 0, "description": "Things to skip (see paging).", "maximum": 2147483647}
+      "offset": {"type": "integer", "minimum": 0, "description": "Things to skip (see paging).", "maximum": 2147483647},
+      "order": {"$ref": "defs/list_order.json"}
     },
     "additionalProperties": false
   },
@@ -100,6 +101,6 @@
     "limit": "limit",
     "total": "total",
     "has_more": "has_more",
-    "order": "nearest the player first (no position last), then prefab name, then reference id"
+    "order": "order nearest (default): nearest the player first (no position last), then prefab name, then reference id; order reference_id: lowest reference id first"
   }
 }

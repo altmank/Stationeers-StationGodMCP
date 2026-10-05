@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.26.0",
+  "mod_version": "1.27.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -72,7 +72,7 @@
       },
       "paging": {
         "summary": "limit and offset: a long list page by page.",
-        "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order."
+        "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order. Nearest-first pages are measured from where the player stands at each call, so they do not fit together while the player moves: an entry is seen twice or skipped. To page a whole list (a box of structures, every item), pass order reference_id: find_things, find_items, list_containers and outer_frames take it."
       },
       "shaping": {
         "summary": "fields, omit, output_file: smaller replies or a file.",
@@ -2804,7 +2804,7 @@
     },
     {
       "name": "find_items",
-      "description": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first. 10 per page. Read only.\nMore: tool_info {tool: \"find_items\"}",
+      "description": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.\nMore: tool_info {tool: \"find_items\"}",
       "help": {
         "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type.",
         "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
@@ -2829,7 +2829,12 @@
             "description": "Only things whose outermost holder is within this many metres of the player."
           },
           "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Items per page; default 10."},
-          "offset": {"type": "integer", "minimum": 0, "description": "Items to skip (see paging).", "maximum": 2147483647}
+          "offset": {"type": "integer", "minimum": 0, "description": "Items to skip (see paging).", "maximum": 2147483647},
+          "order": {
+            "type": "string",
+            "enum": ["nearest", "reference_id"],
+            "description": "nearest (default): nearest the player first; reference_id: lowest id first, pages that stay put while the player moves (see paging)."
+          }
         },
         "additionalProperties": false
       },
@@ -2853,7 +2858,7 @@
         "limit": "limit",
         "total": "total",
         "has_more": "has_more",
-        "order": "nearest the player first (no position last), then by name, loose items before stock, then reference id"
+        "order": "order nearest (default): nearest the player first (no position last), then by name, loose items before stock, then reference id; order reference_id: lowest reference id first (stock: its machine's), then by name, loose items before stock"
       }
     },
     {
@@ -2941,7 +2946,7 @@
     },
     {
       "name": "find_things",
-      "description": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for kind, class, labels, broken state, atmosphere, maker and location. 8 per page, nearest first. Read only.\nMore: tool_info {tool: \"find_things\"}",
+      "description": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for kind, class, labels, broken state, atmosphere, maker and location. 8 per page, nearest first or by reference id. Read only.\nMore: tool_info {tool: \"find_things\"}",
       "help": {
         "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. min and max keep only things standing in a box (a thing in a slot stands where its outermost holder is). find_items is the tool for item quantities and machine stock.",
         "keys": "things [{made, reference_id, prefab_name, display_name, custom_name, game_name, kind, runtime_type, ...}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}.",
@@ -3016,7 +3021,12 @@
             "description": "ground, player, stored, built (a structure) or world (players, animals); default any."
           },
           "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Things per page; default 8."},
-          "offset": {"type": "integer", "minimum": 0, "description": "Things to skip (see paging).", "maximum": 2147483647}
+          "offset": {"type": "integer", "minimum": 0, "description": "Things to skip (see paging).", "maximum": 2147483647},
+          "order": {
+            "type": "string",
+            "enum": ["nearest", "reference_id"],
+            "description": "nearest (default): nearest the player first; reference_id: lowest id first, pages that stay put while the player moves (see paging)."
+          }
         },
         "additionalProperties": false
       },
@@ -3041,7 +3051,7 @@
         "limit": "limit",
         "total": "total",
         "has_more": "has_more",
-        "order": "nearest the player first (no position last), then prefab name, then reference id"
+        "order": "order nearest (default): nearest the player first (no position last), then prefab name, then reference id; order reference_id: lowest reference id first"
       }
     },
     {
@@ -3733,7 +3743,7 @@
     },
     {
       "name": "list_containers",
-      "description": "List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first. 12 per page. Read only.\nMore: tool_info {tool: \"list_containers\"}",
+      "description": "List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first or by reference id. 12 per page. Read only.\nMore: tool_info {tool: \"list_containers\"}",
       "help": {
         "text": "A holder inside another (a crate in a lander, a box in a locker) is not listed alone: its items count toward the outermost holder, and the filters match that holder. Look inside with container_contents or find_items within_id. Empty containers are not listed.",
         "keys": "containers [{reference_id, prefab_name, display_name, slots_total, slots_used, item_count, items, position, ...}], count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
@@ -3752,7 +3762,12 @@
             "description": "Only containers within this many metres of the player."
           },
           "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Containers per page; default 12."},
-          "offset": {"type": "integer", "minimum": 0, "description": "Containers to skip (see paging).", "maximum": 2147483647}
+          "offset": {"type": "integer", "minimum": 0, "description": "Containers to skip (see paging).", "maximum": 2147483647},
+          "order": {
+            "type": "string",
+            "enum": ["nearest", "reference_id"],
+            "description": "nearest (default): nearest the player first; reference_id: lowest id first, pages that stay put while the player moves (see paging)."
+          }
         },
         "additionalProperties": false
       },
@@ -3776,7 +3791,7 @@
         "limit": "limit",
         "total": "total",
         "has_more": "has_more",
-        "order": "nearest the player first (no position last), then prefab name, then the order found"
+        "order": "order nearest (default): nearest the player first (no position last), then prefab name, then reference id; order reference_id: lowest reference id first"
       }
     },
     {
@@ -4205,7 +4220,7 @@
     },
     {
       "name": "outer_frames",
-      "description": "Which frames are outer frames: a face on a cell of the planet's outside air. Each with its exposed faces, airtightness, build state and colour; nearest first, 20 per page. Read only.\nMore: tool_info {tool: \"outer_frames\"}",
+      "description": "Which frames are outer frames: a face on a cell of the planet's outside air. Each with its exposed faces, airtightness, build state and colour; nearest first or by reference id, 20 per page. Read only.\nMore: tool_info {tool: \"outer_frames\"}",
       "help": {
         "text": "Each frame: reference_id, prefab_name, display_name, position, distance_m, exposed_faces (+z north, +y up), exposed_face_count, blocks_air (its build state is airtight), build_state (0 bare up to the prefab's finished state; a finished steel frame is 3) and color. Also count, total_frames, total_outer, paging and local_player. include_inner lists every frame.",
         "keys": "frames [{reference_id, prefab_name, display_name, position, distance_m, exposed_faces, exposed_face_count, blocks_air, ...}], count, total_frames, total_outer, offset, limit, total, has_more, include_inner, local_player {reference_id, display_name, position}.",
@@ -4225,7 +4240,12 @@
           "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Only frames within this many metres of the player."},
           "include_inner": {"type": "boolean", "description": "List every frame; inner ones have no exposed faces. Default false."},
           "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Frames per page; default 20."},
-          "offset": {"type": "integer", "minimum": 0, "description": "Frames to skip (see paging).", "maximum": 2147483647}
+          "offset": {"type": "integer", "minimum": 0, "description": "Frames to skip (see paging).", "maximum": 2147483647},
+          "order": {
+            "type": "string",
+            "enum": ["nearest", "reference_id"],
+            "description": "nearest (default): nearest the player first; reference_id: lowest id first, pages that stay put while the player moves (see paging)."
+          }
         },
         "additionalProperties": false
       },
@@ -4252,7 +4272,7 @@
         "limit": "limit",
         "total": "total",
         "has_more": "has_more",
-        "order": "nearest the player first, then reference id"
+        "order": "order nearest (default): nearest the player first, then reference id; order reference_id: lowest reference id first"
       }
     },
     {

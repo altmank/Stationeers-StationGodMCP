@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.27.0
+
+Paging a long list no longer misses or repeats entries when the player moves between pages.
+
+- **`order` on `find_things`, `find_items`, `list_containers` and `outer_frames`.** `nearest` (the default, as
+  before) sorts by distance from where the player stands at each call, so pages taken while the player walks overlap
+  and leave gaps: a diff of a 9,600-structure box paged 500 at a time reported built pieces as missing.
+  `reference_id` sorts by reference id, which nothing moves, so the pages fit together. A cut nearest-first list
+  measured from a player says so in its `truncated` note and names `order reference_id`; the `paging` help topic
+  explains it.
+- `list_containers` breaks distance and name ties by the holder's reference id instead of the order the world
+  listed it.
+
 ## 1.26.0
 
 Batteries can be charged one at a time, where the console's `setbatteries` fills every battery in the world.

@@ -10,6 +10,7 @@ using Objects.Structures;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -53,6 +54,7 @@ internal static class OuterFramesApi
         double? near = args.OptionalPositiveDouble("near_player_m");
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(near.HasValue);
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
+        ListOrder order = ListOrderArg.From(args);
         bool includeInner = args.OptionalBool("include_inner") ?? false;
         GridController grid = GridController.World;
         RoomController rooms = RoomController.World;
@@ -62,7 +64,7 @@ internal static class OuterFramesApi
         }
 
         FrameCensus census = FrameCensus.Take(new CellAir(grid, rooms), origin, near, includeInner);
-        census.Rows.Sort(static (a, b) => FrameRow.NearestFirst(a, b));
+        census.Rows.Sort((a, b) => ListKey.Compare(order, a.Key, b.Key));
         Slice<FrameRow> rows = Slice<FrameRow>.Of(census.Rows, page);
         List<FrameView> views = new List<FrameView>(rows.Items.Count);
         foreach (FrameRow row in rows.Items)
@@ -70,7 +72,7 @@ internal static class OuterFramesApi
             views.Add(row.ToView());
         }
 
-        page.Note("frames", views.Count, rows.Total);
+        page.Note("frames", views.Count, rows.Total, ListOrders.PagingAdvice(order, origin.IsPresent));
         return new OuterFramesView(Slice<FrameView>.Page(views, page, rows.Total), census.TotalFrames,
             census.TotalOuter, includeInner, origin.View);
     }
@@ -162,12 +164,8 @@ internal sealed class FrameRow
 
     internal double? Distance { get; }
 
-    // Nearest first (no player: all at 0), then by reference id.
-    internal static int NearestFirst(FrameRow a, FrameRow b)
-    {
-        int byDistance = (a.Distance ?? 0.0).CompareTo(b.Distance ?? 0.0);
-        return byDistance != 0 ? byDistance : a.Frame.ReferenceId.CompareTo(b.Frame.ReferenceId);
-    }
+    /// <summary>Sorted by distance, then reference id; or by reference id.</summary>
+    internal ListKey Key => new ListKey(Distance, null, 0, Frame.ReferenceId);
 
     internal FrameView ToView()
     {

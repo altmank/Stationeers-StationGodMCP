@@ -20,8 +20,8 @@ namespace StationGodMCP.Api;
 /// find_things: every thing in the world whose name matches, whatever it is: items, portable tanks and other dynamic
 /// things, structures and devices, players and animals. Walks OcclusionManager.AllThings (every registered thing,
 /// cursors excluded), skipping things being destroyed and organs. A name matches on the name the game shows (the
-/// Labeller's name when there is one) and on the prefab's own name under a label (Labels). Nearest first, paged; only
-/// the page is described in full. Every thing reports is_broken and condition from the game's own broken state
+/// Labeller's name when there is one) and on the prefab's own name under a label (Labels). Nearest first or by
+/// reference id (order), paged; only the page is described in full. Every thing reports is_broken and condition from the game's own broken state
 /// (Pure/HealthCondition: a broken structure reads 100 % health, so the numbers cannot tell), and broken filters on it.
 /// Read only.
 /// </summary>
@@ -35,6 +35,7 @@ internal static class FindThingsApi
         ThingFilter filter = ThingFilter.Parse(args);
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
+        ListOrder order = ListOrderArg.From(args);
         List<Thing> things = Pools.Snapshot(OcclusionManager.AllThings);
         List<ThingHit> hits = new List<ThingHit>();
         foreach (Thing thing in things)
@@ -50,7 +51,7 @@ internal static class FindThingsApi
             }
         }
 
-        hits.Sort(static (a, b) => ThingHit.NearestFirst(a, b));
+        hits.Sort((a, b) => ListKey.Compare(order, a.Key, b.Key));
         Slice<ThingHit> slice = Slice<ThingHit>.Of(hits, page);
         List<FoundThingView> views = new List<FoundThingView>(slice.Items.Count);
         List<ColorSwatch> swatches = PaintApi.Swatches();
@@ -59,7 +60,7 @@ internal static class FindThingsApi
             views.Add(ViewOf(hit.Thing, origin, swatches));
         }
 
-        page.Note("things", views.Count, hits.Count);
+        page.Note("things", views.Count, hits.Count, ListOrders.PagingAdvice(order, origin.IsPresent));
         return new FindThingsView(Slice<FoundThingView>.Page(views, page, hits.Count), things.Count, origin.View);
     }
 
@@ -283,16 +284,6 @@ internal readonly struct ThingHit
 
     internal double? Distance { get; }
 
-    /// <summary>Nearest first (no player: all last), then by prefab name and reference id.</summary>
-    internal static int NearestFirst(ThingHit a, ThingHit b)
-    {
-        int byDistance = (a.Distance ?? double.MaxValue).CompareTo(b.Distance ?? double.MaxValue);
-        if (byDistance != 0)
-        {
-            return byDistance;
-        }
-
-        int byName = string.CompareOrdinal(a.Thing.PrefabName, b.Thing.PrefabName);
-        return byName != 0 ? byName : a.Thing.ReferenceId.CompareTo(b.Thing.ReferenceId);
-    }
+    /// <summary>Sorted by distance, then prefab name and reference id; or by reference id.</summary>
+    internal ListKey Key => new ListKey(Distance, Thing.PrefabName, 0, Thing.ReferenceId);
 }

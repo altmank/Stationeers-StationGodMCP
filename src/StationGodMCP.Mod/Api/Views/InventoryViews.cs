@@ -9,7 +9,7 @@ using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>find_items: one page of the items that match, nearest first.</summary>
+/// <summary>find_items: one page of the items that match, in the order asked.</summary>
 internal sealed class FindItemsView
 {
     internal FindItemsView(Slice<IFoundItemView> page, LocalPlayerView? localPlayer)
@@ -155,7 +155,7 @@ internal sealed class HolderTotalView
     public PositionView Position { get; }
 }
 
-/// <summary>list_containers: one page of the holders with at least one item in them, nearest first.</summary>
+/// <summary>list_containers: one page of the holders with at least one item in them, in the order asked.</summary>
 internal sealed class ListContainersView
 {
     internal ListContainersView(Slice<ContainerView> page, LocalPlayerView? localPlayer)

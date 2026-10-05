@@ -31,7 +31,7 @@ internal static class ThingLocations
     }
 }
 
-/// <summary>find_things: one page of the things whose names match, nearest first.</summary>
+/// <summary>find_things: one page of the things whose names match, in the order asked.</summary>
 internal sealed class FindThingsView
 {
     internal FindThingsView(Slice<FoundThingView> page, int scanned, LocalPlayerView? localPlayer)

@@ -58,8 +58,11 @@ internal static class Truncations
         return notes;
     }
 
-    /// <summary>A paged list: returned entries of total from offset; more by limit (up to maximum) or the next offset.</summary>
-    internal static void Page(string list, int offset, int returned, int total, int maximum)
+    /// <summary>
+    /// A paged list: returned entries of total from offset; more by limit (up to maximum) or the next offset, then
+    /// advice on paging it (empty for none).
+    /// </summary>
+    internal static void Page(string list, int offset, int returned, int total, int maximum, string advice = "")
     {
         if (offset + returned >= total && offset == 0)
         {
@@ -70,7 +73,8 @@ internal static class Truncations
             ? " or offset " + (offset + returned).ToString(CultureInfo.InvariantCulture)
             : string.Empty;
         string earlier = offset > 0 ? "; offset " + offset.ToString(CultureInfo.InvariantCulture) + " skipped the first entries" : string.Empty;
-        Note(list, returned, total, "pass limit (max " + maximum.ToString(CultureInfo.InvariantCulture) + ")" + next + earlier);
+        Note(list, returned, total,
+            "pass limit (max " + maximum.ToString(CultureInfo.InvariantCulture) + ")" + next + earlier + advice);
     }
 
     /// <summary>A list cut at a cap an argument sets: more by that argument, up to its maximum.</summary>

@@ -1,6 +1,6 @@
 {
   "name": "outer_frames",
-  "summary": "Which frames are outer frames: a face on a cell of the planet's outside air. Each with its exposed faces, airtightness, build state and colour; nearest first, 20 per page. Read only.",
+  "summary": "Which frames are outer frames: a face on a cell of the planet's outside air. Each with its exposed faces, airtightness, build state and colour; nearest first or by reference id, 20 per page. Read only.",
   "help": {
     "text": "Each frame: reference_id, prefab_name, display_name, position, distance_m, exposed_faces (+z north, +y up), exposed_face_count, blocks_air (its build state is airtight), build_state (0 bare up to the prefab's finished state; a finished steel frame is 3) and color. Also count, total_frames, total_outer, paging and local_player. include_inner lists every frame.",
     "keys": "frames [{reference_id, prefab_name, display_name, position, distance_m, exposed_faces, exposed_face_count, blocks_air, ...}], count, total_frames, total_outer, offset, limit, total, has_more, include_inner, local_player {reference_id, display_name, position}.",
@@ -20,7 +20,8 @@
       "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Only frames within this many metres of the player."},
       "include_inner": {"type": "boolean", "description": "List every frame; inner ones have no exposed faces. Default false."},
       "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Frames per page; default 20."},
-      "offset": {"type": "integer", "minimum": 0, "description": "Frames to skip (see paging).", "maximum": 2147483647}
+      "offset": {"type": "integer", "minimum": 0, "description": "Frames to skip (see paging).", "maximum": 2147483647},
+      "order": {"$ref": "defs/list_order.json"}
     },
     "additionalProperties": false
   },
@@ -47,6 +48,6 @@
     "limit": "limit",
     "total": "total",
     "has_more": "has_more",
-    "order": "nearest the player first, then reference id"
+    "order": "order nearest (default): nearest the player first, then reference id; order reference_id: lowest reference id first"
   }
 }
