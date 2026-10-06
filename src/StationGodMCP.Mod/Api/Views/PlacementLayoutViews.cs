@@ -323,8 +323,8 @@ internal sealed class VisualUpView
 internal sealed class DescribePrefabView
 {
     internal DescribePrefabView(PlacementPrefabView prefab, string runtimeType, string placement, float gridSizeM,
-        bool smallGrid, string rotationAxes, List<OrientationView> allowedRotations, List<PointView> smallCells,
-        BoxView renderBox, BoxView? gridBox, List<PrefabPortView> ports, VisualUpView visualUp,
+        bool smallGrid, string rotationAxes, List<OrientationView> allowedRotations, int smallCellCount,
+        List<PointView>? smallCells, BoxView renderBox, BoxView? gridBox, List<PrefabPortView> ports, VisualUpView visualUp,
         ModeFlipView? reversibleFlow, bool hasCursor, ControlFaceView? controls = null,
         PrefabEngineView? engine = null)
     {
@@ -340,6 +340,7 @@ internal sealed class DescribePrefabView
         SmallGrid = smallGrid;
         RotationAxes = rotationAxes;
         AllowedRotations = allowedRotations;
+        SmallCellCount = smallCellCount;
         SmallCells = smallCells;
         RenderBox = renderBox;
         GridBox = gridBox;
@@ -372,8 +373,15 @@ internal sealed class DescribePrefabView
     /// <summary>The turns place_structure accepts (a face-mounted piece: every turn; the cursor check decides).</summary>
     public List<OrientationView> AllowedRotations { get; }
 
-    /// <summary>The small cells it takes, as offsets from its origin, unturned.</summary>
-    public List<PointView> SmallCells { get; }
+    /// <summary>How many small cells it takes (0 for a 2 m structure).</summary>
+    public int SmallCellCount { get; }
+
+    /// <summary>
+    /// The small cells it takes, as offsets from its origin, unturned; only with include_small_cells (grid_box is
+    /// their box).
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<PointView>? SmallCells { get; }
 
     /// <summary>The box its meshes fill, relative to its origin, unturned.</summary>
     public BoxView RenderBox { get; }

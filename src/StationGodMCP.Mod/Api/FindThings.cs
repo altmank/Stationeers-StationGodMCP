@@ -122,16 +122,16 @@ internal sealed class ThingFilter
     // Each class's answer to runtime_type, worked out once per call: a world has a few hundred classes.
     private readonly Dictionary<Type, bool> _typeMatches = new Dictionary<Type, bool>();
 
-    private ThingFilter(string? nameContains, string? prefabContains, string kind, string? runtimeType,
+    private ThingFilter(string? nameContains, PrefabMatch prefab, string kind, string? runtimeType,
         bool labelledOnly, bool? hasAtmosphere, double? nearPlayerM, bool? broken, PrintFilter made, string location,
-        Box3? box)
+        PointArea area)
     {
-        Box = box;
+        Area = area;
         Location = location;
         Made = made;
         Broken = broken;
         NameContains = nameContains;
-        PrefabContains = prefabContains;
+        Prefab = prefab;
         Kind = kind;
         RuntimeType = runtimeType;
         LabelledOnly = labelledOnly;
@@ -141,7 +141,8 @@ internal sealed class ThingFilter
 
     internal string? NameContains { get; }
 
-    internal string? PrefabContains { get; }
+    /// <summary>prefab (the exact prefab name) and prefab_contains.</summary>
+    internal PrefabMatch Prefab { get; }
 
     /// <summary>any, or one of ThingKinds.</summary>
     internal string Kind { get; }
@@ -155,8 +156,10 @@ internal sealed class ThingFilter
 
     internal double? NearPlayerM { get; }
 
-    /// <summary>min and max: only things whose outermost holder stands in this box (edges included).</summary>
-    internal Box3? Box { get; }
+    /// <summary>
+    /// min and max (a box, edges included) or near with radius_m: only things whose outermost holder stands there.
+    /// </summary>
+    internal PointArea Area { get; }
 
     /// <summary>any, or the one location kept (ThingLocations).</summary>
     internal string Location { get; }
@@ -180,28 +183,11 @@ internal sealed class ThingFilter
         }
 
         string? runtimeType = args.OptionalString("runtime_type");
-        return new ThingFilter(args.OptionalString("name_contains"), args.OptionalString("prefab_contains"), kind,
+        return new ThingFilter(args.OptionalString("name_contains"), PrefabMatches.Parse(args), kind,
             string.IsNullOrEmpty(runtimeType) ? null : runtimeType, args.OptionalBool("labelled_only") ?? false,
             args.OptionalBool("has_atmosphere"), args.OptionalPositiveDouble("near_player_m"),
             args.OptionalBool("broken"), MadeOf(args), ThingLocations.Parse(args.OptionalString("location")),
-            BoxOf(args));
-    }
-
-    private static Box3? BoxOf(Args args)
-    {
-        if (!args.Has("min") && !args.Has("max"))
-        {
-            return null;
-        }
-
-        if (!args.Has("min") || !args.Has("max"))
-        {
-            throw ApiErrors.InvalidArgument("Pass min and max together: the corners of a box, in metres.");
-        }
-
-        Vector3 min = RunArgs.PositionOf(args.Optional("min")!, "min");
-        Vector3 max = RunArgs.PositionOf(args.Optional("max")!, "max");
-        return new Box3(new Vec3(min.x, min.y, min.z), new Vec3(max.x, max.y, max.z));
+            AreaArgs.Parse(args));
     }
 
     // made_by: a maker's reference id, or text in its prefab or shown name; made_since: a game time (game_clock's
@@ -236,7 +222,7 @@ internal sealed class ThingFilter
     // the localisation table, and last the atmosphere, which looks at the thing's networks and slots.
     internal bool Keeps(Thing thing) =>
         (!LabelledOnly || !string.IsNullOrEmpty(thing.CustomName)) &&
-        ItemFilter.Contains(thing.PrefabName, PrefabContains) &&
+        Prefab.Keeps(thing.PrefabName) &&
         (Kind == AnyKind || ThingKinds.Of(thing) == Kind) &&
         (!Broken.HasValue || Wrecks.IsBroken(thing) == Broken.Value) &&
         (!Made.IsActive || Made.Keeps(Prints.Log.Of(thing.ReferenceId))) &&
@@ -267,8 +253,7 @@ internal sealed class ThingFilter
     internal bool IsNear(double? distance) =>
         !NearPlayerM.HasValue || (distance.HasValue && distance.Value <= NearPlayerM.Value);
 
-    internal bool IsInside(Vector3 position) =>
-        !Box.HasValue || Box.Value.Contains(new Vec3(position.x, position.y, position.z));
+    internal bool IsInside(Vector3 position) => Area.Contains(new Vec3(position.x, position.y, position.z));
 }
 
 /// <summary>A matching thing and its unrounded distance, for sorting before the page is described.</summary>

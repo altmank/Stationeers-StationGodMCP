@@ -1110,8 +1110,9 @@ internal sealed class RunVerificationView
 internal sealed class PlanRouteView : ITruncatingView
 {
     internal PlanRouteView(string tool, RouteView? route, string? failure, object? placeArguments,
-        RunReportView? dryRun, List<string> notes)
+        RunReportView? dryRun, List<string> notes, RunSummaryView? dryRunSummary = null)
     {
+        DryRunSummary = dryRunSummary;
         Tool = tool;
         Found = route != null;
         Route = route;
@@ -1139,9 +1140,104 @@ internal sealed class PlanRouteView : ITruncatingView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public RunReportView? DryRun { get; }
 
+    /// <summary>The dry run in short, in place of dry_run, with summary.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RunSummaryView? DryRunSummary { get; }
+
     public List<string> Notes { get; }
 
     public void NoteTruncations(string path) => DryRun?.NoteTruncations(path + "dry_run.");
+}
+
+/// <summary>
+/// A plan tool's dry run in short (summary): whether it is ready, every problem in full (they say what to change),
+/// the warnings' codes, the counts, and the coils or kits it needs, without the per-cell list, the networks and the
+/// refund plan.
+/// </summary>
+internal sealed class RunSummaryView
+{
+    private RunSummaryView(RunReportView report, List<string> warnings, List<RunNeedView> needed)
+    {
+        Status = report.Status;
+        Ready = report.Ready;
+        Problems = report.Problems;
+        Warnings = warnings;
+        CellsTotal = report.CellsTotal;
+        Placed = report.Placed;
+        Changed = report.Changed;
+        Kept = report.Kept;
+        RemovedCount = report.RemovedCount;
+        AirCells = report.AirCells;
+        WouldBridge = report.WouldBridge.Count;
+        WouldSplit = report.WouldSplit.Count;
+        Needed = needed;
+    }
+
+    public string Status { get; }
+
+    public bool Ready { get; }
+
+    public List<RunIssueView> Problems { get; }
+
+    /// <summary>Each warning's code, once.</summary>
+    public List<string> Warnings { get; }
+
+    public int CellsTotal { get; }
+
+    public int Placed { get; }
+
+    public int Changed { get; }
+
+    public int Kept { get; }
+
+    public int RemovedCount { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? AirCells { get; }
+
+    /// <summary>How many networks the run would join into one, and split.</summary>
+    public int WouldBridge { get; }
+
+    public int WouldSplit { get; }
+
+    public List<RunNeedView> Needed { get; }
+
+    internal static RunSummaryView Of(RunReportView report)
+    {
+        List<string> warnings = new List<string>(report.Warnings.Count);
+        foreach (RunIssueView warning in report.Warnings)
+        {
+            if (!warnings.Contains(warning.Code))
+            {
+                warnings.Add(warning.Code);
+            }
+        }
+
+        List<RunNeedView> needed = new List<RunNeedView>(report.Materials.Needed.Count);
+        foreach (UpgradeCoilView coil in report.Materials.Needed)
+        {
+            needed.Add(new RunNeedView(coil.PrefabName, coil.Needed, coil.Available));
+        }
+
+        return new RunSummaryView(report, warnings, needed);
+    }
+}
+
+/// <summary>A coil or kit a run takes: how many, and how many the source holds.</summary>
+internal sealed class RunNeedView
+{
+    internal RunNeedView(string? prefabName, int needed, int available)
+    {
+        PrefabName = prefabName;
+        Needed = needed;
+        Available = available;
+    }
+
+    public string? PrefabName { get; }
+
+    public int Needed { get; }
+
+    public int Available { get; }
 }
 
 internal sealed class RouteView

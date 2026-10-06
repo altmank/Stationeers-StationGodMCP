@@ -61,7 +61,7 @@ class DurationAndPagingTests(unittest.TestCase):
 
 class CheckTests(unittest.TestCase):
     def test_an_unknown_name_is_refused_with_the_nearest(self):
-        problems = CATALOGUE.check("find_things", {"prefab": "x"})
+        problems = CATALOGUE.check("list_containers", {"prefab": "x"})
         self.assertEqual("prefab", problems[0]["path"])
         self.assertIn("prefab_contains", problems[0]["problem"])
 

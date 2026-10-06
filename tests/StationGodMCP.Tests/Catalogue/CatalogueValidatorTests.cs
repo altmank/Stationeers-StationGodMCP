@@ -23,7 +23,8 @@ public sealed class CatalogueValidatorTests
 
     public static IEnumerable<object[]> Cases() => new[]
     {
-        Case("find_things", """{"prefab":"ItemDirtyOre"}""", false),
+        Case("list_containers", """{"prefab":"ItemDirtyOre"}""", false),
+        Case("find_things", """{"prefab":"ItemDirtyOre","near":[1,2,3],"radius_m":10}""", true),
         Case("find_things", """{"prefab_contains":"Ore","kind":null}""", true),
         Case("find_things", """{"limit":"5"}""", false),
         Case("find_things", """{"limit":3.0}""", true),
@@ -83,7 +84,7 @@ public sealed class CatalogueValidatorTests
     [Fact]
     public void AnUnknownNameIsRefusedNamingTheNearestOne()
     {
-        Catalogue.TryGet("find_things", out CatalogueMethod method);
+        Catalogue.TryGet("list_containers", out CatalogueMethod method);
         List<SchemaProblem> problems = method.Check(JObject.Parse("""{"prefab":"x"}"""));
 
         SchemaProblem problem = Assert.Single(problems);

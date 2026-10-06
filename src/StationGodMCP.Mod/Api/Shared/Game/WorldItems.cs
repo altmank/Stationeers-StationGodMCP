@@ -6,6 +6,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -227,25 +228,30 @@ internal sealed class ItemRecord
 }
 
 /// <summary>
-/// find_items' and item_totals' filter: names, where the item is, what holds it, and how near. Also keeps machine stock
+/// find_items' and item_totals' filter: names, where the item is, what holds it, how near the player and in what area
+/// (min and max, or near with radius_m: where its outermost holder stands; a machine's stock where the machine
+/// stands). vault_deposit reads the names and places without an area or an exact prefab. Also keeps machine stock
 /// (MachineStock) for location any or machine_stock; a WorldItems walk never yields that location, so callers that only
 /// collect items (list_containers) never see stock.
 /// </summary>
 internal sealed class ItemFilter
 {
-    internal static readonly ItemFilter Everything = new ItemFilter(null, null, "any", null, null);
+    internal static readonly ItemFilter Everything =
+        new ItemFilter(PrefabMatch.Any, null, "any", null, null, PointArea.Anywhere);
 
-    private ItemFilter(string? prefabContains, string? nameContains, string location, ThingId? withinId,
-        double? nearPlayerM)
+    private ItemFilter(PrefabMatch prefab, string? nameContains, string location, ThingId? withinId,
+        double? nearPlayerM, PointArea area)
     {
-        PrefabContains = prefabContains;
+        Prefab = prefab;
         NameContains = nameContains;
         Location = location;
         WithinId = withinId;
         NearPlayerM = nearPlayerM;
+        Area = area;
     }
 
-    internal string? PrefabContains { get; }
+    /// <summary>prefab (find_items and item_totals) and prefab_contains.</summary>
+    internal PrefabMatch Prefab { get; }
 
     internal string? NameContains { get; }
 
@@ -256,7 +262,18 @@ internal sealed class ItemFilter
 
     internal double? NearPlayerM { get; }
 
-    internal static ItemFilter Parse(Args args)
+    /// <summary>Where the item's outermost holder stands; anywhere when no area is given.</summary>
+    internal PointArea Area { get; }
+
+    /// <summary>find_items' and item_totals' filter: the names and places, an exact prefab and an area.</summary>
+    internal static ItemFilter ParseWithArea(Args args) =>
+        Parse(args, PrefabMatches.Parse(args), AreaArgs.Parse(args));
+
+    /// <summary>vault_deposit's filter: the names and places, prefab_contains only, anywhere.</summary>
+    internal static ItemFilter Parse(Args args) =>
+        Parse(args, new PrefabMatch(null, args.OptionalString("prefab_contains")), PointArea.Anywhere);
+
+    private static ItemFilter Parse(Args args, PrefabMatch prefab, PointArea area)
     {
         string location = args.OptionalString("location") ?? "any";
         if (location != "any" && location != "ground" && location != "player" && location != "stored" &&
@@ -266,8 +283,8 @@ internal sealed class ItemFilter
                 "Argument 'location' must be any, ground, player, stored or machine_stock.");
         }
 
-        return new ItemFilter(args.OptionalString("prefab_contains"), args.OptionalString("name_contains"), location,
-            RequireHolder(args.OptionalThingId("within_id")), args.OptionalPositiveDouble("near_player_m"));
+        return new ItemFilter(prefab, args.OptionalString("name_contains"), location,
+            RequireHolder(args.OptionalThingId("within_id")), args.OptionalPositiveDouble("near_player_m"), area);
     }
 
     // A within_id that names nothing is refused, as container_contents refuses it, so a mistyped id never reads as an
@@ -283,10 +300,10 @@ internal sealed class ItemFilter
         return withinId;
     }
 
-    internal static ItemFilter StoredOnly() => new ItemFilter(null, null, "stored", null, null);
+    internal static ItemFilter StoredOnly() =>
+        new ItemFilter(PrefabMatch.Any, null, "stored", null, null, PointArea.Anywhere);
 
-    internal bool Names(Item item) =>
-        Contains(item.PrefabName, PrefabContains) && Contains(item.DisplayName, NameContains);
+    internal bool Names(Item item) => Prefab.Keeps(item.PrefabName) && Contains(item.DisplayName, NameContains);
 
     /// <summary>Whether machine stock can match at all: location any or machine_stock.</summary>
     internal bool WantsStock => Location == "any" || Location == MachineStock.Location;
@@ -294,7 +311,8 @@ internal sealed class ItemFilter
     /// <summary>Stock matches the ingot's prefab and name, else the reagent's name; within_id is the machine.</summary>
     internal bool Keeps(StockRecord record)
     {
-        if (!WantsStock || !Contains(record.IngotPrefab, PrefabContains) || !Contains(record.DisplayName, NameContains))
+        if (!WantsStock || !Prefab.Keeps(record.IngotPrefab) || !Contains(record.DisplayName, NameContains) ||
+            !Area.Contains(Bodies.V(record.Machine.Position)))
         {
             return false;
         }
@@ -315,6 +333,11 @@ internal sealed class ItemFilter
         }
 
         if (WithinId.HasValue && !record.IsWithin(WithinId.Value.Value))
+        {
+            return false;
+        }
+
+        if (!Area.Contains(Bodies.V(record.Root.Position)))
         {
             return false;
         }

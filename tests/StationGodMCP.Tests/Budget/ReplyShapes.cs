@@ -136,6 +136,9 @@ internal static class ReplyShapes
         };
         shapes["describe_prefab"] = new[]
         {
+            S<DescribePrefabView>().List("DescribePrefabView.AllowedRotations", 24).Absent("DescribePrefabView.SmallCells")
+                .List("DescribePrefabView.Ports", 4).List("PrefabEngineView.Inputs", 2),
+            // include_small_cells
             S<DescribePrefabView>().List("DescribePrefabView.AllowedRotations", 24).List("DescribePrefabView.SmallCells", 16)
                 .List("DescribePrefabView.Ports", 4).List("PrefabEngineView.Inputs", 2)
         };
@@ -277,7 +280,15 @@ internal static class ReplyShapes
                     .List("RouteView.Air", 0).List("RouteView.Branches", 0).List("RouteAssumedView.Pieces", 0)
                     .List("RouteAssumedView.Others", 0).List("RouteAssumedView.Missing", 0)
                     .List("RouteAssumedView.InTheWay", 0).List("RouteView.RemovalRefund", 0)
-                    .List("PlanRouteView.Notes", 2)
+                    .List("PlanRouteView.Notes", 2).Absent("PlanRouteView.DryRunSummary"),
+                // summary: the dry run in short in place of the whole one.
+                S<PlanRouteView>().Absent("PlanRouteView.DryRun").List("RouteView.Waypoints", 6)
+                    .List("RouteView.Removes", 0).List("RouteView.Air", 0).List("RouteView.Branches", 0)
+                    .List("RouteAssumedView.Pieces", 0).List("RouteAssumedView.Others", 0)
+                    .List("RouteAssumedView.Missing", 0).List("RouteAssumedView.InTheWay", 0)
+                    .List("RouteView.RemovalRefund", 0).List("PlanRouteView.Notes", 2)
+                    .List("RunSummaryView.Problems", 2).List("RunSummaryView.Warnings", 4)
+                    .List("RunSummaryView.Needed", 2)
             };
         }
 

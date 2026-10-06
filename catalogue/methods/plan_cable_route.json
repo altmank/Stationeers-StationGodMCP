@@ -2,8 +2,8 @@
   "name": "plan_cable_route",
   "summary": "Find a cable route on the small grid between ends, ports or networks, and dry-run it with place_cables: frames first, trees from several starts, trunks, reroutes. Answers place_arguments to build it. Read only.",
   "help": {
-    "text": "grade (default heavy), join, allow_bridge, allow_split and from_id pass on to the dry run. A device on several cable networks, such as an APC, needs its port named.",
-    "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
+    "text": "grade (default heavy), join, allow_bridge, allow_split and from_id pass on to the dry run. A device on several cable networks, such as an APC, needs its port named. summary true gives dry_run_summary in place of dry_run: status, ready, problems in full, warnings as codes, cells_total, the counts the run would place, keep and remove, air_cells, would_bridge and would_split counts, and needed [{prefab_name, needed, available}]; the route and place_arguments stay. A fraction of the size.",
+    "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, dry_run_summary {status, ready, problems, warnings, ...}, notes, resolved_networks.",
     "shared": ["routing", "runs", "networks", "doors", "lint", "materials"]
   },
   "class": "read",
@@ -77,6 +77,7 @@
       "include_links": {"$ref": "defs/include_links.json"},
       "include_notes": {"$ref": "defs/include_notes.json"},
       "include_network_devices": {"$ref": "defs/include_network_devices.json"},
+      "summary": {"$ref": "defs/plan_summary.json"},
       "limit": {
         "type": "integer",
         "minimum": 0,
@@ -95,6 +96,7 @@
       "failure": {"type": ["string", "null"]},
       "place_arguments": {},
       "dry_run": {"type": ["object", "null"]},
+      "dry_run_summary": {"type": "object"},
       "notes": {"type": "array"}
     }
   },

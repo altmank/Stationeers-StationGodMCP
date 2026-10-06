@@ -30,7 +30,7 @@ internal static class ItemTotalsApi
 
     internal static ItemTotalsView Handle(Args args)
     {
-        ItemFilter filter = ItemFilter.Parse(args);
+        ItemFilter filter = ItemFilter.ParseWithArea(args);
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
         int limit = args.OptionalInt("limit", 1, MaximumLimit) ?? DefaultLimit;
         int holders = args.OptionalInt("holders_limit", 0, MaximumHolders) ?? DefaultHolders;

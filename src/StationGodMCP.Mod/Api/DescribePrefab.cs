@@ -32,6 +32,7 @@ internal static class DescribePrefabApi
     internal static DescribePrefabView Handle(Args args)
     {
         PrefabRef reference = BuildArgs.PrefabOf(args.Optional("prefab"), "prefab");
+        bool withCells = args.OptionalBool("include_small_cells") ?? false;
         BuildCatalogue catalogue = BuildCatalogue.Load();
         Structure? found = catalogue.Find(reference, out string? issue);
         if (found == null)
@@ -59,7 +60,8 @@ internal static class DescribePrefabApi
             new PlacementPrefabView(prefab.PrefabName, prefab.PrefabHash, prefab.DisplayName,
                 prefab.BuildStates.Count), prefab.GetType().Name,
             BuildReports.SnapName(prefab.PlacementType), prefab.GridSize, prefab is SmallGrid,
-            prefab.RotationAxis.ToString(), AllowedRotations(prefab), offsets, new BoxView(render),
+            prefab.RotationAxis.ToString(), AllowedRotations(prefab), offsets.Count, withCells ? offsets : null,
+            new BoxView(render),
             grid.HasValue ? new BoxView(new Box3(grid.Value.Min - Bodies.V(origin), grid.Value.Max - Bodies.V(origin)))
                 : null,
             ports, new VisualUpView(up.LocalUp.Name, up.LyingAllowed, up.Source, up.Verified),

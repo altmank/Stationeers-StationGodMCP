@@ -27,7 +27,7 @@ namespace StationGodMCP.Api;
 /// over frames or along walls wins whenever the search box holds one; prefer hidden grades every cell by how visible
 /// it is. The route's new cells are counted by visibility (inside a frame, on its surface, on a wall, in air) and the
 /// air cells listed, with a through_air note. Returns the route, the arguments that build it with the place tool, and
-/// that tool's dry run. Read only.
+/// that tool's dry run (summary: the dry run in short, RunSummaryView, without its per-cell detail). Read only.
 /// </summary>
 internal static class PlanRouteApi
 {
@@ -150,9 +150,10 @@ internal static class PlanRouteApi
 
         RouteAssumedView? assumedView = AssumedView(assumed, tree, notes);
         JObject place = PlaceArguments(args, kind, grade, tree, removes, assumed);
-        return new PlanRouteView(tool,
-            ViewOf(tree, removes, visibility, assumedView, RemovalRefund(segment, assumed)), null, place, dryRun,
-            notes);
+        RouteView route = ViewOf(tree, removes, visibility, assumedView, RemovalRefund(segment, assumed));
+        return args.OptionalBool("summary") ?? false
+            ? new PlanRouteView(tool, route, null, place, null, notes, RunSummaryView.Of(dryRun))
+            : new PlanRouteView(tool, route, null, place, dryRun, notes);
     }
 
     // The main route from the first start to the target (or the trunk as given), then each other start to the

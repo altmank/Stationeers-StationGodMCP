@@ -275,7 +275,7 @@ public sealed class FileOutputTests : IDisposable
         using JsonDocument document = JsonDocument.Parse("""{"prefab":"ItemDirtyOre"}""");
 
         Assert.StartsWith("Unknown argument 'prefab'; did you mean 'prefab_contains'?",
-            Assert.Single(ArgumentCheck.Problems(Program.InputSchemas["find_things"], document.RootElement)));
+            Assert.Single(ArgumentCheck.Problems(Program.InputSchemas["list_containers"], document.RootElement)));
     }
 
     private static string SharedFixtures =>

@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.28.3
+
+Smaller answers on a big base.
+
+- **`find_things`, `find_items` and `item_totals` take an exact `prefab` and an area.** `prefab` is the whole prefab
+  name, any case, as `place_structure` and `describe_prefab` take it (`StructureFrame` is not
+  `StructureFrameCorner`); with `prefab_contains` both must match. The area is `near` [x, y, z] with `radius_m` (up to
+  1000 m), or `min` and `max` (a box, which `find_things` already had): only things or items whose outermost holder
+  stands there, a machine's stock where the machine stands. A deck of 150 frames among 9,427 things is one call.
+  `find_items` keeps its `location` filter: `ground`, `player` (carried), `stored`, `machine_stock`.
+- **`describe_prefab` counts its small cells** (`small_cell_count`) and lists them only with `include_small_cells`;
+  `grid_box` is still their box. `fields` keeps only the keys asked for, such as `allowed_rotations.facing` and
+  `allowed_rotations.up`.
+- **`summary` on `plan_cable_route`, `plan_pipe_route` and `plan_chute_route`** gives `dry_run_summary` in place of the
+  whole dry run: status, ready, every problem in full, warnings as codes, the counts, bridges and splits, and the
+  coils or kits needed, without the per-cell list. The route and `place_arguments` stay.
+
 ## 1.28.2
 
 `move_player` works in low orbit.

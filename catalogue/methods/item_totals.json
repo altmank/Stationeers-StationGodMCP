@@ -1,6 +1,6 @@
 {
   "name": "item_totals",
-  "summary": "Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most. Same filters as find_items. 12 types by default. Read only.",
+  "summary": "Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most. Same filters as find_items, area and exact prefab included. 12 types by default. Read only.",
   "help": {
     "text": "Answers 'how much iron ingot do I have and where'. quantity includes machine stock (a furnace's or centrifuge's load gets its own row with prefab_name null and reagent set); item_count counts items only, machine_stock_entries the machine and reagent pairs. top_holders lists holders_limit holders per type (default 1, 0 leaves it out), each with kind (player, stored or machine_stock) and position.",
     "keys": "totals [{prefab_name, display_name, items, quantity, on_ground, carried, stored, machine_stock, ...}], prefab_count, item_count, machine_stock_entries.",
@@ -11,6 +11,10 @@
   "params": {
     "type": "object",
     "properties": {
+      "prefab": {
+        "type": "string",
+        "description": "The whole prefab name, any case, as place_structure and describe_prefab take it ('StructureFrame' is not 'StructureFrameCorner'); with prefab_contains both must match."
+      },
       "prefab_contains": {"type": "string", "description": "Part of the prefab name, any case ('IngotIron', 'Ore', 'Battery')."},
       "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
       "location": {
@@ -19,6 +23,14 @@
         "description": "ground, player, stored or machine_stock; default any (see items)."
       },
       "within_id": {"type": "string", "description": "Only items inside this thing at any depth, and its machine stock."},
+      "min": {
+        "description": "Box corner, [x, y, z] m; with max: only items whose outermost holder (a machine's stock: the machine) stands in the box."
+      },
+      "max": {"description": "The other box corner."},
+      "near": {
+        "description": "A point, [x, y, z] m; with radius_m: only items whose outermost holder is within radius_m of it."
+      },
+      "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000, "description": "With near, up to 1000."},
       "near_player_m": {
         "type": "number",
         "exclusiveMinimum": 0,
@@ -42,6 +54,13 @@
       "item_count": {"type": "integer"},
       "machine_stock_entries": {"type": "integer"}
     }
+  },
+  "x-read-by": {
+    "prefab": "Api/Shared/PrefabMatches.cs",
+    "min": "Api/Shared/AreaArgs.cs",
+    "max": "Api/Shared/AreaArgs.cs",
+    "near": "Api/Shared/AreaArgs.cs",
+    "radius_m": "Api/Shared/AreaArgs.cs"
   },
   "x-views": ["ItemTotalsView"],
   "x-shaping": "lists"

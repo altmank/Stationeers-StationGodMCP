@@ -108,7 +108,7 @@ neighbour or a tap's trunk piece turned into a junction) and `fill`.
 | Tool | What it does |
 | --- | --- |
 | `grid_survey` | What stands in each 2 m cell of a box or room, down to 0.5 m: frames, walls, pieces, devices and their ports, networks, and how visible a piece would be in each small cell. Read only. |
-| `plan_cable_route`, `plan_pipe_route`, `plan_chute_route` | Find a route under rules and return it with the place tool's own dry run. Read only. |
+| `plan_cable_route`, `plan_pipe_route`, `plan_chute_route` | Find a route under rules and return it with the place tool's own dry run (`summary: true`: the dry run in short, without its per-cell list). Read only. |
 | `place_cables`, `place_pipes`, `place_chutes` | Lay a run, with branches, one piece, or several separate pieces (`pieces`, 1.4.4+). |
 | `remove_cables`, `remove_pipes`, `remove_chutes` | Remove pieces as wire cutters, a wrench or deconstruction would. |
 | `undo_job` | Undo a finished place or remove job: remove what it built, build again what it removed (1.4.3+). |

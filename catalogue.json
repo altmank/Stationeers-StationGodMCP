@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.28.2",
+  "mod_version": "1.28.3",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -2660,8 +2660,8 @@
       "name": "describe_prefab",
       "description": "What a buildable prefab is before it stands anywhere, in its own frame: placement kind, the turns it takes, its cells, render box, ports, visual top and controls side. Read only.\nMore: tool_info {tool: \"describe_prefab\"}",
       "help": {
-        "text": "Its own frame is unturned, x right, y up, z forward, origin snapped as the cursor snaps it. Returns prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells, render_box, grid_box, ports [{index, type, role, flow, at, outward}], visual_up, reversible_flow, has_cursor, controls and, for a rocket engine, engine (topic engine).",
-        "keys": "prefab_name, prefab_hash, display_name, build_states, runtime_type, placement, grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells [{x, y, z}], render_box {min, max, size}, grid_box {min, max, size}, ports [{index, type, role, flow, at, outward}], visual_up {local, lying_allowed, source, verified}, reversible_flow {logic_type, value, reason}, has_cursor, controls {local, votes, considered, source, fallback}, engine {name, max_thrust_n, feed, inputs, ...}.",
+        "text": "Its own frame is unturned, x right, y up, z forward, origin snapped as the cursor snaps it. Returns prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cell_count (small_cells, the offsets themselves, only with include_small_cells; grid_box is their box), render_box, grid_box, ports [{index, type, role, flow, at, outward}], visual_up, reversible_flow, has_cursor, controls and, for a rocket engine, engine (topic engine).",
+        "keys": "prefab_name, prefab_hash, display_name, build_states, runtime_type, placement, grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cell_count, small_cells [{x, y, z}], render_box {min, max, size}, grid_box {min, max, size}, ports [{index, type, role, flow, at, outward}], visual_up {local, lying_allowed, source, verified}, reversible_flow {logic_type, value, reason}, has_cursor, controls {local, votes, considered, source, fallback}, engine {name, max_thrust_n, feed, inputs, ...}.",
         "topics": {
           "engine": {
             "summary": "A rocket engine's load-time thrust and its feed.",
@@ -2679,6 +2679,10 @@
       "params": {
         "type": "object",
         "properties": {
+          "include_small_cells": {
+            "type": "boolean",
+            "description": "Default false. true: list small_cells, each cell's offset; grid_box and small_cell_count are always given."
+          },
           "prefab": {
             "oneOf": [{"type": "string"}, {"type": "integer"}],
             "description": "Prefab name (StructureWallLight, as find_things and looking_at report them) or prefab hash."
@@ -2700,6 +2704,7 @@
           "small_grid": {"type": "boolean"},
           "rotation_axes": {"type": "string"},
           "allowed_rotations": {"type": "array"},
+          "small_cell_count": {"type": "integer"},
           "small_cells": {"type": "array"},
           "render_box": {"type": "object"},
           "grid_box": {"type": ["object", "null"]},
@@ -2831,7 +2836,7 @@
       "name": "find_items",
       "description": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.\nMore: tool_info {tool: \"find_items\"}",
       "help": {
-        "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type.",
+        "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type. Narrow a big world with prefab (exact) or prefab_contains, location (ground: loose in the world; player: carried; stored; machine_stock) and an area: min and max, or near with radius_m (for a machine's stock, where the machine stands).",
         "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
         "shared": ["items", "paging", "shaping", "player"]
       },
@@ -2840,6 +2845,10 @@
       "params": {
         "type": "object",
         "properties": {
+          "prefab": {
+            "type": "string",
+            "description": "The whole prefab name, any case, as place_structure and describe_prefab take it ('StructureFrame' is not 'StructureFrameCorner'); with prefab_contains both must match."
+          },
           "prefab_contains": {"type": "string", "description": "Part of the prefab name, any case ('IngotIron', 'Ore', 'Battery')."},
           "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
           "location": {
@@ -2848,6 +2857,14 @@
             "description": "ground, player, stored or machine_stock; default any (see items)."
           },
           "within_id": {"type": "string", "description": "Only items inside this thing at any depth, and its machine stock."},
+          "min": {
+            "description": "Box corner, [x, y, z] m; with max: only items whose outermost holder (a machine's stock: the machine) stands in the box."
+          },
+          "max": {"description": "The other box corner."},
+          "near": {
+            "description": "A point, [x, y, z] m; with radius_m: only items whose outermost holder is within radius_m of it."
+          },
+          "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000, "description": "With near, up to 1000."},
           "near_player_m": {
             "type": "number",
             "exclusiveMinimum": 0,
@@ -2874,6 +2891,13 @@
           "has_more": {"type": "boolean"},
           "local_player": {"type": ["object", "null"]}
         }
+      },
+      "x-read-by": {
+        "prefab": "Api/Shared/PrefabMatches.cs",
+        "min": "Api/Shared/AreaArgs.cs",
+        "max": "Api/Shared/AreaArgs.cs",
+        "near": "Api/Shared/AreaArgs.cs",
+        "radius_m": "Api/Shared/AreaArgs.cs"
       },
       "x-views": ["FindItemsView"],
       "x-shaping": "lists",
@@ -2971,9 +2995,9 @@
     },
     {
       "name": "find_things",
-      "description": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for kind, class, labels, broken state, atmosphere, maker and location. 8 per page, nearest first or by reference id. Read only.\nMore: tool_info {tool: \"find_things\"}",
+      "description": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for prefab, kind, class, labels, broken state, atmosphere, maker, location and area (a box, or near a point). 8 per page, nearest first or by reference id. Read only.\nMore: tool_info {tool: \"find_things\"}",
       "help": {
-        "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. min and max keep only things standing in a box (a thing in a slot stands where its outermost holder is). find_items is the tool for item quantities and machine stock.",
+        "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. An area keeps only things standing in it, a box (min and max) or a sphere (near with radius_m, not with a box); a thing in a slot stands where its outermost holder is. prefab keeps one prefab exactly, prefab_contains every prefab name holding the text: on a big base use both prefab and an area, as 'Frame' alone matches thousands of things. find_items is the tool for item quantities and machine stock.",
         "keys": "things [{made, reference_id, prefab_name, display_name, custom_name, game_name, kind, runtime_type, ...}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}.",
         "topics": {
           "reply": {
@@ -3003,6 +3027,10 @@
           "name_contains": {
             "type": "string",
             "description": "Part of the shown or the game's name, any case ('T1', 'Nitrogen', 'Liquid Tank')."
+          },
+          "prefab": {
+            "type": "string",
+            "description": "The whole prefab name, any case, as place_structure and describe_prefab take it ('StructureFrame' is not 'StructureFrameCorner'); with prefab_contains both must match."
           },
           "prefab_contains": {
             "type": "string",
@@ -3035,6 +3063,10 @@
           },
           "min": {"description": "Box corner, [x, y, z] m; with max: only things in the box."},
           "max": {"description": "The other box corner."},
+          "near": {
+            "description": "A point, [x, y, z] m; with radius_m: only things whose outermost holder is within radius_m of it."
+          },
+          "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000, "description": "With near, up to 1000."},
           "near_player_m": {
             "type": "number",
             "exclusiveMinimum": 0,
@@ -3515,7 +3547,7 @@
     },
     {
       "name": "item_totals",
-      "description": "Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most. Same filters as find_items. 12 types by default. Read only.\nMore: tool_info {tool: \"item_totals\"}",
+      "description": "Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most. Same filters as find_items, area and exact prefab included. 12 types by default. Read only.\nMore: tool_info {tool: \"item_totals\"}",
       "help": {
         "text": "Answers 'how much iron ingot do I have and where'. quantity includes machine stock (a furnace's or centrifuge's load gets its own row with prefab_name null and reagent set); item_count counts items only, machine_stock_entries the machine and reagent pairs. top_holders lists holders_limit holders per type (default 1, 0 leaves it out), each with kind (player, stored or machine_stock) and position.",
         "keys": "totals [{prefab_name, display_name, items, quantity, on_ground, carried, stored, machine_stock, ...}], prefab_count, item_count, machine_stock_entries.",
@@ -3526,6 +3558,10 @@
       "params": {
         "type": "object",
         "properties": {
+          "prefab": {
+            "type": "string",
+            "description": "The whole prefab name, any case, as place_structure and describe_prefab take it ('StructureFrame' is not 'StructureFrameCorner'); with prefab_contains both must match."
+          },
           "prefab_contains": {"type": "string", "description": "Part of the prefab name, any case ('IngotIron', 'Ore', 'Battery')."},
           "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
           "location": {
@@ -3534,6 +3570,14 @@
             "description": "ground, player, stored or machine_stock; default any (see items)."
           },
           "within_id": {"type": "string", "description": "Only items inside this thing at any depth, and its machine stock."},
+          "min": {
+            "description": "Box corner, [x, y, z] m; with max: only items whose outermost holder (a machine's stock: the machine) stands in the box."
+          },
+          "max": {"description": "The other box corner."},
+          "near": {
+            "description": "A point, [x, y, z] m; with radius_m: only items whose outermost holder is within radius_m of it."
+          },
+          "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000, "description": "With near, up to 1000."},
           "near_player_m": {
             "type": "number",
             "exclusiveMinimum": 0,
@@ -3557,6 +3601,13 @@
           "item_count": {"type": "integer"},
           "machine_stock_entries": {"type": "integer"}
         }
+      },
+      "x-read-by": {
+        "prefab": "Api/Shared/PrefabMatches.cs",
+        "min": "Api/Shared/AreaArgs.cs",
+        "max": "Api/Shared/AreaArgs.cs",
+        "near": "Api/Shared/AreaArgs.cs",
+        "radius_m": "Api/Shared/AreaArgs.cs"
       },
       "x-views": ["ItemTotalsView"],
       "x-shaping": "lists"
@@ -5671,8 +5722,8 @@
       "name": "plan_cable_route",
       "description": "Find a cable route on the small grid between ends, ports or networks, and dry-run it with place_cables: frames first, trees from several starts, trunks, reroutes. Answers place_arguments to build it. Read only.\nMore: tool_info {tool: \"plan_cable_route\"}",
       "help": {
-        "text": "grade (default heavy), join, allow_bridge, allow_split and from_id pass on to the dry run. A device on several cable networks, such as an APC, needs its port named.",
-        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
+        "text": "grade (default heavy), join, allow_bridge, allow_split and from_id pass on to the dry run. A device on several cable networks, such as an APC, needs its port named. summary true gives dry_run_summary in place of dry_run: status, ready, problems in full, warnings as codes, cells_total, the counts the run would place, keep and remove, air_cells, would_bridge and would_split counts, and needed [{prefab_name, needed, available}]; the route and place_arguments stay. A fraction of the size.",
+        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, dry_run_summary {status, ready, problems, warnings, ...}, notes, resolved_networks.",
         "shared": ["routing", "runs", "networks", "doors", "lint", "materials"]
       },
       "class": "read",
@@ -5825,6 +5876,10 @@
           "include_links": {"type": "boolean", "description": "true: list every added and lost link."},
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
+          "summary": {
+            "type": "boolean",
+            "description": "Default false. true: dry_run_summary, the dry run in short, in place of dry_run."
+          },
           "limit": {
             "type": "integer",
             "minimum": 0,
@@ -5843,6 +5898,7 @@
           "failure": {"type": ["string", "null"]},
           "place_arguments": {},
           "dry_run": {"type": ["object", "null"]},
+          "dry_run_summary": {"type": "object"},
           "notes": {"type": "array"},
           "resolved_networks": {
             "type": "array",
@@ -5859,7 +5915,7 @@
       "description": "Find a chute route from a source to a sink and dry-run it with place_chutes and every flow guard. Answers place_arguments to build it. Read only.\nMore: tool_info {tool: \"plan_chute_route\"}",
       "help": {
         "text": "plan_cable_route for chutes: from is the source and to the sink. The search never passes through a cell holding a chute, cable, pipe, device or other small-grid thing; a reroute keeps the old run's direction where the flow fixes it.",
-        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
+        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, dry_run_summary {status, ready, problems, warnings, ...}, notes, resolved_networks.",
         "topics": {
           "ends": {
             "summary": "Which ends can be a from or a to.",
@@ -6014,6 +6070,10 @@
           "include_links": {"type": "boolean", "description": "true: list every added and lost link."},
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
+          "summary": {
+            "type": "boolean",
+            "description": "Default false. true: dry_run_summary, the dry run in short, in place of dry_run."
+          },
           "limit": {
             "type": "integer",
             "minimum": 0,
@@ -6032,6 +6092,7 @@
           "failure": {"type": ["string", "null"]},
           "place_arguments": {},
           "dry_run": {"type": ["object", "null"]},
+          "dry_run_summary": {"type": "object"},
           "notes": {"type": "array"},
           "resolved_networks": {
             "type": "array",
@@ -6048,7 +6109,7 @@
       "description": "Find a pipe route between ends, ports, tanks or networks, and dry-run it with place_pipes and its pipe guards; grade required. Answers place_arguments to build it. Read only.\nMore: tool_info {tool: \"plan_pipe_route\"}",
       "help": {
         "text": "plan_cable_route for pipes: the same ends, rules, trees, trunks and reroutes; the search never passes through a cell holding a pipe, nor along a cable's axis in a cell.",
-        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, notes, resolved_networks.",
+        "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, dry_run_summary {status, ready, problems, warnings, ...}, notes, resolved_networks.",
         "shared": ["routing", "runs", "networks", "doors", "lint", "materials", "pipes"]
       },
       "class": "read",
@@ -6201,6 +6262,10 @@
           "include_links": {"type": "boolean", "description": "true: list every added and lost link."},
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."},
           "include_network_devices": {"type": "boolean", "description": "true: list each network's devices and riding items."},
+          "summary": {
+            "type": "boolean",
+            "description": "Default false. true: dry_run_summary, the dry run in short, in place of dry_run."
+          },
           "limit": {
             "type": "integer",
             "minimum": 0,
@@ -6219,6 +6284,7 @@
           "failure": {"type": ["string", "null"]},
           "place_arguments": {},
           "dry_run": {"type": ["object", "null"]},
+          "dry_run_summary": {"type": "object"},
           "notes": {"type": "array"},
           "resolved_networks": {
             "type": "array",

@@ -165,10 +165,10 @@ class Version2Cases:
         mod = self.mod()
         game = self.client(mod)
         with self.assertRaises(stationgod.InvalidArgument) as raised:
-            game.call("find_things", prefab="x")
+            game.call("list_containers", prefab="x")
         self.assertIn("prefab_contains", raised.exception.message)
         self.assertEqual("client", raised.exception.data["checked_by"])
-        self.assertEqual([], mod.calls("find_things"))
+        self.assertEqual([], mod.calls("list_containers"))
 
     def test_the_stubs_call_through(self):
         mod = self.mod()

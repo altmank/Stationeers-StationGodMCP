@@ -2,8 +2,8 @@
   "name": "describe_prefab",
   "summary": "What a buildable prefab is before it stands anywhere, in its own frame: placement kind, the turns it takes, its cells, render box, ports, visual top and controls side. Read only.",
   "help": {
-    "text": "Its own frame is unturned, x right, y up, z forward, origin snapped as the cursor snaps it. Returns prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells, render_box, grid_box, ports [{index, type, role, flow, at, outward}], visual_up, reversible_flow, has_cursor, controls and, for a rocket engine, engine (topic engine).",
-    "keys": "prefab_name, prefab_hash, display_name, build_states, runtime_type, placement, grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cells [{x, y, z}], render_box {min, max, size}, grid_box {min, max, size}, ports [{index, type, role, flow, at, outward}], visual_up {local, lying_allowed, source, verified}, reversible_flow {logic_type, value, reason}, has_cursor, controls {local, votes, considered, source, fallback}, engine {name, max_thrust_n, feed, inputs, ...}.",
+    "text": "Its own frame is unturned, x right, y up, z forward, origin snapped as the cursor snaps it. Returns prefab_name, prefab_hash, display_name, build_states, runtime_type, placement (grid, face or face_mount), grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cell_count (small_cells, the offsets themselves, only with include_small_cells; grid_box is their box), render_box, grid_box, ports [{index, type, role, flow, at, outward}], visual_up, reversible_flow, has_cursor, controls and, for a rocket engine, engine (topic engine).",
+    "keys": "prefab_name, prefab_hash, display_name, build_states, runtime_type, placement, grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cell_count, small_cells [{x, y, z}], render_box {min, max, size}, grid_box {min, max, size}, ports [{index, type, role, flow, at, outward}], visual_up {local, lying_allowed, source, verified}, reversible_flow {logic_type, value, reason}, has_cursor, controls {local, votes, considered, source, fallback}, engine {name, max_thrust_n, feed, inputs, ...}.",
     "topics": {
       "engine": {
         "summary": "A rocket engine's load-time thrust and its feed.",
@@ -21,6 +21,10 @@
   "params": {
     "type": "object",
     "properties": {
+      "include_small_cells": {
+        "type": "boolean",
+        "description": "Default false. true: list small_cells, each cell's offset; grid_box and small_cell_count are always given."
+      },
       "prefab": {
         "oneOf": [{"type": "string"}, {"type": "integer"}],
         "description": "Prefab name (StructureWallLight, as find_things and looking_at report them) or prefab hash."
@@ -42,6 +46,7 @@
       "small_grid": {"type": "boolean"},
       "rotation_axes": {"type": "string"},
       "allowed_rotations": {"type": "array"},
+      "small_cell_count": {"type": "integer"},
       "small_cells": {"type": "array"},
       "render_box": {"type": "object"},
       "grid_box": {"type": ["object", "null"]},

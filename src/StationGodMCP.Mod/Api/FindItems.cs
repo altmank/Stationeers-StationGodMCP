@@ -20,7 +20,7 @@ internal static class FindItemsApi
 
     internal static FindItemsView Handle(Args args)
     {
-        ItemFilter filter = ItemFilter.Parse(args);
+        ItemFilter filter = ItemFilter.ParseWithArea(args);
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
         ListOrder order = ListOrderArg.From(args);

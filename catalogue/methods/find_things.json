@@ -1,8 +1,8 @@
 {
   "name": "find_things",
-  "summary": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for kind, class, labels, broken state, atmosphere, maker and location. 8 per page, nearest first or by reference id. Read only.",
+  "summary": "Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals. Filters for prefab, kind, class, labels, broken state, atmosphere, maker, location and area (a box, or near a point). 8 per page, nearest first or by reference id. Read only.",
   "help": {
-    "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. min and max keep only things standing in a box (a thing in a slot stands where its outermost holder is). find_items is the tool for item quantities and machine stock.",
+    "text": "name_contains matches the shown name (the Labeller name when there is one) and the game's own name under a label, so 'T1' and 'Portable Liquid Tank' both find a tank labelled T1. An area keeps only things standing in it, a box (min and max) or a sphere (near with radius_m, not with a box); a thing in a slot stands where its outermost holder is. prefab keeps one prefab exactly, prefab_contains every prefab name holding the text: on a big base use both prefab and an area, as 'Frame' alone matches thousands of things. find_items is the tool for item quantities and machine stock.",
     "keys": "things [{made, reference_id, prefab_name, display_name, custom_name, game_name, kind, runtime_type, ...}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}.",
     "topics": {
       "reply": {
@@ -32,6 +32,10 @@
       "name_contains": {
         "type": "string",
         "description": "Part of the shown or the game's name, any case ('T1', 'Nitrogen', 'Liquid Tank')."
+      },
+      "prefab": {
+        "type": "string",
+        "description": "The whole prefab name, any case, as place_structure and describe_prefab take it ('StructureFrame' is not 'StructureFrameCorner'); with prefab_contains both must match."
       },
       "prefab_contains": {
         "type": "string",
@@ -64,6 +68,10 @@
       },
       "min": {"description": "Box corner, [x, y, z] m; with max: only things in the box."},
       "max": {"description": "The other box corner."},
+      "near": {
+        "description": "A point, [x, y, z] m; with radius_m: only things whose outermost holder is within radius_m of it."
+      },
+      "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000, "description": "With near, up to 1000."},
       "near_player_m": {
         "type": "number",
         "exclusiveMinimum": 0,

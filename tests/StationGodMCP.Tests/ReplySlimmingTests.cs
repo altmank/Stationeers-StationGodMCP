@@ -25,11 +25,12 @@ public sealed class ReplySlimmingTests
     public void AnUnknownArgumentFromAPipeClientIsRefusedNamingTheOneMeant()
     {
         ApiException refused = Assert.Throws<ApiException>(() =>
-            Declared.Check("find_things", JObject.Parse("""{"prefab":"ItemDirtyOre"}""")));
+            Declared.Check("list_containers", JObject.Parse("""{"prefab":"ItemDirtyOre"}""")));
 
         Assert.Equal("invalid_argument", refused.Code);
         Assert.StartsWith("Unknown argument 'prefab'; did you mean 'prefab_contains'?", refused.Message);
-        Assert.Contains("find_things takes: broken, has_atmosphere, kind,", refused.Message);
+        Assert.Contains("list_containers takes: ", refused.Message);
+        Assert.Contains("prefab_contains", refused.Message);
         Assert.EndsWith("Nothing was run.", refused.Message);
     }
 

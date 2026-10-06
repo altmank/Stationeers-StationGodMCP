@@ -97,12 +97,12 @@ or a text. A tool whose sizes match changed nothing.
 | control_ic_execution | none | | 621 | 621 |
 | deep_miner_spots | profiles, spots, beacons | count 5 | 6,838 | 6,838 |
 | describe_device | logic types (45 to 75), an uplink's choices; a fixed note | count and writable names; the list with include_logic_types; note in the description | 5,448 | 2,854 |
-| describe_prefab | rotations, small cells, ports | the prefab | 5,173 | 5,173 |
+| describe_prefab | rotations, small cells, ports | the prefab; small cells counted, listed with include_small_cells (1.28.3) | 5,852 | 5,132 |
 | dish_aim | none | | 411 | 411 |
 | feed_paths | every device on the network, rooms | devices 15, unreached 10 (x-default-limits) | 35,047 | 6,907 |
-| find_items | a page of items with their holders; how_to_get per stock entry | page 10 (was 100); how_to_get in the description | 61,306 | 6,316 |
+| find_items | a page of items with their holders; how_to_get per stock entry | page 10 (was 100); how_to_get in the description; prefab and an area narrow it | 61,306 | 6,316 |
 | find_spot | spots, reasons | limit 5, reasons 8 | 2,833 | 2,833 |
-| find_things | a page of things | page 8 (was 100) | 94,020 | 7,724 |
+| find_things | a page of things | page 8 (was 100); prefab and an area (min/max, near/radius_m) narrow it | 94,020 | 7,724 |
 | game_clock | none | | 84 | 84 |
 | get_ic_source | the source | exempt: the source is the reply; output_file | 60 KB | 60 KB |
 | get_ic_status | the source; an IC10 runtime on a Lua chip; the Lua log | source with include_source; runtime null for Lua; log_lines 5 (was 20) | about 66,000 | 6,059 |
@@ -124,7 +124,7 @@ or a text. A tool whose sizes match changed nothing.
 | network_snapshot | devices, each with every readable value | max_devices 2 (was 256) | 407,976 | 6,894 |
 | outer_frames | a page of frames | page 20 (was 200) | 66,263 | 6,863 |
 | place_cables, place_pipes, place_chutes, remove_cables, remove_pipes, remove_chutes, plan_removal | cells, chute riding items, a job's placed pieces | limit 5 (was 200); items with include_network_devices; poll log counts | 121,895 | 6,915 |
-| plan_cable_route, plan_pipe_route, plan_chute_route | the dry run's cells | as place_* | 122,727 | 7,747 |
+| plan_cable_route, plan_pipe_route, plan_chute_route | the dry run's cells | as place_*; summary: the dry run in short, 1,544 (1.28.3) | 122,727 | 7,747 |
 | place_structure, remove_structure | layouts on a refusal; fixed notes | layouts on a refusal with verbose; notes with include_notes | 3,941 | 3,839 |
 | planet | gases, reservoirs | the planet | 5,160 | 5,160 |
 | plant_genes | 19 genes per plant, each with its meaning and four fixed range numbers | meaning with include_notes; range numbers in the description | 57,116 | 7,488 |

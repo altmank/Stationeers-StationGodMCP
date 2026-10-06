@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:aaf3a58da3e5efc703c3ce24ec15b634542abb70c435d0a45b794b42b82f98ed'
-MOD_VERSION = '1.28.2'
+CATALOGUE_HASH = 'sha256:f0f8ae1881c8392a849e188da8ff3095ea8df6d5a23feb2700ec95737812fe9e'
+MOD_VERSION = '1.28.3'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -231,7 +231,7 @@ TABLE = {'catalogue': {'class': 'read',
                      'effects': [],
                      'paging': None,
                      'duration': None,
-                     'params': ['prefab'],
+                     'params': ['include_small_cells', 'prefab'],
                      'required': ['prefab'],
                      'shaping': 'lists',
                      'protocol': False},
@@ -266,10 +266,15 @@ TABLE = {'catalogue': {'class': 'read',
                                     "reference id first (stock: its machine's), then by name, loose items before "
                                     'stock'},
                 'duration': None,
-                'params': ['prefab_contains',
+                'params': ['prefab',
+                           'prefab_contains',
                            'name_contains',
                            'location',
                            'within_id',
+                           'min',
+                           'max',
+                           'near',
+                           'radius_m',
                            'near_player_m',
                            'limit',
                            'offset',
@@ -310,6 +315,7 @@ TABLE = {'catalogue': {'class': 'read',
                                      'first'},
                  'duration': None,
                  'params': ['name_contains',
+                            'prefab',
                             'prefab_contains',
                             'kind',
                             'labelled_only',
@@ -320,6 +326,8 @@ TABLE = {'catalogue': {'class': 'read',
                             'made_since',
                             'min',
                             'max',
+                            'near',
+                            'radius_m',
                             'near_player_m',
                             'location',
                             'limit',
@@ -419,10 +427,15 @@ TABLE = {'catalogue': {'class': 'read',
                  'effects': [],
                  'paging': None,
                  'duration': None,
-                 'params': ['prefab_contains',
+                 'params': ['prefab',
+                            'prefab_contains',
                             'name_contains',
                             'location',
                             'within_id',
+                            'min',
+                            'max',
+                            'near',
+                            'radius_m',
                             'near_player_m',
                             'limit',
                             'holders_limit'],
@@ -784,6 +797,7 @@ TABLE = {'catalogue': {'class': 'read',
                                  'include_links',
                                  'include_notes',
                                  'include_network_devices',
+                                 'summary',
                                  'limit'],
                       'required': [],
                       'shaping': 'lists',
@@ -823,6 +837,7 @@ TABLE = {'catalogue': {'class': 'read',
                                  'include_links',
                                  'include_notes',
                                  'include_network_devices',
+                                 'summary',
                                  'limit'],
                       'required': [],
                       'shaping': 'lists',
@@ -862,6 +877,7 @@ TABLE = {'catalogue': {'class': 'read',
                                 'include_links',
                                 'include_notes',
                                 'include_network_devices',
+                                'summary',
                                 'limit'],
                      'required': [],
                      'shaping': 'lists',
@@ -1674,12 +1690,12 @@ class Methods:
         """
         return self.call('describe_device', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'include_logic_types': include_logic_types}, **options)
 
-    def describe_prefab(self, *, prefab: str | int | None = None, **options) -> dict:
+    def describe_prefab(self, *, include_small_cells: bool | None = None, prefab: str | int | None = None, **options) -> dict:
         """What a buildable prefab is before it stands anywhere, in its own frame: placement kind, the turns it takes, its cells, render box, ports, visual top and controls side.
 
-        Class: read. Arguments: prefab (required).
+        Class: read. Arguments: include_small_cells, prefab (required).
         """
-        return self.call('describe_prefab', **{'prefab': prefab}, **options)
+        return self.call('describe_prefab', **{'include_small_cells': include_small_cells, 'prefab': prefab}, **options)
 
     def dish_aim(self, *, dish_id: str | None = None, contact_id: str | None = None, **options) -> dict:
         """Work out the Horizontal and Vertical (logic degrees) that point a satellite dish at a trader contact, from the dish's own model; nothing moves.
@@ -1695,12 +1711,12 @@ class Methods:
         """
         return self.call('feed_paths', **{'root': root, 'network_id': network_id, 'port': port, 'kind': kind}, **options)
 
-    def find_items(self, *, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
+    def find_items(self, *, prefab: str | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
         """Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock.
 
-        Class: read. Arguments: prefab_contains, name_contains, location, within_id, near_player_m, limit, offset, order.
+        Class: read. Arguments: prefab, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, offset, order.
         """
-        return self.call('find_items', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset, 'order': order}, **options)
+        return self.call('find_items', **{'prefab': prefab, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset, 'order': order}, **options)
 
     def find_spot(self, *, prefab: str | int | None = None, near: object | None = None, plane: str | None = None, side: str | None = None, looking: bool | None = None, around: object | None = None, room_id: str | None = None, facing: str | None = None, radius_m: float | None = None, require: dict | None = None, limit: int | None = None, max_checks: int | None = None, **options) -> dict:
         """Ranked places for a prefab near a point, on one face plane or on a room's walls, each checked with the game's placement cursor and the layout preview; answers place_arguments.
@@ -1709,12 +1725,12 @@ class Methods:
         """
         return self.call('find_spot', **{'prefab': prefab, 'near': near, 'plane': plane, 'side': side, 'looking': looking, 'around': around, 'room_id': room_id, 'facing': facing, 'radius_m': radius_m, 'require': require, 'limit': limit, 'max_checks': max_checks}, **options)
 
-    def find_things(self, *, name_contains: str | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
+    def find_things(self, *, name_contains: str | None = None, prefab: str | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
         """Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals.
 
-        Class: read. Arguments: name_contains, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near_player_m, location, limit, offset, order.
+        Class: read. Arguments: name_contains, prefab, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near, radius_m, near_player_m, location, limit, offset, order.
         """
-        return self.call('find_things', **{'name_contains': name_contains, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset, 'order': order}, **options)
+        return self.call('find_things', **{'name_contains': name_contains, 'prefab': prefab, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset, 'order': order}, **options)
 
     def game_clock(self, **options) -> dict:
         """Read the game clock: game_time_s, paused, time_of_day_ratio and days_past.
@@ -1765,12 +1781,12 @@ class Methods:
         """
         return self.call('inspect_slots', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'slot_index': slot_index}, **options)
 
-    def item_totals(self, *, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, holders_limit: int | None = None, **options) -> dict:
+    def item_totals(self, *, prefab: str | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, holders_limit: int | None = None, **options) -> dict:
         """Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most.
 
-        Class: read. Arguments: prefab_contains, name_contains, location, within_id, near_player_m, limit, holders_limit.
+        Class: read. Arguments: prefab, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, holders_limit.
         """
-        return self.call('item_totals', **{'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'holders_limit': holders_limit}, **options)
+        return self.call('item_totals', **{'prefab': prefab, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'limit': limit, 'holders_limit': holders_limit}, **options)
 
     def label(self, *, reference_id: str | None = None, name: str | None = None, labels: list | None = None, **options) -> dict:
         """Rename things as the hand Labeller does: one with reference_id and name, or up to 64 with labels.
@@ -1912,26 +1928,26 @@ class Methods:
         """
         return self.call('place_structure', **{'include_notes': include_notes, 'placements': placements, 'prefab': prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient': orient, 'above_floor_m': above_floor_m, 'build_state': build_state, 'label': label, 'color': color, 'from_id': from_id, 'include_footprint_cells': include_footprint_cells, 'free': free, 'allow_door_keepout': allow_door_keepout, 'wait': wait, 'dry_run': dry_run, 'confirm': confirm, 'verbose': verbose, 'job_id': job_id, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
 
-    def plan_cable_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
+    def plan_cable_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, summary: bool | None = None, limit: int | None = None, **options) -> dict:
         """Find a cable route on the small grid between ends, ports or networks, and dry-run it with place_cables: frames first, trees from several starts, trunks, reroutes.
 
-        Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, limit.
+        Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, summary, limit.
         """
-        return self.call('plan_cable_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit}, **options)
+        return self.call('plan_cable_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'summary': summary, 'limit': limit}, **options)
 
-    def plan_chute_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
+    def plan_chute_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, summary: bool | None = None, limit: int | None = None, **options) -> dict:
         """Find a chute route from a source to a sink and dry-run it with place_chutes and every flow guard.
 
-        Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, limit.
+        Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, summary, limit.
         """
-        return self.call('plan_chute_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit}, **options)
+        return self.call('plan_chute_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'summary': summary, 'limit': limit}, **options)
 
-    def plan_pipe_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
+    def plan_pipe_route(self, *, from_: object | None = None, to: dict | None = None, reroute: dict | None = None, allow_door_keepout: bool | None = None, reserve_cells: list | None = None, reserve_ports: list | None = None, grade: str | None = None, frames_first: bool | None = None, prefer: str | None = None, assume_removed: list | None = None, trunk: dict | None = None, inside_frames: bool | None = None, avoid_room_interior: bool | None = None, avoid_walkways: bool | None = None, avoid_networks: object | None = None, min_bends: bool | None = None, axis_order: str | None = None, max_length: int | None = None, margin_m: float | None = None, join: str | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, allow_split: bool | None = None, allow_split_long: bool | None = None, from_id: str | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, summary: bool | None = None, limit: int | None = None, **options) -> dict:
         """Find a pipe route between ends, ports, tanks or networks, and dry-run it with place_pipes and its pipe guards; grade required.
 
-        Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, limit.
+        Class: read. Arguments: from_, to, reroute, allow_door_keepout, reserve_cells, reserve_ports, grade, frames_first, prefer, assume_removed, trunk, inside_frames, avoid_room_interior, avoid_walkways, avoid_networks, min_bends, axis_order, max_length, margin_m, join, allow_bridge, root, join_to, join_trunk, allow_split, allow_split_long, from_id, include_links, include_notes, include_network_devices, summary, limit.
         """
-        return self.call('plan_pipe_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'limit': limit}, **options)
+        return self.call('plan_pipe_route', **{'from': from_, 'to': to, 'reroute': reroute, 'allow_door_keepout': allow_door_keepout, 'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'grade': grade, 'frames_first': frames_first, 'prefer': prefer, 'assume_removed': assume_removed, 'trunk': trunk, 'inside_frames': inside_frames, 'avoid_room_interior': avoid_room_interior, 'avoid_walkways': avoid_walkways, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin_m': margin_m, 'join': join, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'allow_split': allow_split, 'allow_split_long': allow_split_long, 'from_id': from_id, 'include_links': include_links, 'include_notes': include_notes, 'include_network_devices': include_network_devices, 'summary': summary, 'limit': limit}, **options)
 
     def plan_removal(self, *, kind: str | None = None, reference_ids: list | None = None, waypoints: list | None = None, cells: list | None = None, network_id: str | dict | None = None, root: str | None = None, allow_split: bool | None = None, from_id: str | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, **options) -> dict:
         """Price a removal without doing it: the dry run of remove_cables, remove_pipes or remove_chutes (kind) for ids, cells or a whole network.
