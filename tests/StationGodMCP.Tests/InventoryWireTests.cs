@@ -120,18 +120,18 @@ public sealed class InventoryWireTests
         ItemTotalsView view = new ItemTotalsView(
             new List<PrefabTotalView>
             {
-                new PrefabTotalView("ItemIronIngot", "Iron", null, 2, new PlaceAmounts(80.0, 30.0, 50.0, 0.0, 0.0),
+                new PrefabTotalView("ItemIronIngot", "Iron", null, 2, new PlaceAmounts(80.0, 30.0, 50.0, 0.0, 0.0, 0.0),
                     new List<HolderTotalView>
                     {
                         new HolderTotalView(new ThingView(new ThingId(1), "Character", "Player"), 50.0, "player",
                             new PositionView(1.0, 2.0, 3.0))
                     })
             },
-            1, 2, 0);
+            1, 2, 0, 0);
         JObject oldShape = JObject.FromObject(old);
         WireCheck.SameAfterRenames(oldShape, view, new Dictionary<string, string>(),
             "totals[].machine_stock", "totals[].reagent", "totals[].top_holders[].kind",
-            "totals[].top_holders[].position", "machine_stock_entries");
+            "totals[].top_holders[].position", "machine_stock_entries", "totals[].silo", "silo_entries");
     }
 
     [Fact]
@@ -141,16 +141,16 @@ public sealed class InventoryWireTests
             new List<PrefabTotalView>
             {
                 new PrefabTotalView("ItemElectrumIngot", "Ingot (Electrum)", null, 1,
-                    new PlaceAmounts(73.0, 10.0, 0.0, 0.0, 63.0),
+                    new PlaceAmounts(73.0, 10.0, 0.0, 0.0, 63.0, 0.0),
                     new List<HolderTotalView>
                     {
                         new HolderTotalView(new ThingView(new ThingId(16449), "StructureHydraulicPipeBender", "Bender"),
                             63.0, "machine_stock", new PositionView(1.0, 2.0, 3.0))
                     }),
-                new PrefabTotalView(null, "Iron", "Iron", 0, new PlaceAmounts(30.0, 0.0, 0.0, 0.0, 30.0),
+                new PrefabTotalView(null, "Iron", "Iron", 0, new PlaceAmounts(30.0, 0.0, 0.0, 0.0, 30.0, 0.0),
                     new List<HolderTotalView>())
             },
-            2, 1, 2);
+            2, 1, 2, 0);
         var expected = new
         {
             totals = new List<object>
@@ -159,7 +159,7 @@ public sealed class InventoryWireTests
                 {
                     prefab_name = (string?)"ItemElectrumIngot", display_name = "Ingot (Electrum)", items = 1,
                     quantity = 73.0, on_ground = 10.0, carried = 0.0, stored = 0.0, machine_stock = 63.0,
-                    reagent = (string?)null,
+                    silo = 0.0, reagent = (string?)null,
                     top_holders = new List<object>
                     {
                         new
@@ -173,11 +173,11 @@ public sealed class InventoryWireTests
                 new
                 {
                     prefab_name = (string?)null, display_name = "Iron", items = 0, quantity = 30.0, on_ground = 0.0,
-                    carried = 0.0, stored = 0.0, machine_stock = 30.0, reagent = (string?)"Iron",
+                    carried = 0.0, stored = 0.0, machine_stock = 30.0, silo = 0.0, reagent = (string?)"Iron",
                     top_holders = new List<object>()
                 }
             },
-            prefab_count = 2, item_count = 1, machine_stock_entries = 2
+            prefab_count = 2, item_count = 1, machine_stock_entries = 2, silo_entries = 0
         };
         WireCheck.Same(expected, view);
     }

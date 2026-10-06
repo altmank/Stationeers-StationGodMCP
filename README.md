@@ -12,8 +12,9 @@ itself applies.
   once, and record how values change over time.
 - **Chips:** read, write, compile, pause, step and restart IC10 programs, and set IC Housing pins. With
   StationeersLua, also Lua chips in IC Housings, consoles, computers, tablets and visors.
-- **Items, rooms and planet:** find, count and move items, label and paint things, move gas; rooms and their air, the
-  planet's atmosphere and weather, plants and their genes, damage, fire risk, food and water.
+- **Items, rooms and planet:** find, count and move items (straight into and out of an SDB Silo too), label and
+  paint things, move gas; rooms and their air, the planet's atmosphere and weather, plants and their genes, damage,
+  fire risk, food and water.
 - **Solar, dishes and traders:** aim solar panels and satellite dishes, check landing pads, buy and sell with a
   landed trader.
 - **Building:** plan, lay, remove and reroute cable, pipe and chute runs; upgrade and tidy whole networks; swap walls,
@@ -72,7 +73,7 @@ the APC to the new room along the frames". Each tool's own description is short;
 
 ## Tools
 
-99 tools, in these areas, plus `tool_info`, the help. Each page lists its tools with what they take and give back.
+101 tools, in these areas, plus `tool_info`, the help. Each page lists its tools with what they take and give back.
 
 | Area | Tools | Page |
 | --- | --- | --- |
@@ -86,6 +87,7 @@ the APC to the new room along the frames". Each tool's own description is short;
 | Walls, frames and structures | `replace_walls`, `replace_frames`, `describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `lint_rules`, `check_replaceable`, `show_preview`, `highlight`, `place_structure`, `advance_build_state`, `remove_structure`, `undo_job` | [walls-frames-structures.md](docs/walls-frames-structures.md), [lint-rules.md](docs/lint-rules.md) |
 | Rockets | `rocket_status`, `rocket_forecast`, `rocket_mining_options`, `rocket_flight_log` | [rockets.md](docs/rockets.md) |
 | Blueprints | `paste_blueprint` | [blueprints.md](docs/blueprints.md) |
+| SDB Silo | `silo_withdraw`, `silo_deposit` (and `container_contents` on a silo) | [silo.md](docs/silo.md) |
 | Ingot Vault (mod) | `vault_contents`, `vault_deposit`, `vault_withdraw` | [ingot-vault.md](docs/ingot-vault.md) |
 
 Every building tool works the same way: a **dry run** by default that changes nothing and lists every problem; a real
@@ -175,6 +177,7 @@ them changes instead of reading them every tick. The protocol itself is in
 - [Devices, logic and console](docs/devices-and-logic.md)
 - [Chips: IC10 and Lua](docs/chips.md)
 - [Items](docs/items.md)
+- [SDB Silo](docs/silo.md)
 - [Air, planet, plants and survival](docs/air-planet-and-plants.md)
 - [Solar, dishes and traders](docs/solar-and-traders.md)
 - [Building cables, pipes and chutes](docs/building.md)

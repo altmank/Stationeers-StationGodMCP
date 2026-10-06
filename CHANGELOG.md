@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.29.0
+
+Things go straight into and out of an SDB Silo, with the silo's own bookkeeping; nothing is dropped on the ground.
+
+- **New tool `silo_withdraw`.** Takes items of one prefab (`prefab_name` or `prefab_hash`) out of a silo straight into
+  a holder's slots (`to_id`, default the player; `to_slot`, an index or `auto`), front of the store first, as the
+  silo exports. Stacks holding nothing are pooled: matching stacks are topped up, then new full stacks fill empty
+  slots, and the store goes down entry by entry, the last entry keeping the rest. A thing that is not a stack, a thing
+  holding things (a backpack with its contents, a canister with its gas) and stored food come out whole, each into an
+  empty slot, as the silo's export loads them; food comes out rotten, as from the export. A quantity that would split
+  such an entry is refused with the quantities that do not. `allow_ground` puts what does not fit in front of the
+  holder; otherwise `no_room` and nothing changes. The reply gives the entries taken, where everything went, the
+  prefab's total before and after, and the entry count. Dry run by default.
+- **New tool `silo_deposit`.** Puts things into a silo from wherever they are, each as one entry at the back of the
+  store with everything it holds, as the silo's import stores them (then destroys them); part of a stack takes only
+  the part. By `items`, `reference_ids` or a `find_items` filter (`limit`, default 64). The silo's import rule applies
+  (items whose slot class fits its import slot), and its 600 entries (an import the silo is saving counts):
+  `silo_full`. Dry run by default.
+- **A silo's store is visible.** `container_contents` on a silo adds `silo`: the count, capacity, import and export
+  in progress, an IC's DispenseSlot and a page of entries (`entries_limit`, default 10; `entries_offset`), each with
+  its prefab, quantity, contents and whether it rots when taken. `find_items` and `item_totals` count every entry and
+  everything stored inside one at the new `location: silo` (`reference_id` null; `item_totals` adds `silo` and
+  `silo_entries`). `move_item` given the id of a thing a silo stores names the silo and `silo_withdraw`.
+- **Refusals:** `not_a_silo`, `not_in_silo`, `silo_unpowered` (the silo imports and exports only when built, on and
+  powered), `silo_busy` (an IC's DispenseSlot names an entry a withdrawal would take or move; a deposited thing sits in
+  a silo's slot), `silo_full`; `not_enough_stock`, `no_room` and the slot refusals as for the vault tools.
+- **Multiplayer:** host only. Clients get every change through the game's own sync (new things as the silo's export
+  sends them, destroyed things, stack changes, the silo's synced count); no StationGod message is involved, and
+  players without the mod see items appear and the count change. Only the host keeps a silo's store: on a client
+  `container_contents` shows `entries_known: false`.
+- See [docs/silo.md](docs/silo.md).
+
 ## 1.28.3
 
 Smaller answers on a big base.

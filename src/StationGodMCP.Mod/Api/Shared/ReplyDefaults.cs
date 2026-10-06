@@ -33,6 +33,8 @@ internal static class ReplyDefaults
     internal const int SwapListed = 5;
     internal const int RunListed = 5;
     internal const int VaultDepositItems = 256;
+    internal const int SiloDepositItems = 64;
+    internal const int SiloEntries = 10;
     internal const int SnapshotDevices = 2;
     internal const int RuntimeMethods = 10;
 

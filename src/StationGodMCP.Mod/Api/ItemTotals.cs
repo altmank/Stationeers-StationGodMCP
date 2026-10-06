@@ -16,7 +16,7 @@ namespace StationGodMCP.Api;
 /// (default ReplyDefaults.ItemTotalHolders; 0 leaves top_holders out). Quantity is
 /// the stack size for IQuantity items and 1 for anything else (WorldItems.QuantityOf). Machine stock (MachineStock)
 /// adds to the same rows: fabricator stock under the ingot it ejects as, a working load under its reagent in a row of
-/// its own (prefab_name null, reagent set). Read only.
+/// its own (prefab_name null, reagent set). What SDB Silos store (SiloStock) adds to the rows under silo. Read only.
 /// </summary>
 internal static class ItemTotalsApi
 {
@@ -36,6 +36,7 @@ internal static class ItemTotalsApi
         int holders = args.OptionalInt("holders_limit", 0, MaximumHolders) ?? DefaultHolders;
         List<ItemRecord> records = WorldItems.Collect(filter, origin);
         List<StockRecord> stock = MachineStock.Collect(filter, origin);
+        List<SiloRecord> silos = SiloStock.Collect(filter, origin);
         Dictionary<string, PrefabTally> byKey = new Dictionary<string, PrefabTally>(StringComparer.Ordinal);
         List<PrefabTally> tallies = new List<PrefabTally>();
         foreach (ItemRecord record in records)
@@ -50,6 +51,12 @@ internal static class ItemTotalsApi
                 ? TallyFor(byKey, tallies, record.IngotPrefab, record.IngotPrefab, record.IngotName, null)
                 : TallyFor(byKey, tallies, ReagentKeyPrefix + record.Reagent, null, record.DisplayName, record.Reagent);
             tally.Add(record);
+        }
+
+        foreach (SiloRecord record in silos)
+        {
+            string prefab = record.PrefabName ?? string.Empty;
+            TallyFor(byKey, tallies, prefab, prefab, record.DisplayName, null).Add(record);
         }
 
         tallies.Sort(static (a, b) => PrefabTally.LargestFirst(a, b));
@@ -69,7 +76,7 @@ internal static class ItemTotalsApi
             Truncations.Capped("totals[].top_holders", holdersListed, holdersFound, "holders_limit", MaximumHolders);
         }
 
-        return new ItemTotalsView(totals, tallies.Count, records.Count, stock.Count);
+        return new ItemTotalsView(totals, tallies.Count, records.Count, stock.Count, silos.Count);
     }
 
     private static PrefabTally TallyFor(Dictionary<string, PrefabTally> byKey, List<PrefabTally> tallies, string key,
@@ -96,11 +103,13 @@ internal sealed class PrefabTally
     private readonly List<HolderTally> _holders = new List<HolderTally>();
     private readonly Dictionary<long, HolderTally> _holdersById = new Dictionary<long, HolderTally>();
     private readonly Dictionary<long, HolderTally> _machinesById = new Dictionary<long, HolderTally>();
+    private readonly Dictionary<long, HolderTally> _silosById = new Dictionary<long, HolderTally>();
     private int _items;
     private double _onGround;
     private double _carried;
     private double _stored;
     private double _machineStock;
+    private double _silo;
 
     internal PrefabTally(string key, string? prefab, string? display, string? reagent)
     {
@@ -139,6 +148,13 @@ internal sealed class PrefabTally
         HolderIn(_machinesById, record.Machine, MachineStock.Location).Quantity += record.Quantity;
     }
 
+    internal void Add(SiloRecord record)
+    {
+        Quantity += record.Quantity;
+        _silo += record.Quantity;
+        HolderIn(_silosById, record.Silo, SiloStock.Location).Quantity += record.Quantity;
+    }
+
     // A machine can hold the same prefab both in its slots (stored) and as stock, so the two are tallied apart.
     private HolderTally HolderIn(Dictionary<long, HolderTally> byId, Thing root, string kind)
     {
@@ -165,7 +181,7 @@ internal sealed class PrefabTally
     /// <summary>The row with its topHolders largest holders; with 0, no holder list at all.</summary>
     internal PrefabTotalView ToView(int topHolders)
     {
-        PlaceAmounts amounts = new PlaceAmounts(Quantity, _onGround, _carried, _stored, _machineStock);
+        PlaceAmounts amounts = new PlaceAmounts(Quantity, _onGround, _carried, _stored, _machineStock, _silo);
         if (topHolders == 0)
         {
             return new PrefabTotalView(_prefab, _display, _reagent, _items, amounts, null);
@@ -196,7 +212,7 @@ internal sealed class HolderTally
 
     internal Thing Root { get; }
 
-    /// <summary>player, stored or machine_stock.</summary>
+    /// <summary>player, stored, machine_stock or silo.</summary>
     internal string Kind { get; }
 
     internal int Seen { get; }

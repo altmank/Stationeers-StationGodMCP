@@ -142,7 +142,7 @@ public sealed class HeavyPayloadTests
     public void HoldersLimitZeroLeavesTopHoldersOut()
     {
         JObject json = JObject.Parse(WireCheck.New(new PrefabTotalView("ItemIronIngot", "Iron", null, 2,
-            new PlaceAmounts(80.0, 30.0, 50.0, 0.0, 0.0), null)));
+            new PlaceAmounts(80.0, 30.0, 50.0, 0.0, 0.0, 0.0), null)));
 
         Assert.Null(json["top_holders"]);
         Assert.Equal(80.0, (double)json["quantity"]!);

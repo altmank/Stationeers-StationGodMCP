@@ -33,7 +33,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.28.3";
+    public const string Version = "1.29.0";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 

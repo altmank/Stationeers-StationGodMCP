@@ -93,7 +93,7 @@ or a text. A tool whose sizes match changed nothing.
 | clean_cables, clean_pipes, upgrade_cables, upgrade_pipes | pieces, kept, unmatched, dead ends, a network's devices (twice); notes | limit 5 (was 200); devices 5 (x-default-limits); networks give device_count; notes with include_notes | 138,554 | 7,484 |
 | connections | a network's members | page 40 (was 200); area filter (min/max, near/radius_m) | 37,882 | 7,930 |
 | consumables | every food, drink and package in the world; a note | 3 of each, 5 not counted (x-default-limits) | 395,109 | 7,954 |
-| container_contents | slots, nested to depth 3 | depth (default 3) | 6,908 | 6,908 |
+| container_contents | slots, nested to depth 3; a silo's stored entries | depth (default 3); silo entries 10 (entries_limit) | 6,908 | 6,908 |
 | control_ic_execution | none | | 621 | 621 |
 | deep_miner_spots | profiles, spots, beacons | count 5 | 6,838 | 6,838 |
 | describe_device | logic types (45 to 75), an uplink's choices; a fixed note | count and writable names; the list with include_logic_types; note in the description | 5,448 | 2,854 |
@@ -144,6 +144,7 @@ or a text. A tool whose sizes match changed nothing.
 | set_ic_pins, set_uplink | pins, choices | fixed | 1,686 | 1,686 |
 | set_ic_source | the source echoed back | source with include_source; source_file | about 61,000 | 981 |
 | show_preview | the dry run; a fixed legend | as place_structure; legend in the description | 4,123 | 3,999 |
+| silo_deposit, silo_withdraw | one result per thing asked; the entries a withdrawal takes and where they went | the request | | 2,137 |
 | solar_aim, trader_buy, trader_sell | the request | | 1,823 | 1,823 |
 | undo_job | the removal's and the placement's dry runs | as remove_structure and place_structure | 7,122 | 7,122 |
 | thing_health | a scan page or a network's pieces | page 8 (was 200) | 172,677 | 7,173 |

@@ -127,6 +127,8 @@ internal static class ApiHost
             ["vault_contents"] = static args => VaultContentsApi.Handle(args),
             ["vault_deposit"] = static args => VaultDepositApi.Handle(args),
             ["vault_withdraw"] = static args => VaultWithdrawApi.Handle(args),
+            ["silo_deposit"] = static args => SiloDepositApi.Handle(args),
+            ["silo_withdraw"] = static args => SiloWithdrawApi.Handle(args),
             ["mod_info"] = static args => ModInfoApi.Handle(args)
         };
 

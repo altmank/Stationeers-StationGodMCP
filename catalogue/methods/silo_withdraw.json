@@ -1,0 +1,63 @@
+{
+  "name": "silo_withdraw",
+  "summary": "Take items of one prefab out of an SDB Silo straight into a holder's slots, with the silo's own bookkeeping, front of the store first. Dry run by default; confirm to do it.",
+  "help": {
+    "text": "Name it by prefab_name or prefab_hash; quantity counts items (a stack its quantity, anything else 1), at most what the silo holds. A stack entry holding nothing is pooled: the amount goes into stacks, the last entry keeping the rest. A thing holding things, a non-stack and stored food move whole, contents and all, one empty slot each; food comes out rotten, as from the silo's export. If a game call fails part way, what it did not make stays in the silo. Host only.",
+    "keys": "dry_run, silo {reference_id, prefab_name, display_name}, on_off, powered, to {reference_id, prefab_name, display_name}, quantity, taken [{index, quantity, left, whole, children}], placed [{where, slot, quantity, reference_id}], stock {prefab_name, display_name, before, change, after}, count {before, after, capacity}.",
+    "topics": {
+      "delivery": {
+        "summary": "Where the items go.",
+        "text": "to_id is the holder (default the player); to_slot a slot index or \"auto\" (default). On a player, auto tops up matching stacks anywhere in the inventory, then makes new stacks in empty slots that take the item (never the body slots unless named by index); on anything else its own slots; never a hidden slot. A whole entry needs an empty slot that takes it. What does not fit is no_room and nothing happens, unless allow_ground puts the rest on the ground a metre in front of the holder."
+      },
+      "reply": {
+        "summary": "What a withdrawal answers.",
+        "text": "{dry_run, silo, on_off, powered, to, quantity, taken [{index (the entry's place in the store before), quantity, left (what the entry keeps), whole, children}], placed [{where (merged, slot or ground), slot {id, slot}, quantity, reference_id (null in a dry run)}], stock {before, change, after} for the prefab, count {before, after, capacity} in entries}. A real run reads stock and count back from the silo."
+      }
+    },
+    "shared": ["silos", "jobs", "slots"]
+  },
+  "class": "write",
+  "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "silo_id": {"type": "string", "description": "The SDB Silo."},
+      "prefab_name": {"type": "string", "description": "The item to take, as container_contents names its entries (ItemIronIngot)."},
+      "prefab_hash": {
+        "type": "integer",
+        "description": "The item to take, by prefab hash (as the silo's IC stack gives it).",
+        "minimum": -2147483648,
+        "maximum": 2147483647
+      },
+      "quantity": {"type": "number", "exclusiveMinimum": 0, "description": "Items: a stack counts its quantity, anything else 1."},
+      "to_id": {"type": "string", "description": "The holder that gets the items; default the player."},
+      "to_slot": {
+        "oneOf": [{"type": "integer", "minimum": 0}, {"type": "string", "enum": ["auto"]}],
+        "description": "A slot index of to_id, or \"auto\" (default)."
+      },
+      "allow_ground": {"type": "boolean", "description": "Put what does not fit on the ground in front of the holder. Default false."},
+      "dry_run": {"type": "boolean", "description": "Default true: check and report only."},
+      "confirm": {"type": "boolean", "description": "true with dry_run false to withdraw."}
+    },
+    "required": ["silo_id", "quantity"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "dry_run": {"type": "boolean"},
+      "silo": {"type": "object"},
+      "on_off": {"type": "boolean"},
+      "powered": {"type": "boolean"},
+      "to": {"type": "object"},
+      "quantity": {"type": "number"},
+      "taken": {"type": "array"},
+      "placed": {"type": "array"},
+      "stock": {"type": "object"},
+      "count": {"type": "object"}
+    }
+  },
+  "x-views": ["SiloWithdrawView"],
+  "x-shaping": "lists"
+}

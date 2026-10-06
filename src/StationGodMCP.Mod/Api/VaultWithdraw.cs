@@ -68,7 +68,7 @@ internal static class VaultWithdrawApi
         ledger.Record(stock, -quantity);
         List<PlacedView> placed = dryRun
             ? delivery.Preview(plan)
-            : delivery.Deliver(plan, store, stock, quantity);
+            : delivery.Deliver(plan, prefab, new VaultSource(store, stock), quantity);
         return new VaultWithdrawView(dryRun, target.View(), GameLookup.ViewOf(holder), quantity, placed,
             ledger.Views(readBack: !dryRun));
     }
@@ -210,7 +210,7 @@ internal sealed class Delivery
             _ => 1.0
         };
 
-    internal static Delivery Survey(Thing holder, SlotChoice choice, Item prefab)
+    internal static Delivery Survey(Thing holder, SlotChoice choice, DynamicThing prefab)
     {
         Human? body = holder as Human;
         Delivery delivery = new Delivery(holder, body, new List<Slot>(), new List<double>(), new List<Slot>());
@@ -231,7 +231,7 @@ internal sealed class Delivery
         return delivery;
     }
 
-    private void OfferExact(int index, Item prefab)
+    private void OfferExact(int index, DynamicThing prefab)
     {
         Slot? slot = index < Holder.Slots.Count ? Holder.Slots[index] : null;
         if (slot == null)
@@ -264,7 +264,7 @@ internal sealed class Delivery
 
     // bodySlots: whether a new stack may go into the player's own body slots (only when named by index, which is
     // also the only case where a slot the game's quick moves skip may be used).
-    private void Offer(Slot slot, Item prefab, bool bodySlots)
+    private void Offer(Slot slot, DynamicThing prefab, bool bodySlots)
     {
         if (slot == null || slot.IsLocked || !SlotAccess.Reaches(slot))
         {
@@ -292,7 +292,7 @@ internal sealed class Delivery
     }
 
     // Stackable.CanStack for ores; the same prefab for ingots (the Stacker's rule for Consumable.Combine).
-    private static double RoomOn(DynamicThing occupant, Item prefab) =>
+    private static double RoomOn(DynamicThing occupant, DynamicThing prefab) =>
         (occupant, prefab) switch
         {
             (Stackable stack, Stackable kind) when stack.CanStack(kind) => stack.MaxQuantity - stack.Quantity,
@@ -318,30 +318,30 @@ internal sealed class Delivery
         return placed;
     }
 
-    /// <summary>Takes the store down, then makes every step; what could not be made goes back into the store.</summary>
-    internal List<PlacedView> Deliver(StackPlan plan, VaultStore store, VaultStock stock, double quantity)
+    /// <summary>Takes the source down, then makes every step; what could not be made goes back to the source.</summary>
+    internal List<PlacedView> Deliver(StackPlan plan, Item prefab, IWithdrawalSource source, double quantity)
     {
         List<PlacedView> placed = new List<PlacedView>(plan.Steps.Count);
         double delivered = 0.0;
-        stock.Take(store, quantity);
+        source.Take(quantity);
         try
         {
             foreach (PlacementStep step in plan.Steps)
             {
-                Make(step, stock.ItemPrefab!, placed);
+                Make(step, prefab, placed);
                 delivered += step.Quantity;
             }
         }
         catch (Exception)
         {
-            // A game call failed part way: the store keeps what was not made, so nothing is lost; the reply is the
-            // error (ApiHost), and vault_contents shows the result.
-            stock.Add(store, quantity - delivered);
-            store.Refresh();
+            // A game call failed part way: the source keeps what was not made, so nothing is lost; the reply is the
+            // error (ApiHost), and the source's own read tool shows the result.
+            source.Return(quantity - delivered);
+            source.Settle();
             throw;
         }
 
-        store.Refresh();
+        source.Settle();
         return placed;
     }
 
@@ -402,7 +402,7 @@ internal sealed class Delivery
         return item;
     }
 
-    private Vector3 Ground() => Refunds.GroundBeside(Holder, Body != null ? Body : Holder.RootParentHuman);
+    internal Vector3 Ground() => Refunds.GroundBeside(Holder, Body != null ? Body : Holder.RootParentHuman);
 
     // As the vend sets a new item's amount: an ingot's grams, an ore stack's count.
     private static void SetAmount(Item item, double quantity)
@@ -418,5 +418,35 @@ internal sealed class Delivery
         }
     }
 
-    private static SlotRefView RefOf(Slot slot) => new SlotRefView(new ThingId(slot.Parent.ReferenceId), slot.SlotIndex);
+    internal static SlotRefView RefOf(Slot slot) => new SlotRefView(new ThingId(slot.Parent.ReferenceId), slot.SlotIndex);
+}
+
+/// <summary>Where a withdrawal's amount comes from: taken before the items are made, the part not made given back.</summary>
+internal interface IWithdrawalSource
+{
+    void Take(double quantity);
+
+    void Return(double quantity);
+
+    /// <summary>After the last change: whatever the source refreshes once its own take or put is done.</summary>
+    void Settle();
+}
+
+/// <summary>An Ingot Vault's stock line as a withdrawal's source: the vend's take, the import's add, the display refresh.</summary>
+internal sealed class VaultSource : IWithdrawalSource
+{
+    private readonly VaultStore _store;
+    private readonly VaultStock _stock;
+
+    internal VaultSource(VaultStore store, VaultStock stock)
+    {
+        _store = store;
+        _stock = stock;
+    }
+
+    public void Take(double quantity) => _stock.Take(_store, quantity);
+
+    public void Return(double quantity) => _stock.Add(_store, quantity);
+
+    public void Settle() => _store.Refresh();
 }

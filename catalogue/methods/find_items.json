@@ -1,6 +1,6 @@
 {
   "name": "find_items",
-  "summary": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.",
+  "summary": "Find items anywhere: on the ground, in containers and machines, carried by players, machine stock and silo stores. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.",
   "help": {
     "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type. Narrow a big world with prefab (exact) or prefab_contains, location (ground: loose in the world; player: carried; stored; machine_stock) and an area: min and max, or near with radius_m (for a machine's stock, where the machine stands).",
     "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
@@ -19,10 +19,13 @@
       "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
       "location": {
         "type": "string",
-        "enum": ["any", "ground", "player", "stored", "machine_stock"],
-        "description": "ground, player, stored or machine_stock; default any (see items)."
+        "enum": ["any", "ground", "player", "stored", "machine_stock", "silo"],
+        "description": "ground, player, stored, machine_stock or silo; default any (see items)."
       },
-      "within_id": {"type": "string", "description": "Only items inside this thing at any depth, and its machine stock."},
+      "within_id": {
+        "type": "string",
+        "description": "Only items inside this thing at any depth, and its machine stock or silo store."
+      },
       "min": {
         "description": "Box corner, [x, y, z] m; with max: only items whose outermost holder (a machine's stock: the machine) stands in the box."
       },
@@ -69,6 +72,6 @@
     "limit": "limit",
     "total": "total",
     "has_more": "has_more",
-    "order": "order nearest (default): nearest the player first (no position last), then by name, loose items before stock, then reference id; order reference_id: lowest reference id first (stock: its machine's), then by name, loose items before stock"
+    "order": "order nearest (default): nearest the player first (no position last), then by name, items before stock before silo entries, then reference id; order reference_id: lowest reference id first (stock: its machine's; a silo entry: its silo's), then by name, items before stock before silo entries"
   }
 }

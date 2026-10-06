@@ -26,6 +26,9 @@ internal sealed class PageRequest
             args.OptionalInt("offset", 0, int.MaxValue) ?? 0,
             args.OptionalInt("limit", 1, maximumLimit) ?? defaultLimit, maximumLimit);
 
+    /// <summary>A page whose offset and limit a tool read under its own argument names.</summary>
+    internal static PageRequest Of(int offset, int limit, int maximumLimit) => new PageRequest(offset, limit, maximumLimit);
+
     /// <summary>
     /// Notes the reply's list (its JSON key) as cut when this page holds fewer than the total; advice is added to the
     /// note's way to get more.

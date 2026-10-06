@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:f0f8ae1881c8392a849e188da8ff3095ea8df6d5a23feb2700ec95737812fe9e'
-MOD_VERSION = '1.28.3'
+CATALOGUE_HASH = 'sha256:94936dd715543d629f80187617d82028294d8e4f2f2cd31b60517da67b25a739'
+MOD_VERSION = '1.29.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -195,7 +195,12 @@ TABLE = {'catalogue': {'class': 'read',
                         'effects': [],
                         'paging': None,
                         'duration': None,
-                        'params': ['reference_id', 'depth', 'prefab_contains', 'name_contains'],
+                        'params': ['reference_id',
+                                   'depth',
+                                   'prefab_contains',
+                                   'name_contains',
+                                   'entries_limit',
+                                   'entries_offset'],
                         'required': ['reference_id'],
                         'shaping': 'lists',
                         'protocol': False},
@@ -262,9 +267,9 @@ TABLE = {'catalogue': {'class': 'read',
                            'total': 'total',
                            'has_more': 'has_more',
                            'order': 'order nearest (default): nearest the player first (no position last), then by '
-                                    'name, loose items before stock, then reference id; order reference_id: lowest '
-                                    "reference id first (stock: its machine's), then by name, loose items before "
-                                    'stock'},
+                                    'name, items before stock before silo entries, then reference id; order '
+                                    "reference_id: lowest reference id first (stock: its machine's; a silo entry: "
+                                    "its silo's), then by name, items before stock before silo entries"},
                 'duration': None,
                 'params': ['prefab',
                            'prefab_contains',
@@ -1359,6 +1364,44 @@ TABLE = {'catalogue': {'class': 'read',
                   'required': [],
                   'shaping': 'none',
                   'protocol': False},
+ 'silo_deposit': {'class': 'write',
+                  'class_when': [{'when': {'dry_run': {'absent': True}}, 'class': 'read'},
+                                 {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
+                  'effects': [],
+                  'paging': None,
+                  'duration': None,
+                  'params': ['silo_id',
+                             'items',
+                             'reference_ids',
+                             'prefab_contains',
+                             'name_contains',
+                             'location',
+                             'within_id',
+                             'near_player_m',
+                             'limit',
+                             'dry_run',
+                             'confirm'],
+                  'required': ['silo_id'],
+                  'shaping': 'lists',
+                  'protocol': False},
+ 'silo_withdraw': {'class': 'write',
+                   'class_when': [{'when': {'dry_run': {'absent': True}}, 'class': 'read'},
+                                  {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
+                   'effects': [],
+                   'paging': None,
+                   'duration': None,
+                   'params': ['silo_id',
+                              'prefab_name',
+                              'prefab_hash',
+                              'quantity',
+                              'to_id',
+                              'to_slot',
+                              'allow_ground',
+                              'dry_run',
+                              'confirm'],
+                   'required': ['silo_id', 'quantity'],
+                   'shaping': 'lists',
+                   'protocol': False},
  'solar_aim': {'class': 'read',
                'class_when': [],
                'effects': [],
@@ -1662,12 +1705,12 @@ class Methods:
         """
         return self.call('consumables', **options)
 
-    def container_contents(self, *, reference_id: str | None = None, depth: int | None = None, prefab_contains: str | None = None, name_contains: str | None = None, **options) -> dict:
+    def container_contents(self, *, reference_id: str | None = None, depth: int | None = None, prefab_contains: str | None = None, name_contains: str | None = None, entries_limit: int | None = None, entries_offset: int | None = None, **options) -> dict:
         """Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory.
 
-        Class: read. Arguments: reference_id (required), depth, prefab_contains, name_contains.
+        Class: read. Arguments: reference_id (required), depth, prefab_contains, name_contains, entries_limit, entries_offset.
         """
-        return self.call('container_contents', **{'reference_id': reference_id, 'depth': depth, 'prefab_contains': prefab_contains, 'name_contains': name_contains}, **options)
+        return self.call('container_contents', **{'reference_id': reference_id, 'depth': depth, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'entries_limit': entries_limit, 'entries_offset': entries_offset}, **options)
 
     def control_ic_execution(self, *, gateway_id: str | None = None, reference_id: str | None = None, action: str | None = None, **options) -> dict:
         """Pause, step one instruction, or resume a circuit holder's IC10 chip; or restart a Lua chip from the start.
@@ -1712,7 +1755,7 @@ class Methods:
         return self.call('feed_paths', **{'root': root, 'network_id': network_id, 'port': port, 'kind': kind}, **options)
 
     def find_items(self, *, prefab: str | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
-        """Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock.
+        """Find items anywhere: on the ground, in containers and machines, carried by players, machine stock and silo stores.
 
         Class: read. Arguments: prefab, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, offset, order.
         """
@@ -1782,7 +1825,7 @@ class Methods:
         return self.call('inspect_slots', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'slot_index': slot_index}, **options)
 
     def item_totals(self, *, prefab: str | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, holders_limit: int | None = None, **options) -> dict:
-        """Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most.
+        """Total quantity of each item type in the world, split into on_ground, carried, stored, machine_stock and silo, with the holders holding most.
 
         Class: read. Arguments: prefab, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, holders_limit.
         """
@@ -2172,6 +2215,20 @@ class Methods:
         Class: read. Arguments: placements, prefab, at, rotation, facing, up, face, orient, above_floor_m, build_state, allow_door_keepout, cells, boxes, seconds, keep, clear, xray.
         """
         return self.call('show_preview', **{'placements': placements, 'prefab': prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient': orient, 'above_floor_m': above_floor_m, 'build_state': build_state, 'allow_door_keepout': allow_door_keepout, 'cells': cells, 'boxes': boxes, 'seconds': seconds, 'keep': keep, 'clear': clear, 'xray': xray}, **options)
+
+    def silo_deposit(self, *, silo_id: str | None = None, items: list | None = None, reference_ids: list | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
+        """Put things straight into an SDB Silo's store from wherever they are, each as one entry with its contents, as the silo's import stores it; by id, in part, or by a filter.
+
+        Class: write (other classes at some arguments). Arguments: silo_id (required), items, reference_ids, prefab_contains, name_contains, location, within_id, near_player_m, limit, dry_run, confirm.
+        """
+        return self.call('silo_deposit', **{'silo_id': silo_id, 'items': items, 'reference_ids': reference_ids, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'dry_run': dry_run, 'confirm': confirm}, **options)
+
+    def silo_withdraw(self, *, silo_id: str | None = None, prefab_name: str | None = None, prefab_hash: int | None = None, quantity: float | None = None, to_id: str | None = None, to_slot: int | str | None = None, allow_ground: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
+        """Take items of one prefab out of an SDB Silo straight into a holder's slots, with the silo's own bookkeeping, front of the store first.
+
+        Class: write (other classes at some arguments). Arguments: silo_id (required), prefab_name, prefab_hash, quantity (required), to_id, to_slot, allow_ground, dry_run, confirm.
+        """
+        return self.call('silo_withdraw', **{'silo_id': silo_id, 'prefab_name': prefab_name, 'prefab_hash': prefab_hash, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'allow_ground': allow_ground, 'dry_run': dry_run, 'confirm': confirm}, **options)
 
     def solar_aim(self, *, reference_id: str | None = None, **options) -> dict:
         """Work out the Horizontal and Vertical (logic degrees) that point a solar panel straight at the sun, from the panel's own pivots and the sun's position.

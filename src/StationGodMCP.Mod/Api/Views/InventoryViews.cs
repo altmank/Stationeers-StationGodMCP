@@ -23,7 +23,7 @@ internal sealed class FindItemsView
         LocalPlayer = localPlayer;
     }
 
-    /// <summary>Items (ItemView) and machine stock (StockItemView, location machine_stock).</summary>
+    /// <summary>Items (ItemView), machine stock (StockItemView, location machine_stock), silo stock (SiloItemView).</summary>
     public List<IFoundItemView> Items { get; }
 
     public int Count { get; }
@@ -42,12 +42,14 @@ internal sealed class FindItemsView
 /// <summary>item_totals: the matching items summed per prefab, largest first.</summary>
 internal sealed class ItemTotalsView
 {
-    internal ItemTotalsView(List<PrefabTotalView> totals, int prefabCount, int itemCount, int machineStockEntries)
+    internal ItemTotalsView(List<PrefabTotalView> totals, int prefabCount, int itemCount, int machineStockEntries,
+        int siloEntries)
     {
         Totals = totals;
         PrefabCount = prefabCount;
         ItemCount = itemCount;
         MachineStockEntries = machineStockEntries;
+        SiloEntries = siloEntries;
     }
 
     public List<PrefabTotalView> Totals { get; }
@@ -58,6 +60,9 @@ internal sealed class ItemTotalsView
 
     /// <summary>Machine and reagent pairs counted (not in item_count).</summary>
     public int MachineStockEntries { get; }
+
+    /// <summary>Things stored in silos counted (entries and what they hold; not in item_count).</summary>
+    public int SiloEntries { get; }
 }
 
 internal sealed class PrefabTotalView
@@ -74,6 +79,7 @@ internal sealed class PrefabTotalView
         Carried = amounts.Carried;
         Stored = amounts.Stored;
         MachineStock = amounts.MachineStock;
+        Silo = amounts.Silo;
         TopHolders = topHolders;
     }
 
@@ -95,6 +101,9 @@ internal sealed class PrefabTotalView
     /// <summary>Held as reagents inside machines (MachineStock).</summary>
     public double MachineStock { get; }
 
+    /// <summary>Stored in SDB Silos (SiloStock): entries and what they hold.</summary>
+    public double Silo { get; }
+
     /// <summary>The reagent's type name for a working-load row (prefab_name null), else null.</summary>
     public string? Reagent { get; }
 
@@ -109,13 +118,15 @@ internal sealed class PrefabTotalView
 /// <summary>A quantity in all, and split by where it is.</summary>
 internal sealed class PlaceAmounts
 {
-    internal PlaceAmounts(double quantity, double onGround, double carried, double stored, double machineStock)
+    internal PlaceAmounts(double quantity, double onGround, double carried, double stored, double machineStock,
+        double silo)
     {
         Quantity = quantity;
         OnGround = onGround;
         Carried = carried;
         Stored = stored;
         MachineStock = machineStock;
+        Silo = silo;
     }
 
     internal double Quantity { get; }
@@ -127,6 +138,8 @@ internal sealed class PlaceAmounts
     internal double Stored { get; }
 
     internal double MachineStock { get; }
+
+    internal double Silo { get; }
 }
 
 internal sealed class HolderTotalView
@@ -149,7 +162,7 @@ internal sealed class HolderTotalView
 
     public double Quantity { get; }
 
-    /// <summary>player (carried), stored (a container) or machine_stock (reagents inside a machine).</summary>
+    /// <summary>player (carried), stored (a container), machine_stock (reagents inside a machine) or silo.</summary>
     public string Kind { get; }
 
     public PositionView Position { get; }
@@ -253,7 +266,8 @@ internal sealed class PrefabQuantityView
 /// <summary>container_contents: a thing's slots, and what is in each, a few levels deep.</summary>
 internal sealed class ContainerContentsView : ITruncatingView
 {
-    internal ContainerContentsView(ThingView thing, PositionView position, double? distanceM, List<SlotView> slots)
+    internal ContainerContentsView(ThingView thing, PositionView position, double? distanceM, List<SlotView> slots,
+        SiloContentsView? silo = null)
     {
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
@@ -261,6 +275,7 @@ internal sealed class ContainerContentsView : ITruncatingView
         Position = position;
         DistanceM = distanceM;
         Slots = slots;
+        Silo = silo;
     }
 
     public ThingId ReferenceId { get; }
@@ -274,6 +289,10 @@ internal sealed class ContainerContentsView : ITruncatingView
     public double? DistanceM { get; }
 
     public List<SlotView> Slots { get; }
+
+    /// <summary>An SDB Silo's store; left out for anything else.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public SiloContentsView? Silo { get; }
 
     public void NoteTruncations(string path)
     {
@@ -412,6 +431,31 @@ internal sealed class SlotFilter
         }
 
         return kept;
+    }
+
+    /// <summary>A silo entry matches by its own prefab or shown name, or by a prefab stored inside it.</summary>
+    internal bool Keeps(SiloEntryView entry)
+    {
+        if (!IsActive || ((_prefab == null || Contains(entry.PrefabName, _prefab)) &&
+                          (_name == null || Contains(entry.DisplayName, _name))))
+        {
+            return true;
+        }
+
+        if (_prefab == null)
+        {
+            return false;
+        }
+
+        foreach (SiloContentView content in entry.Contents)
+        {
+            if (Contains(content.PrefabName, _prefab))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private bool Matches(OccupantView occupant) =>

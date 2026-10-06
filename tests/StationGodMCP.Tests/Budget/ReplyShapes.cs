@@ -111,6 +111,10 @@ internal static class ReplyShapes
             // A player: 2 hands, suit, backpack (12 slots) of stacks, a tool belt (8); depth 3.
             // Only containers (suit, backpack, belt) have slots of their own: one level-two list per three occupants.
             S<ContainerContentsView>().List("ContainerContentsView.Slots", 10).List("OccupantView.Slots", 1)
+                .Absent("ContainerContentsView.Silo"),
+            // An SDB Silo: its import and export slots, then a page of its store, a backpack with three kinds in it.
+            S<ContainerContentsView>().List("ContainerContentsView.Slots", 2).List("OccupantView.Slots", 0)
+                .List("SiloContentsView.Entries", D.SiloEntries).List("SiloEntryView.Contents", 3)
         };
         shapes["control_ic_execution"] = new[] { S<IcControlView>().Absent("IcControlView.Lua") };
         shapes["deep_miner_spots"] = new[]
@@ -482,6 +486,16 @@ internal static class ReplyShapes
         shapes["vault_withdraw"] = new[]
         {
             S<VaultWithdrawView>().List("VaultWithdrawView.Placed", 2).List("VaultWithdrawView.Stock", 1)
+        };
+        shapes["silo_deposit"] = new[]
+        {
+            S<SiloDepositView>().List("BatchResultView.Results", W.TypicalBatch)
+                .Holds("BatchResultView.Results", typeof(SiloDepositedView))
+        };
+        shapes["silo_withdraw"] = new[]
+        {
+            // Two stacks topped up and a new one, from three entries.
+            S<SiloWithdrawView>().List("SiloWithdrawView.Taken", 3).List("SiloWithdrawView.Placed", 3)
         };
         shapes["wall_map"] = new[]
         {

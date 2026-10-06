@@ -386,7 +386,8 @@ internal static class MovePlanner
         quantity = 0;
         if (!GameLookup.TryFindThing(move.Item, out Thing found) || found.IsBeingDestroyed)
         {
-            return ApiErrors.ThingNotFound(move.Item);
+            // A silo's entries are save data, not things: the refusal names the silo that stores the id, if any.
+            return Silos.NotFound(move.Item);
         }
 
         if (!GameLookup.TryFindThing(move.Target, out Thing destination) || destination.IsBeingDestroyed)

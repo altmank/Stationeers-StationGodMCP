@@ -211,8 +211,12 @@
     },
     "items": {
       "summary": "Finding items: filters, locations, holders and machine stock.",
-      "text": "Item tools search the whole world, not one network: the ground, lockers, crates and machines, and what players carry (suit, backpack, toolbelt, hands, nested to any depth). location is ground (loose), player (carried at any depth), stored (in any other holder) or machine_stock (held as reagents inside a machine); the default is any, machine stock included. held_in lists the holders from the item's own slot outwards; position is the outermost holder's. within_id narrows to one holder at any depth and its machine stock; an id that names nothing is thing_not_found, never an empty holder. Organs are left out.",
+      "text": "Item tools search the whole world, not one network: the ground, lockers, crates and machines, and what players carry (suit, backpack, toolbelt, hands, nested to any depth). location is ground (loose), player (carried at any depth), stored (in any other holder), machine_stock (held as reagents inside a machine) or silo (stored in an SDB Silo); the default is any, machine stock and silos included. held_in lists the holders from the item's own slot outwards; position is the outermost holder's. within_id narrows to one holder at any depth and its machine stock or silo store; an id that names nothing is thing_not_found, never an empty holder. Organs are left out.",
       "subtopics": {
+        "silo": {
+          "summary": "Things an SDB Silo stores, listed like items.",
+          "text": "A silo entry, and each thing stored inside one (a backpack's contents), is listed with location silo, reference_id null, held_in naming the silo with slot_index -1, and silo {entry (its place in the store, 0 exported next), inside (the prefab of the entry's thing holding it, null for the entry's own), movable false}. Take it out with silo_withdraw (see silos). A multiplayer client keeps no store and lists none."
+        },
         "machine_stock": {
           "summary": "Material machines hold as reagents, not items.",
           "text": "Ingots loaded into a fabricator (Autolathe, Electronics Printer, Pipe Bender, Tool Manufactory...) are listed as the ingot it ejects (1 reagent unit = 1 ingot); a furnace's, centrifuge's or mixer's working load is listed under its reagent name (prefab_name null). A stock entry has reference_id null, held_in naming the machine with slot_index -1, and machine_stock {reagent, reagent_name, kind (fabricator or processing), movable false}. move_item cannot move it. A fabricator that is on, powered and not printing ejects its stock as ingots into its export slot when opened, one stack per tick (EjectReagent on its logic ejects one reagent). A processing load is not ingots yet: the machine smelts it, or drops it as Reagent Mix."
@@ -250,6 +254,16 @@
         "refusals": {
           "summary": "The vault errors and what to do.",
           "text": "ingot_vault_mod_required: IngotVault is not loaded. ingot_vault_changed: this StationGod build does not know the loaded IngotVault version. not_a_vault: not an Ingot Vault or Remote Vault. vault_not_connected: the Remote Vault needs exactly one Ingot Vault on its data network. vault_unpowered: the vault is off or unpowered, so it neither imports nor vends. vault_not_ready: no store yet. not_vault_material: it keeps ingots, ores and ices only. no_reagents: an ingot with no reagents would be destroyed for nothing. in_vault_slot: the item sits in a vault slot. not_in_vault and not_enough_stock: vault_contents lists what it holds. prefab_missing: no item exists for that entry. vault_display_slot: that slot only shows the store."
+        }
+      }
+    },
+    "silos": {
+      "summary": "SDB Silos: the store, entries, moves in and out, silo refusals.",
+      "text": "An SDB Silo keeps what it imports as entries, not as things in the world: one entry per imported thing, with everything it held, at most 600, exported front first. container_contents on a silo lists its entries; find_items and item_totals count them (location silo) with reference_id null, so move_item cannot take them. silo_withdraw and silo_deposit move things in and out directly, as the silo's own export and import keep the store: no chute, slot or door, nothing dropped. The silo's count, IC stack (Quantity and its contents stack), tooltip and save agree after each move. Only the host keeps the store: on a client entries_known is false and the silo tools refuse with not_host.",
+      "subtopics": {
+        "refusals": {
+          "summary": "The silo errors and what to do.",
+          "text": "not_a_silo: not an SDB Silo. silo_unpowered: off, unpowered or not finished; the silo neither imports nor exports then. not_in_silo and not_enough_stock: container_contents lists the entries. invalid_argument on a withdrawal: the quantity ends inside an entry that moves whole; the message gives the quantities that do not. silo_busy: an IC's DispenseSlot names an entry the withdrawal would take or move, or the thing sits in a silo's slot. silo_full: 600 entries, an import being saved counted. no_room: the holder has no room; allow_ground puts the rest down. prefab_missing: this game has no prefab for the entry. move_failed: the game made nothing from an entry; it stays stored."
         }
       }
     },

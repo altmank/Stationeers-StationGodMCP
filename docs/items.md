@@ -9,8 +9,8 @@ these tools need a gateway.
 
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
-| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock. | `prefab` (exact), `prefab_contains`, `name_contains`, `location` (`ground`, `player`, `stored`, `machine_stock`), `within_id`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `limit`, `offset`, `order` |
-| `item_totals` | Total quantity of each item type, split into on the ground, carried, stored and machine stock, with the holder that holds the most (`holders_limit` holders; one by default). | as `find_items`, and `holders_limit` (0 leaves the holders out) |
+| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock, and what SDB Silos store. | `prefab` (exact), `prefab_contains`, `name_contains`, `location` (`ground`, `player`, `stored`, `machine_stock`, `silo`), `within_id`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `limit`, `offset`, `order` |
+| `item_totals` | Total quantity of each item type, split into on the ground, carried, stored, machine stock and silo, with the holder that holds the most (`holders_limit` holders; one by default). | as `find_items`, and `holders_limit` (0 leaves the holders out) |
 | `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab` (exact), `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `made_by`, `made_since`, `location`, `order` |
 | `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m`, `order` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Shape it with paths through the slots: `fields: ["slots.index", "slots.occupant.prefab_name"]`, or `occupant.slots.occupant.prefab_name` for what a backpack holds. | `reference_id`, `depth` (default 3), `prefab_contains`, `name_contains` (slots holding a match at any depth) |
@@ -109,6 +109,12 @@ Put 50 iron ingots into a locker's first free slot, `move_item`:
   `previous_color` is the state colour it shows. Lights paint. A thing with no colour has `index` and `name` null.
   Up to 256 things per call.
 - Both sync to other players and are saved with the world.
+
+## SDB Silo
+
+`container_contents` on an SDB Silo lists its store (entries are save data, not things, so `reference_id` is null),
+`find_items` and `item_totals` count it at `location: silo`, and `silo_withdraw` and `silo_deposit` move things
+straight out of and into it with the silo's own bookkeeping: see [silo.md](silo.md).
 
 ## Ingot Vault
 

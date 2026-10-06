@@ -8,6 +8,7 @@ using Assets.Scripts.Atmospherics;
 using Assets.Scripts.Genetics;
 using Assets.Scripts.Inventory;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Chutes;
 using Assets.Scripts.Objects.Clothing;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Entities;
@@ -112,6 +113,8 @@ internal sealed class GameField : GameMember
     }
 
     internal object GetValue(object? target) => Info.GetValue(target);
+
+    internal void SetValue(object? target, object? value) => Info.SetValue(target, value);
 
     protected override bool ResolveCore()
     {
@@ -272,6 +275,14 @@ internal static class GameMembers
     internal static readonly GameMethod StructureWorldChangeChecks = Register(new GameMethod(
         "Structure.WorldChangeChecks",
         () => typeof(Structure).GetMethod("WorldChangeChecks", PrivateInstance, null, Type.EmptyTypes, null)));
+
+    // ---- SDB Silo (silo tools): its store, the flag that rebuilds its logic stack, its import and export progress and
+    // an IC's DispenseSlot (Silo.cs:18-38) ----
+    internal static readonly GameField SiloStoredItems = Field(typeof(Silo), "_storedItems");
+    internal static readonly GameField SiloStackDirty = Field(typeof(Silo), "_stackDirty");
+    internal static readonly GameField SiloDoneSaving = Field(typeof(Silo), "_doneSaving");
+    internal static readonly GameField SiloDoneSpawning = Field(typeof(Silo), "_doneSpawning");
+    internal static readonly GameField SiloDispenseSlot = Field(typeof(Silo), "_dispenseSlot");
 
     // ---- Plants ----
     internal static readonly GameField PlantStageTime = Field(typeof(Plant), "_stageTime");

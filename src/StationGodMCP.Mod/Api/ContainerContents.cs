@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Chutes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
@@ -11,7 +12,8 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// container_contents: a thing's slots (Thing.Slots, organ slots left out) and what is in each (Slot.Get), following
-/// occupants' own slots down to depth levels. reference_id may be "player" for the player. Read only.
+/// occupants' own slots down to depth levels. reference_id may be "player" for the player. On an SDB Silo also its
+/// store (Silos), whose entries are save data rather than things. Read only.
 /// </summary>
 internal static class ContainerContentsApi
 {
@@ -26,7 +28,35 @@ internal static class ContainerContentsApi
         Vector3 position = HolderChain.PlaceOf(thing).Position;
         SlotFilter filter = new SlotFilter(args.OptionalString("prefab_contains"), args.OptionalString("name_contains"));
         return new ContainerContentsView(GameLookup.ViewOf(thing), GameLookup.ViewOf(position),
-            origin.DistanceTo(position), filter.Apply(SlotsOf(thing, depth)));
+            origin.DistanceTo(position), filter.Apply(SlotsOf(thing, depth)),
+            thing is Silo silo ? SiloContents(silo, args, filter) : null);
+    }
+
+    // A silo's store, after its own slots: entries front first (filtered as the slots are), one page of them. On a
+    // client the store is unknown (the host keeps it) and only the synced count is shown.
+    private static SiloContentsView SiloContents(Silo silo, Args args, SlotFilter filter)
+    {
+        PageRequest page = SiloEntriesPage.Of(args);
+        if (!Silos.StoresKnown)
+        {
+            return new SiloContentsView(silo.TotalItemsCurrentlyStored, false, null,
+                Slice<SiloEntryView>.Page(new List<SiloEntryView>(), page, 0));
+        }
+
+        SiloStore store = SiloStore.Of(silo);
+        List<SiloEntryView> entries = new List<SiloEntryView>();
+        foreach (SiloEntry entry in store.Describe())
+        {
+            SiloEntryView view = entry.View();
+            if (filter.Keeps(view))
+            {
+                entries.Add(view);
+            }
+        }
+
+        Slice<SiloEntryView> slice = Slice<SiloEntryView>.Of(entries, page);
+        SiloEntriesPage.Note(page, slice.Items.Count, entries.Count);
+        return new SiloContentsView(store.Entries.Count, true, store.Busy(), slice);
     }
 
     private static Thing Require(Args args)

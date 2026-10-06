@@ -537,6 +537,11 @@
     "origin": "tool",
     "see": {"topic": "routing", "subtopic": "reroute"}
   },
+  "not_a_silo": {
+    "description": "That thing is not an SDB Silo. find_things {prefab_contains: \"Silo\"} lists them.",
+    "origin": "tool",
+    "see": {"topic": "silos"}
+  },
   "not_a_vault": {
     "description": "That thing is not an Ingot Vault or a Remote Vault. find_things lists vaults.",
     "origin": "tool",
@@ -568,7 +573,7 @@
     "see": {"topic": "materials"}
   },
   "not_enough_stock": {
-    "description": "The vault holds less than asked. Take no more than it holds; vault_contents lists it.",
+    "description": "The vault or silo holds less than asked. Take no more than it holds; vault_contents or container_contents lists it.",
     "origin": "tool",
     "see": {"topic": "vaults"}
   },
@@ -586,6 +591,11 @@
     "description": "The thing is not in a closed room: its cell is outside. Name a thing inside a room.",
     "origin": "tool",
     "see": {"tool": "rooms", "topic": "refusals"}
+  },
+  "not_in_silo": {
+    "description": "The silo holds none of that item. container_contents on the silo lists its entries.",
+    "origin": "tool",
+    "see": {"topic": "silos"}
   },
   "not_in_vault": {
     "description": "The vault holds none of that item. vault_contents lists what it holds.",
@@ -711,7 +721,7 @@
     "see": {"topic": "networks"}
   },
   "prefab_missing": {
-    "description": "No item prefab exists for what the vault would make. Pick another item.",
+    "description": "No prefab exists for what the vault or silo would make. Pick another item.",
     "origin": "tool",
     "see": {"topic": "vaults"}
   },
@@ -802,6 +812,21 @@
     "origin": "protocol",
     "caller_may_resend": "yes",
     "see": {"topic": "errors", "subtopic": "protocol"}
+  },
+  "silo_busy": {
+    "description": "The silo is busy: an IC asked it to dispense an entry this would move, or the thing is in a silo's slot. Let the silo export or finish, then try again.",
+    "origin": "tool",
+    "see": {"topic": "silos"}
+  },
+  "silo_full": {
+    "description": "The silo holds 600 entries, or would with this deposit. Withdraw or export some first.",
+    "origin": "tool",
+    "see": {"topic": "silos"}
+  },
+  "silo_unpowered": {
+    "description": "The silo is off, unpowered or not finished, so it neither imports nor exports. Nothing ran; power it on.",
+    "origin": "tool",
+    "see": {"topic": "silos"}
   },
   "slot_locked": {"description": "The item is in a locked slot. Unlock the slot first.", "origin": "tool", "see": {"topic": "slots"}},
   "slot_not_found": {

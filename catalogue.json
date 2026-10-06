@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.28.3",
+  "mod_version": "1.29.0",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -218,8 +218,12 @@
       },
       "items": {
         "summary": "Finding items: filters, locations, holders and machine stock.",
-        "text": "Item tools search the whole world, not one network: the ground, lockers, crates and machines, and what players carry (suit, backpack, toolbelt, hands, nested to any depth). location is ground (loose), player (carried at any depth), stored (in any other holder) or machine_stock (held as reagents inside a machine); the default is any, machine stock included. held_in lists the holders from the item's own slot outwards; position is the outermost holder's. within_id narrows to one holder at any depth and its machine stock; an id that names nothing is thing_not_found, never an empty holder. Organs are left out.",
+        "text": "Item tools search the whole world, not one network: the ground, lockers, crates and machines, and what players carry (suit, backpack, toolbelt, hands, nested to any depth). location is ground (loose), player (carried at any depth), stored (in any other holder), machine_stock (held as reagents inside a machine) or silo (stored in an SDB Silo); the default is any, machine stock and silos included. held_in lists the holders from the item's own slot outwards; position is the outermost holder's. within_id narrows to one holder at any depth and its machine stock or silo store; an id that names nothing is thing_not_found, never an empty holder. Organs are left out.",
         "subtopics": {
+          "silo": {
+            "summary": "Things an SDB Silo stores, listed like items.",
+            "text": "A silo entry, and each thing stored inside one (a backpack's contents), is listed with location silo, reference_id null, held_in naming the silo with slot_index -1, and silo {entry (its place in the store, 0 exported next), inside (the prefab of the entry's thing holding it, null for the entry's own), movable false}. Take it out with silo_withdraw (see silos). A multiplayer client keeps no store and lists none."
+          },
           "machine_stock": {
             "summary": "Material machines hold as reagents, not items.",
             "text": "Ingots loaded into a fabricator (Autolathe, Electronics Printer, Pipe Bender, Tool Manufactory...) are listed as the ingot it ejects (1 reagent unit = 1 ingot); a furnace's, centrifuge's or mixer's working load is listed under its reagent name (prefab_name null). A stock entry has reference_id null, held_in naming the machine with slot_index -1, and machine_stock {reagent, reagent_name, kind (fabricator or processing), movable false}. move_item cannot move it. A fabricator that is on, powered and not printing ejects its stock as ingots into its export slot when opened, one stack per tick (EjectReagent on its logic ejects one reagent). A processing load is not ingots yet: the machine smelts it, or drops it as Reagent Mix."
@@ -257,6 +261,16 @@
           "refusals": {
             "summary": "The vault errors and what to do.",
             "text": "ingot_vault_mod_required: IngotVault is not loaded. ingot_vault_changed: this StationGod build does not know the loaded IngotVault version. not_a_vault: not an Ingot Vault or Remote Vault. vault_not_connected: the Remote Vault needs exactly one Ingot Vault on its data network. vault_unpowered: the vault is off or unpowered, so it neither imports nor vends. vault_not_ready: no store yet. not_vault_material: it keeps ingots, ores and ices only. no_reagents: an ingot with no reagents would be destroyed for nothing. in_vault_slot: the item sits in a vault slot. not_in_vault and not_enough_stock: vault_contents lists what it holds. prefab_missing: no item exists for that entry. vault_display_slot: that slot only shows the store."
+          }
+        }
+      },
+      "silos": {
+        "summary": "SDB Silos: the store, entries, moves in and out, silo refusals.",
+        "text": "An SDB Silo keeps what it imports as entries, not as things in the world: one entry per imported thing, with everything it held, at most 600, exported front first. container_contents on a silo lists its entries; find_items and item_totals count them (location silo) with reference_id null, so move_item cannot take them. silo_withdraw and silo_deposit move things in and out directly, as the silo's own export and import keep the store: no chute, slot or door, nothing dropped. The silo's count, IC stack (Quantity and its contents stack), tooltip and save agree after each move. Only the host keeps the store: on a client entries_known is false and the silo tools refuse with not_host.",
+        "subtopics": {
+          "refusals": {
+            "summary": "The silo errors and what to do.",
+            "text": "not_a_silo: not an SDB Silo. silo_unpowered: off, unpowered or not finished; the silo neither imports nor exports then. not_in_silo and not_enough_stock: container_contents lists the entries. invalid_argument on a withdrawal: the quantity ends inside an entry that moves whole; the message gives the quantities that do not. silo_busy: an IC's DispenseSlot names an entry the withdrawal would take or move, or the thing sits in a silo's slot. silo_full: 600 entries, an import being saved counted. no_room: the holder has no room; allow_ground puts the rest down. prefab_missing: this game has no prefab for the entry. move_failed: the game made nothing from an entry; it stays stored."
           }
         }
       },
@@ -931,6 +945,11 @@
       "origin": "tool",
       "see": {"topic": "routing", "subtopic": "reroute"}
     },
+    "not_a_silo": {
+      "description": "That thing is not an SDB Silo. find_things {prefab_contains: \"Silo\"} lists them.",
+      "origin": "tool",
+      "see": {"topic": "silos"}
+    },
     "not_a_vault": {
       "description": "That thing is not an Ingot Vault or a Remote Vault. find_things lists vaults.",
       "origin": "tool",
@@ -962,7 +981,7 @@
       "see": {"topic": "materials"}
     },
     "not_enough_stock": {
-      "description": "The vault holds less than asked. Take no more than it holds; vault_contents lists it.",
+      "description": "The vault or silo holds less than asked. Take no more than it holds; vault_contents or container_contents lists it.",
       "origin": "tool",
       "see": {"topic": "vaults"}
     },
@@ -980,6 +999,11 @@
       "description": "The thing is not in a closed room: its cell is outside. Name a thing inside a room.",
       "origin": "tool",
       "see": {"tool": "rooms", "topic": "refusals"}
+    },
+    "not_in_silo": {
+      "description": "The silo holds none of that item. container_contents on the silo lists its entries.",
+      "origin": "tool",
+      "see": {"topic": "silos"}
     },
     "not_in_vault": {
       "description": "The vault holds none of that item. vault_contents lists what it holds.",
@@ -1105,7 +1129,7 @@
       "see": {"topic": "networks"}
     },
     "prefab_missing": {
-      "description": "No item prefab exists for what the vault would make. Pick another item.",
+      "description": "No prefab exists for what the vault or silo would make. Pick another item.",
       "origin": "tool",
       "see": {"topic": "vaults"}
     },
@@ -1196,6 +1220,21 @@
       "origin": "protocol",
       "caller_may_resend": "yes",
       "see": {"topic": "errors", "subtopic": "protocol"}
+    },
+    "silo_busy": {
+      "description": "The silo is busy: an IC asked it to dispense an entry this would move, or the thing is in a silo's slot. Let the silo export or finish, then try again.",
+      "origin": "tool",
+      "see": {"topic": "silos"}
+    },
+    "silo_full": {
+      "description": "The silo holds 600 entries, or would with this deposit. Withdraw or export some first.",
+      "origin": "tool",
+      "see": {"topic": "silos"}
+    },
+    "silo_unpowered": {
+      "description": "The silo is off, unpowered or not finished, so it neither imports nor exports. Nothing ran; power it on.",
+      "origin": "tool",
+      "see": {"topic": "silos"}
     },
     "slot_locked": {"description": "The item is in a locked slot. Unlock the slot first.", "origin": "tool", "see": {"topic": "slots"}},
     "slot_not_found": {
@@ -2442,8 +2481,14 @@
       "description": "Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Read only.\nMore: tool_info {tool: \"container_contents\"}",
       "help": {
         "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes. prefab_contains and name_contains keep the slots holding a match at any depth (empty slots go). To shape it: fields [\"slots.index\", \"slots.occupant.prefab_name\", \"slots.occupant.quantity\"], or a path read from each slot such as occupant.slots.occupant.prefab_name for what a backpack holds; omit [\"slots.occupant.slots\"] drops the inner slots.",
-        "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, name, slot_class, empty, occupant}].",
-        "shared": ["slots", "player"]
+        "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, name, slot_class, empty, occupant}], silo {count, capacity, entries_known, importing, exporting, dispense_slot, total, offset, entries}.",
+        "topics": {
+          "silo": {
+            "summary": "An SDB Silo's store.",
+            "text": "On an SDB Silo the reply adds silo: {count and capacity in entries, entries_known (false on a multiplayer client, where only the host keeps the store), importing, exporting, dispense_slot (an IC's DispenseSlot, -1 for none), total, offset, entries [{index (0 is exported next), reference_id (always null), prefab_name, display_name, quantity, max_quantity, children, contents [{prefab_name, quantity}], rots_when_taken}]}. prefab_contains and name_contains filter the entries too. entries_limit and entries_offset page them."
+          }
+        },
+        "shared": ["slots", "player", "silos"]
       },
       "class": "read",
       "cost": "instant",
@@ -2453,7 +2498,14 @@
           "reference_id": {"type": "string", "description": "Any thing's reference id, or 'player' for the player."},
           "depth": {"type": "integer", "minimum": 1, "maximum": 6, "description": "Levels of nested slots to show; default 3."},
           "prefab_contains": {"type": "string", "description": "Only slots holding this prefab name part at any depth."},
-          "name_contains": {"type": "string", "description": "As prefab_contains, on shown names."}
+          "name_contains": {"type": "string", "description": "As prefab_contains, on shown names."},
+          "entries_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600,
+            "description": "A silo's stored entries to list; default 10."
+          },
+          "entries_offset": {"type": "integer", "minimum": 0, "maximum": 600, "description": "A silo's stored entries to skip."}
         },
         "required": ["reference_id"],
         "additionalProperties": false
@@ -2466,7 +2518,8 @@
           "display_name": {"type": ["string", "null"]},
           "position": {"type": "object"},
           "distance_m": {"type": ["number", "null"]},
-          "slots": {"type": "array"}
+          "slots": {"type": "array"},
+          "silo": {"type": "object"}
         }
       },
       "x-views": ["ContainerContentsView"],
@@ -2834,7 +2887,7 @@
     },
     {
       "name": "find_items",
-      "description": "Find items anywhere: on the ground, in containers and machines, carried by players, and machine stock. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.\nMore: tool_info {tool: \"find_items\"}",
+      "description": "Find items anywhere: on the ground, in containers and machines, carried by players, machine stock and silo stores. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.\nMore: tool_info {tool: \"find_items\"}",
       "help": {
         "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type. Narrow a big world with prefab (exact) or prefab_contains, location (ground: loose in the world; player: carried; stored; machine_stock) and an area: min and max, or near with radius_m (for a machine's stock, where the machine stands).",
         "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
@@ -2853,10 +2906,13 @@
           "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
           "location": {
             "type": "string",
-            "enum": ["any", "ground", "player", "stored", "machine_stock"],
-            "description": "ground, player, stored or machine_stock; default any (see items)."
+            "enum": ["any", "ground", "player", "stored", "machine_stock", "silo"],
+            "description": "ground, player, stored, machine_stock or silo; default any (see items)."
           },
-          "within_id": {"type": "string", "description": "Only items inside this thing at any depth, and its machine stock."},
+          "within_id": {
+            "type": "string",
+            "description": "Only items inside this thing at any depth, and its machine stock or silo store."
+          },
           "min": {
             "description": "Box corner, [x, y, z] m; with max: only items whose outermost holder (a machine's stock: the machine) stands in the box."
           },
@@ -2907,7 +2963,7 @@
         "limit": "limit",
         "total": "total",
         "has_more": "has_more",
-        "order": "order nearest (default): nearest the player first (no position last), then by name, loose items before stock, then reference id; order reference_id: lowest reference id first (stock: its machine's), then by name, loose items before stock"
+        "order": "order nearest (default): nearest the player first (no position last), then by name, items before stock before silo entries, then reference id; order reference_id: lowest reference id first (stock: its machine's; a silo entry: its silo's), then by name, items before stock before silo entries"
       }
     },
     {
@@ -3547,10 +3603,10 @@
     },
     {
       "name": "item_totals",
-      "description": "Total quantity of each item type in the world, split into on_ground, carried, stored and machine_stock, with the holders holding most. Same filters as find_items, area and exact prefab included. 12 types by default. Read only.\nMore: tool_info {tool: \"item_totals\"}",
+      "description": "Total quantity of each item type in the world, split into on_ground, carried, stored, machine_stock and silo, with the holders holding most. Same filters as find_items, area and exact prefab included. 12 types by default. Read only.\nMore: tool_info {tool: \"item_totals\"}",
       "help": {
-        "text": "Answers 'how much iron ingot do I have and where'. quantity includes machine stock (a furnace's or centrifuge's load gets its own row with prefab_name null and reagent set); item_count counts items only, machine_stock_entries the machine and reagent pairs. top_holders lists holders_limit holders per type (default 1, 0 leaves it out), each with kind (player, stored or machine_stock) and position.",
-        "keys": "totals [{prefab_name, display_name, items, quantity, on_ground, carried, stored, machine_stock, ...}], prefab_count, item_count, machine_stock_entries.",
+        "text": "Answers 'how much iron ingot do I have and where'. quantity includes machine stock (a furnace's or centrifuge's load gets its own row with prefab_name null and reagent set); item_count counts items only, machine_stock_entries the machine and reagent pairs, silo_entries the things silos store (entries and their contents). top_holders lists holders_limit holders per type (default 1, 0 leaves it out), each with kind (player, stored, machine_stock or silo) and position.",
+        "keys": "totals [{prefab_name, display_name, items, quantity, on_ground, carried, stored, machine_stock, silo, ...}], prefab_count, item_count, machine_stock_entries, silo_entries.",
         "shared": ["items", "truncation"]
       },
       "class": "read",
@@ -3566,10 +3622,13 @@
           "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
           "location": {
             "type": "string",
-            "enum": ["any", "ground", "player", "stored", "machine_stock"],
-            "description": "ground, player, stored or machine_stock; default any (see items)."
+            "enum": ["any", "ground", "player", "stored", "machine_stock", "silo"],
+            "description": "ground, player, stored, machine_stock or silo; default any (see items)."
           },
-          "within_id": {"type": "string", "description": "Only items inside this thing at any depth, and its machine stock."},
+          "within_id": {
+            "type": "string",
+            "description": "Only items inside this thing at any depth, and its machine stock or silo store."
+          },
           "min": {
             "description": "Box corner, [x, y, z] m; with max: only items whose outermost holder (a machine's stock: the machine) stands in the box."
           },
@@ -3599,7 +3658,8 @@
           "totals": {"type": "array"},
           "prefab_count": {"type": "integer"},
           "item_count": {"type": "integer"},
-          "machine_stock_entries": {"type": "integer"}
+          "machine_stock_entries": {"type": "integer"},
+          "silo_entries": {"type": "integer"}
         }
       },
       "x-read-by": {
@@ -8788,6 +8848,170 @@
       },
       "x-views": ["ShowPreviewView"],
       "x-shaping": "none"
+    },
+    {
+      "name": "silo_deposit",
+      "description": "Put things straight into an SDB Silo's store from wherever they are, each as one entry with its contents, as the silo's import stores it; by id, in part, or by a filter. Dry run by default; confirm to do it.\nMore: tool_info {tool: \"silo_deposit\"}",
+      "help": {
+        "text": "Each thing becomes one entry at the back of the store, with everything it holds, and is destroyed, as the silo's import does; for part of a stack only the part is stored and taken off the stack. The silo takes items whose slot class fits its import slot, up to 600 entries (an import it is saving counts). Host only.",
+        "keys": "dry_run, silo {reference_id, prefab_name, display_name}, on_off, powered, matched, skipped, truncated, items {results, count, success_count, error_count}, count {before, after, capacity}.",
+        "topics": {
+          "forms": {
+            "summary": "items, reference_ids, or a filter.",
+            "text": "items [{reference_id, quantity}] (up to 256; quantity for part of a stack), reference_ids (whole things), or a filter over every item in the world: prefab_contains, name_contains, location, within_id, near_player_m and limit (default 64, max 600, nearest the player first). Items the silo does not take are left out of a filter and counted as skipped."
+          },
+          "reply": {
+            "summary": "What a deposit answers.",
+            "text": "{dry_run, silo, on_off, powered, matched, skipped, truncated, items {results [{index, ok, reference_id, prefab_name, display_name, from {id, slot}, quantity, left_in_source, children, entry}], count, success_count, error_count}, count {before, after, capacity}}. A refused thing: thing_not_found, not_movable, slot_refuses, slot_locked, planted, silo_busy (in a silo's slot), in_vault_slot, silo_full, invalid_argument (named twice, inside another thing named, more than the stack holds)."
+          }
+        },
+        "shared": ["silos", "jobs", "items"]
+      },
+      "class": "write",
+      "x-class-when": [
+        {"when": {"dry_run": {"absent": true}}, "class": "read"},
+        {"when": {"dry_run": {"equals": true}}, "class": "read"}
+      ],
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {
+          "silo_id": {"type": "string", "description": "The SDB Silo."},
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 256,
+            "items": {
+              "type": "object",
+              "properties": {
+                "reference_id": {"type": "string", "description": "The thing."},
+                "quantity": {"type": "number", "exclusiveMinimum": 0, "description": "Part of a stack. Default all."}
+              },
+              "required": ["reference_id"],
+              "additionalProperties": false
+            },
+            "description": "Things by id, each whole or part of a stack, up to 256."
+          },
+          "reference_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 256,
+            "items": {"type": "string"},
+            "description": "Whole things by id."
+          },
+          "prefab_contains": {"type": "string", "description": "Filter: part of the prefab name, any case."},
+          "name_contains": {"type": "string", "description": "Filter: part of the shown name, any case."},
+          "location": {
+            "type": "string",
+            "enum": ["any", "ground", "player", "stored"],
+            "description": "Filter: any, ground, player or stored (see items)."
+          },
+          "within_id": {"type": "string", "description": "Filter: inside this holder at any depth (a backpack, a locker, a player)."},
+          "near_player_m": {"type": "number", "exclusiveMinimum": 0, "description": "Filter: within this many metres of the player."},
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600,
+            "description": "Filter: at most this many things, nearest first; default 64."
+          },
+          "dry_run": {"type": "boolean", "description": "Default true: check and report only."},
+          "confirm": {"type": "boolean", "description": "true with dry_run false to deposit."}
+        },
+        "required": ["silo_id"],
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "dry_run": {"type": "boolean"},
+          "silo": {"type": "object"},
+          "on_off": {"type": "boolean"},
+          "powered": {"type": "boolean"},
+          "matched": {"type": ["integer", "null"]},
+          "skipped": {"type": "integer"},
+          "truncated": {"type": "boolean"},
+          "items": {"type": "object"},
+          "count": {"type": "object"}
+        }
+      },
+      "x-views": ["SiloDepositView"],
+      "x-shaping": "lists"
+    },
+    {
+      "name": "silo_withdraw",
+      "description": "Take items of one prefab out of an SDB Silo straight into a holder's slots, with the silo's own bookkeeping, front of the store first. Dry run by default; confirm to do it.\nMore: tool_info {tool: \"silo_withdraw\"}",
+      "help": {
+        "text": "Name it by prefab_name or prefab_hash; quantity counts items (a stack its quantity, anything else 1), at most what the silo holds. A stack entry holding nothing is pooled: the amount goes into stacks, the last entry keeping the rest. A thing holding things, a non-stack and stored food move whole, contents and all, one empty slot each; food comes out rotten, as from the silo's export. If a game call fails part way, what it did not make stays in the silo. Host only.",
+        "keys": "dry_run, silo {reference_id, prefab_name, display_name}, on_off, powered, to {reference_id, prefab_name, display_name}, quantity, taken [{index, quantity, left, whole, children}], placed [{where, slot, quantity, reference_id}], stock {prefab_name, display_name, before, change, after}, count {before, after, capacity}.",
+        "topics": {
+          "delivery": {
+            "summary": "Where the items go.",
+            "text": "to_id is the holder (default the player); to_slot a slot index or \"auto\" (default). On a player, auto tops up matching stacks anywhere in the inventory, then makes new stacks in empty slots that take the item (never the body slots unless named by index); on anything else its own slots; never a hidden slot. A whole entry needs an empty slot that takes it. What does not fit is no_room and nothing happens, unless allow_ground puts the rest on the ground a metre in front of the holder."
+          },
+          "reply": {
+            "summary": "What a withdrawal answers.",
+            "text": "{dry_run, silo, on_off, powered, to, quantity, taken [{index (the entry's place in the store before), quantity, left (what the entry keeps), whole, children}], placed [{where (merged, slot or ground), slot {id, slot}, quantity, reference_id (null in a dry run)}], stock {before, change, after} for the prefab, count {before, after, capacity} in entries}. A real run reads stock and count back from the silo."
+          }
+        },
+        "shared": ["silos", "jobs", "slots"]
+      },
+      "class": "write",
+      "x-class-when": [
+        {"when": {"dry_run": {"absent": true}}, "class": "read"},
+        {"when": {"dry_run": {"equals": true}}, "class": "read"}
+      ],
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {
+          "silo_id": {"type": "string", "description": "The SDB Silo."},
+          "prefab_name": {
+            "type": "string",
+            "description": "The item to take, as container_contents names its entries (ItemIronIngot)."
+          },
+          "prefab_hash": {
+            "type": "integer",
+            "description": "The item to take, by prefab hash (as the silo's IC stack gives it).",
+            "minimum": -2147483648,
+            "maximum": 2147483647
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Items: a stack counts its quantity, anything else 1."
+          },
+          "to_id": {"type": "string", "description": "The holder that gets the items; default the player."},
+          "to_slot": {
+            "oneOf": [{"type": "integer", "minimum": 0}, {"type": "string", "enum": ["auto"]}],
+            "description": "A slot index of to_id, or \"auto\" (default)."
+          },
+          "allow_ground": {
+            "type": "boolean",
+            "description": "Put what does not fit on the ground in front of the holder. Default false."
+          },
+          "dry_run": {"type": "boolean", "description": "Default true: check and report only."},
+          "confirm": {"type": "boolean", "description": "true with dry_run false to withdraw."}
+        },
+        "required": ["silo_id", "quantity"],
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "dry_run": {"type": "boolean"},
+          "silo": {"type": "object"},
+          "on_off": {"type": "boolean"},
+          "powered": {"type": "boolean"},
+          "to": {"type": "object"},
+          "quantity": {"type": "number"},
+          "taken": {"type": "array"},
+          "placed": {"type": "array"},
+          "stock": {"type": "object"},
+          "count": {"type": "object"}
+        }
+      },
+      "x-views": ["SiloWithdrawView"],
+      "x-shaping": "lists"
     },
     {
       "name": "solar_aim",

@@ -230,9 +230,10 @@ internal sealed class ItemRecord
 /// <summary>
 /// find_items' and item_totals' filter: names, where the item is, what holds it, how near the player and in what area
 /// (min and max, or near with radius_m: where its outermost holder stands; a machine's stock where the machine
-/// stands). vault_deposit reads the names and places without an area or an exact prefab. Also keeps machine stock
-/// (MachineStock) for location any or machine_stock; a WorldItems walk never yields that location, so callers that only
-/// collect items (list_containers) never see stock.
+/// stands, a silo's store where the silo stands). vault_deposit reads the names and places without an area or an exact
+/// prefab. Also keeps machine stock (MachineStock) for location any or machine_stock, and silo stock (SiloStock) for
+/// location any or silo; a WorldItems walk never yields those locations, so callers that only collect items
+/// (list_containers) never see them.
 /// </summary>
 internal sealed class ItemFilter
 {
@@ -255,7 +256,7 @@ internal sealed class ItemFilter
 
     internal string? NameContains { get; }
 
-    /// <summary>any, ground, player, stored or machine_stock.</summary>
+    /// <summary>any, ground, player, stored, machine_stock or silo.</summary>
     internal string Location { get; }
 
     internal ThingId? WithinId { get; }
@@ -277,10 +278,10 @@ internal sealed class ItemFilter
     {
         string location = args.OptionalString("location") ?? "any";
         if (location != "any" && location != "ground" && location != "player" && location != "stored" &&
-            location != MachineStock.Location)
+            location != MachineStock.Location && location != SiloStock.Location)
         {
             throw ApiErrors.InvalidArgument(
-                "Argument 'location' must be any, ground, player, stored or machine_stock.");
+                "Argument 'location' must be any, ground, player, stored, machine_stock or silo.");
         }
 
         return new ItemFilter(prefab, args.OptionalString("name_contains"), location,
@@ -318,6 +319,26 @@ internal sealed class ItemFilter
         }
 
         if (WithinId.HasValue && record.Machine.ReferenceId != WithinId.Value.Value)
+        {
+            return false;
+        }
+
+        return !NearPlayerM.HasValue || (record.Distance.HasValue && record.Distance.Value <= NearPlayerM.Value);
+    }
+
+    /// <summary>Whether silo stock can match at all: location any or silo.</summary>
+    internal bool WantsSilo => Location == "any" || Location == SiloStock.Location;
+
+    /// <summary>A stored thing matches by its prefab and shown name, where the silo stands; within_id is the silo.</summary>
+    internal bool Keeps(SiloRecord record)
+    {
+        if (!WantsSilo || !Prefab.Keeps(record.PrefabName) || !Contains(record.DisplayName, NameContains) ||
+            !Area.Contains(Bodies.V(record.Silo.Position)))
+        {
+            return false;
+        }
+
+        if (WithinId.HasValue && record.Silo.ReferenceId != WithinId.Value.Value)
         {
             return false;
         }
