@@ -314,6 +314,7 @@ internal static class ReplyShapes
                 .List("PlantView.ActiveStates", 1).List("PlantView.Conditions", 6).List("PlantNeedsView.TakesIn", 1)
                 .List("PlantNeedsView.GivesOut", 1).List("PlantNeedsView.Harmful", 2).List("PlantView.Genes", 8)
         };
+        shapes["move_player"] = new[] { S<MovePlayerView>() };
         shapes["player_vitals"] = new[] { S<PlayerVitalsView>() };
         shapes["read_console"] = new[]
         {

@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:c16ab31028f8fb2c05a47119ac285068d36cfa9cb72cb675e9aa5277e6c91eaa'
-MOD_VERSION = '1.27.2'
+CATALOGUE_HASH = 'sha256:a5e2ad713a2d38fe41edce57d6896d17245a1b85e3a0ebdb4f22aeffb53eeb09'
+MOD_VERSION = '1.28.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -544,6 +544,15 @@ TABLE = {'catalogue': {'class': 'read',
                'required': [],
                'shaping': 'lists',
                'protocol': False},
+ 'move_player': {'class': 'cheat',
+                 'class_when': [{'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
+                 'effects': [],
+                 'paging': None,
+                 'duration': None,
+                 'params': ['player', 'at', 'to_id', 'near_player', 'safe_ground', 'dry_run'],
+                 'required': [],
+                 'shaping': 'none',
+                 'protocol': False},
  'network_snapshot': {'class': 'read',
                       'class_when': [],
                       'effects': [],
@@ -1839,6 +1848,13 @@ class Methods:
         Class: write. Arguments: reference_id, quantity, to_id, to_slot, merge, moves.
         """
         return self.call('move_item', **{'reference_id': reference_id, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'merge': merge, 'moves': moves}, **options)
+
+    def move_player(self, *, player: str | None = None, at: object | None = None, to_id: str | None = None, near_player: str | None = None, safe_ground: bool | None = None, dry_run: bool | None = None, **options) -> dict:
+        """Cheat: move a player anywhere at once, to a point (at), next to a thing (to_id) or next to another player (near_player); works for a player on another machine.
+
+        Class: cheat (other classes at some arguments). Arguments: player, at, to_id, near_player, safe_ground, dry_run.
+        """
+        return self.call('move_player', **{'player': player, 'at': at, 'to_id': to_id, 'near_player': near_player, 'safe_ground': safe_ground, 'dry_run': dry_run}, **options)
 
     def network_snapshot(self, *, gateway_id: str | None = None, reference_ids: list | None = None, prefab_hash: int | None = None, name_contains: str | None = None, logic_types: list | None = None, max_devices: int | None = None, **options) -> dict:
         """Snapshot devices and their readable logic values in one frame, filtered by reference_ids, prefab_hash, name_contains and logic_types.

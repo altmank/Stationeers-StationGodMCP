@@ -12,8 +12,8 @@ namespace StationGodMCP.Net;
 
 /// <summary>
 /// StationGod's messages between games, over StationeersLaunchPad's LaunchPadBooster: a client's view to the server
-/// (ViewMessage), the server's drawings back to that client (DrawMessage), and the server's announcement in every
-/// joining player's join data (HostAnnouncement).
+/// (ViewMessage), the server's drawings back to that client (DrawMessage), the server's order to move that client's
+/// player (MoveMessage), and the server's announcement in every joining player's join data (HostAnnouncement).
 ///
 /// StationGod is optional on every machine. Registered as not required, with a version check that accepts any version,
 /// so LaunchPadBooster never refuses a join over StationGod: a player without it, or with another version, joins as
@@ -108,6 +108,27 @@ internal static class StationGodNet
         }
     }
 
+    /// <summary>Sends a move order to one client; false when it could not (no such client, the send failed).</summary>
+    internal static bool SendMove(long connectionId, byte[] payload)
+    {
+        Client? client = Active ? Client.Find(connectionId) : null;
+        if (client == null || client.state == ClientState.Disconnected)
+        {
+            return false;
+        }
+
+        try
+        {
+            SendMoveToClient(client, payload);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            OnceLog.Warning("send_move", $"Could not send the move to {client.name}: {exception.Message}");
+            return false;
+        }
+    }
+
     // Its own method, never inlined, so a missing or older LaunchPadBooster fails inside Register's try.
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void RegisterWithBooster()
@@ -118,6 +139,7 @@ internal static class StationGodNet
         mod.Networking.JoinSuffixSerializer = new HostAnnouncement();
         mod.Networking.RegisterMessage<ViewMessage>();
         mod.Networking.RegisterMessage<DrawMessage>();
+        mod.Networking.RegisterMessage<MoveMessage>();
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -125,6 +147,9 @@ internal static class StationGodNet
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void SendDrawToClient(Client client, byte[] payload) => new DrawMessage(payload).SendToClient(client);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void SendMoveToClient(Client client, byte[] payload) => new MoveMessage(payload).SendToClient(client);
 }
 
 /// <summary>
@@ -293,6 +318,57 @@ public sealed class DrawMessage : INetworkMessage
         catch (Exception exception)
         {
             OnceLog.Warning("process_draw", $"The server's drawing could not be shown: {exception.Message}");
+        }
+    }
+}
+
+/// <summary>The server's order to move this game's player, to its client. Read and handled on the main thread.</summary>
+public sealed class MoveMessage : INetworkMessage
+{
+    private const int MaximumBytes = 256;
+
+    private byte[] _payload = Array.Empty<byte>();
+    private bool _readable;
+
+    public MoveMessage()
+    {
+    }
+
+    internal MoveMessage(byte[] payload)
+    {
+        _payload = payload;
+        _readable = true;
+    }
+
+    public void Serialize(RocketBinaryWriter writer) => Envelope.Write(writer, _payload);
+
+    public void Deserialize(RocketBinaryReader reader)
+    {
+        try
+        {
+            byte[]? payload = Envelope.Read(reader, MaximumBytes);
+            _readable = payload != null;
+            _payload = payload ?? Array.Empty<byte>();
+        }
+        catch (Exception exception)
+        {
+            _readable = false;
+            OnceLog.Warning("read_move", $"The server's move did not read: {exception.Message}");
+        }
+    }
+
+    public void Process(long clientId)
+    {
+        try
+        {
+            if (NetworkManager.IsClient && _readable)
+            {
+                PlayerMoves.Receive(_payload);
+            }
+        }
+        catch (Exception exception)
+        {
+            OnceLog.Warning("process_move", $"The server's move could not be made: {exception.Message}");
         }
     }
 }

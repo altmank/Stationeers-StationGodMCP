@@ -24,6 +24,11 @@
     "origin": "tool",
     "see": {"topic": "rockets"}
   },
+  "ambiguous_player": {
+    "description": "The name matches several players; the message lists them. Give a whole name or a reference id.",
+    "origin": "tool",
+    "see": {"tool": "move_player", "topic": "refusals"}
+  },
   "ambiguous_port": {
     "description": "The device sits on several networks of that kind. Name one with {reference_id, port}; the message lists the ports.",
     "origin": "tool",
@@ -79,6 +84,11 @@
     "description": "The credit card is not where the game's sell can use it. Use a card a player carries or a vending machine holds.",
     "origin": "tool",
     "see": {"topic": "trading"}
+  },
+  "client_cannot_move": {
+    "description": "The player plays on another machine whose game this server cannot reach, so nothing moved; the message says why. They need the same StationGod version.",
+    "origin": "tool",
+    "see": {"tool": "move_player", "topic": "moving"}
   },
   "coils_short": {
     "description": "Fewer coils or kits could be taken than the piece costs; the build stopped before it and gave back what it took. Bring more, then run again.",
@@ -650,6 +660,11 @@
     "origin": "tool",
     "see": {"tool": "plant_genes", "topic": "refusals"}
   },
+  "outside_world": {
+    "description": "The point is beyond the world's terrain, where nothing holds a player up. Pick a point inside the map.",
+    "origin": "tool",
+    "see": {"tool": "move_player", "topic": "refusals"}
+  },
   "pad_unavailable": {
     "description": "The trader's landing pad is off (unpowered) or has an error. Power it and clear the error.",
     "origin": "tool",
@@ -679,6 +694,16 @@
     "description": "The plant is growing: a player never takes a plant out whole, only harvests it once mature or clears it. Harvest it instead.",
     "origin": "tool",
     "see": {"topic": "slots"}
+  },
+  "player_not_found": {
+    "description": "No player has that name or reference id; the message lists the players. Give one of them.",
+    "origin": "tool",
+    "see": {"tool": "move_player", "topic": "refusals"}
+  },
+  "player_not_movable": {
+    "description": "The player is dead, or another player is dragging them, so they are not moved. The message says which.",
+    "origin": "tool",
+    "see": {"tool": "move_player", "topic": "refusals"}
   },
   "port_not_joined": {
     "description": "That port joins no network of the kind. Name a port that is joined, or the network itself.",

@@ -3,8 +3,8 @@
 [Back to the README](../README.md)
 
 Rooms and their air, gas in tanks and pipes, the planet's atmosphere and weather, plants and their genes, and the
-player's own needs. Everything here is read from the game's own state and formulas; only `move_gas` and `plant_genes`
-change anything. No gateway is needed.
+player's own needs and where they stand. Everything here is read from the game's own state and formulas; only
+`move_gas`, `plant_genes` and `move_player` change anything. No gateway is needed.
 
 Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in litres, time in game seconds.
 
@@ -24,6 +24,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | `plant_genes` | Read or edit the genes of plants, seeds and produce, as the Gene Splicer does. | `reference_id` or `reference_ids`, `genes`, `unit`, `force`, `include_notes` (each gene's meaning) |
 | `reagents` | What a furnace, centrifuge, mixer or microwave holds, reagent by reagent (logic only gives the total). | `reference_id` |
 | `player_vitals` | Your hunger and thirst: stores, capacities, drain rates and time until empty, awake and asleep. | none |
+| `move_player` | A cheat: move a player anywhere at once, to a point, beside a thing or beside another player (see *Moving a player*). | `at`, or `to_id`, or `near_player`; `player`, `safe_ground`, `dry_run` |
 | `ignition_risk` | Whether anything you carry would catch fire in the air around you, by the game's fire rule. | `include_prefabs` |
 | `thing_health` | The damage of any thing, of every piece of one network, or every damaged or broken thing in the world, broken first, then worst first. | `reference_id`, `reference_ids`, `network_id` (with `kind`, `damaged_only`), or none; `structures_only`, `broken_only`, `min_damage_ratio` |
 
@@ -40,6 +41,39 @@ finished steel frame is 3); `blocks_air` says whether that state holds air.
 
 `water_sources` lists a new pipe network at once, even while the game is paused. A thing's own atmosphere made since
 the last atmospherics tick (a canister spawned while paused) shows from the next tick on.
+
+## Moving a player
+
+`move_player` is a cheat: it puts a player somewhere at once, which no player can do (the console's `teleport` is
+creative only and moves just the player at that keyboard). Ask before each use. It moves at once; `dry_run: true`
+moves nothing and reports where the player stands and where they would go.
+
+- **Who:** `player`, a name (a whole name, or a part only one name holds, any case) or a reference id; without it, the
+  player (on a dedicated server the one connected player). `player_not_found` and `ambiguous_player` list the players.
+- **Where:** one of `at` (a point, `[x, y, z]`), `to_id` (beside that thing, on the side facing where the player
+  stands, at the height of its base; an item in a locker or a suit counts as its holder) or `near_player` (beside that
+  player). Beside means 0.5 m clear of the thing's body; it does not check for walls, so a thing in a tight corner can
+  land a player in the wall next to it. A point beyond the world's terrain is refused (`outside_world`); the low-orbit
+  area above the planet is allowed.
+- **`safe_ground: true`** keeps x and z and takes the point the game's own teleport and respawn take: the highest
+  surface there (terrain, or a roof over it), 4 m above it, stepping aside from lava and landers. Inside a base that is
+  the roof, so leave it off to land on a floor indoors.
+- **The reply:** `before` and `after` (position, `room_id` and `room_type`, or `outside: true`), `distance_m`, the
+  `destination` as asked, and `moved_by`.
+
+**On a dedicated server.** A player's own game moves their character and the server's copy follows it, so the server
+cannot simply set where a remote player is: their next movement would pull them back. `moved_by` says how the move is
+made:
+
+- `client`: the player plays on another machine. The server sends the order to their StationGod, which moves them; the
+  server's copy goes there too. This needs StationGod 1.28.0 or later on their game as well (the same version as the
+  server); without it the call is refused `client_cannot_move` and nothing moves. `after` is the point sent; a
+  `dry_run` call a moment later reads where they actually stand.
+- `seat_exit`: the player is in a seat, bed, cryo tube or capsule. They leave it and stand at the point, the same way
+  getting up works, which reaches every player whatever they run.
+- `server`: the player at this game's own keyboard, or a body nobody controls (its player is offline).
+
+A dead player, or one another player is dragging, is refused `player_not_movable`.
 
 ## Moving gas
 

@@ -124,7 +124,7 @@ internal abstract class MarkSpec
 }
 
 /// <summary>
-/// A DrawCommand's bytes, protocol 1: protocol (1), kind (1: 1 previews, 2 highlights), replace (1), count (4), then
+/// A DrawCommand's bytes, protocol 1 and 2: protocol (1), kind (1: 1 previews, 2 highlights), replace (1), count (4), then
 /// each box as min, max (12 each), colour (16), seconds (4), name (text), xray (1), or each mark as its kind (1: 1
 /// point, 2 things), tint (16), pulse (1), seconds (4), label (text), then the point (12) or a count (4) and that many
 /// reference ids (8 each). Counts above the caps are refused on both ends; the sender keeps within them.

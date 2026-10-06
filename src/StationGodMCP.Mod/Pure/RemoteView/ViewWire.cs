@@ -3,7 +3,7 @@
 namespace StationGodMCP.Pure.RemoteView;
 
 /// <summary>
-/// A ViewReport's bytes, protocol 1: protocol (1 byte), session, sequence (4 each), eye, forward, up (12 each), flags
+/// A ViewReport's bytes, protocol 1 and 2: protocol (1 byte), session, sequence (4 each), eye, forward, up (12 each), flags
 /// (1: third person 1, seated 2, hit 4, target 8), player position (12), then with a target its reference id (8) and
 /// interactable index (4, -1 for none), and with a hit its point, normal (12 each), distance (4) and thing id (8, 0 for
 /// terrain). 58 bytes with neither, 70 with a target, 94 with a hit, 106 with both.

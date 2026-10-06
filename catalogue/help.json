@@ -91,7 +91,7 @@
     },
     "cheats": {
       "summary": "Cheat tools: the user approves each use.",
-      "text": "A cheat tool or argument changes the world in a way a player cannot: it bypasses the game's physics, rules or costs (move_gas, write_memory, run_console_command, set_battery_charge, plant_genes edits, paste_blueprint, place_structure free). Tell the user when a call is a cheat and get their approval for that call before running it. Each tool's description says when it is one."
+      "text": "A cheat tool or argument changes the world in a way a player cannot: it bypasses the game's physics, rules or costs (move_gas, write_memory, run_console_command, set_battery_charge, move_player, plant_genes edits, paste_blueprint, place_structure free). Tell the user when a call is a cheat and get their approval for that call before running it. Each tool's description says when it is one."
     },
     "jobs": {
       "summary": "Building jobs: dry run, confirm, polls, the queue.",

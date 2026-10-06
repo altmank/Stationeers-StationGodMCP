@@ -136,7 +136,7 @@ internal abstract class PlayerView
         };
     }
 
-    private static string NoRemoteView(Human player, string name)
+    internal static string NoRemoteView(Human player, string name)
     {
         string ignored = RemoteViews.IgnoredFor(player) ?? string.Empty;
         if (!StationGodNet.Active)

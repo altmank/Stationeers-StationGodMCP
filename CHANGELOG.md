@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.28.0
+
+A player can be moved anywhere, on a dedicated server too.
+
+- **New tool `move_player` (a cheat: ask the user first).** Moves a player at once to a point (`at`), beside a thing
+  (`to_id`: on the side facing the player, at its base) or beside another player (`near_player`). `player` takes a
+  name or a reference id; without it, the player. `safe_ground` drops the point onto the ground the game's own
+  teleport and respawn pick: the highest surface at that x and z, 4 m above it, away from lava and landers. The reply
+  gives the place before and after with each one's room, the distance, and `moved_by`. `dry_run` moves nothing and
+  reads where the player stands. Refusals: `player_not_found`, `ambiguous_player`, `player_not_movable` (dead, or
+  being dragged), `outside_world`, `client_cannot_move`.
+- **Moving a player on another machine.** The game lets a player's own game move their character and the server
+  follow, so a position set on the server alone is pulled back by the player's next movement update. The server
+  therefore sends the order to the player's StationGod, which moves them (`moved_by: client`), and puts its own copy
+  there too. A player in a seat, bed, cryo tube or capsule leaves it for the point the way getting up does, which
+  reaches every player (`seat_exit`); this game's own player and a body nobody controls are moved here (`server`).
+- **StationGod on a dedicated server and on the players' games must both be 1.28.0** for shared views, drawings and
+  moves: the messages between games carry the next protocol, and a game on another version neither sends nor reads
+  them (the camera tools refuse `no_view`, `move_player` refuses `client_cannot_move`).
+
 ## 1.27.2
 
 Frames can be taken from under a device that stays.

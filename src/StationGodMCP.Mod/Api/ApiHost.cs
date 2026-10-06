@@ -75,6 +75,7 @@ internal static class ApiHost
             ["screen_press"] = static args => ScreenPressApi.Handle(args),
             ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
             ["set_battery_charge"] = static args => SetBatteryChargeApi.Handle(args),
+            ["move_player"] = static args => MovePlayerApi.Handle(args),
             ["outer_frames"] = static args => OuterFramesApi.Handle(args),
             ["rooms"] = static args => RoomsApi.Handle(args),
             ["weather"] = static args => WeatherApi.Handle(args),
