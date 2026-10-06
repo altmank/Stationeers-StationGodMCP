@@ -38,7 +38,7 @@ internal static class MovePlayerApi
         Human player = MovablePlayers.Require(request.Player);
         Vector3 from = player.ThingTransformPosition;
         Target target = Target.Resolve(request.Destination, player, from);
-        Vector3 to = request.SafeGround ? SpawnPoint.GetSafePoint(target.Point) : target.Point;
+        Vector3 to = request.SafeGround ? SafeGround.Of(target.Point) : target.Point;
         WorldBounds.Require(to);
         PlayerMover mover = PlayerMover.For(player);
         Vector3 after = request.DryRun ? to : mover.Move(player, to);
@@ -150,6 +150,34 @@ internal static class MovablePlayers
             PlayerFound<Human>.Several several => throw ApiErrors.Refused("ambiguous_player", several.Reason),
             _ => throw new System.InvalidOperationException("Unknown player match.")
         };
+    }
+}
+
+/// <summary>
+/// safe_ground: on the planet the game's own safe point (SpawnPoint.GetSafePoint, as the console's teleport and respawn
+/// use it); in the low-orbit area (Rocket.LowOrbitPlayableBounds) the highest structure surface in the column, found
+/// by a ray down through the area (Pure/OrbitLanding), since the game's probe starts from the terrain far below.
+/// </summary>
+internal static class SafeGround
+{
+    internal static Vector3 Of(Vector3 point)
+    {
+        Bounds orbit = Rocket.LowOrbitPlayableBounds;
+        if (!orbit.Contains(point))
+        {
+            return SpawnPoint.GetSafePoint(point);
+        }
+
+        Vector3 top = new Vector3(point.x, orbit.max.y, point.z);
+        RaycastHit[] hits = Physics.RaycastAll(top, Vector3.down, orbit.size.y, Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction.Ignore);
+        List<OrbitSurface> surfaces = new List<OrbitSurface>(hits.Length);
+        foreach (RaycastHit hit in hits)
+        {
+            surfaces.Add(new OrbitSurface(hit.point.y, Thing.Find(hit.collider) is Structure));
+        }
+
+        return Bodies.U(OrbitLanding.Safe(Bodies.V(point), surfaces));
     }
 }
 

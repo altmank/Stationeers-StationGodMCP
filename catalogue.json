@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.28.1",
+  "mod_version": "1.28.2",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -4198,7 +4198,7 @@
       "name": "move_player",
       "description": "Cheat: move a player anywhere at once, to a point (at), next to a thing (to_id) or next to another player (near_player); works for a player on another machine. Ask the user first. Moves at once; dry_run reports where they stand.\nMore: tool_info {tool: \"move_player\"}",
       "help": {
-        "text": "player names who moves (a name or reference id; default the player, see player). Give one destination: at [x, y, z], to_id (land beside that thing, on the side facing the player, at its base) or near_player (beside that player). safe_ground drops the point onto the safe ground the game's own teleport and respawn use: the highest surface at that x and z (terrain or a roof), 4 m above it, away from lava and landers. The reply gives the player's place before and after, with the room of each, and moved_by (topic moving). A dry run moves nothing and reads where the player stands, so it checks a move a player's own game made.",
+        "text": "player names who moves (a name or reference id; default the player, see player). Give one destination: at [x, y, z], to_id (land beside that thing, on the side facing the player, at its base) or near_player (beside that player). safe_ground drops the point onto the safe ground the game's own teleport and respawn use: the highest surface at that x and z (terrain or a roof), 4 m above it, away from lava and landers; in the low-orbit area above the planet (no gravity there) it stands the player 0.5 m above the highest structure in that column, such as an orbital launch mount, or keeps the point when there is none. The reply gives the player's place before and after, with the room of each, and moved_by (topic moving). A dry run moves nothing and reads where the player stands, so it checks a move a player's own game made.",
         "topics": {
           "moving": {
             "summary": "Who makes the move: moved_by server, client or seat_exit.",
@@ -4229,7 +4229,7 @@
           "near_player": {"type": "string", "description": "Destination: beside this player (a name or reference id)."},
           "safe_ground": {
             "type": "boolean",
-            "description": "Default false. true drops the point onto the highest safe surface at its x and z, 4 m above it."
+            "description": "Default false. true drops the point onto the highest safe surface at its x and z, 4 m above it; in low orbit onto the highest structure there, 0.5 m above it."
           },
           "dry_run": {
             "type": "boolean",

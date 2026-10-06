@@ -57,7 +57,10 @@ moves nothing and reports where the player stands and where they would go.
   area above the planet is allowed.
 - **`safe_ground: true`** keeps x and z and takes the point the game's own teleport and respawn take: the highest
   surface there (terrain, or a roof over it), 4 m above it, stepping aside from lava and landers. Inside a base that is
-  the roof, so leave it off to land on a floor indoors.
+  the roof, so leave it off to land on a floor indoors. In the low-orbit area (y 1500 to 2500 m above the planet, where
+  orbital launch mounts are deployed) there is no terrain and no gravity, so it stands the player 0.5 m above the
+  highest structure at that x and z (a mount's deck, a station's roof), or keeps the point when nothing is built
+  there. `to_id` of a mount or anything else up there lands beside it as on the ground; the player floats there.
 - **The reply:** `before` and `after` (position, `room_id` and `room_type`, or `outside: true`), `distance_m`, the
   `destination` as asked, and `moved_by`.
 

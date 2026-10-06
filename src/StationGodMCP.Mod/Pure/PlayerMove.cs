@@ -47,6 +47,49 @@ internal static class Landing
     }
 }
 
+/// <summary>
+/// safe_ground in the low-orbit area above the planet (Rocket.LowOrbitPlayableBounds). The game's safe point
+/// (SpawnPoint.GetSafePoint) starts from the terrain surface at that x and z (EstimateTerrainSurface), which would drop
+/// the player 2 km to the planet. Up there there is no gravity (WorldManager.HasGravityAtHeight: only below
+/// PlanetaryAtmosphereSimulation.SpaceHeight), so nothing falls: the player stands on the highest structure surface in
+/// that column (a launch mount's deck, a station's roof), clear of it by ClearanceM, or stays at the point when no
+/// structure is there.
+/// </summary>
+internal static class OrbitLanding
+{
+    /// <summary>The gap between the surface and the player's feet.</summary>
+    internal const double ClearanceM = 0.5;
+
+    /// <summary>Where the player goes: on the highest structure the probe hit, else the point itself.</summary>
+    internal static Vec3 Safe(Vec3 point, IEnumerable<OrbitSurface> hits)
+    {
+        double? top = null;
+        foreach (OrbitSurface hit in hits)
+        {
+            if (hit.IsStructure && (top == null || hit.Y > top.Value))
+            {
+                top = hit.Y;
+            }
+        }
+
+        return top.HasValue ? new Vec3(point.X, top.Value + ClearanceM, point.Z) : point;
+    }
+}
+
+/// <summary>One thing a downward probe hit: its surface height, and whether it is a structure (not an item).</summary>
+internal readonly struct OrbitSurface
+{
+    internal OrbitSurface(double y, bool isStructure)
+    {
+        Y = y;
+        IsStructure = isStructure;
+    }
+
+    internal double Y { get; }
+
+    internal bool IsStructure { get; }
+}
+
 /// <summary>A player as move_player finds them: the body, its reference id and the name players see.</summary>
 internal sealed class NamedPlayer<T> where T : class
 {

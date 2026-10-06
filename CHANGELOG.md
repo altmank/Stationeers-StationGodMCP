@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.28.2
+
+`move_player` works in low orbit.
+
+- **`safe_ground` in the low-orbit area** (`Rocket.LowOrbitPlayableBounds`, where orbital launch mounts are deployed)
+  no longer drops the player to the planet: the game's safe point starts from the terrain at that x and z, 2 km
+  below. Up there it stands the player 0.5 m above the highest structure in that column (a launch mount's deck, a
+  station's roof), or keeps the point when nothing is built there; there is no gravity to fall in. Points, `to_id`
+  of a thing up there and `near_player` were already allowed by the world-edge check; this is now documented and
+  tested.
+
 ## 1.28.1
 
 A rocket payload can be put into a payload bay from anywhere.
