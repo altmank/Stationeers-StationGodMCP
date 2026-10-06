@@ -15,7 +15,7 @@ these tools need a gateway.
 | `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m`, `order` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Shape it with paths through the slots: `fields: ["slots.index", "slots.occupant.prefab_name"]`, or `occupant.slots.occupant.prefab_name` for what a backpack holds. | `reference_id`, `depth` (default 3), `prefab_contains`, `name_contains` (slots holding a match at any depth) |
 | `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
-| `move_item` | Move an item, or part of a stack, into a slot. | `reference_id`, `quantity`, `to_id`, `to_slot`, `merge`; or `moves: [...]` |
+| `move_item` | Move an item, or part of a stack, into a slot. | `reference_id`, `quantity`, `to_id`, `to_slot`, `merge`, `force` (cheat); or `moves: [...]` |
 | `label` | Rename things as the hand Labeller does. | `reference_id`, `name`; or `labels: [...]` |
 | `paint` | Paint things as a spray can does, no paint used; or list the colours. | `reference_ids` with `color`, or `items: [{reference_id, color}]` |
 
@@ -68,6 +68,10 @@ other perishables are never loose in the air.
   used up. An item already in a hidden slot can still be moved out, to rescue one put there by mistake. The same
   goes for a package's items and a vending machine's store, and nothing goes back into a hidden slot, so taking an
   item out of a package or a vending store cannot be undone.
+- `force: true` is a cheat (ask first) for the slots the game itself fills: it puts one whole item into an empty slot,
+  hidden or not, with the game's own move, as a wrench mounts a rocket payload in a payload bay. The slot must still
+  be empty and unlocked and its class must take the item; it needs a slot index, and is not taken in a `moves` list.
+  Nothing checks that the game uses what is put there.
 - `quantity` takes that many off a stack; the rest stays. An item that is not a stack (a water packet, a canister)
   moves whole and counts as 1, whatever it holds. `merge` (default true) lets items join a matching stack.
 - A grower's plant and fertiliser slots follow what you do by hand instead, hidden or not: a planter's slots and a

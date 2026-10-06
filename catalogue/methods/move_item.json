@@ -1,22 +1,27 @@
 {
   "name": "move_item",
-  "summary": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose.",
+  "summary": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose. force is a cheat.",
   "help": {
-    "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it.",
+    "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it. force true (a cheat, one move only: ask the user first) also fills a hidden slot (topic force).",
     "keys": "index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
     "topics": {
       "rules": {
         "summary": "Stacks, merging, hidden slots, vending machines.",
         "text": "A whole item moves as the game moves it (a vending machine keeps its own bookkeeping); part of a stack splits straight into the slot, as the Stacker does; a whole stack can join a matching stack (merge, default true). An item that is not a stack (a water packet, a canister) moves whole and counts as 1. auto skips slots the game's quick moves skip. An item may be moved out of a hidden slot (to rescue one put there by mistake); that also unpacks a package's items one by one and takes items out of a vending machine's store, and nothing goes back into a hidden slot, so such a move cannot be undone."
       },
+      "force": {
+        "summary": "Cheat: an item into a hidden slot, as the game's own code puts it there.",
+        "text": "force true moves one whole item into an empty slot given by index, even a hidden one, with the game's own move, as a wrench mounts a rocket payload in a payload bay's hidden slot. The slot must be empty, not locked, its class None or the item's, and the item must accept it (the game's own reason is given); a draggable such as a rocket payload is allowed. Not for to_slot auto, part of a stack, a stack's own slot (a cable coil's) or a vault's display slots; a grower's plant and fertiliser slots keep their planting rules. Not in the moves list. Nothing checks that the game uses what is put there; a wrong item can be stuck in a slot no player reaches (move_item can take it out again)."
+      },
       "reply": {
         "summary": "What a move answers.",
         "text": "{index, ok, reference_id, from {id, slot} (null for an item in the world), to {id, slot}, quantity_moved, merged_into, destination_reference_id (the stack in the slot after the move), warning}. warning is the game's error when one of its calls failed part way but the slot holds the result: the move is done, so do not repeat it. The batch form adds count, success_count and error_count."
       }
     },
-    "shared": ["slots"]
+    "shared": ["slots", "cheats"]
   },
   "class": "write",
+  "x-class-when": [{"when": {"force": {"equals": true}}, "class": "cheat"}],
   "cost": "instant",
   "params": {
     "type": "object",
@@ -34,6 +39,10 @@
         "description": "The slot index, or \"auto\"."
       },
       "merge": {"type": "boolean", "description": "Let the items join a matching stack in the slot. Default true."},
+      "force": {
+        "type": "boolean",
+        "description": "Cheat, default false: true puts the whole item into an empty slot by index even when it is hidden, as the game's own code does (topic force). Ask the user first."
+      },
       "moves": {
         "type": "array",
         "minItems": 1,

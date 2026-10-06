@@ -54,6 +54,10 @@ namespace StationGodMCP.Api;
 /// only into its own slot, and a plant growing in a plant slot is never taken out whole: a player only harvests or
 /// clears it.
 ///
+/// force (a cheat, single move only): a whole item into an empty slot with an index, hidden or not, by
+/// Pure/ForcedSlotRule: the rest of Slot.AllowMove without the reach and draggable rules, as RocketPayload.AttackWith
+/// mounts a payload in a payload bay's hidden slot with OnServer.MoveToSlot. A grower's slots keep their hand rules.
+///
 /// A game call that throws part way is read back: when the slot holds the result, the move is reported done with the
 /// game's error as a warning, never as an internal error, so a client does not repeat a move that happened.
 /// </summary>
@@ -138,10 +142,10 @@ internal abstract class MoveItemRequest
     {
         if (!args.Has("moves"))
         {
-            return new Single(ItemMove.Parse(args));
+            return new Single(ItemMove.Parse(args, args.OptionalBool("force") ?? false));
         }
 
-        args.Reject("moves", "reference_id", "quantity", "to_id", "to_slot", "merge");
+        args.Reject("moves", "reference_id", "quantity", "to_id", "to_slot", "merge", "force");
         JArray list = args.Array("moves", MoveItemApi.MaximumMoves);
         List<ParsedMove> moves = new List<ParsedMove>(list.Count);
         for (int index = 0; index < list.Count; index++)
@@ -200,7 +204,7 @@ internal sealed class ParsedMove
         ThingId? item = ThingId.TryRead(entry["reference_id"], out ThingId read) ? read : (ThingId?)null;
         try
         {
-            return new ParsedMove(ItemMove.Parse(new Args(entry)), item, null);
+            return new ParsedMove(ItemMove.Parse(new Args(entry), force: false), item, null);
         }
         catch (ApiException error)
         {
@@ -250,13 +254,14 @@ internal abstract class SlotChoice
 /// <summary>One requested move, as parsed.</summary>
 internal sealed class ItemMove
 {
-    private ItemMove(ThingId item, int? quantity, ThingId target, SlotChoice slot, bool merge)
+    private ItemMove(ThingId item, int? quantity, ThingId target, SlotChoice slot, bool merge, bool force)
     {
         Item = item;
         Quantity = quantity;
         Target = target;
         Slot = slot;
         Merge = merge;
+        Force = force;
     }
 
     internal ThingId Item { get; }
@@ -271,13 +276,25 @@ internal sealed class ItemMove
     /// <summary>Whether the items may join a matching stack already in the slot.</summary>
     internal bool Merge { get; }
 
-    internal static ItemMove Parse(Args args) =>
-        new ItemMove(
+    /// <summary>The cheat: fill a hidden slot as the game's own code does (Pure/ForcedSlotRule).</summary>
+    internal bool Force { get; }
+
+    internal static ItemMove Parse(Args args, bool force)
+    {
+        SlotChoice slot = SlotChoice.Parse(args);
+        if (force && slot is SlotChoice.Auto)
+        {
+            throw ApiErrors.InvalidArgument("force needs to_slot as a slot index, not \"auto\".");
+        }
+
+        return new ItemMove(
             args.ThingId("reference_id"),
             args.OptionalInt("quantity", 1, int.MaxValue),
             args.ThingId("to_id"),
-            SlotChoice.Parse(args),
-            args.OptionalBool("merge") ?? true);
+            slot,
+            args.OptionalBool("merge") ?? true,
+            force);
+    }
 }
 
 /// <summary>Checks one move against the game's rules and settles which slot and which stack it uses.</summary>
@@ -515,14 +532,44 @@ internal static class MovePlanner
             return null;
         }
 
+        if (move.Force)
+        {
+            return ForceRefusal(item, slot, quantity);
+        }
+
         if (!SlotAccess.Reaches(slot))
         {
-            return ApiErrors.Refused("slot_refuses", SlotAccess.HiddenReason(slot));
+            return ApiErrors.Refused("slot_refuses",
+                SlotAccess.HiddenReason(slot) + (SlotAccess.HeldByStack(slot) ? "" : ForcedSlotRule.HiddenSlotHint));
         }
 
         return slot.Get() != null
             ? MergeRefusal(move, item, slot, quantity, out mergeInto)
             : EnterRefusal(item, slot);
+    }
+
+    // force: Pure/ForcedSlotRule, a whole item into an empty slot whose class takes it, reachable or not.
+    private static ApiException? ForceRefusal(DynamicThing item, Slot slot, int quantity)
+    {
+        int whole = item is Stackable stack ? stack.Quantity : 1;
+        switch (SlotAccess.ForcedInto(item, slot, quantity >= whole))
+        {
+            case ForcedRefusal.StackSlot:
+                return ApiErrors.Refused("slot_refuses",
+                    SlotAccess.HiddenReason(slot) + " force does not change that.");
+            case ForcedRefusal.Occupied:
+                return ApiErrors.Refused("slot_occupied",
+                    $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}; force fills only an empty slot.");
+            case ForcedRefusal.PartOfStack:
+                return ApiErrors.InvalidArgument(
+                    $"force moves a whole item; leave quantity out (or pass {whole}) for {Names.Of(item)}.");
+            case ForcedRefusal.Refuses:
+                return ApiErrors.Refused("slot_refuses",
+                    $"{SlotAccess.Label(slot)} does not take {Names.Of(item)}: "
+                    + $"{SlotAccess.WhyForcedRefused(item, slot)}.");
+            default:
+                return null;
+        }
     }
 
     // Slot.AllowMove, with the reason it refused (the game's own when Thing.CanEnter says no).

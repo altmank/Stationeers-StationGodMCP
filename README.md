@@ -153,7 +153,7 @@ them changes instead of reading them every tick. The protocol itself is in
 
 - **It can cheat.** Every tool has a class: read, write (what a player or a chip can do: logic, chips, labels, paint,
   item moves, trading, building) or cheat (what no player can: `move_gas`, `write_memory`, the console, battery charge,
-  moving players, free placement, gene edits, blueprint pastes). Every connection can call every tool; the class is
+  moving players, free placement, gene edits, blueprint pastes, forced item moves into hidden slots). Every connection can call every tool; the class is
   there so an agent can tell you when a tool is a cheat and ask first. There is no general undo: save first.
 - **Host only.** The mod runs on the game that hosts; its changes reach other players through the game's own sync.
   Every player who joins needs the same version, because the StationGod Gateway is a new structure.

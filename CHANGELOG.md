@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.28.1
+
+A rocket payload can be put into a payload bay from anywhere.
+
+- **`force` on `move_item` (a cheat: ask the user first).** Puts one whole item into an empty slot, even a hidden
+  one, with the game's own move, as a wrench mounts a rocket payload in a payload bay (`RocketPayload.AttackWith`
+  calls `OnServer.MoveToSlot` on the bay's hidden slot). The slot must still be empty and unlocked, its class must
+  take the item and the item must accept it; a draggable such as a payload is allowed. It needs a slot index, moves
+  the whole item, and is not taken in a `moves` list; a stack's own slot, a vault's display slots and a grower's
+  slots keep their rules. Without `force` nothing changes; a hidden-slot refusal now names it.
+
 ## 1.28.0
 
 A player can be moved anywhere, on a dedicated server too.

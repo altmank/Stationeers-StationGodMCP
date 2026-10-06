@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:a5e2ad713a2d38fe41edce57d6896d17245a1b85e3a0ebdb4f22aeffb53eeb09'
-MOD_VERSION = '1.28.0'
+CATALOGUE_HASH = 'sha256:d3b3830f854e65dc93871e115dedd990962efb4ac28833c2661e3e6794b16d73'
+MOD_VERSION = '1.28.1'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -536,11 +536,11 @@ TABLE = {'catalogue': {'class': 'read',
               'shaping': 'lists',
               'protocol': False},
  'move_item': {'class': 'write',
-               'class_when': [],
+               'class_when': [{'when': {'force': {'equals': True}}, 'class': 'cheat'}],
                'effects': [],
                'paging': None,
                'duration': None,
-               'params': ['reference_id', 'quantity', 'to_id', 'to_slot', 'merge', 'moves'],
+               'params': ['reference_id', 'quantity', 'to_id', 'to_slot', 'merge', 'force', 'moves'],
                'required': [],
                'shaping': 'lists',
                'protocol': False},
@@ -1842,12 +1842,12 @@ class Methods:
         """
         return self.call('move_gas', **{'from': from_, 'to': to, 'delete': delete, 'gases': gases, 'amount_mol': amount_mol, 'force': force, 'joined': joined, 'dry_run': dry_run, 'transfer_id': transfer_id}, **options)
 
-    def move_item(self, *, reference_id: str | None = None, quantity: int | None = None, to_id: str | None = None, to_slot: int | str | None = None, merge: bool | None = None, moves: list | None = None, **options) -> dict:
+    def move_item(self, *, reference_id: str | None = None, quantity: int | None = None, to_id: str | None = None, to_slot: int | str | None = None, merge: bool | None = None, force: bool | None = None, moves: list | None = None, **options) -> dict:
         """Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order.
 
-        Class: write. Arguments: reference_id, quantity, to_id, to_slot, merge, moves.
+        Class: write (other classes at some arguments). Arguments: reference_id, quantity, to_id, to_slot, merge, force, moves.
         """
-        return self.call('move_item', **{'reference_id': reference_id, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'merge': merge, 'moves': moves}, **options)
+        return self.call('move_item', **{'reference_id': reference_id, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'merge': merge, 'force': force, 'moves': moves}, **options)
 
     def move_player(self, *, player: str | None = None, at: object | None = None, to_id: str | None = None, near_player: str | None = None, safe_ground: bool | None = None, dry_run: bool | None = None, **options) -> dict:
         """Cheat: move a player anywhere at once, to a point (at), next to a thing (to_id) or next to another player (near_player); works for a player on another machine.

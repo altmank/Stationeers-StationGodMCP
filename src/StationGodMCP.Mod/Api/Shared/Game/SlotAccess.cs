@@ -43,7 +43,23 @@ internal static class SlotAccess
             thing.SlotType.ToString(), thing is DraggableThing);
     }
 
-    private static bool OnPlayerBody(Slot slot) => slot.Parent is Human;
+    /// <summary>Pure/ForcedSlotRule for move_item force: Slot.AllowMove less its reach and draggable rules.</summary>
+    internal static ForcedRefusal ForcedInto(DynamicThing thing, Slot slot, bool wholeItem) =>
+        ForcedSlotRule.Into(HeldByStack(slot), slot.Get() != null, wholeItem, thing.CanEnter(slot).Result,
+            ClassFits(thing, slot));
 
-    private static bool HeldByStack(Slot slot) => slot.Parent is Stackable;
+    /// <summary>Why a forced move refuses this thing in this empty slot: Thing.CanEnter or the slot class.</summary>
+    internal static string WhyForcedRefused(DynamicThing thing, Slot slot)
+    {
+        CanEnterResult enter = thing.CanEnter(slot);
+        return SlotReach.WhyRefused(enter.Result, enter.Reason, ClassFits(thing, slot), slot.Type.ToString(),
+            thing.SlotType.ToString(), draggable: false);
+    }
+
+    internal static bool HeldByStack(Slot slot) => slot.Parent is Stackable;
+
+    private static bool ClassFits(DynamicThing thing, Slot slot) =>
+        slot.Type == Slot.Class.None || slot.Type == thing.SlotType;
+
+    private static bool OnPlayerBody(Slot slot) => slot.Parent is Human;
 }
