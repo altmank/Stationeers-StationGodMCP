@@ -34,7 +34,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.30.0";
+    public const string Version = "1.30.1";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
@@ -61,6 +61,9 @@ public sealed class StationGodMod : ModBehaviour
 
     /// <summary>The TCP listener's connections while it listens; null otherwise.</summary>
     internal static ProtocolHost? TcpConnections { get; private set; }
+
+    /// <summary>The subscription hub once the mod has loaded (mod_info's per-connection counts).</summary>
+    internal static SubscriptionHub? Hub { get; private set; }
 
     /// <summary>Every open connection on the pipe and over TCP.</summary>
     internal static System.Collections.Generic.IEnumerable<StationGodMCP.Protocol.Connection> AllConnections()
@@ -106,6 +109,7 @@ public sealed class StationGodMod : ModBehaviour
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
                 Subscriptions.ReadLogicManyReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
             _dispatcher.Subscriptions = _subscriptions;
+            Hub = _subscriptions;
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)

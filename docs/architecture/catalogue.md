@@ -304,8 +304,9 @@ The argument rules that make this exact (the defaults are the handlers' own, in 
 The cost classes start from the method's nature: `instant` for single reads and writes, `bounded` for the batch forms
 and `read_devices` (with `per_item` set), `world` for the scans (`list_devices` without a filter, `find_things`,
 `find_items`, `item_totals`, `list_containers`, `thing_health` without ids, `grid_survey`, `lint_layout`, `rooms`,
-`plants`, `outer_frames`, `deep_miner_spots`, `wall_map`, `consumables`, `water_sources`, `ignition_risk`), `plan` for
-planners, dry runs of building tools and forecasts, `job` for real runs of building tools, `stream` for `sample_logic`.
+`plants`, `outer_frames`, `deep_miner_spots`, `wall_map`, `consumables`, `water_sources`, `ignition_risk`) and the slow single calls
+`run_console_command` and `rocket_status`, `plan` for planners, dry runs of building tools and forecasts, and
+`dish_aim` (a grid search), `job` for real runs of building tools, `stream` for `sample_logic`.
 The scheduler refines them at run time
 ([scheduling.md](scheduling.md)).
 

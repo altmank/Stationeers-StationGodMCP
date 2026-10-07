@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Diagnostics;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -70,15 +71,24 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         Stats.Frame(outcome.Served, outcome.SpentMs, outcome.BudgetStopped);
     }
 
-    // A method name the frame's call list and the slow-frame log may show: one the mod answers, else "unknown".
+    private const string UnknownMethod = "unknown";
+
+    // A method name the frame's call list, the slow-frame log and a connection's counts may show: one the mod answers,
+    // else "unknown".
     private static string KnownMethod(string? method) =>
         method != null && (SubscriptionHub.Handles(method) || method == SubscriptionHub.SampleLogicMethod)
             ? method
-            : MethodStats.Counted(method) ?? "unknown";
+            : MethodStats.Counted(method) ?? UnknownMethod;
 
+    /// <summary>
+    /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
+    /// and main-thread ms per known method; subscribe, unsubscribe and sample_logic count as answered).
+    /// </summary>
     public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
+        long began = Stopwatch.GetTimestamp();
         long started = Prof.CallStarted();
+        bool ok = true;
         try
         {
             if (Subscriptions != null && SubscriptionHub.Handles(call.Request.Method))
@@ -92,10 +102,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             }
 
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);
+            ok = handled.Ok;
             return new CallOutcome(handled.Json, handled.Method);
         }
         catch (Exception exception)
         {
+            ok = false;
             // ApiHost.HandleCall answers every tool and serializer error itself; this is the error reply failing too.
             return new CallOutcome(
                 ApiHost.Serialize(CallReplyView.Refused(call.Request.Id, new ErrorView("internal_error", exception.Message))),
@@ -103,9 +115,15 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         }
         finally
         {
+            string method = KnownMethod(call.Request.Method);
+            if (method != UnknownMethod && call.Source is Connection connection)
+            {
+                connection.Calls.Record(method, ok, (Stopwatch.GetTimestamp() - began) * 1000.0 / Stopwatch.Frequency);
+            }
+
             if (started != 0)
             {
-                Prof.CallEnded(KnownMethod(call.Request.Method), started);
+                Prof.CallEnded(method, started);
             }
         }
     }

@@ -161,7 +161,7 @@ internal static class ApiHost
 
         double serializeMs = MillisecondsSince(serializeStarted);
         MethodStats.Record(answer.Method, answer.Ok, answer.HandlerMs, serializeMs, queueWaitMs);
-        return new HandledRequest(json, MethodStats.Counted(answer.Method));
+        return new HandledRequest(json, MethodStats.Counted(answer.Method), answer.Ok);
     }
 
     /// <summary>The reply message: always written through the shaping writer, which also counts the lists.</summary>
@@ -356,18 +356,24 @@ internal sealed class Answer
     internal Answer Failed(ErrorView error) => Failure(RequestId, Method, error, HandlerMs);
 }
 
-/// <summary>A handled request's reply text, and its method when that is a known one (null otherwise).</summary>
+/// <summary>
+/// A handled request's reply text, its method when that is a known one (null otherwise), and whether it answered
+/// without an error.
+/// </summary>
 internal sealed class HandledRequest
 {
-    internal HandledRequest(string json, string? method)
+    internal HandledRequest(string json, string? method, bool ok)
     {
         Json = json;
         Method = method;
+        Ok = ok;
     }
 
     internal string Json { get; }
 
     internal string? Method { get; }
+
+    internal bool Ok { get; }
 }
 
 /// <summary>

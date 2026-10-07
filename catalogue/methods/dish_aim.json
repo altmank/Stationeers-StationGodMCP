@@ -16,7 +16,7 @@
     "shared": ["trading"]
   },
   "class": "read",
-  "cost": "instant",
+  "cost": "plan",
   "params": {
     "type": "object",
     "properties": {

@@ -1,6 +1,8 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
@@ -9,6 +11,7 @@ using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api;
 
@@ -19,18 +22,25 @@ namespace StationGodMCP.Api;
 /// Found through AtmosphericsManager.AllAtmospheres, the game's own list of every atmosphere: Thing-mode atmospheres
 /// (a thing's own) and Network-mode ones (a pipe network's), and PipeNetwork.AllPipeNetworks for a network whose
 /// atmosphere the game has not listed yet. Room and world air is left out, and so are organs and
-/// bodies (a stomach holds water too). Largest liquid water first.
+/// bodies (a stomach holds water too). Largest liquid water first. A call that holds the main thread over
+/// WaterSourcesWarning.ThresholdMs logs where the time went (rate-limited).
 /// </summary>
 internal static class WaterSourcesApi
 {
     private const double DefaultMinimumMol = 1.0;
 
+    private static readonly WaterSourcesWarning SlowCalls = new WaterSourcesWarning();
+
     internal static WaterSourcesView Handle(Args args)
     {
         double minimum = args.OptionalPositiveDouble("min_mol") ?? args.OptionalPositiveDouble("min_moles") ??
             DefaultMinimumMol;
+        long started = Stopwatch.GetTimestamp();
+        int collections = GC.CollectionCount(0);
         PlayerOrigin origin = PlayerOrigin.Current();
-        List<Atmosphere> atmospheres = Atmospheres();
+        Listed listed = Atmospheres();
+        List<Atmosphere> atmospheres = listed.Atmospheres;
+        long scanStarted = Stopwatch.GetTimestamp();
         List<WaterRow> rows = new List<WaterRow>();
         for (int index = 0; index < atmospheres.Count; index++)
         {
@@ -53,23 +63,43 @@ internal static class WaterSourcesApi
         }
 
         rows.Sort(static (a, b) => WaterRow.LargestFirst(a, b));
+        long rowsStarted = Stopwatch.GetTimestamp();
         List<WaterSourceView> sources = new List<WaterSourceView>(rows.Count);
         foreach (WaterRow row in rows)
         {
             sources.Add(row.ToView(origin));
         }
 
+        long ended = Stopwatch.GetTimestamp();
+        WarnWhenSlow(new WaterSourcesTiming(Ms(ended - started), listed.AtmosphereLockMs, listed.AtmosphereListMs,
+            listed.NetworkLockMs, listed.NetworkListMs, Ms(rowsStarted - scanStarted), Ms(ended - rowsStarted),
+            atmospheres.Count, rows.Count, GC.CollectionCount(0) - collections));
         return new WaterSourcesView(sources, sum.ToView(), minimum, origin.View);
     }
 
+    private static void WarnWhenSlow(in WaterSourcesTiming timing)
+    {
+        string? warning = SlowCalls.Check(Ms(Stopwatch.GetTimestamp()) / 1000.0, in timing);
+        if (warning != null)
+        {
+            StationGodMod.LogWarning(warning);
+        }
+    }
+
+    private static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
+
     // AtmosphericsManager.AllAtmospheres, plus every pipe network's atmosphere: a network made since the last
     // atmospherics tick (or while paused) has its atmosphere only queued (AtmosphericsManager.RegisterFromMainThread)
-    // until HandleMainThreadRegistrations adds it to the list on the next tick.
-    private static List<Atmosphere> Atmospheres()
+    // until HandleMainThreadRegistrations adds it to the list on the next tick. Each list is copied under its own lock,
+    // timed (WaterSourcesTiming).
+    private static Listed Atmospheres()
     {
-        List<Atmosphere> atmospheres = Pools.Snapshot(AtmosphericsManager.AllAtmospheres);
+        long started = Stopwatch.GetTimestamp();
+        List<Atmosphere> atmospheres = Pools.Snapshot(AtmosphericsManager.AllAtmospheres, out double atmosphereLockMs);
+        long networksStarted = Stopwatch.GetTimestamp();
         HashSet<Atmosphere> listed = new HashSet<Atmosphere>(atmospheres);
-        foreach (PipeNetwork network in Pools.Snapshot(PipeNetwork.AllPipeNetworks))
+        List<PipeNetwork> networks = Pools.Snapshot(PipeNetwork.AllPipeNetworks, out double networkLockMs);
+        foreach (PipeNetwork network in networks)
         {
             Atmosphere? atmosphere = network?.Atmosphere;
             if (atmosphere != null && listed.Add(atmosphere))
@@ -78,7 +108,32 @@ internal static class WaterSourcesApi
             }
         }
 
-        return atmospheres;
+        long ended = Stopwatch.GetTimestamp();
+        return new Listed(atmospheres, atmosphereLockMs, Ms(networksStarted - started), networkLockMs,
+            Ms(ended - networksStarted));
+    }
+
+    private sealed class Listed
+    {
+        internal Listed(List<Atmosphere> atmospheres, double atmosphereLockMs, double atmosphereListMs,
+            double networkLockMs, double networkListMs)
+        {
+            Atmospheres = atmospheres;
+            AtmosphereLockMs = atmosphereLockMs;
+            AtmosphereListMs = atmosphereListMs;
+            NetworkLockMs = networkLockMs;
+            NetworkListMs = networkListMs;
+        }
+
+        internal List<Atmosphere> Atmospheres { get; }
+
+        internal double AtmosphereLockMs { get; }
+
+        internal double AtmosphereListMs { get; }
+
+        internal double NetworkLockMs { get; }
+
+        internal double NetworkListMs { get; }
     }
 
     // A thing's own atmosphere, not a body's or an organ's; or a pipe network's.

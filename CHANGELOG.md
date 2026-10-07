@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.30.1
+
+Fewer long frames on a busy server, and mod_info says who calls what.
+
+- **Three calls wait for the heavy lane.** `run_console_command` and `rocket_status` are costed `world` and
+  `dish_aim` `plan`, so they run at most one a frame, after the quick calls and within the frame's budget, instead of
+  in the light lane, where nothing stopped a slow one.
+- **Pipe jobs skip settles that would do nothing.** After each piece a pipe job applied the game's queued gas changes
+  on a pool thread and waited for it. It now skips that when the game has nothing queued (both event queues and the
+  awaiting cells empty, no pipe network waiting for an event), which is when applying them changed nothing. Anything
+  it cannot read settles as before. `mod_info`'s `runtime.job_settles` counts settles run, skipped and unchecked.
+- **Per-connection counts in `mod_info`.** Each entry of `runtime.connections` lists the connection's three
+  most-called methods (`calls`, `errors`, `total_ms`), `method_count` and the `subscriptions` it holds. To keep the
+  default reply within its budget, `mod_info` lists 12 `methods` by default (was 15; `list_limits` keeps more).
+- **`water_sources` says where a slow call went.** A call that holds the main thread 250 ms or more logs, at most once
+  a minute, how long it waited for the game's atmosphere and pipe network lists (the game tick holds those locks for
+  its passes over every atmosphere), the scan, the rows and the garbage collections during it. The profiler times
+  every pool copy as `pool_snapshot`.
+
 ## 1.30.0
 
 What StationGod costs a server's main thread can be measured while the server runs.

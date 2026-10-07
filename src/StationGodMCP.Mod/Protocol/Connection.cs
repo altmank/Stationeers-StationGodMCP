@@ -125,6 +125,9 @@ internal sealed class Connection
 
     internal long BytesSent => Interlocked.Read(ref _bytesSent);
 
+    /// <summary>The calls run for this connection, per method (mod_info); main thread only.</summary>
+    internal Pure.ConnectionCalls Calls { get; } = new Pure.ConnectionCalls();
+
     internal void Start()
     {
         _host.Opened(this);

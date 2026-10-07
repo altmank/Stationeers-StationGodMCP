@@ -447,6 +447,14 @@ internal static class GameMembers
         "SaveHelper.IsSaving (getter)",
         () => AccessTools.PropertyGetter(typeof(Assets.Scripts.Serialization.SaveHelper), "IsSaving")));
 
+    // ---- The game's queued gas changes (JobGas settles only when something is queued; missing, it always settles) ----
+    internal static readonly GameField NetworkAtmosphereEvents =
+        Field(typeof(NetworkAtmosphereEvent), "NetworkAtmosphereEvents", PrivateStatic);
+    internal static readonly GameField AtmosphericEventInstances =
+        Field(typeof(AtmosphericEventInstance), "atmosphericEventInstances", PrivateStatic);
+    internal static readonly GameField AtmosphericAwaitingGrids =
+        Field(typeof(AtmosphericEventInstance), "AwaitingGrids", PrivateStatic);
+
     // ---- Console ----
     internal static readonly GameMethod ConsoleColorOf = Register(new GameMethod(
         "ConsoleWindow.GetConsoleColor(uint)", () =>

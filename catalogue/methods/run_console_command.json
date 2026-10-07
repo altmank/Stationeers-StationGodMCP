@@ -21,7 +21,7 @@
     "shared": ["cheats"]
   },
   "class": "cheat",
-  "cost": "instant",
+  "cost": "world",
   "params": {
     "type": "object",
     "properties": {

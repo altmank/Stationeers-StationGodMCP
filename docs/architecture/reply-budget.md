@@ -119,7 +119,7 @@ or a text. A tool whose sizes match changed nothing.
 | list_devices | every device | devices 25 (x-default-limits) | 38,760 | 6,510 |
 | list_gateways | gateways | the world's | 979 | 979 |
 | looking_at | player, interactable, view, the full hit, a structure's body | target and a brief hit; the rest with include | 2,655 | 858 |
-| mod_info | methods, reflected members, runtime per method | methods 15, reflection 10 (x-default-limits), runtime methods 10 | 35,526 | 7,316 |
+| mod_info | methods, reflected members, runtime per method | methods 12, reflection 10 (x-default-limits), runtime methods 10 | 35,526 | 7,316 |
 | move_gas, sample_logic | the request's atmospheres; the samples asked | exempt: built from JSON trees, sized by the request | | |
 | network_snapshot | devices, each with every readable value | max_devices 2 (was 256) | 407,976 | 6,894 |
 | outer_frames | a page of frames | page 20 (was 200) | 66,263 | 6,863 |

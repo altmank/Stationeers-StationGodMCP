@@ -29,7 +29,7 @@
     "shared": ["rockets"]
   },
   "class": "read",
-  "cost": "instant",
+  "cost": "world",
   "params": {
     "type": "object",
     "properties": {

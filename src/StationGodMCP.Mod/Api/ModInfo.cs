@@ -44,7 +44,8 @@ internal static class ModInfoApi
     private static RuntimeView Runtime() =>
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
-            Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections(), ProfilingControl.Summary());
+            Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections(), ProfilingControl.Summary(),
+            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked));
 
     private static List<ConnectionView>? Connections()
     {
@@ -58,7 +59,8 @@ internal static class ModInfoApi
         {
             Session? session = connection.Session;
             views.Add(new ConnectionView(connection.ClientId, session?.Client, session?.Label, connection.Transport,
-                session?.Protocol, session?.InFlight ?? 0, connection.ServedCount, connection.BytesSent));
+                session?.Protocol, session?.InFlight ?? 0, connection.ServedCount, connection.BytesSent,
+                connection.Calls, StationGodMod.Hub?.CountOf(connection.ClientId) ?? 0));
         }
 
         views.Sort(static (left, right) => string.CompareOrdinal(left.ClientId, right.ClientId));

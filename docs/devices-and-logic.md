@@ -291,6 +291,11 @@ stay empty, and the mod's log names the first read of each. A frame spends at mo
 `[Performance] RequestBudgetMs` (4 ms by default, at most 2 ms while a job holds the game tick) on requests; the rest
 wait for the next frame, in order (see [configuration](configuration.md)).
 
+`runtime.connections` says who calls what: each open connection's three most-called methods (`calls`, `errors`,
+`total_ms` of main-thread time), `method_count` and the `subscriptions` it holds, counted while it is open.
+`runtime.job_settles` counts pipe jobs' settles after each piece: `run`, `skipped` (the game had no gas change queued,
+so applying the queues would have done nothing) and `unchecked` (settled because the game's queues could not be read).
+
 ## Profiling a running server
 
 `profiling` measures what StationGod costs the game's main thread while the server runs. `action: on` starts a

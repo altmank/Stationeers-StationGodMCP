@@ -40,7 +40,9 @@ and can hold air. A sealed space bigger than 1200 cells has no room, so frames f
 finished steel frame is 3); `blocks_air` says whether that state holds air.
 
 `water_sources` lists a new pipe network at once, even while the game is paused. A thing's own atmosphere made since
-the last atmospherics tick (a canister spawned while paused) shows from the next tick on.
+the last atmospherics tick (a canister spawned while paused) shows from the next tick on. A call that holds the game's
+main thread 250 ms or more logs, at most once a minute, where the time went: the wait for the game's atmosphere and
+pipe network lists (the game tick holds them during its passes), the scan, the rows and any garbage collection.
 
 ## Moving a player
 

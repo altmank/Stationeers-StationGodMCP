@@ -1,6 +1,6 @@
 {
   "catalogue_version": 1,
-  "mod_version": "1.30.0",
+  "mod_version": "1.30.1",
   "server": {
     "name": "StationGodMCP",
     "instructions": "StationGod reads and builds in a running Stationeers world. Tool descriptions are short: tool_info {tool: \"<name>\"} gives a tool's full help in small steps, and tool_info {} lists the shared topics (positions, turns, refunds, paging, shaping, truncation, cheats, jobs, gateways, player, networks, errors). Start with list_devices or describe_device before reading or writing logic. Building tools dry-run by default; a real run needs dry_run false and confirm true. Cheat tools need the user's approval for each call. Replies stay small: read truncated before concluding you saw everything, and use fields, omit or output_file for a large reply. An error's see names the tool_info node that explains it."
@@ -2790,7 +2790,7 @@
         "shared": ["trading"]
       },
       "class": "read",
-      "cost": "instant",
+      "cost": "plan",
       "params": {
         "type": "object",
         "properties": {
@@ -4050,8 +4050,8 @@
       "name": "mod_info",
       "description": "The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game. Read only.\nMore: tool_info {tool: \"mod_info\"}",
       "help": {
-        "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 15 and reflection 10 by default; list_limits keeps more.",
-        "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, profiling, ...}.",
+        "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 12 and reflection 10 by default; list_limits keeps more.",
+        "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], profiling, ...}.",
         "topics": {
           "methods": {
             "summary": "Per-method counts and times.",
@@ -4060,6 +4060,10 @@
           "reflection": {
             "summary": "The game members the mod reaches.",
             "text": "reflection [{member, resolved, optional}]: every game member the mod reaches by name. Optional ones belong to other mods such as Terraforming Reloaded and BlueprintMod. missing_count: required members not found; methods that need one answer game_changed."
+          },
+          "connections": {
+            "summary": "Who calls: each open connection's methods and subscriptions.",
+            "text": "runtime.connections lists each open connection: client_id, client (its key's name), label (the name it gave), transport, protocol, in_flight, served, bytes_sent, subscriptions (held), and methods: its three most-called methods, each {method, calls, errors, total_ms of main-thread time}, with method_count counting every method it called. Counts are kept while the connection is open. runtime.job_settles counts pipe jobs' settles after each piece: run, skipped (the game had nothing queued) and unchecked (run because its queues could not be read)."
           },
           "runtime": {
             "summary": "What the mod costs the game.",
@@ -4087,7 +4091,7 @@
         }
       },
       "x-views": ["ModInfoView"],
-      "x-default-limits": {"methods": 15, "reflection": 10},
+      "x-default-limits": {"methods": 12, "reflection": 10},
       "x-shaping": "lists"
     },
     {
@@ -8270,7 +8274,7 @@
         "shared": ["rockets"]
       },
       "class": "read",
-      "cost": "instant",
+      "cost": "world",
       "params": {
         "type": "object",
         "properties": {
@@ -8362,7 +8366,7 @@
         "shared": ["cheats"]
       },
       "class": "cheat",
-      "cost": "instant",
+      "cost": "world",
       "params": {
         "type": "object",
         "properties": {

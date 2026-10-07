@@ -20,10 +20,11 @@ internal sealed class RuntimeView : ITruncatingView
 {
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift, List<ConnectionView>? connections = null,
-        ProfilingSummaryView? profiling = null)
+        ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null)
     {
         Connections = connections;
         Profiling = profiling;
+        JobSettles = jobSettles ?? new JobSettlesView(0, 0, 0);
         UptimeS = Math.Round(uptimeS, 1);
         WorldEpoch = worldEpoch;
         RequestBudgetMs = budget.Unlimited ? null : budget.LimitMs;
@@ -68,6 +69,8 @@ internal sealed class RuntimeView : ITruncatingView
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public List<ConnectionView>? Connections { get; }
 
+    public JobSettlesView JobSettles { get; }
+
     /// <summary>The profiler's summary while profiling is on; absent otherwise.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public ProfilingSummaryView? Profiling { get; }
@@ -79,13 +82,20 @@ internal sealed class RuntimeView : ITruncatingView
 
 /// <summary>
 /// One open connection: the server's id for it, the key's name (anonymous without a key), the name the client gave
-/// itself, transport, protocol (null before its first line), level, calls in flight and answered, bytes sent.
+/// itself, transport, protocol (null before its first line), level, calls in flight and answered, bytes sent, the
+/// subscriptions it holds, and its most-called methods (at most MethodsShown; method_count counts them all).
 /// </summary>
 internal sealed class ConnectionView
 {
+    internal const int MethodsShown = 3;
+
     internal ConnectionView(string clientId, string? client, string? label, string transport, int? protocol,
-        int inFlight, long served, long bytesSent)
+        int inFlight, long served, long bytesSent, ConnectionCalls? calls = null, int subscriptions = 0)
     {
+        Methods = (calls?.Top(MethodsShown) ?? new List<MethodCallCount>()).ConvertAll(
+            static count => new ConnectionMethodView(count));
+        MethodCount = calls?.MethodCount ?? 0;
+        Subscriptions = subscriptions;
         ClientId = clientId;
         Client = client;
         Label = label;
@@ -111,6 +121,55 @@ internal sealed class ConnectionView
     public long Served { get; }
 
     public long BytesSent { get; }
+
+    /// <summary>Subscriptions the connection holds.</summary>
+    public int Subscriptions { get; }
+
+    /// <summary>The connection's most-called methods, most first.</summary>
+    public List<ConnectionMethodView> Methods { get; }
+
+    /// <summary>Methods the connection called at least once.</summary>
+    public int MethodCount { get; }
+}
+
+/// <summary>
+/// Pipe jobs' settles after each piece since the mod loaded: run (a hop to a pool thread to apply the game's queued
+/// gas changes), skipped (nothing was queued), and unchecked (run because the game's queues could not be read).
+/// </summary>
+internal sealed class JobSettlesView
+{
+    internal JobSettlesView(long run, long skipped, long notChecked)
+    {
+        Run = run;
+        Skipped = skipped;
+        Unchecked = notChecked;
+    }
+
+    public long Run { get; }
+
+    public long Skipped { get; }
+
+    public long Unchecked { get; }
+}
+
+/// <summary>One method a connection called: calls, tool errors and main-thread ms in total.</summary>
+internal sealed class ConnectionMethodView
+{
+    internal ConnectionMethodView(MethodCallCount count)
+    {
+        Method = count.Method;
+        Calls = count.Calls;
+        Errors = count.Errors;
+        TotalMs = Math.Round(count.TotalMs, 2);
+    }
+
+    public string Method { get; }
+
+    public long Calls { get; }
+
+    public long Errors { get; }
+
+    public double TotalMs { get; }
 }
 
 /// <summary>One undeclared argument name a method's handler read since the mod loaded, and how often.</summary>

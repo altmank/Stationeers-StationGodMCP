@@ -37,7 +37,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// is ThreadedManager.IsThread), and the game's own save cleanup (SaveHelper.PrepareToSave: AtmosphericsController
 /// .PreSaveCleanup) calls the same queues from a pool thread while the tick is held. Every pipe network's cache is
 /// refreshed after, since a split on the main thread divides the cached values (Pipe.OnDestroy's GasMixture.Set).
-/// Open settles first, so the job's removals divide live contents too.
+/// Open settles first, so the job's removals divide live contents too. A piece that queued nothing (both queues and
+/// the awaiting grids empty, no pipe atmosphere awaiting an event) skips the hop, which would have applied nothing
+/// (SettleGate; unreadable queues always settle).
 /// </para>
 /// <para>
 /// Open reads every pipe network before the job; Close reads them again once everything is applied and compares each
@@ -102,7 +104,7 @@ internal abstract class JobGas
         internal override void Settle()
         {
             using ProfScope settling = Prof.Scope(ProfId.JobGasSettle);
-            if (PipeGasQueue.CanRun())
+            if (PipeGasQueue.CanRun() && !SettleGate.Skip(PipeGasQueue.Queued()))
             {
                 AtmosphericsThread.Run(PipeGasQueue.ApplyQueued);
             }
@@ -263,6 +265,69 @@ internal static class PipeGasQueue
         }
 
         return true;
+    }
+
+    private static bool _unreadableLogged;
+
+    /// <summary>
+    /// What the game has queued for its next tick, read on the main thread under the game's own locks (the queues'
+    /// TryDequeue and AddEvent lock the queue; AwaitingGrids is locked by its own users). Unreadable when a member is
+    /// missing or anything fails (logged once): SettleGate then settles as it always did.
+    /// </summary>
+    internal static QueuedGas Queued()
+    {
+        try
+        {
+            Queue<NetworkAtmosphereEvent> networkEvents =
+                (Queue<NetworkAtmosphereEvent>)GameMembers.NetworkAtmosphereEvents.GetValue(null);
+            Queue<AtmosphericEventInstance> atmosphereEvents =
+                (Queue<AtmosphericEventInstance>)GameMembers.AtmosphericEventInstances.GetValue(null);
+            HashSet<WorldGrid> awaitingGrids = (HashSet<WorldGrid>)GameMembers.AtmosphericAwaitingGrids.GetValue(null);
+            int networkCount;
+            int atmosphereCount;
+            int gridCount;
+            lock (networkEvents)
+            {
+                networkCount = networkEvents.Count;
+            }
+
+            lock (atmosphereEvents)
+            {
+                atmosphereCount = atmosphereEvents.Count;
+            }
+
+            lock (awaitingGrids)
+            {
+                gridCount = awaitingGrids.Count;
+            }
+
+            return QueuedGas.Of(networkCount, atmosphereCount, gridCount, AnyAtmosphereAwaiting());
+        }
+        catch (Exception exception)
+        {
+            // A renamed or retyped game queue (GameChangedException, InvalidCastException): settle every piece.
+            if (!_unreadableLogged)
+            {
+                _unreadableLogged = true;
+                StationGodMod.LogWarning($"Job settles cannot read the game's gas queues, so every piece settles: {exception.Message}");
+            }
+
+            return QueuedGas.Unreadable;
+        }
+    }
+
+    // A newly split network may not be listed yet: the queue counts above are what make the check complete.
+    private static bool AnyAtmosphereAwaiting()
+    {
+        foreach (PipeNetwork network in PipeNetwork.AllPipeNetworks.Active())
+        {
+            if (network?.Atmosphere is { IsAwaitingEvent: true })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void HandleQueues()

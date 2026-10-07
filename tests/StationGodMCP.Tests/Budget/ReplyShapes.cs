@@ -244,7 +244,7 @@ internal static class ReplyShapes
         shapes["mod_info"] = new[]
         {
             S<ModInfoView>().List("ModInfoView.Methods", W.Methods).List("ModInfoView.Reflection", W.ReflectedMembers)
-                .List("RuntimeView.Methods", D.RuntimeMethods).List("RuntimeView.CatalogueDrift", 0).List("RuntimeView.Connections", 2)
+                .List("RuntimeView.Methods", D.RuntimeMethods).List("RuntimeView.CatalogueDrift", 0).List("RuntimeView.Connections", 2).List("ConnectionView.Methods", ConnectionView.MethodsShown)
                 .List("ProfilingSummaryView.Top", ProfilingSummaryView.TopShown)
         };
         shapes["move_item"] = new[]
