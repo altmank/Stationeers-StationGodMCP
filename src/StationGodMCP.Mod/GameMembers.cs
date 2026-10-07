@@ -514,6 +514,10 @@ internal static class GameMembers
             () => AccessTools.Method(typeof(AtmosphericsController),
                 nameof(AtmosphericsController.HandleMainThreadEvents)));
 
+    internal static readonly GameMethod PatchWriteStateImmediate =
+        Target("FragmentHandler.WriteStateImmediate",
+            () => AccessTools.Method(typeof(FragmentHandler), "WriteStateImmediate"));
+
     private static GameField Field(Type type, string name, BindingFlags flags = PrivateInstance) =>
         Register(new GameField($"{type.Name}.{name}", () => type.GetField(name, flags)));
 

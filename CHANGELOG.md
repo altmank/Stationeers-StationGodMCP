@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.30.2
+
+A client joined to a server keeps the same pipe and chute networks as the server while StationGod jobs build.
+
+- **Each job step reaches the clients on its own.** A client applies a state packet in a fixed order (new networks,
+  new things, destroyed things, then the network rebuilds), not in the order the server made the changes. A run that
+  removed pieces in one frame and built in the next often landed in one packet: the client placed the new pieces into
+  the network from before the split, then replayed each split over pieces the server's split never saw, and dropped a
+  network the server kept. The server then sent that network's state in every packet and the client threw at
+  `StructureNetwork.DeserializeDeltaState` each time, losing the rest of the packet; only a rejoin cleared it. With a
+  client connected, a job's next step now waits until a state packet written after its last step's frame has gone
+  out (about 50 to 100 ms a step; a job goes on after 10 s without one and logs a warning).
+- **A job's own merge keeps the network clients keep.** When a changed run cell or a split long straight's singles
+  join a network that stood there before, the old piece's network now goes into that one (the clients put the new
+  pieces there) instead of taking it over unseen by the clients. A merge with a network of only the new pieces keeps
+  the old network's id as before.
+- A client that already lost a network needs to rejoin once.
+
 ## 1.30.1
 
 Fewer long frames on a busy server, and mod_info says who calls what.

@@ -179,13 +179,14 @@ internal static class RunBuilder
         try
         {
             // The singles' network goes into the long's, which keeps its id as split_long_straights keeps it (the
-            // forecast's networks_after names it).
+            // forecast's networks_after names it), unless the singles joined pieces that stood before: then the
+            // long's network goes into theirs, the network every client puts the singles in (PipeFamily.Unite).
             UpgradeFamily family = plan.Request.Kind.Family;
             IReferencable? kept = family.NetworkOf(old);
             IReferencable? theirs = singles.Count > 0 ? family.NetworkOf(singles[0]) : null;
             if (kept != null && theirs != null && kept != theirs)
             {
-                PipeFamily.Merge(kept, theirs);
+                PipeFamily.Unite(kept, theirs, singles);
                 gas.Settle();
             }
 
@@ -285,7 +286,8 @@ internal static class RunBuilder
     // A new pipe with no connected neighbour but the old piece in its own cell (the only pipe of its network) is given
     // a network of its own when it registers (Pipe.OnRegistered); that network is merged into the old one's as
     // SwapSplit merges a swapped long's singles, so the old network keeps its id and its gas, instead of losing both
-    // with its last pipe (pipes-23).
+    // with its last pipe (pipes-23). A new piece that joined another network standing there keeps that one, which
+    // takes the old network and its gas in (PipeFamily.Unite).
     private static SmallGrid Change(RunPlan plan, PlannedCell cell, JobGas gas)
     {
         UpgradeFamily family = plan.Request.Kind.Family;
@@ -306,7 +308,7 @@ internal static class RunBuilder
         }
         else if (family is PipeFamily && kept != null && theirs != null && kept != theirs)
         {
-            PipeFamily.Merge(kept, theirs);
+            PipeFamily.Unite(kept, theirs, new List<SmallGrid> { built });
             gas.Settle();
         }
 

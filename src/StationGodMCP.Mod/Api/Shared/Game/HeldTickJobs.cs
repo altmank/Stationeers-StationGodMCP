@@ -22,7 +22,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// order, once the slot is free and nothing else holds the tick. A queued job's own first step runs its whole
 /// preflight again, so the world the earlier jobs left is what it is checked against. While a job's atmosphere work
 /// that overran its limit is still running (AtmosphericsThread.Busy) no step runs, no queued job starts and the tick is
-/// not let go: a release asked for meanwhile is owed and made once that work has ended.
+/// not let go: a release asked for meanwhile is owed and made once that work has ended. With clients connected, no
+/// step runs until a state packet written after the end of the last step's frame has gone out (JobReplication), so a
+/// client replays each step's changes in the order the host made them.
 /// </summary>
 internal static class HeldTickJobs
 {
@@ -182,6 +184,12 @@ internal static class HeldTickJobs
             return;
         }
 
+        // Each step's changes reach the clients in a state packet of their own (ClientReplication).
+        if (!JobReplication.MayStep())
+        {
+            return;
+        }
+
         if (_active == null)
         {
             StartWaiting();
@@ -207,6 +215,7 @@ internal static class HeldTickJobs
         finally
         {
             AtmosphericsThread.CurrentJob = null;
+            JobReplication.Changed();
         }
 
         switch (step)

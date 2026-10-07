@@ -26,7 +26,9 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    `place_structure` and `remove_structure`.
 3. **One held tick.** The mod holds the game tick as a save does, runs every check again on the world as it is now,
    makes every change in one frame, and checks the result the next frame before letting the tick go. No power,
-   atmospherics or logic tick ever sees a half-built network. Players see a brief pause.
+   atmospherics or logic tick ever sees a half-built network. Players see a brief pause. On a server with players
+   connected, each step of the job waits until the game has sent the step before it to them (a twentieth to a tenth
+   of a second a step), so every player's game ends with the same networks as the server's.
 4. **Poll** with `{job_id}` alone until the status is final:
 
    | Status | Meaning |

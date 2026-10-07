@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
@@ -413,16 +414,43 @@ internal sealed class PipeFamily : UpgradeFamily
     }
 
     /// <summary>
-    /// Merges one pipe network into another as the game does when a placed pipe joins both (Pipe.OnRegistered:
-    /// StructureNetwork.Merge): AtmosphericsNetwork.Merge queues the old network's gas to be added to the new one's and
-    /// moves its members over (JobGas.Settle applies the gas).
+    /// Merges the network of pieces a job just built (theirs) with the network of the piece they replace (kept) as the
+    /// game merges two networks a placed pipe joins (Pipe.OnRegistered: StructureNetwork.Merge): AtmosphericsNetwork.Merge
+    /// queues the merged-away network's gas to be added to the survivor's and moves its members over (JobGas.Settle
+    /// applies the gas). The kept network survives when theirs holds only the new pieces; when theirs also holds pieces
+    /// that stood before, theirs survives, as the clients keep it (NetworkUnionRule). Answers the survivor.
     /// </summary>
-    internal static void Merge(IReferencable into, IReferencable from)
+    internal static IReferencable Unite(IReferencable kept, IReferencable theirs, List<SmallGrid> built)
     {
-        if (into is PipeNetwork target && from is PipeNetwork source && target != source)
+        if (!(kept is PipeNetwork keptPipes) || !(theirs is PipeNetwork theirPipes) || keptPipes == theirPipes)
         {
-            target.Merge(source);
+            return kept;
         }
+
+        switch (NetworkUnionRule.For(HoldsOnly(theirPipes, built)))
+        {
+            case NetworkUnion.IntoKept:
+                keptPipes.Merge(theirPipes);
+                return keptPipes;
+            case NetworkUnion.IntoTheirs:
+                theirPipes.Merge(keptPipes);
+                return theirPipes;
+            default:
+                throw new InvalidOperationException("Unknown network union.");
+        }
+    }
+
+    private static bool HoldsOnly(PipeNetwork network, List<SmallGrid> pieces)
+    {
+        foreach (INetworkedStructure member in network.StructureList)
+        {
+            if (member != null && !(member is SmallGrid piece && pieces.Contains(piece)))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // AtmosphericsNetwork.Remove takes the pipe's volume off the network's Atmosphere and leaves the gas where it is.
