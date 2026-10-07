@@ -6,6 +6,7 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
@@ -104,7 +105,11 @@ internal sealed class RunWaiting : ActiveRun
 
         RunReportView finalCheck = RunReports.Of(plan, RunReports.Scheduled, Id);
         RunOutcome outcome = new RunOutcome();
-        RunBuilder.Remove(plan, outcome);
+        using (Prof.Scope(ProfId.JobApply))
+        {
+            RunBuilder.Remove(plan, outcome);
+        }
+
         return JobStep.Next(new RunAwaitingRemovals(this, plan, outcome, finalCheck, gas));
     }
 }
@@ -155,7 +160,10 @@ internal sealed class RunAwaitingRemovals : ActiveRun
         _gas.Settle();
         if (_outcome.Log.StoppedAt == null)
         {
-            RunBuilder.Build(_plan, _outcome, _gas);
+            using (Prof.Scope(ProfId.JobApply))
+            {
+                RunBuilder.Build(_plan, _outcome, _gas);
+            }
         }
 
         return JobStep.Next(new RunAwaitingCheck(this, _plan, _outcome, _finalCheck, _gas));

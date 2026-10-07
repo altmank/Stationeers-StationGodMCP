@@ -44,7 +44,7 @@ internal static class ModInfoApi
     private static RuntimeView Runtime() =>
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
-            Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections());
+            Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections(), ProfilingControl.Summary());
 
     private static List<ConnectionView>? Connections()
     {

@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:94936dd715543d629f80187617d82028294d8e4f2f2cd31b60517da67b25a739'
-MOD_VERSION = '1.29.0'
+CATALOGUE_HASH = 'sha256:a8e3feae022174183921c4dbe3eb48bad82e6245461685345c9b8d0f86ae7208'
+MOD_VERSION = '1.30.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -945,6 +945,15 @@ TABLE = {'catalogue': {'class': 'read',
                    'required': [],
                    'shaping': 'none',
                    'protocol': False},
+ 'profiling': {'class': 'write',
+               'class_when': [{'when': {'action': {'equals': 'report'}}, 'class': 'read'}],
+               'effects': ['server_state', 'files'],
+               'paging': None,
+               'duration': None,
+               'params': ['action', 'slow_frame_ms', 'csv'],
+               'required': ['action'],
+               'shaping': 'lists',
+               'protocol': False},
  'read_console': {'class': 'read',
                   'class_when': [],
                   'effects': [],
@@ -2026,6 +2035,13 @@ class Methods:
         Class: read.
         """
         return self.call('player_vitals', **options)
+
+    def profiling(self, *, action: str | None = None, slow_frame_ms: float | None = None, csv: bool | None = None, **options) -> dict:
+        """Profile what StationGod costs the game's main thread: action on, off, reset or report.
+
+        Class: write (other classes at some arguments). Arguments: action (required), slow_frame_ms, csv.
+        """
+        return self.call('profiling', **{'action': action, 'slow_frame_ms': slow_frame_ms, 'csv': csv}, **options)
 
     def read_console(self, *, lines: int | None = None, **options) -> dict:
         """Read the latest in-game console lines, oldest first: command output, errors and their stack traces.

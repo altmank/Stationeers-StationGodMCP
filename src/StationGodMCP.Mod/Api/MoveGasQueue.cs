@@ -3,12 +3,14 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using HarmonyLib;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api;
 
@@ -185,6 +187,8 @@ internal sealed class PendingGasMove
 [HarmonyPatch(typeof(AtmosphericsController), nameof(AtmosphericsController.HandleMainThreadEvents))]
 internal static class GasMovesTickPatch
 {
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Postfix()
     {
         GasMoves.ApplyPending();

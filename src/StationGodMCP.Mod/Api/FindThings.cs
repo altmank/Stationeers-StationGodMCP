@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -30,6 +31,7 @@ internal static class FindThingsApi
     private const int DefaultLimit = ReplyDefaults.FindThings;
     private const int MaximumLimit = 500;
 
+    [Profiled]
     internal static FindThingsView Handle(Args args)
     {
         ThingFilter filter = ThingFilter.Parse(args);

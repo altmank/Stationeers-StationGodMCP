@@ -19,9 +19,11 @@ namespace StationGodMCP.Api.Views;
 internal sealed class RuntimeView : ITruncatingView
 {
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
-        MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift, List<ConnectionView>? connections = null)
+        MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift, List<ConnectionView>? connections = null,
+        ProfilingSummaryView? profiling = null)
     {
         Connections = connections;
+        Profiling = profiling;
         UptimeS = Math.Round(uptimeS, 1);
         WorldEpoch = worldEpoch;
         RequestBudgetMs = budget.Unlimited ? null : budget.LimitMs;
@@ -65,6 +67,10 @@ internal sealed class RuntimeView : ITruncatingView
     /// <summary>The overlapped pipe's open connections; absent on the synchronous pipe.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public List<ConnectionView>? Connections { get; }
+
+    /// <summary>The profiler's summary while profiling is on; absent otherwise.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public ProfilingSummaryView? Profiling { get; }
 
     public void NoteTruncations(string path) =>
         Truncations.Note(path + "methods", Methods.Count, MethodCount,

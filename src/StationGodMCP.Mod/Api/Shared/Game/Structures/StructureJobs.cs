@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Rooms;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
@@ -111,7 +112,12 @@ internal sealed class StructureWaitingForTick : ActiveStructureSwap
 
         StructureSwapReportView finalCheck = StructureReports.Of(plan, StructureReports.Scheduled, Id);
         Dictionary<long, Structure> replacements = new Dictionary<long, Structure>();
-        StructureSwapLogView log = StructureSwapper.Run(plan, replacements);
+        StructureSwapLogView log;
+        using (Prof.Scope(ProfId.JobApply))
+        {
+            log = StructureSwapper.Run(plan, replacements);
+        }
+
         return JobStep.Next(new StructureAwaitingOldGone(this, new StructureSwapOutcome(plan, finalCheck, log,
             replacements)));
     }

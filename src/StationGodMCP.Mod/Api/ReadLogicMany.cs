@@ -3,6 +3,7 @@
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api;
 
@@ -13,6 +14,7 @@ internal static class ReadLogicManyApi
 {
     private const int MaximumReads = 256;
 
+    [Profiled]
     internal static LogicBatchView Handle(Args args)
     {
         DeviceScope scope = Devices.Scope(args);

@@ -1,0 +1,58 @@
+{
+  "name": "profiling",
+  "summary": "Profile what StationGod costs the game's main thread: action on, off, reset or report. Per frame, per call, per job tick hold; off costs next to nothing. Changes nothing in the world.",
+  "help": {
+    "text": "on starts a session (slow_frame_ms default 8; csv also writes a rolling CSV); on again keeps the session and applies slow_frame_ms and csv when given. off stops and answers the final report. reset clears the session (after off, the stored report). report reads it and changes nothing. Every reply carries the state and the report; it lists scopes 10 and calls 8 by default (list_limits keeps more). Host only: it times where requests run and sends nothing to other players.",
+    "keys": "enabled, since_s, slow_frame_ms, csv_path, csv {path, writing, rows, dropped, error}, failure, timed_methods, untimed_methods, frames {recorded, window, stationgod_ms {p50, p95, max}, heap_delta_bytes, heap_deltas_dropped, slow}, scopes [{name, kind, total_ms, self_ms, count, mean_ms, p95_frame_ms, max_frame_ms}], worst_frame {frame, ms, heap_delta_bytes, scopes [{name, ms}], scopes_not_listed, calls, calls_not_listed}, calls [{method, calls, errors, queue_wait_ms, execute_ms, serialize_ms, reply_bytes}], tick_holds {count, total_ms, max_ms, recent [{job, tool, ms, frames, holding}]}.",
+    "topics": {
+      "report": {
+        "summary": "What the report measures.",
+        "text": "frames: StationGod's whole update per frame over the last 600 frames (p50, p95, max) and the heap's growth per frame (a frame whose heap shrank is left out and counted). scopes: each timed piece (world_stores, run_frame, subscription_lane, call_execute, call_serialize, job_step, job_apply, job_gas_open, job_gas_settle, job_gas_close, atmosphere_wait and more) and each timed handler or game hook (kind method), with total and self ms (self leaves out the pieces inside it), count, mean, and p95 and max per frame. unscoped is the rest of the update. worst_frame is the costliest frame after on or reset, with its 8 costliest pieces and 8 slowest calls. calls: per method, queue wait, execute, serialise and reply bytes. tick_holds: each stretch a job held the game tick, newest first."
+      },
+      "slow_frames": {
+        "summary": "The slow-frame warning and the CSV.",
+        "text": "A frame over slow_frame_ms logs a warning naming its top three pieces and its calls, at most one every 10 s (the rest are counted in the next one). The CSV, under BepInEx/StationGodMCP/profile-<time>.csv, has a row per slow frame and a summary row per second; it is written off the main thread, moves to a new file at 10 MB and keeps the newest 3. Off or csv false stops it."
+      }
+    }
+  },
+  "class": "write",
+  "x-class-when": [{"when": {"action": {"equals": "report"}}, "class": "read"}],
+  "cost": "instant",
+  "x-effects": ["server_state", "files"],
+  "params": {
+    "type": "object",
+    "properties": {
+      "action": {"type": "string", "enum": ["on", "off", "reset", "report"], "description": "on, off, reset or report."},
+      "slow_frame_ms": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 1000,
+        "description": "on: a frame over this many ms is logged as slow; default 8."
+      },
+      "csv": {"type": "boolean", "description": "on: true starts the rolling CSV, false stops it."}
+    },
+    "required": ["action"],
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "enabled": {"type": "boolean"},
+      "since_s": {"type": ["number", "null"]},
+      "slow_frame_ms": {"type": ["number", "null"]},
+      "csv_path": {"type": ["string", "null"]},
+      "csv": {"type": ["object", "null"]},
+      "failure": {"type": ["string", "null"]},
+      "timed_methods": {"type": "integer"},
+      "untimed_methods": {"type": "array"},
+      "frames": {"type": ["object", "null"]},
+      "scopes": {"type": ["array", "null"]},
+      "worst_frame": {"type": ["object", "null"]},
+      "calls": {"type": ["array", "null"]},
+      "tick_holds": {"type": ["object", "null"]}
+    }
+  },
+  "x-views": ["ProfilingView"],
+  "x-default-limits": {"scopes": 10, "calls": 8},
+  "x-shaping": "lists"
+}

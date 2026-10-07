@@ -10,6 +10,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -38,6 +39,7 @@ internal static class PlanRouteApi
     private const double MinimumBendsCost = 25.0;
     private const int MaximumReservedPorts = 64;
 
+    [Profiled]
     internal static PlanRouteView Handle(Args args, RunKind kind)
     {
         args = WithJoinTarget(args, kind);

@@ -19,6 +19,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -55,6 +56,7 @@ internal static class GridSurveyApi
         "extra, crosses_window). A door's face is no wall support. network_visibility counts each listed network's cells the " +
         "same way (inside, frame_surface, wall, air) and lists the floating (air) ones.";
 
+    [Profiled]
     internal static GridSurveyView Handle(Args args)
     {
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);

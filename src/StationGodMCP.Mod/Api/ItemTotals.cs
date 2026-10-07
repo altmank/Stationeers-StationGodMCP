@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api;
@@ -28,6 +29,7 @@ internal static class ItemTotalsApi
     // Row key of a working-load reagent, apart from every prefab name.
     private const string ReagentKeyPrefix = "reagent:";
 
+    [Profiled]
     internal static ItemTotalsView Handle(Args args)
     {
         ItemFilter filter = ItemFilter.ParseWithArea(args);

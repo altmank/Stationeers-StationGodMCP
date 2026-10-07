@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api;
 
@@ -21,6 +22,7 @@ internal static class NetworkSnapshotApi
     private const int MaximumIds = 256;
     private const int MaximumLogicTypes = 64;
 
+    [Profiled]
     internal static NetworkSnapshotView Handle(Args args)
     {
         DeviceScope scope = Devices.Scope(args);

@@ -245,6 +245,7 @@ internal static class ReplyShapes
         {
             S<ModInfoView>().List("ModInfoView.Methods", W.Methods).List("ModInfoView.Reflection", W.ReflectedMembers)
                 .List("RuntimeView.Methods", D.RuntimeMethods).List("RuntimeView.CatalogueDrift", 0).List("RuntimeView.Connections", 2)
+                .List("ProfilingSummaryView.Top", ProfilingSummaryView.TopShown)
         };
         shapes["move_item"] = new[]
         {
@@ -331,6 +332,14 @@ internal static class ReplyShapes
         };
         shapes["move_player"] = new[] { S<MovePlayerView>() };
         shapes["player_vitals"] = new[] { S<PlayerVitalsView>() };
+        // Bounded by what exists: the scopes and timed methods, the methods called, the last 16 tick holds; scopes and
+        // calls are cut by default (x-default-limits), the worst frame's pieces and calls by the view (Shown).
+        shapes["profiling"] = new[]
+        {
+            S<ProfilingView>().List("ProfilingView.UntimedMethods", 0).List("ProfilingView.Scopes", 30)
+                .List("ProfilingView.Calls", 20).List("WorstFrameView.Scopes", WorstFrameView.Shown).List("WorstFrameView.Calls", WorstFrameView.Shown)
+                .List("TickHoldsView.Recent", StationGodMCP.Pure.Profiling.TickHolds.Kept)
+        };
         shapes["read_console"] = new[]
         {
             S<ConsoleReadView>().List("ConsoleReadView.Lines", D.ConsoleLines)

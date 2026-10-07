@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Shaping;
 
@@ -129,7 +130,8 @@ internal static class ApiHost
             ["vault_withdraw"] = static args => VaultWithdrawApi.Handle(args),
             ["silo_deposit"] = static args => SiloDepositApi.Handle(args),
             ["silo_withdraw"] = static args => SiloWithdrawApi.Handle(args),
-            ["mod_info"] = static args => ModInfoApi.Handle(args)
+            ["mod_info"] = static args => ModInfoApi.Handle(args),
+            ["profiling"] = static args => ProfilingApi.Handle(args)
         };
 
     /// <summary>
@@ -165,6 +167,7 @@ internal static class ApiHost
     /// <summary>The reply message: always written through the shaping writer, which also counts the lists.</summary>
     private static string SerializeCall(ref Answer answer, double queueMs, long frame)
     {
+        using ProfScope serializing = Prof.Scope(ProfId.CallSerialize);
         if (!answer.Ok)
         {
             return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame));
@@ -190,6 +193,7 @@ internal static class ApiHost
 
     private static Answer Run(string? requestId, string? method, JObject? parameters, ShapeRequest? shape, Stopwatch watch)
     {
+        using ProfScope executing = Prof.Scope(ProfId.CallExecute);
         try
         {
             DeclaredArguments declared = Declared.Value.Arguments ??
@@ -385,6 +389,7 @@ internal static class MethodStats
         if (known != null)
         {
             Timings.Record(known, ok, handlerMs, serializeMs, queueWaitMs);
+            Prof.CallTimes(known, ok, handlerMs, serializeMs, queueWaitMs);
         }
     }
 
@@ -395,6 +400,7 @@ internal static class MethodStats
         if (known != null)
         {
             Timings.RecordReply(known, bytes);
+            Prof.ReplyBytes(known, bytes);
         }
     }
 

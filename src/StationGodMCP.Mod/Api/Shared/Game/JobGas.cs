@@ -12,6 +12,7 @@ using Networks;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -52,9 +53,11 @@ internal abstract class JobGas
     internal static JobGas Untracked { get; } = new UntrackedGas();
 
     /// <summary>Starts tracking for a job that touches pipe networks, once the tick is held; Untracked otherwise.</summary>
-    internal static JobGas Open(bool pipeNetworks) => pipeNetworks && PipeGasQueue.CanRun()
-        ? new TrackedGas(PipeGasReading.Take())
-        : Untracked;
+    internal static JobGas Open(bool pipeNetworks)
+    {
+        using ProfScope opening = Prof.Scope(ProfId.JobGasOpen);
+        return pipeNetworks && PipeGasQueue.CanRun() ? new TrackedGas(PipeGasReading.Take()) : Untracked;
+    }
 
     /// <summary>Applies every queued gas change now, as the next tick would.</summary>
     internal abstract void Settle();
@@ -98,6 +101,7 @@ internal abstract class JobGas
 
         internal override void Settle()
         {
+            using ProfScope settling = Prof.Scope(ProfId.JobGasSettle);
             if (PipeGasQueue.CanRun())
             {
                 AtmosphericsThread.Run(PipeGasQueue.ApplyQueued);
@@ -110,6 +114,7 @@ internal abstract class JobGas
 
         internal override GasCheckView Close(string jobId)
         {
+            using ProfScope closing = Prof.Scope(ProfId.JobGasClose);
             if (!PipeGasQueue.CanRun())
             {
                 return GasCheckView.Unchecked(
@@ -286,7 +291,11 @@ internal static class AtmosphericsThread
     /// <summary>Work that overran its limit is still running.</summary>
     internal static bool Busy => Work.Busy;
 
-    internal static T Run<T>(Func<T> work) => Work.Run(work, CurrentJob);
+    internal static T Run<T>(Func<T> work)
+    {
+        using ProfScope waiting = Prof.Scope(ProfId.AtmosphereWait);
+        return Work.Run(work, CurrentJob);
+    }
 
     /// <summary>Every frame (HeldTickJobs.Tick): whether overrun work is still running, or has just ended.</summary>
     internal static WorkSettlement Settle() => Work.Settle();

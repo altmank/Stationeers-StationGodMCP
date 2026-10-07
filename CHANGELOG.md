@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.30.0
+
+What StationGod costs a server's main thread can be measured while the server runs.
+
+- **New tool `profiling`.** `action: on` starts a profiling session, `off` stops it and answers the final report,
+  `reset` clears it (after `off`, the stored report), `report` reads it. The report gives StationGod's main-thread ms per frame over the
+  last 600 frames (p50, p95, max); each timed piece of its update (the request frame, the subscription lane, each
+  call's execute and serialise, a job's step, apply and gas open, settle and close, the atmosphere wait) and each timed
+  handler and game hook, with total and self ms, count, mean, and p95 and max per frame; the worst frame with its
+  breakdown and calls; per method, queue wait, execute, serialise and reply bytes; how long each job held the game
+  tick, in ms and frames; and the heap's growth per frame (frames where a collection shrank it left out).
+- **Slow frames.** A frame over `slow_frame_ms` (default 8, 1 to 1000) logs a warning naming its three costliest pieces
+  and its calls, at most one every 10 seconds, the rest counted. With `csv: true` a rolling CSV goes to
+  `BepInEx/StationGodMCP/profile-<time>.csv`: a row per slow frame and a summary row per second, written off the main
+  thread, a new file every 10 MB, the newest 3 kept.
+- **Off costs next to nothing.** With profiling off each timed piece costs one check, and the timed handlers and game
+  hooks are not wrapped at all; they are wrapped when it goes on and unwrapped when it goes off. A failure inside the
+  profiler is logged once and turns it off; it never reaches the game.
+- **New setting `[Performance] Profiling`** (default `false`) starts it when the mod loads.
+- `mod_info`'s `runtime` has a `profiling` summary while profiling is on.
+- Host only: profiling measures the game that runs the requests and sends nothing to other players.
+
 ## 1.29.0
 
 Things go straight into and out of an SDB Silo, with the silo's own bookkeeping; nothing is dropped on the ground.

@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.DeviceReads;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api;
 
@@ -27,6 +28,7 @@ internal static class ReadDevicesApi
 {
     private static readonly PipeFamily Pipes = new PipeFamily();
 
+    [Profiled]
     internal static ReadDevicesView Handle(Args args)
     {
         DeviceScope scope = Devices.Scope(args);

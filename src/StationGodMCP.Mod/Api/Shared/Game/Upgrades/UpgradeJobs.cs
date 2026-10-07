@@ -8,6 +8,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
@@ -111,7 +112,12 @@ internal sealed class WaitingForTick : ActiveUpgrade
 
         UpgradeReportView finalCheck = UpgradeReports.Of(plan, UpgradeReports.Scheduled, Id);
         Dictionary<long, List<SmallGrid>> replacements = new Dictionary<long, List<SmallGrid>>();
-        UpgradeSwapLog log = UpgradeSwap.Run(plan, replacements, gas);
+        UpgradeSwapLog log;
+        using (Prof.Scope(ProfId.JobApply))
+        {
+            log = UpgradeSwap.Run(plan, replacements, gas);
+        }
+
         return JobStep.Next(new AwaitingCheck(this, plan, new SwapOutcome(finalCheck, log, replacements), gas));
     }
 }

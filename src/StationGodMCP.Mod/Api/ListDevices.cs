@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api;
 
@@ -13,6 +14,7 @@ namespace StationGodMCP.Api;
 /// </summary>
 internal static class ListDevicesApi
 {
+    [Profiled]
     internal static DevicesView Handle(Args args)
     {
         DeviceScope scope = Devices.Scope(args);

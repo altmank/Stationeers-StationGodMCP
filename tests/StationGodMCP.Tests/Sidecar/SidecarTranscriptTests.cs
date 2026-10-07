@@ -54,7 +54,7 @@ public sealed class SidecarTranscriptTests : IDisposable
 
         // The same tools; the wire writes them with plain escaping, the built-in element with the default encoder.
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse(ToolCatalogue.Tools.GetRawText()), JsonNode.Parse(result.GetProperty("tools").GetRawText())));
-        Assert.Equal(102, result.GetProperty("tools").GetArrayLength());
+        Assert.Equal(103, result.GetProperty("tools").GetArrayLength());
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public sealed class SidecarTranscriptTests : IDisposable
         JsonElement tools = Result(await sidecar.HandleAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}""")).GetProperty("tools");
 
         Assert.Equal("""{"jsonrpc":"2.0","method":"notifications/tools/list_changed"}""", Assert.Single(notices));
-        Assert.Equal(101, tools.GetArrayLength());
+        Assert.Equal(102, tools.GetArrayLength());
         Assert.DoesNotContain("weather", tools.EnumerateArray().Select(tool => tool.GetProperty("name").GetString()));
         JsonElement unknown = await Reply(sidecar, Call(3, "weather", "{}"));
         Assert.Equal(-32602, unknown.GetProperty("error").GetProperty("code").GetInt32());

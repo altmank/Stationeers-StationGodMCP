@@ -10,6 +10,7 @@ using Assets.Scripts;
 using HarmonyLib;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using Util.Commands;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -411,6 +412,8 @@ internal static class ConsoleBatchPrintPatch
         return exception;
     }
 
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Prefix(string output, ConsoleColor color)
     {
         if (!GameManager.IsBatchMode)
@@ -432,6 +435,8 @@ internal static class ConsoleBatchPrintPatch
 [HarmonyPatch(typeof(ConsoleLine), nameof(ConsoleLine.Set))]
 internal static class ConsoleLineSetPatch
 {
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Postfix(ConsoleLine __instance)
     {
         ConsoleBridge.NoteAppend(__instance);
@@ -441,6 +446,8 @@ internal static class ConsoleLineSetPatch
 [HarmonyPatch(typeof(ConsoleLine), nameof(ConsoleLine.SetSegments))]
 internal static class ConsoleLineSetSegmentsPatch
 {
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Postfix(ConsoleLine __instance)
     {
         ConsoleBridge.NoteAppend(__instance);

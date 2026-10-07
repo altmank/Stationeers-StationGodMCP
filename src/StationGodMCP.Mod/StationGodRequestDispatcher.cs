@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP;
@@ -55,7 +56,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     /// <summary>One frame of the scheduler, on the main thread; its outcome goes to mod_info's counters.</summary>
     internal void RunFrame(bool jobHoldsTick, ISampleLane? samples)
     {
-        FrameOutcome outcome = _requests.RunFrame(jobHoldsTick, samples, this);
+        FrameOutcome outcome;
+        using (Prof.Scope(ProfId.RunFrame))
+        {
+            outcome = _requests.RunFrame(jobHoldsTick, samples, this);
+        }
+
         for (int expired = 0; expired < outcome.ExpiredCalls; expired++)
         {
             Stats.Expired();
@@ -64,8 +70,15 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         Stats.Frame(outcome.Served, outcome.SpentMs, outcome.BudgetStopped);
     }
 
+    // A method name the frame's call list and the slow-frame log may show: one the mod answers, else "unknown".
+    private static string KnownMethod(string? method) =>
+        method != null && (SubscriptionHub.Handles(method) || method == SubscriptionHub.SampleLogicMethod)
+            ? method
+            : MethodStats.Counted(method) ?? "unknown";
+
     public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
+        long started = Prof.CallStarted();
         try
         {
             if (Subscriptions != null && SubscriptionHub.Handles(call.Request.Method))
@@ -87,6 +100,13 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             return new CallOutcome(
                 ApiHost.Serialize(CallReplyView.Refused(call.Request.Id, new ErrorView("internal_error", exception.Message))),
                 null);
+        }
+        finally
+        {
+            if (started != 0)
+            {
+                Prof.CallEnded(KnownMethod(call.Request.Method), started);
+            }
         }
     }
 }

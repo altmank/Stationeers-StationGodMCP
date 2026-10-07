@@ -16,6 +16,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api;
 
@@ -48,6 +49,7 @@ internal static class ConnectionsApi
     private const int DefaultLimit = ReplyDefaults.ConnectionMembers;
     private const int MaximumLimit = 1000;
 
+    [Profiled]
     internal static object Handle(Args args)
     {
         bool thing = args.Has("reference_id");

@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.29.0</Version>
+  <Version>1.30.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,9 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.30.0
+- New profiling: switched on and off live, it shows what StationGod costs a server per frame, call and job tick hold.
+
 v1.29.0
 - New silo_withdraw and silo_deposit: take things straight out of an SDB Silo into a slot, or put them straight in, with the silo's own bookkeeping; container_contents lists a silo's store and find_items and item_totals count it.
 
@@ -150,7 +153,7 @@ v1.14.1
 
 v1.14.0
 - Small default replies (under 8 KB on a big base); truncated says what was held back. fields reaches nested keys; new omit. get_ic_status leaves the source out unless asked.
-- set_ic_source source_file deploys a big Lua source from a file; connections area filter; atmosphere_contents reads a Pipe Analyzer's pipe network; console output is captured on a dedicated server.
+- set_ic_source source_file for big Lua sources; connections area filter; atmosphere_contents reads a Pipe Analyzer's network; console capture on a dedicated server.
 - describe_device shows which downlink a Logic Rocket Uplink follows; new set_uplink.
 
 v1.13.0
@@ -234,13 +237,13 @@ v1.3.2
 - Landing pads in the gas tools; move_gas checks the receiving side.
 
 v1.3.1
-- Live-run fixes: device placement, back-to-back walls, aimed devices.
+- Live-run fixes: placement, walls.
 
 v1.3.0
-- Network refactor tools: split reports, remove_redundant, tap checks, handles, queued jobs.
+- Network refactor tools: split reports, remove_redundant, queued jobs.
 
 v1.2.0
-- assume_removed, prefer hidden, trunks, feed_paths, plan_removal; refunds to the inventory.
+- assume_removed, trunks, feed_paths, plan_removal; refunds.
 
 v1.1.1
 - inside_frames takes beam tops; APC reroutes.

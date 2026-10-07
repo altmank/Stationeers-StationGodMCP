@@ -15,6 +15,7 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Serialization;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Subscriptions;
 using UnityEngine;
@@ -33,7 +34,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.29.0";
+    public const string Version = "1.30.0";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
@@ -99,6 +100,7 @@ public sealed class StationGodMod : ModBehaviour
             ProtocolLog.ReplyWritten = MethodStats.RecordReply;
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
+            ProfilingControl.Load(typeof(StationGodMod).Assembly, PerformanceSettings.Profiling);
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
             _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
@@ -143,15 +145,34 @@ public sealed class StationGodMod : ModBehaviour
         }
     }
 
+    // Every piece runs in a profiler scope (Prof): with profiling off each costs one field read.
     private void Update()
     {
+        ProfilingControl.Tick();
+        long frameStarted = Prof.BeginFrame();
         try
         {
-            WorldStores.Tick();
-            _subscriptions?.BeginFrame(new SamplingTick(Time.frameCount, Time.time),
-                new Pure.Sampling.RealTimeTick(Time.frameCount, SinceLoad.Elapsed.TotalSeconds, DateTimeOffset.UtcNow));
-            PublishFacts();
-            _subscriptions?.ObserveGameState(ReportedGameState());
+            using (Prof.Scope(ProfId.WorldStores))
+            {
+                WorldStores.Tick();
+            }
+
+            using (Prof.Scope(ProfId.SubscriptionsBeginFrame))
+            {
+                _subscriptions?.BeginFrame(new SamplingTick(Time.frameCount, Time.time),
+                    new Pure.Sampling.RealTimeTick(Time.frameCount, SinceLoad.Elapsed.TotalSeconds, DateTimeOffset.UtcNow));
+            }
+
+            using (Prof.Scope(ProfId.PublishFacts))
+            {
+                PublishFacts();
+            }
+
+            using (Prof.Scope(ProfId.ObserveGameState))
+            {
+                _subscriptions?.ObserveGameState(ReportedGameState());
+            }
+
             if (!NetworkManager.IsServer)
             {
                 StopServers("world_unloaded");
@@ -161,7 +182,10 @@ public sealed class StationGodMod : ModBehaviour
                 return;
             }
 
-            Net.RemoteViews.Tick();
+            using (Prof.Scope(ProfId.RemoteViews))
+            {
+                Net.RemoteViews.Tick();
+            }
 
             if (_pipeListener == null && !_pipeUnavailable)
             {
@@ -174,15 +198,34 @@ public sealed class StationGodMod : ModBehaviour
             }
 
             _dispatcher.RunFrame(HeldTickJobs.HoldsTick, _subscriptions);
-            HeldTickJobs.Tick();
-            Previews.Tick();
-            Highlights.Tick();
-            RocketFlightRecorder.Tick();
+            using (Prof.Scope(ProfId.HeldTickJobs))
+            {
+                HeldTickJobs.Tick();
+            }
+
+            using (Prof.Scope(ProfId.Previews))
+            {
+                Previews.Tick();
+            }
+
+            using (Prof.Scope(ProfId.Highlights))
+            {
+                Highlights.Tick();
+            }
+
+            using (Prof.Scope(ProfId.RocketFlightRecorder))
+            {
+                RocketFlightRecorder.Tick();
+            }
         }
         catch (Exception exception)
         {
             // The pipe's start and the request queue, every frame: logged, and tried again next frame.
             LogWarning($"MCP bridge update failed: {exception.Message}");
+        }
+        finally
+        {
+            Prof.EndFrame(frameStarted, Time.frameCount);
         }
     }
 
@@ -200,6 +243,7 @@ public sealed class StationGodMod : ModBehaviour
         HeldTickJobs.Abandon();
         Previews.Clear();
         Highlights.Clear();
+        ProfilingControl.Shutdown();
         _harmony?.UnpatchSelf();
     }
 
@@ -508,8 +552,8 @@ internal static class MultiplayerSettings
 
 /// <summary>
 /// [Performance]: the main-thread milliseconds one frame may spend on requests (FrameBudget), the subscription lane's
-/// share of them, and the heavy lane's threshold and waiting bound (SchedulerSettings). Read once at load; a negative
-/// or unreadable value falls back to its default with a warning.
+/// share of them, the heavy lane's threshold and waiting bound (SchedulerSettings), and whether the profiler starts on
+/// at load. Read once at load; a negative or unreadable value falls back to its default with a warning.
 /// </summary>
 internal static class PerformanceSettings
 {
@@ -517,6 +561,9 @@ internal static class PerformanceSettings
 
     /// <summary>The configured budget; 0 = unlimited.</summary>
     internal static double RequestBudgetMs { get; private set; } = FrameBudget.DefaultMs;
+
+    /// <summary>Whether the profiler starts on at load ([Performance] Profiling).</summary>
+    internal static bool Profiling { get; private set; }
 
     /// <summary>The frame scheduler's settings, from every [Performance] value.</summary>
     internal static SchedulerSettings Scheduler { get; private set; } = SchedulerSettings.Default;
@@ -553,6 +600,11 @@ internal static class PerformanceSettings
         }
 
         Scheduler = new SchedulerSettings(RequestBudgetMs, subscriptions, heavy, frames, Protocol.CallSession.MaxInFlight);
+        Profiling = configuration.Bind(Section, "Profiling", false,
+            "Start the runtime profiler when the mod loads (what the profiling method's action on does, with " +
+            $"slow_frame_ms {SlowFrameLimits.DefaultMs} and no CSV). It times StationGod's main-thread work per frame, " +
+            "call and job tick hold; off, it costs one check per timed piece. The profiling method switches it at any " +
+            "time. Restart the game to apply.").Value;
     }
 
     private static double NonNegative(ConfigEntry<double> entry, double fallback)

@@ -5,6 +5,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api;
 
@@ -18,6 +19,7 @@ internal static class FindItemsApi
     private const int DefaultLimit = ReplyDefaults.FindItems;
     private const int MaximumLimit = 500;
 
+    [Profiled]
     internal static FindItemsView Handle(Args args)
     {
         ItemFilter filter = ItemFilter.ParseWithArea(args);

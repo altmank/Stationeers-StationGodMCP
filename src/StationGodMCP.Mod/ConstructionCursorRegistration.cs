@@ -3,9 +3,11 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Assets.Scripts.Inventory;
 using Assets.Scripts.Objects;
 using HarmonyLib;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP;
 
@@ -57,6 +59,8 @@ internal static class ConstructionCursorRegistration
 internal static class SetupConstructionCursorsPatch
 {
     [HarmonyPostfix]
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Postfix(InventoryManager __instance)
     {
         ConstructionCursorRegistration.EnsureRegistered(__instance);
@@ -67,6 +71,8 @@ internal static class SetupConstructionCursorsPatch
 internal static class UpdateStructurePlacementPatch
 {
     [HarmonyPrefix]
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Prefix()
     {
         ConstructionCursorRegistration.EnsureRegistered(InventoryManager.Instance);
@@ -77,6 +83,8 @@ internal static class UpdateStructurePlacementPatch
 internal static class UpdateConstructorPlacementPatch
 {
     [HarmonyPrefix]
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Prefix()
     {
         ConstructionCursorRegistration.EnsureRegistered(InventoryManager.Instance);

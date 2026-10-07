@@ -40,6 +40,7 @@ memory, but for any device in the world at once and without a chip.
 | `set_battery_charge` | A cheat: set the charge of single batteries, full or to a ratio or joules (see *Batteries*). | `reference_ids`, or `rocket_id`, or `in_id`; `ratio` or `joules`; `dry_run`, `confirm` |
 | `read_console` | The latest console lines, including Unity errors and stack traces. | `lines` |
 | `mod_info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
+| `profiling` | Switch the runtime profiler on or off, clear it, or read its report: what StationGod costs the main thread per frame, per call and per job tick hold (see *Profiling a running server*). | `action`, `slow_frame_ms`, `csv` |
 
 ## One read per tick: `read_devices` (1.10.0+)
 
@@ -289,3 +290,46 @@ argument name a method's code read that its catalogue entry does not declare (`m
 stay empty, and the mod's log names the first read of each. A frame spends at most
 `[Performance] RequestBudgetMs` (4 ms by default, at most 2 ms while a job holds the game tick) on requests; the rest
 wait for the next frame, in order (see [configuration](configuration.md)).
+
+## Profiling a running server
+
+`profiling` measures what StationGod costs the game's main thread while the server runs. `action: on` starts a
+session, `off` stops it and answers the final report, `reset` clears it and goes on (after `off`, it drops the stored report), `report` reads it and changes
+nothing; every reply carries `enabled`, `since_s`, `slow_frame_ms` and `csv_path` with the report (the first 10
+`scopes` and 8 `calls` by default; `list_limits` keeps more). `on` again keeps
+the session and applies `slow_frame_ms` and `csv` if given. `[Performance] Profiling = true` starts it when the mod
+loads.
+
+- `frames`: StationGod's whole update per frame (`stationgod_ms`), p50, p95 and max over the last 600 frames, and the
+  heap's growth per frame (`heap_delta_bytes`; a frame whose heap shrank, a collection, is left out and counted in
+  `heap_deltas_dropped`). `slow` counts the frames over `slow_frame_ms`.
+- `scopes`: each timed piece of the update and each timed method, the most self time first. Pieces (`kind: scope`):
+  `world_stores`, `subscriptions_begin_frame`, `publish_facts`, `observe_game_state`, `remote_views`, `run_frame` (the
+  request frame), `subscription_lane`, `call_execute`, `call_serialize`, `held_tick_jobs`, `job_step`, `job_apply`,
+  `job_gas_open`, `job_gas_settle`, `job_gas_close`, `atmosphere_wait`, `previews`, `highlights`,
+  `rocket_flight_recorder`, and `unscoped`, the rest of the update. Methods (`kind: method`): the busiest read handlers
+  (`list_devices`, `read_devices`, `read_logic_many`, `network_snapshot`, `find_things`, `find_items`, `item_totals`,
+  `grid_survey`, `connections`, the route planners; named as `ListDevicesApi.Handle`) and StationGod's own game hooks,
+  timed on the main thread only; a method's time also counts in the piece it runs in.
+  Each has `total_ms`, `self_ms` (the pieces inside it left out), `count`, `mean_ms`, and `p95_frame_ms` and
+  `max_frame_ms` per frame it ran in.
+- `worst_frame`: the costliest frame after on or reset, with its 8 costliest pieces by self ms and its 8 slowest
+  calls (`scopes_not_listed` and `calls_not_listed` count the rest).
+- `calls`: per method after on or reset, `queue_wait_ms`, `execute_ms`, `serialize_ms` and `reply_bytes`, each total,
+  mean and max.
+- `tick_holds`: how long jobs held the game tick, one entry per hold (`job`, `tool`, `ms`, `frames`; a hold under way
+  first with `holding: true`), the last 16, with `count`, `total_ms` and `max_ms`.
+
+A frame over `slow_frame_ms` (default 8, 1 to 1000) logs `Slow frame <n>: StationGod took <ms> ms ...` with its three
+costliest pieces and its calls, at most one every 10 seconds; the next one says how many were passed over. With
+`csv: true` rows go to `BepInEx/StationGodMCP/profile-<time>.csv`: `kind` `frame` for each slow frame and `second` for
+a summary of each second (frames, StationGod ms total and longest frame, heap growth, calls, the three costliest
+pieces and the slowest call). A background thread writes it; a file past 10 MB is closed and the next one opened, and
+the newest 3 are kept. `csv: false`, or `off`, stops it.
+
+Off, each timed piece costs one check and the timed methods carry no wrapper; `on` wraps them and `off` unwraps them.
+A failure inside the profiler is logged once, turns profiling off and answers `failure` in the next reply. While on,
+`mod_info`'s `runtime.profiling` gives a summary: `since_s`, `frame_ms`, `worst_frame_ms` and the five pieces with the
+most self time. Profiling runs on the host, where requests run, and sends nothing to other players; a player's game
+is not measured and sees nothing different. For the game's own tick, its `debugthreads GameTick` console command
+times the tick's stages; on a dedicated server it prints one tick's breakdown to the console (`read_console`).

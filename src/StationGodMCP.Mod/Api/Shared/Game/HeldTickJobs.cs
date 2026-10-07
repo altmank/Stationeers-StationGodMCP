@@ -7,6 +7,7 @@ using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -68,7 +69,7 @@ internal static class HeldTickJobs
         if (_active == null && Waiting.Count == 0 && !tickTaken)
         {
             string started = NextId(prefix);
-            object view = Launch(started, create).View();
+            object view = Launch(started, tool, create).View();
             GasHold.Lift(hold);
             GasHoldReply.Record(hold, GasHoldStage.Started);
             Keep(started, hold, GasHoldStage.Started);
@@ -112,7 +113,7 @@ internal static class HeldTickJobs
 
     private static string NextId(string prefix) => prefix + "-" + (++_next).ToString(CultureInfo.InvariantCulture);
 
-    private static HeldTickJob Launch(string id, Func<string, HeldTickJob> create)
+    private static HeldTickJob Launch(string id, string tool, Func<string, HeldTickJob> create)
     {
         HeldTickJob job;
         AtmosphericsThread.CurrentJob = id;
@@ -127,6 +128,7 @@ internal static class HeldTickJobs
 
         GameManager.PauseGameTick();
         _tickHeld = true;
+        Prof.TickHeld(id, tool, Time.frameCount);
         _active = job;
         return job;
     }
@@ -190,7 +192,10 @@ internal static class HeldTickJobs
         AtmosphericsThread.CurrentJob = _active.Id;
         try
         {
-            step = _active.Step();
+            using (Prof.Scope(ProfId.JobStep))
+            {
+                step = _active.Step();
+            }
         }
         catch (Exception exception)
         {
@@ -216,6 +221,7 @@ internal static class HeldTickJobs
             case JobStep.Held held:
                 GameManager.PauseGameTick();
                 _tickHeld = true;
+                Prof.TickHeld(held.State.Id, null, Time.frameCount);
                 _active = held.State;
                 break;
             case JobStep.Done done:
@@ -236,6 +242,7 @@ internal static class HeldTickJobs
         if (!_releaseOwed)
         {
             _tickHeld = false;
+            Prof.TickReleased(Time.frameCount);
         }
     }
 
@@ -287,6 +294,7 @@ internal static class HeldTickJobs
         }
 
         _tickHeld = false;
+        Prof.TickReleased(Time.frameCount);
     }
 
     /// <summary>The mod is unloading: let the tick go if a job holds it (also with atmosphere work still running).</summary>
@@ -344,7 +352,7 @@ internal static class HeldTickJobs
 
         try
         {
-            Launch(id, queued.Create);
+            Launch(id, queued.Tool, queued.Create);
             GasHold.Lift(hold);
             Keep(id, hold, GasHoldStage.Started);
         }

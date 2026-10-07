@@ -1,11 +1,13 @@
 #nullable enable
 
 using System;
+using System.Runtime.CompilerServices;
 using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
 using HarmonyLib;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -65,6 +67,8 @@ internal static class Prints
 [HarmonyPatch(typeof(DynamicThing), nameof(DynamicThing.ItemManufactured))]
 internal static class ItemManufacturedPatch
 {
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Postfix(DynamicThing item, int quantity)
     {
         Prints.Manufactured(item, quantity);
@@ -74,6 +78,8 @@ internal static class ItemManufacturedPatch
 [HarmonyPatch(typeof(Stackable), "OnSplitStack")]
 internal static class StackSplitPatch
 {
+    [Profiled]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Postfix(Stackable __instance, Stackable newStack)
     {
         Prints.Split(__instance, newStack);

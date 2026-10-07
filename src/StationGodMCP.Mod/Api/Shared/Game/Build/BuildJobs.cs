@@ -13,6 +13,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -146,7 +147,11 @@ internal sealed class BuildWaiting : HeldTickJob
         }
 
         BuildLog log = new BuildLog();
-        _work.Apply(log, gas);
+        using (Prof.Scope(ProfId.JobApply))
+        {
+            _work.Apply(log, gas);
+        }
+
         return JobStep.Next(new BuildSettling(Id, _work, finalCheck, log, gas));
     }
 
