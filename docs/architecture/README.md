@@ -74,7 +74,7 @@ it uses the Python library, can ask the mod to push the values that changed, get
 each frame.
 
 **Scripts.** Watchers, the flight log, coolant and burn watchers and the layout solver: thirteen CheatEngineExpert
-scripts build the dashboard's `PipeTransport` (for example `Cheats/Stationeers/tools/rocket/flight_log.py:10`,
+scripts build the dashboard's `PipeTransport` (for example `StationeersMod/Workspace/tools/rocket/flight_log.py:10`,
 `tools/coolant_watch.py:16`). The test-server client and the leak test have their own pipe client
 (StationeersTestServer `tsclient.py:40-66`; TerraformingReloaded `tools/LeakTest/leaktest.py:67-68`, `:116-126`).
 LiveCheck is not a pipe client: it is a test plugin inside the server that only measures, while the leak test drives

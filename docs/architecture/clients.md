@@ -436,7 +436,7 @@ through the dashboard's package, whatever interpreter starts them.
 
 ### Scripts that use the dashboard's transport
 
-Thirteen CheatEngineExpert scripts under `Cheats/Stationeers/tools` construct `PipeTransport`: `arc_smelt.py`,
+Thirteen CheatEngineExpert scripts under `StationeersMod/Workspace/tools` construct `PipeTransport`: `arc_smelt.py`,
 `co2_trickle.py`, `coolant_watch.py`, `feed_vault.py`, `heat_load.py`, `layout_solver/game.py`,
 `power/finish_when_printed.py`, `rocket/burn_watch.py`, `rocket/flight_log.py`, `rocket/oxidiser_watch.py`,
 `rocket_rebuild/rb.py`, `smelt_batch.py` and `sort_storage.py`. They reach the dashboard's package by adding its folder

@@ -472,7 +472,7 @@ this one file).
 1. Test server: `py -3.12 validate.py` and `py -3.12 replaceable.py` run as before on the new `tsclient`. With
    `testserver.json`'s `pipe` temporarily set to `StationGodMCP`, `py -3.12 mcp.py mod_info` exits with the refusal
    from `client()` and sends nothing. Restore `testserver.json`.
-2. A CheatEngineExpert script against the test server: `py -3.12 Cheats/Stationeers/tools/rocket/flight_log.py`, with the
+2. A CheatEngineExpert script against the test server: `py -3.12 StationeersMod/Workspace/tools/rocket/flight_log.py`, with the
    transport's pipe name pointed at `StationGodMCP-Test` for this run (the wrapper reads `STATIONSCRIPT_PIPE`), runs
    for 10 seconds and logs readings. The same script started with another interpreter finds the library through the
    path fallback.
