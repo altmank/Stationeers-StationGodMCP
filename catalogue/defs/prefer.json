@@ -1,5 +1,0 @@
-{
-  "type": "string",
-  "enum": ["none", "frame_edges", "walls", "hidden"],
-  "description": "none, frame_edges, walls, or hidden (least visible) (see routing/rules)."
-}

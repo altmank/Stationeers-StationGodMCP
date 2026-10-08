@@ -1,4 +1,0 @@
-{
-  "type": "boolean",
-  "description": "Default true: a route over frames or along walls wins over one through air (see routing/rules)."
-}

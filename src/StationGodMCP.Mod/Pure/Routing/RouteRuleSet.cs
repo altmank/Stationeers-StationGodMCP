@@ -275,13 +275,43 @@ internal sealed class RouteRuleSet
 }
 
 /// <summary>
-/// The route rules' defaults per kind. Chutes run inside frames (house rule, chute_outside_frame): their planner
-/// requires frame cells (inside_frames) and takes the least visible way among them (prefer hidden) unless told
-/// otherwise; cables and pipes default to neither.
+/// A route planner's style: the one choice of what the route keeps to, as RouteRuleSet's preference, inside_frames
+/// and frames_first. supported (the default): a cell in air costs AirPenalty more, so a route over frames or along
+/// walls wins whenever one exists. frame_edges, walls and hidden: supported, and prefer those cells (hidden: the least
+/// visible route, inside a frame cheapest). inside_frames: only cells inside a frame or on its surface (the start and
+/// end cells excepted); no_route when none. free: the shortest route, air or not.
 /// </summary>
-internal static class RouteDefaults
+internal sealed class RouteStyle
 {
-    internal static bool InsideFrames(bool chute) => chute;
+    internal const string Default = "supported";
 
-    internal static string Prefer(bool chute) => chute ? "hidden" : "none";
+    internal static readonly string[] Names = { "supported", "frame_edges", "walls", "hidden", "inside_frames", "free" };
+
+    private RouteStyle(string name, RoutePreference prefer, bool insideFrames, bool framesFirst)
+    {
+        Name = name;
+        Prefer = prefer;
+        InsideFrames = insideFrames;
+        FramesFirst = framesFirst;
+    }
+
+    internal string Name { get; }
+
+    internal RoutePreference Prefer { get; }
+
+    internal bool InsideFrames { get; }
+
+    internal bool FramesFirst { get; }
+
+    /// <summary>The style by name (any case, null for the default); null for a name that is none.</summary>
+    internal static RouteStyle? Parse(string? name) => (name ?? Default).Trim().ToLowerInvariant() switch
+    {
+        "supported" => new RouteStyle("supported", RoutePreference.None, false, true),
+        "frame_edges" => new RouteStyle("frame_edges", RoutePreference.FrameEdges, false, true),
+        "walls" => new RouteStyle("walls", RoutePreference.Walls, false, true),
+        "hidden" => new RouteStyle("hidden", RoutePreference.Hidden, false, true),
+        "inside_frames" => new RouteStyle("inside_frames", RoutePreference.None, true, true),
+        "free" => new RouteStyle("free", RoutePreference.None, false, false),
+        _ => null
+    };
 }

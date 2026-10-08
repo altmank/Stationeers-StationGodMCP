@@ -23,10 +23,10 @@ namespace StationGodMCP.Api;
 /// the nearest cell of the tree so far (a branch, joined by a junction), never to the target again, so no loop is made.
 /// trunk (bus mode) lays a given run instead of searching the main one, and every start branches from it: a trunk and
 /// its drops in one job. assume_removed plans as if things were already gone (their cells free, their links absent);
-/// the kind's own pieces among them are removed in the same job (place_arguments.remove_ids). frames_first (default
-/// on) makes cells in air (CellSupports: on no frame and no wall plane) cost RouteRuleSet.AirPenalty more, so a route
-/// over frames or along walls wins whenever the search box holds one; prefer hidden grades every cell by how visible
-/// it is. The route's new cells are counted by visibility (inside a frame, on its surface, on a wall, in air) and the
+/// the kind's own pieces among them are removed in the same job (place_arguments.remove_ids). style (RouteStyle,
+/// default supported) makes cells in air (CellSupports: on no frame and no wall plane) cost RouteRuleSet.AirPenalty
+/// more, so a route over frames or along walls wins whenever the search box holds one; style hidden grades every cell
+/// by how visible it is. The route's new cells are counted by visibility (inside a frame, on its surface, on a wall, in air) and the
 /// air cells listed, with a through_air note. Returns the route, the arguments that build it with the place tool, and
 /// that tool's dry run (summary: the dry run in short, RunSummaryView, without its per-cell detail). Read only.
 /// </summary>
@@ -84,27 +84,21 @@ internal static class PlanRouteApi
         List<long> own = to?.Networks ?? new List<long>();
         RouteRuleSet rules = Rules(args, kind, starts, own, false);
         List<string> notes = Notes(rules, assumed);
-        if (kind is ChuteRunKind && (!args.Has("inside_frames") || !args.Has("prefer")))
-        {
-            notes.Add("chutes run inside frames by default (chute_outside_frame): inside_frames true and prefer hidden " +
-                      "unless given; only the start and end cells may stand outside. Pass inside_frames false to route " +
-                      "through a room.");
-        }
         RouteReservation reserved = Reservation(args, starts, to, trunk, notes);
         OpeningGuard openings = Openings(args, facts, starts, to, notes);
         RouteTree tree = Grow(args, starts, main, facts, rules, reserved, openings);
         bool supportedSearched = rules.FramesFirst;
         if (tree.GaveUp && rules.FramesFirst)
         {
-            // frames_first never costs a route the plain search finds: past the air field's box size the search can
+            // The air penalty never costs a route the plain search finds: past the air field's box size the search can
             // run out of cells looking for a supported way that does not exist.
             RouteTree second = Grow(args, starts, main, facts, rules.WithoutFramesFirst(), reserved, openings);
             if (second.Found)
             {
                 tree = second;
                 supportedSearched = false;
-                notes.Add("frames_first gave up (search_limit) looking for a route over frames or along walls; this " +
-                          "route ignores frames_first. Lower margin_m or bring the ends closer to try again.");
+                notes.Add("The style's air penalty gave up (search_limit) looking for a route over frames or along walls; " +
+                          "this route ignores it (as style free). Lower margin_m or bring the ends closer to try again.");
             }
         }
 
@@ -153,7 +147,7 @@ internal static class PlanRouteApi
                   $"over frames or along walls of at most max_length ({maxLength}) cells exists inside the search " +
                   "box. Raise margin_m to look wider, raise max_length when the way round is longer, or build a " +
                   "frame under the gap."
-                : $"through_air: {visibility.Air} new cells float in air; this route was found without frames_first.");
+                : $"through_air: {visibility.Air} new cells float in air; this route was found with style free.");
         }
 
         RouteAssumedView? assumedView = AssumedView(assumed, tree, notes);
@@ -504,16 +498,8 @@ internal static class PlanRouteApi
     private static RouteRuleSet Rules(Args args, RunKind kind, List<RouteEndpoint> starts, List<long> target,
         bool avoidOwn)
     {
-        bool chute = kind is ChuteRunKind;
-        string prefer = (args.OptionalString("prefer") ?? RouteDefaults.Prefer(chute)).Trim().ToLowerInvariant();
-        RoutePreference preference = prefer switch
-        {
-            "none" => RoutePreference.None,
-            "frame_edges" or "frame_corners" => RoutePreference.FrameEdges,
-            "walls" => RoutePreference.Walls,
-            "hidden" => RoutePreference.Hidden,
-            _ => throw ApiErrors.InvalidArgument("prefer must be none, frame_edges, walls or hidden.")
-        };
+        RouteStyle style = RouteStyle.Parse(args.OptionalString("style")) ??
+                           throw ApiErrors.InvalidArgument($"style must be {string.Join(", ", RouteStyle.Names)}.");
         HashSet<long> own = new HashSet<long>(target);
         foreach (RouteEndpoint start in starts)
         {
@@ -532,9 +518,9 @@ internal static class PlanRouteApi
             avoidIds = AvoidedNetworks(args, kind);
         }
 
-        return new RouteRuleSet(preference, args.OptionalBool("inside_frames") ?? RouteDefaults.InsideFrames(chute),
+        return new RouteRuleSet(style.Prefer, style.InsideFrames,
             args.OptionalBool("avoid_room_interior") ?? false, args.OptionalBool("avoid_walkways") ?? false, avoidAll,
-            own, avoidIds, avoidOwn, args.OptionalBool("frames_first") ?? true);
+            own, avoidIds, avoidOwn, style.FramesFirst);
     }
 
     // avoid_networks as a list: network handles, each naming a network of the kind (network_not_found otherwise).
@@ -750,9 +736,9 @@ internal static class PlanRouteApi
 
         if (rules.Prefer == RoutePreference.Hidden)
         {
-            notes.Add($"prefer hidden: a cell inside a frame costs 1, on a frame's surface " +
+            notes.Add($"style hidden: a cell inside a frame costs 1, on a frame's surface " +
                       $"{1 + RouteRuleSet.SurfaceCost}, on a wall's plane {1 + RouteRuleSet.WallCost}, in air " +
-                      $"{1 + RouteRuleSet.AirCost} (plus frames_first's air penalty); route.visibility counts the " +
+                      $"{1 + RouteRuleSet.AirCost} (plus the air penalty); route.visibility counts the " +
                       "new cells by class.");
         }
 

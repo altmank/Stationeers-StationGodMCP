@@ -50,7 +50,7 @@ internal static class GridSurveyApi
         "chute or 'o'. support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell " +
         "the small cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a " +
         "frame's face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
-        "(plan_*_route frames_first avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
+        "(plan_*_route style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
         "configured band either side inside its rectangle: the planners never route there without " +
         "allow_door_keepout; the floor slab under a threshold is not in it) and 'g' a window's face (routes pay " +
         "extra, crosses_window). A door's face is no wall support. network_visibility counts each listed network's cells the " +

@@ -1,0 +1,5 @@
+{
+  "type": "string",
+  "enum": ["supported", "frame_edges", "walls", "hidden", "inside_frames", "free"],
+  "description": "What the route keeps to (see routing/rules): supported (default), frame_edges, walls, hidden, inside_frames or free."
+}

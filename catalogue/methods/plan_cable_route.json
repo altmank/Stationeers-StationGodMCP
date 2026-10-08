@@ -30,8 +30,7 @@
         "enum": ["normal", "heavy", "super_heavy"],
         "description": "normal, heavy (default) or super_heavy."
       },
-      "frames_first": {"$ref": "defs/frames_first.json"},
-      "prefer": {"$ref": "defs/prefer.json"},
+      "style": {"$ref": "defs/style.json"},
       "assume_removed": {
         "type": "array",
         "minItems": 1,
@@ -40,7 +39,6 @@
         "description": "Things to plan as if already gone; the kind's pieces among them are removed in the same job (place_arguments.remove_ids)."
       },
       "trunk": {"$ref": "defs/trunk.json"},
-      "inside_frames": {"$ref": "defs/inside_frames.json"},
       "avoid_room_interior": {"$ref": "defs/avoid_room_interior.json"},
       "avoid_walkways": {"$ref": "defs/avoid_walkways.json"},
       "avoid_networks": {"$ref": "defs/avoid_networks.json"},

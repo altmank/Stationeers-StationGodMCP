@@ -382,7 +382,7 @@ internal static class RunPlanner
         string more = plan.AirCells.Count > AirListed ? $" and {plan.AirCells.Count - AirListed} more" : string.Empty;
         plan.Warnings.Add(new LayoutIssue(ThroughAir,
             $"{plan.AirCells.Count} new pieces float in air (on no frame and no wall plane): " +
-            $"{string.Join(", ", listed)}{more}. Route over frames or along walls (plan_*_route frames_first), or " +
+            $"{string.Join(", ", listed)}{more}. Route over frames or along walls (plan_*_route style supported, the default), or " +
             "build a frame under them.", plan.AirCells[0]));
     }
 

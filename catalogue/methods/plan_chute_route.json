@@ -2,7 +2,7 @@
   "name": "plan_chute_route",
   "summary": "Find a chute route from a source to a sink and dry-run it with place_chutes and every flow guard. Answers place_arguments to build it. Read only.",
   "help": {
-    "text": "plan_cable_route for chutes: from is the source and to the sink. The search never passes through a cell holding a chute, cable, pipe, device or other small-grid thing; a reroute keeps the old run's direction where the flow fixes it. Chutes run inside frames: inside_frames and prefer hidden are the defaults, and lint chute_outside_frame warns of a piece outside a frame's body (a device's port stub excepted).",
+    "text": "plan_cable_route for chutes: from is the source and to the sink. The search never passes through a cell holding a chute, cable, pipe, device or other small-grid thing; a reroute keeps the old run's direction where the flow fixes it. Lint chute_outside_frame warns of a chute piece outside a frame's body (a device's port stub excepted); style hidden or inside_frames keeps a route to frames.",
     "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, dry_run_summary {status, ready, problems, warnings, ...}, notes, resolved_networks.",
     "topics": {
       "ends": {
@@ -32,12 +32,7 @@
       "reserve_cells": {"$ref": "defs/reserve_cells.json"},
       "reserve_ports": {"$ref": "defs/reserve_ports.json"},
       "grade": {"type": "string", "enum": ["chute"], "description": "chute (the default)."},
-      "frames_first": {"$ref": "defs/frames_first.json"},
-      "prefer": {
-        "type": "string",
-        "enum": ["none", "frame_edges", "walls", "hidden"],
-        "description": "none, frame_edges, walls, or hidden (least visible); default hidden for chutes (see routing/rules)."
-      },
+      "style": {"$ref": "defs/style.json"},
       "assume_removed": {
         "type": "array",
         "minItems": 1,
@@ -46,10 +41,6 @@
         "description": "Things to plan as if already gone; the kind's pieces among them are removed in the same job (place_arguments.remove_ids)."
       },
       "trunk": {"$ref": "defs/trunk.json"},
-      "inside_frames": {
-        "type": "boolean",
-        "description": "Only cells inside a frame cell or on its surface, the start and end cells excepted. Default true for chutes: they run inside frames (see routing/rules)."
-      },
       "avoid_room_interior": {"$ref": "defs/avoid_room_interior.json"},
       "avoid_walkways": {"$ref": "defs/avoid_walkways.json"},
       "avoid_networks": {"$ref": "defs/avoid_networks.json"},

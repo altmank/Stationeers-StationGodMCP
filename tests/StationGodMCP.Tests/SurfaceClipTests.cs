@@ -216,7 +216,7 @@ public sealed class SurfaceClipTests
 
 /// <summary>
 /// chute_outside_frame's port stub (LU 2026-10-08: chutes route inside frames; a device's own stub may leave them) and
-/// plan_chute_route's defaults (inside_frames, prefer hidden).
+/// the route planners' style (LU 2026-10-08: the caller passes a routing style; no kind keeps to frames by default).
 /// </summary>
 public sealed class ChuteFrameTests
 {
@@ -245,12 +245,28 @@ public sealed class ChuteFrameTests
         Assert.False(PortStubs.IsStub(new List<GridCell> { M(591, 212, 629.5) }, new List<GridCell>()));
     }
 
-    [Fact]
-    public void ChuteRoutesDefaultToInsideFramesAndHidden()
+    [Theory]
+    [InlineData(null, "supported", "None", false, true)]
+    [InlineData("frame_edges", "frame_edges", "FrameEdges", false, true)]
+    [InlineData("walls", "walls", "Walls", false, true)]
+    [InlineData("HIDDEN", "hidden", "Hidden", false, true)]
+    [InlineData("inside_frames", "inside_frames", "None", true, true)]
+    [InlineData(" free ", "free", "None", false, false)]
+    public void EachRouteStyleMapsToOneSetOfRules(string? given, string name, string prefer, bool inside, bool airPenalty)
     {
-        Assert.True(RouteDefaults.InsideFrames(chute: true));
-        Assert.Equal("hidden", RouteDefaults.Prefer(chute: true));
-        Assert.False(RouteDefaults.InsideFrames(chute: false));
-        Assert.Equal("none", RouteDefaults.Prefer(chute: false));
+        RouteStyle style = RouteStyle.Parse(given)!;
+
+        Assert.Equal(name, style.Name);
+        Assert.Equal(prefer, style.Prefer.ToString());
+        Assert.Equal(inside, style.InsideFrames);
+        Assert.Equal(airPenalty, style.FramesFirst);
+    }
+
+    [Fact]
+    public void AnUnknownRouteStyleIsNone()
+    {
+        Assert.Null(RouteStyle.Parse("frames_first"));
+        Assert.Equal(6, RouteStyle.Names.Length);
+        Assert.All(RouteStyle.Names, name => Assert.NotNull(RouteStyle.Parse(name)));
     }
 }

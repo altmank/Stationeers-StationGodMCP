@@ -30,9 +30,12 @@ Smaller inventory replies, and a `fields` name that is nearly right no longer co
   or floor plane, or in air) warns; a device's port stub (the piece in its chute port's joining cell, or one cell
   from it) is not checked. New lint functions `clips_surface(x)` and `port_stub(x)`. `place_chutes` dry runs warn
   `lint_chute_outside_frame`.
-- **`plan_chute_route` defaults to `inside_frames: true` and `prefer: "hidden"`**: chute routes keep to frames, the
-  start and end cells excepted, and take the least visible way among them. `inside_frames: false` routes through a
-  room as before.
+- **Route planners take one `style`** instead of `frames_first`, `prefer` and `inside_frames` (gone; passing them
+  is an unknown argument). `plan_cable_route`, `plan_pipe_route` and `plan_chute_route` alike: `supported` (default:
+  over frames or along walls before air, as `frames_first` did), `frame_edges`, `walls`, `hidden` (each supported and
+  preferring those cells; hidden the least visible route), `inside_frames` (only cells inside or on a frame, the ends
+  excepted) and `free` (the shortest, air or not). No kind keeps to frames unless asked: a chute route stays inside
+  them with `style: "hidden"` or `"inside_frames"`.
 
 ## 1.31.0
 

@@ -160,8 +160,8 @@ losing power. The same steps work for pipes.
    `{reference_id: "<APC>", port: <output port>}` wherever a network is asked for; `resolved_networks` shows the id it
    meant this time.
 3. **Plan the trunk,** then plan the drops onto it: `plan_cable_route` with `trunk` for a trunk not built yet, or
-   `to: {network_id}` for one that is. Give a device with several ports all of them in one plan. Use `prefer: "hidden"`
-   or `inside_frames: true`, and check `route.air_cells`.
+   `to: {network_id}` for one that is. Give a device with several ports all of them in one plan. Use `style: "hidden"`
+   or `style: "inside_frames"`, and check `route.air_cells`.
 4. **Pay from a belt.** Pass `from_id` of a belt or locker holding coils: each job takes from it and puts
    its refund back, so removing an old chunk funds the next new one.
 5. **Build new beside old.** New drops join the existing port pieces, so each network briefly has a second path
