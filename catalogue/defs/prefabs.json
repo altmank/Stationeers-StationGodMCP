@@ -1,0 +1,7 @@
+{
+  "type": "array",
+  "minItems": 1,
+  "maxItems": 200,
+  "items": {"type": "string", "minLength": 1},
+  "description": "Whole prefab names, any case, up to 200: things of any of them, in one list (one call instead of one per prefab); not with prefab, with prefab_contains both must match."
+}

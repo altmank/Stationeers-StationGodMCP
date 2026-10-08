@@ -52,7 +52,7 @@ public sealed class FindFiltersAndSlimRepliesTests
     {
         PrefabMatch read = PrefabMatches.Parse(new Args(JObject.Parse("""{"prefab": " StructureFrame "}""")));
 
-        Assert.Equal("StructureFrame", read.Exact);
+        Assert.Equal(new[] { "StructureFrame" }, read.Exact);
         Assert.Null(read.Contains);
     }
 

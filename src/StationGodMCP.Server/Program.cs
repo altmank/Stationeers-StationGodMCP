@@ -7,7 +7,7 @@ namespace StationGodMCP.Server;
 internal static class Program
 {
     // Reported in the initialize response. build.ps1 checks it matches StationGodMCP.Server.csproj and the mod.
-    internal const string ServerVersion = "1.30.2";
+    internal const string ServerVersion = "1.31.0";
 
     public static async Task<int> Main(string[] args)
     {

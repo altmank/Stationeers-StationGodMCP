@@ -20,8 +20,9 @@ internal sealed class RuntimeView : ITruncatingView
 {
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift, List<ConnectionView>? connections = null,
-        ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null)
+        ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, PrefabIndexView? prefabIndex = null)
     {
+        PrefabIndex = prefabIndex ?? new PrefabIndexView(false, false, 0, 0, 0, 0);
         Connections = connections;
         Profiling = profiling;
         JobSettles = jobSettles ?? new JobSettlesView(0, 0, 0);
@@ -70,6 +71,8 @@ internal sealed class RuntimeView : ITruncatingView
     public List<ConnectionView>? Connections { get; }
 
     public JobSettlesView JobSettles { get; }
+
+    public PrefabIndexView PrefabIndex { get; }
 
     /// <summary>The profiler's summary while profiling is on; absent otherwise.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -313,4 +316,34 @@ internal sealed class MemoryView
 
     /// <summary>Profiler.GetMonoHeapSizeLong: the reserved heap, which never shrinks.</summary>
     public long? MonoHeapBytes { get; }
+}
+
+/// <summary>
+/// The prefab index (ThingIndex): ready (lists filtered by prefab read it; false: they walk every thing), verify
+/// ([Performance] VerifyPrefabIndex), things and names filed, and with verify the queries checked against a full walk
+/// and those that differed.
+/// </summary>
+internal sealed class PrefabIndexView
+{
+    internal PrefabIndexView(bool ready, bool verify, int things, int names, long verified, long differences)
+    {
+        Ready = ready;
+        Verify = verify;
+        Things = things;
+        Names = names;
+        Verified = verified;
+        Differences = differences;
+    }
+
+    public bool Ready { get; }
+
+    public bool Verify { get; }
+
+    public int Things { get; }
+
+    public int Names { get; }
+
+    public long Verified { get; }
+
+    public long Differences { get; }
 }

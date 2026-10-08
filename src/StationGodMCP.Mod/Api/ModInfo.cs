@@ -45,7 +45,7 @@ internal static class ModInfoApi
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
             Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections(), ProfilingControl.Summary(),
-            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked));
+            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View());
 
     private static List<ConnectionView>? Connections()
     {

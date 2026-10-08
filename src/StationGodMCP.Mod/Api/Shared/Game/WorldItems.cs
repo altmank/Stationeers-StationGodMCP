@@ -12,14 +12,23 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// Every item in the world wherever it is. Items come from OcclusionManager.AllDynamicThings, the list the game's own
-/// deletelooseitems command walks, and an item is loose when it has no ParentSlot (that command's rule). Organs
+/// deletelooseitems command walks (a filter naming prefabs reads only that list's things the prefab index files under
+/// matching names), and an item is loose when it has no ParentSlot (that command's rule). Organs
 /// (lungs, brain, stomach) are Items in the game and are left out.
 /// </summary>
 internal static class WorldItems
 {
-    internal static List<Item> All()
+    internal static List<Item> All() => Keep(Pools.Snapshot(OcclusionManager.AllDynamicThings));
+
+    /// <summary>
+    /// Every item whose prefab name the match may keep: from the prefab index when it can answer (ThingIndex), else
+    /// every item.
+    /// </summary>
+    internal static List<Item> Named(PrefabMatch match) =>
+        ThingIndex.DynamicThings(match) is { } indexed ? Keep(indexed) : All();
+
+    private static List<Item> Keep(List<DynamicThing> things)
     {
-        List<DynamicThing> things = Pools.Snapshot(OcclusionManager.AllDynamicThings);
         List<Item> items = new List<Item>(things.Count);
         for (int index = 0; index < things.Count; index++)
         {
@@ -36,7 +45,7 @@ internal static class WorldItems
     /// <summary>Every item the filter keeps, described, in the game's list order.</summary>
     internal static List<ItemRecord> Collect(ItemFilter filter, PlayerOrigin origin)
     {
-        List<Item> items = All();
+        List<Item> items = Named(filter.Prefab);
         List<ItemRecord> records = new List<ItemRecord>();
         foreach (Item item in items)
         {

@@ -57,6 +57,7 @@ internal static class WorldStores
         scope.Register("highlights", static () => Highlights.Clear());
         scope.Register("previews", static () => Previews.Clear());
         scope.Register("remote_views", Net.RemoteViews.Clear);
+        scope.Register("prefab_index", ThingIndex.Reset);
         return scope;
     }
 

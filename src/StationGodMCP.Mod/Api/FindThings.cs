@@ -20,7 +20,8 @@ namespace StationGodMCP.Api;
 /// <summary>
 /// find_things: every thing in the world whose name matches, whatever it is: items, portable tanks and other dynamic
 /// things, structures and devices, players and animals. Walks OcclusionManager.AllThings (every registered thing,
-/// cursors excluded), skipping things being destroyed and organs. A name matches on the name the game shows (the
+/// cursors excluded), or with prefab, prefabs or prefab_contains only the things the prefab index (ThingIndex) files
+/// under matching names; scanned counts the things walked. Things being destroyed and organs are skipped. A name matches on the name the game shows (the
 /// Labeller's name when there is one) and on the prefab's own name under a label (Labels). Nearest first or by
 /// reference id (order), paged; only the page is described in full. Every thing reports is_broken and condition from the game's own broken state
 /// (Pure/HealthCondition: a broken structure reads 100 % health, so the numbers cannot tell), and broken filters on it.
@@ -38,7 +39,7 @@ internal static class FindThingsApi
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
         ListOrder order = ListOrderArg.From(args);
-        List<Thing> things = Pools.Snapshot(OcclusionManager.AllThings);
+        List<Thing> things = ThingIndex.Things(filter.Prefab) ?? Pools.Snapshot(OcclusionManager.AllThings);
         List<ThingHit> hits = new List<ThingHit>();
         foreach (Thing thing in things)
         {

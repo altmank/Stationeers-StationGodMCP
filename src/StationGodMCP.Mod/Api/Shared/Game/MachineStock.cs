@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Items;
 using Reagents;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -43,6 +44,11 @@ internal static class MachineStock
         }
 
         Dictionary<Reagent, Ingot> ingots = IngotsByReagent();
+        if (!CanKeepAny(filter.Prefab, ingots))
+        {
+            return records;
+        }
+
         List<Structure> structures = GridController.AllStructuresPool.ToList();
         for (int index = 0; index < structures.Count; index++)
         {
@@ -82,6 +88,26 @@ internal static class MachineStock
                 records.Add(record);
             }
         }
+    }
+
+    // A stock entry counts under an ingot's prefab or under none (StockRecord.IngotPrefab), so a prefab filter that
+    // keeps none of those names keeps no stock, and the walk over every structure is skipped.
+    private static bool CanKeepAny(PrefabMatch prefab, Dictionary<Reagent, Ingot> ingots)
+    {
+        if (prefab.Keeps(null))
+        {
+            return true;
+        }
+
+        foreach (Ingot ingot in ingots.Values)
+        {
+            if (prefab.Keeps(ingot.PrefabName))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // SimpleFabricatorBase.GetPrefabHashFromReagentHash: the first ingot prefab whose CreatedReagentMixture contains

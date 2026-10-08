@@ -2,8 +2,8 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:24f91732c816be3613ec7c23e5e5ff77d21173927d1cf1a79b9f5368ae6fda46'
-MOD_VERSION = '1.30.2'
+CATALOGUE_HASH = 'sha256:493fc78cc8f7be2c91dffc8501b49d8dc679810205a5dbe1763e08b75a174451'
+MOD_VERSION = '1.31.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
 READ_ONLY = frozenset(['atmosphere_contents', 'check_replaceable', 'connections', 'consumables', 'container_contents', 'deep_miner_spots',
@@ -272,6 +272,7 @@ TABLE = {'catalogue': {'class': 'read',
                                     "its silo's), then by name, items before stock before silo entries"},
                 'duration': None,
                 'params': ['prefab',
+                           'prefabs',
                            'prefab_contains',
                            'name_contains',
                            'location',
@@ -321,6 +322,7 @@ TABLE = {'catalogue': {'class': 'read',
                  'duration': None,
                  'params': ['name_contains',
                             'prefab',
+                            'prefabs',
                             'prefab_contains',
                             'kind',
                             'labelled_only',
@@ -433,6 +435,7 @@ TABLE = {'catalogue': {'class': 'read',
                  'paging': None,
                  'duration': None,
                  'params': ['prefab',
+                            'prefabs',
                             'prefab_contains',
                             'name_contains',
                             'location',
@@ -1763,12 +1766,12 @@ class Methods:
         """
         return self.call('feed_paths', **{'root': root, 'network_id': network_id, 'port': port, 'kind': kind}, **options)
 
-    def find_items(self, *, prefab: str | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
+    def find_items(self, *, prefab: str | None = None, prefabs: list | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
         """Find items anywhere: on the ground, in containers and machines, carried by players, machine stock and silo stores.
 
-        Class: read. Arguments: prefab, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, offset, order.
+        Class: read. Arguments: prefab, prefabs, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, offset, order.
         """
-        return self.call('find_items', **{'prefab': prefab, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset, 'order': order}, **options)
+        return self.call('find_items', **{'prefab': prefab, 'prefabs': prefabs, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset, 'order': order}, **options)
 
     def find_spot(self, *, prefab: str | int | None = None, near: object | None = None, plane: str | None = None, side: str | None = None, looking: bool | None = None, around: object | None = None, room_id: str | None = None, facing: str | None = None, radius_m: float | None = None, require: dict | None = None, limit: int | None = None, max_checks: int | None = None, **options) -> dict:
         """Ranked places for a prefab near a point, on one face plane or on a room's walls, each checked with the game's placement cursor and the layout preview; answers place_arguments.
@@ -1777,12 +1780,12 @@ class Methods:
         """
         return self.call('find_spot', **{'prefab': prefab, 'near': near, 'plane': plane, 'side': side, 'looking': looking, 'around': around, 'room_id': room_id, 'facing': facing, 'radius_m': radius_m, 'require': require, 'limit': limit, 'max_checks': max_checks}, **options)
 
-    def find_things(self, *, name_contains: str | None = None, prefab: str | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
+    def find_things(self, *, name_contains: str | None = None, prefab: str | None = None, prefabs: list | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
         """Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals.
 
-        Class: read. Arguments: name_contains, prefab, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near, radius_m, near_player_m, location, limit, offset, order.
+        Class: read. Arguments: name_contains, prefab, prefabs, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near, radius_m, near_player_m, location, limit, offset, order.
         """
-        return self.call('find_things', **{'name_contains': name_contains, 'prefab': prefab, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset, 'order': order}, **options)
+        return self.call('find_things', **{'name_contains': name_contains, 'prefab': prefab, 'prefabs': prefabs, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset, 'order': order}, **options)
 
     def game_clock(self, **options) -> dict:
         """Read the game clock: game_time_s, paused, time_of_day_ratio and days_past.
@@ -1833,12 +1836,12 @@ class Methods:
         """
         return self.call('inspect_slots', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'slot_index': slot_index}, **options)
 
-    def item_totals(self, *, prefab: str | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, holders_limit: int | None = None, **options) -> dict:
+    def item_totals(self, *, prefab: str | None = None, prefabs: list | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, holders_limit: int | None = None, **options) -> dict:
         """Total quantity of each item type in the world, split into on_ground, carried, stored, machine_stock and silo, with the holders holding most.
 
-        Class: read. Arguments: prefab, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, holders_limit.
+        Class: read. Arguments: prefab, prefabs, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, holders_limit.
         """
-        return self.call('item_totals', **{'prefab': prefab, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'limit': limit, 'holders_limit': holders_limit}, **options)
+        return self.call('item_totals', **{'prefab': prefab, 'prefabs': prefabs, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'limit': limit, 'holders_limit': holders_limit}, **options)
 
     def label(self, *, reference_id: str | None = None, name: str | None = None, labels: list | None = None, **options) -> dict:
         """Rename things as the hand Labeller does: one with reference_id and name, or up to 64 with labels.

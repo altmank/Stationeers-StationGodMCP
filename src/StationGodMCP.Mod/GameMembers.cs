@@ -226,6 +226,13 @@ internal static class GameMembers
 
     // ---- World and devices ----
     internal static readonly GameField DeviceDensePool = Field(typeof(Device), "_deviceDensePool");
+
+    // ---- The master lists' membership (ThingIndex: a thing's slot in OcclusionManager.AllThings / AllDynamicThings) ----
+    internal static readonly GameField ThingAllThingsSlot = Field(typeof(Thing), "_allThingsPool");
+    internal static readonly GameField DynamicThingPoolSlot = Field(typeof(DynamicThing), "_dynamicThingsDensePool");
+    internal static readonly GameField ThingPoolEntries = Field(typeof(Assets.Scripts.Util.DensePool<Thing>), "_entries");
+    internal static readonly GameField DynamicThingPoolEntries =
+        Field(typeof(Assets.Scripts.Util.DensePool<DynamicThing>), "_entries");
     internal static readonly GameField SolarPanelArms = Field(typeof(SolarPanel), "_panelArms");
     internal static readonly GameField DishMinWattage = Field(typeof(SatelliteDish), "minWattage");
     internal static readonly GameField DishMaxWattage = Field(typeof(SatelliteDish), "maxWattage");
@@ -513,6 +520,26 @@ internal static class GameMembers
         Target("AtmosphericsController.HandleMainThreadEvents",
             () => AccessTools.Method(typeof(AtmosphericsController),
                 nameof(AtmosphericsController.HandleMainThreadEvents)));
+
+    internal static readonly GameMethod PatchRegisterThing =
+        Target("OcclusionManager.Register(Thing)",
+            () => AccessTools.Method(typeof(OcclusionManager), nameof(OcclusionManager.Register), new[] { typeof(Thing) }));
+    internal static readonly GameMethod PatchDeregisterThing =
+        Target("OcclusionManager.Deregister(Thing)",
+            () => AccessTools.Method(typeof(OcclusionManager), nameof(OcclusionManager.Deregister), new[] { typeof(Thing) }));
+    internal static readonly GameMethod PatchRegisterDynamicThing =
+        Target("OcclusionManager.Register(DynamicThing)",
+            () => AccessTools.Method(typeof(OcclusionManager), nameof(OcclusionManager.Register),
+                new[] { typeof(DynamicThing) }));
+    internal static readonly GameMethod PatchDeregisterDynamicThing =
+        Target("OcclusionManager.Deregister(DynamicThing)",
+            () => AccessTools.Method(typeof(OcclusionManager), nameof(OcclusionManager.Deregister),
+                new[] { typeof(DynamicThing) }));
+    internal static readonly GameMethod PatchDynamicThingAwake =
+        Target("DynamicThing.Awake", () => AccessTools.Method(typeof(DynamicThing), nameof(DynamicThing.Awake)));
+    internal static readonly GameMethod PatchOcclusionClearAll =
+        Target("OcclusionManager.ClearAll",
+            () => AccessTools.Method(typeof(OcclusionManager), nameof(OcclusionManager.ClearAll)));
 
     internal static readonly GameMethod PatchWriteStateImmediate =
         Target("FragmentHandler.WriteStateImmediate",

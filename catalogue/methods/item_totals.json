@@ -1,6 +1,6 @@
 {
   "name": "item_totals",
-  "summary": "Total quantity of each item type in the world, split into on_ground, carried, stored, machine_stock and silo, with the holders holding most. Same filters as find_items, area and exact prefab included. 12 types by default. Read only.",
+  "summary": "Total quantity of each item type in the world, split into on_ground, carried, stored, machine_stock and silo, with the holders holding most. Same filters as find_items, area, exact prefab and prefabs included. 12 types by default. Read only.",
   "help": {
     "text": "Answers 'how much iron ingot do I have and where'. quantity includes machine stock (a furnace's or centrifuge's load gets its own row with prefab_name null and reagent set); item_count counts items only, machine_stock_entries the machine and reagent pairs, silo_entries the things silos store (entries and their contents). top_holders lists holders_limit holders per type (default 1, 0 leaves it out), each with kind (player, stored, machine_stock or silo) and position.",
     "keys": "totals [{prefab_name, display_name, items, quantity, on_ground, carried, stored, machine_stock, silo, ...}], prefab_count, item_count, machine_stock_entries, silo_entries.",
@@ -15,6 +15,7 @@
         "type": "string",
         "description": "The whole prefab name, any case, as place_structure and describe_prefab take it ('StructureFrame' is not 'StructureFrameCorner'); with prefab_contains both must match."
       },
+      "prefabs": {"$ref": "defs/prefabs.json"},
       "prefab_contains": {"type": "string", "description": "Part of the prefab name, any case ('IngotIron', 'Ore', 'Battery')."},
       "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
       "location": {
@@ -61,6 +62,7 @@
   },
   "x-read-by": {
     "prefab": "Api/Shared/PrefabMatches.cs",
+    "prefabs": "Api/Shared/PrefabMatches.cs",
     "min": "Api/Shared/AreaArgs.cs",
     "max": "Api/Shared/AreaArgs.cs",
     "near": "Api/Shared/AreaArgs.cs",

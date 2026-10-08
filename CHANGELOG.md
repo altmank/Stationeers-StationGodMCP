@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.31.0
+
+Lists filtered by prefab cost the game a fraction of what they did, and one call counts several prefabs.
+
+- **Prefab index.** `find_things`, `find_items` and `item_totals` with `prefab`, `prefabs` or `prefab_contains`, and
+  every other item list filtered by prefab (`list_containers`, `vault_deposit`, `silo_deposit`), read only the things
+  of the matching prefabs instead of walking every thing in the world (some 34,000 on a big base). The index follows
+  the game's own lists of things: it hears of every thing they take in and let go, is rebuilt when a world loads, and
+  reads each thing's membership from the lists themselves, so it answers what a full walk would. Everything else a
+  reply holds (where a thing is, its holder, quantity, position) is read live as before. Replies are the same: order,
+  paging, totals and truncation; `find_things`' `scanned` counts the things actually looked at.
+- **Machine stock and silos without a walk of every structure.** `find_items` and `item_totals` skip the walk over
+  every structure for machine stock when the prefab filter can match no ingot (stock counts under an ingot's prefab
+  or none), and find SDB Silos through the prefab index instead of walking every structure.
+- **`prefabs`: several exact prefab names in one call** (up to 200) on `find_things`, `find_items` and `item_totals`.
+  Not with `prefab`; with `prefab_contains` both must match. Each result's `prefab_name` tells them apart.
+- **New setting `[Performance] VerifyPrefabIndex`** (default `false`): every indexed call also walks every thing and
+  logs a warning when the two differ. `mod_info`'s `runtime.prefab_index` reports whether the index is in use, what it
+  holds and, with the check on, the calls checked and the differences found.
+- When a game update moves one of the places the index listens at, the mod logs it and the lists walk every thing as
+  before.
+
 ## 1.30.2
 
 A client joined to a server keeps the same pipe and chute networks as the server while StationGod jobs build.

@@ -9,9 +9,9 @@ these tools need a gateway.
 
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
-| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock, and what SDB Silos store. | `prefab` (exact), `prefab_contains`, `name_contains`, `location` (`ground`, `player`, `stored`, `machine_stock`, `silo`), `within_id`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `limit`, `offset`, `order` |
+| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock, and what SDB Silos store. | `prefab` (exact), `prefabs` (several exact names), `prefab_contains`, `name_contains`, `location` (`ground`, `player`, `stored`, `machine_stock`, `silo`), `within_id`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `limit`, `offset`, `order` |
 | `item_totals` | Total quantity of each item type, split into on the ground, carried, stored, machine stock and silo, with the holder that holds the most (`holders_limit` holders; one by default). | as `find_items`, and `holders_limit` (0 leaves the holders out) |
-| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab` (exact), `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `made_by`, `made_since`, `location`, `order` |
+| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab` (exact), `prefabs` (several exact names), `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `made_by`, `made_since`, `location`, `order` |
 | `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m`, `order` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Shape it with paths through the slots: `fields: ["slots.index", "slots.occupant.prefab_name"]`, or `occupant.slots.occupant.prefab_name` for what a backpack holds. | `reference_id`, `depth` (default 3), `prefab_contains`, `name_contains` (slots holding a match at any depth) |
 | `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
@@ -21,9 +21,12 @@ these tools need a gateway.
 
 ## Finding things
 
-- `find_items` answers "where is my iron"; `item_totals` answers "how much iron do I have". Ingots loaded into a
-  fabricator count as the ingots it would eject (`location: machine_stock`). Stock cannot be moved with `move_item`:
-  open the fabricator to eject it.
+- `find_items` answers "where is my iron"; `item_totals` answers "how much iron do I have". A prefab filter makes
+  these lists cheap for the game: with `prefab`, `prefabs` or `prefab_contains` the mod reads only the things of
+  those prefabs from an index it keeps in step with the game's own lists, instead of every thing in the world.
+  `prefabs: ["ItemIronIngot", "ItemSteelIngot"]` counts several items in one call; each item's `prefab_name` tells
+  them apart. Ingots loaded into a fabricator count as the ingots it would eject (`location: machine_stock`). Stock
+  cannot be moved with `move_item`: open the fabricator to eject it.
 - `find_things` finds what `find_items` does not: a tank labelled `T1` is found by `T1` and by `Portable Liquid Tank`.
   `min` and `max` keep only things in a box (`kind: "structure"` with a box gives the walls of one building). A
   rocket's part reports `rocket_state`: its position moves while the rocket flies. A paintable thing reports

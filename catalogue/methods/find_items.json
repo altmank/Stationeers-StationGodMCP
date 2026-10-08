@@ -2,7 +2,7 @@
   "name": "find_items",
   "summary": "Find items anywhere: on the ground, in containers and machines, carried by players, machine stock and silo stores. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.",
   "help": {
-    "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type. Narrow a big world with prefab (exact) or prefab_contains, location (ground: loose in the world; player: carried; stored; machine_stock) and an area: min and max, or near with radius_m (for a machine's stock, where the machine stands).",
+    "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type. Narrow a big world with prefab (exact), prefabs (several exact names, one call for all) or prefab_contains, which read only the items of those prefabs; location (ground: loose in the world; player: carried; stored; machine_stock) and an area: min and max, or near with radius_m (for a machine's stock, where the machine stands).",
     "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
     "shared": ["items", "paging", "shaping", "player"]
   },
@@ -15,6 +15,7 @@
         "type": "string",
         "description": "The whole prefab name, any case, as place_structure and describe_prefab take it ('StructureFrame' is not 'StructureFrameCorner'); with prefab_contains both must match."
       },
+      "prefabs": {"$ref": "defs/prefabs.json"},
       "prefab_contains": {"type": "string", "description": "Part of the prefab name, any case ('IngotIron', 'Ore', 'Battery')."},
       "name_contains": {"type": "string", "description": "Part of the shown name, any case ('Iron Ingot')."},
       "location": {
@@ -59,6 +60,7 @@
   },
   "x-read-by": {
     "prefab": "Api/Shared/PrefabMatches.cs",
+    "prefabs": "Api/Shared/PrefabMatches.cs",
     "min": "Api/Shared/AreaArgs.cs",
     "max": "Api/Shared/AreaArgs.cs",
     "near": "Api/Shared/AreaArgs.cs",

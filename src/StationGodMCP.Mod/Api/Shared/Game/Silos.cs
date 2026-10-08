@@ -54,6 +54,31 @@ internal static class Silos
     /// <summary>Every built silo in the world, in structure order.</summary>
     internal static List<Silo> All()
     {
+        if (!(ThingIndex.ThingsOfClass<Silo>() is { } indexed))
+        {
+            return Walk();
+        }
+
+        List<Silo> silos = new List<Silo>();
+        foreach (Thing thing in indexed)
+        {
+            if (thing is Silo silo && silo != null && !silo.IsCursor && !silo.IsBeingDestroyed)
+            {
+                silos.Add(silo);
+            }
+        }
+
+        if (ThingIndex.Verify)
+        {
+            ThingIndex.VerifyClass(silos, Walk());
+        }
+
+        return silos;
+    }
+
+    // Every structure the game has, for its silos: what the prefab index answers without the walk.
+    private static List<Silo> Walk()
+    {
         List<Structure> structures = GridController.AllStructuresPool.ToList();
         List<Silo> silos = new List<Silo>();
         for (int index = 0; index < structures.Count; index++)

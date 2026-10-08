@@ -312,7 +312,8 @@ loads.
   `world_stores`, `subscriptions_begin_frame`, `publish_facts`, `observe_game_state`, `remote_views`, `run_frame` (the
   request frame), `subscription_lane`, `call_execute`, `call_serialize`, `held_tick_jobs`, `job_step`, `job_apply`,
   `job_gas_open`, `job_gas_settle`, `job_gas_close`, `atmosphere_wait`, `previews`, `highlights`,
-  `rocket_flight_recorder`, and `unscoped`, the rest of the update. Methods (`kind: method`): the busiest read handlers
+  `rocket_flight_recorder`, `pool_snapshot` (copying a game list), `prefab_index` (a lookup in the prefab index), and
+  `unscoped`, the rest of the update. Methods (`kind: method`): the busiest read handlers
   (`list_devices`, `read_devices`, `read_logic_many`, `network_snapshot`, `find_things`, `find_items`, `item_totals`,
   `grid_survey`, `connections`, the route planners; named as `ListDevicesApi.Handle`) and StationGod's own game hooks,
   timed on the main thread only; a method's time also counts in the piece it runs in.

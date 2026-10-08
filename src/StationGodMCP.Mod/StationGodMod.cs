@@ -34,7 +34,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "1.30.2";
+    public const string Version = "1.31.0";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
@@ -94,6 +94,7 @@ public sealed class StationGodMod : ModBehaviour
             _harmony = new Harmony(ModId);
             GameMembers.CheckAll();
             PatchEachClass(_harmony);
+            Api.Shared.Game.ThingIndex.Enable(ModId);
             ConfigFile configuration = new ConfigFile(ConfigPath, true);
             Pipe = PipeSettings.Load(configuration);
             _remote = RemoteSettings.Load(configuration);
@@ -104,6 +105,7 @@ public sealed class StationGodMod : ModBehaviour
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
             ProfilingControl.Load(typeof(StationGodMod).Assembly, PerformanceSettings.Profiling);
+            Api.Shared.Game.ThingIndex.Verify = PerformanceSettings.VerifyPrefabIndex;
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
             _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
@@ -569,6 +571,12 @@ internal static class PerformanceSettings
     /// <summary>Whether the profiler starts on at load ([Performance] Profiling).</summary>
     internal static bool Profiling { get; private set; }
 
+    /// <summary>
+    /// Whether every list query the prefab index answers also walks the game's list and logs a difference
+    /// ([Performance] VerifyPrefabIndex, a debug switch).
+    /// </summary>
+    internal static bool VerifyPrefabIndex { get; private set; }
+
     /// <summary>The frame scheduler's settings, from every [Performance] value.</summary>
     internal static SchedulerSettings Scheduler { get; private set; } = SchedulerSettings.Default;
 
@@ -609,6 +617,11 @@ internal static class PerformanceSettings
             $"slow_frame_ms {SlowFrameLimits.DefaultMs} and no CSV). It times StationGod's main-thread work per frame, " +
             "call and job tick hold; off, it costs one check per timed piece. The profiling method switches it at any " +
             "time. Restart the game to apply.").Value;
+        VerifyPrefabIndex = configuration.Bind(Section, "VerifyPrefabIndex", false,
+            "Debug: every find_things, find_items or item_totals call filtered by prefab, answered from the prefab " +
+            "index, also walks every thing in the world and logs a warning when the two differ (mod_info " +
+            "runtime.prefab_index counts the checks and differences). Costs a full walk per call. Restart the game to " +
+            "apply.").Value;
     }
 
     private static double NonNegative(ConfigEntry<double> entry, double fallback)
