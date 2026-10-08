@@ -258,14 +258,14 @@ internal sealed class LogicAccessView
 /// <summary>inspect_slots: a device's logical slots, what is in each, and each slot's readable logic.</summary>
 internal sealed class InspectSlotsView
 {
-    internal InspectSlotsView(string gatewayId, DeviceView device, List<SlotDetailView> slots, int totalSlots)
+    internal InspectSlotsView(string gatewayId, DeviceView device, List<SlotDetailView> slots, int slotCount)
     {
         GatewayId = gatewayId;
         ReferenceId = device.ReferenceId;
         Device = device;
         Slots = slots;
         Count = slots.Count;
-        TotalSlots = totalSlots;
+        SlotCount = slotCount;
     }
 
     public string GatewayId { get; }
@@ -278,7 +278,7 @@ internal sealed class InspectSlotsView
 
     public int Count { get; }
 
-    public int TotalSlots { get; }
+    public int SlotCount { get; }
 }
 
 internal sealed class SlotDetailView

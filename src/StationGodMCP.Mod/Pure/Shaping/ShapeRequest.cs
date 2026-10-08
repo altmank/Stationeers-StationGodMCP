@@ -24,13 +24,20 @@ internal sealed class ShapeRequest
     internal static readonly ShapeRequest None = new ShapeRequest(null, NoLimits, null);
 
     internal ShapeRequest(FieldSelectors? fields, IReadOnlyDictionary<string, int> limits, int? maxBytes,
-        OmitSelectors? omit = null)
+        OmitSelectors? omit = null, IReadOnlyDictionary<string, string>? mapped = null)
     {
         Fields = fields;
         Limits = limits;
         MaxBytes = maxBytes;
         Omit = omit;
+        Mapped = mapped;
     }
+
+    /// <summary>
+    /// The fields selectors (by text) read as another key, each with that key: null unless FieldMapping made this
+    /// shape from one whose selectors matched nothing.
+    /// </summary>
+    internal IReadOnlyDictionary<string, string>? Mapped { get; }
 
     /// <summary>Null when no fields were given: every entry is kept whole.</summary>
     internal FieldSelectors? Fields { get; }
@@ -64,7 +71,7 @@ internal sealed class ShapeRequest
             limits[limit.Key] = limit.Value;
         }
 
-        return new ShapeRequest(given.Fields, limits, given.MaxBytes, given.Omit);
+        return new ShapeRequest(given.Fields, limits, given.MaxBytes, given.Omit, given.Mapped);
     }
 
     /// <summary>The largest number of entries to keep of a top-level list; int.MaxValue when not limited.</summary>
@@ -312,6 +319,28 @@ internal sealed class ShapeOutcome
     {
         _matched = new bool[selectors];
         _omitted = new bool[omitSelectors];
+    }
+
+    private static readonly IReadOnlyCollection<string> NoKeys = Array.Empty<string>();
+
+    /// <summary>The fields selectors (by index) the reply reported in fields_unmatched, in order.</summary>
+    internal IReadOnlyList<int> Unmatched { get; private set; } = Array.Empty<int>();
+
+    /// <summary>
+    /// The keys the written reply had where fields reads (top-level keys and the keys of top-level entries); empty
+    /// unless fields_unmatched was reported.
+    /// </summary>
+    internal IReadOnlyCollection<string> SeenKeys { get; private set; } = NoKeys;
+
+    /// <summary>SeenKeys and the costly keys the handler skipped (fields_valid's keys).</summary>
+    internal IReadOnlyCollection<string> ValidKeys { get; private set; } = NoKeys;
+
+    internal void Unmatch(IReadOnlyList<int> selectors, IReadOnlyCollection<string> seenKeys,
+        IReadOnlyCollection<string> validKeys)
+    {
+        Unmatched = selectors;
+        SeenKeys = seenKeys;
+        ValidKeys = validKeys;
     }
 
     /// <summary>At least one object entry of a top-level list was written.</summary>

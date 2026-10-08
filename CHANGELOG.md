@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+Smaller inventory replies, and a `fields` name that is nearly right no longer costs a second call.
+
+- **`container_contents` leaves empty slots out** at every depth, so a player with empty ore bags and backpacks answers
+  with what they hold. An item holding nothing keeps no `slots` list. `empty_slots_omitted` counts the slots left out;
+  `include_empty: true` keeps them (to find a free slot). `slots_not_shown` on an item past `depth` now counts the
+  slots a deeper call would show (the occupied ones, or every one with `include_empty`).
+- **`fields` near misses.** A name that matches no key but has exactly one safe match in the reply is read as that key,
+  and `fields_mapped` says so (`{"name": "display_name"}`). Safe: the same words respelt (`REFERENCE_ID`,
+  `displayName`), in another order, or with one naming qualifier more or fewer (`display`, `count`, a unit:
+  `slots_used` or `used_slots` for `used_slot_count`, `name` for `display_name`, `distance` for `distance_m`), or one
+  typing slip in a word of four letters or more. Any other unmatched name stays in `fields_unmatched`, now with `fields_closest` naming up to
+  five near keys (`network` -> `networks`, `refund` -> `refund_enabled`) before `fields_valid`.
+- **One naming across tools.** Slot keys follow the rest: `container_contents`' slot `name` is now `display_name` (as
+  in `inspect_slots`), `list_containers`' `slots_total` and `slots_used` are now `slot_count` and `used_slot_count`,
+  and `inspect_slots`' `total_slots` is now `slot_count` (as `describe_device`'s device has it). `tool_info` topic
+  shaping/names gives the naming scheme.
+
 ## 1.31.0
 
 Lists filtered by prefab cost the game a fraction of what they did, and one call counts several prefabs.

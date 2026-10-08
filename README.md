@@ -107,7 +107,9 @@ answered or the game took the request but did not reply in time (it may still ha
 chip sources) takes the shaping arguments `fields`, `omit` and `list_limits`. `fields: ["reference_id", "position"]` keeps only those keys in each
 entry of the reply's top-level lists and inside each top-level object, and a name that is a top-level key keeps it
 whole (`looking_at` `fields: ["target"]`); counts and other plain top-level values stay. A name that matches nothing
-comes back in `fields_unmatched`, with the valid keys in `fields_valid`, and `tool_info` names each tool's reply keys.
+but has one safe near match (`name` for `display_name`, `used_slots` for `used_slot_count`) is read as that key and
+reported in `fields_mapped`; any other comes back in `fields_unmatched`, with near keys in `fields_closest` and the
+valid keys in `fields_valid`, and `tool_info` names each tool's reply keys.
 A dotted name is a path read from each entry, through nested objects and lists at any depth (`occupant.prefab_name`,
 `held_in.reference_id`), or from the top-level key it starts with: `things.position.x` keeps only `x` inside
 `position` in each entry of `things`, `target.reference_id` only the target's id; dictionary keys keep their case (`results.logic.Temperature`). `omit: ["source",

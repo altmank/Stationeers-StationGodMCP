@@ -291,6 +291,15 @@ selector that matched no key, and `fields_valid`, the keys the reply had (its to
 entries and objects it shaped, sorted, at most 100, including costly keys the handler skipped). A reply with an empty
 top-level list and no list entry gets neither: the name may be missing only because nothing was listed.
 
+Near misses. Before reporting, the mod looks for a safe match among the keys the reply had for each unmatched single
+name and `list.key` path (Pure/Shaping/FieldMatch): the same words respelt (`REFERENCE_ID`, `displayName`) or
+reordered (`used_slots` for `slots_used`), one naming qualifier more or fewer (`display`, `count` after two or more
+words, or a unit: `name` for `display_name`, `distance` for `distance_m`), or one slip in a word of four letters or
+more. When exactly one key matches so, and it is not a costly key the handler skipped, the reply is written again
+with that selector read as the key, and `fields_mapped` {given: key} says so. Other unmatched selectors stay in
+`fields_unmatched`; `fields_closest` {given: [keys]} names up to five near keys of each that has any (also one other
+word more or fewer, singular for plural, two slips), before `fields_valid`.
+
 Compatibility. Every `fields` value the sidecar accepts (an array of at least one string, no further limits) is
 accepted through the sidecar, with the old results for single names: a selector that does not follow the grammar (a
 name with `-`, an empty string after trimming, a stray dot) is not sent but listed in `fields_unmatched` by the

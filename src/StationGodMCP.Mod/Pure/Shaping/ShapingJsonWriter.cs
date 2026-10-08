@@ -21,8 +21,9 @@ internal enum ShapingRoot
 /// A JsonWriter between the serialiser and the real writer that applies a ShapeRequest while the reply is written:
 /// keys that fields leaves out or omit names, and entries past a limit, are not forwarded, so they are never formatted
 /// or sent. The serialiser still reads every property; only formatting and sending are saved. At the end of the reply
-/// object it adds fields_unmatched (with fields_valid, the keys the reply had, sorted), omit_unmatched and truncated: every
-/// list held back, by the handler (its notes) or by a limit here, with how many it carries, how many there are and how
+/// object it adds fields_mapped (selectors FieldMapping read as their one safe match), fields_unmatched (with
+/// fields_closest, the near keys of each that has some, and fields_valid, the keys the reply had, sorted),
+/// omit_unmatched and truncated: every list held back, by the handler (its notes) or by a limit here, with how many it carries, how many there are and how
 /// to get more; an announcing writer (a call's reply) writes truncated always, empty when nothing was held back. With
 /// nothing to leave out it forwards every token unchanged, so the output is byte for byte the real writer's.
 /// </summary>
@@ -35,7 +36,9 @@ internal enum ShapingRoot
 internal sealed class ShapingJsonWriter : JsonWriter
 {
     internal const string ResultKey = "result";
+    internal const string MappedKey = "fields_mapped";
     internal const string UnmatchedKey = "fields_unmatched";
+    internal const string ClosestKey = "fields_closest";
     internal const string ValidKey = "fields_valid";
     internal const string OmitUnmatchedKey = "omit_unmatched";
     internal const string TruncatedKey = "truncated";
@@ -52,6 +55,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
 
     private readonly IReadOnlyList<Truncation> _notes;
     private readonly bool _announce;
+    private readonly bool _nameClosest;
 
     // The top-level key whose value starts next, held back until the value says whether it is kept (fields only).
     private string? _topName;
@@ -60,8 +64,9 @@ internal sealed class ShapingJsonWriter : JsonWriter
     private SortedSet<string>? _validKeys;
 
     internal ShapingJsonWriter(JsonWriter inner, ShapeRequest shape, ShapingRoot root,
-        IReadOnlyList<Truncation>? notes = null, bool announce = false)
+        IReadOnlyList<Truncation>? notes = null, bool announce = false, bool nameClosest = true)
     {
+        _nameClosest = nameClosest;
         _inner = inner;
         _target = inner;
         _shape = shape;
@@ -710,33 +715,40 @@ internal sealed class ShapingJsonWriter : JsonWriter
     private void WriteOutcome()
     {
         FieldSelectors? fields = _shape.Fields;
+        WriteMapped(fields);
         // A reply whose lists are all empty may lack a key only because it has no entries: nothing is reported then.
         if (fields != null && (Outcome.AnyEntry || !_sawEmptyList))
         {
-            bool opened = false;
+            List<int> unmatched = new List<int>();
             for (int index = 0; index < fields.Count; index++)
             {
-                if (Outcome.Matched(index))
+                if (!Outcome.Matched(index))
                 {
-                    continue;
+                    unmatched.Add(index);
                 }
-
-                if (!opened)
-                {
-                    _inner.WritePropertyName(UnmatchedKey);
-                    _inner.WriteStartArray();
-                    opened = true;
-                }
-
-                _inner.WriteValue(fields[index].Text);
             }
 
-            if (opened)
+            if (unmatched.Count > 0)
             {
+                SortedSet<string> seen = new SortedSet<string>(_validKeys ?? new SortedSet<string>(StringComparer.Ordinal),
+                    StringComparer.Ordinal);
+                _inner.WritePropertyName(UnmatchedKey);
+                _inner.WriteStartArray();
+                foreach (int index in unmatched)
+                {
+                    _inner.WriteValue(fields[index].Text);
+                }
+
                 _inner.WriteEndArray();
                 foreach (string skipped in _shape.SkippedKeys)
                 {
                     NoteKey(skipped);
+                }
+
+                Outcome.Unmatch(unmatched, seen, _validKeys ?? seen);
+                if (_nameClosest)
+                {
+                    WriteClosest(fields, unmatched);
                 }
 
                 _inner.WritePropertyName(ValidKey);
@@ -812,6 +824,79 @@ internal sealed class ShapingJsonWriter : JsonWriter
         }
 
         _inner.WriteEndArray();
+    }
+
+    // The selectors read as another key that matched it: {given: key}.
+    private void WriteMapped(FieldSelectors? fields)
+    {
+        IReadOnlyDictionary<string, string>? mapped = _shape.Mapped;
+        if (fields == null || mapped == null)
+        {
+            return;
+        }
+
+        bool opened = false;
+        for (int index = 0; index < fields.Count; index++)
+        {
+            string text = fields[index].Text;
+            if (!Outcome.Matched(index) || !mapped.TryGetValue(text, out string? key))
+            {
+                continue;
+            }
+
+            if (!opened)
+            {
+                _inner.WritePropertyName(MappedKey);
+                _inner.WriteStartObject();
+                opened = true;
+            }
+
+            _inner.WritePropertyName(text);
+            _inner.WriteValue(key);
+        }
+
+        if (opened)
+        {
+            _inner.WriteEndObject();
+        }
+    }
+
+    // Each unmatched selector's close keys among those the reply had (costly keys skipped included): {given: [keys]}.
+    private void WriteClosest(FieldSelectors fields, List<int> unmatched)
+    {
+        bool opened = false;
+        foreach (int index in unmatched)
+        {
+            string? key = FieldMapping.KeyOf(fields[index]);
+            List<string> closest = key != null && _validKeys != null
+                ? FieldMatch.Closest(key, _validKeys)
+                : new List<string>();
+            if (closest.Count == 0)
+            {
+                continue;
+            }
+
+            if (!opened)
+            {
+                _inner.WritePropertyName(ClosestKey);
+                _inner.WriteStartObject();
+                opened = true;
+            }
+
+            _inner.WritePropertyName(fields[index].Text);
+            _inner.WriteStartArray();
+            foreach (string close in closest)
+            {
+                _inner.WriteValue(close);
+            }
+
+            _inner.WriteEndArray();
+        }
+
+        if (opened)
+        {
+            _inner.WriteEndObject();
+        }
     }
 
     private readonly struct Pending

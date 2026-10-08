@@ -80,7 +80,7 @@
         "subtopics": {
           "fields": {
             "summary": "fields: keep only these keys, in list entries and objects.",
-            "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). A list on the way applies the rest of the path to each of its entries: rocket_status fields [\"rockets.fuel.total_mol\"] keeps each fuel line's total_mol. Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matched nothing is listed in fields_unmatched, with fields_valid. tool_info {tool} gives reply_keys."
+            "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). A list on the way applies the rest of the path to each of its entries: rocket_status fields [\"rockets.fuel.total_mol\"] keeps each fuel line's total_mol. Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matches no key but has one safe match (the same words respelt or reordered, name for display_name, a unit or _count added or dropped, one slip in a long word) is read as that key and listed in fields_mapped {given: key}. Any other is listed in fields_unmatched, with fields_closest {given: [near keys]} when it has some, and fields_valid. tool_info {tool} gives reply_keys."
           },
           "omit": {
             "summary": "omit: leave key paths out of the reply.",
@@ -89,6 +89,10 @@
           "output_file": {
             "summary": "output_file: the whole reply as a file, answered by a pointer.",
             "text": "output_file: true, or a file name (letters, digits, - _ . and no folders: a path is refused), writes the whole reply as indented JSON and answers a pointer {output_file (the full path), bytes, tool, counts (each top-level list's length), summary (the short top-level values), in_file_only (keys too large to repeat), truncated}. The folder is %LOCALAPPDATA%\\StationGodMCP\\output unless the server runs with --output-dir or STATIONGODMCP_OUTPUT_DIR. Files older than 7 days, and beyond the newest 200, are deleted; a named file is overwritten. A reply larger than the server's inline limit is written to a file the same way (auto_output_file)."
+          },
+          "names": {
+            "summary": "How reply keys are named, for fields and omit.",
+            "text": "Reply keys are snake_case and named alike in every tool. A thing or slot's shown name is display_name (rocket and trader parts: name), its prefab prefab_name, its label custom_name, its id reference_id. A number of things is <noun>_count (slot_count, used_slot_count, item_count); count is the entries in this reply, total all that matched. A unit ends the key: _m, _k, _kpa, _l, _mol, _j, _w, _s, _ms, _kg, _deg."
           }
         }
       },
@@ -2480,8 +2484,8 @@
       "name": "container_contents",
       "description": "Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Read only.\nMore: tool_info {tool: \"container_contents\"}",
       "help": {
-        "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes. prefab_contains and name_contains keep the slots holding a match at any depth (empty slots go). To shape it: fields [\"slots.index\", \"slots.occupant.prefab_name\", \"slots.occupant.quantity\"], or a path read from each slot such as occupant.slots.occupant.prefab_name for what a backpack holds; omit [\"slots.occupant.slots\"] drops the inner slots.",
-        "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, name, slot_class, empty, occupant}], silo {count, capacity, entries_known, importing, exporting, dispense_slot, total, offset, entries}.",
+        "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes. Empty slots are left out at every depth (an item holding nothing keeps no slots); empty_slots_omitted counts them, include_empty keeps them. slots_not_shown: slots past depth a deeper call would show. prefab_contains and name_contains keep the slots holding a match at any depth. To shape it: fields [\"slots.index\", \"slots.occupant.prefab_name\", \"slots.occupant.quantity\"], or a path from each slot such as occupant.slots.occupant.prefab_name; omit [\"slots.occupant.slots\"] drops the inner slots.",
+        "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, display_name, slot_class, empty, occupant {reference_id, prefab_name, display_name, quantity, max_quantity, slots, slots_not_shown}}], empty_slots_omitted, silo {count, capacity, entries_known, importing, exporting, dispense_slot, total, offset, entries}.",
         "topics": {
           "silo": {
             "summary": "An SDB Silo's store.",
@@ -2497,6 +2501,10 @@
         "properties": {
           "reference_id": {"type": "string", "description": "Any thing's reference id, or 'player' for the player."},
           "depth": {"type": "integer", "minimum": 1, "maximum": 6, "description": "Levels of nested slots to show; default 3."},
+          "include_empty": {
+            "type": "boolean",
+            "description": "Keep empty slots; default false (left out and counted in empty_slots_omitted)."
+          },
           "prefab_contains": {"type": "string", "description": "Only slots holding this prefab name part at any depth."},
           "name_contains": {"type": "string", "description": "As prefab_contains, on shown names."},
           "entries_limit": {
@@ -2519,6 +2527,7 @@
           "position": {"type": "object"},
           "distance_m": {"type": ["number", "null"]},
           "slots": {"type": "array"},
+          "empty_slots_omitted": {"type": "integer"},
           "silo": {"type": "object"}
         }
       },
@@ -3578,7 +3587,7 @@
       "description": "Inspect a device's slots: occupants, what each slot takes, and every readable slot logic value. Lists 5 slots by default; slot_index reads one. Read only.\nMore: tool_info {tool: \"inspect_slots\"}",
       "help": {
         "text": "Devices only (things with logic): a crate, a lander or a tool answers device_not_found saying it is not a device; container_contents shows the slots of any thing. interactable false marks a hidden slot, which move_item refuses. truncated gives the slot count; list_limits {slots: n} keeps more.",
-        "keys": "gateway_id, reference_id, device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, slots [{index, underlying_slot_index, display_name, string_key, slot_class, empty, interactable, locked, ...}], count, total_slots.",
+        "keys": "gateway_id, reference_id, device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, ...}, slots [{index, underlying_slot_index, display_name, string_key, slot_class, empty, interactable, locked, ...}], count, slot_count.",
         "shared": ["gateways", "logic", "truncation"]
       },
       "class": "read",
@@ -3609,7 +3618,7 @@
           "device": {"type": "object"},
           "slots": {"type": "array"},
           "count": {"type": "integer"},
-          "total_slots": {"type": "integer"}
+          "slot_count": {"type": "integer"}
         }
       },
       "x-views": ["InspectSlotsView"],
@@ -3905,7 +3914,7 @@
       "description": "List outermost holders with at least one item (lockers, crates, machines, a backpack on the floor) not held by a player: slots used, item totals, position, nearest first or by reference id. 12 per page. Read only.\nMore: tool_info {tool: \"list_containers\"}",
       "help": {
         "text": "A holder inside another (a crate in a lander, a box in a locker) is not listed alone: its items count toward the outermost holder, and the filters match that holder. Look inside with container_contents or find_items within_id. Empty containers are not listed.",
-        "keys": "containers [{reference_id, prefab_name, display_name, slots_total, slots_used, item_count, items, position, ...}], count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
+        "keys": "containers [{reference_id, prefab_name, display_name, slot_count, used_slot_count, item_count, items, position, ...}], count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
         "shared": ["paging", "player"]
       },
       "class": "read",

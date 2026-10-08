@@ -2,8 +2,8 @@
   "name": "container_contents",
   "summary": "Show the slots of any one thing and what is in them, nested: a locker, crate, machine, suit, backpack, or 'player' for the player's whole inventory. Read only.",
   "help": {
-    "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes. prefab_contains and name_contains keep the slots holding a match at any depth (empty slots go). To shape it: fields [\"slots.index\", \"slots.occupant.prefab_name\", \"slots.occupant.quantity\"], or a path read from each slot such as occupant.slots.occupant.prefab_name for what a backpack holds; omit [\"slots.occupant.slots\"] drops the inner slots.",
-    "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, name, slot_class, empty, occupant}], silo {count, capacity, entries_known, importing, exporting, dispense_slot, total, offset, entries}.",
+    "text": "Works on or off a data network. position and distance_m are where the thing is: for a thing in a slot, its outermost holder's (a stored item keeps no position of its own). Slot indexes here are what move_item takes. Empty slots are left out at every depth (an item holding nothing keeps no slots); empty_slots_omitted counts them, include_empty keeps them. slots_not_shown: slots past depth a deeper call would show. prefab_contains and name_contains keep the slots holding a match at any depth. To shape it: fields [\"slots.index\", \"slots.occupant.prefab_name\", \"slots.occupant.quantity\"], or a path from each slot such as occupant.slots.occupant.prefab_name; omit [\"slots.occupant.slots\"] drops the inner slots.",
+    "keys": "reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, display_name, slot_class, empty, occupant {reference_id, prefab_name, display_name, quantity, max_quantity, slots, slots_not_shown}}], empty_slots_omitted, silo {count, capacity, entries_known, importing, exporting, dispense_slot, total, offset, entries}.",
     "topics": {
       "silo": {
         "summary": "An SDB Silo's store.",
@@ -19,6 +19,10 @@
     "properties": {
       "reference_id": {"type": "string", "description": "Any thing's reference id, or 'player' for the player."},
       "depth": {"type": "integer", "minimum": 1, "maximum": 6, "description": "Levels of nested slots to show; default 3."},
+      "include_empty": {
+        "type": "boolean",
+        "description": "Keep empty slots; default false (left out and counted in empty_slots_omitted)."
+      },
       "prefab_contains": {"type": "string", "description": "Only slots holding this prefab name part at any depth."},
       "name_contains": {"type": "string", "description": "As prefab_contains, on shown names."},
       "entries_limit": {"type": "integer", "minimum": 1, "maximum": 600, "description": "A silo's stored entries to list; default 10."},
@@ -36,6 +40,7 @@
       "position": {"type": "object"},
       "distance_m": {"type": ["number", "null"]},
       "slots": {"type": "array"},
+      "empty_slots_omitted": {"type": "integer"},
       "silo": {"type": "object"}
     }
   },

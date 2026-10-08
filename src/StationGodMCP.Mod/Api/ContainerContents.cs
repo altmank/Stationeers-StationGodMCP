@@ -12,8 +12,9 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// container_contents: a thing's slots (Thing.Slots, organ slots left out) and what is in each (Slot.Get), following
-/// occupants' own slots down to depth levels. reference_id may be "player" for the player. On an SDB Silo also its
-/// store (Silos), whose entries are save data rather than things. Read only.
+/// occupants' own slots down to depth levels. Empty slots are left out at every depth and counted unless include_empty.
+/// reference_id may be "player" for the player. On an SDB Silo also its store (Silos), whose entries are save data
+/// rather than things. Read only.
 /// </summary>
 internal static class ContainerContentsApi
 {
@@ -25,10 +26,13 @@ internal static class ContainerContentsApi
         PlayerOrigin origin = PlayerOrigin.Current();
         Thing thing = args.IsWord("reference_id", "player") ? PlayerOrigin.RequireHuman() : Require(args);
         int depth = args.OptionalInt("depth", 1, MaximumDepth) ?? DefaultDepth;
+        bool includeEmpty = args.OptionalBool("include_empty") ?? false;
         Vector3 position = HolderChain.PlaceOf(thing).Position;
         SlotFilter filter = new SlotFilter(args.OptionalString("prefab_contains"), args.OptionalString("name_contains"));
+        List<SlotView> slots = SlotsOf(thing, depth, includeEmpty);
+        ShownSlots shown = includeEmpty ? ShownSlots.All(slots) : ShownSlots.Occupied(slots);
         return new ContainerContentsView(GameLookup.ViewOf(thing), GameLookup.ViewOf(position),
-            origin.DistanceTo(position), filter.Apply(SlotsOf(thing, depth)),
+            origin.DistanceTo(position), shown.Filtered(filter),
             thing is Silo silo ? SiloContents(silo, args, filter) : null);
     }
 
@@ -71,7 +75,7 @@ internal static class ContainerContentsApi
         return thing;
     }
 
-    private static List<SlotView> SlotsOf(Thing thing, int depth)
+    private static List<SlotView> SlotsOf(Thing thing, int depth, bool includeEmpty)
     {
         List<SlotView> slots = new List<SlotView>();
         if (thing.Slots == null)
@@ -89,20 +93,36 @@ internal static class ContainerContentsApi
 
             DynamicThing occupant = slot.Get();
             slots.Add(new SlotView(index, slot.DisplayName, slot.Type.ToString(),
-                occupant == null ? null : OccupantOf(occupant, depth - 1)));
+                occupant == null ? null : OccupantOf(occupant, depth - 1, includeEmpty)));
         }
 
         return slots;
     }
 
-    private static OccupantView OccupantOf(DynamicThing occupant, int depth)
+    private static OccupantView OccupantOf(DynamicThing occupant, int depth, bool includeEmpty)
     {
         Item? item = occupant as Item;
         bool hasSlots = occupant.Slots != null && occupant.Slots.Count > 0;
         return new OccupantView(GameLookup.ViewOf(occupant),
             item != null ? WorldItems.QuantityOf(item) : 1,
             item != null ? WorldItems.MaxQuantityOf(item) : null,
-            hasSlots && depth > 0 ? SlotsOf(occupant, depth) : null,
-            hasSlots && depth <= 0 ? occupant.Slots!.Count : null);
+            hasSlots && depth > 0 ? SlotsOf(occupant, depth, includeEmpty) : null,
+            hasSlots && depth <= 0 ? NotShown(occupant, includeEmpty) : null);
+    }
+
+    // The slots past the depth limit a deeper call would show: the occupied ones (organ slots left out, as SlotsOf
+    // does), or every one with include_empty; null when none.
+    private static int? NotShown(DynamicThing occupant, bool includeEmpty)
+    {
+        int count = 0;
+        foreach (Slot slot in occupant.Slots)
+        {
+            if (slot != null && slot.Type != Slot.Class.Organ && (includeEmpty || slot.Get() != null))
+            {
+                count++;
+            }
+        }
+
+        return count > 0 ? count : null;
     }
 }

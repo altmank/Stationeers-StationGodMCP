@@ -205,8 +205,8 @@ internal sealed class ContainerView
         ReferenceId = holder.ReferenceId;
         PrefabName = holder.PrefabName;
         DisplayName = holder.DisplayName;
-        SlotsTotal = slots.Total;
-        SlotsUsed = slots.Used;
+        SlotCount = slots.Total;
+        UsedSlotCount = slots.Used;
         ItemCount = slots.ItemCount;
         Items = items;
         Position = position;
@@ -219,9 +219,9 @@ internal sealed class ContainerView
 
     public string? DisplayName { get; }
 
-    public int SlotsTotal { get; }
+    public int SlotCount { get; }
 
-    public int SlotsUsed { get; }
+    public int UsedSlotCount { get; }
 
     /// <summary>Items anywhere inside, nested ones included.</summary>
     public int ItemCount { get; }
@@ -266,7 +266,7 @@ internal sealed class PrefabQuantityView
 /// <summary>container_contents: a thing's slots, and what is in each, a few levels deep.</summary>
 internal sealed class ContainerContentsView : ITruncatingView
 {
-    internal ContainerContentsView(ThingView thing, PositionView position, double? distanceM, List<SlotView> slots,
+    internal ContainerContentsView(ThingView thing, PositionView position, double? distanceM, ShownSlots slots,
         SiloContentsView? silo = null)
     {
         ReferenceId = thing.ReferenceId;
@@ -274,7 +274,8 @@ internal sealed class ContainerContentsView : ITruncatingView
         DisplayName = thing.DisplayName;
         Position = position;
         DistanceM = distanceM;
-        Slots = slots;
+        Slots = slots.Slots;
+        EmptySlotsOmitted = slots.EmptyOmitted > 0 ? slots.EmptyOmitted : null;
         Silo = silo;
     }
 
@@ -289,6 +290,10 @@ internal sealed class ContainerContentsView : ITruncatingView
     public double? DistanceM { get; }
 
     public List<SlotView> Slots { get; }
+
+    /// <summary>Empty slots left out at every depth (include_empty false); left out when none were.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? EmptySlotsOmitted { get; }
 
     /// <summary>An SDB Silo's store; left out for anything else.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -328,17 +333,18 @@ internal sealed class ContainerContentsView : ITruncatingView
 
 internal sealed class SlotView
 {
-    internal SlotView(int index, string? name, string slotClass, OccupantView? occupant)
+    internal SlotView(int index, string? displayName, string slotClass, OccupantView? occupant)
     {
         Index = index;
-        Name = name;
+        DisplayName = displayName;
         SlotClass = slotClass;
         Occupant = occupant;
     }
 
     public int Index { get; }
 
-    public string? Name { get; }
+    /// <summary>The slot's shown name (Hand, Back, Slot), as inspect_slots names it.</summary>
+    public string? DisplayName { get; }
 
     public string SlotClass { get; }
 
@@ -374,13 +380,68 @@ internal sealed class OccupantView
     /// <summary>Its own slots, while depth lasts; null past it or when it has none.</summary>
     public List<SlotView>? Slots { get; }
 
-    /// <summary>How many slots it has past the depth limit; null otherwise.</summary>
+    /// <summary>
+    /// How many of its slots a deeper call would show (occupied ones, or every one with include_empty) past the depth
+    /// limit; null otherwise.
+    /// </summary>
     public int? SlotsNotShown { get; }
 
-    /// <summary>The same occupant with only these of its slots.</summary>
+    /// <summary>The same occupant with only these of its slots; none kept leaves its slots out.</summary>
     internal OccupantView WithSlots(List<SlotView> slots) =>
-        new OccupantView(new ThingView(ReferenceId, PrefabName, DisplayName), Quantity, MaxQuantity, slots,
-            SlotsNotShown);
+        new OccupantView(new ThingView(ReferenceId, PrefabName, DisplayName), Quantity, MaxQuantity,
+            slots.Count > 0 ? slots : null, SlotsNotShown);
+}
+
+/// <summary>container_contents' slots as shown, and how many empty slots were left out on the way.</summary>
+internal sealed class ShownSlots
+{
+    internal ShownSlots(List<SlotView> slots, int emptyOmitted)
+    {
+        Slots = slots;
+        EmptyOmitted = emptyOmitted;
+    }
+
+    internal List<SlotView> Slots { get; }
+
+    internal int EmptyOmitted { get; }
+
+    /// <summary>Every slot as read: nothing left out.</summary>
+    internal static ShownSlots All(List<SlotView> slots) => new ShownSlots(slots, 0);
+
+    /// <summary>
+    /// The slots without the empty ones, at every depth: an occupant that holds nothing at all keeps no slots list.
+    /// Occupied slots keep their place and index.
+    /// </summary>
+    internal static ShownSlots Occupied(List<SlotView> slots)
+    {
+        int omitted = 0;
+        List<SlotView> kept = WithoutEmpty(slots, ref omitted);
+        return new ShownSlots(kept, omitted);
+    }
+
+    /// <summary>These slots run through filter (no-op when it is inactive), the count kept.</summary>
+    internal ShownSlots Filtered(SlotFilter filter) => new ShownSlots(filter.Apply(Slots), EmptyOmitted);
+
+    private static List<SlotView> WithoutEmpty(List<SlotView> slots, ref int omitted)
+    {
+        List<SlotView> kept = new List<SlotView>(slots.Count);
+        foreach (SlotView slot in slots)
+        {
+            OccupantView? occupant = slot.Occupant;
+            if (occupant == null)
+            {
+                omitted++;
+                continue;
+            }
+
+            kept.Add(occupant.Slots == null
+                ? slot
+                : new SlotView(slot.Index, slot.DisplayName, slot.SlotClass,
+                    occupant.WithSlots(WithoutEmpty(occupant.Slots, ref omitted))));
+        }
+
+        return kept;
+    }
 }
 
 /// <summary>
@@ -426,7 +487,7 @@ internal sealed class SlotFilter
             List<SlotView> inner = occupant.Slots != null ? Apply(occupant.Slots) : new List<SlotView>();
             if (inner.Count > 0)
             {
-                kept.Add(new SlotView(slot.Index, slot.Name, slot.SlotClass, occupant.WithSlots(inner)));
+                kept.Add(new SlotView(slot.Index, slot.DisplayName, slot.SlotClass, occupant.WithSlots(inner)));
             }
         }
 

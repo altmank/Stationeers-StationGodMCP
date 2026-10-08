@@ -59,7 +59,7 @@ public sealed class ShapingTests
         };
         foreach (string[] fields in selections)
         {
-            ShapingChecks.SameJson(ShapingChecks.Sidecar(reply, fields), ShapingChecks.ModFields(reply, fields));
+            ShapingChecks.SameJson(ShapingChecks.Sidecar(reply, fields), ShapingChecks.ModFieldsAsReference(reply, fields));
         }
     }
 
@@ -84,7 +84,7 @@ public sealed class ShapingTests
         };
         foreach ((string reply, string[] fields) in cases)
         {
-            ShapingChecks.SameJson(ShapingChecks.Sidecar(reply, fields), ShapingChecks.ModFields(reply, fields));
+            ShapingChecks.SameJson(ShapingChecks.Sidecar(reply, fields), ShapingChecks.ModFieldsAsReference(reply, fields));
         }
     }
 

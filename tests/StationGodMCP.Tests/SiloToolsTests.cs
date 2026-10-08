@@ -305,7 +305,7 @@ public sealed class SiloToolsTests
                 new List<SiloContentView> { new SiloContentView("ItemIronOre", 40) }, false)
         };
         ContainerContentsView view = new ContainerContentsView(new ThingView(new ThingId(5001), "StructureSDBSilo", "SDB Silo"),
-            new PositionView(1, 2, 3), 4.5, new List<SlotView>(),
+            new PositionView(1, 2, 3), 4.5, ShownSlots.All(new List<SlotView>()),
             new SiloContentsView(2, true, new SiloBusyView(false, true, -1),
                 Slice<SiloEntryView>.Page(entries, SiloEntriesPage.Of(Of("{}")), 2)));
         Assert.Equal(
@@ -324,7 +324,7 @@ public sealed class SiloToolsTests
     public void AnythingElseHasNoSiloKey()
     {
         ContainerContentsView view = new ContainerContentsView(new ThingView(new ThingId(7), "StructureStorageLocker", "Locker"),
-            new PositionView(0, 0, 0), null, new List<SlotView>());
+            new PositionView(0, 0, 0), null, ShownSlots.All(new List<SlotView>()));
         Assert.DoesNotContain("silo", WireCheck.New(view));
     }
 

@@ -203,7 +203,7 @@ public sealed class InventoryWireTests
                 new
                 {
                     reference_id = "40", prefab_name = "StructureStorageLocker", display_name = "Locker",
-                    slots_total = 30, slots_used = 2, item_count = 3,
+                    slot_count = 30, used_slot_count = 2, item_count = 3,
                     items = new List<object> { new { prefab_name = "ItemIronIngot", quantity = 100.0 } },
                     position = new { x = 4.0, y = 5.0, z = 6.0 }, distance_m = (double?)12.3
                 }
@@ -224,7 +224,7 @@ public sealed class InventoryWireTests
             {
                 new
                 {
-                    index = 0, name = "Slot", slot_class = "None", empty = false,
+                    index = 0, display_name = "Slot", slot_class = "None", empty = false,
                     occupant = new
                     {
                         reference_id = "41", prefab_name = "ItemBackpack", display_name = "Backpack", quantity = 1.0,
@@ -233,18 +233,18 @@ public sealed class InventoryWireTests
                 },
                 new
                 {
-                    index = 1, name = "Slot", slot_class = "None", empty = true, occupant = (object?)null
+                    index = 1, display_name = "Slot", slot_class = "None", empty = true, occupant = (object?)null
                 }
             }
         };
         ContainerContentsView view = new ContainerContentsView(
             new ThingView(new ThingId(40), "StructureStorageLocker", "Locker"), new PositionView(4.0, 5.0, 6.0), null,
-            new List<SlotView>
+            ShownSlots.All(new List<SlotView>
             {
                 new SlotView(0, "Slot", "None",
                     new OccupantView(new ThingView(new ThingId(41), "ItemBackpack", "Backpack"), 1.0, null, null, 6)),
                 new SlotView(1, "Slot", "None", null)
-            });
+            }));
         WireCheck.Same(old, view);
     }
 }

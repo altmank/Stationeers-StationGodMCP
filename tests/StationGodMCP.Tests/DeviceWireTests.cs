@@ -126,7 +126,7 @@ public sealed class DeviceWireTests
                     logic_values = new List<object>(), logic_value_count = 0
                 }
             },
-            count = 2, total_slots = 2
+            count = 2, slot_count = 2
         };
         InspectSlotsView view = new InspectSlotsView("world", NewDevice(), new List<SlotDetailView>
         {

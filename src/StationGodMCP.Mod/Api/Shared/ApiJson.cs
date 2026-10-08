@@ -49,15 +49,28 @@ internal static class ApiJson
     internal static ShapedText WriteReply(object reply, ShapeRequest shape, IReadOnlyList<Truncation> truncations) =>
         WriteShaped(Shared, reply, shape, ShapingRoot.Envelope, truncations, announce: true);
 
-    /// <summary>As WriteShaped, through the given serializer and with the result where root says.</summary>
+    /// <summary>
+    /// As WriteShaped, through the given serializer and with the result where root says. When fields selectors matched
+    /// nothing and some have exactly one close key in the reply (FieldMapping), the reply is written once more with
+    /// those read as that key, and says so in fields_mapped. nearMisses false writes it once, as given, without
+    /// fields_closest.
+    /// </summary>
     internal static ShapedText WriteShaped(JsonSerializer serializer, object? value, ShapeRequest shape, ShapingRoot root,
-        IReadOnlyList<Truncation>? truncations = null, bool announce = false)
+        IReadOnlyList<Truncation>? truncations = null, bool announce = false, bool nearMisses = true)
+    {
+        ShapedText written = WriteOnce(serializer, value, shape, root, truncations, announce, nearMisses);
+        ShapeRequest? mapped = nearMisses ? FieldMapping.Remap(shape, written.Outcome) : null;
+        return mapped == null ? written : WriteOnce(serializer, value, mapped, root, truncations, announce, nearMisses);
+    }
+
+    private static ShapedText WriteOnce(JsonSerializer serializer, object? value, ShapeRequest shape, ShapingRoot root,
+        IReadOnlyList<Truncation>? truncations, bool announce, bool nearMisses)
     {
         StringWriter text = new StringWriter(new StringBuilder(256), CultureInfo.InvariantCulture);
         ShapeOutcome outcome;
         using (JsonTextWriter inner = WriterLike(serializer, text))
         {
-            ShapingJsonWriter shaping = new ShapingJsonWriter(inner, shape, root, truncations, announce);
+            ShapingJsonWriter shaping = new ShapingJsonWriter(inner, shape, root, truncations, announce, nearMisses);
             shaping.Formatting = serializer.Formatting;
             serializer.Serialize(shaping, value, null);
             shaping.Flush();

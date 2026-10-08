@@ -22,13 +22,20 @@ internal static class ShapingChecks
 {
     internal static readonly ShapeRequest Nothing = new ShapeRequest(null, new Dictionary<string, int>(), null);
 
-    /// <summary>The text the mod writes for value (the reply's result) with this shape.</summary>
-    internal static ShapedText Mod(object? value, ShapeRequest shape) =>
-        ApiJson.WriteShaped(ApiJson.Fresh(), value, shape, ShapingRoot.Result);
+    /// <summary>
+    /// The text the mod writes for value (the reply's result) with this shape. nearMisses false leaves out what the
+    /// reference does not do: reading a near miss as its close key, and fields_closest.
+    /// </summary>
+    internal static ShapedText Mod(object? value, ShapeRequest shape, bool nearMisses = true) =>
+        ApiJson.WriteShaped(ApiJson.Fresh(), value, shape, ShapingRoot.Result, nearMisses: nearMisses);
 
     /// <summary>The mod's text for a JSON reply with fields, read leniently.</summary>
     internal static string ModFields(string reply, IEnumerable<string> fields) =>
         Mod(Parse(reply), Fields(fields)).Json;
+
+    /// <summary>As ModFields, as the reference shapes: no near miss read as another key, no fields_closest.</summary>
+    internal static string ModFieldsAsReference(string reply, IEnumerable<string> fields) =>
+        Mod(Parse(reply), Fields(fields), nearMisses: false).Json;
 
     /// <summary>The mod's text for a JSON reply with omit, read leniently.</summary>
     internal static string ModOmit(string reply, IEnumerable<string> omit) =>
@@ -75,7 +82,7 @@ internal static class ShapingChecks
         }
 
         everyOther.Add("no_such_key");
-        SameJson(Sidecar(serialised, everyOther), ModFields(serialised, everyOther));
+        SameJson(Sidecar(serialised, everyOther), ModFieldsAsReference(serialised, everyOther));
     }
 
     /// <summary>The keys of every object entry of every top-level list, first seen first.</summary>
