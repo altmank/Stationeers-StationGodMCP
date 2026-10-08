@@ -49,7 +49,7 @@ internal static class NearSolids
                     if (!Openings.IsDoor(plate) && !skip(plate) && seen.Add(plate.ReferenceId))
                     {
                         solids.Add(new Solid(SolidKind.Plate, NameOf(plate), plate.ReferenceId, Bodies.RenderBox(plate),
-                            FacePlane.Of(point)));
+                            FacePlane.Of(point), Openings.KindOf(plate) == OpeningKind.Window));
                     }
                 }
             }

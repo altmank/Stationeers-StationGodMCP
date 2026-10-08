@@ -71,6 +71,7 @@ internal static class LintTestKit
             .Add(new LintFunction("controls_blocked", "(x: thing) -> string?", "test", _ => LintValue.Null))
             .Add(new LintFunction("clips_surface", "(x: thing) -> string?", "test", _ => LintValue.Null))
             .Add(new LintFunction("port_stub", "(x: thing) -> bool", "test", _ => LintValue.False))
+            .Add(new LintFunction("window_crossed", "(x: thing) -> string?", "test", _ => LintValue.Null))
             .Add(new LintFunction("sun_blocked", "(x: thing) -> bool", "test", _ => LintValue.False, cached: true))
             .Add(new LintFunction("weather_exposed", "(x: thing) -> bool", "test",
                 call => call[0].AsObject.Get(LintModel.Thing["outdoors"])))
@@ -132,7 +133,7 @@ public sealed class LintRuleFileTests
     {
         LintRuleSet set = LintTestKit.Defaults();
         Assert.Empty(set.Errors);
-        Assert.Equal(25, set.Rules.Count);
+        Assert.Equal(26, set.Rules.Count);
     }
 
     [Fact]

@@ -114,8 +114,9 @@ internal readonly struct DoorBand
 /// (jambs, top edge and threshold included) and the cells up to band away from the plane on either side inside the
 /// same squares; the faces of a multi-cell door share their edges, so the union is the door's whole rectangle. A cell
 /// hidden inside a frame's body (the floor slab under a threshold, a wall's frame column) never counts. A window takes
-/// only the cells on its face plane strictly inside its square: a run along the frame edge beside a window is not on
-/// it. A cell that is a door's own port joining cell is released by the caller.
+/// every cell on its face plane inside the closed square of each face it covers: its seams with the next pane, its
+/// edges and its base included (LU 2026-10-08: no runs on a window's plane at all). A cell that is a door's own port
+/// joining cell is released by the caller.
 /// </summary>
 internal static class OpeningZones
 {
@@ -151,7 +152,7 @@ internal static class OpeningZones
                             }
 
                             if (opening.Kind == OpeningKind.Window && plane == c[axis] &&
-                                Math.Abs(c[b] - fb) < FaceSpan && Math.Abs(c[d] - fd) < FaceSpan)
+                                Math.Abs(c[b] - fb) <= FaceSpan && Math.Abs(c[d] - fd) <= FaceSpan)
                             {
                                 window = OpeningZone.OnWindow(opening.Id);
                             }
@@ -275,7 +276,8 @@ internal static class FacePoints
 
 /// <summary>
 /// The door keep-out and window rules as the route search applies them: a cell in a door's keep-out is blocked unless
-/// allowed or one of the route's own ends; a cell on a window costs WindowPenalty more (a warning, never a refusal).
+/// allowed or one of the route's own ends; a cell on a window's plane follows the lint rule run_crosses_window as the
+/// rule set has it (WindowRule): blocked at level problem, WindowPenalty more at another level, free when it is off.
 /// </summary>
 internal sealed class OpeningGuard
 {
@@ -286,12 +288,16 @@ internal sealed class OpeningGuard
     private readonly HashSet<GridCell> _released;
     private readonly bool _allowDoors;
 
-    internal OpeningGuard(Func<GridCell, OpeningZone> zone, IEnumerable<GridCell> ends, bool allowDoors)
+    internal OpeningGuard(Func<GridCell, OpeningZone> zone, IEnumerable<GridCell> ends, bool allowDoors,
+        WindowRule windows = WindowRule.Penalty)
     {
+        Windows = windows;
         _zone = zone;
         _released = new HashSet<GridCell>(ends);
         _allowDoors = allowDoors;
     }
+
+    internal WindowRule Windows { get; }
 
     /// <summary>The route's own ends that stand in a door's keep-out, so were not blocked.</summary>
     internal List<GridCell> ReleasedInKeepOut()
@@ -345,6 +351,26 @@ internal sealed class OpeningGuard
                 return CellCost.Blocked;
             }
 
-            return zone.IsWindow ? CellCost.Of(inner.Cost + WindowPenalty, inner.BlockedAxes) : inner;
+            if (!zone.IsWindow || Windows == WindowRule.None)
+            {
+                return inner;
+            }
+
+            return Windows == WindowRule.Refuse
+                ? CellCost.Blocked
+                : CellCost.Of(inner.Cost + WindowPenalty, inner.BlockedAxes);
         };
+}
+
+/// <summary>How a route treats cells on a window's plane: as the lint rule run_crosses_window is in effect.</summary>
+internal enum WindowRule
+{
+    /// <summary>The rule is off: a window's plane is like any other.</summary>
+    None,
+
+    /// <summary>The rule warns: a cell there costs OpeningGuard.WindowPenalty more.</summary>
+    Penalty,
+
+    /// <summary>The rule is a problem: no cell there.</summary>
+    Refuse
 }

@@ -54,8 +54,12 @@ A small save file:
 - **The place and plan tools** (`place_cables`, `place_pipes`, `place_chutes`, `place_structure`,
   `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`) run the rules with `"dry_run"` in their `on` on what the
   request would build, in the world around it: the touched 2 m cells and their neighbours, with what the request
-  removes or replaces left out. Each finding about a planned thing is a warning `lint_<rule id>`; nothing is refused
-  for one, whatever the rule's level. A planned thing knows only its prefab, place, turn, cells and ports: it has no
+  removes or replaces left out. Each finding about a planned thing is `lint_<rule id>`: at level `problem` (the rule's
+  `level`, or its `level_when`) it refuses the request, naming the rule and how to allow it (set its `level` to
+  `warning`, or `"enabled": false`, in the save's lint-rules.json); at `warning` or `info` it is a warning. A rule
+  turned off never runs. `plan_chute_route` also routes around `chute_outside_frame` while it is in effect, whatever
+  the `style`: cells outside a frame's body are refused at level problem and avoided otherwise (the ends and the cells
+  next to them excepted). A planned thing knows only its prefab, place, turn, cells and ports: it has no
   network, slots or logic yet. The grid around it is read as it stands now, so a frame or wall the same request also
   places does not yet count as support for its other placements. Removals (`remove_*`, `plan_removal`) are not
   linted.
@@ -172,12 +176,13 @@ must pass (or be left out by the `where`), a `fail` example must fail. Every shi
 | `port_into_doorway` | warning | both | a device port that joins in a door's keep-out |
 | `port_cell_foreign_network` | warning | both | a port whose joining cell holds a piece that does not join it |
 | `floating_run` | warning | both | a cable, pipe or chute piece in air (in-line tanks and passive vents are not runs) |
-| `run_crosses_window` | warning | both | a piece on a window's face |
+| `run_crosses_window` | problem | both | a cable, pipe or chute piece on a window's plane, its seams with the next pane, edges and base included; the route planners keep off it while the rule is a problem (pay extra at warning, ignore it when off) |
 | `device_visual_overlap` | warning | both | two devices whose mesh boxes run more than 0.1 m into each other, or one inside the other |
 | `mounted_faces_out_of_room` | warning | both | a mounted device facing out of the room behind it |
 | `device_crosses_seam` | warning | both | a mounted device spanning two wall sections though it could fit one |
-| `controls_blocked` | warning (info for a forward fallback) | both | the side with a device's slots and buttons facing a device, a frame's body, a wall or frame right in front, or any plate, frame or thing covering a quarter of that side within 0.5 m (controls sunk in a floor or facing down onto it) |
-| `clips_surface` | warning | both | a small-grid device whose mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on (built lying, its body sunk into the floor) |
+| `controls_blocked` | problem (info for a forward fallback) | both | the side with a device's slots and buttons facing a device, a frame's body, a wall or frame right in front, or any plate, frame or thing covering a quarter of that side within 0.5 m (controls sunk in a floor or facing down onto it) |
+| `clips_surface` | problem | both | a small-grid device whose mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on (built lying, its body sunk into the floor) |
+| `blocks_window` | problem | both | a device or other small-grid thing whose mesh box crosses or sits on a window's plane within the window's rectangle, mounted there or not (pieces are `run_crosses_window`'s) |
 | `run_along_door` | info | both | a cable, pipe or chute piece hugging a door's jamb |
 | `controls_not_on_wall` | info | both | a console, computer, display, dial, button, switch, lever or keypad not on a wall |
 | `replaceable_unchecked` | info | audit | a thing `not_replaceable` could not ask about |
@@ -191,7 +196,7 @@ must pass (or be left out by the `where`), a `fail` example must fail. Every shi
 | `outdoor_liquid_insulated` | warning | audit | an outdoor liquid pipe that is not insulated while its network is at or below a freezing point of what it holds |
 | `deep_miner_column_clear` | warning | both | a frame or other full-cell structure in a deep miner's drill column, which stops it |
 | `cable_on_frames` | warning | both | a cable with a cell off the frames (in air or along a bare wall) |
-| `chute_outside_frame` | warning | both | a chute piece with a cell outside a frame's body (on a frame's face, a wall or floor plane, or in air); a device's port stub (the piece in its chute port's joining cell, or one cell from it) is not checked |
+| `chute_outside_frame` | problem | both | a chute piece with a cell outside a frame's body (on a frame's face, a wall or floor plane, or in air); a device's port stub (the piece in its chute port's joining cell, or one cell from it) is not checked |
 
 `lint_rules` with `action: "list"` and a `rule_id` shows any rule in full.
 
@@ -296,7 +301,7 @@ A 0.5 m small-grid cell (size 0.5), or a 2 m cell (size 2) where a 2 m structure
 | `support` | `string` | What holds a piece there: inside_frame (in a frame's body), frame_face (on a frame's surface, edge or corner), wall_plane (on a wall or window's plane), air (nothing). |
 | `in_door_keepout` | `bool` | In a door's keep-out (its face and the configured band either side). |
 | `keepout_door` | `thing?` | The door whose keep-out it is in. |
-| `on_window_face` | `bool` | On a window's face. |
+| `on_window_face` | `bool` | On a window's plane inside the closed square of a face it covers (seams, edges and base included). |
 | `window` | `thing?` | The window whose face it is on. |
 | `door_jamb` | `thing?` | The door whose jamb band it lies in: on the door's plane band just past its side edges, within its height (walls only; floor and ceiling doors have none). |
 | `room` | `room?` | Its room; null outdoors. |
@@ -401,6 +406,7 @@ keep their result for the rest of the call when asked again with the same argume
 | `controls_side(x: thing) -> controls?` | The world side of a device that carries its slots, buttons and switches, read from its prefab's interactables (describe_prefab's controls). |
 | `controls_blocked(x: thing) -> string?` | What stands right in front of the side its controls face (another device, a chute or small thing, a frame's body, a wall or frame on the plane in front; or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it), as text; null when that side is clear, when it has no control side, or when that side is a face-mounted thing's front. Cached. |
 | `clips_surface(x: thing) -> string?` | The wall, floor or ceiling plate or frame body a small-grid device's mesh box runs into by more than 0.1 m, other than the surface it rests on (the face plane behind its small cells along its top, or its back for a mounted one), as text with how deep; null when none, and for pieces, in-line tanks, passive vents and 2 m structures. Cached. |
+| `window_crossed(x: thing) -> string?` | The window whose plane a small-grid thing's mesh box crosses or sits on within the window's rectangle, as text; null when none, and for cable, pipe and chute pieces and 2 m structures. The surface it is mounted on does not excuse it. Cached. |
 | `port_stub(x: thing) -> bool` | A cable, pipe or chute piece standing in the joining cell of a device's port of its kind, or one small cell from it: the stub that leaves the frames to meet a device standing outside them. Cached. |
 | `sun_blocked(x: thing) -> bool` | Something stands between the thing and the sun somewhere on the day's path while the sun is more than 10 degrees up: the solar arm's own five rays with the panel's collision mask, from each arm's cells turned to the sun, and the terrain; from the mesh box's centre for anything else or a planned panel. 36 sun directions over the day. Cached. |
 | `weather_exposed(x: thing) -> bool` | Storms reach the thing: the air in its cell is the planet's or within 1 kPa of it, or it has no air and no room (the test the game applies before storm damage). |

@@ -133,7 +133,7 @@ internal static class LintModel
             .Field("support", text, "What holds a piece there: inside_frame (in a frame's body), frame_face (on a frame's surface, edge or corner), wall_plane (on a wall or window's plane), air (nothing).")
             .Field("in_door_keepout", flag, "In a door's keep-out (its face and the configured band either side).")
             .Field("keepout_door", LintType.Nullable(Thing), "The door whose keep-out it is in.")
-            .Field("on_window_face", flag, "On a window's face.")
+            .Field("on_window_face", flag, "On a window's plane inside the closed square of a face it covers (seams, edges and base included).")
             .Field("window", LintType.Nullable(Thing), "The window whose face it is on.")
             .Field("door_jamb", LintType.Nullable(Thing), "The door whose jamb band it lies in: on the door's plane band just past its side edges, within its height (walls only; floor and ceiling doors have none).")
             .Field("room", LintType.Nullable(Room), "Its room; null outdoors.")

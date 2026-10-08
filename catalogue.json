@@ -195,8 +195,8 @@
         }
       },
       "lint": {
-        "summary": "Dry-run lint warnings (lint_<rule id>) on what a request would place.",
-        "text": "The dry_run rules of lint-rules.json (the mod's file, with the save's file over it; lint_rules lists them) run on what a building request would place, in the world around it. Each finding about a placed thing is a warning lint_<rule id>, such as lint_floating_run, whatever the rule's level: nothing is refused for one. lint_layout runs every rule over standing things."
+        "summary": "Dry-run lint findings (lint_<rule id>); problems refuse.",
+        "text": "The dry_run rules of lint-rules.json (the mod's file, with the save's file over it; lint_rules lists them) run on what a building request would place, in the world around it. Each finding about a placed thing is lint_<rule id>, such as lint_floating_run: a problem when the rule's level is problem (the request is refused; the message names the rule and how to allow it: its level warning or \"enabled\": false in the save's lint-rules.json), else a warning. A rule turned off never runs. plan_chute_route also routes around chute_outside_frame while it is in effect (refusing cells outside frames at level problem, avoiding them otherwise; the ends and their neighbours excepted), whatever the style. lint_layout runs every rule over standing things."
       },
       "doors": {
         "summary": "Door keep-outs and windows: allow_door_keepout.",
@@ -340,7 +340,7 @@
           },
           "rules": {
             "summary": "style, avoid_*.",
-            "text": "style, one value for what the route keeps to. supported (default): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. frame_edges: supported, preferring cells on two or three face planes of a frame cell (beam tops included). walls: supported, preferring cells on or beside a wall plane. hidden: supported, each cell costing by how much shows (inside a frame 1, frame surface 3, wall plane 5, air 9), the least visible route. inside_frames: only cells inside or on a frame (the start and end cells excepted); no_route where none. free: the shortest route, air or not. avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow_door_keepout; a window face costs 6 more."
+            "text": "style, one value for what the route keeps to. supported (default): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. frame_edges: supported, preferring cells on two or three face planes of a frame cell (beam tops included). walls: supported, preferring cells on or beside a wall plane. hidden: supported, each cell costing by how much shows (inside a frame 1, frame surface 3, wall plane 5, air 9), the least visible route. inside_frames: only cells inside or on a frame (the start and end cells excepted); no_route where none. free: the shortest route, air or not. avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow_door_keepout. Windows: with lint rule run_crosses_window at level problem (shipped) no cell on a window's plane, seams, edges and base included; at warning it costs 6 more; off, nothing."
           },
           "starts": {
             "summary": "Several starts grow one tree.",
@@ -3803,7 +3803,7 @@
           },
           "rules": {
             "summary": "The shipped rules.",
-            "text": "Problems: not_replaceable (reported first: check_replaceable's rule), solar_outdoor_reinforced, no_oxidiser_vented_outdoors. Warnings: run_in_door_keepout, port_into_doorway, port_cell_foreign_network, floating_run, run_crosses_window, device_visual_overlap, mounted_faces_out_of_room, device_crosses_seam, controls_blocked, clips_surface, cable_grade_matches_network, controller_labels, solar_unshaded, filter_output_capped, fuel_oxidiser_mix_temperature, outdoor_liquid_insulated, deep_miner_column_clear, cable_on_frames, chute_outside_frame. Info: run_along_door, controls_not_on_wall, replaceable_unchecked. lint_rules {action: \"list\"} gives each rule's description."
+            "text": "Problems (a building tool's dry run refuses on them): not_replaceable (reported first: check_replaceable's rule), run_crosses_window, controls_blocked, clips_surface, blocks_window, solar_outdoor_reinforced, no_oxidiser_vented_outdoors, chute_outside_frame. Warnings: run_in_door_keepout, port_into_doorway, port_cell_foreign_network, floating_run, device_visual_overlap, mounted_faces_out_of_room, device_crosses_seam, cable_grade_matches_network, controller_labels, solar_unshaded, filter_output_capped, fuel_oxidiser_mix_temperature, outdoor_liquid_insulated, deep_miner_column_clear, cable_on_frames. Info: run_along_door, controls_not_on_wall, replaceable_unchecked. lint_rules {action: \"list\"} gives each rule's description."
           }
         },
         "shared": ["lint", "paging"]
@@ -5528,7 +5528,7 @@
             "subtopics": {
               "conflicts": {
                 "summary": "The conflict codes.",
-                "text": "visual_overlap: its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (flush neighbours only touch; a thing sharing a cell is skipped). crosses_section_seam: its mesh spans more than one 2 m section though it could fit one (a warning; not for pieces wider than a section). in_door_keepout, crosses_window, blocks_route_cells (it stands in a neighbour port's joining cell), front_blocked, controls_blocked (its controls face a device, frame body or wall right in front, or a plate, frame or thing covering a quarter of that side within 0.5 m: controls sunk in or facing down onto a floor), clips_surface (its mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on: built lying, sunk into the floor), faces_out_of_room, not_upright (info for prefabs normally built lying, the in-line tanks)."
+                "text": "visual_overlap: its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (flush neighbours only touch; a thing sharing a cell is skipped). crosses_section_seam: its mesh spans more than one 2 m section though it could fit one (a warning; not for pieces wider than a section). in_door_keepout, crosses_window, blocks_route_cells (it stands in a neighbour port's joining cell), front_blocked, controls_blocked (its controls face a device, frame body or wall right in front), faces_out_of_room, not_upright (info for prefabs normally built lying, the in-line tanks)."
               }
             }
           }

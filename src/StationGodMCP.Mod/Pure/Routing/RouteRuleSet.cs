@@ -175,14 +175,47 @@ internal sealed class RouteRuleSet
     /// </summary>
     internal bool AvoidOwn { get; }
 
-    /// <summary>The same rules without frames_first.</summary>
-    internal RouteRuleSet WithoutFramesFirst() =>
-        new RouteRuleSet(Prefer, InsideFrames, AvoidRoomInterior, AvoidWalkways, AvoidNetworks, OwnNetworks, AvoidIds,
-            AvoidOwn);
+    /// <summary>
+    /// A lint rule the route honours whatever its style (chute_outside_frame for chutes): cells not inside a frame's
+    /// body are refused (the rule's level problem) or cost LintPenalty more (warning or info), except Exempt (the ends'
+    /// cells and their neighbours: a device's port stub).
+    /// </summary>
+    internal RouteLintRule? InsideRule { get; private set; }
 
-    internal CellCost Cost(SmallCellFacts cell)
+    /// <summary>The extra cost of a cell a warning-level lint rule the route honours would flag: as an air cell.</summary>
+    internal const double LintPenalty = AirPenalty;
+
+    /// <summary>The same rules, honouring a lint rule that wants every cell inside a frame's body.</summary>
+    internal RouteRuleSet WithInsideRule(RouteLintRule? rule)
+    {
+        RouteRuleSet copy = new RouteRuleSet(Prefer, InsideFrames, AvoidRoomInterior, AvoidWalkways, AvoidNetworks,
+            OwnNetworks, AvoidIds, AvoidOwn, FramesFirst);
+        copy.InsideRule = rule;
+        return copy;
+    }
+
+    /// <summary>The same rules without frames_first.</summary>
+    internal RouteRuleSet WithoutFramesFirst()
+    {
+        RouteRuleSet copy = new RouteRuleSet(Prefer, InsideFrames, AvoidRoomInterior, AvoidWalkways, AvoidNetworks,
+            OwnNetworks, AvoidIds, AvoidOwn);
+        copy.InsideRule = InsideRule;
+        return copy;
+    }
+
+    internal CellCost Cost(SmallCellFacts cell) => Cost(cell, null);
+
+    /// <summary>The cost of a cell; at: where it is, for InsideRule's exempt cells (null: none exempt).</summary>
+    internal CellCost Cost(SmallCellFacts cell, GridCell? at)
     {
         if (cell.Blocked != null || cell.FamilyPiece || (InsideFrames && !OnFrame(cell)))
+        {
+            return CellCost.Blocked;
+        }
+
+        bool lintFlags = InsideRule != null && cell.Visibility != CellVisibility.Inside &&
+                         !(at is GridCell where && InsideRule.Exempt.Contains(where));
+        if (lintFlags && InsideRule!.Refuses)
         {
             return CellCost.Blocked;
         }
@@ -204,6 +237,11 @@ internal sealed class RouteRuleSet
         if (FramesFirst && cell.Support == CellSupport.Air)
         {
             cost += AirPenalty;
+        }
+
+        if (lintFlags)
+        {
+            cost += LintPenalty;
         }
 
         if (Prefer == RoutePreference.FrameEdges && cell.Support != CellSupport.FrameEdge)
@@ -314,4 +352,68 @@ internal sealed class RouteStyle
         "free" => new RouteStyle("free", RoutePreference.None, false, false),
         _ => null
     };
+}
+
+/// <summary>
+/// A lint rule a route planner honours, read from the rule set in effect: its id, whether its level refuses (problem)
+/// or only warns, and the cells it never judges (the route's ends and their neighbours: a device's port stub).
+/// </summary>
+internal sealed class RouteLintRule
+{
+    internal RouteLintRule(string id, bool refuses, HashSet<GridCell> exempt)
+    {
+        Id = id;
+        Refuses = refuses;
+        Exempt = exempt;
+    }
+
+    internal string Id { get; }
+
+    internal bool Refuses { get; }
+
+    internal HashSet<GridCell> Exempt { get; }
+
+    /// <summary>The chute rule the chute planner honours: every cell inside a frame's body.</summary>
+    internal const string ChuteOutsideFrame = "chute_outside_frame";
+
+    /// <summary>
+    /// The rule as a route honours it: null when the set does not hold it in effect (turned off, or not run on dry
+    /// runs); else it refuses at level problem and costs at any other level, exempting the ends and their neighbours.
+    /// </summary>
+    internal static RouteLintRule? From(Lint.LintRuleSet set, string id, IEnumerable<GridCell> ends)
+    {
+        Lint.LintRule? rule = set.Find(id);
+        if (rule == null || !System.Linq.Enumerable.Contains(rule.On, "dry_run"))
+        {
+            return null;
+        }
+
+        return new RouteLintRule(id, rule.Level == ConflictLevel.Problem, AroundEnds(ends));
+    }
+
+    /// <summary>The window rule every route honours: no piece on a window's plane.</summary>
+    internal const string RunCrossesWindow = "run_crosses_window";
+
+    /// <summary>How a route treats a window's plane under the rule set (WindowRule).</summary>
+    internal static WindowRule WindowsUnder(Lint.LintRuleSet set)
+    {
+        RouteLintRule? rule = From(set, RunCrossesWindow, new GridCell[0]);
+        return rule == null ? WindowRule.None : rule.Refuses ? WindowRule.Refuse : WindowRule.Penalty;
+    }
+
+    /// <summary>The ends' cells and their six neighbours.</summary>
+    internal static HashSet<GridCell> AroundEnds(IEnumerable<GridCell> ends)
+    {
+        HashSet<GridCell> cells = new HashSet<GridCell>();
+        foreach (GridCell end in ends)
+        {
+            cells.Add(end);
+            foreach (GridStep step in GridStep.All)
+            {
+                cells.Add(step.From(end));
+            }
+        }
+
+        return cells;
+    }
 }

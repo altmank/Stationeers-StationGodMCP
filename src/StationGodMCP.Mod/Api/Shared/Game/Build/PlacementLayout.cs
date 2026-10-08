@@ -108,15 +108,6 @@ internal static class PlacementLayout
             ControlsAhead(prefab, turn, mount, small, large, render, facts, ignore, conflicts);
         }
 
-        string? clips = ClipsSurface(prefab, mount, small, render, facts, structure => ignore.Contains(structure.ReferenceId),
-            out long? clipped);
-        if (clips != null)
-        {
-            conflicts.Add(new LayoutConflict(ConflictCodes.ClipsSurface, ConflictLevel.Warning,
-                $"Its body runs into {clips}: it does not rest on that surface. Turn it to stand on it, or move it off.",
-                clipped));
-        }
-
         if (turn != null && prefab is Device)
         {
             VisualUp up = PlacePlanner.VisualUpOf(prefab);
@@ -341,7 +332,7 @@ internal static class PlacementLayout
         List<GridCell> large, Box3 render, GridFacts facts, HashSet<long> ignore, List<LayoutConflict> conflicts)
     {
         string? blocked = ControlsBlockedBy(prefab, turn, mount, small, large, render, facts, ignore, _ => false,
-            out ControlFace? controls, out long? id);
+            false, out ControlFace? controls, out long? id);
         if (blocked != null && controls != null)
         {
             conflicts.Add(new LayoutConflict(ConflictCodes.ControlsBlocked,
@@ -355,13 +346,13 @@ internal static class PlacementLayout
     /// What stands right in front of the side the prefab's controls face at this turn (PrefabControls), as text, with
     /// its id; null when nothing does, when it has no control face, or when the side is a face-mounted piece's front
     /// (front_blocked's). small and large are the cells it registers in; the thing itself is never in front of itself.
-    /// First the cell in front (a thing in it, a wall or frame on the plane, a frame's body), then the mesh boxes
-    /// (ControlsReach): a plate, frame or thing within ControlsReach.ClearanceM of the side, or across it (controls sunk
+    /// First the cell in front (a thing in it, a wall or frame on the plane, a frame's body), then, with meshes (the
+    /// lint rule's reading; the layout preview asks the cells only), the mesh boxes (ControlsReach): a plate, frame or thing within ControlsReach.ClearanceM of the side, or across it (controls sunk
     /// in a floor), covering a quarter of it. render is its mesh box; ignore and skip: things a plan removes.
     /// </summary>
     internal static string? ControlsBlockedBy(Structure prefab, CubeRotation turn, MountRect? mount,
         List<GridCell> small, List<GridCell> large, Box3 render, GridFacts facts, HashSet<long> ignore,
-        Func<Structure, bool> skip, out ControlFace? controls, out long? id)
+        Func<Structure, bool> skip, bool meshes, out ControlFace? controls, out long? id)
     {
         id = null;
         controls = PrefabControls.Of(prefab);
@@ -379,7 +370,7 @@ internal static class PlacementLayout
         string? ahead = small.Count > 0 ? SmallAhead(face, small, facts, ref id)
             : large.Count > 0 ? LargeAhead(face, large, facts, ref id)
             : null;
-        return ahead ?? MeshAhead(face, mount, small, render, facts, ignore, skip, ref id);
+        return ahead ?? (meshes ? MeshAhead(face, mount, small, render, facts, ignore, skip, ref id) : null);
     }
 
     private static string? MeshAhead(GridStep face, MountRect? mount, List<GridCell> small, Box3 render,
@@ -418,6 +409,31 @@ internal static class PlacementLayout
 
         id = solid.Id;
         return SurfaceClip.Describe(solid, depth, render);
+    }
+
+    /// <summary>
+    /// blocks_window (WindowCross): the window whose plane a small-grid thing's mesh box crosses or sits on within the
+    /// window's rectangle, its id and its text; null for none and for cable, pipe and chute pieces (run_crosses_window
+    /// judges their cells) and 2 m structures.
+    /// </summary>
+    internal static long? WindowCrossed(Structure prefab, List<GridCell> small, Box3 render, GridFacts facts,
+        Func<Structure, bool> skip, out string? text)
+    {
+        text = null;
+        if (!(prefab is SmallGrid) || small.Count == 0 || new CableFamily().IsPiece(prefab) ||
+            new PipeFamily().IsPiece(prefab) || new ChuteFamily().IsPiece(prefab))
+        {
+            return null;
+        }
+
+        Solid? window = WindowCross.First(render, NearSolids.Surfaces(render, facts, skip));
+        if (window == null)
+        {
+            return null;
+        }
+
+        text = window.Describe(render);
+        return window.Id;
     }
 
     private static Vec3 Vec3Min(Vec3 a, Vec3 b) =>

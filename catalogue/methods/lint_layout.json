@@ -11,7 +11,7 @@
       },
       "rules": {
         "summary": "The shipped rules.",
-        "text": "Problems: not_replaceable (reported first: check_replaceable's rule), solar_outdoor_reinforced, no_oxidiser_vented_outdoors. Warnings: run_in_door_keepout, port_into_doorway, port_cell_foreign_network, floating_run, run_crosses_window, device_visual_overlap, mounted_faces_out_of_room, device_crosses_seam, controls_blocked, clips_surface, cable_grade_matches_network, controller_labels, solar_unshaded, filter_output_capped, fuel_oxidiser_mix_temperature, outdoor_liquid_insulated, deep_miner_column_clear, cable_on_frames, chute_outside_frame. Info: run_along_door, controls_not_on_wall, replaceable_unchecked. lint_rules {action: \"list\"} gives each rule's description."
+        "text": "Problems (a building tool's dry run refuses on them): not_replaceable (reported first: check_replaceable's rule), run_crosses_window, controls_blocked, clips_surface, blocks_window, solar_outdoor_reinforced, no_oxidiser_vented_outdoors, chute_outside_frame. Warnings: run_in_door_keepout, port_into_doorway, port_cell_foreign_network, floating_run, device_visual_overlap, mounted_faces_out_of_room, device_crosses_seam, cable_grade_matches_network, controller_labels, solar_unshaded, filter_output_capped, fuel_oxidiser_mix_temperature, outdoor_liquid_insulated, deep_miner_column_clear, cable_on_frames. Info: run_along_door, controls_not_on_wall, replaceable_unchecked. lint_rules {action: \"list\"} gives each rule's description."
       }
     },
     "shared": ["lint", "paging"]

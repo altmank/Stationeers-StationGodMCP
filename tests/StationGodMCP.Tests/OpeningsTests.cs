@@ -96,13 +96,16 @@ public sealed class OpeningsTests
     }
 
     [Fact]
-    public void AWindowTakesOnlyTheInsideOfItsSquareOnItsPlane()
+    public void AWindowTakesItsClosedSquareOnItsPlane()
     {
+        // LU 2026-10-08: no runs on a window's plane at all, its seams with the next pane, edges and base included.
         OpeningZone zone = Zone(7050, 2030, 6780);
         Assert.True(zone.IsWindow);
         Assert.Equal(500, zone.Id);
         Assert.True(Zone(7045, 2025, 6780).IsWindow);
-        Assert.False(Zone(7040, 2030, 6780).IsWindow);
+        Assert.True(Zone(7040, 2030, 6780).IsWindow);
+        Assert.True(Zone(7050, 2020, 6780).IsWindow);
+        Assert.False(Zone(7035, 2030, 6780).IsWindow);
         Assert.False(Zone(7050, 2030, 6785).IsWindow);
     }
 

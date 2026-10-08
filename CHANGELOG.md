@@ -18,14 +18,30 @@ Smaller inventory replies, and a `fields` name that is nearly right no longer co
   in `inspect_slots`), `list_containers`' `slots_total` and `slots_used` are now `slot_count` and `used_slot_count`,
   and `inspect_slots`' `total_slots` is now `slot_count` (as `describe_device`'s device has it). `tool_info` topic
   shaping/names gives the naming scheme.
-- **`clips_surface`** (lint rule, and a `place_structure` / `orient` layout warning): a small-grid device whose mesh
+- **`clips_surface`** (lint rule): a small-grid device whose mesh
   box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on, named with how
   deep. A device rests on the face plane behind its small cells along its top (its back when mounted); a pump built
   lying, its top sideways, rests on none and is sunk into the floor.
-- **`controls_blocked` reads meshes too.** Besides the cell in front, any plate, frame or thing whose mesh box covers a
+- **Lint `controls_blocked` reads meshes too** (the layout preview's own check is unchanged). Besides the cell in front, any plate, frame or thing whose mesh box covers a
   quarter of the controls side within 0.5 m of it, or across it, blocks it: controls sunk in a floor, facing down
   onto one, or pressed against a furnace's body 0.44 m away. A lying Turbo Volume Pump (controls on its local top,
   turned sideways) passed before because only the empty small cell in front was asked.
+- **`blocks_window`** (lint rule): a device or other small-grid thing whose mesh box crosses or sits on a window's
+  plane within the window's rectangle, mounted there or not (pipe analysers on a glass wall). New lint function
+  `window_crossed(x)`.
+- **Lint problems refuse.** The building tools' dry-run lint findings (`lint_<rule id>`) at level `problem` now refuse
+  the request (place_structure, place_cables/pipes/chutes, and the plan tools' dry runs), naming the rule and how to
+  allow it: its `level` warning, or `"enabled": false`, in the save's lint-rules.json. Warnings and info stay warnings;
+  a rule turned off never runs. `controls_blocked`, `clips_surface`, `blocks_window` and `chute_outside_frame` ship at
+  level problem (`controls_blocked` stays info for a forward fallback); `solar_outdoor_reinforced` was already one.
+- **No runs on a window's plane.** `run_crosses_window` (now level problem) takes every cell on a window's plane
+  inside the closed square of each face it covers: seams with the next pane, edges and base included (a run on the
+  frame edge between panes no longer passes). The route planners keep off those cells while the rule is a problem,
+  pay 6 more per cell at warning, and ignore windows when it is off. grid_survey's `g` overlay and place_structure's
+  `crosses_window` read the same closed squares.
+- **`plan_chute_route` honours `chute_outside_frame`** while it is in effect, whatever the `style`: cells outside a
+  frame's body are refused at level problem, avoided at warning or info; the ends and the cells next to them (a
+  device's port stub) are exempt. A note says so.
 - **`chute_outside_frame`** (lint rule): a chute piece with a cell outside a frame's body (on a frame's face, a wall
   or floor plane, or in air) warns; a device's port stub (the piece in its chute port's joining cell, or one cell
   from it) is not checked. New lint functions `clips_surface(x)` and `port_stub(x)`. `place_chutes` dry runs warn

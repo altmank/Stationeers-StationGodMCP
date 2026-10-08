@@ -20,8 +20,9 @@ internal enum SolidKind
 /// </summary>
 internal sealed class Solid
 {
-    internal Solid(SolidKind kind, string name, long? id, Box3 box, FacePlane? plane = null)
+    internal Solid(SolidKind kind, string name, long? id, Box3 box, FacePlane? plane = null, bool window = false)
     {
+        Window = window;
         Kind = kind;
         Name = name;
         Id = id;
@@ -38,6 +39,9 @@ internal sealed class Solid
 
     internal Box3 Box { get; }
 
+    /// <summary>A window (glass wall) plate.</summary>
+    internal bool Window { get; }
+
     /// <summary>The face plane a plate stands on; null for a frame or a body.</summary>
     internal FacePlane? Plane { get; }
 
@@ -46,7 +50,7 @@ internal sealed class Solid
     {
         SolidKind.Frame => $"a frame's body ({Name})",
         SolidKind.Body => Name,
-        _ when Plane is FacePlane plane => $"{PlateWord(plane, body)} ({Name}) on {plane}",
+        _ when Plane is FacePlane plane => $"{(Window ? "the window" : PlateWord(plane, body))} ({Name}) on {plane}",
         _ => Name
     };
 
@@ -239,5 +243,51 @@ internal static class PortStubs
         }
 
         return false;
+    }
+}
+
+/// <summary>
+/// blocks_window: a body whose mesh box crosses or sits on a window's plane within the window's rectangle (LU: no
+/// device's face, body or mesh may intersect a glass wall). Crossing: the box reaches past the plane on both sides, or
+/// runs into the window's own pane by more than Edge; the rectangle: it overlaps the window's box by more than Edge
+/// across the plane. Its mount does not excuse it. The lowest id first.
+/// </summary>
+internal static class WindowCross
+{
+    internal const double Edge = 0.01;
+
+    internal static Solid? First(Box3 body, IReadOnlyList<Solid> solids)
+    {
+        Solid? found = null;
+        foreach (Solid solid in solids)
+        {
+            if (!solid.Window || !(solid.Plane is FacePlane plane) || !Crosses(body, solid.Box, plane))
+            {
+                continue;
+            }
+
+            if (found == null || (solid.Id ?? long.MaxValue) < (found.Id ?? long.MaxValue))
+            {
+                found = solid;
+            }
+        }
+
+        return found;
+    }
+
+    private static bool Crosses(Box3 body, Box3 pane, FacePlane plane)
+    {
+        int axis = plane.Axis;
+        for (int other = 0; other < 3; other++)
+        {
+            if (other != axis && Math.Min(body.Max[other], pane.Max[other]) - Math.Max(body.Min[other], pane.Min[other]) <= Edge)
+            {
+                return false;
+            }
+        }
+
+        bool straddles = body.Min[axis] < plane.Metres - Edge && body.Max[axis] > plane.Metres + Edge;
+        double intoPane = Math.Min(body.Max[axis], pane.Max[axis]) - Math.Max(body.Min[axis], pane.Min[axis]);
+        return straddles || intoPane > Edge;
     }
 }

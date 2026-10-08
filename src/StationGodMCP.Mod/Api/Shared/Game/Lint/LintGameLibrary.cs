@@ -68,6 +68,11 @@ internal static class LintGameLibrary
                 "top, or its back for a mounted one), as text with how deep; null when none, and for pieces, in-line " +
                 "tanks, passive vents and 2 m structures.",
                 ClipsSurface, cached: true))
+            .Add(new LintFunction("window_crossed", "(x: thing) -> string?",
+                "The window (glass wall) whose plane a small-grid thing's mesh box (Thing.Bounds) crosses or sits on " +
+                "within the window's rectangle, as text; null when none, and for cable, pipe and chute pieces and 2 m " +
+                "structures. The surface it is mounted on does not excuse it.",
+                WindowCrossed, cached: true))
             .Add(new LintFunction("port_stub", "(x: thing) -> bool",
                 "A cable, pipe or chute piece standing in the joining cell of a device's port of its kind, or one small " +
                 "cell from it: the stub that leaves the frames to meet a device standing outside them. false for " +
@@ -168,7 +173,7 @@ internal static class LintGameLibrary
         GameLintWorld world = World(call);
         string? blocked = PlacementLayout.ControlsBlockedBy(PrefabOf(thing), turn, thing.Mount, thing.SmallCells,
             thing.IsSmallGrid ? new List<GridCell>() : thing.LargeCells, thing.RenderBox, world.Facts,
-            Own(thing), world.IsGone, out _, out _);
+            Own(thing), world.IsGone, true, out _, out _);
         return LintValue.Of(blocked);
     }
 
@@ -178,6 +183,15 @@ internal static class LintGameLibrary
         GameLintWorld world = World(call);
         return LintValue.Of(PlacementLayout.ClipsSurface(thing.Source, thing.Mount, thing.SmallCells, thing.RenderBox,
             world.Facts, world.IsGone, out _));
+    }
+
+    private static LintValue WindowCrossed(LintCall call)
+    {
+        ThingSubject thing = Thing(call);
+        GameLintWorld world = World(call);
+        PlacementLayout.WindowCrossed(thing.Source, thing.SmallCells, thing.RenderBox, world.Facts, world.IsGone,
+            out string? text);
+        return LintValue.Of(text);
     }
 
     private static LintValue PortStub(LintCall call)

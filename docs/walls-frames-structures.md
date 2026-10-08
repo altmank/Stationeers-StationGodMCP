@@ -223,8 +223,8 @@ devices, blocked controls, things a player could not place again, and general ch
 are not Reinforced or are shaded, cables lighter than their network, devices a chip batches by a name they do not
 carry, filtration outputs with nowhere to go, oxidiser vented outdoors, fuel and oxidiser mixes above their ignition
 point, uninsulated outdoor liquid pipes near freezing, deep-miner drill columns and cables off the frames. The place
-and plan tools run the rules marked `dry_run` on what they would build and report findings as `lint_<rule>`
-warnings. `lint_rules` lists, validates, tests and explains them. The file, the rule language, every field and
+and plan tools run the rules marked `dry_run` on what they would build and report findings as `lint_<rule>`:
+a rule at level `problem` refuses the request (the message says how to allow it), any other level warns. `lint_rules` lists, validates, tests and explains them. The file, the rule language, every field and
 function, and the full rule list: [lint-rules.md](lint-rules.md).
 
 ### Could a player place it again (1.5.0+)
@@ -328,8 +328,7 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 | `crosses_window` | warning | It stands on or rests against a window. |
 | `blocks_route_cells` | warning | It would take the joining cell of a free port of a device beside it. |
 | `front_blocked` | warning | Something stands right in front of a mounted piece, or its front faces into a frame. |
-| `controls_blocked` | warning (info for the fallback) | The side with its slots, buttons and switches (`describe_prefab` `controls`) faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it (1.7.0+); or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it, as controls sunk in a floor or facing down onto one. `orient` pays for it like any warning and aims `controls_toward` at that side. |
-| `clips_surface` | warning | A small-grid device's mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on (its mount plane is the face plane behind its small cells along its top, or its back): a pump built lying with its body in the floor. `orient` pays for it like any warning. |
+| `controls_blocked` | warning (info for the fallback) | The side with its slots, buttons and switches (`describe_prefab` `controls`) faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it (1.7.0+). `orient` pays for it like any warning and aims `controls_toward` at that side. |
 | `faces_out_of_room` | warning | A mounted piece whose back is in a room and whose front is not. |
 | `not_upright` | warning (info for in-line tanks) | Its visual top does not point up. |
 

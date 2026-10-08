@@ -82,8 +82,16 @@ internal static class PlanRouteApi
 
         GridFacts facts = new GridFacts(kind, mask, ignore);
         List<long> own = to?.Networks ?? new List<long>();
-        RouteRuleSet rules = Rules(args, kind, starts, own, false);
+        RouteLintRule? lintRule = LintRuleOf(kind, starts, to);
+        RouteRuleSet rules = Rules(args, kind, starts, own, false).WithInsideRule(lintRule);
         List<string> notes = Notes(rules, assumed);
+        if (lintRule != null)
+        {
+            notes.Add($"lint rule {lintRule.Id} is in effect: cells outside a frame's body (the ends and the cells " +
+                      "next to them excepted) are " + (lintRule.Refuses ? "refused" : "avoided (a warning-level rule)") +
+                      ", whatever the style. Lower its level or set \"enabled\": false in the save's lint-rules.json " +
+                      "to route through a room.");
+        }
         RouteReservation reserved = Reservation(args, starts, to, trunk, notes);
         OpeningGuard openings = Openings(args, facts, starts, to, notes);
         RouteTree tree = Grow(args, starts, main, facts, rules, reserved, openings);
@@ -125,7 +133,7 @@ internal static class PlanRouteApi
             }
             else if (RunArgs.Join(args) == JoinMode.All)
             {
-                RouteTree retry = Grow(args, starts, main, facts, Rules(args, kind, starts, own, true), reserved,
+                RouteTree retry = Grow(args, starts, main, facts, Rules(args, kind, starts, own, true).WithInsideRule(lintRule), reserved,
                     openings);
                 RunReportView? second = retry.Found ? DryRun(args, kind, grade, retry, removes, assumed) : null;
                 if (second != null && !HasWarning(second, RunPlanner.WouldLoop))
@@ -163,7 +171,7 @@ internal static class PlanRouteApi
     private static RouteTree Grow(Args args, List<RouteEndpoint> starts, RouteMain main, GridFacts facts,
         RouteRuleSet rules, RouteReservation reserved, OpeningGuard openings) =>
         RouteTrees.Grow(starts, main,
-            new RouteSearch(openings.Guard(reserved.Guard(cell => rules.Cost(facts.Small(cell)))),
+            new RouteSearch(openings.Guard(reserved.Guard(cell => rules.Cost(facts.Small(cell), cell))),
                 (from, to) => SearchRules(args, from, to), (search, goals) => AirBoundOf(rules, facts, search, goals)),
             RouteEnds.JunctionCost);
 
@@ -244,12 +252,21 @@ internal static class PlanRouteApi
         }
 
         bool allow = args.OptionalBool("allow_door_keepout") ?? false;
-        OpeningGuard guard = new OpeningGuard(facts.Opening, ends, allow);
+        OpeningGuard guard = new OpeningGuard(facts.Opening, ends, allow,
+            RouteLintRule.WindowsUnder(StationGodMCP.Api.Shared.Game.Lint.LintRuleFiles.Current()));
         notes.Add(allow
             ? "allow_door_keepout: the route may pass through doorways (their face and the band either side)."
             : System.FormattableString.Invariant($"Doors: the route keeps out of every door's face and {facts.Band.Metres} m either side of it inside ") +
-              "the door's rectangle (jambs, top edge and threshold; not inside the floor slab); cells on a window " +
-              $"cost {OpeningGuard.WindowPenalty} more (crosses_window when it still does).");
+              "the door's rectangle (jambs, top edge and threshold; not inside the floor slab).");
+        notes.Add(guard.Windows switch
+        {
+            WindowRule.Refuse => "Windows: lint rule run_crosses_window (level problem) keeps the route off every " +
+                                 "window's plane, seams, edges and base included. Lower its level or turn it off in " +
+                                 "the save's lint-rules.json to allow it.",
+            WindowRule.Penalty => System.FormattableString.Invariant(
+                $"Windows: a cell on a window's plane costs {OpeningGuard.WindowPenalty} more (run_crosses_window warns)."),
+            _ => "Windows: run_crosses_window is off; a window's plane is like any other."
+        });
         return guard;
     }
 
@@ -493,6 +510,26 @@ internal static class PlanRouteApi
                 $"{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with " +
                 "{reference_id, port}, or a free cell.");
         }
+    }
+
+    // The lint rules in effect a route of the kind honours: chute_outside_frame for chutes.
+    private static RouteLintRule? LintRuleOf(RunKind kind, List<RouteEndpoint> starts, RouteEndpoint? to)
+    {
+        if (!(kind is ChuteRunKind))
+        {
+            return null;
+        }
+
+        List<GridCell> ends = new List<GridCell>();
+        foreach (RouteEndpoint endpoint in to != null ? new List<RouteEndpoint>(starts) { to } : starts)
+        {
+            foreach (RouteEnd end in endpoint.Ends)
+            {
+                ends.Add(end.Cell);
+            }
+        }
+
+        return RouteLintRule.From(StationGodMCP.Api.Shared.Game.Lint.LintRuleFiles.Current(), RouteLintRule.ChuteOutsideFrame, ends);
     }
 
     private static RouteRuleSet Rules(Args args, RunKind kind, List<RouteEndpoint> starts, List<long> target,

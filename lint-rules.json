@@ -83,13 +83,13 @@
     },
     {
       "id": "run_crosses_window",
-      "level": "warning",
-      "description": "A cable, pipe or chute piece on a window's face.",
+      "level": "problem",
+      "description": "A cable, pipe or chute piece on a window's plane inside the closed square of a face it covers: its seams with the next pane, its edges and its base included. The route planners keep off those cells while the rule is a problem (and pay extra at warning).",
       "on": ["audit", "dry_run"],
       "select": "pieces",
       "let": { "window": "first(cells, c => c.on_window_face)?.window" },
       "assert": "not any(cells, c => c.on_window_face)",
-      "message": "{prefab} {reference_id} runs across the face of window {window?.reference_id}.",
+      "message": "{prefab} {reference_id} runs on the plane of window {window?.reference_id}.",
       "other": "window",
       "examples": {
         "pass": [ { "prefab": "StructureCableStraight", "reference_id": 3, "cells": [ { "on_window_face": false } ] } ],
@@ -141,13 +141,13 @@
     },
     {
       "id": "controls_blocked",
-      "level": "warning",
+      "level": "problem",
       "description": "The side of a device carrying its slots, buttons and switches faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it; or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it (controls sunk in a floor or facing down onto it). Only information where no control sits clearly on one side (the device's forward stands in).",
       "on": ["audit", "dry_run"],
       "select": "things where kind == \"device\" or kind == \"structure\"",
       "let": { "c": "controls_side(x)", "blocked": "controls_blocked(x)" },
       "assert": "not has(blocked)",
-      "level_when": "if(c?.fallback ?? false, \"info\", \"warning\")",
+      "level_when": "if(c?.fallback ?? false, \"info\", \"problem\")",
       "message": "{display_name} ({prefab} {reference_id}): the side its controls face, {c?.side} ({c?.source}), has {blocked} right in front of it.",
       "examples": {
         "pass": [ { "kind": "device", "display_name": "Locker", "prefab": "StructureStorageLocker", "reference_id": 12, "controls_side()": { "side": "+z", "fallback": false, "source": "4 controls" }, "controls_blocked()": null } ],
@@ -156,7 +156,7 @@
     },
     {
       "id": "clips_surface",
-      "level": "warning",
+      "level": "problem",
       "description": "A small-grid device whose mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body other than the surface it rests on (the face plane behind its small cells along its top, or its back for a mounted one): built lying or turned so that its body sinks into a floor or wall it does not stand on.",
       "on": ["audit", "dry_run"],
       "select": "devices where kind == \"device\"",
@@ -166,6 +166,20 @@
       "examples": {
         "pass": [ { "kind": "device", "display_name": "Turbo Volume Pump (Gas)", "prefab": "StructureTurboVolumePump", "reference_id": 14, "clips_surface()": null } ],
         "fail": [ { "kind": "device", "display_name": "Turbo Volume Pump (Gas)", "prefab": "StructureTurboVolumePump", "reference_id": 14, "clips_surface()": "the floor (Composite Wall (Type 1) (StructureCompositeWall 44)) on y=212, 0.13 m deep" } ]
+      }
+    },
+    {
+      "id": "blocks_window",
+      "level": "problem",
+      "description": "A device or other small-grid thing whose mesh box crosses or sits on a window's plane within the window's rectangle: no device's face, body or mesh may cover a glass wall, mounted on it or not. Cable, pipe and chute pieces are run_crosses_window's.",
+      "on": ["audit", "dry_run"],
+      "select": "devices",
+      "let": { "pane": "window_crossed(x)" },
+      "assert": "not has(pane)",
+      "message": "{display_name} ({prefab} {reference_id}) covers {pane}.",
+      "examples": {
+        "pass": [ { "kind": "device", "display_name": "Pipe Analyzer", "prefab": "StructurePipeAnalysizer", "reference_id": 15, "window_crossed()": null } ],
+        "fail": [ { "kind": "device", "display_name": "Pipe Analyzer", "prefab": "StructurePipeAnalysizer", "reference_id": 15, "window_crossed()": "the window (Window (StructureWindowIron 61)) on z=626" } ]
       }
     },
     {
@@ -379,7 +393,7 @@
     },
     {
       "id": "chute_outside_frame",
-      "level": "warning",
+      "level": "problem",
       "description": "A chute piece with a cell outside a frame's body: on a frame's face, on a wall or floor plane, or in air. Chutes run inside frames. A device's port stub is not checked: the piece in the joining cell of a device's chute port, or one cell from it, leaves the frames to meet a device standing outside them.",
       "on": ["audit", "dry_run"],
       "select": "pieces where kind == \"chute\"",

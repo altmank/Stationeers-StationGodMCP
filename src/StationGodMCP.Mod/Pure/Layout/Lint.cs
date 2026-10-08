@@ -33,11 +33,11 @@ internal static class LintCodes
         (PortIntoDoorway, ConflictLevel.Warning),
         (PortCellForeignNetwork, ConflictLevel.Warning),
         (FloatingRun, ConflictLevel.Warning),
-        (RunCrossesWindow, ConflictLevel.Warning),
+        (RunCrossesWindow, ConflictLevel.Problem),
         (DeviceVisualOverlap, ConflictLevel.Warning),
         (MountedFacesOutOfRoom, ConflictLevel.Warning),
         (DeviceCrossesSeam, ConflictLevel.Warning),
-        (ControlsBlocked, ConflictLevel.Warning),
+        (ControlsBlocked, ConflictLevel.Problem),
         (RunAlongDoor, ConflictLevel.Info),
         (ControlsNotOnWall, ConflictLevel.Info),
         (ReplaceableUnchecked, ConflictLevel.Info)
