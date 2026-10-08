@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.31.0</Version>
+  <Version>1.32.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,9 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v1.32.0
+- Lint problems refuse builds; new lint rules; route planners take one style; slimmer container_contents.
+
 v1.31.0
 - Prefab filters read an index, not every thing; new prefabs: several in one call.
 
@@ -188,7 +191,7 @@ v1.9.1
 - mod_info runtime: what the mod costs the game: per-method time, main-thread wait and reply size; requests and time per frame; heap.
 - New setting [Performance] RequestBudgetMs (default 4 ms): requests past it in one frame wait for the next, in order.
 - Leaving a world clears what the mod held about it: chips paused by control_ic_execution run again; jobs, undo records, print and flight logs are forgotten.
-- Fix: a job's gas work that overran its 10 s limit no longer runs on after the job let the game tick go; the tick waits for it and pipe jobs are held until its result is accepted.
+- Fix: a job's gas work that overran its 10 s limit no longer runs on after the game tick goes on; the tick waits for it.
 - Less garbage per read; highlights cost nothing while none is shown.
 
 v1.9.0
@@ -228,7 +231,7 @@ v1.4.2
 - Broken structures: find_things and thing_health find them; remove_structure allow_broken.
 
 v1.4.1
-- Fix: pipe jobs merging networks twice lost gas; every pipe job now checks its gas.
+- Fix: pipe jobs merging networks twice lost gas.
 
 v1.4.0
 - vault_contents, vault_deposit, vault_withdraw (Ingot Vault mod).

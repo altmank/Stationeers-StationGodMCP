@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.32.0
 
 Smaller inventory replies, and a `fields` name that is nearly right no longer costs a second call.
 
