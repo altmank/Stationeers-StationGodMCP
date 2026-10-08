@@ -113,14 +113,15 @@ internal static class RunBuilder
             }
         }
 
-        // The changed pieces first; then the new pieces grow outward from them and from a swapped long's singles, so
-        // each joins the network standing there and none stands alone first to take that network over in a merge
-        // (GrowthOrder).
+        // The changed pieces first; then the new pieces grow outward from them, from a swapped long's singles and from
+        // every standing piece around the run, so each joins the network standing there and none stands alone first
+        // to take that network over in a merge, on the host or on a joined client (GrowthOrder).
         List<PlannedCell> ordered = plan.Cells.FindAll(static cell => cell.IsChange);
         List<PieceModel> standing = ordered.ConvertAll(static cell => cell.Model);
         standing.AddRange(plan.Cells
             .FindAll(cell => cell.SplitFrom != null && swapped.Contains(cell.SplitFrom))
             .ConvertAll(static cell => cell.Model));
+        standing.AddRange(StandingAround(plan));
         ordered.AddRange(GrowthOrder.From(standing,
             plan.Cells.FindAll(cell => !cell.IsChange && (cell.SplitFrom == null || !swapped.Contains(cell.SplitFrom))),
             static cell => cell.Model));
@@ -155,6 +156,35 @@ internal static class RunBuilder
                 outcome.Log.RefundError = new ErrorView("refund_failed", exception.Message);
             }
         }
+    }
+
+    // The family's pieces around the run that stand through the build (plan.Things, gathered by the forecast): not
+    // removed, not swapped away, not a changed cell's old piece (its new piece stands in its place).
+    private static List<PieceModel> StandingAround(RunPlan plan)
+    {
+        UpgradeFamily family = plan.Request.Kind.Family;
+        HashSet<long> changed = new HashSet<long>();
+        foreach (PlannedCell cell in plan.Cells)
+        {
+            if (cell.IsChange)
+            {
+                changed.Add(cell.Existing!.ReferenceId);
+            }
+        }
+
+        List<PieceModel> standing = new List<PieceModel>();
+        foreach (SmallGrid thing in plan.Things.Values)
+        {
+            if (thing == null || thing.IsBeingDestroyed || !family.IsMember(thing) ||
+                changed.Contains(thing.ReferenceId))
+            {
+                continue;
+            }
+
+            standing.Add(PieceShapes.Live(thing));
+        }
+
+        return standing;
     }
 
     // The long straight's singles are built over it (each overwriting its slot in that cell), then their network is

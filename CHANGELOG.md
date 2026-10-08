@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Runs keep joined clients' pipe, cable and chute networks in step with the host.** A run builds all its pieces in
+  one frame, and a client builds them from one state packet in the same order, each piece naming the network it ends
+  in. A run built in its plan order could start a piece alone on a new network (the first piece of a branch, the far
+  end of a line), have the standing network take that one in, and later go into another lone piece's network: the
+  client then merged away the network the host kept, threw in `Pipe.DeserializeOnJoin` (losing the rest of that
+  packet, so later updates for the run's last pieces threw too) and then at `StructureNetwork.DeserializeDeltaState`
+  on every packet. Every run now grows outward from the standing pieces it touches, even with no changed cell, so no
+  piece of a run that meets a standing network stands alone, and the standing network keeps its id. A client that
+  already lost a network needs to rejoin once.
+
 ## 1.32.0
 
 Smaller inventory replies, and a `fields` name that is nearly right no longer costs a second call.
