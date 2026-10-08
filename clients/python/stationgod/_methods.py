@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:74324094fbdbde909e1ae8cc402169bcf280ab5625b094c29a1d8cab5ae23bdb'
+CATALOGUE_HASH = 'sha256:ac8e3baf38c222a8e80798cb5a8e25024220bbb135d90259d75bfda5c40a2fe3'
 MOD_VERSION = '1.32.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -1573,6 +1573,16 @@ TABLE = {'catalogue': {'class': 'read',
                    'required': ['vault_id'],
                    'shaping': 'lists',
                    'protocol': False},
+ 'vault_transfer': {'class': 'write',
+                    'class_when': [{'when': {'dry_run': {'absent': True}}, 'class': 'read'},
+                                   {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
+                    'effects': [],
+                    'paging': None,
+                    'duration': None,
+                    'params': ['from_vault_id', 'to_vault_id', 'items', 'dry_run', 'confirm'],
+                    'required': ['from_vault_id', 'to_vault_id'],
+                    'shaping': 'lists',
+                    'protocol': False},
  'vault_withdraw': {'class': 'write',
                     'class_when': [{'when': {'dry_run': {'absent': True}}, 'class': 'read'},
                                    {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
@@ -2320,6 +2330,13 @@ class Methods:
         Class: write (other classes at some arguments). Arguments: vault_id (required), items, reference_ids, prefab_contains, name_contains, location, within_id, near_player_m, kind, limit, dry_run, confirm.
         """
         return self.call('vault_deposit', **{'vault_id': vault_id, 'items': items, 'reference_ids': reference_ids, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'kind': kind, 'limit': limit, 'dry_run': dry_run, 'confirm': confirm}, **options)
+
+    def vault_transfer(self, *, from_vault_id: str | None = None, to_vault_id: str | None = None, items: list | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
+        """Move stored ingots, ores and ices from one Ingot Vault's store straight into another's, with the vaults' own bookkeeping; no item is made.
+
+        Class: write (other classes at some arguments). Arguments: from_vault_id (required), to_vault_id (required), items, dry_run, confirm.
+        """
+        return self.call('vault_transfer', **{'from_vault_id': from_vault_id, 'to_vault_id': to_vault_id, 'items': items, 'dry_run': dry_run, 'confirm': confirm}, **options)
 
     def vault_withdraw(self, *, vault_id: str | None = None, prefab_name: str | None = None, prefab_hash: int | None = None, reagent: str | None = None, quantity: float | None = None, to_id: str | None = None, to_slot: int | str | None = None, allow_ground: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
         """Take an amount of one stored thing out of an Ingot Vault and make it straight into a holder's slots, as the vault's own vend counts it.

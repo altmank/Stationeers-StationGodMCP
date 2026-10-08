@@ -496,6 +496,12 @@ internal static class ReplyShapes
         {
             S<VaultWithdrawView>().List("VaultWithdrawView.Placed", 2).List("VaultWithdrawView.Stock", 1)
         };
+        shapes["vault_transfer"] = new[]
+        {
+            // Everything a well-stocked vault holds: every line moved.
+            S<VaultTransferView>().List("BatchResultView.Results", 20)
+                .Holds("BatchResultView.Results", typeof(TransferredView))
+        };
         shapes["silo_deposit"] = new[]
         {
             S<SiloDepositView>().List("BatchResultView.Results", W.TypicalBatch)

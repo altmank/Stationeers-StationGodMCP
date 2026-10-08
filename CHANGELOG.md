@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`vault_transfer`: move stock from one Ingot Vault straight into another.** `from_vault_id`, `to_vault_id` (either
+  may be a Remote Vault), `items: [{prefab_name, prefab_hash or reagent, quantity}]` or nothing for everything. Each
+  line comes off the source as the vault's vend takes it and onto the target as its import adds it (ingot grams of
+  reagent, ore and ice counts); no item is made and nothing passes a locker or room, so ice no longer melts into the
+  air on the way, as it could going out with `vault_withdraw` and back with `vault_deposit`. More than the source holds
+  moves what it holds, marked `partial`; each entry reports both vaults' amounts before and after. Both vaults must be
+  on and powered; dry run by default. New refusal `same_vault`.
+
 - **Runs keep joined clients' pipe, cable and chute networks in step with the host.** A run builds all its pieces in
   one frame, and a client builds them from one state packet in the same order, each piece naming the network it ends
   in. A run built in its plan order could start a piece alone on a new network (the first piece of a branch, the far

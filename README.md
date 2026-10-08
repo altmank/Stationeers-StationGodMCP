@@ -88,7 +88,7 @@ the APC to the new room along the frames". Each tool's own description is short;
 | Rockets | `rocket_status`, `rocket_forecast`, `rocket_mining_options`, `rocket_flight_log` | [rockets.md](docs/rockets.md) |
 | Blueprints | `paste_blueprint` | [blueprints.md](docs/blueprints.md) |
 | SDB Silo | `silo_withdraw`, `silo_deposit` (and `container_contents` on a silo) | [silo.md](docs/silo.md) |
-| Ingot Vault (mod) | `vault_contents`, `vault_deposit`, `vault_withdraw` | [ingot-vault.md](docs/ingot-vault.md) |
+| Ingot Vault (mod) | `vault_contents`, `vault_deposit`, `vault_withdraw`, `vault_transfer` | [ingot-vault.md](docs/ingot-vault.md) |
 
 Every building tool works the same way: a **dry run** by default that changes nothing and lists every problem; a real
 run only with `dry_run: false` and `confirm: true`; the change made in one held game tick and checked afterwards;

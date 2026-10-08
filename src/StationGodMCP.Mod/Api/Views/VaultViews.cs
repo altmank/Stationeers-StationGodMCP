@@ -320,3 +320,100 @@ internal sealed class VaultWithdrawView
 
     public List<StockChangeView> Stock { get; }
 }
+
+/// <summary>One vault's side of a transferred line: what the store held before the entry and after it.</summary>
+internal sealed class TransferSideView
+{
+    internal TransferSideView(double before, double after)
+    {
+        Before = VaultAmount.Of(before);
+        After = VaultAmount.Of(after);
+    }
+
+    public double Before { get; }
+
+    public double After { get; }
+}
+
+/// <summary>One line a transfer moved (or would move, in a dry run), with both vaults' amounts around it.</summary>
+internal sealed class TransferredView : BatchItemView
+{
+    internal TransferredView(int index, VaultItemView item, double? requested, double quantity, bool partial,
+        TransferSideView from, TransferSideView to) : base(index, ok: true)
+    {
+        Kind = item.Kind;
+        PrefabName = item.PrefabName;
+        DisplayName = item.DisplayName;
+        Reagent = item.Reagent;
+        Requested = requested.HasValue ? VaultAmount.Of(requested.Value) : (double?)null;
+        Quantity = VaultAmount.Of(quantity);
+        Partial = partial;
+        From = from;
+        To = to;
+    }
+
+    public string Kind { get; }
+
+    public string? PrefabName { get; }
+
+    public string? DisplayName { get; }
+
+    public string? Reagent { get; }
+
+    /// <summary>The amount asked for; null when the entry asked for all of it.</summary>
+    public double? Requested { get; }
+
+    public double Quantity { get; }
+
+    /// <summary>More was asked than the source held; only what it held moved.</summary>
+    public bool Partial { get; }
+
+    public TransferSideView From { get; }
+
+    public TransferSideView To { get; }
+}
+
+/// <summary>One entry a transfer refused; nothing was moved for it.</summary>
+internal sealed class NotTransferredView : BatchItemView
+{
+    internal NotTransferredView(int index, string asked, ErrorView error) : base(index, ok: false)
+    {
+        Asked = asked;
+        Error = error;
+    }
+
+    /// <summary>The prefab name, prefab hash or reagent as the entry named it.</summary>
+    public string Asked { get; }
+
+    public ErrorView Error { get; }
+}
+
+/// <summary>vault_transfer's reply.</summary>
+internal sealed class VaultTransferView
+{
+    internal VaultTransferView(bool dryRun, VaultRefView from, VaultRefView to, BatchResultView items, int partialCount)
+    {
+        DryRun = dryRun;
+        FromVault = from.Vault;
+        FromVia = from.Via;
+        ToVault = to.Vault;
+        ToVia = to.Via;
+        Items = items;
+        PartialCount = partialCount;
+    }
+
+    public bool DryRun { get; }
+
+    public ThingView FromVault { get; }
+
+    public ThingView? FromVia { get; }
+
+    public ThingView ToVault { get; }
+
+    public ThingView? ToVia { get; }
+
+    public BatchResultView Items { get; }
+
+    /// <summary>Entries that moved less than they asked for (the source held less).</summary>
+    public int PartialCount { get; }
+}

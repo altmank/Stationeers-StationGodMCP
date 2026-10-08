@@ -787,6 +787,11 @@
     "see": {"tool": "move_gas", "topic": "refusals"}
   },
   "same_slot": {"description": "The item is already in that slot. Nothing to do.", "origin": "tool", "see": {"topic": "slots"}},
+  "same_vault": {
+    "description": "Both ids reach one Ingot Vault. Name two different vaults.",
+    "origin": "tool",
+    "see": {"tool": "vault_transfer", "topic": "reply"}
+  },
   "save_started": {
     "description": "A save began while the job waited for the game tick, so nothing ran. Run it again.",
     "origin": "tool",
