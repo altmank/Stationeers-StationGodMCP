@@ -200,6 +200,7 @@ route's own ends is released, and `notes` say how many cells were kept free. Wit
 | `prefer: "walls"` | On or beside wall planes. |
 | `prefer: "hidden"` | The least visible route: per cell inside a frame 1, on a frame's surface 3, on a wall's plane 5, in air 9. A hidden route up to three times as long beats one along a surface. |
 | `inside_frames: true` | Strict: only cells inside a frame or on its surface (beam tops and outer faces included). May give `no_route` where `prefer: hidden` would still find one. |
+| Chutes | `plan_chute_route` defaults to `inside_frames: true` and `prefer: "hidden"` (chutes run inside frames; lint `chute_outside_frame`): only the start and end cells may stand outside. Pass `inside_frames: false` to route through a room. |
 | `avoid_walkways`, `avoid_room_interior` | Extra cost for room cells above the floor, or away from every face plane. |
 | `avoid_networks` | `true`: never beside another network of the kind; or a list of network ids (network handles work too); an id naming no network is `network_not_found`. |
 | `min_bends`, `axis_order` | Fewer turns; `vertical_first` or `horizontal_first`. |

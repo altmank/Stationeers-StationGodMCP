@@ -176,7 +176,8 @@ must pass (or be left out by the `where`), a `fail` example must fail. Every shi
 | `device_visual_overlap` | warning | both | two devices whose mesh boxes run more than 0.1 m into each other, or one inside the other |
 | `mounted_faces_out_of_room` | warning | both | a mounted device facing out of the room behind it |
 | `device_crosses_seam` | warning | both | a mounted device spanning two wall sections though it could fit one |
-| `controls_blocked` | warning (info for a forward fallback) | both | the side with a device's slots and buttons facing a device, a frame's body, a wall or frame right in front |
+| `controls_blocked` | warning (info for a forward fallback) | both | the side with a device's slots and buttons facing a device, a frame's body, a wall or frame right in front, or any plate, frame or thing covering a quarter of that side within 0.5 m (controls sunk in a floor or facing down onto it) |
+| `clips_surface` | warning | both | a small-grid device whose mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on (built lying, its body sunk into the floor) |
 | `run_along_door` | info | both | a cable, pipe or chute piece hugging a door's jamb |
 | `controls_not_on_wall` | info | both | a console, computer, display, dial, button, switch, lever or keypad not on a wall |
 | `replaceable_unchecked` | info | audit | a thing `not_replaceable` could not ask about |
@@ -190,6 +191,7 @@ must pass (or be left out by the `where`), a `fail` example must fail. Every shi
 | `outdoor_liquid_insulated` | warning | audit | an outdoor liquid pipe that is not insulated while its network is at or below a freezing point of what it holds |
 | `deep_miner_column_clear` | warning | both | a frame or other full-cell structure in a deep miner's drill column, which stops it |
 | `cable_on_frames` | warning | both | a cable with a cell off the frames (in air or along a bare wall) |
+| `chute_outside_frame` | warning | both | a chute piece with a cell outside a frame's body (on a frame's face, a wall or floor plane, or in air); a device's port stub (the piece in its chute port's joining cell, or one cell from it) is not checked |
 
 `lint_rules` with `action: "list"` and a `rule_id` shows any rule in full.
 
@@ -397,7 +399,9 @@ keep their result for the rest of the call when asked again with the same argume
 | --- | --- |
 | `replaceable(x: thing) -> placement` | Whether a player could place the thing again where it stands, its neighbours present: check_replaceable's rule. `replaceable` is null when it could not be asked, and for a planned thing. Cached. |
 | `controls_side(x: thing) -> controls?` | The world side of a device that carries its slots, buttons and switches, read from its prefab's interactables (describe_prefab's controls). |
-| `controls_blocked(x: thing) -> string?` | What stands right in front of the side its controls face (another device, a chute or small thing, a frame's body, a wall or frame on the plane in front), as text; null when that side is clear, when it has no control side, or when that side is a face-mounted thing's front. Cached. |
+| `controls_blocked(x: thing) -> string?` | What stands right in front of the side its controls face (another device, a chute or small thing, a frame's body, a wall or frame on the plane in front; or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it), as text; null when that side is clear, when it has no control side, or when that side is a face-mounted thing's front. Cached. |
+| `clips_surface(x: thing) -> string?` | The wall, floor or ceiling plate or frame body a small-grid device's mesh box runs into by more than 0.1 m, other than the surface it rests on (the face plane behind its small cells along its top, or its back for a mounted one), as text with how deep; null when none, and for pieces, in-line tanks, passive vents and 2 m structures. Cached. |
+| `port_stub(x: thing) -> bool` | A cable, pipe or chute piece standing in the joining cell of a device's port of its kind, or one small cell from it: the stub that leaves the frames to meet a device standing outside them. Cached. |
 | `sun_blocked(x: thing) -> bool` | Something stands between the thing and the sun somewhere on the day's path while the sun is more than 10 degrees up: the solar arm's own five rays with the panel's collision mask, from each arm's cells turned to the sun, and the terrain; from the mesh box's centre for anything else or a planned panel. 36 sun directions over the day. Cached. |
 | `weather_exposed(x: thing) -> bool` | Storms reach the thing: the air in its cell is the planet's or within 1 kPa of it, or it has no air and no room (the test the game applies before storm damage). |
 | `logic(x: thing, type: string) -> number?` | The thing's logic value of a type (On, Setting, Pressure, Ratio ...), as a Logic Reader reads it; null when it cannot be read. |

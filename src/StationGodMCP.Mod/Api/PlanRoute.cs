@@ -84,6 +84,12 @@ internal static class PlanRouteApi
         List<long> own = to?.Networks ?? new List<long>();
         RouteRuleSet rules = Rules(args, kind, starts, own, false);
         List<string> notes = Notes(rules, assumed);
+        if (kind is ChuteRunKind && (!args.Has("inside_frames") || !args.Has("prefer")))
+        {
+            notes.Add("chutes run inside frames by default (chute_outside_frame): inside_frames true and prefer hidden " +
+                      "unless given; only the start and end cells may stand outside. Pass inside_frames false to route " +
+                      "through a room.");
+        }
         RouteReservation reserved = Reservation(args, starts, to, trunk, notes);
         OpeningGuard openings = Openings(args, facts, starts, to, notes);
         RouteTree tree = Grow(args, starts, main, facts, rules, reserved, openings);
@@ -498,7 +504,8 @@ internal static class PlanRouteApi
     private static RouteRuleSet Rules(Args args, RunKind kind, List<RouteEndpoint> starts, List<long> target,
         bool avoidOwn)
     {
-        string prefer = (args.OptionalString("prefer") ?? "none").Trim().ToLowerInvariant();
+        bool chute = kind is ChuteRunKind;
+        string prefer = (args.OptionalString("prefer") ?? RouteDefaults.Prefer(chute)).Trim().ToLowerInvariant();
         RoutePreference preference = prefer switch
         {
             "none" => RoutePreference.None,
@@ -525,7 +532,7 @@ internal static class PlanRouteApi
             avoidIds = AvoidedNetworks(args, kind);
         }
 
-        return new RouteRuleSet(preference, args.OptionalBool("inside_frames") ?? false,
+        return new RouteRuleSet(preference, args.OptionalBool("inside_frames") ?? RouteDefaults.InsideFrames(chute),
             args.OptionalBool("avoid_room_interior") ?? false, args.OptionalBool("avoid_walkways") ?? false, avoidAll,
             own, avoidIds, avoidOwn, args.OptionalBool("frames_first") ?? true);
     }

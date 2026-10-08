@@ -340,7 +340,7 @@
           },
           "rules": {
             "summary": "frames_first, prefer, inside_frames, avoid_*.",
-            "text": "frames_first (default true): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. prefer: frame_edges (cells on two or three face planes of a frame cell), walls (on or beside a wall plane), hidden (inside a frame 1, frame surface 3, wall plane 5, air 9). inside_frames: only cells inside or on a frame. avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow_door_keepout; a window face costs 6 more."
+            "text": "frames_first (default true): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. prefer: frame_edges (cells on two or three face planes of a frame cell), walls (on or beside a wall plane), hidden (inside a frame 1, frame surface 3, wall plane 5, air 9). inside_frames: only cells inside or on a frame. plan_chute_route defaults to inside_frames true and prefer hidden (chutes run inside frames). avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow_door_keepout; a window face costs 6 more."
           },
           "starts": {
             "summary": "Several starts grow one tree.",
@@ -3803,7 +3803,7 @@
           },
           "rules": {
             "summary": "The shipped rules.",
-            "text": "Problems: not_replaceable (reported first: check_replaceable's rule), solar_outdoor_reinforced, no_oxidiser_vented_outdoors. Warnings: run_in_door_keepout, port_into_doorway, port_cell_foreign_network, floating_run, run_crosses_window, device_visual_overlap, mounted_faces_out_of_room, device_crosses_seam, controls_blocked, cable_grade_matches_network, controller_labels, solar_unshaded, filter_output_capped, fuel_oxidiser_mix_temperature, outdoor_liquid_insulated, deep_miner_column_clear, cable_on_frames. Info: run_along_door, controls_not_on_wall, replaceable_unchecked. lint_rules {action: \"list\"} gives each rule's description."
+            "text": "Problems: not_replaceable (reported first: check_replaceable's rule), solar_outdoor_reinforced, no_oxidiser_vented_outdoors. Warnings: run_in_door_keepout, port_into_doorway, port_cell_foreign_network, floating_run, run_crosses_window, device_visual_overlap, mounted_faces_out_of_room, device_crosses_seam, controls_blocked, clips_surface, cable_grade_matches_network, controller_labels, solar_unshaded, filter_output_capped, fuel_oxidiser_mix_temperature, outdoor_liquid_insulated, deep_miner_column_clear, cable_on_frames, chute_outside_frame. Info: run_along_door, controls_not_on_wall, replaceable_unchecked. lint_rules {action: \"list\"} gives each rule's description."
           }
         },
         "shared": ["lint", "paging"]
@@ -5528,7 +5528,7 @@
             "subtopics": {
               "conflicts": {
                 "summary": "The conflict codes.",
-                "text": "visual_overlap: its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (flush neighbours only touch; a thing sharing a cell is skipped). crosses_section_seam: its mesh spans more than one 2 m section though it could fit one (a warning; not for pieces wider than a section). in_door_keepout, crosses_window, blocks_route_cells (it stands in a neighbour port's joining cell), front_blocked, controls_blocked (its controls face a device, frame body or wall right in front), faces_out_of_room, not_upright (info for prefabs normally built lying, the in-line tanks)."
+                "text": "visual_overlap: its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (flush neighbours only touch; a thing sharing a cell is skipped). crosses_section_seam: its mesh spans more than one 2 m section though it could fit one (a warning; not for pieces wider than a section). in_door_keepout, crosses_window, blocks_route_cells (it stands in a neighbour port's joining cell), front_blocked, controls_blocked (its controls face a device, frame body or wall right in front, or a plate, frame or thing covering a quarter of that side within 0.5 m: controls sunk in or facing down onto a floor), clips_surface (its mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on: built lying, sunk into the floor), faces_out_of_room, not_upright (info for prefabs normally built lying, the in-line tanks)."
               }
             }
           }
@@ -6010,7 +6010,7 @@
       "name": "plan_chute_route",
       "description": "Find a chute route from a source to a sink and dry-run it with place_chutes and every flow guard. Answers place_arguments to build it. Read only.\nMore: tool_info {tool: \"plan_chute_route\"}",
       "help": {
-        "text": "plan_cable_route for chutes: from is the source and to the sink. The search never passes through a cell holding a chute, cable, pipe, device or other small-grid thing; a reroute keeps the old run's direction where the flow fixes it.",
+        "text": "plan_cable_route for chutes: from is the source and to the sink. The search never passes through a cell holding a chute, cable, pipe, device or other small-grid thing; a reroute keeps the old run's direction where the flow fixes it. Chutes run inside frames: inside_frames and prefer hidden are the defaults, and lint chute_outside_frame warns of a piece outside a frame's body (a device's port stub excepted).",
         "keys": "tool, found, route {waypoints, length, bends, cost, expanded, ...}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, ...}, dry_run_summary {status, ready, problems, warnings, ...}, notes, resolved_networks.",
         "topics": {
           "ends": {
@@ -6073,7 +6073,7 @@
           "prefer": {
             "type": "string",
             "enum": ["none", "frame_edges", "walls", "hidden"],
-            "description": "none, frame_edges, walls, or hidden (least visible) (see routing/rules)."
+            "description": "none, frame_edges, walls, or hidden (least visible); default hidden for chutes (see routing/rules)."
           },
           "assume_removed": {
             "type": "array",
@@ -6100,7 +6100,7 @@
           },
           "inside_frames": {
             "type": "boolean",
-            "description": "Only cells inside a frame cell or on its surface. Default false (see routing/rules)."
+            "description": "Only cells inside a frame cell or on its surface, the start and end cells excepted. Default true for chutes: they run inside frames (see routing/rules)."
           },
           "avoid_room_interior": {"type": "boolean", "description": "Extra cost for room cells on no face plane. Default false."},
           "avoid_walkways": {

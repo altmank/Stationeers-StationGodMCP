@@ -19,7 +19,7 @@
         "subtopics": {
           "conflicts": {
             "summary": "The conflict codes.",
-            "text": "visual_overlap: its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (flush neighbours only touch; a thing sharing a cell is skipped). crosses_section_seam: its mesh spans more than one 2 m section though it could fit one (a warning; not for pieces wider than a section). in_door_keepout, crosses_window, blocks_route_cells (it stands in a neighbour port's joining cell), front_blocked, controls_blocked (its controls face a device, frame body or wall right in front), faces_out_of_room, not_upright (info for prefabs normally built lying, the in-line tanks)."
+            "text": "visual_overlap: its mesh box and another thing's run more than 0.1 m into each other, or one lies inside the other (flush neighbours only touch; a thing sharing a cell is skipped). crosses_section_seam: its mesh spans more than one 2 m section though it could fit one (a warning; not for pieces wider than a section). in_door_keepout, crosses_window, blocks_route_cells (it stands in a neighbour port's joining cell), front_blocked, controls_blocked (its controls face a device, frame body or wall right in front, or a plate, frame or thing covering a quarter of that side within 0.5 m: controls sunk in or facing down onto a floor), clips_surface (its mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on: built lying, sunk into the floor), faces_out_of_room, not_upright (info for prefabs normally built lying, the in-line tanks)."
           }
         }
       }

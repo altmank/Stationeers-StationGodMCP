@@ -18,6 +18,21 @@ Smaller inventory replies, and a `fields` name that is nearly right no longer co
   in `inspect_slots`), `list_containers`' `slots_total` and `slots_used` are now `slot_count` and `used_slot_count`,
   and `inspect_slots`' `total_slots` is now `slot_count` (as `describe_device`'s device has it). `tool_info` topic
   shaping/names gives the naming scheme.
+- **`clips_surface`** (lint rule, and a `place_structure` / `orient` layout warning): a small-grid device whose mesh
+  box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on, named with how
+  deep. A device rests on the face plane behind its small cells along its top (its back when mounted); a pump built
+  lying, its top sideways, rests on none and is sunk into the floor.
+- **`controls_blocked` reads meshes too.** Besides the cell in front, any plate, frame or thing whose mesh box covers a
+  quarter of the controls side within 0.5 m of it, or across it, blocks it: controls sunk in a floor, facing down
+  onto one, or pressed against a furnace's body 0.44 m away. A lying Turbo Volume Pump (controls on its local top,
+  turned sideways) passed before because only the empty small cell in front was asked.
+- **`chute_outside_frame`** (lint rule): a chute piece with a cell outside a frame's body (on a frame's face, a wall
+  or floor plane, or in air) warns; a device's port stub (the piece in its chute port's joining cell, or one cell
+  from it) is not checked. New lint functions `clips_surface(x)` and `port_stub(x)`. `place_chutes` dry runs warn
+  `lint_chute_outside_frame`.
+- **`plan_chute_route` defaults to `inside_frames: true` and `prefer: "hidden"`**: chute routes keep to frames, the
+  start and end cells excepted, and take the least visible way among them. `inside_frames: false` routes through a
+  room as before.
 
 ## 1.31.0
 

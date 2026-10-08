@@ -333,7 +333,7 @@
         },
         "rules": {
           "summary": "frames_first, prefer, inside_frames, avoid_*.",
-          "text": "frames_first (default true): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. prefer: frame_edges (cells on two or three face planes of a frame cell), walls (on or beside a wall plane), hidden (inside a frame 1, frame surface 3, wall plane 5, air 9). inside_frames: only cells inside or on a frame. avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow_door_keepout; a window face costs 6 more."
+          "text": "frames_first (default true): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. prefer: frame_edges (cells on two or three face planes of a frame cell), walls (on or beside a wall plane), hidden (inside a frame 1, frame surface 3, wall plane 5, air 9). inside_frames: only cells inside or on a frame. plan_chute_route defaults to inside_frames true and prefer hidden (chutes run inside frames). avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow_door_keepout; a window face costs 6 more."
         },
         "starts": {
           "summary": "Several starts grow one tree.",

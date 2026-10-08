@@ -273,3 +273,15 @@ internal sealed class RouteRuleSet
         return false;
     }
 }
+
+/// <summary>
+/// The route rules' defaults per kind. Chutes run inside frames (house rule, chute_outside_frame): their planner
+/// requires frame cells (inside_frames) and takes the least visible way among them (prefer hidden) unless told
+/// otherwise; cables and pipes default to neither.
+/// </summary>
+internal static class RouteDefaults
+{
+    internal static bool InsideFrames(bool chute) => chute;
+
+    internal static string Prefer(bool chute) => chute ? "hidden" : "none";
+}

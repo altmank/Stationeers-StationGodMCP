@@ -9,7 +9,9 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
 using Objects.Electrical;
+using Assets.Scripts.Networks;
 using Assets.Scripts.Objects.Motherboards;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Pure;
 
@@ -25,6 +27,10 @@ namespace StationGodMCP.Api.Shared.Game.Lint;
 /// </summary>
 internal static class LintGameLibrary
 {
+    private static readonly CableFamily Cables = new CableFamily();
+    private static readonly PipeFamily Pipes = new PipeFamily();
+    private static readonly ChuteFamily Chutes = new ChuteFamily();
+
     private const float SunUpSine = 0.1736f;
 
     private static readonly Vector3[] RayOffsets =
@@ -52,9 +58,21 @@ internal static class LintGameLibrary
                 ControlsSide))
             .Add(new LintFunction("controls_blocked", "(x: thing) -> string?",
                 "What stands right in front of the side its controls face (another device, a chute or small thing, a " +
-                "frame's body, a wall or frame on the plane in front), as text; null when that side is clear, when it has " +
-                "no control side, or when that side is a face-mounted thing's front.",
+                "frame's body, a wall or frame on the plane in front; or any plate, frame or thing whose mesh box covers " +
+                "a quarter of that side within 0.5 m of it or across it, as controls sunk in a floor), as text; null when " +
+                "that side is clear, when it has no control side, or when that side is a face-mounted thing's front.",
                 ControlsBlocked, cached: true))
+            .Add(new LintFunction("clips_surface", "(x: thing) -> string?",
+                "The wall, floor or ceiling plate or frame body a small-grid device's mesh box (Thing.Bounds) runs into " +
+                "by more than 0.1 m, other than the surface it rests on (the face plane behind its small cells along its " +
+                "top, or its back for a mounted one), as text with how deep; null when none, and for pieces, in-line " +
+                "tanks, passive vents and 2 m structures.",
+                ClipsSurface, cached: true))
+            .Add(new LintFunction("port_stub", "(x: thing) -> bool",
+                "A cable, pipe or chute piece standing in the joining cell of a device's port of its kind, or one small " +
+                "cell from it: the stub that leaves the frames to meet a device standing outside them. false for " +
+                "anything else.",
+                PortStub, cached: true))
             .Add(new LintFunction("sun_blocked", "(x: thing) -> bool",
                 "Something stands between the thing and the sun somewhere on the day's path, while the sun is more than " +
                 "10 degrees up: the solar arm's own five rays (SolarPanelArm.CalculateSolarEfficiency, the panel's " +
@@ -147,10 +165,59 @@ internal static class LintGameLibrary
             return LintValue.Null;
         }
 
+        GameLintWorld world = World(call);
         string? blocked = PlacementLayout.ControlsBlockedBy(PrefabOf(thing), turn, thing.Mount, thing.SmallCells,
-            thing.IsSmallGrid ? new List<GridCell>() : thing.LargeCells, World(call).Facts, out _, out _);
+            thing.IsSmallGrid ? new List<GridCell>() : thing.LargeCells, thing.RenderBox, world.Facts,
+            Own(thing), world.IsGone, out _, out _);
         return LintValue.Of(blocked);
     }
+
+    private static LintValue ClipsSurface(LintCall call)
+    {
+        ThingSubject thing = Thing(call);
+        GameLintWorld world = World(call);
+        return LintValue.Of(PlacementLayout.ClipsSurface(thing.Source, thing.Mount, thing.SmallCells, thing.RenderBox,
+            world.Facts, world.IsGone, out _));
+    }
+
+    private static LintValue PortStub(LintCall call)
+    {
+        ThingSubject thing = Thing(call);
+        int type = Cables.IsMember(thing.Source) ? (int)NetworkType.PowerAndData
+            : Pipes.IsMember(thing.Source) ? (int)(NetworkType.Pipe | NetworkType.PipeLiquid)
+            : Chutes.IsMember(thing.Source) ? (int)NetworkType.Chute
+            : 0;
+        if (!thing.IsPiece || type == 0 || thing.SmallCells.Count == 0)
+        {
+            return LintValue.False;
+        }
+
+        GameLintWorld world = World(call);
+        List<GridCell> joining = new List<GridCell>();
+        HashSet<long> ignore = thing.ReferenceId is long id ? new HashSet<long> { id } : new HashSet<long>();
+        foreach (NearBody body in NearBodies.Around(Box3.OfSmallCells(thing.SmallCells), world.Facts, ignore,
+                     NearKinds.Mounted))
+        {
+            if (!(body.Thing is Device device) || device.OpenEnds == null || world.IsGone(device))
+            {
+                continue;
+            }
+
+            foreach (Connection end in device.OpenEnds)
+            {
+                if (end?.Transform != null && ((int)end.ConnectionType & type) != 0)
+                {
+                    joining.Add(PieceShapes.Cell(end.GetLocalGrid()));
+                }
+            }
+        }
+
+        return LintValue.Of(PortStubs.IsStub(thing.SmallCells, joining));
+    }
+
+    // The thing's own id, left out of what stands in front of it.
+    private static HashSet<long> Own(ThingSubject thing) =>
+        thing.ReferenceId is long id ? new HashSet<long> { id } : new HashSet<long>();
 
     private static LintValue SunBlocked(LintCall call)
     {

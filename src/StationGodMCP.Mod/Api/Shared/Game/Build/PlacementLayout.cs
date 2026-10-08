@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
@@ -104,7 +105,16 @@ internal static class PlacementLayout
 
         if (turn != null)
         {
-            ControlsAhead(prefab, turn, mount, small, large, facts, conflicts);
+            ControlsAhead(prefab, turn, mount, small, large, render, facts, ignore, conflicts);
+        }
+
+        string? clips = ClipsSurface(prefab, mount, small, render, facts, structure => ignore.Contains(structure.ReferenceId),
+            out long? clipped);
+        if (clips != null)
+        {
+            conflicts.Add(new LayoutConflict(ConflictCodes.ClipsSurface, ConflictLevel.Warning,
+                $"Its body runs into {clips}: it does not rest on that surface. Turn it to stand on it, or move it off.",
+                clipped));
         }
 
         if (turn != null && prefab is Device)
@@ -328,10 +338,10 @@ internal static class PlacementLayout
     /// the side is the forward fallback). A face-mounted piece whose controls face its front is front_blocked's.
     /// </summary>
     private static void ControlsAhead(Structure prefab, CubeRotation turn, MountRect? mount, List<GridCell> small,
-        List<GridCell> large, GridFacts facts, List<LayoutConflict> conflicts)
+        List<GridCell> large, Box3 render, GridFacts facts, HashSet<long> ignore, List<LayoutConflict> conflicts)
     {
-        string? blocked = ControlsBlockedBy(prefab, turn, mount, small, large, facts, out ControlFace? controls,
-            out long? id);
+        string? blocked = ControlsBlockedBy(prefab, turn, mount, small, large, render, facts, ignore, _ => false,
+            out ControlFace? controls, out long? id);
         if (blocked != null && controls != null)
         {
             conflicts.Add(new LayoutConflict(ConflictCodes.ControlsBlocked,
@@ -345,9 +355,13 @@ internal static class PlacementLayout
     /// What stands right in front of the side the prefab's controls face at this turn (PrefabControls), as text, with
     /// its id; null when nothing does, when it has no control face, or when the side is a face-mounted piece's front
     /// (front_blocked's). small and large are the cells it registers in; the thing itself is never in front of itself.
+    /// First the cell in front (a thing in it, a wall or frame on the plane, a frame's body), then the mesh boxes
+    /// (ControlsReach): a plate, frame or thing within ControlsReach.ClearanceM of the side, or across it (controls sunk
+    /// in a floor), covering a quarter of it. render is its mesh box; ignore and skip: things a plan removes.
     /// </summary>
     internal static string? ControlsBlockedBy(Structure prefab, CubeRotation turn, MountRect? mount,
-        List<GridCell> small, List<GridCell> large, GridFacts facts, out ControlFace? controls, out long? id)
+        List<GridCell> small, List<GridCell> large, Box3 render, GridFacts facts, HashSet<long> ignore,
+        Func<Structure, bool> skip, out ControlFace? controls, out long? id)
     {
         id = null;
         controls = PrefabControls.Of(prefab);
@@ -362,10 +376,55 @@ internal static class PlacementLayout
             return null;
         }
 
-        return small.Count > 0 ? SmallAhead(face, small, facts, ref id)
+        string? ahead = small.Count > 0 ? SmallAhead(face, small, facts, ref id)
             : large.Count > 0 ? LargeAhead(face, large, facts, ref id)
             : null;
+        return ahead ?? MeshAhead(face, mount, small, render, facts, ignore, skip, ref id);
     }
+
+    private static string? MeshAhead(GridStep face, MountRect? mount, List<GridCell> small, Box3 render,
+        GridFacts facts, HashSet<long> ignore, Func<Structure, bool> skip, ref long? id)
+    {
+        Vec3 reach = Vec3.Of(face) * ControlsReach.ClearanceM;
+        Box3 room = new Box3(Vec3Min(render.Min, render.Min + reach), Vec3Max(render.Max, render.Max + reach));
+        List<Solid> solids = NearSolids.Around(room, facts, new HashSet<GridCell>(small), ignore, skip);
+        if (!(ControlsReach.Blocker(render, face, solids, mount) is (Solid solid, double distance)))
+        {
+            return null;
+        }
+
+        id = solid.Id;
+        return ControlsReach.Describe(solid, distance, render);
+    }
+
+    /// <summary>
+    /// clips_surface (SurfaceClip): the plate or frame a small-grid device's mesh box runs into, other than the surface
+    /// it rests on (its mount plane), as text with its id; null when none, and for anything but a small-grid device
+    /// (a piece, an in-line tank or a passive vent lies in its run; 2 m structures fill their cells).
+    /// </summary>
+    internal static string? ClipsSurface(Structure prefab, MountRect? mount, List<GridCell> small, Box3 render,
+        GridFacts facts, Func<Structure, bool> skip, out long? id)
+    {
+        id = null;
+        if (!(prefab is Device) || small.Count == 0 || IsRunPiece(prefab))
+        {
+            return null;
+        }
+
+        if (!(SurfaceClip.First(render, mount, NearSolids.Surfaces(render, facts, skip)) is (Solid solid, double depth)))
+        {
+            return null;
+        }
+
+        id = solid.Id;
+        return SurfaceClip.Describe(solid, depth, render);
+    }
+
+    private static Vec3 Vec3Min(Vec3 a, Vec3 b) =>
+        new Vec3(System.Math.Min(a.X, b.X), System.Math.Min(a.Y, b.Y), System.Math.Min(a.Z, b.Z));
+
+    private static Vec3 Vec3Max(Vec3 a, Vec3 b) =>
+        new Vec3(System.Math.Max(a.X, b.X), System.Math.Max(a.Y, b.Y), System.Math.Max(a.Z, b.Z));
 
     /// <summary>The mount rectangle a prefab at a turn has over its small cells and render box (null when it has none).</summary>
     internal static MountRect? MountOf(Structure prefab, List<GridCell> small, CubeRotation turn, Box3 render) =>

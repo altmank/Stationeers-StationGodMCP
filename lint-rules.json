@@ -142,7 +142,7 @@
     {
       "id": "controls_blocked",
       "level": "warning",
-      "description": "The side of a device carrying its slots, buttons and switches faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it. Only information where no control sits clearly on one side (the device's forward stands in).",
+      "description": "The side of a device carrying its slots, buttons and switches faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it; or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it (controls sunk in a floor or facing down onto it). Only information where no control sits clearly on one side (the device's forward stands in).",
       "on": ["audit", "dry_run"],
       "select": "things where kind == \"device\" or kind == \"structure\"",
       "let": { "c": "controls_side(x)", "blocked": "controls_blocked(x)" },
@@ -152,6 +152,20 @@
       "examples": {
         "pass": [ { "kind": "device", "display_name": "Locker", "prefab": "StructureStorageLocker", "reference_id": 12, "controls_side()": { "side": "+z", "fallback": false, "source": "4 controls" }, "controls_blocked()": null } ],
         "fail": [ { "kind": "device", "display_name": "Locker", "prefab": "StructureStorageLocker", "reference_id": 12, "controls_side()": { "side": "+z", "fallback": false, "source": "4 controls" }, "controls_blocked()": "a wall (StructureWall 44)" } ]
+      }
+    },
+    {
+      "id": "clips_surface",
+      "level": "warning",
+      "description": "A small-grid device whose mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body other than the surface it rests on (the face plane behind its small cells along its top, or its back for a mounted one): built lying or turned so that its body sinks into a floor or wall it does not stand on.",
+      "on": ["audit", "dry_run"],
+      "select": "devices where kind == \"device\"",
+      "let": { "clip": "clips_surface(x)" },
+      "assert": "not has(clip)",
+      "message": "{display_name} ({prefab} {reference_id}) runs into {clip}: it does not rest on that surface.",
+      "examples": {
+        "pass": [ { "kind": "device", "display_name": "Turbo Volume Pump (Gas)", "prefab": "StructureTurboVolumePump", "reference_id": 14, "clips_surface()": null } ],
+        "fail": [ { "kind": "device", "display_name": "Turbo Volume Pump (Gas)", "prefab": "StructureTurboVolumePump", "reference_id": 14, "clips_surface()": "the floor (Composite Wall (Type 1) (StructureCompositeWall 44)) on y=212, 0.13 m deep" } ]
       }
     },
     {
@@ -361,6 +375,27 @@
       "examples": {
         "pass": [ { "kind": "cable", "prefab": "StructureCableStraight", "reference_id": 90, "cells": [ { "support": "frame_face" }, { "support": "inside_frame" } ] } ],
         "fail": [ { "kind": "cable", "prefab": "StructureCableStraight", "reference_id": 90, "cells": [ { "support": "frame_face" }, { "support": "wall_plane" } ] } ]
+      }
+    },
+    {
+      "id": "chute_outside_frame",
+      "level": "warning",
+      "description": "A chute piece with a cell outside a frame's body: on a frame's face, on a wall or floor plane, or in air. Chutes run inside frames. A device's port stub is not checked: the piece in the joining cell of a device's chute port, or one cell from it, leaves the frames to meet a device standing outside them.",
+      "on": ["audit", "dry_run"],
+      "select": "pieces where kind == \"chute\"",
+      "let": { "off": "filter(cells, c => c.support != \"inside_frame\")" },
+      "assert": "count(off) == 0 or port_stub(x)",
+      "message": "{prefab} {reference_id} has {count(off)} of {count(cells)} cells outside the frames ({join(distinct(map(off, c => c.support)))}).",
+      "examples": {
+        "pass": [
+          { "kind": "chute", "prefab": "StructureChuteStraight", "reference_id": 95, "cells": [ { "support": "inside_frame" } ], "port_stub()": false },
+          { "kind": "chute", "prefab": "StructureChuteStraight", "reference_id": 96, "cells": [ { "support": "frame_face" } ], "port_stub()": true }
+        ],
+        "fail": [
+          { "kind": "chute", "prefab": "StructureChuteStraight", "reference_id": 95, "cells": [ { "support": "frame_face" } ], "port_stub()": false },
+          { "kind": "chute", "prefab": "StructureChuteCorner", "reference_id": 97, "cells": [ { "support": "wall_plane" } ], "port_stub()": false },
+          { "kind": "chute", "prefab": "StructureChuteStraight", "reference_id": 98, "cells": [ { "support": "air" } ], "port_stub()": false }
+        ]
       }
     }
   ]
