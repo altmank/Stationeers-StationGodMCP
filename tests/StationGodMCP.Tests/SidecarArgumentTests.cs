@@ -30,7 +30,7 @@ public sealed class SidecarArgumentTests
     {
         string problem = Assert.Single(Problems("move_item", """{"moves":[{"reference_id":"1","to_id":"2","to_slot":0,"qty":1}]}"""));
 
-        Assert.StartsWith("Unknown argument 'moves[0].qty' (known here: reference_id, quantity, to_id, to_slot, merge).", problem);
+        Assert.StartsWith("Unknown argument 'moves[0].qty' (known here: reference_id, quantity, to_id, to_slot, merge, allow_in_use).", problem);
     }
 
     [Fact]

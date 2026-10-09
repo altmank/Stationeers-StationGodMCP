@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:ac8e3baf38c222a8e80798cb5a8e25024220bbb135d90259d75bfda5c40a2fe3'
+CATALOGUE_HASH = 'sha256:e7b5cf48095877446dbfeec42f71c27d9960fc97fc6ed8c1154576525dfa5214'
 MOD_VERSION = '1.32.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -562,7 +562,14 @@ TABLE = {'catalogue': {'class': 'read',
                'effects': [],
                'paging': None,
                'duration': None,
-               'params': ['reference_id', 'quantity', 'to_id', 'to_slot', 'merge', 'force', 'moves'],
+               'params': ['reference_id',
+                          'quantity',
+                          'to_id',
+                          'to_slot',
+                          'merge',
+                          'force',
+                          'allow_in_use',
+                          'moves'],
                'required': [],
                'shaping': 'lists',
                'protocol': False},
@@ -1386,6 +1393,7 @@ TABLE = {'catalogue': {'class': 'read',
                              'within_id',
                              'near_player_m',
                              'limit',
+                             'allow_in_use',
                              'dry_run',
                              'confirm'],
                   'required': ['silo_id'],
@@ -1918,12 +1926,12 @@ class Methods:
         """
         return self.call('move_gas', **{'from': from_, 'to': to, 'delete': delete, 'gases': gases, 'amount_mol': amount_mol, 'force': force, 'joined': joined, 'dry_run': dry_run, 'transfer_id': transfer_id}, **options)
 
-    def move_item(self, *, reference_id: str | None = None, quantity: int | None = None, to_id: str | None = None, to_slot: int | str | None = None, merge: bool | None = None, force: bool | None = None, moves: list | None = None, **options) -> dict:
+    def move_item(self, *, reference_id: str | None = None, quantity: int | None = None, to_id: str | None = None, to_slot: int | str | None = None, merge: bool | None = None, force: bool | None = None, allow_in_use: bool | None = None, moves: list | None = None, **options) -> dict:
         """Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order.
 
-        Class: write (other classes at some arguments). Arguments: reference_id, quantity, to_id, to_slot, merge, force, moves.
+        Class: write (other classes at some arguments). Arguments: reference_id, quantity, to_id, to_slot, merge, force, allow_in_use, moves.
         """
-        return self.call('move_item', **{'reference_id': reference_id, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'merge': merge, 'force': force, 'moves': moves}, **options)
+        return self.call('move_item', **{'reference_id': reference_id, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'merge': merge, 'force': force, 'allow_in_use': allow_in_use, 'moves': moves}, **options)
 
     def move_player(self, *, player: str | None = None, at: object | None = None, to_id: str | None = None, near_player: str | None = None, safe_ground: bool | None = None, dry_run: bool | None = None, **options) -> dict:
         """Cheat: move a player anywhere at once, to a point (at), next to a thing (to_id) or next to another player (near_player); works for a player on another machine.
@@ -2240,12 +2248,12 @@ class Methods:
         """
         return self.call('show_preview', **{'placements': placements, 'prefab': prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient': orient, 'above_floor_m': above_floor_m, 'build_state': build_state, 'allow_door_keepout': allow_door_keepout, 'cells': cells, 'boxes': boxes, 'seconds': seconds, 'keep': keep, 'clear': clear, 'xray': xray}, **options)
 
-    def silo_deposit(self, *, silo_id: str | None = None, items: list | None = None, reference_ids: list | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
+    def silo_deposit(self, *, silo_id: str | None = None, items: list | None = None, reference_ids: list | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, near_player_m: float | None = None, limit: int | None = None, allow_in_use: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
         """Put things straight into an SDB Silo's store from wherever they are, each as one entry with its contents, as the silo's import stores it; by id, in part, or by a filter.
 
-        Class: write (other classes at some arguments). Arguments: silo_id (required), items, reference_ids, prefab_contains, name_contains, location, within_id, near_player_m, limit, dry_run, confirm.
+        Class: write (other classes at some arguments). Arguments: silo_id (required), items, reference_ids, prefab_contains, name_contains, location, within_id, near_player_m, limit, allow_in_use, dry_run, confirm.
         """
-        return self.call('silo_deposit', **{'silo_id': silo_id, 'items': items, 'reference_ids': reference_ids, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'dry_run': dry_run, 'confirm': confirm}, **options)
+        return self.call('silo_deposit', **{'silo_id': silo_id, 'items': items, 'reference_ids': reference_ids, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'near_player_m': near_player_m, 'limit': limit, 'allow_in_use': allow_in_use, 'dry_run': dry_run, 'confirm': confirm}, **options)
 
     def silo_withdraw(self, *, silo_id: str | None = None, prefab_name: str | None = None, prefab_hash: int | None = None, quantity: float | None = None, to_id: str | None = None, to_slot: int | str | None = None, allow_ground: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, **options) -> dict:
         """Take items of one prefab out of an SDB Silo straight into a holder's slots, with the silo's own bookkeeping, front of the store first.

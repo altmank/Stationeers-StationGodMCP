@@ -71,11 +71,13 @@ Every ore you carry, nearest first, each becoming one entry at the back of the s
 `items: [{reference_id, quantity}]` (up to 256, `quantity` for part of a stack), `reference_ids: [...]` (whole
 things), or a filter as `find_items` takes it plus `limit` (default 64, max 600). A thing is stored as the silo's
 import stores it: its save data and everything inside it, then the thing and its contents are destroyed. The silo takes
-items whose slot class fits its import slot; a filter leaves out the rest and counts them as `skipped`.
+items whose slot class fits its import slot; a filter leaves out the rest, and parts a device is using, and counts
+them as `skipped`.
 
 Refused per thing: something in a silo's own slot (`silo_busy`, the silo is importing or exporting it), in a vault's
-slot, in a locked slot, a growing plant, a thing holding a player, and a thing named twice or inside another thing the
-deposit takes. Past 600 entries (an import the silo is saving counts) each further thing is `silo_full`.
+slot, in a locked slot, a growing plant, a part a device is using (`in_use`: a chip in its holder, a console's
+motherboard, a running machine's filter, battery or canister; `allow_in_use: true` takes it, see `move_item`), a thing
+holding a player, and a thing named twice or inside another thing the deposit takes. Past 600 entries (an import the silo is saving counts) each further thing is `silo_full`.
 
 ## Good to know
 

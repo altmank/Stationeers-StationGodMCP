@@ -171,7 +171,7 @@
   "families": {
     "materials": {
       "summary": "from_id: where a build's materials come from.",
-      "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
+      "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. A part a device is using (slots/in_use) never pays, nor anything inside it. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
     },
     "gas_hold": {
       "summary": "gas_check and the gas hold after a pipe job lost gas; acknowledge_gas_lost.",
@@ -228,16 +228,20 @@
       }
     },
     "slots": {
-      "summary": "Slots: numbering, hidden slots, growers, and slot refusals.",
+      "summary": "Slots: numbering, hidden slots, growers, parts in use, and slot refusals.",
       "text": "Slot indexes are as container_contents gives them for any thing, and inspect_slots for a device. Only slots a player can reach take items: a hidden slot (a cable coil's internal slot, a vending machine's store) is refused. Items move slot to slot, never through the world.",
       "subtopics": {
         "growers": {
           "summary": "A grower's plant and fertiliser slots.",
           "text": "A grower's plant and fertiliser slots follow its hand interactions, hidden or not. A seed or plant into a plant slot (a hydroponics tray, planter, station or device) is planted as a player plants it: one unit is used and a plant grows with that unit's genes, so quantity must be 1; an occupied plant slot is slot_occupied. A plant slot takes only a seed or plant; a fertiliser slot only fertiliser, one unit into an empty slot. A growing plant is never taken out (planted): a player only harvests or clears it; a seed bag left in one may be."
         },
+        "in_use": {
+          "summary": "Parts a device is using, which no tool takes out unasked.",
+          "text": "A chip in any chip holder (IC housing, a circuit device's chip slot, laptop, robot, suit, tablet) and a computer's or console's motherboard are always in use: the program or the console's set-up lives in them, and taking a chip out resets it. While the device is switched on (or has no switch) these are in use too: a filtration machine's or atmos dock's filters, the battery cell of a placed battery-run machine (area power control, battery wall light, robot, rover) and the canister of a machine that draws on it (Stirling engine, portable generator, composter, portable air conditioner, portable hydroponics). move_item and silo_deposit refuse such an item as in_use, naming the device, its label and the slot, and silo_deposit's dry run reports it; silo_deposit's filter form skips it; a build's from_id never pays with it. allow_in_use true takes it anyway. Not covered: battery chargers and canister docks, whose job is to hand the part back; the batteries, tanks and filters of carried gear (suits, tools, helmets, jetpacks); other slots (storage, import, export). Deconstructing the device itself is not a take: its contents go with it."
+        },
         "refusals": {
           "summary": "Why a move into or out of a slot is refused.",
-          "text": "not_movable: not an item that fits a slot (a structure). invalid_destination: the destination is the item or inside it. no_slots, slot_not_found, same_slot. slot_locked: the source or destination slot is locked. slot_refuses: the game's slot rules (a hidden slot, the slot class, the game's own reason, or a draggable such as a crate or portable tank, which the game only drags in). slot_occupied: something it cannot join, or merge false, or a filled grower slot. partial_merge: part of a stack only goes into an empty slot. stack_full. no_free_slot. move_failed: the game did not do it; read the slots."
+          "text": "not_movable: not an item that fits a slot (a structure). invalid_destination: the destination is the item or inside it. no_slots, slot_not_found, same_slot. slot_locked: the source or destination slot is locked. in_use: a part its device is using (see in_use; allow_in_use). slot_refuses: the game's slot rules (a hidden slot, the slot class, the game's own reason, or a draggable such as a crate or portable tank, which the game only drags in). slot_occupied: something it cannot join, or merge false, or a filled grower slot. partial_merge: part of a stack only goes into an empty slot. stack_full. no_free_slot. move_failed: the game did not do it; read the slots."
         }
       }
     },

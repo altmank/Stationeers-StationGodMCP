@@ -7,14 +7,14 @@
     "topics": {
       "forms": {
         "summary": "items, reference_ids, or a filter.",
-        "text": "items [{reference_id, quantity}] (up to 256; quantity for part of a stack), reference_ids (whole things), or a filter over every item in the world: prefab_contains, name_contains, location, within_id, near_player_m and limit (default 64, max 600, nearest the player first). Items the silo does not take are left out of a filter and counted as skipped."
+        "text": "items [{reference_id, quantity}] (up to 256; quantity for part of a stack), reference_ids (whole things), or a filter over every item in the world: prefab_contains, name_contains, location, within_id, near_player_m and limit (default 64, max 600, nearest the player first). Items the silo does not take, and parts a device is using (unless allow_in_use), are left out of a filter and counted as skipped."
       },
       "reply": {
         "summary": "What a deposit answers.",
-        "text": "{dry_run, silo, on_off, powered, matched, skipped, truncated, items {results [{index, ok, reference_id, prefab_name, display_name, from {id, slot}, quantity, left_in_source, children, entry}], count, success_count, error_count}, count {before, after, capacity}}. A refused thing: thing_not_found, not_movable, slot_refuses, slot_locked, planted, silo_busy (in a silo's slot), in_vault_slot, silo_full, invalid_argument (named twice, inside another thing named, more than the stack holds)."
+        "text": "{dry_run, silo, on_off, powered, matched, skipped, truncated, items {results [{index, ok, reference_id, prefab_name, display_name, from {id, slot}, quantity, left_in_source, children, entry}], count, success_count, error_count}, count {before, after, capacity}}. A refused thing: thing_not_found, not_movable, slot_refuses, slot_locked, planted, in_use (a part its device is using; allow_in_use), silo_busy (in a silo's slot), in_vault_slot, silo_full, invalid_argument (named twice, inside another thing named, more than the stack holds)."
       }
     },
-    "shared": ["silos", "jobs", "items"]
+    "shared": ["silos", "jobs", "items", "slots"]
   },
   "class": "write",
   "x-class-when": [{"when": {"dry_run": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
@@ -60,6 +60,7 @@
         "maximum": 600,
         "description": "Filter: at most this many things, nearest first; default 64."
       },
+      "allow_in_use": {"$ref": "defs/allow_in_use.json"},
       "dry_run": {"type": "boolean", "description": "Default true: check and report only."},
       "confirm": {"type": "boolean", "description": "true with dry_run false to deposit."}
     },

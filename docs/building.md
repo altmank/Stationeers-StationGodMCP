@@ -55,6 +55,7 @@ This applies to every tool that changes the world: the run, upgrade and clean to
    `from_id` may list up to 8 things, tried in order for each material, so a hull piece can take its kit from one
    locker and its steel from another: `"from_id": ["<rocket parts locker>", "<materials locker>"]`. The dry run's
    materials then give `paid_by`, what each thing pays and holds; the first thing is the one refunds to `source` use.
+   A part a device is using (a chip in its holder, a running machine's filter, battery or canister) never pays.
 7. **Refunds** are what deconstruction would give back. Every tool that refunds (the place tools with `remove_ids`,
    the remove, upgrade, clean and replace tools, `remove_structure`, `undo_job`, `plan_removal`) takes `refund_to`: a
    list of targets tried in turn for each item until it fits.

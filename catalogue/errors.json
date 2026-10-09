@@ -207,6 +207,11 @@
     "origin": "tool",
     "see": {"topic": "chips"}
   },
+  "in_use": {
+    "description": "The item is a part its device is using (a chip in its holder, a console's motherboard, or a running machine's filter, battery or canister); the message names the device, its label and the slot. Take a spare, switch the device off first, or pass allow_in_use true.",
+    "origin": "tool",
+    "see": {"topic": "slots", "subtopic": "in_use"}
+  },
   "in_vault_slot": {
     "description": "The item sits in a vault's slot. Take it out first, or let the vault finish.",
     "origin": "tool",

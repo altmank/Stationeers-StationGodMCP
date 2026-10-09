@@ -1,0 +1,4 @@
+{
+  "type": "boolean",
+  "description": "Default false: a part its device is using (a chip in its holder, a console's motherboard, a running machine's filter, battery or canister) is refused as in_use; true takes it."
+}

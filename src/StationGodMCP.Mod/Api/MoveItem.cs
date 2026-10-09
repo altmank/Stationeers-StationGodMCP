@@ -37,6 +37,8 @@ namespace StationGodMCP.Api;
 /// an item may be taken out of a hidden slot (that is how one put there by mistake is rescued). A part of a stack
 /// cannot join another stack: the game has no call that merges part of one without first making a new stack in an
 /// empty slot.
+/// An item its device is using (Pure/PartInUseRule: a chip in a chip holder, a console's motherboard, and while the
+/// device is switched on its filter, battery or canister) is refused as in_use unless allow_in_use.
 /// The slot is read again right before the game call (SlotOccupancy.StillSafe): a move never replaces, drops or
 /// destroys what a slot holds.
 ///
@@ -145,7 +147,7 @@ internal abstract class MoveItemRequest
             return new Single(ItemMove.Parse(args, args.OptionalBool("force") ?? false));
         }
 
-        args.Reject("moves", "reference_id", "quantity", "to_id", "to_slot", "merge", "force");
+        args.Reject("moves", "reference_id", "quantity", "to_id", "to_slot", "merge", "force", "allow_in_use");
         JArray list = args.Array("moves", MoveItemApi.MaximumMoves);
         List<ParsedMove> moves = new List<ParsedMove>(list.Count);
         for (int index = 0; index < list.Count; index++)
@@ -254,7 +256,8 @@ internal abstract class SlotChoice
 /// <summary>One requested move, as parsed.</summary>
 internal sealed class ItemMove
 {
-    private ItemMove(ThingId item, int? quantity, ThingId target, SlotChoice slot, bool merge, bool force)
+    private ItemMove(ThingId item, int? quantity, ThingId target, SlotChoice slot, bool merge, bool force,
+        bool allowInUse)
     {
         Item = item;
         Quantity = quantity;
@@ -262,6 +265,7 @@ internal sealed class ItemMove
         Slot = slot;
         Merge = merge;
         Force = force;
+        AllowInUse = allowInUse;
     }
 
     internal ThingId Item { get; }
@@ -279,6 +283,9 @@ internal sealed class ItemMove
     /// <summary>The cheat: fill a hidden slot as the game's own code does (Pure/ForcedSlotRule).</summary>
     internal bool Force { get; }
 
+    /// <summary>Take the item even when the device holding it is using it (Pure/PartInUseRule).</summary>
+    internal bool AllowInUse { get; }
+
     internal static ItemMove Parse(Args args, bool force)
     {
         SlotChoice slot = SlotChoice.Parse(args);
@@ -293,7 +300,8 @@ internal sealed class ItemMove
             args.ThingId("to_id"),
             slot,
             args.OptionalBool("merge") ?? true,
-            force);
+            force,
+            args.OptionalBool("allow_in_use") ?? false);
     }
 }
 
@@ -402,7 +410,7 @@ internal static class MovePlanner
             return ApiErrors.Refused("not_movable", $"{Names.Of(found)} is not an item that fits in a slot.");
         }
 
-        ApiException? refusal = DestinationRefusal(item, destination) ?? SourceRefusal(item);
+        ApiException? refusal = DestinationRefusal(item, destination) ?? SourceRefusal(item, move.AllowInUse);
         quantity = 0;
         return refusal ?? QuantityRefusal(move, item, out quantity);
     }
@@ -448,7 +456,8 @@ internal static class MovePlanner
         return item != null && item.ParentSlot != null ? item.ParentSlot.Parent : null;
     }
 
-    private static ApiException? SourceRefusal(DynamicThing item)
+    // A part its device is using (in_use, Pure/PartInUseRule) is judged after the slot's own lock and grower rules.
+    private static ApiException? SourceRefusal(DynamicThing item, bool allowInUse)
     {
         Slot? from = item.ParentSlot;
         if (from == null)
@@ -462,7 +471,7 @@ internal static class MovePlanner
         }
 
         return GrowerSlotRule.TakesOut(GrowerSlots.KindOf(from.Parent, from), item is Plant, item is Seed)
-            ? null
+            ? PartsInUse.Refusal(item, allowInUse)
             : ApiErrors.Refused("planted",
                 $"{Names.Of(item)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, "
                 + "only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.");

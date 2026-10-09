@@ -40,8 +40,9 @@ internal static class SiloDepositApi
         bool dryRun = WriteMode.IsDryRun(args);
         SiloStore store = SiloStore.Of(Silos.Resolve(args.ThingId("silo_id")));
         SiloDepositForm form = SiloDepositForm.Of(args);
+        bool allowInUse = args.OptionalBool("allow_in_use") ?? false;
         store.RequirePowered();
-        SiloDepositList list = SiloDepositList.Of(form, args, store.Silo);
+        SiloDepositList list = SiloDepositList.Of(form, args, store.Silo, allowInUse);
         int room = SiloRules.Room(store.Entries.Count, store.Importing);
         BatchBuilder batch = new BatchBuilder(list.Picks.Count);
         List<SiloDepositPlan> plans = new List<SiloDepositPlan>(list.Picks.Count);
@@ -49,7 +50,8 @@ internal static class SiloDepositApi
         for (int index = 0; index < list.Picks.Count; index++)
         {
             SiloDepositPick pick = list.Picks[index];
-            ApiException? refusal = SiloDepositPlan.TryPlan(pick, store.Silo, named, plans, out SiloDepositPlan? plan);
+            ApiException? refusal = SiloDepositPlan.TryPlan(pick, store.Silo, named, plans, allowInUse,
+                out SiloDepositPlan? plan);
             if (refusal == null && plans.Count >= room)
             {
                 refusal = ApiErrors.Refused("silo_full",
@@ -124,7 +126,9 @@ internal sealed class SiloDepositList
     /// <summary>The prefab the filter form knew up front, for a refusal; null in the id forms.</summary>
     internal string? PrefabOf(int index) => index < _prefabs.Count ? _prefabs[index] : null;
 
-    internal static SiloDepositList Of(SiloDepositForm form, Args args, Silo silo)
+    /// <summary>The filter form leaves out what the silo does not take, and a part a device is using unless
+    /// allowInUse; both count as skipped.</summary>
+    internal static SiloDepositList Of(SiloDepositForm form, Args args, Silo silo, bool allowInUse)
     {
         if (form is SiloDepositForm.ById ids)
         {
@@ -137,7 +141,8 @@ internal sealed class SiloDepositList
         int skipped = 0;
         foreach (ItemRecord record in records)
         {
-            if (SiloImportRule.Refusal(record.Item, silo) == null)
+            if (SiloImportRule.Refusal(record.Item, silo) == null &&
+                PartsInUse.Refusal(record.Item, allowInUse) == null)
             {
                 taken.Add(record);
             }
@@ -209,10 +214,10 @@ internal sealed class SiloDepositPlan
 
     /// <summary>A refusal, or null and the plan.</summary>
     internal static ApiException? TryPlan(SiloDepositPick pick, Silo silo, HashSet<long> named,
-        List<SiloDepositPlan> planned, out SiloDepositPlan? plan)
+        List<SiloDepositPlan> planned, bool allowInUse, out SiloDepositPlan? plan)
     {
         plan = null;
-        ApiException? refusal = ThingRefusal(pick, silo, named, out DynamicThing? thing) ??
+        ApiException? refusal = ThingRefusal(pick, silo, named, allowInUse, out DynamicThing? thing) ??
                                 OverlapRefusal(thing!, planned);
         if (refusal != null)
         {
@@ -240,7 +245,7 @@ internal sealed class SiloDepositPlan
         return null;
     }
 
-    private static ApiException? ThingRefusal(SiloDepositPick pick, Silo silo, HashSet<long> named,
+    private static ApiException? ThingRefusal(SiloDepositPick pick, Silo silo, HashSet<long> named, bool allowInUse,
         out DynamicThing? thing)
     {
         thing = null;
@@ -276,11 +281,12 @@ internal sealed class SiloDepositPlan
                 $"{Names.Of(thing)} is in a slot of {Names.Of(slot.Parent)}; take it out or let the vault finish.");
         }
 
-        return SourceRefusal(thing) ?? SiloImportRule.Refusal(thing, silo);
+        return SourceRefusal(thing, allowInUse) ?? SiloImportRule.Refusal(thing, silo);
     }
 
-    // move_item's rules for taking a thing out of its slot: not a locked slot, not a plant growing in a grower.
-    private static ApiException? SourceRefusal(DynamicThing thing)
+    // move_item's rules for taking a thing out of its slot: not a locked slot, not a plant growing in a grower, not a
+    // part its device is using unless allow_in_use.
+    private static ApiException? SourceRefusal(DynamicThing thing, bool allowInUse)
     {
         Slot? from = thing.ParentSlot;
         if (from == null)
@@ -294,7 +300,7 @@ internal sealed class SiloDepositPlan
         }
 
         return GrowerSlotRule.TakesOut(GrowerSlots.KindOf(from.Parent, from), thing is Plant, thing is Seed)
-            ? null
+            ? PartsInUse.Refusal(thing, allowInUse)
             : ApiErrors.Refused("planted",
                 $"{Names.Of(thing)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole.");
     }

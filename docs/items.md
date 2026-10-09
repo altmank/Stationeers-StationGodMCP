@@ -15,7 +15,7 @@ these tools need a gateway.
 | `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m`, `order` |
 | `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Empty slots are left out at every depth and counted in `empty_slots_omitted`; `include_empty: true` keeps them (to find a free slot). Shape it with paths through the slots: `fields: ["slots.index", "slots.occupant.prefab_name"]`, or `occupant.slots.occupant.prefab_name` for what a backpack holds. | `reference_id`, `depth` (default 3), `include_empty`, `prefab_contains`, `name_contains` (slots holding a match at any depth) |
 | `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
-| `move_item` | Move an item, or part of a stack, into a slot. | `reference_id`, `quantity`, `to_id`, `to_slot`, `merge`, `force` (cheat); or `moves: [...]` |
+| `move_item` | Move an item, or part of a stack, into a slot. | `reference_id`, `quantity`, `to_id`, `to_slot`, `merge`, `allow_in_use`, `force` (cheat); or `moves: [...]` |
 | `label` | Rename things as the hand Labeller does. | `reference_id`, `name`; or `labels: [...]` |
 | `paint` | Paint things as a spray can does, no paint used; or list the colours. | `reference_ids` with `color`, or `items: [{reference_id, color}]` |
 
@@ -88,12 +88,17 @@ other perishables are never loose in the air.
   `"auto"` never puts anything else there.
 - A plant growing in a plant slot is never moved out (`planted`): by hand you only harvest its fruit or seeds, or
   clear it. A seed bag left in a plant slot can be moved out.
+- A part a device is using is not taken out (`in_use`, naming the device, its label and the slot): a chip in an IC
+  housing or any other chip holder and a console's motherboard always; a filtration machine's filter, an area power
+  control's or battery-run machine's battery and a Stirling engine's or portable machine's canister while the device
+  is switched on. Switch it off first, take a spare, or pass `allow_in_use: true`. Battery chargers, canister docks
+  and the batteries, tanks and filters of carried gear are not guarded.
 - If the game throws part way through a move but the slot holds the result, the move is reported done with the
   game's error in `warning`: do not repeat it.
 - `moves` applies up to 64 moves in order, each with its own result.
 - Refusals name the reason: `slot_refuses` (the game's slot rules, with its message; a crate or portable tank is
   refused because the game only drags those into a slot), `slot_occupied`, `stack_full`,
-  `no_free_slot`, `planted`, `slot_locked`, `not_movable` (a structure) and others. A refused move changes nothing.
+  `no_free_slot`, `planted`, `in_use`, `slot_locked`, `not_movable` (a structure) and others. A refused move changes nothing.
 
 Put 50 iron ingots into a locker's first free slot, `move_item`:
 

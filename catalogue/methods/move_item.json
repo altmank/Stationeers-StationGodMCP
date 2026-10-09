@@ -2,7 +2,7 @@
   "name": "move_item",
   "summary": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose. force is a cheat.",
   "help": {
-    "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it. force true (a cheat, one move only: ask the user first) also fills a hidden slot (topic force).",
+    "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it. A part its device is using (a chip in its holder, a console's motherboard, a running machine's filter, battery or canister) is refused as in_use unless allow_in_use (slots/in_use). force true (a cheat, one move only: ask the user first) also fills a hidden slot (topic force).",
     "keys": "index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
     "topics": {
       "rules": {
@@ -43,6 +43,7 @@
         "type": "boolean",
         "description": "Cheat, default false: true puts the whole item into an empty slot by index even when it is hidden, as the game's own code does (topic force). Ask the user first."
       },
+      "allow_in_use": {"$ref": "defs/allow_in_use.json"},
       "moves": {
         "type": "array",
         "minItems": 1,
@@ -57,7 +58,8 @@
               "oneOf": [{"type": "integer", "minimum": 0}, {"type": "string", "enum": ["auto"]}],
               "description": "The slot index, or \"auto\"."
             },
-            "merge": {"type": "boolean", "description": "Let the items join a matching stack. Default true."}
+            "merge": {"type": "boolean", "description": "Let the items join a matching stack. Default true."},
+            "allow_in_use": {"$ref": "defs/allow_in_use.json"}
           },
           "required": ["reference_id", "to_id", "to_slot"],
           "additionalProperties": false

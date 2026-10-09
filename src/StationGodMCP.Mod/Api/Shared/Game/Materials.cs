@@ -187,7 +187,8 @@ internal abstract class HeldItem
 /// depth of slots (hands, suit, backpack, belt, a locker's slots), or the source itself when it is such an item; an
 /// item counted once however many sources reach it. Stacks and whole items alike (HeldItem): a build entry is matched
 /// by prefab hash, as ToolBasic.IsToolEntry does, whatever the item's class. Taken in that order as a kit's own
-/// placement takes them.
+/// placement takes them. A part a device is using (Pure/PartInUseRule: a chip in its holder, a running machine's
+/// filter, battery or canister) never pays, and neither does anything inside it.
 /// </summary>
 internal sealed class ItemStock
 {
@@ -231,7 +232,7 @@ internal sealed class ItemStock
         foreach (Thing source in sources)
         {
             List<Item> own = new List<Item>();
-            if (source is Item self && self.PrefabHash == item.PrefabHash)
+            if (source is Item self && self.PrefabHash == item.PrefabHash && !IsPartInUse(self))
             {
                 own.Add(self);
             }
@@ -264,7 +265,7 @@ internal sealed class ItemStock
         foreach (Slot slot in holder.Slots)
         {
             DynamicThing? occupant = slot?.Get();
-            if (occupant == null || occupant.IsBeingDestroyed)
+            if (occupant == null || occupant.IsBeingDestroyed || PartsInUse.InUse(slot!))
             {
                 continue;
             }
@@ -277,6 +278,8 @@ internal sealed class ItemStock
             Collect(occupant, prefabHash, items, depth + 1);
         }
     }
+
+    private static bool IsPartInUse(DynamicThing item) => item.ParentSlot != null && PartsInUse.InUse(item.ParentSlot);
 
     /// <summary>
     /// Takes up to the quantity from the held items in order (StockTake), splitting the last stack used; returns how

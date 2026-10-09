@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **No tool takes a part out of a device that is using it.** `move_item` and `silo_deposit` refuse with `in_use`,
+  naming the device, its label and the slot: a programmable chip in any chip holder (IC housing, a circuit device's
+  chip slot, laptop, robot, suit, tablet) and a computer's or console's motherboard always; a filtration machine's or
+  atmos dock's filter, the battery cell of a placed battery-run machine (area power control, battery wall light,
+  robot, rover) and the canister of a Stirling engine, portable generator, composter, portable air conditioner or
+  portable hydroponics while the device is switched on. Taking a running chip out resets it and stops its program.
+  `allow_in_use: true` (per move in `moves`) takes it anyway; `silo_deposit`'s dry run reports the refusal and its
+  filter form skips such parts; a build's `from_id` never pays with them. Battery chargers, canister docks and carried
+  gear (suits, tools, helmets, jetpacks) are not guarded. Help: `tool_info` slots/in_use.
+
 - **`vault_transfer`: move stock from one Ingot Vault straight into another.** `from_vault_id`, `to_vault_id` (either
   may be a Remote Vault), `items: [{prefab_name, prefab_hash or reagent, quantity}]` or nothing for everything. Each
   line comes off the source as the vault's vend takes it and onto the target as its import adds it (ingot grams of

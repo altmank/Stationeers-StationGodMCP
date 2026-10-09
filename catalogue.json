@@ -178,7 +178,7 @@
     "families": {
       "materials": {
         "summary": "from_id: where a build's materials come from.",
-        "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
+        "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. A part a device is using (slots/in_use) never pays, nor anything inside it. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
       },
       "gas_hold": {
         "summary": "gas_check and the gas hold after a pipe job lost gas; acknowledge_gas_lost.",
@@ -235,16 +235,20 @@
         }
       },
       "slots": {
-        "summary": "Slots: numbering, hidden slots, growers, and slot refusals.",
+        "summary": "Slots: numbering, hidden slots, growers, parts in use, and slot refusals.",
         "text": "Slot indexes are as container_contents gives them for any thing, and inspect_slots for a device. Only slots a player can reach take items: a hidden slot (a cable coil's internal slot, a vending machine's store) is refused. Items move slot to slot, never through the world.",
         "subtopics": {
           "growers": {
             "summary": "A grower's plant and fertiliser slots.",
             "text": "A grower's plant and fertiliser slots follow its hand interactions, hidden or not. A seed or plant into a plant slot (a hydroponics tray, planter, station or device) is planted as a player plants it: one unit is used and a plant grows with that unit's genes, so quantity must be 1; an occupied plant slot is slot_occupied. A plant slot takes only a seed or plant; a fertiliser slot only fertiliser, one unit into an empty slot. A growing plant is never taken out (planted): a player only harvests or clears it; a seed bag left in one may be."
           },
+          "in_use": {
+            "summary": "Parts a device is using, which no tool takes out unasked.",
+            "text": "A chip in any chip holder (IC housing, a circuit device's chip slot, laptop, robot, suit, tablet) and a computer's or console's motherboard are always in use: the program or the console's set-up lives in them, and taking a chip out resets it. While the device is switched on (or has no switch) these are in use too: a filtration machine's or atmos dock's filters, the battery cell of a placed battery-run machine (area power control, battery wall light, robot, rover) and the canister of a machine that draws on it (Stirling engine, portable generator, composter, portable air conditioner, portable hydroponics). move_item and silo_deposit refuse such an item as in_use, naming the device, its label and the slot, and silo_deposit's dry run reports it; silo_deposit's filter form skips it; a build's from_id never pays with it. allow_in_use true takes it anyway. Not covered: battery chargers and canister docks, whose job is to hand the part back; the batteries, tanks and filters of carried gear (suits, tools, helmets, jetpacks); other slots (storage, import, export). Deconstructing the device itself is not a take: its contents go with it."
+          },
           "refusals": {
             "summary": "Why a move into or out of a slot is refused.",
-            "text": "not_movable: not an item that fits a slot (a structure). invalid_destination: the destination is the item or inside it. no_slots, slot_not_found, same_slot. slot_locked: the source or destination slot is locked. slot_refuses: the game's slot rules (a hidden slot, the slot class, the game's own reason, or a draggable such as a crate or portable tank, which the game only drags in). slot_occupied: something it cannot join, or merge false, or a filled grower slot. partial_merge: part of a stack only goes into an empty slot. stack_full. no_free_slot. move_failed: the game did not do it; read the slots."
+            "text": "not_movable: not an item that fits a slot (a structure). invalid_destination: the destination is the item or inside it. no_slots, slot_not_found, same_slot. slot_locked: the source or destination slot is locked. in_use: a part its device is using (see in_use; allow_in_use). slot_refuses: the game's slot rules (a hidden slot, the slot class, the game's own reason, or a draggable such as a crate or portable tank, which the game only drags in). slot_occupied: something it cannot join, or merge false, or a filled grower slot. partial_merge: part of a stack only goes into an empty slot. stack_full. no_free_slot. move_failed: the game did not do it; read the slots."
           }
         }
       },
@@ -618,6 +622,11 @@
       "description": "The IC Housing is off, unpowered or not operable, or a worn item's battery is flat. Fix that, then try again.",
       "origin": "tool",
       "see": {"topic": "chips"}
+    },
+    "in_use": {
+      "description": "The item is a part its device is using (a chip in its holder, a console's motherboard, or a running machine's filter, battery or canister); the message names the device, its label and the slot. Take a spare, switch the device off first, or pass allow_in_use true.",
+      "origin": "tool",
+      "see": {"topic": "slots", "subtopic": "in_use"}
     },
     "in_vault_slot": {
       "description": "The item sits in a vault's slot. Take it out first, or let the vault finish.",
@@ -4257,7 +4266,7 @@
       "name": "move_item",
       "description": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose. force is a cheat.\nMore: tool_info {tool: \"move_item\"}",
       "help": {
-        "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it. force true (a cheat, one move only: ask the user first) also fills a hidden slot (topic force).",
+        "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it. A part its device is using (a chip in its holder, a console's motherboard, a running machine's filter, battery or canister) is refused as in_use unless allow_in_use (slots/in_use). force true (a cheat, one move only: ask the user first) also fills a hidden slot (topic force).",
         "keys": "index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
         "topics": {
           "rules": {
@@ -4301,6 +4310,10 @@
             "type": "boolean",
             "description": "Cheat, default false: true puts the whole item into an empty slot by index even when it is hidden, as the game's own code does (topic force). Ask the user first."
           },
+          "allow_in_use": {
+            "type": "boolean",
+            "description": "Default false: a part its device is using (a chip in its holder, a console's motherboard, a running machine's filter, battery or canister) is refused as in_use; true takes it."
+          },
           "moves": {
             "type": "array",
             "minItems": 1,
@@ -4315,7 +4328,11 @@
                   "oneOf": [{"type": "integer", "minimum": 0}, {"type": "string", "enum": ["auto"]}],
                   "description": "The slot index, or \"auto\"."
                 },
-                "merge": {"type": "boolean", "description": "Let the items join a matching stack. Default true."}
+                "merge": {"type": "boolean", "description": "Let the items join a matching stack. Default true."},
+                "allow_in_use": {
+                  "type": "boolean",
+                  "description": "Default false: a part its device is using (a chip in its holder, a console's motherboard, a running machine's filter, battery or canister) is refused as in_use; true takes it."
+                }
               },
               "required": ["reference_id", "to_id", "to_slot"],
               "additionalProperties": false
@@ -8933,14 +8950,14 @@
         "topics": {
           "forms": {
             "summary": "items, reference_ids, or a filter.",
-            "text": "items [{reference_id, quantity}] (up to 256; quantity for part of a stack), reference_ids (whole things), or a filter over every item in the world: prefab_contains, name_contains, location, within_id, near_player_m and limit (default 64, max 600, nearest the player first). Items the silo does not take are left out of a filter and counted as skipped."
+            "text": "items [{reference_id, quantity}] (up to 256; quantity for part of a stack), reference_ids (whole things), or a filter over every item in the world: prefab_contains, name_contains, location, within_id, near_player_m and limit (default 64, max 600, nearest the player first). Items the silo does not take, and parts a device is using (unless allow_in_use), are left out of a filter and counted as skipped."
           },
           "reply": {
             "summary": "What a deposit answers.",
-            "text": "{dry_run, silo, on_off, powered, matched, skipped, truncated, items {results [{index, ok, reference_id, prefab_name, display_name, from {id, slot}, quantity, left_in_source, children, entry}], count, success_count, error_count}, count {before, after, capacity}}. A refused thing: thing_not_found, not_movable, slot_refuses, slot_locked, planted, silo_busy (in a silo's slot), in_vault_slot, silo_full, invalid_argument (named twice, inside another thing named, more than the stack holds)."
+            "text": "{dry_run, silo, on_off, powered, matched, skipped, truncated, items {results [{index, ok, reference_id, prefab_name, display_name, from {id, slot}, quantity, left_in_source, children, entry}], count, success_count, error_count}, count {before, after, capacity}}. A refused thing: thing_not_found, not_movable, slot_refuses, slot_locked, planted, in_use (a part its device is using; allow_in_use), silo_busy (in a silo's slot), in_vault_slot, silo_full, invalid_argument (named twice, inside another thing named, more than the stack holds)."
           }
         },
-        "shared": ["silos", "jobs", "items"]
+        "shared": ["silos", "jobs", "items", "slots"]
       },
       "class": "write",
       "x-class-when": [
@@ -8988,6 +9005,10 @@
             "minimum": 1,
             "maximum": 600,
             "description": "Filter: at most this many things, nearest first; default 64."
+          },
+          "allow_in_use": {
+            "type": "boolean",
+            "description": "Default false: a part its device is using (a chip in its holder, a console's motherboard, a running machine's filter, battery or canister) is refused as in_use; true takes it."
           },
           "dry_run": {"type": "boolean", "description": "Default true: check and report only."},
           "confirm": {"type": "boolean", "description": "true with dry_run false to deposit."}
