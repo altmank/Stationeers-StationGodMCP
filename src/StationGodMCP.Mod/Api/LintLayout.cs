@@ -16,8 +16,8 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// lint_layout: the audit rules of the effective rule set (lint-rules.json of the mod, with the save's file over it)
-/// over a room (room_id) or a box (min, max), from what stands there now; codes and exclude_codes pick the findings
-/// listed (LintCodeFilter), counts still counts them all. Read only.
+/// over a room (room_id) or a box (min, max), from what stands there now; codes and exclude_codes (LintCodeFilter) and
+/// reference_ids and since_id (LintThingFilter) pick the findings listed, counts still counts them all. Read only.
 /// </summary>
 internal static class LintLayoutApi
 {
@@ -32,10 +32,13 @@ internal static class LintLayoutApi
         LintCodeFilter filter = LintCodeFilter.Of(
             args.Has("codes") ? Codes(args.Array("codes", MaximumCodes), "codes") : null,
             args.Has("exclude_codes") ? Codes(args.Array("exclude_codes", MaximumCodes), "exclude_codes") : null);
+        LintThingFilter things = LintThingFilter.Of(
+            args.Has("reference_ids") ? args.ThingIds("reference_ids", MaximumIds).ConvertAll(static id => id.Value) : null,
+            args.OptionalThingId("since_id")?.Value);
         LintRuleSet rules = LintRuleFiles.Current();
         GameLintWorld world = GameLintWorld.Audit(region);
         LintRun run = LintEngine.Run(rules, world, "audit");
-        List<LintFinding> ordered = filter.Keep(LintReport.Ordered(run.Findings));
+        List<LintFinding> ordered = things.Keep(filter.Keep(LintReport.Ordered(run.Findings)));
         List<LintFindingView> views = new List<LintFindingView>();
         for (int index = 0; index < ordered.Count && index < limit; index++)
         {
@@ -46,10 +49,11 @@ internal static class LintLayoutApi
         return new LintLayoutView(described, region.Count, world.Subjects("pieces").Count,
             world.Subjects("devices").Count, world.Subjects("structures").Count, world.Doors,
             LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds,
-            filter.Narrows ? run.Findings.Count - ordered.Count : null);
+            filter.Narrows || things.Narrows ? run.Findings.Count - ordered.Count : null);
     }
 
     private const int MaximumCodes = 64;
+    private const int MaximumIds = 256;
 
     private static List<string> Codes(JArray array, string name)
     {

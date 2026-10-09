@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:8b4ebe2cdff7d0781093ceadf84ede16f5d34f96f57021fb53235489ebc49321'
+CATALOGUE_HASH = 'sha256:f3332b5b3b0d0e9d9e32688c8266917b82dd855030f8bf3307c0da74a4c88cf1'
 MOD_VERSION = '1.32.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -476,7 +476,14 @@ TABLE = {'catalogue': {'class': 'read',
                  'effects': [],
                  'paging': None,
                  'duration': None,
-                 'params': ['room_id', 'min', 'max', 'codes', 'exclude_codes', 'limit'],
+                 'params': ['room_id',
+                            'min',
+                            'max',
+                            'codes',
+                            'exclude_codes',
+                            'reference_ids',
+                            'since_id',
+                            'limit'],
                  'required': [],
                  'shaping': 'lists',
                  'protocol': False},
@@ -1872,12 +1879,12 @@ class Methods:
         """
         return self.call('landing_pads', **options)
 
-    def lint_layout(self, *, room_id: str | None = None, min: object | None = None, max: object | None = None, codes: list | None = None, exclude_codes: list | None = None, limit: int | None = None, **options) -> dict:
+    def lint_layout(self, *, room_id: str | None = None, min: object | None = None, max: object | None = None, codes: list | None = None, exclude_codes: list | None = None, reference_ids: list | None = None, since_id: str | None = None, limit: int | None = None, **options) -> dict:
         """Check a room or a box against the layout rules (lint-rules.json, the save's file over the mod's), from what stands there: replaceability, doors, ports, floating runs, overlaps, solar, oxidiser venting and more.
 
-        Class: read. Arguments: room_id, min, max, codes, exclude_codes, limit.
+        Class: read. Arguments: room_id, min, max, codes, exclude_codes, reference_ids, since_id, limit.
         """
-        return self.call('lint_layout', **{'room_id': room_id, 'min': min, 'max': max, 'codes': codes, 'exclude_codes': exclude_codes, 'limit': limit}, **options)
+        return self.call('lint_layout', **{'room_id': room_id, 'min': min, 'max': max, 'codes': codes, 'exclude_codes': exclude_codes, 'reference_ids': reference_ids, 'since_id': since_id, 'limit': limit}, **options)
 
     def lint_rules(self, *, action: str | None = None, rule_id: str | None = None, full: bool | None = None, text: str | None = None, reference_id: str | None = None, port: int | None = None, other_id: str | None = None, at: object | None = None, **options) -> dict:
         """The lint rule set lint_layout audits with and the building tools run on dry runs: list the rules, validate a rule file, list fields and functions, run the examples, explain a finding.

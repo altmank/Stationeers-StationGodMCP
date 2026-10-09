@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`lint_layout` `reference_ids` and `since_id`** list only the findings on the things a build just placed:
+  `reference_ids` keeps findings naming one of them (as `reference_id` or `other_id`), `since_id` findings on things
+  with that id or a higher one (the game numbers things in the order it makes them, so that thing and those made after
+  it). Both given, either keeps a finding; they compose with `codes` and `exclude_codes`, `counts` still counts every
+  finding and `filtered_out` the rest. A room with 90 standing findings and 2 on a pump just placed: about 26 KB, with
+  `since_id` under 1 KB. Help: `tool_info` lint_layout/filters.
 - **`find_items` `group_by`** sums the matches instead of listing each item with its holder chain and position:
   `holder` gives one entry per outermost holder and prefab (`prefab_name`, `display_name`, `quantity`, `entries`,
   `location`, `holder`, `position`, `distance_m`; loose items of a prefab together, with no holder), `prefab` one entry

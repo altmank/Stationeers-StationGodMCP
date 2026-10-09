@@ -188,6 +188,43 @@ internal sealed class LintCodeFilter
     internal List<LintFinding> Keep(List<LintFinding> findings) => findings.FindAll(Admits);
 }
 
+/// <summary>
+/// lint_layout reference_ids and since_id: only the findings on given things, so a caller can lint what it just built.
+/// A finding passes when its thing or the other thing it names is one of reference_ids, or has an id at or above
+/// since_id; the game numbers things in the order it makes them (Referencable.RegisterNew hands out NextReferenceId++),
+/// so since_id keeps the things made since the one with that id. Both given, either passes. Composes with
+/// LintCodeFilter: a listed finding passes both.
+/// </summary>
+internal sealed class LintThingFilter
+{
+    private readonly HashSet<long>? _ids;
+    private readonly long? _sinceId;
+
+    private LintThingFilter(HashSet<long>? ids, long? sinceId)
+    {
+        _ids = ids;
+        _sinceId = sinceId;
+    }
+
+    internal static LintThingFilter Every { get; } = new LintThingFilter(null, null);
+
+    /// <summary>The filter from the ids to keep (null: any) and the lowest id to keep (null: none).</summary>
+    internal static LintThingFilter Of(IEnumerable<long>? ids, long? sinceId) =>
+        new LintThingFilter(ids != null ? new HashSet<long>(ids) : null, sinceId);
+
+    /// <summary>Whether it leaves any finding out.</summary>
+    internal bool Narrows => _ids != null || _sinceId.HasValue;
+
+    internal bool Admits(LintFinding finding) =>
+        !Narrows || Names(finding.ThingId) || Names(finding.OtherId);
+
+    private bool Names(long? id) =>
+        id.HasValue && ((_ids != null && _ids.Contains(id.Value)) || (_sinceId.HasValue && id.Value >= _sinceId.Value));
+
+    /// <summary>The findings it admits, in their order.</summary>
+    internal List<LintFinding> Keep(List<LintFinding> findings) => findings.FindAll(Admits);
+}
+
 /// <summary>Which devices a player works at: their front carries a screen or controls.</summary>
 internal static class Controls
 {

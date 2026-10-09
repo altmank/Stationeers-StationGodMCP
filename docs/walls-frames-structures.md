@@ -17,7 +17,7 @@ connections and guard against merging networks, which `place_structure` does not
 | `replace_frames` | Replace frames with another frame prefab, or finish unfinished frames, in place. | `room_id` or `reference_ids`, `to` (optional), `from_prefabs`, `skip_unmatched` |
 | `wall_map` | A text elevation of a wall (or floor) as seen from one side: seams, walls, windows, doors, devices, runs, free rectangles (1.4.3+). | `plane` + `around` + `side`, or `looking`; `radius_m`, `free_rects` |
 | `find_spot` | Ranked places for a prefab near a point on a wall or a room's walls, checked as the cursor checks them (1.4.3+). | `prefab`, `near`, `plane`/`looking`/`room_id`, `require` |
-| `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+); things a player could not place again where they stand (1.5.0+); rules from `lint-rules.json`, yours per save (1.7.0+, [lint-rules.md](lint-rules.md)). | `room_id` or `min`/`max`, `limit` |
+| `lint_layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+); things a player could not place again where they stand (1.5.0+); rules from `lint-rules.json`, yours per save (1.7.0+, [lint-rules.md](lint-rules.md)). | `room_id` or `min`/`max`, `codes`, `exclude_codes`, `reference_ids`, `since_id`, `limit` |
 | `lint_rules` | The lint rules in effect: list, validate a rule file, the fields and functions rules can use, run each rule's examples, explain a finding (1.7.0+). | `action`, `rule_id`, `text`, `reference_id` |
 | `check_replaceable` | For each thing, could a player place it again exactly where it stands, with its neighbours present (1.5.0+). | `reference_ids` |
 | `show_preview` | Draw wire boxes in your game for a planned placement's footprint, body and ports, or any cells and boxes; timed, nothing built (1.4.3+). | as `place_structure`, or `cells`, `boxes`; `seconds`, `clear`, `xray` |
@@ -215,6 +215,11 @@ removes them. Things are drawn the way the T-Ray lens draws pipes and cables, wi
 `lint_layout {room_id}` (or a box) reads what stands there and lists findings, problems first, then warnings, then
 information, with `counts` per rule. A box takes the 2 m cells it overlaps; a side on a face plane takes nothing
 beyond it (a box up to y 222 stops below that floor).
+
+To read only some findings: `codes` and `exclude_codes` pick them by code; `reference_ids` keeps the findings on those
+things (as the thing or the other thing named), and `since_id` those on things with that id or a higher one. The game
+numbers things in the order it makes them, so `since_id` with the id of the first piece a build placed lints what that
+build and every later one made. `counts` still counts every finding, and `filtered_out` says how many were left out.
 
 From 1.7.0 the rules are data: `lint-rules.json`, shipped with the mod, with a `lint-rules.json` in your save's folder
 taking priority, so a rule can be turned off, made information only, changed or added for one save. The shipped
