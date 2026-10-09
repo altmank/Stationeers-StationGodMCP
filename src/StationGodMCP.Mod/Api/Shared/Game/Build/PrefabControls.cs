@@ -2,7 +2,6 @@
 
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
-using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -13,8 +12,8 @@ namespace StationGodMCP.Api.Shared.Game.Build;
 /// A prefab's control face (ControlFaceRule) read from its own data: the colliders of its Thing.Interactables (the
 /// slots, buttons and switches a player points at; Interactable.Collider, centred as Interactable.CacheBounds centres
 /// it) in the prefab's own frame, against the box its meshes fill (Thing.Bounds). Indicators a player cannot use
-/// (Powered, Error, Color) are left out. Null for anything that is not a device and has no controls (frames, walls,
-/// pieces). Cached per prefab name.
+/// (Powered, Error, Color) are left out. Null for anything with no control a player uses: frames, walls, pieces, and a
+/// device whose prefab lists none (a radiator). Cached per prefab name.
 /// </summary>
 internal static class PrefabControls
 {
@@ -57,11 +56,6 @@ internal static class PrefabControls
 
             Vector3 world = control.Collider.transform.TransformPoint(CentreOf(control.Collider));
             controls.Add(Bodies.V(prefab.transform.InverseTransformPoint(world)));
-        }
-
-        if (controls.Count == 0 && !(prefab is Device))
-        {
-            return null;
         }
 
         return ControlFaceRule.Of(controls, Bodies.RenderBox(prefab, Vector3.zero, Quaternion.identity));

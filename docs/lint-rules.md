@@ -180,7 +180,7 @@ must pass (or be left out by the `where`), a `fail` example must fail. Every shi
 | `device_visual_overlap` | warning | both | two devices whose mesh boxes run more than 0.1 m into each other, or one inside the other |
 | `mounted_faces_out_of_room` | warning | both | a mounted device facing out of the room behind it |
 | `device_crosses_seam` | warning | both | a mounted device spanning two wall sections though it could fit one |
-| `controls_blocked` | problem (info for a forward fallback) | both | the side with a device's slots and buttons facing a device, a frame's body, a wall or frame right in front, or any plate, frame or thing covering a quarter of that side within 0.5 m (controls sunk in a floor or facing down onto it) |
+| `controls_blocked` | problem (info for a forward fallback) | both | the side with a device's slots and buttons facing a device, a frame's body, a wall or frame right in front, or any plate, frame or thing covering a quarter of that side within 0.5 m (controls sunk in a floor or facing down onto it); never a device with no control a player uses (a radiator) |
 | `clips_surface` | problem | both | a small-grid device whose mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on (built lying, its body sunk into the floor) |
 | `blocks_window` | problem | both | a device or other small-grid thing whose mesh box crosses or sits on a window's plane within the window's rectangle, mounted there or not (pieces are `run_crosses_window`'s) |
 | `run_along_door` | info | both | a cable, pipe or chute piece hugging a door's jamb |
@@ -403,7 +403,7 @@ keep their result for the rest of the call when asked again with the same argume
 | Function | What it gives |
 | --- | --- |
 | `replaceable(x: thing) -> placement` | Whether a player could place the thing again where it stands, its neighbours present: check_replaceable's rule. `replaceable` is null when it could not be asked, and for a planned thing. Cached. |
-| `controls_side(x: thing) -> controls?` | The world side of a device that carries its slots, buttons and switches, read from its prefab's interactables (describe_prefab's controls). |
+| `controls_side(x: thing) -> controls?` | The world side of a device that carries its slots, buttons and switches, read from its prefab's interactables (describe_prefab's controls); null for a device whose prefab lists none a player uses (a radiator). |
 | `controls_blocked(x: thing) -> string?` | What stands right in front of the side its controls face (another device, a chute or small thing, a frame's body, a wall or frame on the plane in front; or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it), as text; null when that side is clear, when it has no control side, or when that side is a face-mounted thing's front. Cached. |
 | `clips_surface(x: thing) -> string?` | The wall, floor or ceiling plate or frame body a small-grid device's mesh box runs into by more than 0.1 m, other than the surface it rests on (the face plane behind its small cells along its top, or its back for a mounted one), as text with how deep; null when none, and for pieces, in-line tanks, passive vents and 2 m structures. Cached. |
 | `window_crossed(x: thing) -> string?` | The window whose plane a small-grid thing's mesh box crosses or sits on within the window's rectangle, as text; null when none, and for cable, pipe and chute pieces and 2 m structures. The surface it is mounted on does not excuse it. Cached. |

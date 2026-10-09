@@ -328,7 +328,7 @@ Every placement's dry run carries `layout`, read from the game's own data for th
 | `crosses_window` | warning | It stands on or rests against a window. |
 | `blocks_route_cells` | warning | It would take the joining cell of a free port of a device beside it. |
 | `front_blocked` | warning | Something stands right in front of a mounted piece, or its front faces into a frame. |
-| `controls_blocked` | warning (info for the fallback) | The side with its slots, buttons and switches (`describe_prefab` `controls`) faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it (1.7.0+). `orient` pays for it like any warning and aims `controls_toward` at that side. |
+| `controls_blocked` | warning (info for the fallback) | The side with its slots, buttons and switches (`describe_prefab` `controls`) faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it (1.7.0+). A device with no control a player uses (a radiator) is never flagged. `orient` pays for it like any warning and aims `controls_toward` at that side. |
 | `faces_out_of_room` | warning | A mounted piece whose back is in a room and whose front is not. |
 | `not_upright` | warning (info for in-line tanks) | Its visual top does not point up. |
 

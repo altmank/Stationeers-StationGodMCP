@@ -22,7 +22,7 @@ public sealed class ControlFaceTests
         ControlFace face = ControlFaceRule.Of(new List<Vec3>
         {
             new Vec3(0.1, 0.5, 0.45), new Vec3(-0.2, 0.7, 0.4), new Vec3(0.45, 0.5, 0.0)
-        }, Body);
+        }, Body)!;
 
         Assert.Equal("+z", face.Local.Name);
         Assert.Equal(2, face.Votes);
@@ -34,7 +34,7 @@ public sealed class ControlFaceTests
     [Fact]
     public void ControlsNearTheMiddleFallBackToForward()
     {
-        ControlFace face = ControlFaceRule.Of(new List<Vec3> { new Vec3(0.1, 0.5, 0.1) }, Body);
+        ControlFace face = ControlFaceRule.Of(new List<Vec3> { new Vec3(0.1, 0.5, 0.1) }, Body)!;
 
         Assert.True(face.Fallback);
         Assert.Equal("+z", face.Local.Name);
@@ -42,16 +42,29 @@ public sealed class ControlFaceTests
     }
 
     [Fact]
-    public void NoControlsFallBackToForward()
+    public void NoControlsIsNoControlFace()
     {
-        Assert.True(ControlFaceRule.Of(new List<Vec3>(), Body).Fallback);
+        Assert.Null(ControlFaceRule.Of(new List<Vec3>(), Body));
+    }
+
+    /// <summary>
+    /// The 2026-10-08 room: Medium Convection Radiators flagged controls_blocked (forward fallback) though a player
+    /// works nothing on them. StructureMediumConvectionRadiator's prefab lists no Thing.Interactables (Radiator and
+    /// MediumRadiatorBase add none), so it has no control face and nothing for controls_blocked to keep clear.
+    /// </summary>
+    [Fact]
+    public void ARadiatorWithNoInteractablesHasNoControlFace()
+    {
+        Box3 radiator = new Box3(new Vec3(-0.75, -0.25, -0.25), new Vec3(0.75, 1.25, 0.25));
+
+        Assert.Null(ControlFaceRule.Of(new List<Vec3>(), radiator));
     }
 
     [Fact]
     public void ATieGoesToTheSideWhoseControlsSitFurthestOut()
     {
         ControlFace face = ControlFaceRule.Of(new List<Vec3> { new Vec3(-0.49, 0.5, 0), new Vec3(0, 0.5, 0.3) },
-            Body);
+            Body)!;
 
         Assert.Equal("-x", face.Local.Name);
     }

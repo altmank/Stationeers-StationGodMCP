@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`controls_blocked` no longer flags a device with no controls.** A device whose prefab lists no interactable a
+  player uses (`Thing.Interactables` empty, or indicators only: a Medium Convection Radiator) has no control side, so
+  nothing in front of it is reported; before, its forward stood in and lint_layout flagged radiators against walls.
+  `describe_prefab` leaves `controls` out for such a device, as its help already said, and a placement preview no
+  longer reports `controls_blocked` for it; `orient` still aims its forward.
 - **`grid_survey` cells answer what occupies them by default** (changed default). Each cell is `at`, `empty: true`
   when it holds nothing, `frame_id`, `faces` (six characters, +x -x +y -y +z -z: `.` nothing, `w` wall, `g` window,
   `x` door) and `small` (left out when every small cell is `.`), with a short legend. A 125-cell page of a framed,

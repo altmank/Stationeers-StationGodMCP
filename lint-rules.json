@@ -142,7 +142,7 @@
     {
       "id": "controls_blocked",
       "level": "problem",
-      "description": "The side of a device carrying its slots, buttons and switches faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it; or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it (controls sunk in a floor or facing down onto it). Only information where no control sits clearly on one side (the device's forward stands in).",
+      "description": "The side of a device carrying its slots, buttons and switches faces another device, a chute or small thing, a frame's body, or a wall or frame on the plane right in front of it; or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it (controls sunk in a floor or facing down onto it). Only information where no control sits clearly on one side (the device's forward stands in); a device with no control a player uses (a radiator) has no such side and is never flagged.",
       "on": ["audit", "dry_run"],
       "select": "things where kind == \"device\" or kind == \"structure\"",
       "let": { "c": "controls_side(x)", "blocked": "controls_blocked(x)" },

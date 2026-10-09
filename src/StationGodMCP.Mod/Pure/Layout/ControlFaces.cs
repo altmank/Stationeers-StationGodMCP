@@ -8,8 +8,8 @@ namespace StationGodMCP.Pure;
 /// <summary>
 /// The side of a prefab that carries what a player uses: its slots, buttons and switches (the game's own
 /// Thing.Interactables, each with the collider a player points at). Derived: the side most of those colliders sit on;
-/// Fallback: none sits clearly on one side (or it has none), so its forward (+z), the side the placement cursor turns
-/// toward the player, stands in for it.
+/// Fallback: none sits clearly on one side, so its forward (+z), the side the placement cursor turns toward the player,
+/// stands in for it. A thing with none has no control face at all (ControlFaceRule.Of).
 /// </summary>
 internal sealed class ControlFace
 {
@@ -43,24 +43,28 @@ internal sealed class ControlFace
 
     internal static ControlFace Forward(int considered) =>
         new ControlFace(GridStep.All[4], 0, considered,
-            considered == 0
-                ? "FALLBACK: it has no controls a player points at; its forward (+z) stands in"
-                : $"FALLBACK: none of its {considered} controls sits clearly on one side; its forward (+z) stands in",
-            true);
+            $"FALLBACK: none of its {considered} controls sits clearly on one side; its forward (+z) stands in", true);
 }
 
 /// <summary>
 /// Which side of a body its controls sit on. Each control's centre (in the prefab's own frame) is measured from the
 /// centre of the box its meshes fill, per axis as a share of the half size; it votes for the side of its largest share
 /// when that is at least OuterShare (a control near the middle votes for nothing). Most votes win; a tie goes to the
-/// side whose voters sit furthest out.
+/// side whose voters sit furthest out. With no control at all there is no control face: a device whose prefab lists no
+/// interactable a player uses (Thing.Interactables empty, as on the Medium Convection Radiator, or indicators only)
+/// has nothing to keep clear, so nothing stands in for one.
 /// </summary>
 internal static class ControlFaceRule
 {
     internal const double OuterShare = 0.5;
 
-    internal static ControlFace Of(IReadOnlyList<Vec3> controls, Box3 body)
+    internal static ControlFace? Of(IReadOnlyList<Vec3> controls, Box3 body)
     {
+        if (controls.Count == 0)
+        {
+            return null;
+        }
+
         int[] votes = new int[GridStep.All.Length];
         double[] reach = new double[GridStep.All.Length];
         Vec3 centre = body.Centre;
