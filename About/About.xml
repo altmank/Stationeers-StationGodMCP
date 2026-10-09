@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>1.33.0</Version>
+  <Version>1.33.1</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,7 +69,7 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
-v1.33.0
+v1.33.1
 - Client desync fix; vault_transfer; tools refuse to take parts in use; much smaller survey, lint, item and snapshot replies.
 
 v1.32.0
@@ -235,41 +235,6 @@ v1.4.2
 
 v1.4.1
 - Fix: pipe jobs merging networks twice lost gas.
-
-v1.4.0
-- vault_contents, vault_deposit, vault_withdraw (Ingot Vault mod).
-
-v1.3.5
-- Layout helpers: rotations, port preview, reservations, move_gas dry_run.
-
-v1.3.4
-- move_gas takes rooms.
-
-v1.3.3
-- move_gas deletes gases from the planet's air (Terraforming Reloaded).
-
-v1.3.2
-- Landing pads in the gas tools; move_gas checks the receiving side.
-
-v1.3.1
-- Live-run fixes: placement, walls.
-
-v1.3.0
-- Network refactor tools: split reports, remove_redundant, queued jobs.
-
-v1.2.0
-- assume_removed, trunks, feed_paths, plan_removal; refunds.
-
-v1.1.1
-- inside_frames takes beam tops; APC reroutes.
-
-v1.1.0
-- paste_blueprint (with BlueprintMod); [Pipe] Name setting.
-
-v1.0.0
-- First release: 71 tools.
-
-Full notes: CHANGELOG.md on GitHub.
 </ChangeLog>
   <WorkshopHandle>0</WorkshopHandle>
   <Tags />

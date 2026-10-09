@@ -1,6 +1,9 @@
 # Changelog
 
-## 1.33.0
+## 1.33.1
+
+First release of the 1.33 changes (the v1.33.0 tag was never built: its Workshop ChangeLog was over 8000 characters; the oldest entries are now trimmed).
+
 
 - **A `fields` name with near keys answers `fields_closest` alone**, for every tool: `fields_valid` (every key the
   reply had, sorted, up to 100) is left out when each unmatched name has near keys, and added as before when one has
