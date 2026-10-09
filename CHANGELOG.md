@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.33.0
 
 - **A `fields` name with near keys answers `fields_closest` alone**, for every tool: `fields_valid` (every key the
   reply had, sorted, up to 100) is left out when each unmatched name has near keys, and added as before when one has
