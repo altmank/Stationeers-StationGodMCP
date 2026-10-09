@@ -7,14 +7,15 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
 /// network_snapshot: the logic values of every device in the scope that matches (prefab_hash, name_contains,
-/// reference_ids), up to max_devices by reference id: the listed logic_types, or every type the device reads.
-/// Read only.
+/// reference_ids), up to max_devices by reference id: the listed logic_types, or every type the device reads less the
+/// gas and liquid ratios reading 0 (Pure/ZeroRatios; include_zero_ratios keeps them). Read only.
 /// </summary>
 internal static class NetworkSnapshotApi
 {
@@ -32,6 +33,7 @@ internal static class NetworkSnapshotApi
         HashSet<long>? ids = args.Has("reference_ids") ? IdSet(args.ThingIds("reference_ids", MaximumIds)) : null;
         List<LogicType>? requested =
             args.Has("logic_types") ? Types(args.Array("logic_types", MaximumLogicTypes)) : null;
+        bool skipZeroRatios = requested == null && !(args.OptionalBool("include_zero_ratios") ?? false);
 
         List<ScopedTarget> matches = new List<ScopedTarget>();
         foreach (ScopedTarget device in scope.SortedDevices())
@@ -48,8 +50,10 @@ internal static class NetworkSnapshotApi
         for (int index = 0; index < matches.Count && index < maximum; index++)
         {
             ScopedTarget device = matches[index];
-            snapshots.Add(new DeviceSnapshotView(Devices.ViewOf(device, scope),
-                Values(device, requested ?? LogicTypes.Readable(device))));
+            List<object> values = Values(device, requested ?? LogicTypes.Readable(device), skipZeroRatios,
+                out int zeroRatios);
+            snapshots.Add(new DeviceSnapshotView(Devices.ViewOf(device, scope), values,
+                skipZeroRatios ? zeroRatios : null));
         }
 
         Pure.Shaping.Truncations.Capped("devices", snapshots.Count, matches.Count, "max_devices", MaximumDevices);
@@ -84,9 +88,12 @@ internal static class NetworkSnapshotApi
         return types;
     }
 
-    private static List<object> Values(ScopedTarget device, List<LogicType> types)
+    // skipZeroRatios: a gas or liquid ratio reading 0 is counted in zeroRatios, not listed (Pure/ZeroRatios).
+    private static List<object> Values(ScopedTarget device, List<LogicType> types, bool skipZeroRatios,
+        out int zeroRatios)
     {
         List<object> values = new List<object>(types.Count);
+        zeroRatios = 0;
         foreach (LogicType type in types)
         {
             LogicTypeView view = LogicTypes.ViewOf(type);
@@ -99,7 +106,14 @@ internal static class NetworkSnapshotApi
 
             try
             {
-                values.Add(new LogicValueView(view, device.GetLogicValue(type)));
+                double value = device.GetLogicValue(type);
+                if (skipZeroRatios && ZeroRatios.Skips(view.Name, value))
+                {
+                    zeroRatios++;
+                    continue;
+                }
+
+                values.Add(new LogicValueView(view, value));
             }
             catch (Exception exception)
             {

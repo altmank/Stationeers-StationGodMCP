@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:78758ebed2af0ae3a3989dbde4df3c8ddeb1ddc5fc281f3edc3f979cffce8039'
+CATALOGUE_HASH = 'sha256:ed023ea5e0b87cd1da6dd808556896bd6c2f1a30407d2295d5bbfef4046cf49d'
 MOD_VERSION = '1.32.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -604,6 +604,7 @@ TABLE = {'catalogue': {'class': 'read',
                                  'prefab_hash',
                                  'name_contains',
                                  'logic_types',
+                                 'include_zero_ratios',
                                  'max_devices'],
                       'required': [],
                       'shaping': 'lists',
@@ -1952,12 +1953,12 @@ class Methods:
         """
         return self.call('move_player', **{'player': player, 'at': at, 'to_id': to_id, 'near_player': near_player, 'safe_ground': safe_ground, 'dry_run': dry_run}, **options)
 
-    def network_snapshot(self, *, gateway_id: str | None = None, reference_ids: list | None = None, prefab_hash: int | None = None, name_contains: str | None = None, logic_types: list | None = None, max_devices: int | None = None, **options) -> dict:
+    def network_snapshot(self, *, gateway_id: str | None = None, reference_ids: list | None = None, prefab_hash: int | None = None, name_contains: str | None = None, logic_types: list | None = None, include_zero_ratios: bool | None = None, max_devices: int | None = None, **options) -> dict:
         """Snapshot devices and their readable logic values in one frame, filtered by reference_ids, prefab_hash, name_contains and logic_types.
 
-        Class: read. Arguments: gateway_id, reference_ids, prefab_hash, name_contains, logic_types, max_devices.
+        Class: read. Arguments: gateway_id, reference_ids, prefab_hash, name_contains, logic_types, include_zero_ratios, max_devices.
         """
-        return self.call('network_snapshot', **{'gateway_id': gateway_id, 'reference_ids': reference_ids, 'prefab_hash': prefab_hash, 'name_contains': name_contains, 'logic_types': logic_types, 'max_devices': max_devices}, **options)
+        return self.call('network_snapshot', **{'gateway_id': gateway_id, 'reference_ids': reference_ids, 'prefab_hash': prefab_hash, 'name_contains': name_contains, 'logic_types': logic_types, 'include_zero_ratios': include_zero_ratios, 'max_devices': max_devices}, **options)
 
     def outer_frames(self, *, near_player_m: float | None = None, include_inner: bool | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
         """Which frames are outer frames: a face on a cell of the planet's outside air.

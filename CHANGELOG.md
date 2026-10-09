@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`network_snapshot` leaves out zero gas ratios by default** (changed default). Without `logic_types`, a gas or
+  liquid ratio reading 0 (`RatioOxygen`, `RatioNitrogenInput2`, ...: four per gas on a filtration unit) is left out and
+  counted in the device's `zero_ratios_omitted`. One filtration unit's snapshot drops from about 10 KB to about 2 KB.
+  `include_zero_ratios: true`, or naming them in `logic_types`, reads them as before; `Ratio` itself and
+  `CompletionRatio` always stay.
 - **`grid_survey` `prefab`, `prefabs` and `prefab_contains`** list only the pieces and devices of those prefabs, with
   `network_ids` and `kinds` (as `find_items` and `find_things` read them). A 300-piece `pieces` section of about 50 KB
   comes to about 9 KB for its 50 insulated pipes (`prefab_contains: "Insulated"`).

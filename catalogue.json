@@ -4490,8 +4490,8 @@
       "name": "network_snapshot",
       "description": "Snapshot devices and their readable logic values in one frame, filtered by reference_ids, prefab_hash, name_contains and logic_types. Returns 2 devices by default (max_devices). Read only.\nMore: tool_info {tool: \"network_snapshot\"}",
       "help": {
-        "text": "Narrow it with the filters first: every matching device reads every logic type it exposes unless logic_types names some. max_devices sets how many devices come back (default 2).",
-        "keys": "gateway_id, devices [{device, logic_values, logic_value_count}], count, matched_count, truncated.",
+        "text": "Narrow it with the filters first: every matching device reads every logic type it exposes unless logic_types names some. Without logic_types a gas or liquid ratio reading 0 (RatioOxygen, RatioNitrogenInput2, ...) is left out and counted in the device's zero_ratios_omitted; include_zero_ratios true, or naming them in logic_types, keeps them. Ratio itself and CompletionRatio always stay. max_devices sets how many devices come back (default 2).",
+        "keys": "gateway_id, devices [{device, logic_values, logic_value_count, zero_ratios_omitted}], count, matched_count, truncated.",
         "shared": ["gateways", "logic"]
       },
       "class": "read",
@@ -4526,6 +4526,10 @@
               "description": "A logic type name (Temperature) or number."
             },
             "description": "Logic types to read; left out, every one each device exposes."
+          },
+          "include_zero_ratios": {
+            "type": "boolean",
+            "description": "Default false: without logic_types, gas and liquid ratios reading 0 are left out (zero_ratios_omitted); true keeps them."
           },
           "max_devices": {"type": "integer", "minimum": 1, "maximum": 256, "description": "Most devices returned; default 2."}
         },

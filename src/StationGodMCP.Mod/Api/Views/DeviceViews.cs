@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
@@ -464,11 +465,12 @@ internal sealed class NetworkSnapshotView
 
 internal sealed class DeviceSnapshotView
 {
-    internal DeviceSnapshotView(DeviceView device, List<object> logicValues)
+    internal DeviceSnapshotView(DeviceView device, List<object> logicValues, int? zeroRatiosOmitted = null)
     {
         Device = device;
         LogicValues = logicValues;
         LogicValueCount = logicValues.Count;
+        ZeroRatiosOmitted = zeroRatiosOmitted > 0 ? zeroRatiosOmitted : null;
     }
 
     public DeviceView Device { get; }
@@ -477,6 +479,12 @@ internal sealed class DeviceSnapshotView
     public List<object> LogicValues { get; }
 
     public int LogicValueCount { get; }
+
+    /// <summary>
+    /// Gas and liquid ratios reading 0 left out (no logic_types, include_zero_ratios false); left out when none were.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? ZeroRatiosOmitted { get; }
 }
 
 internal sealed class LogicValueView

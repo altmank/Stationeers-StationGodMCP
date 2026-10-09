@@ -30,7 +30,7 @@ memory, but for any device in the world at once and without a chip.
 | `read_memory` | Up to 512 consecutive values from a device with memory (an IC Housing's or suit's chip stack, a Logic Sorter, a satellite dish, a fabricator; a Logic Memory has only `Setting`). | `reference_id`, `start_address`, `count` |
 | `write_memory` | Up to 512 consecutive values into such a device. | `reference_id`, `start_address`, `values` |
 | `inspect_slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. Devices only: for a crate, the lander or a tool use `container_contents`. | `reference_id`, `slot_index` |
-| `network_snapshot` | Many devices and their logic values at one instant, in one game frame. | `reference_ids`, `prefab_hash`, `name_contains`, `logic_types`, `max_devices` (default 2) |
+| `network_snapshot` | Many devices and their logic values at one instant, in one game frame. Without `logic_types`, gas and liquid ratios reading 0 are left out and counted in `zero_ratios_omitted`. | `reference_ids`, `prefab_hash`, `name_contains`, `logic_types`, `include_zero_ratios`, `max_devices` (default 2) |
 | `sample_logic` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `targets: [{reference_id, logic_type}]`, `duration_seconds` (default 5), `interval_seconds` (default 0.5) |
 | `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents, 30 a page, or `summarize` for counts by prefab and colour. | `reference_id`, or `network_id` with `kind` (filters `prefab_contains`, `open_ends_only`, an area: `min` and `max`, or `near` with `radius_m`), or `min` and `max` alone: open ends in a box |
 | `list_gateways` | The scopes device tools accept: `world` and every StationGod Gateway. | none |
@@ -172,6 +172,11 @@ Every Wall Heater's power draw at one instant, `network_snapshot`:
 ```json
 { "name_contains": "Wall Heater", "logic_types": ["On", "Power"] }
 ```
+
+Without `logic_types` a device reads every logic type it exposes, less the gas and liquid ratios that read 0
+(`RatioOxygen`, `RatioNitrogenInput2` and the like, over a hundred on a filtration unit): each device counts them in
+`zero_ratios_omitted`. Name them in `logic_types`, or pass `include_zero_ratios: true`, to read them. `Ratio` itself and
+`CompletionRatio` always stay. One filtration unit's snapshot drops from about 10 KB to about 2 KB.
 
 Watch a tank's pressure for 20 seconds, `sample_logic`:
 
