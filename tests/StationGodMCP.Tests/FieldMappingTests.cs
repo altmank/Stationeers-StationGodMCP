@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Shaping;
 using Xunit;
@@ -94,6 +95,15 @@ public sealed class FieldMappingTests
         Assert.Null(reply["fields_mapped"]);
         Assert.Equal(new[] { "slot" }, reply["fields_unmatched"]!.ToObject<string[]>());
         Assert.Equal(new[] { "slot_count" }, reply["fields_closest"]!["slot"]!.ToObject<string[]>());
+        Assert.Null(reply["fields_valid"]);
+    }
+
+    [Fact]
+    public void FieldsValidStaysWhileAnUnmatchedNameHasNothingClose()
+    {
+        JObject reply = Shaped(new[] { "slot", "colour" });
+
+        Assert.Equal(new[] { "slot" }, ((JObject)reply["fields_closest"]!).Properties().Select(p => p.Name));
         Assert.Contains("used_slot_count", reply["fields_valid"]!.ToObject<string[]>()!);
     }
 

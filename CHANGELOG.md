@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A `fields` name with near keys answers `fields_closest` alone**, for every tool: `fields_valid` (every key the
+  reply had, sorted, up to 100) is left out when each unmatched name has near keys, and added as before when one has
+  none. On `planet`, where every key of `gases`, `range`, `temperature_parts` and the rest counts, `fields:
+  ["temperature_part"]` answers about 0.5 KB instead of about 1.4 KB. `tool_info {tool}` `reply_keys` lists them all.
 - **`network_snapshot` leaves out zero gas ratios by default** (changed default). Without `logic_types`, a gas or
   liquid ratio reading 0 (`RatioOxygen`, `RatioNitrogenInput2`, ...: four per gas on a filtration unit) is left out and
   counted in the device's `zero_ratios_omitted`. One filtration unit's snapshot drops from about 10 KB to about 2 KB.

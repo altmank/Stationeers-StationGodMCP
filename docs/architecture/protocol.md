@@ -298,7 +298,8 @@ words, or a unit: `name` for `display_name`, `distance` for `distance_m`), or on
 more. When exactly one key matches so, and it is not a costly key the handler skipped, the reply is written again
 with that selector read as the key, and `fields_mapped` {given: key} says so. Other unmatched selectors stay in
 `fields_unmatched`; `fields_closest` {given: [keys]} names up to five near keys of each that has any (also one other
-word more or fewer, singular for plural, two slips), before `fields_valid`.
+word more or fewer, singular for plural, two slips). When every unmatched selector has near keys there, `fields_valid`
+is left out: the near keys answer it, and the whole key list would only repeat the reply (some sixty keys on `planet`).
 
 Compatibility. Every `fields` value the sidecar accepts (an array of at least one string, no further limits) is
 accepted through the sidecar, with the old results for single names: a selector that does not follow the grammar (a

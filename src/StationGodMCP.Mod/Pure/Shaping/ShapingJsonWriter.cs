@@ -805,25 +805,13 @@ internal sealed class ShapingJsonWriter : JsonWriter
                 }
 
                 Outcome.Unmatch(unmatched, seen, _validKeys ?? seen, _deepPaths);
-                if (_nameClosest)
+                // fields_closest naming near keys for every unmatched name answers it; fields_valid would repeat
+                // every key of the reply (some sixty on planet) to say less.
+                bool answered = _nameClosest && WriteClosest(fields, unmatched) == unmatched.Count;
+                if (!answered)
                 {
-                    WriteClosest(fields, unmatched);
+                    WriteValid();
                 }
-
-                _inner.WritePropertyName(ValidKey);
-                _inner.WriteStartArray();
-                int written = 0;
-                foreach (string key in _validKeys ?? new SortedSet<string>(StringComparer.Ordinal))
-                {
-                    if (written++ == MaximumValidKeys)
-                    {
-                        break;
-                    }
-
-                    _inner.WriteValue(key);
-                }
-
-                _inner.WriteEndArray();
             }
         }
 
@@ -885,6 +873,25 @@ internal sealed class ShapingJsonWriter : JsonWriter
         _inner.WriteEndArray();
     }
 
+    // fields_valid: the keys the reply had, sorted, at most MaximumValidKeys.
+    private void WriteValid()
+    {
+        _inner.WritePropertyName(ValidKey);
+        _inner.WriteStartArray();
+        int written = 0;
+        foreach (string key in _validKeys ?? new SortedSet<string>(StringComparer.Ordinal))
+        {
+            if (written++ == MaximumValidKeys)
+            {
+                break;
+            }
+
+            _inner.WriteValue(key);
+        }
+
+        _inner.WriteEndArray();
+    }
+
     // The selectors read as another key that matched it: {given: key}.
     private void WriteMapped(FieldSelectors? fields)
     {
@@ -920,10 +927,12 @@ internal sealed class ShapingJsonWriter : JsonWriter
         }
     }
 
-    // Each unmatched selector's close keys among those the reply had (costly keys skipped included): {given: [keys]}.
-    private void WriteClosest(FieldSelectors fields, List<int> unmatched)
+    // Each unmatched selector's close keys among those the reply had (costly keys skipped included): {given: [keys]};
+    // how many selectors it named some for.
+    private int WriteClosest(FieldSelectors fields, List<int> unmatched)
     {
         bool opened = false;
+        int named = 0;
         foreach (int index in unmatched)
         {
             string? key = FieldMapping.KeyOf(fields[index]);
@@ -945,6 +954,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
                 continue;
             }
 
+            named++;
             if (!opened)
             {
                 _inner.WritePropertyName(ClosestKey);
@@ -966,6 +976,8 @@ internal sealed class ShapingJsonWriter : JsonWriter
         {
             _inner.WriteEndObject();
         }
+
+        return named;
     }
 
     private readonly struct Pending
