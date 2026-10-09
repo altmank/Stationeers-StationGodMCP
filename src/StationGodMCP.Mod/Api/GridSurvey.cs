@@ -26,12 +26,12 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// grid_survey: the 2 m cells of a box (min and max corners in metres) or of a room (room_id), one page at a time:
-/// each cell's frame, the face structures on its six faces, its room, and its 64 small cells as one string
-/// (SmallCellCode) and by what supports them (CellSupports); then the cables, pipes, chutes and devices standing in the page's cells, device ports with the
+/// each cell by what occupies it (its frame, its six faces as one string (FaceCode), its 64 small cells as one string,
+/// SmallCellCode), or with cell_detail full also its room, the frame's build state, each face structure and what
+/// supports each small cell (CellSupports); then the cables, pipes, chutes and devices standing in the page's cells, device ports with the
 /// cell a piece joins them from, and the networks of the pieces listed; chute pieces with the way items move through
 /// them (ChuteFlow) and what rides in them. sections keeps only the parts named (SurveySections), network_ids only the
-/// pieces of those networks and the devices with a port on one (SurveyNetworkFilter), and compact leaves each cell's
-/// small and support strings and the legend out. Read only.
+/// pieces of those networks and the devices with a port on one (SurveyNetworkFilter). Read only.
 /// </summary>
 internal static class GridSurveyApi
 {
@@ -39,29 +39,12 @@ internal static class GridSurveyApi
     private const int MaximumLimit = 125;
     private const long MaximumCells = 20000;
 
-    internal const string Legend =
-        "Each cell is a 2 m cell at its centre (odd metres). small: its 64 small-grid cells (0.5 m) at -1, -0.5, 0 " +
-        "and +0.5 m from the centre along each axis (index 0 to 3; index 0 lies on the cell's minimum face plane, " +
-        "shared with the neighbour), character index x + 4y + 16z. '.' empty, 'c' cable, 'p' pipe, 'b' cable and " +
-        "pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), 'r' a rocket's empty cell " +
-        "(its fuselage decides which kind of piece it takes). " +
-        "Frames and walls never block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable " +
-        "(and a cable a pipe) only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, " +
-        "chute or 'o'. support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell " +
-        "the small cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a " +
-        "frame's face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
-        "(plan_*_route style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
-        "configured band either side inside its rectangle: the planners never route there without " +
-        "allow_door_keepout; the floor slab under a threshold is not in it) and 'g' a window's face (routes pay " +
-        "extra, crosses_window). A door's face is no wall support. network_visibility counts each listed network's cells the " +
-        "same way (inside, frame_surface, wall, air) and lists the floating (air) ones.";
-
     [Profiled]
     internal static GridSurveyView Handle(Args args)
     {
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
         SurveySections sections = SurveySections.Parse(args);
-        bool compact = args.OptionalBool("compact") ?? false;
+        SurveyCellDetail detail = SurveyCellDetails.Parse(args);
         bool includeNetworks = args.OptionalBool("include_networks") ?? true;
         bool includeRefund = args.OptionalBool("include_refund") ?? false;
         bool includePieceCells = args.OptionalBool("include_piece_cells") ?? false;
@@ -75,20 +58,22 @@ internal static class GridSurveyApi
         }
 
         Slice<GridCell> slice = Slice<GridCell>.Of(cells, page);
-        List<SurveyCellView> views = new List<SurveyCellView>(slice.Items.Count);
+        List<SurveyCell> views = new List<SurveyCell>(slice.Items.Count);
         if (sections.Includes(SurveySection.Cells))
         {
             foreach (GridCell cell in slice.Items)
             {
-                views.Add(CellView(facts, cell, compact));
+                views.Add(detail == SurveyCellDetail.Full ? CellView(facts, cell) : OccupancyView(facts, cell));
             }
         }
 
         SurveyContents contents = Contents(facts, slice.Items, sections, new SurveyFilter(filter, kinds), includeNetworks,
             includeRefund, includePieceCells);
-        string? legend = sections.Includes(SurveySection.Cells) && !compact ? Legend : null;
+        string? legend = !sections.Includes(SurveySection.Cells) ? null
+            : detail == SurveyCellDetail.Full ? SurveyLegends.Full
+            : SurveyLegends.Occupancy;
         page.Note("cells", slice.Items.Count, cells.Count);
-        return new GridSurveyView(Slice<SurveyCellView>.Page(views, page, cells.Count), contents, sections, legend);
+        return new GridSurveyView(Slice<SurveyCell>.Page(views, page, cells.Count), contents, sections, legend);
     }
 
     // occupied_only: a 2 m cell holding a frame, a structure on one of its faces, or anything in its small cells.
@@ -214,7 +199,23 @@ internal static class GridSurveyApi
         return SmallCellCode.LargeCellsIn(min, max);
     }
 
-    private static SurveyCellView CellView(GridFacts facts, GridCell cell, bool compact)
+    private static SurveyOccupancyView OccupancyView(GridFacts facts, GridCell cell)
+    {
+        Frame? frame = facts.FrameAt(cell);
+        List<SurveyFace> faces = new List<SurveyFace>();
+        foreach (GridStep face in GridStep.All)
+        {
+            foreach (Structure structure in facts.FaceStructures(cell, face))
+            {
+                faces.Add(new SurveyFace(face, Openings.KindOf(structure)));
+            }
+        }
+
+        return new SurveyOccupancyView(GameLookup.ViewOf(PieceShapes.CentreOf(cell)),
+            frame != null ? new ThingId(frame.ReferenceId) : null, faces, SmallCellCode.Encode(cell, facts.Occupancy));
+    }
+
+    private static SurveyCellView CellView(GridFacts facts, GridCell cell)
     {
         Frame? frame = facts.FrameAt(cell);
         Room? room = facts.RoomAt(cell);
@@ -234,8 +235,8 @@ internal static class GridSurveyApi
             : null;
         return new SurveyCellView(GameLookup.ViewOf(PieceShapes.CentreOf(cell)),
             room != null ? room.RoomId.ToString(CultureInfo.InvariantCulture) : null, frameView, walls,
-            compact ? null : SmallCellCode.Encode(cell, facts.Occupancy),
-            compact ? null : OpeningZones.Overlay(CellSupports.Encode(cell, facts.Large), ZonesOf(facts, cell)));
+            SmallCellCode.Encode(cell, facts.Occupancy),
+            OpeningZones.Overlay(CellSupports.Encode(cell, facts.Large), ZonesOf(facts, cell)));
     }
 
     private static List<OpeningZone> ZonesOf(GridFacts facts, GridCell large)

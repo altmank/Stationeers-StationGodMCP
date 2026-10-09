@@ -125,6 +125,57 @@ public sealed class FieldMappingTests
         Assert.Equal("Locker", (string)reply["containers"]![0]!["display_name"]!);
     }
 
+    private const string Atmospheres =
+        """{"reference_id":"9","atmospheres":[{"source":"internal","atmosphere":{"total_mol":12.5,"pressure_kpa":101.3,"temperature_k":293.1,"contents":[{"gas":"Oxygen","amount_mol":4.0}]}}],"count":1}""";
+
+    [Theory]
+    [InlineData("total_moles", "total_mol")]
+    [InlineData("temperature_kelvin", "temperature_k")]
+    [InlineData("distance_metres", "distance_m")]
+    public void ASpeltOutUnitIsTheShortOne(string requested, string key)
+    {
+        Assert.Equal(key, FieldMatch.Safe(requested, new[] { key, "count" }));
+    }
+
+    [Fact]
+    public void ANameBelowTheEntriesIsReadAsItsPath()
+    {
+        JObject reply = Shaped(Atmospheres, new[] { "pressure_kpa", "total_moles", "temperature_k" });
+
+        JObject atmosphere = (JObject)reply["atmospheres"]![0]!["atmosphere"]!;
+        Assert.Equal(101.3, (double)atmosphere["pressure_kpa"]!);
+        Assert.Equal(12.5, (double)atmosphere["total_mol"]!);
+        Assert.Equal(293.1, (double)atmosphere["temperature_k"]!);
+        Assert.Null(atmosphere["contents"]);
+        Assert.Equal("atmospheres.atmosphere.total_mol", (string)reply["fields_mapped"]!["total_moles"]!);
+        Assert.Equal("atmospheres.atmosphere.pressure_kpa", (string)reply["fields_mapped"]!["pressure_kpa"]!);
+        Assert.Null(reply["fields_unmatched"]);
+    }
+
+    [Fact]
+    public void ANearNameBelowTheEntriesIsNamedByItsPath()
+    {
+        JObject reply = Shaped(Atmospheres, new[] { "gases" });
+
+        Assert.Equal(new[] { "gases" }, reply["fields_unmatched"]!.ToObject<string[]>());
+        Assert.Contains("atmospheres.atmosphere.contents.gas", reply["fields_closest"]!["gases"]!.ToObject<string[]>()!);
+    }
+
+    [Fact]
+    public void ANameEndingSeveralPathsIsNotRead()
+    {
+        const string twice =
+            """{"a":[{"x":{"total_mol":1.0},"y":{"total_mol":2.0},"id":"1"}]}""";
+
+        JObject reply = Shaped(twice, new[] { "total_mol" });
+
+        Assert.Null(reply["fields_mapped"]);
+        Assert.Equal(new[] { "a.x.total_mol", "a.y.total_mol" }, reply["fields_closest"]!["total_mol"]!.ToObject<string[]>());
+    }
+
+    private static JObject Shaped(string reply, IEnumerable<string> fields) =>
+        (JObject)ShapingChecks.Parse(ShapingChecks.ModFields(reply, fields));
+
     private static JObject Shaped(IEnumerable<string> fields) =>
         (JObject)ShapingChecks.Parse(ShapingChecks.ModFields(Containers, fields));
 

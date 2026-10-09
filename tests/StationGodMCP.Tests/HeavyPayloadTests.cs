@@ -83,18 +83,6 @@ public sealed class HeavyPayloadTests
     }
 
     [Fact]
-    public void ACompactCellHasNoSmallOrSupport()
-    {
-        SurveyCellView cell = new SurveyCellView(new PositionView(1, 1, 1), null, null, new List<SurveyWallView>(),
-            null, null);
-        JObject json = JObject.Parse(WireCheck.New(cell));
-
-        Assert.Null(json["small"]);
-        Assert.Null(json["support"]);
-        Assert.NotNull(json["walls"]);
-    }
-
-    [Fact]
     public void ANetworkFilterKeepsOnlyItsNetworksAndDropsPiecesOnNone()
     {
         SurveyNetworkFilter filter = SurveyNetworkFilter.Only(new HashSet<long> { 7 });
@@ -221,7 +209,7 @@ public sealed class HeavyPayloadTests
     }
 
     [Theory]
-    [InlineData("grid_survey", """{"min":[0,0,0],"max":[6,4,4],"sections":["pieces","devices"],"network_ids":["17"],"compact":true}""")]
+    [InlineData("grid_survey", """{"min":[0,0,0],"max":[6,4,4],"sections":["pieces","devices"],"network_ids":["17"],"cell_detail":"full"}""")]
     [InlineData("get_ic_status", """{"reference_id":"300","include_source":false}""")]
     [InlineData("item_totals", """{"prefab_contains":"Ingot","holders_limit":0}""")]
     [InlineData("place_structure", """{"job_id":"place-3","verbose":true}""")]
@@ -244,11 +232,11 @@ public sealed class HeavyPayloadTests
 
     private static Args Args(string json) => new Args(JObject.Parse(json));
 
-    private static Slice<SurveyCellView> Page()
+    private static Slice<SurveyCell> Page()
     {
         SurveyCellView cell = new SurveyCellView(new PositionView(1, 1, 1), null, null, new List<SurveyWallView>(),
             new string('.', 64), new string('a', 64));
-        return Slice<SurveyCellView>.Page(new List<SurveyCellView> { cell },
+        return Slice<SurveyCell>.Page(new List<SurveyCell> { cell },
             PageRequest.From(new Args(new JObject()), 27, 125), 1);
     }
 

@@ -179,7 +179,9 @@ internal sealed class McpAdapter : IAsyncDisposable
         SidecarArguments call = SidecarArguments.Take(arguments);
         if (call.Output is OutputChoice.Refused refused)
         {
-            return ToolReplies.Error(ToolFailure.InvalidArgument, refused.Message, tools.SeeOf(ToolFailure.InvalidArgument));
+            return ToolReplies.Error(ToolFailure.InvalidArgument,
+                refused.Message + " " + _options.Output.WhereFilesGo(Environment.MachineName),
+                tools.SeeOf(ToolFailure.InvalidArgument));
         }
 
         (JsonElement? shape, Unparsed unparsed) = call.Shape();

@@ -37,9 +37,7 @@ public abstract record OutputChoice
             ? new ToFile(new OutputTarget.Named(name.EndsWith(Extension, StringComparison.OrdinalIgnoreCase) ? name : name + Extension))
             : new Refused(
                 $"Argument 'output_file' must be true or a plain file name (letters, digits, '-', '_' and '.', at most " +
-                $"{MaximumLength} characters, not starting with '.', no folders); '{given}' is not. The file goes in " +
-                @"the output folder, %LOCALAPPDATA%\StationGodMCP\output unless the server runs with --output-dir or " +
-                "STATIONGODMCP_OUTPUT_DIR; the pointer's output_file gives the full path.");
+                $"{MaximumLength} characters, not starting with '.', no folders); '{given}' is not.");
     }
 
     private static bool IsAllowed(char character) =>
@@ -105,6 +103,11 @@ public sealed class OutputFolder(string path)
     };
 
     public string Path { get; } = System.IO.Path.GetFullPath(path);
+
+    /// <summary>Where this server's files go, for a refusal: the folder and the machine it is on.</summary>
+    public string WhereFilesGo(string machine) =>
+        $"Files go in this MCP server's output folder, {Path}, on {machine} (the machine the MCP server runs on, " +
+        "also when the game runs elsewhere); the pointer's output_file gives each file's full path.";
 
     public static OutputFolder Default =>
         new(System.IO.Path.Combine(

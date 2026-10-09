@@ -335,12 +335,19 @@ internal sealed class ShapeOutcome
     /// <summary>SeenKeys and the costly keys the handler skipped (fields_valid's keys).</summary>
     internal IReadOnlyCollection<string> ValidKeys { get; private set; } = NoKeys;
 
+    /// <summary>
+    /// The key paths below the entries' own keys (atmospheres.atmosphere.total_mol) the written reply had, when fields
+    /// held a single name; empty otherwise.
+    /// </summary>
+    internal IReadOnlyCollection<string> DeepPaths { get; private set; } = NoKeys;
+
     internal void Unmatch(IReadOnlyList<int> selectors, IReadOnlyCollection<string> seenKeys,
-        IReadOnlyCollection<string> validKeys)
+        IReadOnlyCollection<string> validKeys, IReadOnlyCollection<string>? deepPaths = null)
     {
         Unmatched = selectors;
         SeenKeys = seenKeys;
         ValidKeys = validKeys;
+        DeepPaths = deepPaths ?? NoKeys;
     }
 
     /// <summary>At least one object entry of a top-level list was written.</summary>

@@ -16,7 +16,8 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// lint_layout: the audit rules of the effective rule set (lint-rules.json of the mod, with the save's file over it)
-/// over a room (room_id) or a box (min, max), from what stands there now. Read only.
+/// over a room (room_id) or a box (min, max), from what stands there now; codes and exclude_codes pick the findings
+/// listed (LintCodeFilter), counts still counts them all. Read only.
 /// </summary>
 internal static class LintLayoutApi
 {
@@ -28,10 +29,13 @@ internal static class LintLayoutApi
     {
         List<GridCell> region = Region(args, out string described);
         int limit = args.OptionalInt("limit", 1, MaximumLimit) ?? DefaultLimit;
+        LintCodeFilter filter = LintCodeFilter.Of(
+            args.Has("codes") ? Codes(args.Array("codes", MaximumCodes), "codes") : null,
+            args.Has("exclude_codes") ? Codes(args.Array("exclude_codes", MaximumCodes), "exclude_codes") : null);
         LintRuleSet rules = LintRuleFiles.Current();
         GameLintWorld world = GameLintWorld.Audit(region);
         LintRun run = LintEngine.Run(rules, world, "audit");
-        List<LintFinding> ordered = LintReport.Ordered(run.Findings);
+        List<LintFinding> ordered = filter.Keep(LintReport.Ordered(run.Findings));
         List<LintFindingView> views = new List<LintFindingView>();
         for (int index = 0; index < ordered.Count && index < limit; index++)
         {
@@ -41,7 +45,24 @@ internal static class LintLayoutApi
         Pure.Shaping.Truncations.Capped("findings", views.Count, ordered.Count, "limit", MaximumLimit);
         return new LintLayoutView(described, region.Count, world.Subjects("pieces").Count,
             world.Subjects("devices").Count, world.Subjects("structures").Count, world.Doors,
-            LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds);
+            LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds,
+            filter.Narrows ? run.Findings.Count - ordered.Count : null);
+    }
+
+    private const int MaximumCodes = 64;
+
+    private static List<string> Codes(JArray array, string name)
+    {
+        List<string> codes = new List<string>(array.Count);
+        for (int index = 0; index < array.Count; index++)
+        {
+            string? code = array[index].Type == JTokenType.String ? array[index].Value<string>()?.Trim() : null;
+            codes.Add(string.IsNullOrEmpty(code)
+                ? throw ApiErrors.InvalidArgument($"{name}[{index}] must be a lint code (counts names them).")
+                : code!);
+        }
+
+        return codes;
     }
 
     internal static List<GridCell> Region(Args args, out string described)

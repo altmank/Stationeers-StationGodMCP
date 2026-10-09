@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **`grid_survey` cells answer what occupies them by default** (changed default). Each cell is `at`, `empty: true`
+  when it holds nothing, `frame_id`, `faces` (six characters, +x -x +y -y +z -z: `.` nothing, `w` wall, `g` window,
+  `x` door) and `small` (left out when every small cell is `.`), with a short legend. A 125-cell page of a framed,
+  walled hub drops from about 94 KB to about 13 KB. `cell_detail: "full"` gives the cells as before (room, frame
+  build state, walls by id and prefab, `small`, `support`, the long legend). `compact` is gone: callers that passed
+  it drop it (the default is smaller still) and callers that read `support`, `walls`, `frame` or `room_id` pass
+  `cell_detail: "full"`.
+- **`lint_layout` `codes` and `exclude_codes`** list only the findings of those codes, or leave them out (a room's
+  not_replaceable cladding pairs no longer bury the rest). A `rule_error` goes with its `rule_id`. `counts` still
+  counts every finding; `total` and `has_more` follow the listed ones and `filtered_out` says how many were left out.
+- **`fields` finds keys below the entries.** A single name that is no entry key but ends exactly one deeper path is
+  read as that path (`pressure_kpa` keeps `atmospheres.atmosphere.pressure_kpa`), listed in `fields_mapped`; several
+  such paths, or a near name, are named in `fields_closest` (`gases` -> `atmospheres.atmosphere.contents.gas`). A
+  unit spelt out reads as the short one: `total_moles` for `total_mol`, `temperature_kelvin` for `temperature_k`.
+- **An `output_file` name with a folder is refused naming the folder and machine** this MCP server writes to (the
+  machine the server runs on, also with a remote game), so the caller knows where to read the file.
+
 - **No tool takes a part out of a device that is using it.** `move_item` and `silo_deposit` refuse with `in_use`,
   naming the device, its label and the slot: a programmable chip in any chip holder (IC housing, a circuit device's
   chip slot, laptop, robot, suit, tablet) and a computer's or console's motherboard always; a filtration machine's or

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Views;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -206,5 +207,31 @@ internal sealed class SurveyKinds
         }
 
         return false;
+    }
+}
+
+/// <summary>grid_survey cell_detail: occupancy (the default) or full.</summary>
+internal static class SurveyCellDetails
+{
+    internal const string CellDetailArgument = "cell_detail";
+
+    private static readonly Dictionary<string, SurveyCellDetail> Words =
+        new Dictionary<string, SurveyCellDetail>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["occupancy"] = SurveyCellDetail.Occupancy,
+            ["full"] = SurveyCellDetail.Full
+        };
+
+    internal static SurveyCellDetail Parse(Args args)
+    {
+        string? word = args.OptionalString(CellDetailArgument)?.Trim();
+        if (word == null)
+        {
+            return SurveyCellDetail.Occupancy;
+        }
+
+        return Words.TryGetValue(word, out SurveyCellDetail detail)
+            ? detail
+            : throw ApiErrors.InvalidArgument($"Argument '{CellDetailArgument}' takes occupancy or full; '{word}' is neither.");
     }
 }

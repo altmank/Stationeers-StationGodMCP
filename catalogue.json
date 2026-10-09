@@ -80,7 +80,7 @@
         "subtopics": {
           "fields": {
             "summary": "fields: keep only these keys, in list entries and objects.",
-            "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). A list on the way applies the rest of the path to each of its entries: rocket_status fields [\"rockets.fuel.total_mol\"] keeps each fuel line's total_mol. Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matches no key but has one safe match (the same words respelt or reordered, name for display_name, a unit or _count added or dropped, one slip in a long word) is read as that key and listed in fields_mapped {given: key}. Any other is listed in fields_unmatched, with fields_closest {given: [near keys]} when it has some, and fields_valid. tool_info {tool} gives reply_keys."
+            "text": "fields [names] keeps only those keys. A name that is a top-level key keeps it whole (looking_at fields [\"target\"]); other names are kept in each entry of the top-level lists and inside each top-level object (find_things fields [\"reference_id\", \"position\"]). A dotted name is a path from each entry (occupant.prefab_name) or from the top-level key it starts with (things.position.x, target.reference_id). A list on the way applies the rest of the path to each of its entries: rocket_status fields [\"rockets.fuel.total_mol\"] keeps each fuel line's total_mol. Dictionary keys keep their case. Top-level numbers, strings, booleans and nulls stay; a list or object left with nothing is dropped, an empty list stays. A name that matches no key but has one safe match (the same words respelt or reordered, name for display_name, a unit or _count added or dropped, one slip in a long word, a unit spelt out: total_moles) is read as that key and listed in fields_mapped {given: key}; a name found only deeper, at the end of one path (pressure_kpa in atmospheres.atmosphere), is read as that path. Any other is listed in fields_unmatched, with fields_closest {given: [near keys or paths]} when it has some, and fields_valid. tool_info {tool} gives reply_keys."
           },
           "omit": {
             "summary": "omit: leave key paths out of the reply.",
@@ -88,7 +88,7 @@
           },
           "output_file": {
             "summary": "output_file: the whole reply as a file, answered by a pointer.",
-            "text": "output_file: true, or a file name (letters, digits, - _ . and no folders: a path is refused), writes the whole reply as indented JSON and answers a pointer {output_file (the full path), bytes, tool, counts (each top-level list's length), summary (the short top-level values), in_file_only (keys too large to repeat), truncated}. The folder is %LOCALAPPDATA%\\StationGodMCP\\output unless the server runs with --output-dir or STATIONGODMCP_OUTPUT_DIR. Files older than 7 days, and beyond the newest 200, are deleted; a named file is overwritten. A reply larger than the server's inline limit is written to a file the same way (auto_output_file)."
+            "text": "output_file: true, or a file name (letters, digits, - _ . and no folders: a path is refused, naming the folder and machine this server writes to), writes the whole reply as indented JSON and answers a pointer {output_file (the full path), bytes, tool, counts (each top-level list's length), summary (the short top-level values), in_file_only (keys too large to repeat), truncated}. The folder is %LOCALAPPDATA%\\StationGodMCP\\output unless the server runs with --output-dir or STATIONGODMCP_OUTPUT_DIR. Files older than 7 days, and beyond the newest 200, are deleted; a named file is overwritten. A reply larger than the server's inline limit is written to a file the same way (auto_output_file)."
           },
           "names": {
             "summary": "How reply keys are named, for fields and omit.",
@@ -3358,14 +3358,14 @@
     },
     {
       "name": "grid_survey",
-      "description": "Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), with frames, walls, each small cell's occupant and support, the pieces, devices and their ports, and networks. Read only.\nMore: tool_info {tool: \"grid_survey\"}",
+      "description": "Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), by what occupies each (cell_detail full adds support and ids), the pieces, devices and their ports, and networks. Read only.\nMore: tool_info {tool: \"grid_survey\"}",
       "help": {
-        "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. sections, network_ids, kinds, occupied_only and compact narrow it.",
-        "keys": "legend, cells [{at, room_id, frame, walls, small, support}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, ...}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}], resolved_networks.",
+        "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. Cells come by what occupies them; cell_detail full gives each in full. sections, network_ids, kinds and occupied_only narrow it.",
+        "keys": "legend, cells [{at, empty, frame_id, faces, small; room_id, frame, walls, support}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, ...}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}], resolved_networks.",
         "topics": {
           "cells": {
-            "summary": "Each cell and its small and support strings.",
-            "text": "at (its centre, odd metres), room_id, frame {reference_id, prefab_name, build_state, build_states, blocks_air, blocks_gravity}, walls [{face, reference_id, prefab_name, blocks_air}], small and support: 64 characters for its 0.5 m cells at -1, -0.5, 0, +0.5 m on each axis, index x + 4y + 16z. small: '.' empty, 'c' cable, 'p' pipe, 'b' both, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's empty cell. support: 'i' inside a frame, 'e' a frame edge or corner, 'f' on a frame's face, 'w' on a wall's plane, 'a' air, 'x' a door's keep-out, 'g' a window."
+            "summary": "Each cell: occupancy, or full.",
+            "text": "Default (cell_detail occupancy): at (its centre, odd metres), empty (true when it holds nothing: no frame, face structure or small-grid thing), frame_id, faces (6 characters, +x, -x, +y, -y, +z, -z: '.' none, 'w' wall, 'g' window, 'x' door; left out when all '.'), small (left out when all '.'). cell_detail full: at, room_id, frame {reference_id, prefab_name, build_state, build_states, blocks_air, blocks_gravity}, walls [{face, reference_id, prefab_name, blocks_air}], small and support: 64 characters for its 0.5 m cells at -1, -0.5, 0, +0.5 m on each axis, index x + 4y + 16z. small: '.' empty, 'c' cable, 'p' pipe, 'b' both, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's empty cell. support: 'i' inside a frame, 'e' a frame edge or corner, 'f' on a frame's face, 'w' on a wall's plane, 'a' air, 'x' a door's keep-out, 'g' a window."
           },
           "pieces": {
             "summary": "pieces, devices and their ports.",
@@ -3413,9 +3413,10 @@
             "items": {"type": "string", "enum": ["cable", "pipe", "chute"]},
             "description": "Only pieces of these kinds (cable, pipe, chute) and devices with such a port."
           },
-          "compact": {
-            "type": "boolean",
-            "description": "Leave out each cell's small and support strings and the legend. Default false."
+          "cell_detail": {
+            "type": "string",
+            "enum": ["occupancy", "full"],
+            "description": "occupancy (default): each cell's frame id, faces and small strings. full: also room, frame state, wall ids, support."
           },
           "occupied_only": {
             "type": "boolean",
@@ -3449,6 +3450,7 @@
         }
       },
       "x-views": ["GridSurveyView"],
+      "x-entry-views": {"cells": ["SurveyOccupancyView", "SurveyCellView"]},
       "x-default-limits": {"pieces": 40, "devices": 20},
       "x-shaping": "lists",
       "x-paging": {
@@ -3808,8 +3810,8 @@
       "name": "lint_layout",
       "description": "Check a room or a box against the layout rules (lint-rules.json, the save's file over the mod's), from what stands there: replaceability, doors, ports, floating runs, overlaps, solar, oxidiser venting and more. 25 findings. Read only.\nMore: tool_info {tool: \"lint_layout\"}",
       "help": {
-        "text": "Returns region, cells, pieces, devices, structures, doors, counts {rule id: n}, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}] problems first, then warnings, then info, total, has_more, rule_source and elapsed_ms. A rule that cannot run on a subject gives a rule_error finding and the rest still run; a rule that does not load is listed in rule_source.errors. lint_rules lists, validates, tests and explains the rules.",
-        "keys": "region, cells, pieces, devices, structures, doors, counts, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}], total, has_more, rule_source {mod_file, save_file, rules, from_save, disabled, ...}, elapsed_ms.",
+        "text": "Returns region, cells, pieces, devices, structures, doors, counts {rule id: n}, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}] problems first, then warnings, then info, total, has_more, rule_source and elapsed_ms. codes lists only the findings of those codes, exclude_codes leaves those out (a rule_error goes with its rule_id); counts still counts every finding, total and has_more the ones listed, filtered_out the rest. A rule that cannot run on a subject gives a rule_error finding and the rest still run; a rule that does not load is listed in rule_source.errors. lint_rules lists, validates, tests and explains the rules.",
+        "keys": "region, cells, pieces, devices, structures, doors, counts, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}], total, has_more, filtered_out, rule_source {mod_file, save_file, rules, from_save, disabled, ...}, elapsed_ms.",
         "topics": {
           "files": {
             "summary": "The mod's rule file and the save's.",
@@ -3830,6 +3832,20 @@
           "room_id": {"type": "string", "description": "A room id (rooms): check its cells."},
           "min": {"description": "Box corner, [x, y, z] in metres; with max."},
           "max": {"description": "The other corner; at most 4000 2 m cells."},
+          "codes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {"type": "string"},
+            "description": "Only findings of these codes (counts names them)."
+          },
+          "exclude_codes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {"type": "string"},
+            "description": "Leave findings of these codes out."
+          },
           "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Findings returned; default 25, max 500."}
         },
         "additionalProperties": false
@@ -3847,6 +3863,7 @@
           "findings": {"type": "array"},
           "total": {"type": "integer"},
           "has_more": {"type": "boolean"},
+          "filtered_out": {"type": "integer"},
           "rule_source": {"type": "object"},
           "elapsed_ms": {"type": "number"}
         }

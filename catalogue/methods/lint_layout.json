@@ -2,8 +2,8 @@
   "name": "lint_layout",
   "summary": "Check a room or a box against the layout rules (lint-rules.json, the save's file over the mod's), from what stands there: replaceability, doors, ports, floating runs, overlaps, solar, oxidiser venting and more. 25 findings. Read only.",
   "help": {
-    "text": "Returns region, cells, pieces, devices, structures, doors, counts {rule id: n}, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}] problems first, then warnings, then info, total, has_more, rule_source and elapsed_ms. A rule that cannot run on a subject gives a rule_error finding and the rest still run; a rule that does not load is listed in rule_source.errors. lint_rules lists, validates, tests and explains the rules.",
-    "keys": "region, cells, pieces, devices, structures, doors, counts, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}], total, has_more, rule_source {mod_file, save_file, rules, from_save, disabled, ...}, elapsed_ms.",
+    "text": "Returns region, cells, pieces, devices, structures, doors, counts {rule id: n}, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}] problems first, then warnings, then info, total, has_more, rule_source and elapsed_ms. codes lists only the findings of those codes, exclude_codes leaves those out (a rule_error goes with its rule_id); counts still counts every finding, total and has_more the ones listed, filtered_out the rest. A rule that cannot run on a subject gives a rule_error finding and the rest still run; a rule that does not load is listed in rule_source.errors. lint_rules lists, validates, tests and explains the rules.",
+    "keys": "region, cells, pieces, devices, structures, doors, counts, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}], total, has_more, filtered_out, rule_source {mod_file, save_file, rules, from_save, disabled, ...}, elapsed_ms.",
     "topics": {
       "files": {
         "summary": "The mod's rule file and the save's.",
@@ -24,6 +24,20 @@
       "room_id": {"type": "string", "description": "A room id (rooms): check its cells."},
       "min": {"description": "Box corner, [x, y, z] in metres; with max."},
       "max": {"description": "The other corner; at most 4000 2 m cells."},
+      "codes": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "items": {"type": "string"},
+        "description": "Only findings of these codes (counts names them)."
+      },
+      "exclude_codes": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "items": {"type": "string"},
+        "description": "Leave findings of these codes out."
+      },
       "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Findings returned; default 25, max 500."}
     },
     "additionalProperties": false
@@ -41,6 +55,7 @@
       "findings": {"type": "array"},
       "total": {"type": "integer"},
       "has_more": {"type": "boolean"},
+      "filtered_out": {"type": "integer"},
       "rule_source": {"type": "object"},
       "elapsed_ms": {"type": "number"}
     }

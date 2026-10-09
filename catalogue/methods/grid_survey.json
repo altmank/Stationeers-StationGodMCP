@@ -1,13 +1,13 @@
 {
   "name": "grid_survey",
-  "summary": "Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), with frames, walls, each small cell's occupant and support, the pieces, devices and their ports, and networks. Read only.",
+  "summary": "Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), by what occupies each (cell_detail full adds support and ids), the pieces, devices and their ports, and networks. Read only.",
   "help": {
-    "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. sections, network_ids, kinds, occupied_only and compact narrow it.",
-    "keys": "legend, cells [{at, room_id, frame, walls, small, support}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, ...}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}], resolved_networks.",
+    "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. Cells come by what occupies them; cell_detail full gives each in full. sections, network_ids, kinds and occupied_only narrow it.",
+    "keys": "legend, cells [{at, empty, frame_id, faces, small; room_id, frame, walls, support}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, ...}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}], resolved_networks.",
     "topics": {
       "cells": {
-        "summary": "Each cell and its small and support strings.",
-        "text": "at (its centre, odd metres), room_id, frame {reference_id, prefab_name, build_state, build_states, blocks_air, blocks_gravity}, walls [{face, reference_id, prefab_name, blocks_air}], small and support: 64 characters for its 0.5 m cells at -1, -0.5, 0, +0.5 m on each axis, index x + 4y + 16z. small: '.' empty, 'c' cable, 'p' pipe, 'b' both, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's empty cell. support: 'i' inside a frame, 'e' a frame edge or corner, 'f' on a frame's face, 'w' on a wall's plane, 'a' air, 'x' a door's keep-out, 'g' a window."
+        "summary": "Each cell: occupancy, or full.",
+        "text": "Default (cell_detail occupancy): at (its centre, odd metres), empty (true when it holds nothing: no frame, face structure or small-grid thing), frame_id, faces (6 characters, +x, -x, +y, -y, +z, -z: '.' none, 'w' wall, 'g' window, 'x' door; left out when all '.'), small (left out when all '.'). cell_detail full: at, room_id, frame {reference_id, prefab_name, build_state, build_states, blocks_air, blocks_gravity}, walls [{face, reference_id, prefab_name, blocks_air}], small and support: 64 characters for its 0.5 m cells at -1, -0.5, 0, +0.5 m on each axis, index x + 4y + 16z. small: '.' empty, 'c' cable, 'p' pipe, 'b' both, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's empty cell. support: 'i' inside a frame, 'e' a frame edge or corner, 'f' on a frame's face, 'w' on a wall's plane, 'a' air, 'x' a door's keep-out, 'g' a window."
       },
       "pieces": {
         "summary": "pieces, devices and their ports.",
@@ -55,9 +55,10 @@
         "items": {"type": "string", "enum": ["cable", "pipe", "chute"]},
         "description": "Only pieces of these kinds (cable, pipe, chute) and devices with such a port."
       },
-      "compact": {
-        "type": "boolean",
-        "description": "Leave out each cell's small and support strings and the legend. Default false."
+      "cell_detail": {
+        "type": "string",
+        "enum": ["occupancy", "full"],
+        "description": "occupancy (default): each cell's frame id, faces and small strings. full: also room, frame state, wall ids, support."
       },
       "occupied_only": {"type": "boolean", "description": "Only cells holding something (frame, wall, small-grid thing). Default false."},
       "include_piece_cells": {"type": "boolean", "description": "Every small cell of a long piece, not just cell_count and cell_box."},
@@ -84,6 +85,7 @@
     }
   },
   "x-views": ["GridSurveyView"],
+  "x-entry-views": {"cells": ["SurveyOccupancyView", "SurveyCellView"]},
   "x-default-limits": {"pieces": 40, "devices": 20},
   "x-shaping": "lists",
   "x-paging": {

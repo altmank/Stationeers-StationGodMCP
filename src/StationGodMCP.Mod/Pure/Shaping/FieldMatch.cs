@@ -10,11 +10,27 @@ namespace StationGodMCP.Pure.Shaping;
 /// The reply keys close to a fields name that matched none. A safe match is read in its place (FieldMapping): the same
 /// words written another way (REFERENCE_ID, displayName), the same words in another order (slots_used for used_slots),
 /// one naming qualifier more or fewer (name for display_name, distance for distance_m, used_slots for used_slot_count),
-/// or one typing slip in a long name (prefab_nme). Any other near key is only named (fields_closest): one other word
+/// a unit spelt out (total_moles for total_mol), or one typing slip in a long name (prefab_nme). Any other near key is only named (fields_closest): one other word
 /// more or fewer (refund for refund_enabled), singular for plural (network for networks), two slips.
 /// </summary>
 internal static class FieldMatch
 {
+    // Units spelt out, read as the short unit word the reply keys use (total_moles for total_mol).
+    private static readonly Dictionary<string, string> UnitWords = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["mole"] = "mol", ["moles"] = "mol", ["mols"] = "mol",
+        ["kelvin"] = "k",
+        ["kilopascal"] = "kpa", ["kilopascals"] = "kpa",
+        ["metre"] = "m", ["metres"] = "m", ["meter"] = "m", ["meters"] = "m",
+        ["joule"] = "j", ["joules"] = "j",
+        ["watt"] = "w", ["watts"] = "w",
+        ["second"] = "s", ["seconds"] = "s",
+        ["kilogram"] = "kg", ["kilograms"] = "kg",
+        ["litre"] = "l", ["litres"] = "l", ["liter"] = "l", ["liters"] = "l",
+        ["degree"] = "deg", ["degrees"] = "deg",
+        ["percent"] = "pct"
+    };
+
     /// <summary>The most keys Closest names.</summary>
     internal const int MaximumCandidates = 5;
 
@@ -262,7 +278,8 @@ internal static class FieldMatch
         {
             if (word.Length > 0)
             {
-                words.Add(word.ToString());
+                string text = word.ToString();
+                words.Add(UnitWords.TryGetValue(text, out string unit) ? unit : text);
                 word.Clear();
             }
         }

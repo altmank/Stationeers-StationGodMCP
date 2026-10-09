@@ -128,8 +128,10 @@ Structures sit on 2 m cells, whose centres are at odd whole metres. Cables, pipe
 grid, centres on multiples of 0.5 m: four small cells per axis in each 2 m cell. Directions are world axes: `+x`, `-x`,
 `+y` (up), `-y`, `+z` (north), `-z`.
 
-`grid_survey {room_id}` or `{min: [x, y, z], max: [x, y, z]}` gives, per 2 m cell, its frame, walls, room and two
-64-character strings over its small cells:
+`grid_survey {room_id}` or `{min: [x, y, z], max: [x, y, z]}` gives, per 2 m cell, what occupies it: `empty: true`
+when it holds nothing, `frame_id`, `faces` (six characters for +x, -x, +y, -y, +z, -z: `.` nothing, `w` wall, `g`
+window, `x` door) and `small` (left out when all `.`). `cell_detail: "full"` gives each cell's frame, walls, room and
+two 64-character strings over its small cells:
 
 - `small`: what fills each small cell: `.` empty, `c` cable, `p` pipe, `b` both, `h` chute, `d` device, `o` another
   small thing, `r` a rocket's empty cell (its fuselage decides which kind of piece it takes).
@@ -154,9 +156,8 @@ A whole survey of a small box can run to tens of kilobytes. Ask for what you nee
   and `has_more` still page the cells.
 - `network_ids`: only the pieces on these networks (a network id, or any cable, pipe or chute piece on it), the
   devices with a port on one of them, and those networks.
-- `compact: true`: each cell without its `small` and `support` strings, and no `legend`.
-
-Without them the reply is as it always was.
+- `cell_detail`: `occupancy` (default, a few dozen bytes a cell) or `full` (the `support` string, wall ids and
+  prefabs, room, frame build state: several hundred bytes a cell).
 
 ## Doors and windows
 

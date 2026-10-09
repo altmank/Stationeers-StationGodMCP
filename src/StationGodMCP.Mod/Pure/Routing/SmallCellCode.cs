@@ -108,6 +108,34 @@ internal static class SmallCellCode
         return cell.Rocket ? 'r' : '.';
     }
 
+    /// <summary>Whether an encoded string has a small cell other than '.': something, or a rocket's empty cell.</summary>
+    internal static bool ShowsAny(string encoded)
+    {
+        foreach (char cell in encoded)
+        {
+            if (cell != '.')
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Whether something stands in a small cell of an encoded string ('.' and a rocket's 'r' hold nothing).</summary>
+    internal static bool HoldsAny(string encoded)
+    {
+        foreach (char cell in encoded)
+        {
+            if (cell is not '.' and not 'r')
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>A large cell's 64 small cells as one string, from each small cell's occupancy.</summary>
     internal static string Encode(GridCell large, System.Func<GridCell, SmallOccupancy> read)
     {

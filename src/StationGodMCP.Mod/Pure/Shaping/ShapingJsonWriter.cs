@@ -46,6 +46,9 @@ internal sealed class ShapingJsonWriter : JsonWriter
     /// <summary>The most keys fields_valid names.</summary>
     internal const int MaximumValidKeys = 100;
 
+    /// <summary>The most key paths below the entries one reply records for near misses.</summary>
+    internal const int MaximumDeepPaths = 4000;
+
     private readonly JsonWriter _inner;
     private JsonWriter _target;
     private readonly ShapeRequest _shape;
@@ -63,6 +66,12 @@ internal sealed class ShapingJsonWriter : JsonWriter
     private bool _sawEmptyList;
     private SortedSet<string>? _validKeys;
 
+    // Key paths below the entries fields reads (atmospheres.atmosphere.total_mol), for a single name that matches no
+    // entry key: null unless fields holds a single name.
+    private readonly HashSet<string>? _deepPaths;
+    private int _resultDepth = -1;
+    private string? _lastName;
+
     internal ShapingJsonWriter(JsonWriter inner, ShapeRequest shape, ShapingRoot root,
         IReadOnlyList<Truncation>? notes = null, bool announce = false, bool nameClosest = true)
     {
@@ -72,6 +81,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
         _shape = shape;
         _notes = notes ?? Array.Empty<Truncation>();
         _announce = announce;
+        _deepPaths = HasSingleName(shape.Fields) ? new HashSet<string>(StringComparer.Ordinal) : null;
         Outcome = new ShapeOutcome(shape.Fields?.Count ?? 0, shape.Omit?.Count ?? 0);
         _pending = root == ShapingRoot.Envelope
             ? new Pending(Role.Envelope, null, null)
@@ -446,6 +456,11 @@ internal sealed class ShapingJsonWriter : JsonWriter
         bool inTopList = _depth > 0 && _frames[_depth - 1].Role == Role.TopList;
         Frame frame = new Frame(role, token == Token.Array, node, list, list != null ? _shape.LimitOf(list) : int.MaxValue,
             omit, keep, role == Role.Entry && (inTopList || keep != TopKeep.None));
+        frame.Segment = _depth > 0 && !_frames[_depth - 1].IsArray ? _lastName : null;
+        if (role == Role.Result)
+        {
+            _resultDepth = _depth;
+        }
         if (keep != TopKeep.None && role != Role.Skip)
         {
             if (keep == TopKeep.Shaped)
@@ -548,6 +563,8 @@ internal sealed class ShapingJsonWriter : JsonWriter
     /// <summary>Decides a property: whether its name is forwarded, and the role of its value.</summary>
     private bool Name(string name, bool? escape)
     {
+        _lastName = name;
+        NoteDeepPath(name);
         Frame frame = _frames[_depth - 1];
         if (frame.Buffer != null)
         {
@@ -710,6 +727,48 @@ internal sealed class ShapingJsonWriter : JsonWriter
         }
     }
 
+    // The path from the reply's top to this key, when it lies below a top-level entry's own keys: three names or more.
+    private void NoteDeepPath(string name)
+    {
+        if (_deepPaths == null || _resultDepth < 0 || _depth - _resultDepth < 2 || _deepPaths.Count >= MaximumDeepPaths)
+        {
+            return;
+        }
+
+        List<string> path = new List<string>(_depth - _resultDepth + 1);
+        for (int index = _resultDepth + 1; index < _depth; index++)
+        {
+            if (_frames[index].Segment is string segment)
+            {
+                path.Add(segment);
+            }
+        }
+
+        if (path.Count >= 2)
+        {
+            path.Add(name);
+            _deepPaths.Add(string.Join(".", path));
+        }
+    }
+
+    private static bool HasSingleName(FieldSelectors? fields)
+    {
+        if (fields == null)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < fields.Count; index++)
+        {
+            if (fields[index] is FieldSelector.Name)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void NoteKey(string name) => (_validKeys ??= new SortedSet<string>(StringComparer.Ordinal)).Add(name);
 
     private void WriteOutcome()
@@ -745,7 +804,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
                     NoteKey(skipped);
                 }
 
-                Outcome.Unmatch(unmatched, seen, _validKeys ?? seen);
+                Outcome.Unmatch(unmatched, seen, _validKeys ?? seen, _deepPaths);
                 if (_nameClosest)
                 {
                     WriteClosest(fields, unmatched);
@@ -871,6 +930,16 @@ internal sealed class ShapingJsonWriter : JsonWriter
             List<string> closest = key != null && _validKeys != null
                 ? FieldMatch.Closest(key, _validKeys)
                 : new List<string>();
+            if (fields[index] is FieldSelector.Name name && _deepPaths != null)
+            {
+                foreach (string path in DeepPaths.Closest(name.Key, _deepPaths))
+                {
+                    if (closest.Count < FieldMatch.MaximumCandidates)
+                    {
+                        closest.Add(path);
+                    }
+                }
+            }
             if (closest.Count == 0)
             {
                 continue;
@@ -942,7 +1011,11 @@ internal sealed class ShapingJsonWriter : JsonWriter
             Buffer = null;
             TopName = null;
             TopEscape = null;
+            Segment = null;
         }
+
+        /// <summary>The key this value is written under; null for a list entry and the reply's own root.</summary>
+        internal string? Segment;
 
         internal TopKeep Keep { get; }
 

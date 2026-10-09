@@ -113,6 +113,19 @@ public sealed class FileOutputTests : IDisposable
         Assert.IsType<OutputChoice.Refused>(OutputChoice.Of(Json(JsonSerializer.Serialize(name))));
     }
 
+    [Fact]
+    public void ARefusedNameIsToldTheFolderAndMachineTheFileGoesTo()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "sg-output-where");
+        string where = OutputFolder.From(folder, null).WhereFilesGo("L5PRO");
+
+        Assert.Contains(Path.GetFullPath(folder), where);
+        Assert.Contains("on L5PRO", where);
+        OutputChoice.Refused refused = Assert.IsType<OutputChoice.Refused>(
+            OutputChoice.Of(Json(JsonSerializer.Serialize(@"C:	mp\survey.json"))));
+        Assert.Contains("no folders", refused.Message);
+    }
+
     /// <summary>Every shared fixture, as the Python library runs them: the file name, the pointer, the file's content.</summary>
     [Fact]
     public void EverySharedFixture()

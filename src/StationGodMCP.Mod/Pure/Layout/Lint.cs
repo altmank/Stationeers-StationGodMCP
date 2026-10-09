@@ -155,6 +155,39 @@ internal static class LintReport
     }
 }
 
+/// <summary>
+/// lint_layout codes and exclude_codes: which findings a reply lists. A finding passes when codes is not given or names
+/// its code or rule_id, and exclude_codes names neither.
+/// </summary>
+internal sealed class LintCodeFilter
+{
+    private readonly HashSet<string>? _only;
+    private readonly HashSet<string> _except;
+
+    private LintCodeFilter(HashSet<string>? only, HashSet<string> except)
+    {
+        _only = only;
+        _except = except;
+    }
+
+    internal static LintCodeFilter Every { get; } = new LintCodeFilter(null, new HashSet<string>(StringComparer.Ordinal));
+
+    /// <summary>The filter from the codes to keep (null: every code) and the codes to leave out (null: none).</summary>
+    internal static LintCodeFilter Of(IEnumerable<string>? only, IEnumerable<string>? except) =>
+        new LintCodeFilter(only != null ? new HashSet<string>(only, StringComparer.Ordinal) : null,
+            except != null ? new HashSet<string>(except, StringComparer.Ordinal) : new HashSet<string>(StringComparer.Ordinal));
+
+    /// <summary>Whether it leaves any finding out.</summary>
+    internal bool Narrows => _only != null || _except.Count > 0;
+
+    internal bool Admits(LintFinding finding) =>
+        (_only == null || _only.Contains(finding.Code) || _only.Contains(finding.RuleId)) &&
+        !_except.Contains(finding.Code) && !_except.Contains(finding.RuleId);
+
+    /// <summary>The findings it admits, in their order.</summary>
+    internal List<LintFinding> Keep(List<LintFinding> findings) => findings.FindAll(Admits);
+}
+
 /// <summary>Which devices a player works at: their front carries a screen or controls.</summary>
 internal static class Controls
 {

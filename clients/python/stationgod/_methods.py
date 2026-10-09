@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:e7b5cf48095877446dbfeec42f71c27d9960fc97fc6ed8c1154576525dfa5214'
+CATALOGUE_HASH = 'sha256:cd5e30d75586c118d8051803a8b529536cba7fcb5f179659d1865fb8679132cf'
 MOD_VERSION = '1.32.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -395,7 +395,7 @@ TABLE = {'catalogue': {'class': 'read',
                             'sections',
                             'network_ids',
                             'kinds',
-                            'compact',
+                            'cell_detail',
                             'occupied_only',
                             'include_piece_cells',
                             'limit',
@@ -474,7 +474,7 @@ TABLE = {'catalogue': {'class': 'read',
                  'effects': [],
                  'paging': None,
                  'duration': None,
-                 'params': ['room_id', 'min', 'max', 'limit'],
+                 'params': ['room_id', 'min', 'max', 'codes', 'exclude_codes', 'limit'],
                  'required': [],
                  'shaping': 'lists',
                  'protocol': False},
@@ -1821,12 +1821,12 @@ class Methods:
         """
         return self.call('get_ic_status', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'stack_start': stack_start, 'stack_count': stack_count, 'log_lines': log_lines, 'include_source': include_source}, **options)
 
-    def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, kinds: list | None = None, compact: bool | None = None, occupied_only: bool | None = None, include_piece_cells: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
-        """Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), with frames, walls, each small cell's occupant and support, the pieces, devices and their ports, and networks.
+    def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, kinds: list | None = None, cell_detail: str | None = None, occupied_only: bool | None = None, include_piece_cells: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+        """Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), by what occupies each (cell_detail full adds support and ids), the pieces, devices and their ports, and networks.
 
-        Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, kinds, compact, occupied_only, include_piece_cells, limit, offset.
+        Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, kinds, cell_detail, occupied_only, include_piece_cells, limit, offset.
         """
-        return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'kinds': kinds, 'compact': compact, 'occupied_only': occupied_only, 'include_piece_cells': include_piece_cells, 'limit': limit, 'offset': offset}, **options)
+        return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'kinds': kinds, 'cell_detail': cell_detail, 'occupied_only': occupied_only, 'include_piece_cells': include_piece_cells, 'limit': limit, 'offset': offset}, **options)
 
     def highlight(self, *, targets: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, **options) -> dict:
         """Show the player where things are, through walls and terrain, on their screen only: things, a network, or far points, tinted and labelled for a while.
@@ -1870,12 +1870,12 @@ class Methods:
         """
         return self.call('landing_pads', **options)
 
-    def lint_layout(self, *, room_id: str | None = None, min: object | None = None, max: object | None = None, limit: int | None = None, **options) -> dict:
+    def lint_layout(self, *, room_id: str | None = None, min: object | None = None, max: object | None = None, codes: list | None = None, exclude_codes: list | None = None, limit: int | None = None, **options) -> dict:
         """Check a room or a box against the layout rules (lint-rules.json, the save's file over the mod's), from what stands there: replaceability, doors, ports, floating runs, overlaps, solar, oxidiser venting and more.
 
-        Class: read. Arguments: room_id, min, max, limit.
+        Class: read. Arguments: room_id, min, max, codes, exclude_codes, limit.
         """
-        return self.call('lint_layout', **{'room_id': room_id, 'min': min, 'max': max, 'limit': limit}, **options)
+        return self.call('lint_layout', **{'room_id': room_id, 'min': min, 'max': max, 'codes': codes, 'exclude_codes': exclude_codes, 'limit': limit}, **options)
 
     def lint_rules(self, *, action: str | None = None, rule_id: str | None = None, full: bool | None = None, text: str | None = None, reference_id: str | None = None, port: int | None = None, other_id: str | None = None, at: object | None = None, **options) -> dict:
         """The lint rule set lint_layout audits with and the building tools run on dry runs: list the rules, validate a rule file, list fields and functions, run the examples, explain a finding.

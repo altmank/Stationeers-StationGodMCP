@@ -842,8 +842,9 @@ internal sealed class LintLayoutView
 {
     internal LintLayoutView(string region, int cells, int pieces, int devices, int structures, int doors,
         Dictionary<string, int> counts, List<LintFindingView> findings, int total, LintRuleSourceView ruleSource,
-        double elapsedMs)
+        double elapsedMs, int? filteredOut = null)
     {
+        FilteredOut = filteredOut;
         RuleSource = ruleSource;
         ElapsedMs = System.Math.Round(elapsedMs, 1);
         Region = region;
@@ -872,12 +873,17 @@ internal sealed class LintLayoutView
 
     public int Doors { get; }
 
-    /// <summary>Findings per rule code.</summary>
+    /// <summary>Findings per rule code, every finding counted (codes and exclude_codes do not narrow it).</summary>
     public Dictionary<string, int> Counts { get; }
 
     public List<LintFindingView> Findings { get; }
 
+    /// <summary>Findings codes and exclude_codes let through.</summary>
     public int Total { get; }
+
+    /// <summary>With codes or exclude_codes: the findings they left out; absent otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? FilteredOut { get; }
 
     public bool HasMore { get; }
 
