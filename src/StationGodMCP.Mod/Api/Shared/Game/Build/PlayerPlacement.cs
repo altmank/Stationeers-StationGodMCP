@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Localization2;
+using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
@@ -88,8 +89,10 @@ internal static class PlayerPlacement
             string? mount = CursorCheck.MountRefusal(cursor);
             GameCheck mounting = new GameCheck(mount,
                 mount != null && PlayerPlacementRule.BlamesReplaced(mount, texts));
+            bool adjacency = construct.BlamesReplaced &&
+                             PlayerPlacementRule.BlamesReplaced(construct.Refusal!, AdjacencyTexts(replaced));
             return PlayerPlacementRule.Judge(new[] { construct, mounting },
-                () => Neighbours(prefab, cursor, position, rotation, ids));
+                () => Neighbours(prefab, cursor, position, rotation, ids, adjacency));
         });
     }
 
@@ -192,7 +195,8 @@ internal static class PlayerPlacement
     }
 
     // The texts the game names a thing in the way with (Structure.CanConstructCell, SmallGrid.CanConstruct,
-    // Pipe.CanConstruct, CanMountResult InvalidBlocked), for each replaced thing, as CursorCheck words them.
+    // Pipe.CanConstruct, CanMountResult InvalidBlocked, Device.CanConstruct's adjacent device), for each replaced
+    // thing, as CursorCheck words them.
     private static List<string> TextsNaming(IReadOnlyCollection<Structure> replaced)
     {
         List<string> texts = new List<string>();
@@ -205,6 +209,20 @@ internal static class PlayerPlacement
             texts.Add(CursorCheck.Text(GameStrings.FaceBlockedByStructure.AsString(name), string.Empty));
             texts.Add(CursorCheck.Text(GameStrings.CannotMergeWithSmallGrid.AsString(name), string.Empty));
             texts.Add(CursorCheck.Text(InterfaceStrings.TooltipPlacementSnapFaceMountBlocked(structure), string.Empty));
+        }
+
+        texts.AddRange(AdjacencyTexts(replaced));
+        return texts;
+    }
+
+    // Device.CanConstruct's adjacent-device refusal naming each replaced thing, as CursorCheck words it.
+    private static List<string> AdjacencyTexts(IReadOnlyCollection<Structure> replaced)
+    {
+        List<string> texts = new List<string>(replaced.Count);
+        foreach (Structure structure in replaced)
+        {
+            texts.Add(CursorCheck.Text(GameStrings.PlacementBlockedByAdjacentDevice.AsString(structure.DisplayName),
+                string.Empty));
         }
 
         return texts;
@@ -239,9 +257,11 @@ internal static class PlayerPlacement
     // What the cursor check could not see past a replaced thing: the neighbours, the replaced things treated as gone.
     // A device mounted on a pipe or cable only needs its slot free (its CanConstruct looks at nothing else); a small-grid
     // piece every small-grid collision (PlacementCheck) and, when it registers in 2 m cells too, those; anything else
-    // its 2 m cells or face as Structure.CanConstructCell reads them.
+    // its 2 m cells or face as Structure.CanConstructCell reads them. adjacency: the game's check stopped at a device
+    // the cursor's ports meet that is a replaced thing, so the devices they meet are asked again first (a check that
+    // stopped before the adjacent-device rule never reached it, and neither does this).
     private static string? Neighbours(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation,
-        HashSet<long> ids)
+        HashSet<long> ids, bool adjacency)
     {
         switch (prefab)
         {
@@ -252,11 +272,64 @@ internal static class PlayerPlacement
                     ? $"{Names.Of(device)} ({device.PrefabName} {device.ReferenceId}) is in the way"
                     : null;
             case SmallGrid piece:
-                return PlacementCheck.Refusal(prefab, position, rotation, ids) ??
+                return (adjacency ? AdjacentRefusal(cursor, ids) : null) ??
+                       PlacementCheck.Refusal(prefab, position, rotation, ids) ??
                        (piece.DualRegister ? LargeRefusal(prefab, cursor, position, rotation, ids) : null);
             default:
                 return LargeRefusal(prefab, cursor, position, rotation, ids);
         }
+    }
+
+    // Device.CanConstruct's adjacency check on the cursor where it stands (CursorCheck.At), the things in ids treated
+    // as gone (PlayerPlacementRule.FirstAdjacent). The devices its open ends meet as SmallGrid.FillConnected<Device>
+    // finds them: in the small cell of each end's transform, a device other than itself one of whose ports lies in the
+    // cell that end faces (IsConnected); less a pipe-like device that allows the connection and, for an elevator shaft,
+    // another shaft, as the game leaves them out. Null for anything but a device, and when only replaced things are met.
+    private static string? AdjacentRefusal(Structure cursor, HashSet<long> ids)
+    {
+        if (!(cursor is Device device) || device.OpenEnds == null)
+        {
+            return null;
+        }
+
+        GridController world = GridController.World;
+        List<Device> met = new List<Device>();
+        foreach (Connection end in device.OpenEnds)
+        {
+            if (end?.Transform == null)
+            {
+                continue;
+            }
+
+            SmallCell? cell = world.GetSmallCell(world.WorldToLocalGrid(end.Transform.position, SmallGrid.SmallGridSize,
+                SmallGrid.SmallGridOffset));
+            Meets(device, cell?.Device, end, met);
+            Meets(device, cell?.Other as Device, end, met);
+        }
+
+        int first = PlayerPlacementRule.FirstAdjacent(met.ConvertAll(static other => other.ReferenceId), ids);
+        if (first < 0)
+        {
+            return null;
+        }
+
+        Device blocking = met[first];
+        return CursorCheck.Text(
+            GameStrings.PlacementBlockedByAdjacentDevice.AsString(blocking.DisplayName), string.Empty) +
+               $" ({blocking.PrefabName} {blocking.ReferenceId})";
+    }
+
+    private static void Meets(Device device, Device? other, Connection end, List<Device> met)
+    {
+        if (other == null || other.IsBeingDestroyed || other.ReferenceId == device.ReferenceId ||
+            !other.IsConnected(end) ||
+            (other is INetworkedPipe pipe && !pipe.ProhibitConnection(device)) ||
+            (device is ElevatorShaft && other is ElevatorShaft))
+        {
+            return;
+        }
+
+        met.Add(other);
     }
 
     // Structure.CanConstructCell over the 2 m cells a grid-placed piece takes (or the cell of a face-placed one), the

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A Combustor standing where it was built is replaceable again.** `check_replaceable` and lint_layout's
+  `not_replaceable` called freshly built Combustors not replaceable, naming only the Combustor: its inner pipe ends lie
+  in the cells its own Input2 and Output1 ports face, so the game's adjacent-device check (`Device.CanConstruct`) on a
+  cursor where it stands met the Combustor itself ("Cannot place adjacent to Combustor"). That refusal now counts as
+  the replaced thing's, and the devices the ports meet are checked again without it, so a real neighbour still refuses
+  (rule `adjacent`, naming its id). Any device whose ports meet its own cells gains the same.
 - **`controls_blocked` no longer flags a device with no controls.** A device whose prefab lists no interactable a
   player uses (`Thing.Interactables` empty, or indicators only: a Medium Convection Radiator) has no control side, so
   nothing in front of it is reported; before, its forward stood in and lint_layout flagged radiators against walls.

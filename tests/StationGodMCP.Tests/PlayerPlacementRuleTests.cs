@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using StationGodMCP.Pure;
 using Xunit;
 
@@ -115,6 +116,41 @@ public sealed class PlayerPlacementRuleTests
     {
         Assert.Equal(blames, PlayerPlacementRule.BlamesReplaced(refusal,
             new[] { "", "Cannot merge with Active Vent", BlockedBySelf }));
+    }
+
+    /// <summary>
+    /// The 2026-10-08 hub smelter slab: three freshly built Combustors reported not_replaceable, the reason naming only
+    /// the Combustor. StructureCombustor's inner pipe ends (PipeConnection at (0.5, 0, 0.5) facing +x and (0, 0, 0.5)
+    /// facing -x) lie in the cells its Input2 and Output1 ports face, so Device.CanConstruct's adjacency check
+    /// (SmallGrid.FillConnected) on a cursor where it stands meets the Combustor itself: "Cannot place adjacent to
+    /// Combustor". That refusal is the replaced thing's; the devices met are checked again without it.
+    /// </summary>
+    [Fact]
+    public void ACombustorMeetingOnlyItselfIsReplaceable()
+    {
+        const string adjacentToSelf = "Cannot place adjacent to Combustor";
+        const long combustor = 4410;
+
+        Assert.True(PlayerPlacementRule.BlamesReplaced(adjacentToSelf,
+            new[] { "Placement is blocked by Combustor", adjacentToSelf }));
+        Assert.Equal(-1,
+            PlayerPlacementRule.FirstAdjacent(new[] { combustor, combustor }, new HashSet<long> { combustor }));
+        Assert.IsType<PlacementVerdict.Allowed>(
+            PlayerPlacementRule.Judge(new[] { new GameCheck(adjacentToSelf, true) }, () => null));
+    }
+
+    [Fact]
+    public void ANeighbourCombustorTheSelfMatchHidStillRefusesUnderAdjacent()
+    {
+        const long replaced = 4410;
+        const long neighbour = 4411;
+
+        Assert.Equal(1,
+            PlayerPlacementRule.FirstAdjacent(new[] { replaced, neighbour }, new HashSet<long> { replaced }));
+        PlacementVerdict verdict = PlayerPlacementRule.Judge(
+            new[] { new GameCheck("Cannot place adjacent to Combustor", true) },
+            () => "Cannot place adjacent to Combustor (StructureCombustor 4411)");
+        Assert.Equal(PlacementRules.Adjacent, Assert.IsType<PlacementVerdict.Refused>(verdict).Rule);
     }
 
     [Theory]

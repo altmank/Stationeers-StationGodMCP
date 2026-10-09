@@ -223,6 +223,26 @@ internal static class PlayerPlacementRule
         requiresFrameRefusal && replacedFillsCell && frameBelow;
 
     /// <summary>
+    /// Device.CanConstruct's adjacency check with the replaced things gone: the first device an open end of the cursor
+    /// meets (SmallGrid.FillConnected, in the order the game lists them) that is not replaced; -1 when none is. A
+    /// device can meet itself: StructureCombustor's inner pipe ends (PipeConnection, in its own cells and facing out)
+    /// sit in the cells its Input2 and Output1 ports face, so a cursor standing where a Combustor stands is "adjacent
+    /// to" that Combustor, a refusal that only names the thing being replaced.
+    /// </summary>
+    internal static int FirstAdjacent(IReadOnlyList<long> met, ICollection<long> replaced)
+    {
+        for (int index = 0; index < met.Count; index++)
+        {
+            if (!replaced.Contains(met[index]))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
     /// Pipe.CanConstruct for a pipe whose origin cell holds a device mounted on a pipe (a pipe analyser, a pipe
     /// heater): only a straight pipe along the device's axis and of the device's content (gas or liquid) may pass
     /// under it. Null when it may. Axes are the absolute forwards (0 x, 1 y, 2 z).
