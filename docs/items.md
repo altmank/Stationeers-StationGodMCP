@@ -9,7 +9,7 @@ these tools need a gateway.
 
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
-| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock, and what SDB Silos store. | `prefab` (exact), `prefabs` (several exact names), `prefab_contains`, `name_contains`, `location` (`ground`, `player`, `stored`, `machine_stock`, `silo`), `within_id`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `limit`, `offset`, `order` |
+| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock, and what SDB Silos store. | `prefab` (exact), `prefabs` (several exact names), `prefab_contains`, `name_contains`, `location` (`ground`, `player`, `stored`, `machine_stock`, `silo`), `within_id`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `limit`, `offset`, `order`, `group_by` (`holder`, `prefab`), `exclude_in_use` |
 | `item_totals` | Total quantity of each item type, split into on the ground, carried, stored, machine stock and silo, with the holder that holds the most (`holders_limit` holders; one by default). | as `find_items`, and `holders_limit` (0 leaves the holders out) |
 | `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab` (exact), `prefabs` (several exact names), `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `made_by`, `made_since`, `location`, `order` |
 | `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m`, `order` |
@@ -27,6 +27,14 @@ these tools need a gateway.
   `prefabs: ["ItemIronIngot", "ItemSteelIngot"]` counts several items in one call; each item's `prefab_name` tells
   them apart. Ingots loaded into a fabricator count as the ingots it would eject (`location: machine_stock`). Stock
   cannot be moved with `move_item`: open the fabricator to eject it.
+- `group_by` sums the matches instead of listing each with its holder chain and position: `holder` gives one entry per
+  outermost holder and prefab (`quantity`, `entries`, `location`, `holder`, its `position` and `distance_m`; loose items
+  of a prefab make one entry with no holder), `prefab` one per prefab (`quantity`, `entries`, `holders`). 360 stacks in
+  a row of 12 lockers come to about 25 KB by holder and under 1 KB by prefab, against about 130 KB listed one by one.
+  Groups come in the order of their first entry; `limit` and `offset` page the groups.
+- `exclude_in_use: true` leaves out parts a device is using and what is inside them (the filters of a running
+  filtration machine, chips in their housings; see *Moving items*), counted in `in_use_left_out`, so a search for
+  spare filters lists the spares.
 - `find_things` finds what `find_items` does not: a tank labelled `T1` is found by `T1` and by `Portable Liquid Tank`.
   `min` and `max` keep only things in a box (`kind: "structure"` with a box gives the walls of one building). A
   rocket's part reports `rocket_state`: its position moves while the rocket flies. A paintable thing reports

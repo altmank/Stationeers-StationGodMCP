@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`find_items` `group_by`** sums the matches instead of listing each item with its holder chain and position:
+  `holder` gives one entry per outermost holder and prefab (`prefab_name`, `display_name`, `quantity`, `entries`,
+  `location`, `holder`, `position`, `distance_m`; loose items of a prefab together, with no holder), `prefab` one entry
+  per prefab (`quantity`, `entries`, `holders`). Groups come in the order of their first entry and page like items. 360
+  stacks in a row of 12 lockers: about 130 KB listed, about 25 KB by holder, under 1 KB by prefab.
+- **`find_items` `exclude_in_use`** (default false) leaves out parts a device is using and what is inside them (a
+  running filtration machine's filters, chips in their housings: the `in_use` rule `move_item` refuses on), counted in
+  `in_use_left_out`. The default lists them as before: a chip sits in its housing for good, so leaving such parts out
+  unasked would hide every installed chip from a search for chips.
 - **A Combustor standing where it was built is replaceable again.** `check_replaceable` and lint_layout's
   `not_replaceable` called freshly built Combustors not replaceable, naming only the Combustor: its inner pipe ends lie
   in the cells its own Input2 and Output1 ports face, so the game's adjacent-device check (`Device.CanConstruct`) on a

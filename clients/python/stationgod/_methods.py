@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:cd5e30d75586c118d8051803a8b529536cba7fcb5f179659d1865fb8679132cf'
+CATALOGUE_HASH = 'sha256:8b4ebe2cdff7d0781093ceadf84ede16f5d34f96f57021fb53235489ebc49321'
 MOD_VERSION = '1.32.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -285,7 +285,9 @@ TABLE = {'catalogue': {'class': 'read',
                            'near_player_m',
                            'limit',
                            'offset',
-                           'order'],
+                           'order',
+                           'group_by',
+                           'exclude_in_use'],
                 'required': [],
                 'shaping': 'lists',
                 'protocol': False},
@@ -1779,12 +1781,12 @@ class Methods:
         """
         return self.call('feed_paths', **{'root': root, 'network_id': network_id, 'port': port, 'kind': kind}, **options)
 
-    def find_items(self, *, prefab: str | None = None, prefabs: list | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
+    def find_items(self, *, prefab: str | None = None, prefabs: list | None = None, prefab_contains: str | None = None, name_contains: str | None = None, location: str | None = None, within_id: str | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, group_by: str | None = None, exclude_in_use: bool | None = None, **options) -> dict:
         """Find items anywhere: on the ground, in containers and machines, carried by players, machine stock and silo stores.
 
-        Class: read. Arguments: prefab, prefabs, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, offset, order.
+        Class: read. Arguments: prefab, prefabs, prefab_contains, name_contains, location, within_id, min, max, near, radius_m, near_player_m, limit, offset, order, group_by, exclude_in_use.
         """
-        return self.call('find_items', **{'prefab': prefab, 'prefabs': prefabs, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset, 'order': order}, **options)
+        return self.call('find_items', **{'prefab': prefab, 'prefabs': prefabs, 'prefab_contains': prefab_contains, 'name_contains': name_contains, 'location': location, 'within_id': within_id, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'limit': limit, 'offset': offset, 'order': order, 'group_by': group_by, 'exclude_in_use': exclude_in_use}, **options)
 
     def find_spot(self, *, prefab: str | int | None = None, near: object | None = None, plane: str | None = None, side: str | None = None, looking: bool | None = None, around: object | None = None, room_id: str | None = None, facing: str | None = None, radius_m: float | None = None, require: dict | None = None, limit: int | None = None, max_checks: int | None = None, **options) -> dict:
         """Ranked places for a prefab near a point, on one face plane or on a room's walls, each checked with the game's placement cursor and the layout preview; answers place_arguments.

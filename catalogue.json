@@ -244,7 +244,7 @@
           },
           "in_use": {
             "summary": "Parts a device is using, which no tool takes out unasked.",
-            "text": "A chip in any chip holder (IC housing, a circuit device's chip slot, laptop, robot, suit, tablet) and a computer's or console's motherboard are always in use: the program or the console's set-up lives in them, and taking a chip out resets it. While the device is switched on (or has no switch) these are in use too: a filtration machine's or atmos dock's filters, the battery cell of a placed battery-run machine (area power control, battery wall light, robot, rover) and the canister of a machine that draws on it (Stirling engine, portable generator, composter, portable air conditioner, portable hydroponics). move_item and silo_deposit refuse such an item as in_use, naming the device, its label and the slot, and silo_deposit's dry run reports it; silo_deposit's filter form skips it; a build's from_id never pays with it. allow_in_use true takes it anyway. Not covered: battery chargers and canister docks, whose job is to hand the part back; the batteries, tanks and filters of carried gear (suits, tools, helmets, jetpacks); other slots (storage, import, export). Deconstructing the device itself is not a take: its contents go with it."
+            "text": "A chip in any chip holder (IC housing, a circuit device's chip slot, laptop, robot, suit, tablet) and a computer's or console's motherboard are always in use: the program or the console's set-up lives in them, and taking a chip out resets it. While the device is switched on (or has no switch) these are in use too: a filtration machine's or atmos dock's filters, the battery cell of a placed battery-run machine (area power control, battery wall light, robot, rover) and the canister of a machine that draws on it (Stirling engine, portable generator, composter, portable air conditioner, portable hydroponics). move_item and silo_deposit refuse such an item as in_use, naming the device, its label and the slot, and silo_deposit's dry run reports it; silo_deposit's filter form skips it; a build's from_id never pays with it; find_items exclude_in_use leaves it out. allow_in_use true takes it anyway. Not covered: battery chargers and canister docks, whose job is to hand the part back; the batteries, tanks and filters of carried gear (suits, tools, helmets, jetpacks); other slots (storage, import, export). Deconstructing the device itself is not a take: its contents go with it."
           },
           "refusals": {
             "summary": "Why a move into or out of a slot is refused.",
@@ -2912,8 +2912,14 @@
       "name": "find_items",
       "description": "Find items anywhere: on the ground, in containers and machines, carried by players, machine stock and silo stores. Each with quantity, location, holders and distance, nearest first or by reference id. 10 per page. Read only.\nMore: tool_info {tool: \"find_items\"}",
       "help": {
-        "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type. Narrow a big world with prefab (exact), prefabs (several exact names, one call for all) or prefab_contains, which read only the items of those prefabs; location (ground: loose in the world; player: carried; stored; machine_stock) and an area: min and max, or near with radius_m (for a machine's stock, where the machine stands).",
-        "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}.",
+        "text": "Each item reports quantity (stack size, else 1), location, held_in (holders from its own slot outwards), the outermost holder's position, and distance from the player. Sorted nearest first. item_totals sums them by type. Narrow a big world with prefab (exact), prefabs (several exact names, one call for all) or prefab_contains, which read only the items of those prefabs; location (ground: loose in the world; player: carried; stored; machine_stock) and an area: min and max, or near with radius_m (for a machine's stock, where the machine stands). group_by sums them instead (topic groups); exclude_in_use leaves out parts a device is using and counts them in in_use_left_out.",
+        "keys": "items, count, total, offset, limit, has_more, local_player {reference_id, display_name, position}, in_use_left_out.",
+        "topics": {
+          "groups": {
+            "summary": "group_by: sums per holder and prefab, or per prefab.",
+            "text": "group_by holder: each entry of items is {prefab_name, display_name, reagent (a working load with no ingot), quantity, entries, location, holder {reference_id, prefab_name, display_name}, position, distance_m}, one prefab's stacks (or a machine's stock, a silo's entries) in one outermost holder, summed; loose items of a prefab make one group with holder null and no position. group_by prefab: {prefab_name, display_name, reagent, quantity, entries, holders (distinct outermost holders)}. Groups come in the order of their first entry (order), and limit, offset, total and has_more page the groups. item_totals splits a prefab's total by place instead."
+          }
+        },
         "shared": ["items", "paging", "shaping", "player"]
       },
       "class": "read",
@@ -2962,6 +2968,15 @@
             "type": "string",
             "enum": ["nearest", "reference_id"],
             "description": "nearest (default): nearest the player first; reference_id: lowest id first, pages that stay put while the player moves (see paging)."
+          },
+          "group_by": {
+            "type": "string",
+            "enum": ["holder", "prefab"],
+            "description": "Sum the entries instead of listing each: holder, per outermost holder and prefab; prefab, per prefab."
+          },
+          "exclude_in_use": {
+            "type": "boolean",
+            "description": "Default false: true leaves out parts a device is using (a running filter's filters, chips in their holders) and what is inside them (slots/in_use)."
           }
         },
         "additionalProperties": false
@@ -2975,7 +2990,8 @@
           "offset": {"type": "integer"},
           "limit": {"type": "integer"},
           "has_more": {"type": "boolean"},
-          "local_player": {"type": ["object", "null"]}
+          "local_player": {"type": ["object", "null"]},
+          "in_use_left_out": {"type": "integer"}
         }
       },
       "x-read-by": {

@@ -12,9 +12,10 @@ namespace StationGodMCP.Api.Views;
 /// <summary>find_items: one page of the items that match, in the order asked.</summary>
 internal sealed class FindItemsView
 {
-    internal FindItemsView(Slice<IFoundItemView> page, LocalPlayerView? localPlayer)
+    internal FindItemsView(Slice<IFoundItemView> page, LocalPlayerView? localPlayer, int? inUseLeftOut = null)
     {
         Items = page.Items;
+        InUseLeftOut = inUseLeftOut;
         Count = page.Items.Count;
         Total = page.Total;
         Offset = page.Offset;
@@ -23,7 +24,10 @@ internal sealed class FindItemsView
         LocalPlayer = localPlayer;
     }
 
-    /// <summary>Items (ItemView), machine stock (StockItemView, location machine_stock), silo stock (SiloItemView).</summary>
+    /// <summary>
+    /// Items (ItemView), machine stock (StockItemView, location machine_stock), silo stock (SiloItemView); with
+    /// group_by, groups of them (HolderGroupView, PrefabGroupView).
+    /// </summary>
     public List<IFoundItemView> Items { get; }
 
     public int Count { get; }
@@ -37,6 +41,115 @@ internal sealed class FindItemsView
     public bool HasMore { get; }
 
     public LocalPlayerView? LocalPlayer { get; }
+
+    /// <summary>With exclude_in_use: the items left out as parts a device is using, or inside one; else left out.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? InUseLeftOut { get; }
+}
+
+/// <summary>
+/// What names a find_items group: its first entry's prefab (or working-load reagent), place and outermost holder (none
+/// for a loose item), and the holder's position and distance from the player.
+/// </summary>
+internal sealed class FoundGroupFacts
+{
+    internal FoundGroupFacts(string? prefabName, string? displayName, string? reagent, string location,
+        ThingView? holder, PositionView? position, double? distanceM)
+    {
+        PrefabName = prefabName;
+        DisplayName = displayName;
+        Reagent = reagent;
+        Location = location;
+        Holder = holder;
+        Position = position;
+        DistanceM = distanceM;
+    }
+
+    internal string? PrefabName { get; }
+
+    internal string? DisplayName { get; }
+
+    internal string? Reagent { get; }
+
+    internal string Location { get; }
+
+    internal ThingView? Holder { get; }
+
+    internal PositionView? Position { get; }
+
+    internal double? DistanceM { get; }
+}
+
+/// <summary>
+/// find_items group_by holder: one prefab's entries (stacks, a machine's stock, silo entries) in one outermost holder,
+/// summed. Loose items of a prefab make one group with no holder and no position.
+/// </summary>
+internal sealed class HolderGroupView : IFoundItemView
+{
+    internal HolderGroupView(FoundGroupFacts first, int entries, double quantity)
+    {
+        PrefabName = first.PrefabName;
+        DisplayName = ThingName.Displayed(first.DisplayName, first.PrefabName);
+        Reagent = first.Reagent;
+        Quantity = quantity;
+        Entries = entries;
+        Location = first.Location;
+        Holder = first.Holder;
+        Position = first.Holder != null ? first.Position : null;
+        DistanceM = first.Holder != null ? first.DistanceM : null;
+    }
+
+    public string? PrefabName { get; }
+
+    public string? DisplayName { get; }
+
+    /// <summary>A machine's working load with no ingot to name it: the reagent; else left out.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Reagent { get; }
+
+    public double Quantity { get; }
+
+    public int Entries { get; }
+
+    /// <summary>ground, player, stored, machine_stock or silo.</summary>
+    public string Location { get; }
+
+    /// <summary>The outermost holder; null for loose items.</summary>
+    public ThingView? Holder { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public PositionView? Position { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? DistanceM { get; }
+}
+
+/// <summary>find_items group_by prefab: every entry of one prefab (or working-load reagent) summed.</summary>
+internal sealed class PrefabGroupView : IFoundItemView
+{
+    internal PrefabGroupView(FoundGroupFacts first, int entries, double quantity, int holders)
+    {
+        PrefabName = first.PrefabName;
+        DisplayName = ThingName.Displayed(first.DisplayName, first.PrefabName);
+        Reagent = first.Reagent;
+        Quantity = quantity;
+        Entries = entries;
+        Holders = holders;
+    }
+
+    public string? PrefabName { get; }
+
+    public string? DisplayName { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Reagent { get; }
+
+    public double Quantity { get; }
+
+    public int Entries { get; }
+
+    /// <summary>Distinct outermost holders (players, containers, machines, silos); loose items count none.</summary>
+    public int Holders { get; }
 }
 
 /// <summary>item_totals: the matching items summed per prefab, largest first.</summary>

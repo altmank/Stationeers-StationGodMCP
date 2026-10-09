@@ -62,6 +62,26 @@ internal static class WorldItems
         return records;
     }
 
+    /// <summary>
+    /// find_items exclude_in_use: takes out the items that are parts a device is using (PartsInUse: a running
+    /// filtration machine's filters, a chip in its housing) or sit inside one, and answers how many it took out.
+    /// </summary>
+    internal static int LeaveOutPartsInUse(List<ItemRecord> records) =>
+        records.RemoveAll(static record => InUse(record.Path));
+
+    private static bool InUse(List<Slot> path)
+    {
+        foreach (Slot slot in path)
+        {
+            if (PartsInUse.InUse(slot))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     internal static ItemRecord Describe(Item item, PlayerOrigin origin)
     {
         HolderChain chain = HolderChain.Of(item);
