@@ -156,6 +156,10 @@ A whole survey of a small box can run to tens of kilobytes. Ask for what you nee
   and `has_more` still page the cells.
 - `network_ids`: only the pieces on these networks (a network id, or any cable, pipe or chute piece on it), the
   devices with a port on one of them, and those networks.
+- `kinds`: only `cable`, `pipe` or `chute` pieces and the devices with such a port.
+- `prefab`, `prefabs` or `prefab_contains`: only the pieces and devices of those prefabs (`prefab_contains:
+  "Insulated"` for the insulated pipes, `prefabs: ["StructureVolumePump"]` for the pumps). A 300-piece pieces section
+  of about 50 KB comes to about 9 KB for its 50 insulated pipes.
 - `cell_detail`: `occupancy` (default, a few dozen bytes a cell) or `full` (the `support` string, wall ids and
   prefabs, room, frame build state: several hundred bytes a cell).
 

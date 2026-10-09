@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -208,6 +209,36 @@ internal sealed class SurveyKinds
 
         return false;
     }
+}
+
+/// <summary>
+/// network_ids, kinds and prefab, prefabs or prefab_contains together: what a grid_survey page's pieces and devices
+/// must pass. A piece passes on its network, kind and prefab; a device on a port on a named network, a port of a named
+/// kind, and its own prefab.
+/// </summary>
+internal sealed class SurveyFilter
+{
+    internal SurveyFilter(SurveyNetworkFilter networks, SurveyKinds kinds, PrefabMatch prefabs)
+    {
+        Networks = networks;
+        Kinds = kinds;
+        Prefabs = prefabs;
+    }
+
+    internal static SurveyFilter Every { get; } =
+        new SurveyFilter(SurveyNetworkFilter.Every, SurveyKinds.Every, PrefabMatch.Any);
+
+    internal SurveyNetworkFilter Networks { get; }
+
+    internal SurveyKinds Kinds { get; }
+
+    internal PrefabMatch Prefabs { get; }
+
+    internal bool AdmitsPiece(ThingId? network, string kind, string? prefab) =>
+        Networks.Admits(network) && Kinds.AdmitsPiece(kind) && Prefabs.Keeps(prefab);
+
+    internal bool AdmitsDevice(string? prefab, IEnumerable<ThingId?> networks, IEnumerable<string?> portTypes) =>
+        Prefabs.Keeps(prefab) && Networks.AdmitsAny(networks) && Kinds.AdmitsDevice(portTypes);
 }
 
 /// <summary>grid_survey cell_detail: occupancy (the default) or full.</summary>

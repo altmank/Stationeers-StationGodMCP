@@ -2,7 +2,7 @@
   "name": "grid_survey",
   "summary": "Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), by what occupies each (cell_detail full adds support and ids), the pieces, devices and their ports, and networks. Read only.",
   "help": {
-    "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. Cells come by what occupies them; cell_detail full gives each in full. sections, network_ids, kinds and occupied_only narrow it.",
+    "text": "Pieces and devices are those in the page's cells, so a device spanning pages is listed on each. A page lists at most 40 pieces and 20 devices by default; truncated gives how many, list_limits {\"pieces\": n, \"devices\": n} lists more. Cells come by what occupies them; cell_detail full gives each in full. sections, network_ids, kinds, prefab(s), prefab_contains and occupied_only narrow it.",
     "keys": "legend, cells [{at, empty, frame_id, faces, small; room_id, frame, walls, support}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, ...}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}], resolved_networks.",
     "topics": {
       "cells": {
@@ -54,6 +54,15 @@
         "maxItems": 3,
         "items": {"type": "string", "enum": ["cable", "pipe", "chute"]},
         "description": "Only pieces of these kinds (cable, pipe, chute) and devices with such a port."
+      },
+      "prefab": {
+        "type": "string",
+        "description": "Only pieces and devices of this whole prefab name, any case ('StructurePipeStraight'); with prefab_contains both must match."
+      },
+      "prefabs": {"$ref": "defs/prefabs.json"},
+      "prefab_contains": {
+        "type": "string",
+        "description": "Only pieces and devices whose prefab name holds this, any case ('Insulated', 'Junction', 'Pump')."
       },
       "cell_detail": {
         "type": "string",

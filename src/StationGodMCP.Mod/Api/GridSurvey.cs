@@ -31,7 +31,8 @@ namespace StationGodMCP.Api;
 /// supports each small cell (CellSupports); then the cables, pipes, chutes and devices standing in the page's cells, device ports with the
 /// cell a piece joins them from, and the networks of the pieces listed; chute pieces with the way items move through
 /// them (ChuteFlow) and what rides in them. sections keeps only the parts named (SurveySections), network_ids only the
-/// pieces of those networks and the devices with a port on one (SurveyNetworkFilter). Read only.
+/// pieces of those networks and the devices with a port on one (SurveyNetworkFilter), kinds and prefab, prefabs or
+/// prefab_contains only those pieces and devices (SurveyFilter). Read only.
 /// </summary>
 internal static class GridSurveyApi
 {
@@ -50,6 +51,7 @@ internal static class GridSurveyApi
         bool includePieceCells = args.OptionalBool("include_piece_cells") ?? false;
         SurveyNetworkFilter filter = NetworkFilter(args);
         SurveyKinds kinds = SurveyKinds.Parse(args);
+        PrefabMatch prefabs = PrefabMatches.Parse(args);
         GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
         List<GridCell> cells = Cells(args);
         if (args.OptionalBool("occupied_only") ?? false)
@@ -67,7 +69,7 @@ internal static class GridSurveyApi
             }
         }
 
-        SurveyContents contents = Contents(facts, slice.Items, sections, new SurveyFilter(filter, kinds), includeNetworks,
+        SurveyContents contents = Contents(facts, slice.Items, sections, new SurveyFilter(filter, kinds, prefabs), includeNetworks,
             includeRefund, includePieceCells);
         string? legend = !sections.Includes(SurveySection.Cells) ? null
             : detail == SurveyCellDetail.Full ? SurveyLegends.Full
@@ -362,8 +364,8 @@ internal static class GridSurveyApi
         foreach (long id in ids)
         {
             SurveyDeviceView view = DeviceView(devices[id]);
-            if (filter.Networks.AdmitsAny(view.Ports.ConvertAll(static port => port.NetworkId)) &&
-                filter.Kinds.AdmitsDevice(view.Ports.ConvertAll(static port => (string?)port.Type)))
+            if (filter.AdmitsDevice(devices[id].PrefabName, view.Ports.ConvertAll(static port => port.NetworkId),
+                    view.Ports.ConvertAll(static port => (string?)port.Type)))
             {
                 views.Add(view);
             }
@@ -374,8 +376,8 @@ internal static class GridSurveyApi
 
     private static void AddPiece(Dictionary<long, SmallGrid> pieces, SmallGrid? piece, SurveyFilter filter)
     {
-        if (piece != null && !piece.IsBeingDestroyed && filter.Networks.Admits(NetworkIdOf(piece)) &&
-            filter.Kinds.AdmitsPiece(KindOf(piece)))
+        if (piece != null && !piece.IsBeingDestroyed &&
+            filter.AdmitsPiece(NetworkIdOf(piece), KindOf(piece), piece.PrefabName))
         {
             pieces[piece.ReferenceId] = piece;
         }
@@ -607,18 +609,4 @@ internal static class GridSurveyApi
     }
 
     private static string KindOf(SmallGrid piece) => piece is Cable ? "cable" : piece is Pipe ? "pipe" : "chute";
-
-    /// <summary>network_ids and kinds together: what a page's pieces and devices must pass.</summary>
-    private readonly struct SurveyFilter
-    {
-        internal SurveyFilter(SurveyNetworkFilter networks, SurveyKinds kinds)
-        {
-            Networks = networks;
-            Kinds = kinds;
-        }
-
-        internal SurveyNetworkFilter Networks { get; }
-
-        internal SurveyKinds Kinds { get; }
-    }
 }

@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:f3332b5b3b0d0e9d9e32688c8266917b82dd855030f8bf3307c0da74a4c88cf1'
+CATALOGUE_HASH = 'sha256:78758ebed2af0ae3a3989dbde4df3c8ddeb1ddc5fc281f3edc3f979cffce8039'
 MOD_VERSION = '1.32.0'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -397,6 +397,9 @@ TABLE = {'catalogue': {'class': 'read',
                             'sections',
                             'network_ids',
                             'kinds',
+                            'prefab',
+                            'prefabs',
+                            'prefab_contains',
                             'cell_detail',
                             'occupied_only',
                             'include_piece_cells',
@@ -1830,12 +1833,12 @@ class Methods:
         """
         return self.call('get_ic_status', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'stack_start': stack_start, 'stack_count': stack_count, 'log_lines': log_lines, 'include_source': include_source}, **options)
 
-    def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, kinds: list | None = None, cell_detail: str | None = None, occupied_only: bool | None = None, include_piece_cells: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
+    def grid_survey(self, *, min: object | None = None, max: object | None = None, room_id: str | None = None, include_networks: bool | None = None, include_refund: bool | None = None, sections: list | None = None, network_ids: list | None = None, kinds: list | None = None, prefab: str | None = None, prefabs: list | None = None, prefab_contains: str | None = None, cell_detail: str | None = None, occupied_only: bool | None = None, include_piece_cells: bool | None = None, limit: int | None = None, offset: int | None = None, **options) -> dict:
         """Read the grid before routing: the 2 m cells of a box or a room, a page at a time (8 cells), by what occupies each (cell_detail full adds support and ids), the pieces, devices and their ports, and networks.
 
-        Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, kinds, cell_detail, occupied_only, include_piece_cells, limit, offset.
+        Class: read. Arguments: min, max, room_id, include_networks, include_refund, sections, network_ids, kinds, prefab, prefabs, prefab_contains, cell_detail, occupied_only, include_piece_cells, limit, offset.
         """
-        return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'kinds': kinds, 'cell_detail': cell_detail, 'occupied_only': occupied_only, 'include_piece_cells': include_piece_cells, 'limit': limit, 'offset': offset}, **options)
+        return self.call('grid_survey', **{'min': min, 'max': max, 'room_id': room_id, 'include_networks': include_networks, 'include_refund': include_refund, 'sections': sections, 'network_ids': network_ids, 'kinds': kinds, 'prefab': prefab, 'prefabs': prefabs, 'prefab_contains': prefab_contains, 'cell_detail': cell_detail, 'occupied_only': occupied_only, 'include_piece_cells': include_piece_cells, 'limit': limit, 'offset': offset}, **options)
 
     def highlight(self, *, targets: list | None = None, seconds: float | None = None, keep: bool | None = None, clear: bool | None = None, **options) -> dict:
         """Show the player where things are, through walls and terrain, on their screen only: things, a network, or far points, tinted and labelled for a while.

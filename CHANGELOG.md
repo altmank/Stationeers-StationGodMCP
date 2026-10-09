@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **`grid_survey` `prefab`, `prefabs` and `prefab_contains`** list only the pieces and devices of those prefabs, with
+  `network_ids` and `kinds` (as `find_items` and `find_things` read them). A 300-piece `pieces` section of about 50 KB
+  comes to about 9 KB for its 50 insulated pipes (`prefab_contains: "Insulated"`).
 - **`lint_layout` `reference_ids` and `since_id`** list only the findings on the things a build just placed:
   `reference_ids` keeps findings naming one of them (as `reference_id` or `other_id`), `since_id` findings on things
   with that id or a higher one (the game numbers things in the order it makes them, so that thing and those made after
