@@ -16,7 +16,8 @@ namespace StationGodMCP.Tests.CatalogueChecks;
 /// <summary>
 /// The catalogue cannot drift from the code (catalogue.md, The consistency tests): the assembled file is current and
 /// valid; it lists exactly the mod's methods; every argument the handlers read is declared and every declared one is
-/// read; literal integer bounds agree; reply views agree where declared; every error code is registered; one version.
+/// read; literal integer bounds, and the defaults and maximums argument descriptions state, agree; reply views agree
+/// where declared; every error code is registered; one version.
 /// Set STATIONGOD_WRITE_CATALOGUE=1 and run CatalogueFileIsCurrent to write catalogue.json after editing catalogue/.
 /// </summary>
 public sealed class CatalogueConsistencyTests
@@ -252,10 +253,10 @@ public sealed class CatalogueConsistencyTests
         List<string> wrong = new List<string>();
         foreach ((string method, Handler handler) in Handler.All)
         {
-            JsonObject properties = Method(method)["params"]!["properties"]!.AsObject();
-            foreach ((string name, IntRange range) in IntRange.Expected(handler, _ => { }))
+            Dictionary<string, JsonObject> arguments = IntegerArguments(method);
+            foreach ((string name, IntRange range) in IntRange.Expected(handler, Conflicts(arguments, wrong)))
             {
-                if (!(properties[name] is JsonObject property) || (string?)property["type"] != "integer")
+                if (!arguments.TryGetValue(name, out JsonObject? property))
                 {
                     continue;
                 }
@@ -271,6 +272,86 @@ public sealed class CatalogueConsistencyTests
 
         Assert.True(wrong.Count == 0, string.Join("\n", wrong));
     }
+
+    /// <summary>
+    /// An integer argument's description that states a default ("default 8") states the one its handler reads it with
+    /// (OptionalInt(...) ?? DefaultLimit, PageRequest.From's default), the constant resolved from the mod's source. An
+    /// argument read with a default per form (connections' limit) names each of them.
+    /// </summary>
+    [Fact]
+    public void StatedIntegerDefaultsAgreeWithTheHandlers()
+    {
+        List<string> wrong = new List<string>();
+        foreach ((string method, Handler handler) in Handler.All)
+        {
+            Dictionary<string, List<IntDefault>> defaults = IntDefault.Expected(handler);
+            foreach ((string name, JsonObject property) in IntegerArguments(method))
+            {
+                string description = (string?)property["description"] ?? string.Empty;
+                Match stated = StatedDefault.Match(description);
+                if (!stated.Success)
+                {
+                    continue;
+                }
+
+                long first = Number(stated.Groups[1].Value);
+                HashSet<long> named = Regex.Matches(description, @"-?\d+").Select(number => Number(number.Value)).ToHashSet();
+                if (!defaults.TryGetValue(name, out List<IntDefault>? reads))
+                {
+                    wrong.Add($"{method}.{name}: catalogue states default {first}; no default found where the handler reads it");
+                }
+                else if (reads.Count == 1 ? reads[0].Value != first : !reads.All(read => named.Contains(read.Value)))
+                {
+                    wrong.Add($"{method}.{name}: catalogue states '{description}', handler defaults {string.Join("; ", reads)}");
+                }
+            }
+        }
+
+        Assert.True(wrong.Count == 0, string.Join("\n", wrong));
+    }
+
+    /// <summary>An integer argument's description that states a maximum ("max 125") states the schema's maximum.</summary>
+    [Fact]
+    public void StatedIntegerMaximumsAgreeWithTheSchema()
+    {
+        List<string> wrong = new List<string>();
+        foreach (string method in Methods().Select(method => (string)method["name"]!))
+        {
+            foreach ((string name, JsonObject property) in IntegerArguments(method))
+            {
+                Match stated = StatedMaximum.Match((string?)property["description"] ?? string.Empty);
+                long? maximum = (long?)property["maximum"];
+                if (stated.Success && maximum != Number(stated.Groups[1].Value))
+                {
+                    wrong.Add($"{method}.{name}: description states max {stated.Groups[1].Value}, schema maximum {maximum}");
+                }
+            }
+        }
+
+        Assert.True(wrong.Count == 0, string.Join("\n", wrong));
+    }
+
+    private static readonly Regex StatedDefault = new Regex(@"\bdefault (-?\d+)\b");
+
+    private static readonly Regex StatedMaximum = new Regex(@"\bmax (\d+)\b");
+
+    private static long Number(string digits) => long.Parse(digits, System.Globalization.CultureInfo.InvariantCulture);
+
+    private static Dictionary<string, JsonObject> IntegerArguments(string method) =>
+        Method(method)["params"]!["properties"]!.AsObject()
+            .Where(property => property.Value is JsonObject argument && (string?)argument["type"] == "integer")
+            .ToDictionary(property => property.Key, property => property.Value!.AsObject(), StringComparer.Ordinal);
+
+    // A name read with facts that disagree fails when the catalogue declares it as an integer: the catalogue cannot state
+    // both. Other names come from the handler's wider file set (a type of the same name elsewhere) and are not its own.
+    private static Action<string, string> Conflicts(Dictionary<string, JsonObject> arguments, List<string> wrong) =>
+        (name, conflict) =>
+        {
+            if (arguments.ContainsKey(name))
+            {
+                wrong.Add(conflict);
+            }
+        };
 
     // ---- 5. reply views agree ----
 
