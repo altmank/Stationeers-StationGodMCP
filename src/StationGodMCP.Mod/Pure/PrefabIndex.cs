@@ -33,6 +33,8 @@ internal sealed class PrefabIndex<T> where T : class
     private readonly List<T> _left = new List<T>();
     private bool _seeded;
     private long _generation;
+    private long _arrivedTotal;
+    private long _leftTotal;
 
     internal PrefabIndex(Func<T, string?> nameOf)
     {
@@ -63,11 +65,36 @@ internal sealed class PrefabIndex<T> where T : class
         }
     }
 
+    /// <summary>Arrivals reported since the index was made; a Reset keeps the count.</summary>
+    internal long ArrivedTotal
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _arrivedTotal;
+            }
+        }
+    }
+
+    /// <summary>Leaves reported since the index was made; a Reset keeps the count.</summary>
+    internal long LeftTotal
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _leftTotal;
+            }
+        }
+    }
+
     /// <summary>A master list took the thing in; filed at the next query. Any thread.</summary>
     internal void Arrived(T thing)
     {
         lock (_gate)
         {
+            _arrivedTotal++;
             _arrived.Add(thing);
             ForgetWhenBacklogged();
         }
@@ -78,6 +105,7 @@ internal sealed class PrefabIndex<T> where T : class
     {
         lock (_gate)
         {
+            _leftTotal++;
             _left.Add(thing);
             ForgetWhenBacklogged();
         }

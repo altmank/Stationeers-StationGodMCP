@@ -38,6 +38,7 @@ internal static class HeldTickJobs
 
     // What the gas hold meant for each job that acknowledged a loss, so a poll's reply repeats its gas_hold.
     private static readonly Dictionary<string, JobHold> Holds = new Dictionary<string, JobHold>();
+    private static readonly HoldLengths HoldTimes = new HoldLengths();
     private static HeldTickJob? _active;
     private static bool _tickHeld;
     private static bool _releaseOwed;
@@ -45,6 +46,9 @@ internal static class HeldTickJobs
 
     /// <summary>A job holds the game tick now (the dispatcher's request budget is smaller then).</summary>
     internal static bool HoldsTick => _tickHeld;
+
+    /// <summary>How long jobs held the tick since the mod loaded, by HoldLengths bucket (mod_info runtime.job_holds).</summary>
+    internal static long[] HoldCounts() => HoldTimes.Counts();
 
     /// <summary>
     /// Starts a job made for its id (prefix-number) and returns its view. While another job runs (or a save or
@@ -130,7 +134,7 @@ internal static class HeldTickJobs
 
         GameManager.PauseGameTick();
         _tickHeld = true;
-        Prof.TickHeld(id, tool, Time.frameCount);
+        NoteHeld(id, tool);
         _active = job;
         return job;
     }
@@ -230,7 +234,7 @@ internal static class HeldTickJobs
             case JobStep.Held held:
                 GameManager.PauseGameTick();
                 _tickHeld = true;
-                Prof.TickHeld(held.State.Id, null, Time.frameCount);
+                NoteHeld(held.State.Id, null);
                 _active = held.State;
                 break;
             case JobStep.Done done:
@@ -251,7 +255,7 @@ internal static class HeldTickJobs
         if (!_releaseOwed)
         {
             _tickHeld = false;
-            Prof.TickReleased(Time.frameCount);
+            NoteReleased();
         }
     }
 
@@ -295,6 +299,18 @@ internal static class HeldTickJobs
         UnpauseNow();
     }
 
+    private static void NoteHeld(string id, string? tool)
+    {
+        HoldTimes.Held(ProfileClock.System.Timestamp());
+        Prof.TickHeld(id, tool, Time.frameCount);
+    }
+
+    private static void NoteReleased()
+    {
+        HoldTimes.Released(ProfileClock.System.Timestamp(), ProfileClock.System.Frequency);
+        Prof.TickReleased(Time.frameCount);
+    }
+
     private static void UnpauseNow()
     {
         if (_tickHeld && !IsSaving())
@@ -303,7 +319,7 @@ internal static class HeldTickJobs
         }
 
         _tickHeld = false;
-        Prof.TickReleased(Time.frameCount);
+        NoteReleased();
     }
 
     /// <summary>The mod is unloading: let the tick go if a job holds it (also with atmosphere work still running).</summary>

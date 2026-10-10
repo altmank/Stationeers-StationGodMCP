@@ -20,9 +20,14 @@ internal sealed class RuntimeView : ITruncatingView
 {
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift, List<ConnectionView>? connections = null,
-        ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, PrefabIndexView? prefabIndex = null)
+        ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, PrefabIndexView? prefabIndex = null,
+        GameCountersView? counters = null)
     {
         PrefabIndex = prefabIndex ?? new PrefabIndexView(false, false, 0, 0, 0, 0);
+        JobHolds = counters?.JobHolds;
+        PrintLog = counters?.PrintLog;
+        LintChipPrograms = counters?.LintChipPrograms;
+        BatchConsole = counters?.BatchConsole;
         Connections = connections;
         Profiling = profiling;
         JobSettles = jobSettles ?? new JobSettlesView(0, 0, 0);
@@ -73,6 +78,20 @@ internal sealed class RuntimeView : ITruncatingView
     public JobSettlesView JobSettles { get; }
 
     public PrefabIndexView PrefabIndex { get; }
+
+    /// <summary>The game counters (GameCountersView), only with include_counters.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public JobHoldsView? JobHolds { get; }
+
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public PrintLogView? PrintLog { get; }
+
+    /// <summary>Chip programs the lint cache holds parsed (LintChipPrograms).</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public int? LintChipPrograms { get; }
+
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public BatchConsoleView? BatchConsole { get; }
 
     /// <summary>The profiler's summary while profiling is on; absent otherwise.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -320,12 +339,14 @@ internal sealed class MemoryView
 
 /// <summary>
 /// The prefab index (ThingIndex): ready (lists filtered by prefab read it; false: they walk every thing), verify
-/// ([Performance] VerifyPrefabIndex), things and names filed, and with verify the queries checked against a full walk
-/// and those that differed.
+/// ([Performance] VerifyPrefabIndex), things and names filed, with verify the queries checked against a full walk
+/// and those that differed, and with include_counters the things the game's master lists reported taking in (arrived)
+/// and letting go (left) since the mod loaded.
 /// </summary>
 internal sealed class PrefabIndexView
 {
-    internal PrefabIndexView(bool ready, bool verify, int things, int names, long verified, long differences)
+    internal PrefabIndexView(bool ready, bool verify, int things, int names, long verified, long differences,
+        long? arrived = null, long? left = null)
     {
         Ready = ready;
         Verify = verify;
@@ -333,6 +354,8 @@ internal sealed class PrefabIndexView
         Names = names;
         Verified = verified;
         Differences = differences;
+        Arrived = arrived;
+        Left = left;
     }
 
     public bool Ready { get; }
@@ -346,4 +369,97 @@ internal sealed class PrefabIndexView
     public long Verified { get; }
 
     public long Differences { get; }
+
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public long? Arrived { get; }
+
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public long? Left { get; }
+}
+
+/// <summary>
+/// The counters mod_info's runtime lists beside prefab_index with include_counters: job tick holds, the print log, the
+/// lint chip-program cache and a dedicated server's console lines.
+/// </summary>
+internal sealed class GameCountersView
+{
+    internal GameCountersView(JobHoldsView jobHolds, PrintLogView printLog, int lintChipPrograms,
+        BatchConsoleView batchConsole)
+    {
+        JobHolds = jobHolds;
+        PrintLog = printLog;
+        LintChipPrograms = lintChipPrograms;
+        BatchConsole = batchConsole;
+    }
+
+    internal JobHoldsView JobHolds { get; }
+
+    internal PrintLogView PrintLog { get; }
+
+    internal int LintChipPrograms { get; }
+
+    internal BatchConsoleView BatchConsole { get; }
+}
+
+/// <summary>
+/// Jobs' holds of the game tick since the mod loaded, profiling on or off, by length (HoldLengths): each stretch from
+/// a job asking for the hold to letting the tick go counts once. Each bucket includes its lower edge.
+/// </summary>
+internal sealed class JobHoldsView
+{
+    internal JobHoldsView(long[] counts)
+    {
+        Under100Ms = counts[0];
+        Under1S = counts[1];
+        Under10S = counts[2];
+        Under60S = counts[3];
+        Over60S = counts[4];
+    }
+
+    [Newtonsoft.Json.JsonProperty("under_100ms")]
+    public long Under100Ms { get; }
+
+    [Newtonsoft.Json.JsonProperty("under_1s")]
+    public long Under1S { get; }
+
+    [Newtonsoft.Json.JsonProperty("under_10s")]
+    public long Under10S { get; }
+
+    [Newtonsoft.Json.JsonProperty("under_60s")]
+    public long Under60S { get; }
+
+    /// <summary>60 s or longer.</summary>
+    [Newtonsoft.Json.JsonProperty("over_60s")]
+    public long Over60S { get; }
+}
+
+/// <summary>Print provenance's log (Prints.Log): records held, and the most it keeps before dropping the oldest.</summary>
+internal sealed class PrintLogView
+{
+    internal PrintLogView(int records, int capacity)
+    {
+        Records = records;
+        Capacity = capacity;
+    }
+
+    public int Records { get; }
+
+    public int Capacity { get; }
+}
+
+/// <summary>
+/// The lines a dedicated (batch-mode) server printed to its console since the mod loaded, and their rate per minute
+/// over the last full minute (EventRate). Both stay 0 on a game with a window.
+/// </summary>
+internal sealed class BatchConsoleView
+{
+    internal BatchConsoleView(long lines, double linesPerMinute)
+    {
+        Lines = lines;
+        LinesPerMinute = Math.Round(linesPerMinute, 1);
+    }
+
+    public long Lines { get; }
+
+    public double LinesPerMinute { get; }
 }

@@ -132,9 +132,12 @@ internal static class ThingIndex
         return false;
     }
 
-    /// <summary>mod_info runtime.prefab_index.</summary>
-    internal static PrefabIndexView View() =>
-        new PrefabIndexView(Ready, Verify, Index.Count, Index.NameCount, _verified, _differences);
+    /// <summary>mod_info runtime.prefab_index; arrived and left only with include_counters.</summary>
+    internal static PrefabIndexView View(bool counters) =>
+        counters
+            ? new PrefabIndexView(Ready, Verify, Index.Count, Index.NameCount, _verified, _differences,
+                Index.ArrivedTotal, Index.LeftTotal)
+            : new PrefabIndexView(Ready, Verify, Index.Count, Index.NameCount, _verified, _differences);
 
     // ---- hooks ----
 

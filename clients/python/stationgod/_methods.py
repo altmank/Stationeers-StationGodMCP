@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:a29521cf5b73a6594b700886209e7ede94e2f318a6e3c025d7dfc8a8c54854dd'
+CATALOGUE_HASH = 'sha256:f5e0cfeef565939cb28190b3a9c40e00ce42aa9811dfab1b697c436a4b9fc0a3'
 MOD_VERSION = '1.33.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -547,7 +547,7 @@ TABLE = {'catalogue': {'class': 'read',
               'effects': [],
               'paging': None,
               'duration': None,
-              'params': [],
+              'params': ['include_counters'],
               'required': [],
               'shaping': 'lists',
               'protocol': False},
@@ -1925,12 +1925,12 @@ class Methods:
         """
         return self.call('looking_at', **{'max_distance_m': max_distance_m, 'include': include}, **options)
 
-    def mod_info(self, **options) -> dict:
+    def mod_info(self, *, include_counters: bool | None = None, **options) -> dict:
         """The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game.
 
-        Class: read.
+        Class: read. Arguments: include_counters.
         """
-        return self.call('mod_info', **options)
+        return self.call('mod_info', **{'include_counters': include_counters}, **options)
 
     def move_gas(self, *, from_: str | dict | None = None, to: str | dict | None = None, delete: bool | None = None, gases: list | None = None, amount_mol: float | None = None, force: bool | None = None, joined: bool | None = None, dry_run: bool | None = None, transfer_id: str | None = None, **options) -> dict:
         """Cheat: move gas and liquid between atmospheres or rooms, or delete it, with no pipe, pump or power; it bypasses the game's physics.
