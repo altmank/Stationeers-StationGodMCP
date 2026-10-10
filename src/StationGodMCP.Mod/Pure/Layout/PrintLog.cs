@@ -46,6 +46,8 @@ internal sealed class PrintRecord
 /// <summary>
 /// The last prints since the mod loaded, oldest dropped first: a ring of Capacity records, one per item id (a newer
 /// record for an id replaces the older). In memory only; a reload of the world or the game starts it empty.
+/// Main thread only, with no lock: it is written by the print and split hooks (Prints), which the game calls from its
+/// main-thread ticks and interactions, and cleared by the world change (WorldStores.Tick); requests read it.
 /// </summary>
 internal sealed class PrintLog
 {
@@ -61,6 +63,11 @@ internal sealed class PrintLog
     }
 
     internal int Count => _byItem.Count;
+
+    /// <summary>Whether recording stopped after a hook failed; Clear starts it again.</summary>
+    internal bool Stopped { get; private set; }
+
+    internal void Stop() => Stopped = true;
 
     internal void Record(PrintRecord record)
     {
@@ -91,6 +98,7 @@ internal sealed class PrintLog
     {
         _byItem.Clear();
         _order.Clear();
+        Stopped = false;
     }
 }
 

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Assets.Scripts;
 using Assets.Scripts.Networking;
 using HarmonyLib;
@@ -12,17 +13,20 @@ namespace StationGodMCP.Api.Shared.Game;
 /// <summary>
 /// The host's side of ClientReplication for the held-tick jobs: after a job step, the next one waits until a state
 /// packet written once that step's frame has ended has gone out to the clients. Counts the state packets the game
-/// writes (StateWritePatch). Host only; with no client connected nothing waits. Main thread.
+/// writes (StateWritePatch). Host only; with no client connected nothing waits. Main thread; the count is read and
+/// written through Interlocked, since the game writes state packets on an async send path.
 /// </summary>
 internal static class JobReplication
 {
     private static readonly ClientReplication Gate = new ClientReplication();
     private static bool? _counting;
 
-    /// <summary>State packets the game has written since the mod loaded.</summary>
-    internal static long StateWrites { get; private set; }
+    private static long _stateWrites;
 
-    internal static void Written() => StateWrites++;
+    /// <summary>State packets the game has written since the mod loaded.</summary>
+    internal static long StateWrites => Interlocked.Read(ref _stateWrites);
+
+    internal static void Written() => Interlocked.Increment(ref _stateWrites);
 
     /// <summary>A job step ran this frame.</summary>
     internal static void Changed() => Gate.Changed(Time.frameCount);

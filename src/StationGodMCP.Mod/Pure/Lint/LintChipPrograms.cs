@@ -57,6 +57,7 @@ internal sealed class ChipOperation
 /// </summary>
 internal static class LintChipPrograms
 {
+    // Keyed by language and source; at most 257 programs, emptied when full and when a world is left (WorldStores).
     private static readonly Dictionary<string, List<ChipOperation>> Parsed = new Dictionary<string, List<ChipOperation>>(StringComparer.Ordinal);
 
     private static readonly Regex Hash = new Regex("^HASH\\(\\s*\"([^\"]*)\"\\s*\\)$", RegexOptions.CultureInvariant);
@@ -83,6 +84,27 @@ internal static class LintChipPrograms
             .Add(new LintFunction("hash", "(s: string) -> number",
                 "The game's HASH(\"...\"): the hash IC10 gives a prefab name or a label.",
                 call => LintValue.Of(HashOf(call[0].AsString))));
+    }
+
+    /// <summary>The chip programs held parsed.</summary>
+    internal static int ParsedCount
+    {
+        get
+        {
+            lock (Parsed)
+            {
+                return Parsed.Count;
+            }
+        }
+    }
+
+    /// <summary>Forgets every parsed program.</summary>
+    internal static void Clear()
+    {
+        lock (Parsed)
+        {
+            Parsed.Clear();
+        }
     }
 
     /// <summary>The game's HASH("..."): Unity's Animator.StringToHash, a CRC-32 of the UTF-8 bytes, as a signed int.</summary>

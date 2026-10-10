@@ -21,11 +21,9 @@ internal static class Prints
 {
     internal static PrintLog Log { get; } = new PrintLog();
 
-    private static bool _failed;
-
     internal static void Manufactured(DynamicThing item, int quantity)
     {
-        if (_failed || item == null || !GameManager.RunSimulation)
+        if (Log.Stopped || item == null || !GameManager.RunSimulation)
         {
             return;
         }
@@ -39,15 +37,15 @@ internal static class Prints
         }
         catch (Exception exception)
         {
-            // A game tick path: logged once, then provenance stays off until the mod reloads.
-            _failed = true;
+            // A game tick path: logged once, then provenance stays off until the world is left.
+            Log.Stop();
             StationGodMod.LogWarning($"Print provenance stopped: {exception.Message}");
         }
     }
 
     internal static void Split(Stackable source, Stackable created)
     {
-        if (_failed || source == null || created == null || !GameManager.RunSimulation)
+        if (Log.Stopped || source == null || created == null || !GameManager.RunSimulation)
         {
             return;
         }
@@ -58,7 +56,7 @@ internal static class Prints
         }
         catch (Exception exception)
         {
-            _failed = true;
+            Log.Stop();
             StationGodMod.LogWarning($"Print provenance stopped: {exception.Message}");
         }
     }
