@@ -558,17 +558,6 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
             }
         }
 
-        internal void EndAll(SubscriptionEnd end, ISubscriptionEvents<TReading> events)
-        {
-            EndDevices(end, events);
-            while (World.Count > 0)
-            {
-                SubscriptionId id = World[0];
-                World.RemoveAt(0);
-                events.Ended(Connection, id, end);
-            }
-        }
-
         /// <summary>Ends the newest subscription of either topic; false when none is held.</summary>
         internal bool EndNewest(SubscriptionEnd end, ISubscriptionEvents<TReading> events)
         {

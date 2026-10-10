@@ -20,9 +20,6 @@ internal sealed class StopwatchClock : IMonotonicClock
     }
 
     public double NowMs => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
-
-    /// <summary>A deadline timeoutMs from now, on this clock.</summary>
-    internal static double DeadlineIn(double timeoutMs) => Instance.NowMs + timeoutMs;
 }
 
 /// <summary>Runs the calls the scheduler takes, on the main thread.</summary>
