@@ -191,12 +191,15 @@ internal sealed class CallSession : Session
         CatalogueMethod? method = null;
         _host.Catalogue?.Catalogue.TryGet(call.Method, out method);
         ShapeRequest? shape;
+        bool namesChecked = false;
         if (_host.Settings.StrictArguments)
         {
             if (!Checked(call, method, out shape))
             {
                 return;
             }
+
+            namesChecked = method != null && method.RefusesUnknownArguments;
         }
         else
         {
@@ -208,7 +211,7 @@ internal sealed class CallSession : Session
             shape = ShapeRequest.WithDefaultLimits(shape, method.DefaultLimits);
         }
 
-        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape);
+        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, namesChecked);
         CallProfile profile = method != null
             ? new CallProfile(method.Name, method.ClassAt(call.Params), method.CostAt(call.Params))
             : CallProfiles.Of(null, call.Method, call.Params);

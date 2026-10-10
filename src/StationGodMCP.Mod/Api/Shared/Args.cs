@@ -220,7 +220,7 @@ internal sealed class Args
 
     /// <summary>
     /// Refuses arguments that belong to another form of the tool. A name the method does not declare is skipped:
-    /// DeclaredArguments refused it before the handler ran.
+    /// it was refused (invalid_argument) before the handler ran.
     /// </summary>
     internal void Reject(string form, params string[] names)
     {

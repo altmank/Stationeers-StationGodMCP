@@ -137,14 +137,14 @@ internal static class ApiHost
 
     /// <summary>
     /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame). Top-level argument
-    /// names are checked here (with StrictArguments the full check already ran on the connection's thread); the result
-    /// is shaped by the call's
-    /// shape, and a reply larger than max_reply_bytes (or the shape's max_bytes) is answered reply_too_large.
+    /// names are checked here unless the connection's reader thread already refused unknown ones (StrictArguments: the
+    /// full check); the result is shaped by the call's shape, and a reply larger than max_reply_bytes (or the shape's
+    /// max_bytes) is answered reply_too_large.
     /// </summary>
     internal static HandledRequest HandleCall(CallRequest call, double queueWaitMs, long frame)
     {
         Stopwatch watch = Stopwatch.StartNew();
-        Answer answer = Run(call.Id, call.Method, call.Params, call.Shape, watch);
+        Answer answer = Run(call, watch);
         double queueMs = Math.Round(queueWaitMs, ElapsedDecimals);
         long serializeStarted = Stopwatch.GetTimestamp();
         string json;
@@ -192,9 +192,13 @@ internal static class ApiHost
     /// <summary>The largest reply sent (limits.max_reply_bytes).</summary>
     internal const int MaxReplyBytes = 16777216;
 
-    private static Answer Run(string? requestId, string? method, JObject? parameters, ShapeRequest? shape, Stopwatch watch)
+    private static Answer Run(CallRequest call, Stopwatch watch)
     {
         using ProfScope executing = Prof.Scope(ProfId.CallExecute);
+        string? requestId = call.Id;
+        string? method = call.Method;
+        JObject? parameters = call.Params;
+        ShapeRequest? shape = call.Shape;
         try
         {
             DeclaredArguments declared = Declared.Value.Arguments ??
@@ -206,7 +210,7 @@ internal static class ApiHost
                     : $"Unknown StationGodMCP method '{method}'.");
             }
 
-            declared.Check(method, parameters);
+            declared.Check(call);
             ArgumentNames? names = declared.NamesOf(method);
             ResolvedNetworks.Begin();
             GasHoldReply.Begin();

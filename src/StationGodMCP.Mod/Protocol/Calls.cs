@@ -118,12 +118,13 @@ internal interface ICallRunner
 /// <summary>A call as the main thread runs it: id, method, params and shape, already read.</summary>
 internal sealed class CallRequest
 {
-    internal CallRequest(string id, string method, JObject? parameters, ShapeRequest? shape)
+    internal CallRequest(string id, string method, JObject? parameters, ShapeRequest? shape, bool argumentNamesChecked)
     {
         Id = id;
         Method = method;
         Params = parameters;
         Shape = shape;
+        ArgumentNamesChecked = argumentNamesChecked;
     }
 
     internal string Id { get; }
@@ -133,6 +134,12 @@ internal sealed class CallRequest
     internal JObject? Params { get; }
 
     internal ShapeRequest? Shape { get; }
+
+    /// <summary>
+    /// Whether the connection's reader thread already refused every top-level argument name the method does not take
+    /// (StrictArguments, a catalogued method whose params are closed), so the main thread need not look again.
+    /// </summary>
+    internal bool ArgumentNamesChecked { get; }
 }
 
 /// <summary>
