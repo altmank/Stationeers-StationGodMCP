@@ -82,6 +82,9 @@ internal sealed class SchemaNode
     /// <summary>The names of properties, in the schema's order; empty for a schema that is not an object's.</summary>
     internal IReadOnlyList<string> PropertyNames => _propertyNames;
 
+    /// <summary>additionalProperties false: a name properties does not list is a problem.</summary>
+    internal bool Closed => _closed;
+
     internal bool HasProperty(string name) => _properties.ContainsKey(name);
 
     /// <summary>Compiles a schema; at names the place in the catalogue for the message.</summary>

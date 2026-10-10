@@ -166,6 +166,9 @@ internal sealed class CatalogueMethod
     /// <summary>The top-level argument names params declares.</summary>
     internal ArgumentNames ArgumentNames { get; }
 
+    /// <summary>Whether Check refuses a top-level argument name params does not declare (params is closed).</summary>
+    internal bool RefusesUnknownArguments => Parameters.Closed;
+
     /// <summary>x-shaping lists: the reply can be large and takes fields and output_file.</summary>
     internal bool ListsShaped { get; }
 

@@ -652,17 +652,6 @@ internal static class BuildArgs
     }
 
     // A real run needs dry_run false and confirm true; confirm with a dry run is a contradiction.
-    // verbose goes with a confirmed run or a poll: a dry run's reply is the whole report already.
-    private static bool VerboseOfRun(Args args, bool confirmed)
-    {
-        if (!confirmed)
-        {
-            args.Reject("a dry run (it is for a confirmed run or a job_id poll)", VerboseArgument);
-        }
-
-        return args.OptionalBool(VerboseArgument) ?? false;
-    }
-
     private static bool Confirmed(Args args)
     {
         bool dryRun = args.OptionalBool("dry_run") ?? true;

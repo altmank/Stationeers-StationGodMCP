@@ -199,14 +199,6 @@ internal static class ThrustProbe
             drawnMol > 0.0 ? propellantKg / drawnMol : 0.0, drawnMol > 0.0 ? exhaustKg / drawnMol : 0.0,
             drawnMol > 0.0 ? fuelMoles / drawnMol : 0.0);
     }
-
-    /// <summary>The FuelBurn of one make-up: force per mole at an 18 mol draw.</summary>
-    internal static FuelBurn BurnFor(RocketEngineBase engine, FuelSample fuel, double kpaLitresPerMol)
-    {
-        ProbeResult probe = Burn(engine, fuel, FuelLine.MaxMolesPerTick);
-        return new FuelBurn((float)(probe.ForceN / FuelLine.MaxMolesPerTick), probe.PropellantKgPerMol,
-            probe.ExhaustKgPerMol, probe.FuelShare, fuel.TemperatureK, kpaLitresPerMol);
-    }
 }
 
 /// <summary>One part of a draw: a make-up and the moles of it.</summary>

@@ -2,6 +2,7 @@
 
 using System.Text;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
 
@@ -32,6 +33,18 @@ internal sealed class DeclaredArguments
     /// <summary>Whether the catalogue marks the method as answered by the MCP server, not the mod.</summary>
     internal bool RunsInSidecar(string method) =>
         _catalogue.TryGet(method, out CatalogueMethod? found) && found.RunsInSidecar;
+
+    /// <summary>
+    /// Refuses (invalid_argument) a call that gives an argument its method does not take, unless its connection's
+    /// reader thread already refused every such name (CallRequest.ArgumentNamesChecked).
+    /// </summary>
+    internal void Check(CallRequest call)
+    {
+        if (!call.ArgumentNamesChecked)
+        {
+            Check(call.Method, call.Params);
+        }
+    }
 
     /// <summary>Refuses (invalid_argument) a request that gives an argument its method does not take.</summary>
     internal void Check(string method, JObject? parameters)

@@ -192,8 +192,6 @@ internal sealed class RunTargets
 
     internal bool JoinTrunk { get; }
 
-    internal RunTargets WithJoinTo(ThingId? joinTo) => new RunTargets(Root, joinTo, JoinTrunk);
-
     internal RunTargets WithoutTrunk() => new RunTargets(Root, JoinTo, false);
 }
 

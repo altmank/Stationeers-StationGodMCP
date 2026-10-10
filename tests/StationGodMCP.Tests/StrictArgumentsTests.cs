@@ -1,10 +1,12 @@
 #nullable enable
 
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Tests.CatalogueChecks;
@@ -150,5 +152,59 @@ public sealed class StrictArgumentsTests
         JObject reply = client.Call("o", "connections", new JObject { ["reference_id"] = "1", ["limit"] = 99999 });
 
         Assert.True((bool)reply["ok"]!);
+    }
+
+    [Fact]
+    public async Task OnAStrictConnectionAnUnknownNameIsRefusedOnceAndTheMainThreadDoesNotLookAgain()
+    {
+        using PipeRig rig = new PipeRig();
+        ConcurrentQueue<CallRequest> reached = Reaching(rig);
+        using V2Client client = await V2Client.Connect(rig);
+
+        JObject refused = client.Call("u", "list_containers", new JObject { ["prefab"] = "ItemDirtyOre" });
+        JObject accepted = client.Call("k", "list_containers", new JObject { ["prefab_contains"] = "ItemDirtyOre" });
+
+        Assert.Equal("invalid_argument", (string?)refused["error"]!["code"]);
+        Assert.Equal("prefab", (string?)Assert.Single((JArray)refused["error"]!["data"]!["problems"]!)["path"]);
+        Assert.Null(client.NextOrNull(200));
+        Assert.True((bool)accepted["ok"]!);
+        CallRequest ran = Assert.Single(reached);
+        Assert.Equal("k", ran.Id);
+        Assert.True(ran.ArgumentNamesChecked);
+        Declared.Check(new CallRequest("u", "list_containers", new JObject { ["prefab"] = "ItemDirtyOre" }, null,
+            ran.ArgumentNamesChecked));
+    }
+
+    [Fact]
+    public async Task OnALenientConnectionTheMainThreadStillRefusesAnUnknownName()
+    {
+        using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, strictArguments: false));
+        ConcurrentQueue<CallRequest> reached = Reaching(rig);
+        using V2Client client = await V2Client.Connect(rig);
+        JObject parameters = new JObject { ["prefab"] = "ItemDirtyOre" };
+
+        Assert.True((bool)client.Call("u", "list_containers", parameters)["ok"]!);
+
+        CallRequest ran = Assert.Single(reached);
+        Assert.False(ran.ArgumentNamesChecked);
+        ApiException onMainThread = Assert.Throws<ApiException>(() => Declared.Check(ran));
+        ApiException byName = Assert.Throws<ApiException>(() => Declared.Check("list_containers", parameters));
+        Assert.Equal(ApiErrors.InvalidArgumentCode, onMainThread.Code);
+        Assert.Equal(byName.Message, onMainThread.Message);
+        Assert.StartsWith("Unknown argument 'prefab'; did you mean 'prefab_contains'?", onMainThread.Message);
+    }
+
+    private static readonly DeclaredArguments Declared = new DeclaredArguments(TestCatalogue.File.Value.Catalogue);
+
+    // The calls that reach the fake main thread, each answered as the fake mod answers any call.
+    private static ConcurrentQueue<CallRequest> Reaching(PipeRig rig)
+    {
+        ConcurrentQueue<CallRequest> reached = new ConcurrentQueue<CallRequest>();
+        rig.Mod.CallHook = (call, _) =>
+        {
+            reached.Enqueue(call.Request);
+            return null;
+        };
+        return reached;
     }
 }
