@@ -8,6 +8,8 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Lint;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine.Profiling;
 
 namespace StationGodMCP.Api;
@@ -16,7 +18,8 @@ namespace StationGodMCP.Api;
 /// mod_info: the running mod's identity and the pipe it listens on, every method with its counters since the mod
 /// loaded (MethodStats), and every game member it reaches by reflection or patches, with whether this build of the
 /// game has it (GameMembers.Report), and the runtime section: what the mod costs the game (per-method handler,
-/// serialisation, queue wait and reply size; per-frame load; the collector and the Mono heap). Read only.
+/// serialisation, queue wait and reply size; per-frame load; the collector and the Mono heap; with include_counters, the
+/// counters of the mod's game-side work). Read only.
 /// </summary>
 internal static class ModInfoApi
 {
@@ -38,14 +41,21 @@ internal static class ModInfoApi
         }
 
         ReflectionReport reflection = GameMembers.Report();
-        return new ModInfoView(identity, methods, reflection.Members, reflection.Missing, Runtime());
+        bool counters = args.OptionalBool("include_counters") ?? false;
+        return new ModInfoView(identity, methods, reflection.Members, reflection.Missing, Runtime(counters));
     }
 
-    private static RuntimeView Runtime() =>
+    private static RuntimeView Runtime(bool counters) =>
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
             Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections(), ProfilingControl.Summary(),
-            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View());
+            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View(counters), counters ? Counters() : null);
+
+    private static GameCountersView Counters() =>
+        new GameCountersView(new JobHoldsView(HeldTickJobs.HoldCounts()),
+            new PrintLogView(Prints.Log.Count, Prints.Log.Capacity), LintChipPrograms.ParsedCount,
+            new BatchConsoleView(ConsoleBridge.BatchLineRate.Total,
+                ConsoleBridge.BatchLineRate.PerMinute(ProfileClock.System.Timestamp())));
 
     private static List<ConnectionView>? Connections()
     {

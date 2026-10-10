@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- **`mod_info` `include_counters`, and safety fixes that change no replies.** `include_counters: true` (default
+  false, so the default reply is unchanged) adds runtime counters next to `prefab_index`:
+  - how long jobs hold the game tick (`job_holds`, counts in five length buckets)
+  - the print log fill (`print_log`)
+  - prefab-index `arrived` and `left` totals
+  - the lint chip-program cache size (`lint_chip_programs`)
+  - the batch console line rate (`batch_console`)
+
+  `profiling` gains a `job_gas_walk` scope for the gas move's per-tick pipe network walks.
+
+  Under the hood:
+  - The mod build takes game assemblies only from their HintPath, so a stray .NET 8 dll in the repo can no longer
+    break it.
+  - The parsed chip-program cache and print provenance's stop flag reset on a world change.
+  - The state packet count is atomic.
+  - A request's argument names are checked once, not again on the main thread after a strict connection checked
+    them.
+  - Five unused members are gone.
+  - The catalogue's integer bounds, stated defaults and stated maximums are now tested against the code.
+
 ## 1.33.2
 
 First release of the 1.33 changes (tags v1.33.0 and v1.33.1 were never built: the Workshop ChangeLog was over 8000 characters; every entry is now one shortened line).

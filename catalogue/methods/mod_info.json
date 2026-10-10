@@ -2,8 +2,8 @@
   "name": "mod_info",
   "summary": "The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game. Read only.",
   "help": {
-    "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 12 and reflection 10 by default; list_limits keeps more.",
-    "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], profiling, ...}.",
+    "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 12 and reflection 10 by default; list_limits keeps more. include_counters true adds the counters of the mod's game-side work (the counters topic).",
+    "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], prefab_index, job_holds, print_log, lint_chip_programs, batch_console, profiling, ...}.",
     "topics": {
       "methods": {
         "summary": "Per-method counts and times.",
@@ -19,14 +19,27 @@
       },
       "runtime": {
         "summary": "What the mod costs the game.",
-        "text": "runtime: uptime_s; world_epoch (worlds left after load; leaving one clears IC pauses, job records, print and flight logs); request_budget_ms (main-thread ms per frame for requests, null = unlimited); frames {busy_frames, requests_served, requests_per_frame_mean, requests_per_frame_max, frame_ms, budget_stops, expired}; memory {gc_collections, gc_max_generation, gc_total_memory_bytes, mono_used_bytes, mono_heap_bytes}; methods: the 10 costliest so far (method_count counts all), each {method, calls, errors, main_thread_ms, handler_ms, serialize_ms, queue_wait_ms, reply_bytes}, the last four as {total, mean, max}; profiling, only while the profiling tool is on: {since_s, slow_frame_ms, frame_ms {p50, p95, max}, worst_frame_ms, top [{name, ms}]}, top being the five pieces with the most self time; prefab_index {ready, verify, things, names, verified, differences}: ready, lists filtered by prefab read the prefab index (false: they walk every thing); things and names filed; with [Performance] VerifyPrefabIndex on, verified counts the indexed queries checked against a full walk and differences those that differed (each logged)."
+        "text": "runtime: uptime_s; world_epoch (worlds left after load; leaving one clears IC pauses, job records, print and flight logs); request_budget_ms (main-thread ms per frame for requests, null = unlimited); frames {busy_frames, requests_served, requests_per_frame_mean, requests_per_frame_max, frame_ms, budget_stops, expired}; memory {gc_collections, gc_max_generation, gc_total_memory_bytes, mono_used_bytes, mono_heap_bytes}; methods: the 10 costliest so far (method_count counts all), each {method, calls, errors, main_thread_ms, handler_ms, serialize_ms, queue_wait_ms, reply_bytes}, the last four as {total, mean, max}; profiling, only while the profiling tool is on: {since_s, slow_frame_ms, frame_ms {p50, p95, max}, worst_frame_ms, top [{name, ms}]}, top being the five pieces with the most self time; prefab_index {ready, verify, things, names, verified, differences}: ready, lists filtered by prefab read the prefab index (false: they walk every thing); things and names filed; with [Performance] VerifyPrefabIndex on, verified counts the indexed queries checked against a full walk and differences those that differed (each logged). include_counters adds the game counters (the counters topic)."
+      },
+      "counters": {
+        "summary": "Counters of the game-side work the mod does.",
+        "text": "Only with include_counters true. Counted from mod load, profiling on or off. prefab_index.arrived and left: things the game reported spawning and despawning. job_holds {under_100ms, under_1s, under_10s, under_60s, over_60s}: how long jobs held the game tick, one count per hold, each bucket from its lower edge (over_60s: 60 s or more). print_log {records, capacity}: print provenance records held, and the most kept before the oldest drop. lint_chip_programs: chip programs the lint cache holds parsed. batch_console {lines, lines_per_minute}: lines a dedicated server printed, and per minute over the last full minute; 0 on a game with a window."
       }
     },
     "shared": ["truncation"]
   },
   "class": "read",
   "cost": "instant",
-  "params": {"type": "object", "properties": {}, "additionalProperties": false},
+  "params": {
+    "type": "object",
+    "properties": {
+      "include_counters": {
+        "type": "boolean",
+        "description": "Default false; true adds the runtime counters of the mod's game-side work: job_holds, print_log, lint_chip_programs, batch_console, and prefab_index arrived and left."
+      }
+    },
+    "additionalProperties": false
+  },
   "reply": {
     "type": "object",
     "properties": {

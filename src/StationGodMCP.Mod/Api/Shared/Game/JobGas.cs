@@ -319,6 +319,7 @@ internal static class PipeGasQueue
     // A newly split network may not be listed yet: the queue counts above are what make the check complete.
     private static bool AnyAtmosphereAwaiting()
     {
+        using ProfScope walking = Prof.Scope(ProfId.JobGasWalk);
         foreach (PipeNetwork network in PipeNetwork.AllPipeNetworks.Active())
         {
             if (network?.Atmosphere is { IsAwaitingEvent: true })
@@ -391,14 +392,7 @@ internal sealed class PipeGasReading
 
     internal static PipeGasReading Take()
     {
-        List<PipeNetwork> networks = new List<PipeNetwork>();
-        foreach (PipeNetwork network in PipeNetwork.AllPipeNetworks.Active())
-        {
-            if (network != null)
-            {
-                networks.Add(network);
-            }
-        }
+        List<PipeNetwork> networks = Listed();
 
         int listed = networks.Count;
         networks.AddRange(OrphansBeside(networks));
@@ -426,6 +420,21 @@ internal sealed class PipeGasReading
         }
 
         return new PipeGasReading(read, read.GetRange(listed, read.Count - listed), byId);
+    }
+
+    private static List<PipeNetwork> Listed()
+    {
+        using ProfScope walking = Prof.Scope(ProfId.JobGasWalk);
+        List<PipeNetwork> networks = new List<PipeNetwork>();
+        foreach (PipeNetwork network in PipeNetwork.AllPipeNetworks.Active())
+        {
+            if (network != null)
+            {
+                networks.Add(network);
+            }
+        }
+
+        return networks;
     }
 
     // Every network a live pipe names that is not among the listed ones (AtmosphericsManager.AtmosphericThings holds

@@ -82,6 +82,9 @@ internal static class ConsoleBridge
     private static readonly ConsoleRing<ConsoleLineView> BatchLines =
         new ConsoleRing<ConsoleLineView>(MaximumConsoleLines);
 
+    /// <summary>Lines a batch-mode server printed since the mod loaded, and their rate (mod_info runtime.batch_console).</summary>
+    internal static EventRate BatchLineRate { get; } = new EventRate(ProfileClock.System.Frequency);
+
     /// <summary>False on a network client, where several commands only queue a request.</summary>
     internal static bool RunSimulation => GameManager.RunSimulation;
 
@@ -106,6 +109,7 @@ internal static class ConsoleBridge
     /// <summary>A line ConsoleWindow.Print is about to write to a batch-mode server's system console.</summary>
     internal static void NoteBatchPrint(string? output, ConsoleColor color)
     {
+        BatchLineRate.Note(ProfileClock.System.Timestamp());
         ConsoleLineView line = new ConsoleLineView(DateTime.Now.ToString("HH:mm:ss"), color.ToString(), output);
         BatchLines.Add(line);
         if (CapturingHere())

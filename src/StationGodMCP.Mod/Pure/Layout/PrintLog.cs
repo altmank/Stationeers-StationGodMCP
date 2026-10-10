@@ -69,6 +69,8 @@ internal sealed class PrintLog
 
     internal void Stop() => Stopped = true;
 
+    internal int Capacity => _capacity;
+
     internal void Record(PrintRecord record)
     {
         if (!_byItem.ContainsKey(record.ItemId))
