@@ -15,7 +15,8 @@ namespace StationGodMCP.Net;
 /// the message's connection's client, ViewSender), with the connection it came on. A view of another protocol or one
 /// that does not read is ignored, logged once per connection, and remembered as the reason that player has no view.
 /// Views go when their player's client leaves or the human is no longer theirs (checked every second), and with the
-/// world (WorldStores).
+/// world (WorldStores). Main thread only, with no lock: LaunchPadBooster delivers ViewMessage from the game's
+/// NetworkManager.ReceiveEvents, which GameManager.Update runs through NetworkManager.ManagerUpdate.
 /// </summary>
 internal static class RemoteViews
 {
