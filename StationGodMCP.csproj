@@ -10,8 +10,11 @@
     <Nullable>annotations</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <!-- The tests build next to the mod; their net8 assemblies must never be picked up as references here. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
+    <!-- The tests, build output, package/ and reference/ hold assemblies; none of them are items of the mod. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests\**;reference\**;package\**;**\bin\**;**\obj\**</DefaultItemExcludes>
+    <!-- References resolve from their HintPath only. The SDK default searches {CandidateAssemblyFiles} first: any dll
+         among the project's items, so a same-named net8 dll anywhere under the repo would win over the game's copy. -->
+    <AssemblySearchPaths>{HintPathFromItem};{TargetFrameworkDirectory};{RawFileName}</AssemblySearchPaths>
     <Deterministic>true</Deterministic>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <!-- Override with -p:StationeersPath=... or the STATIONEERS_DIR environment variable. -->
