@@ -10,51 +10,85 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace StationGodMCP.Tests.CatalogueChecks;
 
-/// <summary>An integer argument read with literal bounds (OptionalInt("limit", 1, 500)).</summary>
-internal sealed class IntRange
+/// <summary>
+/// What a handler's files say about one integer argument where they read it (its bounds, its default), so the
+/// catalogue's statement of the same can be compared with it.
+/// </summary>
+internal abstract class ArgumentFact
 {
-    private IntRange(string name, long minimum, long maximum, ArgRead read)
+    protected ArgumentFact(string name, ArgRead read)
     {
         Name = name;
-        Minimum = minimum;
-        Maximum = maximum;
         Read = read;
     }
 
     internal string Name { get; }
 
+    internal ArgRead Read { get; }
+
+    /// <summary>Two reads of a name agree when their facts are equal.</summary>
+    protected abstract object Key { get; }
+
+    /// <summary>
+    /// The different facts each argument is read with: the handler file's own reads when it has any, else those of
+    /// every other file of the handler's.
+    /// </summary>
+    internal static Dictionary<string, List<T>> ByName<T>(Handler handler, IEnumerable<T> facts)
+        where T : ArgumentFact =>
+        facts.GroupBy(fact => fact.Name).ToDictionary(
+            group => group.Key,
+            group =>
+            {
+                List<T> own = group.Where(fact => fact.Read.File == handler.File).ToList();
+                return (own.Count > 0 ? own : group.ToList()).GroupBy(fact => fact.Key).Select(same => same.First()).ToList();
+            },
+            StringComparer.Ordinal);
+
+    // PageRequest.From(args, defaultLimit, maximumLimit) reads limit from 1 to its maximum, defaulting to its default (Api/Shared/Paging.cs).
+    protected static IEnumerable<InvocationExpressionSyntax> PageReads(SourceFile file) =>
+        file.Root.DescendantNodes().OfType<InvocationExpressionSyntax>().Where(call =>
+            call.Expression is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "PageRequest" }, Name.Identifier.Text: "From" } &&
+            call.ArgumentList.Arguments.Count == 3);
+}
+
+/// <summary>An integer argument read with literal bounds (OptionalInt("limit", 1, 500)).</summary>
+internal sealed class IntRange : ArgumentFact
+{
+    private IntRange(string name, long minimum, long maximum, ArgRead read)
+        : base(name, read)
+    {
+        Minimum = minimum;
+        Maximum = maximum;
+    }
+
     internal long Minimum { get; }
 
     internal long Maximum { get; }
 
-    internal ArgRead Read { get; }
+    protected override object Key => (Minimum, Maximum);
 
     public override string ToString() => $"{Minimum}..{Maximum} at {Read.File.Path}:{Read.Line}";
 
     /// <summary>
-    /// The bounds a method's integer arguments are read with: the handler file's own read when it has one, else the
-    /// one bound every other file of the handler's agrees on. Several different bounds for a name in the handler file,
-    /// or none agreed elsewhere, give no bound for it (each is reported through conflict).
+    /// The one range each of a method's integer arguments is read with (ArgumentFact.ByName). Several different
+    /// ranges for a name give none for it; each such name is reported through conflict, with the reads that disagree.
     /// </summary>
-    internal static Dictionary<string, IntRange> Expected(Handler handler, Action<string> conflict)
+    internal static Dictionary<string, IntRange> Expected(Handler handler, Action<string, string> conflict)
     {
-        Dictionary<string, IntRange> expected = new Dictionary<string, IntRange>(StringComparer.Ordinal);
-        foreach (IGrouping<string, IntRange> group in In(handler).GroupBy(range => range.Name))
+        Dictionary<string, IntRange> agreed = new Dictionary<string, IntRange>(StringComparer.Ordinal);
+        foreach ((string name, List<IntRange> distinct) in ByName(handler, In(handler)))
         {
-            List<IntRange> own = group.Where(range => range.Read.File == handler.File).ToList();
-            List<IntRange> candidates = own.Count > 0 ? own : group.ToList();
-            List<IntRange> distinct = candidates.GroupBy(range => (range.Minimum, range.Maximum)).Select(g => g.First()).ToList();
             if (distinct.Count == 1)
             {
-                expected[group.Key] = distinct[0];
+                agreed[name] = distinct[0];
             }
             else
             {
-                conflict($"{handler.Method}: {group.Key} read with several ranges: {string.Join("; ", distinct)}");
+                conflict(name, $"{handler.Method}: {name} read with several ranges: {string.Join("; ", distinct)}");
             }
         }
 
-        return expected;
+        return agreed;
     }
 
     /// <summary>Every OptionalInt / Int read with both bounds resolvable, in the handler's files.</summary>
@@ -78,12 +112,9 @@ internal sealed class IntRange
                 }
             }
 
-            // PageRequest.From(args, defaultLimit, maximumLimit) reads limit from 1 to its maximum (Api/Shared/Paging.cs).
-            foreach (InvocationExpressionSyntax call in file.Root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            foreach (InvocationExpressionSyntax call in PageReads(file))
             {
-                if (call.Expression is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "PageRequest" }, Name.Identifier.Text: "From" } &&
-                    call.ArgumentList.Arguments.Count == 3 &&
-                    ModSource.IntegerOf(call.ArgumentList.Arguments[2].Expression, file) is long maximumLimit)
+                if (ModSource.IntegerOf(call.ArgumentList.Arguments[2].Expression, file) is long maximumLimit)
                 {
                     ranges.Add(new IntRange("limit", 1, maximumLimit, new ArgRead("limit", "PageRequest.From", file, call)));
                 }
@@ -91,6 +122,56 @@ internal sealed class IntRange
         }
 
         return ranges;
+    }
+}
+
+/// <summary>
+/// An integer argument's default where it is read: OptionalInt("limit", 1, 500) ?? DefaultLimit, or PageRequest.From's
+/// default limit, the constant resolved from the source.
+/// </summary>
+internal sealed class IntDefault : ArgumentFact
+{
+    private IntDefault(string name, long value, ArgRead read)
+        : base(name, read)
+    {
+        Value = value;
+    }
+
+    internal long Value { get; }
+
+    protected override object Key => Value;
+
+    public override string ToString() => $"{Value} at {Read.File.Path}:{Read.Line}";
+
+    /// <summary>The defaults each of a method's integer arguments is read with, one per form that reads it (ArgumentFact.ByName).</summary>
+    internal static Dictionary<string, List<IntDefault>> Expected(Handler handler) => ByName(handler, In(handler));
+
+    /// <summary>Every OptionalInt read whose ?? fallback resolves to an integer, and every PageRequest.From, in the handler's files.</summary>
+    internal static List<IntDefault> In(Handler handler)
+    {
+        List<IntDefault> defaults = new List<IntDefault>();
+        foreach (SourceFile file in handler.Files())
+        {
+            foreach (ArgRead read in ArgRead.In(file).Where(read => read.Reader == "OptionalInt"))
+            {
+                if (read.Call.Parent is BinaryExpressionSyntax { RawKind: (int)SyntaxKind.CoalesceExpression } coalesce &&
+                    coalesce.Left == read.Call &&
+                    ModSource.IntegerOf(coalesce.Right, file) is long value)
+                {
+                    defaults.Add(new IntDefault(read.Name, value, read));
+                }
+            }
+
+            foreach (InvocationExpressionSyntax call in PageReads(file))
+            {
+                if (ModSource.IntegerOf(call.ArgumentList.Arguments[1].Expression, file) is long defaultLimit)
+                {
+                    defaults.Add(new IntDefault("limit", defaultLimit, new ArgRead("limit", "PageRequest.From", file, call)));
+                }
+            }
+        }
+
+        return defaults;
     }
 }
 
