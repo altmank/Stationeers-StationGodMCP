@@ -5,7 +5,9 @@ using System.Threading.Tasks;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -196,6 +198,27 @@ public sealed class GameCountersTests
 
         Assert.EndsWith("\"buckets\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}," +
                         "\"restores\":{\"applied\":4,\"skipped\":1,\"dropped\":2}}", WireCheck.New(view));
+    }
+
+    [Fact]
+    public void TheKeptJobStoresFollowRestoresWithIncludeCounters()
+    {
+        KeptJobs kept = new KeptJobs(1000, 600);
+        kept.Pin("place-1", new CallContext("hub", 4));
+        kept.Snapshots.Put("place-1", new RecordedJob("remove_structure",
+            new Dictionary<long, ThingSnapshot>(), JobSource.Unknown), 512);
+        kept.Finals.Put("place-1", new object(), 300);
+        kept.Finals.Put("place-2", new object(), 200);
+        GameCountersView counters = new GameCountersView(new JobHoldsView(new long[5]), new PrintLogView(0, 0), 0,
+            new BatchConsoleView(0, 0), new RestoreCountsView(0, 0, 0), JobStoresView.Of(kept));
+        RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>(),
+            prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0), counters: counters);
+
+        Assert.EndsWith("\"restores\":{\"applied\":0,\"skipped\":0,\"dropped\":0}," +
+                        "\"job_stores\":{\"snapshots\":{\"bytes\":512,\"budget_bytes\":1000,\"entries\":1,\"pinned\":1}," +
+                        "\"final_statuses\":{\"bytes\":500,\"budget_bytes\":600,\"entries\":2,\"pinned\":1}," +
+                        "\"pins\":1}}", WireCheck.New(view));
     }
 
     private static void NoteAt(EventRate rate, long timestamp, int times)

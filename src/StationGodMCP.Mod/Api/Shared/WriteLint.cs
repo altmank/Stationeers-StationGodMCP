@@ -56,13 +56,36 @@ internal static class WriteLint
         return warnings;
     }
 
+    /// <summary>Each finding as lint_refused's data lists it: the rule, its message and the thing it is about.</summary>
+    internal static List<LintRefusedRuleView> Rules(List<LintFinding> findings)
+    {
+        List<LintRefusedRuleView> rules = new List<LintRefusedRuleView>(findings.Count);
+        foreach (LintFinding finding in findings)
+        {
+            rules.Add(new LintRefusedRuleView(finding.Code, finding.Message, Thing(finding)));
+        }
+
+        return rules;
+    }
+
+    /// <summary>Each finding's warning code, lint_&lt;rule id&gt;, as a checked write's warnings carry it.</summary>
+    internal static List<string> Codes(List<LintFinding> findings)
+    {
+        List<string> codes = new List<string>(findings.Count);
+        foreach (LintFinding finding in findings)
+        {
+            codes.Add(CodePrefix + finding.Code);
+        }
+
+        return codes;
+    }
+
     private static ApiException Refusal(OpeningVerdict verdict, ThingId device)
     {
-        List<LintRefusedRuleView> rules = new List<LintRefusedRuleView>(verdict.Problems.Count);
+        List<LintRefusedRuleView> rules = Rules(verdict.Problems);
         StringBuilder said = new StringBuilder();
         foreach (LintFinding problem in verdict.Problems)
         {
-            rules.Add(new LintRefusedRuleView(problem.Code, problem.Message, Thing(problem)));
             said.Append(' ').Append(problem.Message);
         }
 

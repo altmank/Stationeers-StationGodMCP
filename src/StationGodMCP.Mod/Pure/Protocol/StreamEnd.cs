@@ -70,10 +70,10 @@ internal readonly struct StreamEnd
 }
 
 /// <summary>
-/// A store that keeps something per stream (CallContext as key: walk cursors, and later build footprints and job
-/// pins). Told on the main thread, at the start of a frame, when streams end; it drops what it keeps for every
-/// context the end covers. Job undo data, job snapshots and building jobs are not per-stream stores: a stream's end
-/// leaves them as they are.
+/// A store that keeps something per stream (CallContext as key: walk cursors, job pins, and later build footprints).
+/// Told on the main thread, at the start of a frame, when streams end; it drops what it keeps for every context the
+/// end covers. Job pins are dropped by release and an owner's end, never by one stream's end; job undo data, job
+/// snapshots and building jobs are not per-stream stores: a stream's end leaves them as they are.
 /// </summary>
 internal interface IStreamStore
 {
@@ -88,6 +88,16 @@ internal interface IStreamStore
 internal interface ICursorStore : IStreamStore
 {
     void Close(string owner, string cursorId);
+}
+
+/// <summary>
+/// A per-stream store that also hears release (protocol.md, Job pins): the owner of the connection that sent it
+/// (CallContext.Owner) and the stream whose job pins go, told on the main thread at the start of the frame after it
+/// arrived. The stream may have ended already, or never have been used.
+/// </summary>
+internal interface IPinStore : IStreamStore
+{
+    void Release(string owner, long stream);
 }
 
 /// <summary>
@@ -107,7 +117,8 @@ internal interface ISessionEndStore : IStreamStore
 /// merge into a few ranges, one more for each stream still open below the highest ended one. At most MaximumRanges
 /// ranges (16 bytes each): past that the two lowest merge, so the streams in the lowest gap count as ended too. Used
 /// by connection reader threads under a lock on the instance, since a resumed token's set passes from one connection
-/// to the next while the old one may still be reading.
+/// to the next while the old one may still be reading. It also keeps whether the owner sent session_end, after which
+/// none of its calls runs, on any stream (protocol.md, Held restores).
 /// </summary>
 internal sealed class EndedStreams
 {
@@ -118,6 +129,21 @@ internal sealed class EndedStreams
 
     /// <summary>Ranges held (tests and the bound).</summary>
     internal int Ranges => _low.Count;
+
+    /// <summary>The owner sent session_end: every call of it is refused session_ended from then on.</summary>
+    internal bool SessionEnded { get; private set; }
+
+    /// <summary>Marks the owner's session ended; false when it already was.</summary>
+    internal bool EndSession()
+    {
+        if (SessionEnded)
+        {
+            return false;
+        }
+
+        SessionEnded = true;
+        return true;
+    }
 
     internal bool Contains(long stream)
     {

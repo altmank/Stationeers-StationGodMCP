@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
@@ -28,7 +29,8 @@ namespace StationGodMCP.Api;
 /// held pipe job is judged by the tool that runs it; a real run the hold would refuse in any of its calls is refused
 /// before the first job starts (GasHoldReply.Refusal). What the job built and removed comes from its final view while
 /// HeldTickJobs keeps it, else from the request's created_ids, removed, changed and placed while its snapshots are kept
-/// (UndoFactsSource).
+/// (UndoFactsSource); both are kept bounded by memory, a job pinned to its caller's stream outlasting the rest
+/// (KeptJobs). A job whose snapshots were evicted answers undo_expired naming it (data: {job_id}).
 /// </summary>
 internal static class UndoJobApi
 {
@@ -62,13 +64,16 @@ internal static class UndoJobApi
 
         RecordedJob? recorded = JobSnapshots.Of(jobId);
         JObject? kept = KeptJob(jobId, out ApiException? notFound);
-        UndoFactsSource from = UndoFactsSource.Choose(kept, recorded != null, given);
+        UndoFactsSource from = UndoFactsSource.Choose(kept, recorded != null, given, JobSnapshots.Evicted(jobId),
+            HeldTickJobs.Evicted(jobId), jobId);
         JObject job = from switch
         {
             UndoFactsSource.Kept own => own.Facts,
             UndoFactsSource.Given request => request.Facts,
+            UndoFactsSource.Expired expired => throw new ApiException(UndoFactsSource.Expired.Code, expired.Message,
+                new Dictionary<string, string> { ["job_id"] = jobId }),
             UndoFactsSource.NotFound { FactsGiven: true } => throw ApiErrors.Refused(notFound!.Code,
-                notFound.Message + $" Its snapshots are gone too (the last {JobSnapshots.KeptJobs} jobs keep theirs), " +
+                notFound.Message + " Its snapshots are not kept either, " +
                 Vocabulary.Text("so the {arg:created_ids}, {arg:removed}, {arg:changed} and {arg:placed} passed " +
                     "are not enough to undo it.")),
             _ => throw notFound!
@@ -82,7 +87,7 @@ internal static class UndoJobApi
         UndoPlan plan = UndoPlanner.Plan(facts, Standing);
         if (from is UndoFactsSource.Given)
         {
-            plan.Notes.Insert(0, UndoFactsSource.Given.Note(jobId, HeldTickJobs.KeptJobs));
+            plan.Notes.Insert(0, UndoFactsSource.Given.Note(jobId));
         }
         UndoSource source = UndoSource.Of(recorded?.Source ?? JobSource.Unknown, fromId, refundTo);
         plan.Notes.AddRange(source.Notes);

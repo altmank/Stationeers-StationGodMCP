@@ -433,6 +433,7 @@
   "sell_separately": {
     "description": "An earlier line of this call sold goods the game would take again for this entry. Sell this entry in a call of its own."
   },
+  "session_ended": {"description": "The session has ended, so nothing it sends now runs. Start a new session to go on."},
   "shutting_down": {
     "description": "The game is stopping or the world is unloading; the call did not start. Send it again once the world is loaded.",
     "see": {"topic": "errors"}
@@ -500,6 +501,9 @@
   "unauthorized": {
     "description": "The TCP shared secret is missing or wrong. The connection is closed; reconnect with the right secret.",
     "see": {"topic": "errors"}
+  },
+  "undo_expired": {
+    "description": "What undoing that job needs is no longer kept (its run's pins are released, or kept jobs passed the memory bound). Name the job's lists from its job_ended event if the message asks for them; otherwise it cannot be undone."
   },
   "unit_out_of_range": {
     "description": "The gene set index is out of range; the message gives how many sets the plant has.",
