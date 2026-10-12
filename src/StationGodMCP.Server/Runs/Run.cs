@@ -232,6 +232,10 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
             {
                 await _link.HoldRestoreAsync(Record.Stream, JsonNodes.ToElement(new JsonObject { ["clear_all"] = true }),
                     CancellationToken.None).ConfigureAwait(false);
+                lock (Record.Sync)
+                {
+                    _holds.Clear();
+                }
             }
 
             if (state is RunState.Stopped or RunState.Killed && !world)
@@ -250,7 +254,13 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
             // The game went away: the run still ends, without its costs.
         }
 
-        await _link.EndStreamAsync(Record.Stream).ConfigureAwait(false);
+        // stream_end clears a stream's held restores unwritten, so a run that stopped inside a hold keeps its stream:
+        // the restores then apply at session_end (or when the resume window passes), as they are meant to.
+        if (world || !HasHolds())
+        {
+            await _link.EndStreamAsync(Record.Stream).ConfigureAwait(false);
+        }
+
         ReleaseWhenSettled();
         _pipeline.EndStream(Record.Stream);
         worker.Dispose();
@@ -403,7 +413,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 JsonNode? now = index < rows.Count && JsonNodes.IsTrue(rows[index]["ok"]) ? rows[index]["value"] : last;
                 if (!SameValue(now, before))
                 {
-                    Record.Left.Add($"{id} {logic}={Shown(now)} (was {Shown(before)})");
+                    Record.Left.Add(new LeftTarget(id, logic, now?.DeepClone(), before?.DeepClone()));
                 }
             }
         }
@@ -433,7 +443,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     /// (at once to a wait). The worker is killed KillAfter later, longer while a call is in flight but never past
     /// KillLatest, or at once on a second stop. Answers the run's state word for the stop's reply.
     /// </summary>
-    internal string RequestStop(string code, string message, bool world)
+    internal string RequestStop(string code, string message, bool world, bool secondKills = true)
     {
         bool first;
         bool killNow;
@@ -461,7 +471,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 Record.WorldChanged = true;
             }
 
-            killNow = !first && !world;
+            killNow = !first && !world && secondKills;
         }
 
         _stopSignal.Cancel();
@@ -580,6 +590,13 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 return stop;
             }
 
+            // At session end only writes may go (the gate lets the cleanup ones act); after session_end nothing.
+            if (_host.Phase == SessionPhase.Ended ||
+                (_host.Phase == SessionPhase.Cleanup && _pipeline.Catalogue.Verb(call.Verb)?.What(call.What)?.Write == null))
+            {
+                return RunHost.SessionEnded();
+            }
+
             if (await _host.RunsCallAsync(call, cancellation).ConfigureAwait(false) is { } runs)
             {
                 return runs;
@@ -695,10 +712,70 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private async Task<VerbReply> SendAsync(string verb, string? what, JsonObject args, RunCallContext context,
         CancellationToken cancellation)
     {
+        if (verb == "write" && what == "logic" && Record.Confirm && context.KnownBefore == null && _journal.WantsBefore &&
+            !StopRequested)
+        {
+            context = await WithBeforeAsync(args, context, cancellation).ConfigureAwait(false);
+        }
+
         VerbCall gated = new(verb, what, args, Face.Script, Record.Stream, context.Line) { Gate = new RunGate(this, context) };
         VerbReply reply = await _pipeline.CallAsync(gated, cancellation).ConfigureAwait(false);
         Observe(verb, what, context, reply);
         return reply;
+    }
+
+    // A confirmed logic write is journalled with the values before it (write-ahead: if the hub dies after sending, undo
+    // still knows them), so they are read first; ids that are refs or not plain are left to the reply's previous_value.
+    private async Task<RunCallContext> WithBeforeAsync(JsonObject args, RunCallContext context, CancellationToken cancellation)
+    {
+        JsonArray reads = [];
+        List<string> ids = [];
+        if (args["writes"] is JsonArray writes)
+        {
+            foreach (JsonNode? entry in writes)
+            {
+                if (IdText(entry?["id"]) is { } id && entry!["logic"] is { } logic && RefStore.Parse(id) == null)
+                {
+                    reads.Add(new JsonObject { ["id"] = id, ["logic"] = logic.DeepClone() });
+                    ids.Add(id);
+                }
+            }
+        }
+        else if (args["logic"] is { } logic)
+        {
+            foreach (JsonNode? id in args["id"] is JsonArray list ? list : new JsonArray(args["id"]?.DeepClone()))
+            {
+                if (IdText(id) is { } text && RefStore.Parse(text) == null)
+                {
+                    reads.Add(new JsonObject { ["id"] = text, ["logic"] = logic.DeepClone() });
+                    ids.Add(text);
+                }
+            }
+        }
+
+        if (reads.Count == 0)
+        {
+            return context;
+        }
+
+        VerbReply read = await _pipeline.CallAsync(new VerbCall("read", "logic", new JsonObject { ["reads"] = reads },
+            Face.Script, Record.Stream, context.Line), cancellation).ConfigureAwait(false);
+        if (read is not VerbReply.Done done)
+        {
+            return context;
+        }
+
+        Dictionary<string, JsonNode?> before = new(StringComparer.Ordinal);
+        List<JsonObject> rows = BulkWrites.Rows(done.Reply);
+        for (int index = 0; index < ids.Count && index < rows.Count; index++)
+        {
+            if (JsonNodes.IsTrue(rows[index]["ok"]) || rows[index]["ok"] == null)
+            {
+                before.TryAdd(ids[index], rows[index]["value"]?.DeepClone());
+            }
+        }
+
+        return new RunCallContext(context.Line, context.Group, context.HoldExit) { KnownBefore = before };
     }
 
     // ---- small helpers ----------------------------------------------------------------------------------------------

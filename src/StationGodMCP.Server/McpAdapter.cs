@@ -34,6 +34,7 @@ internal sealed class McpAdapter : IAsyncDisposable
     private readonly VerbPipeline _pipeline;
     private readonly SeenSet _seen = new();
     private readonly RunHost? _runs;
+    private readonly IGameLink _link;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _pending = new(StringComparer.Ordinal);
 
     internal McpAdapter(SidecarOptions options)
@@ -49,6 +50,7 @@ internal sealed class McpAdapter : IAsyncDisposable
         RunHostSettings? runs = null)
     {
         _options = options;
+        _link = link;
         _owned = owned ? link as IAsyncDisposable : null;
         _recorder = options.RecordPath is { } path ? new CallRecorder(path) : null;
         _pipeline = new VerbPipeline(link, recorder: _recorder, shown: shown == null ? _seen : new ShownToBoth(_seen, shown));
@@ -90,6 +92,13 @@ internal sealed class McpAdapter : IAsyncDisposable
             return await HandleRequestAsync(document.RootElement).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// stdin ended (hub.md, Session end): the runs' session-end order, or session_end alone when no runs are served.
+    /// Replies still in flight answer session_ended from here on.
+    /// </summary>
+    internal Task EndSessionAsync(Task? direct = null) =>
+        _runs != null ? _runs.EndSessionAsync(direct) : _link.SessionEndAsync();
 
     public async ValueTask DisposeAsync()
     {
@@ -297,6 +306,10 @@ internal sealed class McpAdapter : IAsyncDisposable
         else if (verb == "server" && what == "stop")
         {
             reply = _runs!.Stop(options);
+        }
+        else if (verb == "undo")
+        {
+            reply = await _runs!.UndoAsync(options).ConfigureAwait(false);
         }
         else
         {

@@ -114,13 +114,51 @@ public sealed class ListedRow
 }
 
 /// <summary>
-/// The write-ahead hook (C5's journal): Before is called just before a write is sent, After once its reply is in.
+/// The write-ahead hook (the journal, hub.md): Before is called just before a write is sent, After once its reply is
+/// in, NotSent when a write the journal was told of never went (or was cancelled unrun); a run's start, its held
+/// restores and its end, and a world change that dropped live runs' holds.
 /// </summary>
 public interface IRunJournal
 {
     void Before(RunRecord run, WriteEntry write);
 
     void After(RunRecord run, WriteEntry write);
+
+    void NotSent(RunRecord run, WriteEntry write);
+
+    void Started(RunRecord run);
+
+    void Held(RunRecord run, string id, string logic, JsonNode? after);
+
+    void Ended(RunRecord run);
+
+    void WorldChanged(string? world, List<string> holdsDropped);
+
+    /// <summary>True when the journal wants a confirmed logic write's before values ahead of the call line.</summary>
+    bool WantsBefore { get; }
+}
+
+/// <summary>A logic target a stopped or killed run left changed: its value now, and the value before the run.</summary>
+public sealed class LeftTarget
+{
+    public LeftTarget(string id, string logic, JsonNode? value, JsonNode? before)
+    {
+        Id = id;
+        Logic = logic;
+        Value = value;
+        Before = before;
+    }
+
+    public string Id { get; }
+
+    public string Logic { get; }
+
+    public JsonNode? Value { get; }
+
+    public JsonNode? Before { get; }
+
+    /// <summary>"122643 Open=1 (was 0)".</summary>
+    public override string ToString() => $"{Id} {Logic}={Run.Shown(Value)} (was {Run.Shown(Before)})";
 }
 
 /// <summary>No journal: the writes are only kept in memory, on the run's record.</summary>
@@ -139,6 +177,28 @@ public sealed class NoRunJournal : IRunJournal
     public void After(RunRecord run, WriteEntry write)
     {
     }
+
+    public void NotSent(RunRecord run, WriteEntry write)
+    {
+    }
+
+    public void Started(RunRecord run)
+    {
+    }
+
+    public void Held(RunRecord run, string id, string logic, JsonNode? after)
+    {
+    }
+
+    public void Ended(RunRecord run)
+    {
+    }
+
+    public void WorldChanged(string? world, List<string> holdsDropped)
+    {
+    }
+
+    public bool WantsBefore => false;
 }
 
 /// <summary>
@@ -219,7 +279,21 @@ public sealed class RunRecord
     public List<string> Contested { get; } = [];
 
     /// <summary>After a stop or kill: per target, the value it holds now that differs from the one before the run.</summary>
-    public List<string> Left { get; } = [];
+    public List<LeftTarget> Left { get; } = [];
+
+    /// <summary>True once undo script-N acted on it: a second undo answers already_undone.</summary>
+    public bool Undone { get; internal set; }
+
+    /// <summary>
+    /// Set when the hub let go of the run's write log to stay within its memory bound: what undo can no longer revert.
+    /// </summary>
+    public string? Forgotten { get; internal set; }
+
+    /// <summary>For a run adopted from an earlier hub's journal: what its held restores did ("applied ..., skipped ...").</summary>
+    public string? Restores { get; internal set; }
+
+    /// <summary>True for a run of an earlier hub, read from its journal.</summary>
+    public bool Adopted { get; internal set; }
 
     /// <summary>The sg calls the worker made.</summary>
     public int Calls { get; internal set; }

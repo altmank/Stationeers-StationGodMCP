@@ -15,6 +15,13 @@ public sealed partial class VerbPipeline
 
     private static readonly string[] BulkLists = ["writes", "labels", "items", "moves"];
 
+    /// <summary>The gate's decision on a write the hub answers itself (undo of a run), by the same path as any write.</summary>
+    internal WriteDecision DecideWrite(VerbCall call)
+    {
+        WhatEntry what = _catalogue.Verb(call.Verb)!.What(call.What)!;
+        return GateFor(call).Decide(call, WriteTargetPaths.Resolve(what, call.Args));
+    }
+
     private IWriteGate GateFor(VerbCall call) =>
         call.Gate ?? _gate ?? (call.Face == Face.Script ? ReportingGate.Instance : _directGate);
 

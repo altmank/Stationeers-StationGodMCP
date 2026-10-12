@@ -26,6 +26,21 @@ public sealed class RunHostSettings
     /// <summary>How often live runs' cost lines ride replies other than run_script, inspect job and server info.</summary>
     public TimeSpan CostLinesEvery { get; init; } = TimeSpan.FromMinutes(10);
 
+    /// <summary>
+    /// At session end (stdin EOF), how long only cleanup writes and hold exits are forwarded before session_end goes
+    /// (hub.md, Session end). The client kills the hub about 0.4 s after EOF, so this stays well inside that.
+    /// </summary>
+    public TimeSpan CleanupWindow { get; init; } = TimeSpan.FromMilliseconds(300);
+
+    /// <summary>
+    /// How many written targets the hub keeps for undo over all its ended runs; past it the oldest runs' write logs
+    /// are let go and their undo answers undo_expired, naming what it can no longer revert.
+    /// </summary>
+    public int UndoMemoryTargets { get; init; } = 100_000;
+
+    /// <summary>How long adoption waits before it connects again with a resumed old token.</summary>
+    public TimeSpan AdoptionReconnect { get; init; } = TimeSpan.FromSeconds(1);
+
     public IReadOnlyList<string> Python { get; init; } = OperatingSystem.IsWindows() ? ["py", "-3"] : ["python3"];
 
     /// <summary>The folder holding the sg package (next to the server binary by default).</summary>
@@ -46,13 +61,21 @@ internal sealed class ReplyHooks
     internal CancellationToken Cancelled { get; init; }
 }
 
+/// <summary>Where a hub's session is: open, forwarding only cleanup after EOF, or past session_end.</summary>
+internal enum SessionPhase
+{
+    Open,
+    Cleanup,
+    Ended
+}
+
 /// <summary>
 /// The runs of one hub (docs/architecture/hub.md, Runs): run_script mints script-N on a new stream with a worker from
-/// the pool; inspect job and server stop for script-N; the notices and cost lines that ride replies; a world change
-/// stops every live run. The seen set is the hub's, fed by the MCP adapter. Undo of runs, the journal and the EOF order
-/// build on this (C5).
+/// the pool; inspect job, server stop and undo for script-N and for runs adopted from earlier hubs' journals
+/// (script-&lt;pid&gt;.N); the notices and cost lines that ride replies; a world change stops every live run and drops
+/// its holds; at stdin EOF the session-end order. The seen set is the hub's, fed by the MCP adapter.
 /// </summary>
-public sealed class RunHost : IAsyncDisposable
+public sealed partial class RunHost : IAsyncDisposable
 {
     private const string Prefix = "script-";
 
@@ -65,6 +88,7 @@ public sealed class RunHost : IAsyncDisposable
     private readonly List<Notes> _order = [];
     private DateTime _lastCostLines = DateTime.MinValue;
     private int _next;
+    private SessionPhase _phase = SessionPhase.Open;
 
     internal RunHost(IHubLink link, VerbPipeline pipeline, SeenSet seen, RunHostSettings settings)
     {
@@ -79,15 +103,26 @@ public sealed class RunHost : IAsyncDisposable
     /// <summary>The hub's seen set (hub.md, The seen set).</summary>
     public SeenSet Seen { get; }
 
+    internal SessionPhase Phase
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _phase;
+            }
+        }
+    }
+
     /// <summary>Starts the idle worker now, so the first run does not wait for Python.</summary>
     public void Warm() => _pool.Warm();
 
-    /// <summary>A run's record by id (script-N), for C5's undo and journal; null when there is none.</summary>
+    /// <summary>A run's record by id (script-N, or script-&lt;pid&gt;.N adopted); null when there is none.</summary>
     public RunRecord? Find(string id)
     {
         lock (_gate)
         {
-            return _runs.TryGetValue(id.Trim(), out Notes? notes) ? notes.Run.Record : null;
+            return _runs.TryGetValue(id.Trim(), out Notes? notes) ? notes.Record : null;
         }
     }
 
@@ -106,6 +141,11 @@ public sealed class RunHost : IAsyncDisposable
             return OptionProblem.Refusal("run_script", [new OptionProblem("code", "required: the Python to run")]);
         }
 
+        if (Phase != SessionPhase.Open)
+        {
+            return SessionEnded();
+        }
+
         DateTime asked = DateTime.UtcNow;
         Run run = Start(code, JsonNodes.IsTrue(options["confirm"]));
         using CancellationTokenRegistration cancel = hooks.Cancelled.Register(() =>
@@ -113,6 +153,9 @@ public sealed class RunHost : IAsyncDisposable
         await WaitReplyAsync(run, MaxWait(options, _settings.DefaultMaxWait), asked, hooks).ConfigureAwait(false);
         return new VerbReply.Done(new JsonObject { ["text"] = await ReplyTextAsync(run).ConfigureAwait(false) });
     }
+
+    internal static VerbReply.Failed SessionEnded() =>
+        new("session_ended", "The session is ending: only a stopped run's cleanup writes and held restores go now.");
 
     private Run Start(string code, bool confirm)
     {
@@ -125,13 +168,14 @@ public sealed class RunHost : IAsyncDisposable
 
         RunRecord record = new(id, code, confirm, _link.NewStream(), _link.WorldId);
         Run run = new(this, record, _pipeline, _link, Seen, _settings.Journal, _settings);
-        Notes notes = new(run);
+        Notes notes = new(record, run);
         lock (_gate)
         {
             _runs[id] = notes;
             _order.Add(notes);
         }
 
+        _settings.Journal.Started(record);
         _ = Task.Run(() => run.LiveAsync(_pool));
         return run;
     }
@@ -153,7 +197,7 @@ public sealed class RunHost : IAsyncDisposable
                 ? _settings.ConfirmedCeiling
                 : maxWait;
             TimeSpan waited = DateTime.UtcNow - asked;
-            if (waited >= limit || hooks.Cancelled.IsCancellationRequested)
+            if (waited >= limit || hooks.Cancelled.IsCancellationRequested || Phase != SessionPhase.Open)
             {
                 return;
             }
@@ -179,11 +223,7 @@ public sealed class RunHost : IAsyncDisposable
     {
         if (run.Ended.IsCompleted)
         {
-            lock (_gate)
-            {
-                _runs[run.Record.Id].Delivered = true;
-            }
-
+            MarkSeen(run.Record.Id);
             return RunText.Final(run.Record, Seen);
         }
 
@@ -204,19 +244,22 @@ public sealed class RunHost : IAsyncDisposable
         }
     }
 
+    /// <summary>The run's record is final: the journal closes it, and old write logs go past the memory bound.</summary>
     internal void OnRunEnded(Run run)
     {
-        // Nothing to do yet: the record is final and the notices read it. C5's journal closes the run here.
+        _settings.Journal.Ended(run.Record);
+        KeepUndoMemory();
     }
 
     // ---- inspect job, stop, ref -------------------------------------------------------------------------------------
 
-    /// <summary>inspect job for script-N, or with no id the runs with notices pending; null for any other job.</summary>
+    /// <summary>inspect job for a run, or with no id the runs with notices pending; null for any other job.</summary>
     internal async Task<VerbReply?> InspectJobAsync(JsonObject options)
     {
         string? id = JsonNodes.Text(options["id"])?.Trim();
         if (id == null)
         {
+            await AdoptedAsync().ConfigureAwait(false);
             return new VerbReply.Done(Pending());
         }
 
@@ -225,10 +268,17 @@ public sealed class RunHost : IAsyncDisposable
             return null;
         }
 
-        Run? run = RunOf(id);
-        if (run == null)
+        await AdoptedAsync().ConfigureAwait(false);
+        Notes? notes = NotesOf(id);
+        if (notes == null)
         {
             return new VerbReply.Failed("job_not_found", $"No run {id} in this session.");
+        }
+
+        if (notes.Run is not { } run)
+        {
+            MarkSeen(notes.Record.Id);
+            return new VerbReply.Done(new JsonObject { ["text"] = RunText.Final(notes.Record, Seen) });
         }
 
         await WaitReplyAsync(run, MaxWait(options, _settings.InspectWait), DateTime.UtcNow, ReplyHooks.None)
@@ -236,7 +286,7 @@ public sealed class RunHost : IAsyncDisposable
         return new VerbReply.Done(new JsonObject { ["text"] = await ReplyTextAsync(run).ConfigureAwait(false) });
     }
 
-    // The runs with notices pending: stopped or killed with something left, or ended and not yet seen.
+    // The runs with notices pending: ended and not yet seen (an adopted run until it is inspected or undone).
     private JsonObject Pending()
     {
         JsonArray runs = [];
@@ -244,26 +294,33 @@ public sealed class RunHost : IAsyncDisposable
         {
             foreach (Notes notes in _order)
             {
-                RunRecord record = notes.Run.Record;
+                RunRecord record = notes.Record;
                 if (record.IsLive || notes.Delivered)
                 {
                     continue;
                 }
 
-                runs.Add(new JsonObject
+                JsonObject entry = new()
                 {
                     ["id"] = record.Id,
                     ["state"] = Run.StateWord(record.State),
                     ["first_line"] = record.FirstLine,
                     ["left"] = Sticky(record)
-                });
+                };
+                if (record.Adopted)
+                {
+                    entry["earlier_session"] = true;
+                    entry["restores"] = record.Restores;
+                }
+
+                runs.Add(entry);
             }
         }
 
         return new JsonObject { ["runs"] = runs, ["count"] = runs.Count };
     }
 
-    /// <summary>server stop for script-N, or with no id every live run; null for a job id (not a run).</summary>
+    /// <summary>server stop for a run, or with no id every live run; null for a job id (not a run).</summary>
     internal VerbReply? Stop(JsonObject options)
     {
         string? id = JsonNodes.Text(options["id"])?.Trim();
@@ -274,26 +331,24 @@ public sealed class RunHost : IAsyncDisposable
 
         if (id != null)
         {
-            Run? run = RunOf(id);
-            return run == null
-                ? new VerbReply.Failed("job_not_found", $"No run {id} in this session.")
-                : new VerbReply.Done(Stopping(run));
-        }
-
-        List<Run> live = [];
-        lock (_gate)
-        {
-            foreach (Notes notes in _order)
+            Notes? notes = NotesOf(id);
+            if (notes == null)
             {
-                if (notes.Run.Record.IsLive)
-                {
-                    live.Add(notes.Run);
-                }
+                return new VerbReply.Failed("job_not_found", $"No run {id} in this session.");
             }
+
+            return new VerbReply.Done(notes.Run is { } run
+                ? Stopping(run)
+                : new JsonObject
+                {
+                    ["id"] = notes.Record.Id,
+                    ["first_line"] = notes.Record.FirstLine,
+                    ["state"] = Run.StateWord(notes.Record.State)
+                });
         }
 
         JsonArray runs = [];
-        foreach (Run run in live)
+        foreach (Run run in LiveRuns())
         {
             runs.Add(Stopping(run));
         }
@@ -309,9 +364,16 @@ public sealed class RunHost : IAsyncDisposable
         ["line"] = run.Line
     };
 
-    /// <summary>A script's own call of server stop or inspect job for runs; null for every other call.</summary>
+    /// <summary>A script's own call of server stop, inspect job or undo for runs; null for every other call.</summary>
     internal async Task<VerbReply?> RunsCallAsync(VerbCall call, CancellationToken cancellation)
     {
+        if (call.Verb == "undo" && JsonNodes.Text(call.Args["id"])?.Trim() is { } id &&
+            id.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return new VerbReply.Failed(VerbFailure.NotAvailable,
+                "undo of a run is answered on the direct face: send undo {id: \"" + id + "\"} from the MCP client.");
+        }
+
         return call.Verb switch
         {
             "server" when call.What == "stop" => Stop(call.Args),
@@ -323,49 +385,72 @@ public sealed class RunHost : IAsyncDisposable
     /// <summary>sg.ref('script-N'): a finished run's whole returned value and printed output.</summary>
     internal VerbReply RunRef(string id)
     {
-        Run? run = RunOf(id);
-        if (run == null)
+        Notes? notes = NotesOf(id);
+        if (notes == null)
         {
             return new VerbReply.Failed("ref_not_found", $"No run {id} in this session.");
         }
 
-        if (!run.Ended.IsCompleted)
+        if (notes.Record.IsLive)
         {
             return new VerbReply.Failed("run_live", $"{id} is still running; its returned value comes when it ends.");
         }
 
-        lock (run.Record.Sync)
+        lock (notes.Record.Sync)
         {
             return new VerbReply.Done(new JsonObject
             {
-                ["ref"] = run.Record.Id,
-                ["returned"] = run.Record.Returned?.DeepClone(),
-                ["printed"] = run.Record.Printed
+                ["ref"] = notes.Record.Id,
+                ["returned"] = notes.Record.Returned?.DeepClone(),
+                ["printed"] = notes.Record.Printed
             });
         }
     }
 
-    private Run? RunOf(string id)
+    private Notes? NotesOf(string id)
     {
         lock (_gate)
         {
-            return _runs.TryGetValue(id.Trim(), out Notes? notes) ? notes.Run : null;
+            return _runs.TryGetValue(id.Trim(), out Notes? notes) ? notes : null;
         }
+    }
+
+    private List<Run> LiveRuns()
+    {
+        List<Run> live = [];
+        lock (_gate)
+        {
+            foreach (Notes notes in _order)
+            {
+                if (notes.Run is { } run && notes.Record.IsLive)
+                {
+                    live.Add(run);
+                }
+            }
+        }
+
+        return live;
     }
 
     // ---- notices ----------------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// The lines that ride a reply (hub.md, Run replies): every run that ended stopped or killed with something left or
-    /// writes not done, until its final text is delivered (a sticky line on every reply); on run_script and inspect job
-    /// a done notice, once, for each other run that ended unseen; and the cost lines of live runs on run_script,
-    /// inspect job and server info, on other replies at most every CostLinesEvery.
+    /// The lines that ride a reply (hub.md, Run replies): on the session's first reply one line per adopted run that
+    /// left something; every run that ended stopped or killed with something left or writes not done, until its final
+    /// text is delivered (a sticky line on every reply); on run_script and inspect job a done notice, once, for each
+    /// other run that ended unseen; the cost lines of live runs on run_script, inspect job and server info, on other
+    /// replies at most every CostLinesEvery; and "journal off" once when the journal stopped.
     /// </summary>
     internal async Task<List<string>> NoticesAsync(string verb, string? what, string? aboutId)
     {
+        List<string> lines = await FirstReplyLinesAsync().ConfigureAwait(false);
+        if ((_settings.Journal as Journal)?.TakeNotice() is { } off)
+        {
+            lines.Add(off);
+        }
+
         bool runReply = verb == "run_script" || (verb == "inspect" && what == "job");
         bool costs = runReply || (verb == "server" && what == "info");
-        List<string> lines = [];
         List<Run> live = [];
         lock (_gate)
         {
@@ -376,15 +461,15 @@ public sealed class RunHost : IAsyncDisposable
 
             foreach (Notes notes in _order)
             {
-                RunRecord record = notes.Run.Record;
-                if (string.Equals(record.Id, aboutId, StringComparison.OrdinalIgnoreCase))
+                RunRecord record = notes.Record;
+                if (string.Equals(record.Id, aboutId, StringComparison.OrdinalIgnoreCase) || record.Adopted)
                 {
                     continue;
                 }
 
                 if (record.IsLive)
                 {
-                    live.Add(notes.Run);
+                    live.Add(notes.Run!);
                 }
                 else if (!notes.Delivered && Sticky(record) is { } left)
                 {
@@ -443,12 +528,12 @@ public sealed class RunHost : IAsyncDisposable
         }
     }
 
-    /// <summary>Marks a run's notices done: the agent inspected it, or undid it by id (C5).</summary>
+    /// <summary>Marks a run's notices done: its final text went out, the agent inspected it, or undid it by id.</summary>
     public void MarkSeen(string id)
     {
         lock (_gate)
         {
-            if (_runs.TryGetValue(id.Trim(), out Notes? notes) && !notes.Run.Record.IsLive)
+            if (_runs.TryGetValue(id.Trim(), out Notes? notes) && !notes.Record.IsLive)
             {
                 notes.Delivered = true;
             }
@@ -458,43 +543,26 @@ public sealed class RunHost : IAsyncDisposable
     // ---- world change, disposal -------------------------------------------------------------------------------------
 
     // Every live run stops with no cleanup, and its held restores are dropped (they name things of the old world).
+    // Undo of the old world's runs expires by itself: each run keeps the world it ran in.
     private void OnWorldChanged(string? world)
     {
-        List<Run> live = [];
-        lock (_gate)
-        {
-            foreach (Notes notes in _order)
-            {
-                if (notes.Run.Record.IsLive)
-                {
-                    live.Add(notes.Run);
-                }
-            }
-        }
-
+        List<Run> live = LiveRuns();
+        List<string> dropped = [];
         foreach (Run run in live)
         {
             run.RequestStop("world_changed", "the world changed: the run stops and no cleanup acts", world: true);
+            dropped.Add(run.Record.Id);
             _ = _link.HoldRestoreAsync(run.Record.Stream,
                 JsonNodes.ToElement(new JsonObject { ["clear_all"] = true }), CancellationToken.None);
         }
+
+        _settings.Journal.WorldChanged(world, dropped);
     }
 
     public async ValueTask DisposeAsync()
     {
         _link.WorldChanged -= OnWorldChanged;
-        List<Run> live = [];
-        lock (_gate)
-        {
-            foreach (Notes notes in _order)
-            {
-                if (notes.Run.Record.IsLive)
-                {
-                    live.Add(notes.Run);
-                }
-            }
-        }
-
+        List<Run> live = LiveRuns();
         foreach (Run run in live)
         {
             run.Kill();
@@ -506,16 +574,25 @@ public sealed class RunHost : IAsyncDisposable
         }
 
         _pool.Dispose();
+        CloseJournals();
     }
 
-    /// <summary>A run with what its notices have said so far.</summary>
-    private sealed class Notes(Run run)
+    /// <summary>A run (live or ended, this hub's or adopted) with what its notices have said so far.</summary>
+    private sealed class Notes(RunRecord record, Run? run)
     {
-        internal Run Run { get; } = run;
+        internal RunRecord Record { get; } = record;
 
-        /// <summary>The run's final text went out (run_script or inspect job): no notice is owed.</summary>
+        /// <summary>The live run; null for a run adopted from an earlier hub's journal.</summary>
+        internal Run? Run { get; } = run;
+
+        /// <summary>The run's final text went out (run_script or inspect job), or it was undone: no notice is owed.</summary>
         internal bool Delivered { get; set; }
 
         internal bool DoneNoticeSent { get; set; }
+
+        /// <summary>For an adopted run: its line went out on the session's first reply.</summary>
+        internal bool Reported { get; set; }
+
+        internal AdoptedJournal? Journal { get; init; }
     }
 }

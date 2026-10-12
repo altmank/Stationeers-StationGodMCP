@@ -54,9 +54,11 @@ public sealed class HubModeTests
             Assert.Equal("5", passed.GetProperty("result").GetProperty("results")[0].GetProperty("reference_id").GetString());
             FakeCall health = Assert.Single(game.CallsTo("thing_health"));
             Assert.True(health.Message.GetProperty("stream").GetInt64() > 0);
-            // No session_end was sent, so the link closes without bye: the mod keeps the held restores to apply.
-            Assert.DoesNotContain(game.Received, message =>
-                message.TryGetProperty("type", out JsonElement type) && type.GetString() == "bye");
+            // stdin's end is the session's end (hub.md, Session end): session_end goes after the last call.
+            var types = game.Received.Select(message =>
+                message.TryGetProperty("type", out JsonElement type) ? type.GetString() ?? "" : "").ToList();
+            Assert.Contains("session_end", types);
+            Assert.True(types.IndexOf("session_end") > types.LastIndexOf("call"), string.Join(",", types));
         }
         finally
         {

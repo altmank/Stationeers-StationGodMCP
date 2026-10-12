@@ -56,9 +56,20 @@ internal static class Program
         }
 
         await using GameLink link = new(options.Client);
-        await using McpAdapter adapter = new(options, link);
+        Journal journal = Journal.Open(options.JournalDirectory, link.ResumeToken, mcp: true, () => link.WorldId);
+        await using McpAdapter adapter = new(options, link, runs: new RunHostSettings
+        {
+            ConfirmedCeiling = TimeSpan.FromSeconds(options.ConfirmedCeilingSeconds),
+            Python = options.Python,
+            Journal = journal
+        });
         adapter.Notify = WriteAsync;
         adapter.Runs?.Warm();
+        if (options.AdoptsJournals)
+        {
+            adapter.Runs?.StartAdoption(options.JournalDirectory, journal.FilePath,
+                token => new GameTokenLink(new GameLink(options.Client, token)));
+        }
         List<Task> running = [];
         string? line;
         while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
@@ -79,8 +90,13 @@ internal static class Program
             }));
         }
 
-        await Task.WhenAll(running).ConfigureAwait(false);
+        // The session-end order first: the client kills this process about 0.4 s after closing its side.
+        await adapter.EndSessionAsync(Task.WhenAll(running)).ConfigureAwait(false);
+        await Task.WhenAny(Task.WhenAll(running), Task.Delay(SessionEndGrace)).ConfigureAwait(false);
     }
+
+    // How long replies still in flight at EOF may take to be written after session_end; nobody may be reading.
+    private static readonly TimeSpan SessionEndGrace = TimeSpan.FromSeconds(1);
 
     /// <summary>Every mod method's input schema (the handlers the verbs map onto), by method name.</summary>
     internal static IReadOnlyDictionary<string, JsonElement> InputSchemas => ToolCatalogue.InputSchemas;

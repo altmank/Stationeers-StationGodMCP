@@ -23,6 +23,11 @@ internal sealed partial class Run
         lock (Record.Sync)
         {
             _wrote = true;
+            if (_host.Phase == SessionPhase.Ended)
+            {
+                return RefuseRow(call, targets, context, "the session ended: nothing is sent after session_end");
+            }
+
             if (_stopCode != null)
             {
                 if (_stopWorld || !Record.Confirm)
@@ -385,7 +390,14 @@ internal sealed partial class Run
                     }
                 }
 
-                _journal.After(Record, unsent);
+                if (!failed.MaybeRan && (failed.Code is "cancelled" or "session_ended" || _host.Phase == SessionPhase.Ended))
+                {
+                    _journal.NotSent(Record, unsent);
+                }
+                else
+                {
+                    _journal.After(Record, unsent);
+                }
             }
 
             return;

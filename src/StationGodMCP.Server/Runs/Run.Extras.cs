@@ -213,6 +213,11 @@ internal sealed partial class Run
                     _holds.Add((ids[index], LogicName(logic)!, after[index]?.DeepClone()));
                 }
             }
+
+            for (int index = 0; index < ids.Count; index++)
+            {
+                _journal.Held(Record, ids[index], LogicName(logic)!, after[index]);
+            }
         }
 
         if (value != null)
@@ -294,7 +299,7 @@ internal sealed partial class Run
             world = _stopWorld;
         }
 
-        if (Record.Confirm && !world)
+        if (Record.Confirm && !world && _host.Phase != SessionPhase.Ended)
         {
             await ClearHoldsAsync(ids, logic, cancellation).ConfigureAwait(false);
         }
@@ -474,6 +479,11 @@ internal sealed partial class Run
     /// <summary>{cursor, limit?}: the next entries of a reply's main list.</summary>
     public Task<VerbReply> MoreAsync(PipelineRequest request, CancellationToken cancellation)
     {
+        if (_host.Phase != SessionPhase.Open)
+        {
+            return Answer(RunHost.SessionEnded());
+        }
+
         if (JsonNodes.Text(request.Parameters["cursor"]) is not { } cursor)
         {
             return Answer(new VerbReply.Failed(Invalid, "more needs cursor: the hub cursor a reply carried."));

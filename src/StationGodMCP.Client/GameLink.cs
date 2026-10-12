@@ -47,11 +47,20 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     private int _reconnecting;
 
     public GameLink(ClientOptions options)
+        : this(options, NewResumeToken())
+    {
+    }
+
+    /// <summary>
+    /// A link that says hello with a resume token of the caller's: a hub adopting an earlier hub's journal reads that
+    /// token's held-restore outcomes with it (docs/architecture/hub.md, The journal).
+    /// </summary>
+    public GameLink(ClientOptions options, string resumeToken)
     {
         _options = options;
         _catalogue = options.BuiltInCatalogue;
         _catalogues[_catalogue.Hash] = _catalogue;
-        ResumeToken = NewResumeToken();
+        ResumeToken = resumeToken;
     }
 
     /// <summary>"hub-" and 16 lower-case hex digits, sent as resume in every hello of this link.</summary>
@@ -462,7 +471,13 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     /// Closes the link. bye is sent only after SessionEndAsync: bye clears every held restore unwritten, so a link closed
     /// without ending its session closes without it, and the mod applies the restores when the resume window passes.
     /// </summary>
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => CloseAsync(_ended);
+
+    /// <summary>
+    /// Closes the link, with bye or without it whatever SessionEndAsync did: adoption closes a resumed token's link
+    /// without bye after session_end (so the restores are applied, not cleared), and says bye on its last link.
+    /// </summary>
+    public async ValueTask CloseAsync(bool bye)
     {
         GameConnection? connection;
         lock (_gate)
@@ -482,7 +497,7 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
         _jobs.Close();
         if (connection != null)
         {
-            if (_ended)
+            if (bye)
             {
                 await connection.TrySendAsync(Wire.Bye()).ConfigureAwait(false);
             }

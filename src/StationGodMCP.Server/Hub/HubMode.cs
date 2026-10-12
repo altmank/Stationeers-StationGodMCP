@@ -25,13 +25,21 @@ internal static class HubMode
     }
 
     /// <summary>
-    /// The one place the caller's end is handled (hub.md, Session end): the session closes (its calls cancelled, its
-    /// streams ended), then the link closes, with bye only when session_end was sent (GameLink's rule: bye would clear
-    /// the held restores unwritten). The EOF order with runs (stop them, cleanup writes, then session_end) goes here.
+    /// The one place the caller's end is handled (hub.md, Session end): session_end (unless the caller sent it), then the
+    /// session closes (its calls cancelled, its streams ended), then the link closes, with bye only when session_end was
+    /// sent (GameLink's rule: bye would clear the held restores unwritten).
     /// </summary>
     internal static async Task OnInputEndedAsync(HubSession session, GameLink link)
     {
+        // A --hub serves no runs, so nothing waits for cleanup: session_end goes at once, before the session's streams
+        // end (stream_end would clear their held restores unwritten).
+        if (!session.SessionEndSent)
+        {
+            await link.SessionEndAsync().ConfigureAwait(false);
+        }
+
         await session.CloseAsync().ConfigureAwait(false);
+
         await link.DisposeAsync().ConfigureAwait(false);
     }
 }
