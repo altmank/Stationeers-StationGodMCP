@@ -9,11 +9,11 @@ written in, everything a rule can look at, and how to add your own rules for one
 
 ## Where the rules come from
 
-Two files, read again whenever either changes:
+Two sets of rules; the save's file is read again whenever it changes:
 
 | File | What it is |
 | --- | --- |
-| `lint-rules.json` in the mod's folder | The rules the mod ships. Updates replace it, so do not edit it; copy rules from it instead. If it is missing, the copy built into the mod is used. |
+| The rules built into the mod (`rule_source.mod_file` is `lint-rules.json (built in)`) | The rules the mod ships. The `lint-rules.json` in the mod's folder is a copy of them to read and copy rules from; the mod does not load it, so editing it changes nothing. |
 | `lint-rules.json` in your save's folder (`Documents\My Games\Stationeers\saves\<station>\`) | Your rules for that save. It takes priority. |
 
 How the save's file applies, rule by rule (by `id`):
