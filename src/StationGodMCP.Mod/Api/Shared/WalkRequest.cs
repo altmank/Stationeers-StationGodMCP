@@ -98,32 +98,27 @@ internal sealed class WalkRequest
         $"{Vocabulary.Arg("offset")}.");
 
     /// <summary>
-    /// The first page of a walk whose ordered ids were built ahead (WalkBuild): up to limit things that still exist, in
-    /// order, into into, fewer when budget stops it (at least one); when ids remain they stay in WalkCursors under the
-    /// caller's (connection, stream) and the step names the cursor. A rest longer than the store holds in all is
-    /// invalid_argument.
+    /// After the first page of a walk whose ordered ids were built ahead (WalkBuild): when the call asked for a cursor
+    /// and ids remain after next (the page returned returned things and passed over skipped gone ones), keeps them in
+    /// WalkCursors under the caller's (connection, stream) and returns the cursor id; null otherwise. A rest longer
+    /// than the store holds in all is invalid_argument.
     /// </summary>
-    internal WalkStep First<T>(long[] ids, int limit, Func<long, T?> live, List<T> into, PageBudget budget)
-        where T : class
+    internal string? KeepRest(long[] ids, int next, int returned, int skipped)
     {
-        int count = into.Count;
-        int next = WalkCursors.Take(ids, 0, limit, live, into, budget, out int skipped);
-        int returned = into.Count - count;
-        bool more = next < ids.Length;
-        string? cursorId = null;
-        if (more)
+        if (!Opens || next >= ids.Length)
         {
-            long[] rest = new long[ids.Length - next];
-            Array.Copy(ids, next, rest, 0, rest.Length);
-            cursorId = _cursors.Open(CallContext.Current, rest, returned, skipped) ?? throw TooLong(rest);
+            return null;
         }
 
-        return new WalkStep(cursorId, 0, skipped, ids.Length, more, null, more && returned < limit, next);
+        long[] rest = new long[ids.Length - next];
+        Array.Copy(ids, next, rest, 0, rest.Length);
+        return _cursors.Open(CallContext.Current, rest, returned, skipped) ?? throw TooLong(rest);
     }
 
     /// <summary>
     /// A later page: up to limit things that still exist (live gives null for a gone one), in the walk's order, into
-    /// into, fewer when budget stops it (at least one). A cursor that is not the caller's to use is cursor_expired.
+    /// into, fewer when budget stops it (at least one; the rest stays for the next call to Next, so a page may be
+    /// taken over frames). A cursor that is not the caller's to use is cursor_expired.
     /// </summary>
     internal WalkStep Next<T>(int limit, Func<long, T?> live, List<T> into, PageBudget budget = default)
         where T : class
@@ -139,21 +134,17 @@ internal sealed class WalkRequest
     }
 
     /// <summary>
-    /// The page's truncation note: with a cursor kept, the way on is that cursor_id, and cut gives the reason
-    /// frame_budget (the frame's budget stopped the page before limit); a first call without one notes as
+    /// The page's truncation note: with a cursor kept, the way on is that cursor_id; a first call without one notes as
     /// PageRequest.Note does; a walk's last page notes nothing.
     /// </summary>
-    internal void Note(string list, PageRequest page, int returned, int total, string? cursorId, string advice = "",
-        bool cut = false)
+    internal void Note(string list, PageRequest page, int returned, int total, string? cursorId, string advice = "")
     {
         if (cursorId != null)
         {
-            string more = Vocabulary.Text("pass {arg:cursor_id} ") + cursorId + Vocabulary.Text(" for the next page " +
-                    "({arg:limit} up to ") +
-                page.Maximum.ToString(CultureInfo.InvariantCulture) + ")";
             Pure.Shaping.Truncations.Note(list, returned, total,
-                cut ? more + "; this page stopped at the frame's time budget" : more,
-                reason: cut ? Pure.Shaping.Truncation.FrameBudget : null);
+                Vocabulary.Text("pass {arg:cursor_id} ") + cursorId + Vocabulary.Text(" for the next page " +
+                    "({arg:limit} up to ") +
+                page.Maximum.ToString(CultureInfo.InvariantCulture) + ")");
         }
         else if (!Continues)
         {

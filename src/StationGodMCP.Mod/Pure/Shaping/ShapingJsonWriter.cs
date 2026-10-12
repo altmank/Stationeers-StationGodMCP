@@ -865,12 +865,6 @@ internal sealed class ShapingJsonWriter : JsonWriter
                 _inner.WriteValue(true);
             }
 
-            if (entry.Reason != null)
-            {
-                _inner.WritePropertyName("reason");
-                _inner.WriteValue(entry.Reason);
-            }
-
             _inner.WritePropertyName("more");
             _inner.WriteValue(entry.More);
             _inner.WriteEndObject();

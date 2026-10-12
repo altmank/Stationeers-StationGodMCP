@@ -13,7 +13,9 @@ namespace StationGodMCP.Protocol;
 /// under its call's context, and is answered when its work is ready. A call keeps its in-flight place until then.
 /// Before each slice every call is checked: a cancel that came after it started answers it cancelled, its deadline
 /// passing game_timeout, another world loading world_changed; its stream's end (stream_end, a whole connection's end)
-/// answers it cancelled and its connection's close drops it. A stopped call's work is dropped and holds nothing.
+/// answers it cancelled and its connection's close drops it; its owner's session_end answers it cancelled too, and a
+/// call a shutdown answered (shutting_down, from the connection's thread) is dropped. A stopped call's work is dropped
+/// and holds nothing.
 /// Main thread only; a frame allocates nothing here beyond what the work does.
 /// </summary>
 internal sealed class DeferredCalls : ISliceLane
@@ -34,8 +36,11 @@ internal sealed class DeferredCalls : ISliceLane
     public bool HasWork => _entries.Count > 0;
 
     /// <summary>A started call goes on with work: it is answered when the work is ready, or when it is stopped.</summary>
-    internal void Add(QueuedCall call, IDeferredWork work, string? method) =>
+    internal void Add(QueuedCall call, IDeferredWork work, string? method)
+    {
+        call.MarkDeferred();
         _entries.Add(new Entry(call, work, method, _world().Id));
+    }
 
     public void RunSlice(double untilMs)
     {
@@ -114,7 +119,11 @@ internal sealed class DeferredCalls : ISliceLane
         for (int index = _entries.Count - 1; index >= 0; index--)
         {
             Entry entry = _entries[index];
-            if (entry.Call.CancelRequested)
+            if (entry.Call.State.IsAnswered)
+            {
+                RemoveAt(index);
+            }
+            else if (entry.Call.CancelRequested)
             {
                 Stop(index, ProtocolCall.CancelledCode, "Cancelled while its work went on over frames; nothing is kept.");
             }

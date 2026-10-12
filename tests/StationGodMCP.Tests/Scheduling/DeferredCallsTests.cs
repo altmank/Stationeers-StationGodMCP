@@ -163,6 +163,39 @@ public sealed class DeferredCallsTests
     }
 
     [Fact]
+    public void ItsOwnersSessionEndStopsTheWork()
+    {
+        LaneScheduler scheduler = Scheduler();
+        DeferredCall call = new DeferredCall(_connection, Hub, new FakeWork(_clock, 0.5, 1000));
+        scheduler.Add(call);
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        scheduler.EndSession("c1");
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal("refused cancelled", call.Answer);
+        Assert.Equal(0, scheduler.Deferred.Count);
+    }
+
+    [Fact]
+    public void ACallAShutdownAnsweredIsDroppedUnstepped()
+    {
+        LaneScheduler scheduler = Scheduler();
+        FakeWork work = new FakeWork(_clock, 0.5, 1000);
+        DeferredCall call = new DeferredCall(_connection, Hub, work);
+        scheduler.Add(call);
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.True(call.IsDeferred);
+        Assert.True(call.State.TryFinish());
+        int steps = work.Steps;
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal(steps, work.Steps);
+        Assert.Equal(0, scheduler.Deferred.Count);
+    }
+
+    [Fact]
     public void WorkThatThrowsIsAnsweredAndTheFrameGoesOn()
     {
         LaneScheduler scheduler = Scheduler();

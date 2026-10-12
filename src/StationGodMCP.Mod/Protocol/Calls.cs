@@ -37,6 +37,16 @@ internal abstract class QueuedCall
 
     internal void RequestCancel() => Volatile.Write(ref _cancelRequested, 1);
 
+    private int _deferred;
+
+    /// <summary>
+    /// Started and going on with work over frames (DeferredCalls): a shutdown may answer it shutting_down, which no
+    /// call running in its frame may be. Any thread.
+    /// </summary>
+    internal bool IsDeferred => Volatile.Read(ref _deferred) != 0;
+
+    internal void MarkDeferred() => Volatile.Write(ref _deferred, 1);
+
     /// <summary>Stopwatch.GetTimestamp when it was received.</summary>
     internal long ReceivedAt { get; }
 

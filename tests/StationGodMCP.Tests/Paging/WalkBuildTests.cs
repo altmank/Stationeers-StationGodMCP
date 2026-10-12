@@ -138,32 +138,31 @@ public sealed class WalkBuildTests
     }
 
     [Fact]
-    public void TheFirstPageComesFromTheBuiltIdsAndKeepsTheRestUnderACursor()
+    public void TheRestAfterAFirstPageFromBuiltIdsIsKeptUnderACursor()
     {
         WalkCursors cursors = new WalkCursors();
         using CallContext.Scope scope = CallContext.Enter(Hub);
         WalkRequest walk = WalkRequest.From(new Args(new JObject { ["cursor"] = true }), cursors);
         List<object> page = new List<object>();
         HashSet<long> gone = new HashSet<long> { 2 };
+        long[] ids = { 1, 2, 3, 4, 5 };
 
-        WalkStep first = walk.First(new long[] { 1, 2, 3, 4, 5 }, 2, id => gone.Contains(id) ? null : Boxed(id), page,
-            PageBudget.None);
-        WalkStep all = WalkRequest.From(new Args(new JObject { ["cursor"] = true }), cursors)
-            .First(new long[] { 1, 2 }, 8, Boxed, new List<object>(), PageBudget.None);
+        int next = WalkCursors.Take(ids, 0, 2, id => gone.Contains(id) ? null : Boxed(id), page, PageBudget.None,
+            out int skipped);
+        string? cursorId = walk.KeepRest(ids, next, page.Count, skipped);
+        string? none = walk.KeepRest(ids, 5, 5, 0);
 
         Assert.Equal(new object[] { 1L, 3L }, page);
-        Assert.Equal(1, first.Skipped);
-        Assert.Equal(3, first.Next);
-        Assert.Equal(5, first.Total);
-        Assert.True(first.HasMore);
-        Assert.NotNull(first.CursorId);
+        Assert.Equal(1, skipped);
+        Assert.Equal(3, next);
+        Assert.NotNull(cursorId);
+        Assert.Null(none);
         List<object> second = new List<object>();
-        WalkStep next = WalkRequest.From(new Args(new JObject { ["cursor_id"] = first.CursorId }), cursors)
+        WalkStep step = WalkRequest.From(new Args(new JObject { ["cursor_id"] = cursorId }), cursors)
             .Next(8, Boxed, second);
         Assert.Equal(new object[] { 4L, 5L }, second);
-        Assert.Equal(3, next.Offset);
-        Assert.Null(all.CursorId);
-        Assert.False(all.HasMore);
+        Assert.Equal(3, step.Offset);
+        Assert.Equal(5, step.Total);
         Assert.Equal(0, cursors.Count);
     }
 
@@ -186,15 +185,17 @@ public sealed class WalkBuildTests
         using CallContext.Scope scope = CallContext.Enter(Hub);
         Func<long, object?> live = id => byId.TryGetValue(id, out FakeThing? thing) && thing.Alive ? Boxed(id) : null;
         List<object> page = new List<object>();
-        WalkStep step = WalkRequest.From(new Args(new JObject { ["cursor"] = true }), cursors)
-            .First(ids, 37, live, page, PageBudget.None);
+        int next = WalkCursors.Take(ids, 0, 37, live, page, PageBudget.None, out int skipped);
+        string? cursorId = WalkRequest.From(new Args(new JObject { ["cursor"] = true }), cursors)
+            .KeepRest(ids, next, page.Count, skipped);
         List<long> served = page.ConvertAll(thing => (long)thing);
-        while (step.HasMore)
+        while (cursorId != null)
         {
             Churn(world, byId, random);
             page.Clear();
-            step = WalkRequest.From(new Args(new JObject { ["cursor_id"] = step.CursorId }), cursors)
+            WalkStep step = WalkRequest.From(new Args(new JObject { ["cursor_id"] = cursorId }), cursors)
                 .Next(37, live, page);
+            cursorId = step.CursorId;
             served.AddRange(page.ConvertAll(thing => (long)thing));
         }
 

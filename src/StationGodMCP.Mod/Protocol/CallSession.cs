@@ -161,7 +161,7 @@ internal sealed class CallSession : Session
     {
         foreach (ProtocolCall call in Waiting())
         {
-            if (call.State.TryDrop())
+            if (call.State.TryDrop() || (call.IsDeferred && call.State.TryFinish()))
             {
                 call.Deliver(call.ShuttingDownReply(), null);
             }

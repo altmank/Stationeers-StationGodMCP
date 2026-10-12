@@ -12,6 +12,19 @@ internal interface IWalkFilter<in TThing>
     bool TryKey(TThing thing, out ListKey key);
 }
 
+/// <summary>A walk's build as a page over frames uses it, whatever its candidates are (WalkBuild).</summary>
+internal interface IWalkBuild
+{
+    bool Done { get; }
+
+    /// <summary>The candidates taken at the start, matching or not.</summary>
+    int Candidates { get; }
+
+    bool Run(IMonotonicClock clock, double untilMs);
+
+    long[] Ids();
+}
+
 /// <summary>
 /// A walk's ordered ids built in slices over frames (protocol.md, Walks): the candidates are the list taken when the
 /// walk starts (things built later are not in it), filtered one at a time, then sorted by a bottom-up merge sort
@@ -23,7 +36,7 @@ internal interface IWalkFilter<in TThing>
 /// when its page is served. Main thread only; after the key arrays (taken at the start and at the first merge pass)
 /// a step allocates nothing.
 /// </summary>
-internal sealed class WalkBuild<TThing> where TThing : class
+internal sealed class WalkBuild<TThing> : IWalkBuild where TThing : class
 {
     /// <summary>Keys insertion-sorted in one step: at most 120 comparisons.</summary>
     internal const int SortRun = 16;
@@ -66,18 +79,18 @@ internal sealed class WalkBuild<TThing> where TThing : class
     }
 
     /// <summary>The candidates taken at the start, matching or not.</summary>
-    internal int Candidates { get; }
+    public int Candidates { get; }
 
     /// <summary>The candidates kept so far.</summary>
     internal int Count => _count;
 
-    internal bool Done => _phase == Phase.Done;
+    public bool Done => _phase == Phase.Done;
 
     /// <summary>Steps taken so far.</summary>
     internal long Steps { get; private set; }
 
     /// <summary>Takes steps until the clock reaches untilMs, at least one; true once the ids are in order.</summary>
-    internal bool Run(IMonotonicClock clock, double untilMs)
+    public bool Run(IMonotonicClock clock, double untilMs)
     {
         while (!Done)
         {
@@ -92,7 +105,7 @@ internal sealed class WalkBuild<TThing> where TThing : class
     }
 
     /// <summary>The walk's reference ids in order, once Done.</summary>
-    internal long[] Ids()
+    public long[] Ids()
     {
         if (!Done)
         {

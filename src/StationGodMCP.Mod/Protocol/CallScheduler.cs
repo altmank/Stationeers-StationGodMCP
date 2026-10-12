@@ -209,6 +209,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
                     break;
                 case PostKind.EndSession:
                     _stores.SessionEnded(posted.Owner!);
+                    Deferred.Ended(StreamEnd.AllOf(posted.Owner!));
                     break;
                 case PostKind.Close:
                     if (_connections.TryGetValue(posted.Source, out FrameScheduler<QueuedCall>.Connection? closing))

@@ -223,7 +223,8 @@ Each store remembers the last 1,024 jobs it evicted; an id evicted before those,
 
 A walk pages one search through to its end, each entry at most once and in the search's own order (feature
 `cursors`; `find_things` today). The first call passes `cursor: true` and runs as it would without it: scan, filter,
-sort, the first `limit` entries. The scan is spread over frames so that no frame passes its request budget: the
+sort, the first `limit` entries. The scan (`find_things`' with or without `cursor`) is spread over frames so that no
+frame passes its request budget: the
 candidates are taken when the call starts (things built later are not in the walk), filtered one at a time, then
 sorted in bounded steps (insertion-sorted runs of 16, then merge passes of at most 256 moves a step), each frame
 taking what the frame's calls left of the budget after them (*scheduling.md*, the slice lane). `nearest` is measured
@@ -246,12 +247,12 @@ order, so other arguments are refused `invalid_argument` rather than ignored. A 
 - keeps the reply's keys: `offset` is the walk's entries passed before the page (returned or skipped), `total` the
   walk's length at its first call, `has_more` whether ids remain, `scanned` 0; `cursor_id` while more remain.
 
-Every page of a walk, the first one's included, is also sized by its cost: it stops once its main-thread time, with
-an estimate of serialising its entries (a moving average of the method's measured ms per entry), reaches the end of
-the frame's request budget, whatever `limit` asked; it always holds at least one thing, so a walk always moves. While
-more remain the reply adds `next`, the walk's entries passed after the page (where the next page starts), and a page
-the budget stopped short of `limit` notes `reason: "frame_budget"` in its `truncated` entry. A call without a cursor
-pages by `limit` as before.
+Every `find_things` page, a walk's or not, is also taken over frames: each frame describes the page's entries until
+the frame's request budget is reached, and the next frame goes on where it stopped, within the same call, until the
+page holds `limit` entries or the list ends. The call answers once, with the reply a one-shot call gives (the same
+entries, keys and `truncated`); a page that fits its frame answers in it. Its reply is serialised in one piece: when
+the moving average of the method's ms per entry says serialising it would not fit what is left of the frame, it is
+serialised at the start of the call's next slice instead, so that frame holds the serialising alone.
 
 A cursor is freed when the page that takes its last ids is answered; by `{"type":"cursor_close","cursor_id":"k12"}`
 from the connection that owns it (no reply, like `cancel`; an unknown id or another connection's cursor does
@@ -584,8 +585,7 @@ paged or capped it (`limit`, `offset`, `holders_limit`, `max_devices`, a report'
 or the writer cut it (`shape.limit`, the method's `x-default-limits`):
 `{"list": "things", "returned": 8, "total": 412, "more": "pass limit (max 500) or offset 8"}`. `list` is a top-level
 key or a path (`totals[].top_holders`, `dry_run.cells`); `total` is a real count, and `at_least: true` marks a lower
-bound where counting would cost what the cut saves (a search that stopped at its count); `reason: "frame_budget"`
-marks a walk's page that stopped at the frame's time budget before it held `limit` entries (*Walks*). `truncated: []` means
+bound where counting would cost what the cut saves (a search that stopped at its count). `truncated: []` means
 nothing was held back. The writer adds it after the reply's keys, so `fields` and `omit` never remove it, and the
 `output_file` pointer carries it whole. Handlers note their cuts through `Pure.Shaping.Truncations` (or, for a view
 that caps a list it carries, `ITruncatingView`); `tests/.../Budget/TruncationNoticeTests.cs` holds every cap to it.

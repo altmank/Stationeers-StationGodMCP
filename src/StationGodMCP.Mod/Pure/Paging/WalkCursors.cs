@@ -113,8 +113,8 @@ internal sealed class WalkCursors : ICursorStore
 
     /// <summary>
     /// The next page of the caller's walk: live gives an id's thing, or null when it no longer exists, and every thing
-    /// found goes into into until it holds limit, or until budget stops it (at least one thing: step.Cut then says so,
-    /// and the next page goes on at step.Next). False when the cursor is not the caller's to use (cursor_expired);
+    /// found goes into into until it holds limit, or until budget stops it (at least one thing; the cursor goes on
+    /// from there at the next call). False when the cursor is not the caller's to use (cursor_expired);
     /// step then carries only ExpiredPosition. The page that takes the last ids frees the cursor.
     /// </summary>
     internal bool TryNext<T>(CallContext caller, string cursorId, int limit, Func<long, T?> live, List<T> into,
@@ -142,8 +142,7 @@ internal sealed class WalkCursors : ICursorStore
         cursor.Next = index;
         cursor.Returned += found;
         bool more = index < ids.Length;
-        step = new WalkStep(more ? cursor.Id : null, offset, skipped, cursor.Total, more, null, more && found < limit,
-            cursor.Passed);
+        step = new WalkStep(more ? cursor.Id : null, offset, skipped, cursor.Total, more, null);
         if (more)
         {
             Unlink(cursor);
@@ -345,14 +344,12 @@ internal sealed class WalkCursors : ICursorStore
 /// <summary>
 /// One later page of a walk, or why there is none. Offset: the walk's entries passed before this page (returned or
 /// skipped); Skipped: ids on this page whose thing no longer existed; Total: the walk's length at its first call;
-/// HasMore and CursorId (null once the walk has ended); Cut: the frame's budget stopped the page short of its limit;
-/// Next: the walk's entries passed after this page, where the next one starts. ExpiredPosition: for cursor_expired,
-/// the things the walk had returned, null when unknown.
+/// HasMore and CursorId (null once the walk has ended). ExpiredPosition: for cursor_expired, the things the walk had
+/// returned, null when unknown.
 /// </summary>
 internal readonly struct WalkStep
 {
-    internal WalkStep(string? cursorId, int offset, int skipped, int total, bool hasMore, int? expiredPosition,
-        bool cut = false, int next = 0)
+    internal WalkStep(string? cursorId, int offset, int skipped, int total, bool hasMore, int? expiredPosition)
     {
         CursorId = cursorId;
         Offset = offset;
@@ -360,13 +357,7 @@ internal readonly struct WalkStep
         Total = total;
         HasMore = hasMore;
         ExpiredPosition = expiredPosition;
-        Cut = cut;
-        Next = next;
     }
-
-    internal bool Cut { get; }
-
-    internal int Next { get; }
 
     internal string? CursorId { get; }
 

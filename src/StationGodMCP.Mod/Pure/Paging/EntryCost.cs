@@ -6,7 +6,8 @@ namespace StationGodMCP.Pure.Paging;
 
 /// <summary>
 /// What serialising one entry of a method's paged reply costs the main thread, as a moving average of the replies
-/// measured, so a page sized to the frame (PageBudget) leaves room for the serialising that follows its handler. The
+/// measured, so a page taken over frames (FramedPage) answers in the frame it finished in only when its serialising
+/// still fits the budget, and otherwise leaves it to a slice of its own. The
 /// handler says how many entries its reply holds (Expect); ApiHost begins each call and gives the serialise time it
 /// measured (Observed), which teaches the cost the handler named. Main thread only; nothing is allocated.
 /// </summary>

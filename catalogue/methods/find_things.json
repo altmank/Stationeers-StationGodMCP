@@ -110,8 +110,7 @@
       "scanned": {"type": "integer"},
       "local_player": {"type": ["object", "null"]},
       "cursor_id": {"type": "string"},
-      "skipped": {"type": "integer"},
-      "next": {"type": "integer"}
+      "skipped": {"type": "integer"}
     }
   },
   "x-views": ["FindThingsView"],
