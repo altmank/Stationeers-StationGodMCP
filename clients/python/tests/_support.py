@@ -1,46 +1,45 @@
-"""Shared test helpers: the package on sys.path, a fake mod per test, and polling for a condition."""
-import os
-import sys
-import time
+"""Shared test helpers: sg connected in process to a fake hub over pipes, and running code as a run would."""
 import unittest
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(HERE))
-REPOSITORY = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-FIXTURES = os.path.join(REPOSITORY, "clients", "fixtures")
+import fakehub  # noqa: F401 - puts the package on sys.path
+from fakehub import FakeHub, ok, refused  # noqa: F401
 
-import stationgod  # noqa: E402
-from stationgod import client as client_module  # noqa: E402
-from fakemod import FakeError, FakeMod  # noqa: E402,F401
-
-
-def wait_for(predicate, timeout=5.0, what="condition"):
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if predicate():
-            return
-        time.sleep(0.01)
-    raise AssertionError(f"timed out waiting for {what}")
+import sg  # noqa: E402
+from sg import _session  # noqa: E402
+from sg._analysis import RUN_FUNCTION, analyse  # noqa: E402
+from sg._transport import Transport  # noqa: E402
 
 
-class FakeModCase(unittest.TestCase):
-    transport = "tcp"
+class HubCase(unittest.TestCase):
+    """Each test gets a fake hub answering through `self.answer(method, params)` (override or set self.handler) and
+    sg connected to it."""
 
     def setUp(self):
-        grace = client_module.REPLY_GRACE_S
-        client_module.REPLY_GRACE_S = 0.5     # keep "no reply in time" tests short
-        self.addCleanup(setattr, client_module, "REPLY_GRACE_S", grace)
+        self.handler = lambda method, params: ok({})
+        self.hub, reader, writer = FakeHub.over_pipes(lambda method, params: self.handler(method, params))
+        self.transport = Transport(reader, writer, client="sg-test")
+        self.welcome = self.transport.hello(timeout=5)
+        _session.use(self.transport)
+        self.addCleanup(self._close)
 
-    def mod(self, **options):
-        mod = FakeMod(transport=self.transport, **options).start()
-        self.addCleanup(mod.stop)
-        return mod
+    def _close(self):
+        _session.end_run()
+        _session.use(None)
+        self.transport.close()
+        self.hub.close()
 
-    def client(self, mod, **options):
-        """A client of the fake mod; over TCP it sends the fake mod's shared secret first."""
-        if self.transport == "tcp" and "secret_env" not in options:
-            os.environ["STATIONGOD_TEST_SECRET"] = mod.legacy_secret or ""
-            options["secret_env"] = "STATIONGOD_TEST_SECRET"
-        game = stationgod.Client(**mod.client_options(), **options)
-        self.addCleanup(game.close)
-        return game
+    def params(self, method):
+        """The params of every call of method so far."""
+        return [params for name, params in self.hub.calls if name == method]
+
+    def run_code(self, source, run_id="script-1"):
+        """Runs source as a run's code would run (compiled as <script>, while_lines known); returns its value."""
+        analysis = analyse(source)
+        self.assertIsNone(analysis.syntax_error)
+        namespace = {"sg": sg, "__name__": "__script__"}
+        exec(analysis.code, namespace)
+        _session.begin_run(_session.Run(run_id, analysis.while_lines))
+        try:
+            return namespace[RUN_FUNCTION]()
+        finally:
+            _session.end_run()
