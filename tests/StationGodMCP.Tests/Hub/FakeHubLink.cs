@@ -45,13 +45,20 @@ internal sealed class FakeHubLink : IHubLink
 
     public string? WorldId => Reachable ? "world-1" : null;
 
-    public event Action<string?>? WorldChanged
-    {
-        add { }
-        remove { }
-    }
+    public JsonElement? World { get; set; } = Element("""{"id":"world-1","save":"fake","epoch":0}""");
+
+    public int MaxRequestBytes { get; set; } = 4 * 1024 * 1024;
+
+    public GameCatalogue Catalogue => GameCatalogue.BuiltIn;
+
+    /// <summary>Runs after a reply's OnReply and before the call's task completes: what the link's reader raises next.</summary>
+    public Action<GameCall>? AfterReply { get; set; }
+
+    public event Action<string?>? WorldChanged;
 
     public event Action<JsonElement>? EventReceived;
+
+    public void ChangeWorld(string? id) => WorldChanged?.Invoke(id);
 
     public static JsonElement Element(string json)
     {
@@ -67,17 +74,38 @@ internal sealed class FakeHubLink : IHubLink
 
     public long NewStream() => Interlocked.Increment(ref _lastStream);
 
-    public Task<GameReply> CallAsync(GameCall call, CancellationToken cancellation)
+    // As GameLink: a mod reply passes OnReply on the reader before the caller wakes and before any later event.
+    public async Task<GameReply> CallAsync(GameCall call, CancellationToken cancellation)
     {
         Calls.Enqueue(call);
-        return Reachable
-            ? Answer(call, cancellation)
-            : Task.FromResult<GameReply>(new GameReply.Unreachable("The game could not be reached.", maybeRan: false));
+        if (!Reachable)
+        {
+            return new GameReply.Unreachable("The game could not be reached.", maybeRan: false);
+        }
+
+        GameReply reply = await Answer(call, cancellation);
+        if (reply is not GameReply.Unreachable)
+        {
+            call.OnReply?.Invoke(reply);
+            AfterReply?.Invoke(call);
+        }
+
+        return reply;
     }
 
     public Task EndStreamAsync(long stream)
     {
         EndedStreams.Enqueue(stream);
+        return Task.CompletedTask;
+    }
+
+    public Task EndStreamIfConnectedAsync(long stream)
+    {
+        if (Reachable)
+        {
+            EndedStreams.Enqueue(stream);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -136,8 +164,37 @@ internal sealed class HubCaller : IAsyncDisposable
 
     public Task<HubSessionEnd> Running { get; }
 
-    public static HubCaller Start(FakeHubLink link, HubSessionSettings? settings = null, IWriteGate? gate = null) =>
-        new(new HubSession(link, new VerbPipeline(link, gate) { PollInterval = TimeSpan.Zero }, settings ?? new HubSessionSettings()));
+    public static HubCaller Start(FakeHubLink link, HubSessionSettings? settings = null, IWriteGate? gate = null,
+        TimeSpan? slowAfter = null) =>
+        new(new HubSession(link, new VerbPipeline(link, gate) { PollInterval = TimeSpan.Zero }, settings ?? new HubSessionSettings(Face.Program) { PassThrough = true })
+        {
+            SlowClientAfter = slowAfter ?? TimeSpan.FromSeconds(35)
+        });
+
+    /// <summary>Reads and drops every line the session writes from now on, until its output closes.</summary>
+    public Task StartDraining() => Task.Run(async () =>
+    {
+        while (await _reader.ReadLineAsync() != null)
+        {
+        }
+    });
+
+    /// <summary>
+    /// The lines the session wrote within the wait, until its output closes. The last read it leaves pending, so this
+    /// is a test's last read.
+    /// </summary>
+    public async Task<List<string>> LastLinesWithinAsync(TimeSpan wait)
+    {
+        List<string> lines = [];
+        Task<string?> next = _reader.ReadLineAsync();
+        while (await Task.WhenAny(next, Task.Delay(wait)) == next && await next is { } line)
+        {
+            lines.Add(line);
+            next = _reader.ReadLineAsync();
+        }
+
+        return lines;
+    }
 
     public void Send(string json)
     {

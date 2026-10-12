@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using StationGodMCP.Client;
@@ -9,22 +8,26 @@ namespace StationGodMCP.Server;
 /// <summary>
 /// One caller of the hub protocol (docs/architecture/hub.md, The hub protocol) over a pair of streams: the --hub
 /// program on stdio, or a run's worker on its pipes. The hub is the server: hello is answered with the mod's last
-/// welcome as the link saw it (the caller's client_id, features plus pipeline); a mod method is passed to the mod on
-/// the caller's mapped stream and its reply passed back under the caller's id; subscriptions are relayed one for one,
-/// their events passed through under the caller's subscription id; verb goes through the VerbPipeline on the session's
-/// face; ref, more, wait and hold go to the session's IPipelineExtras; run_analysis and run_end to its IRunChannel.
+/// welcome as the link saw it (the caller's client_id, features plus pipeline); a read-only mod method is passed to the
+/// mod on the caller's mapped stream and its reply passed back under the caller's id (writes go through verb, where the
+/// write rule applies); subscriptions are relayed one for one (HubSession.Relay.cs); verb goes through the
+/// VerbPipeline on the session's face; ref, more, wait and hold go to the session's IPipelineExtras; run_analysis and
+/// run_end to its IRunChannel.
 ///
 /// Every caller stream, 0 included, maps to a fresh hub stream, never the MCP client's stream 0, so callers never share
-/// a stream's order, cursors or held restores. RunAsync reads until the input ends, bye, or a protocol error; the
-/// creator then calls CloseAsync, which cancels the calls in flight, ends the relayed subscriptions and ends the hub
-/// streams the session made.
+/// a stream's order, cursors or held restores. RunAsync reads (lines bounded by max_request_bytes) until the input
+/// ends, bye, a protocol error, or the caller stops reading; the creator then calls CloseAsync (HubSession.Close.cs).
 /// </summary>
-public sealed class HubSession
+public sealed partial class HubSession
 {
     internal const string GameUnreachable = "game_unreachable";
 
+    /// <summary>Open caller streams per session; past it a call on a new stream is refused too_many_streams.</summary>
+    internal const int MaxStreams = 64;
+
     private const long LargestStream = 1L << 53;
     private const int LineStartLength = 80;
+    private const int DefaultPerStreamLimit = 16;
 
     private static readonly string[] HelloKeys = ["type", "protocol", "client", "features", "resume"];
     private static readonly string[] CallKeys =
@@ -34,9 +37,13 @@ public sealed class HubSession
     private static readonly string[] CursorKeys = ["type", "cursor_id"];
     private static readonly string[] TypeOnly = ["type"];
     private static readonly string[] VerbKeys = ["verb", "what", "args", "line"];
+    private static readonly string[] AnalysisKeys = ["type", "literals", "while_lines", "writes", "holds", "syntax_error"];
+    private static readonly string[] RunEndKeys = ["type", "state", "returned", "printed", "error"];
+    private static readonly string[] PipelineMethods = ["verb", "ref", "more", "wait", "hold"];
+    private const string NotAllowed = "not_allowed";
+    private const string PipelineOnly = "a run's session calls verb, ref, more, wait and hold; mod methods go through verb";
     private static readonly JsonElement NoParameters = HubLines.Element("{}");
     private static readonly JsonElement SupportedVersions = HubLines.Element(HubLines.Supported);
-    private static readonly TimeSpan CloseWait = TimeSpan.FromSeconds(2);
     private static int _sessions;
 
     private readonly IHubLink _link;
@@ -46,14 +53,13 @@ public sealed class HubSession
     private readonly Dictionary<string, InFlight> _inFlight = new(StringComparer.Ordinal);
     private readonly Dictionary<long, long> _streams = new();
     private readonly HashSet<long> _endedStreams = new();
-    private readonly List<long> _ownStreams = new();
-    private readonly Dictionary<string, Relay> _relays = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _callerSubscriptions = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _cursors = new(StringComparer.Ordinal);
-    private List<JsonElement>? _early;
+    private readonly HashSet<long> _ownStreams = new();
+    private readonly HashSet<long> _carried = new();
+    private readonly Dictionary<string, long> _cursors = new(StringComparer.Ordinal);
+    private readonly TaskCompletionSource<HubSessionEnd> _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private HubOutput? _output;
-    private int _subscribing;
-    private int _lastSubscription;
+    private int _openStreams;
+    private int _inFlightLimit = DefaultPerStreamLimit * MaxStreams;
     private bool _welcomed;
     private bool _sessionEnded;
     private bool _analysed;
@@ -65,6 +71,11 @@ public sealed class HubSession
         _link = link;
         _pipeline = pipeline;
         _settings = settings;
+        if (settings.MainStream is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(settings), "A session's main stream is a hub stream from 1.");
+        }
+
         ClientId = settings.ClientId ?? "hub-" + Interlocked.Increment(ref _sessions).ToString(CultureInfo.InvariantCulture);
         if (settings.MainStream is { } given)
         {
@@ -77,6 +88,7 @@ public sealed class HubSession
         }
 
         _streams[0] = MainStream;
+        _openStreams = 1;
     }
 
     /// <summary>The hub's name for the caller: welcome.client_id.</summary>
@@ -84,6 +96,18 @@ public sealed class HubSession
 
     /// <summary>The hub stream the caller's stream 0 maps to.</summary>
     public long MainStream { get; }
+
+    /// <summary>True once hello was answered: the caller started speaking the protocol.</summary>
+    public bool Welcomed
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _welcomed;
+            }
+        }
+    }
 
     /// <summary>True once the caller sent session_end.</summary>
     public bool SessionEndSent
@@ -97,29 +121,51 @@ public sealed class HubSession
         }
     }
 
-    /// <summary>Serves the caller until its input ends, it says bye, or it breaks the protocol; then call CloseAsync.</summary>
+    /// <summary>How long the oldest queued line may wait for the caller to read before the session ends (the mod's 35 s).</summary>
+    internal TimeSpan SlowClientAfter { get; init; } = TimeSpan.FromSeconds(35);
+
+    /// <summary>
+    /// Serves the caller until its input ends, it says bye, it breaks the protocol, it sends a line over
+    /// max_request_bytes, or its output is lost (it stopped reading, or writing failed); then call CloseAsync.
+    /// </summary>
     public async Task<HubSessionEnd> RunAsync(Stream input, Stream output, CancellationToken cancellation)
     {
-        _output = new HubOutput(output);
+        _output = new HubOutput(output, SlowClientAfter, end => _stopped.TrySetResult(end));
         _link.EventReceived += OnEvent;
-        using StreamReader reader = new(input, new UTF8Encoding(false), false, 4096, leaveOpen: true);
+        _link.WorldChanged += OnWorldChanged;
+        HubLineReader reader = new(input, _link.MaxRequestBytes);
         while (true)
         {
-            string? line;
-            try
+            reader.Limit = _link.MaxRequestBytes;
+            Task<LineRead> reading = reader.ReadAsync(cancellation);
+            if (await Task.WhenAny(reading, _stopped.Task).ConfigureAwait(false) != reading)
             {
-                line = await reader.ReadLineAsync(cancellation).ConfigureAwait(false);
-            }
-            catch (Exception exception) when (exception is IOException or ObjectDisposedException or OperationCanceledException)
-            {
-                line = null;
+                // The output is lost: the read still pending is left to end with the input.
+                return await _stopped.Task.ConfigureAwait(false);
             }
 
-            if (line == null)
+            LineRead read;
+            try
+            {
+                read = await reading.ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is IOException or ObjectDisposedException or OperationCanceledException)
             {
                 return HubSessionEnd.InputEnded;
             }
 
+            switch (read)
+            {
+                case LineRead.End:
+                    return HubSessionEnd.InputEnded;
+                case LineRead.TooLong:
+                    Send(HubLines.Error(null, "request_too_large",
+                        $"A message was longer than {reader.Limit} bytes (welcome limits.max_request_bytes); the session ends.",
+                        HubLines.Element("{\"limit\":" + reader.Limit.ToString(CultureInfo.InvariantCulture) + "}")));
+                    return HubSessionEnd.RequestTooLarge;
+            }
+
+            string line = ((LineRead.Text)read).Line;
             if (string.IsNullOrWhiteSpace(line))
             {
                 continue;
@@ -145,65 +191,6 @@ public sealed class HubSession
             {
                 return end.Value;
             }
-        }
-    }
-
-    /// <summary>
-    /// Ends the session: calls still in flight are cancelled (answered cancelled), each relayed subscription is
-    /// unsubscribed, the hub streams the session made are ended, and the lines queued are written out.
-    /// </summary>
-    public async Task CloseAsync()
-    {
-        List<Task> running = [];
-        lock (_gate)
-        {
-            if (_closing)
-            {
-                return;
-            }
-
-            _closing = true;
-            foreach (InFlight call in _inFlight.Values)
-            {
-                call.Cancellation.Cancel();
-                if (call.Running != null)
-                {
-                    running.Add(call.Running);
-                }
-            }
-        }
-
-        _link.EventReceived -= OnEvent;
-        await Task.WhenAll(running).ConfigureAwait(false);
-
-        // A subscribe answered while the calls wound down is registered by now, so it is ended here too.
-        List<Relay> relays;
-        List<long> streams;
-        lock (_gate)
-        {
-            relays = [.. _relays.Values];
-            _relays.Clear();
-            _callerSubscriptions.Clear();
-            streams = [.. _ownStreams];
-            _ownStreams.Clear();
-        }
-
-        using (CancellationTokenSource bound = new(CloseWait))
-        {
-            foreach (Relay relay in relays)
-            {
-                await UnsubscribeQuietlyAsync(relay, bound.Token).ConfigureAwait(false);
-            }
-        }
-
-        foreach (long stream in streams)
-        {
-            await _link.EndStreamAsync(stream).ConfigureAwait(false);
-        }
-
-        if (_output != null)
-        {
-            await _output.CompleteAsync().ConfigureAwait(false);
         }
     }
 
@@ -242,12 +229,19 @@ public sealed class HubSession
                 return Call(message, line);
             case "cancel":
                 return Cancel(message, line);
+            case "stream_end" or "release" or "cursor_close" when !_settings.PassThrough:
+                Send(HubLines.Error(null, NotAllowed, PipelineOnly));
+                return null;
             case "stream_end":
-                return await StreamEndAsync(message, line).ConfigureAwait(false);
+                return StreamEnd(message, line);
             case "release":
                 return await ReleaseAsync(message, line).ConfigureAwait(false);
             case "cursor_close":
                 return await CursorCloseAsync(message, line).ConfigureAwait(false);
+            case "session_end" when _settings.RunChannel != null:
+                // A worker ends its run with run_end; the link's session is the hub's alone.
+                Send(HubLines.Error(null, NotAllowed, "A run's session ends with run_end, not session_end."));
+                return null;
             case "session_end":
                 return await SessionEndAsync(message, line).ConfigureAwait(false);
             case "bye":
@@ -289,6 +283,7 @@ public sealed class HubSession
         lock (_gate)
         {
             _welcomed = true;
+            _inFlightLimit = PerStreamLimit(_link.Welcome) * MaxStreams;
             Send(HubLines.Line(Welcome(reachable)));
         }
 
@@ -296,7 +291,8 @@ public sealed class HubSession
     }
 
     // The mod's last welcome as the link saw it, with the caller's client_id, features plus pipeline, and no resume or
-    // restores (they are the link's own). Unreachable: game_state Unreachable, from the last welcome if there was one.
+    // restores (they are the link's own; the hub keeps no state for a caller's resume token, so the feature goes too).
+    // Unreachable: game_state Unreachable, from the last welcome if there was one.
     private JsonObject Welcome(bool reachable)
     {
         JsonObject welcome = _link.Welcome is { ValueKind: JsonValueKind.Object } seen
@@ -318,19 +314,20 @@ public sealed class HubSession
             server["game_state"] = "Unreachable";
         }
 
-        JsonArray features = welcome["features"] as JsonArray ?? new JsonArray();
+        JsonArray features = new();
+        if (welcome["features"] is JsonArray listed)
+        {
+            foreach (JsonNode? feature in listed)
+            {
+                if (feature is JsonValue value && value.TryGetValue(out string? name) && name is not ("resume" or "pipeline"))
+                {
+                    features.Add(name);
+                }
+            }
+        }
+
+        features.Add("pipeline");
         welcome["features"] = features;
-        bool listed = false;
-        foreach (JsonNode? feature in features)
-        {
-            listed |= feature is JsonValue value && value.TryGetValue(out string? name) && name == "pipeline";
-        }
-
-        if (!listed)
-        {
-            features.Add("pipeline");
-        }
-
         if (_settings.Run != null)
         {
             welcome["run"] = _settings.Run.DeepClone();
@@ -368,9 +365,34 @@ public sealed class HubSession
             parameters = given;
         }
 
+        if (!_settings.PassThrough && Array.IndexOf(PipelineMethods, method) < 0)
+        {
+            return Refuse(id, NotAllowed, PipelineOnly);
+        }
+
         if (!StreamOf(message, minimum: 0, out long stream))
         {
             return Refuse(id, "invalid_argument", "stream must be a whole number from 0 to 2^53.");
+        }
+
+        if (_settings.RunChannel != null)
+        {
+            // Everything a run does goes on its own stream: its costs, order and held restores are the run's.
+            if (stream != 0)
+            {
+                return Refuse(id, "invalid_argument", "A run's calls go on stream 0 (the run's stream).");
+            }
+
+            bool analysed;
+            lock (_gate)
+            {
+                analysed = _analysed;
+            }
+
+            if (!analysed)
+            {
+                return Broken(id, "run_analysis comes before a run's first call.", line);
+            }
         }
 
         int? deadline = null;
@@ -421,20 +443,48 @@ public sealed class HubSession
                 return null;
             }
 
+            if (Admission(id, stream) is { } refusal)
+            {
+                Send(refusal);
+                return null;
+            }
+
             hubStream = HubStream(stream);
             call = new InFlight();
             _inFlight[id] = call;
         }
 
         // Started here, on the reader, so calls reach the link in the order they came: the mod keeps the order on a
-        // stream only as the calls arrive.
-        call.Running = RunCallAsync(id, method, parameters, message, deadline, hubStream, call.Cancellation.Token);
+        // stream only as the calls arrive. A call still in flight when run_end comes is late, and still answered.
+        _ = RunCallAsync(id, method, parameters, message, deadline, hubStream, call);
+        return null;
+    }
+
+    // Under the gate: the session's bounds, so one caller cannot take every stream or call slot of the shared
+    // connection. Null when the call may go.
+    private string? Admission(string id, long stream)
+    {
+        if (_inFlight.Count >= _inFlightLimit)
+        {
+            return HubLines.Error(id, "too_many_in_flight",
+                $"This session has {_inFlight.Count} calls in flight, its limit; nothing ran. Wait for a reply first.",
+                HubLines.Element("{\"limit\":" + _inFlightLimit.ToString(CultureInfo.InvariantCulture) + ",\"scope\":\"session\"}"));
+        }
+
+        if (!_streams.ContainsKey(stream) && _openStreams >= MaxStreams)
+        {
+            return HubLines.Error(id, "too_many_streams",
+                $"This session has {MaxStreams} streams open, its limit; nothing ran. End one with stream_end first.",
+                HubLines.Element("{\"limit\":" + MaxStreams.ToString(CultureInfo.InvariantCulture) + "}"));
+        }
+
         return null;
     }
 
     private async Task RunCallAsync(string id, string method, JsonElement parameters, JsonElement message, int? deadline,
-        long hubStream, CancellationToken cancellation)
+        long hubStream, InFlight inFlight)
     {
+        CancellationToken cancellation = inFlight.Cancellation.Token;
         try
         {
             switch (method)
@@ -478,51 +528,116 @@ public sealed class HubSession
         {
             lock (_gate)
             {
-                if (_inFlight.TryGetValue(id, out InFlight? call) && call.Cancellation.Token == cancellation)
+                if (_inFlight.TryGetValue(id, out InFlight? call) && call == inFlight)
                 {
                     _inFlight.Remove(id);
                 }
             }
+
+            inFlight.Finished.TrySetResult();
         }
     }
 
-    // The id is free again before its reply goes, so a caller may reuse it as soon as it reads the reply.
+    // A call is answered once: the first answer frees its id (so the caller may reuse it as soon as it reads the
+    // reply), a later one finds the id gone and is dropped. A closing session answers nothing: its caller is gone.
     private void Answer(string id, string line)
     {
         lock (_gate)
         {
-            _inFlight.Remove(id);
-            Send(line);
+            if (_inFlight.Remove(id) && !_closing)
+            {
+                Send(line);
+            }
         }
     }
 
+    // A program's pass-through takes only read-class methods with no x-effects (hub.md, Faces): every write goes
+    // through verb, where the write rule and the recording apply.
     private async Task<string> PassAsync(string id, string method, JsonElement parameters, JsonElement message,
         int? deadline, long hubStream, CancellationToken cancellation)
     {
-        if (Text(message, "world") is { } meant && _link.WorldId is { } current && meant != current)
+        if (PassProblem(id, method, parameters, message) is { } refused)
         {
-            return HubLines.Error(id, "world_changed",
-                $"The game is in another world than the one this call names; {method} was not sent, because the ids it " +
-                "carries may name other things now.",
-                HubLines.Element("{\"world\":{\"id\":" + JsonSerializer.Serialize(current) + "}}"));
+            return refused;
         }
 
         GameCall call = new(method, parameters, hubStream)
         {
-            Shape = Child(message, "shape") is { ValueKind: JsonValueKind.Object } shape ? shape : null,
-            Rename = Child(message, "rename") is { ValueKind: JsonValueKind.Object } rename ? rename : null,
+            Shape = Child(message, "shape"),
+            Rename = Child(message, "rename"),
             DeadlineMs = deadline
         };
         GameReply reply = await _link.CallAsync(call, cancellation).ConfigureAwait(false);
-        if (reply is GameReply.Ok { Result.ValueKind: JsonValueKind.Object } ok && Text(ok.Result, "cursor_id") is { } cursor)
+        KeepCursor(parameters, reply, hubStream);
+        return HubLines.Reply(id, reply);
+    }
+
+    private string? PassProblem(string id, string method, JsonElement parameters, JsonElement message)
+    {
+        GameCatalogue catalogue = _link.Catalogue;
+        if (!catalogue.Has(method))
         {
-            lock (_gate)
+            return HubLines.Error(id, "method_not_found", $"No mod method '{method}'.");
+        }
+
+        if (!catalogue.ReadsOnly(method, parameters))
+        {
+            return HubLines.Error(id, "not_allowed",
+                $"{method} changes the game; writes go through verb so the write rule applies. Send it as a verb call.");
+        }
+
+        if (Child(message, "shape") is { ValueKind: not JsonValueKind.Object })
+        {
+            return HubLines.Error(id, "invalid_argument", "shape must be an object.");
+        }
+
+        if (Child(message, "rename") is { ValueKind: not JsonValueKind.Object })
+        {
+            return HubLines.Error(id, "invalid_argument", "rename must be an object.");
+        }
+
+        if (Text(message, "world") is { } meant)
+        {
+            if (meant.Length is < 1 or > 64)
             {
-                _cursors.Add(cursor);
+                return HubLines.Error(id, "invalid_argument", "world must be a world id: a string of 1 to 64 characters.");
+            }
+
+            if (_link.WorldId is { } current && meant != current)
+            {
+                return HubLines.Error(id, "world_changed",
+                    $"The game is in another world than the one this call names; {method} was not sent, because the " +
+                    "ids it carries may name other things now.",
+                    HubLines.Element("{\"world\":{\"id\":" + JsonSerializer.Serialize(current) + "}}"));
             }
         }
 
-        return HubLines.Reply(id, reply);
+        return null;
+    }
+
+    // The walk cursors this session's replies carried, so cursor_close passes only its own; one is forgotten when its
+    // walk ends (a page without cursor_id), when it expired, or with its stream.
+    private void KeepCursor(JsonElement parameters, GameReply reply, long hubStream)
+    {
+        string? paged = Text(parameters, "cursor_id");
+        string? next = reply is GameReply.Ok { Result.ValueKind: JsonValueKind.Object } ok ? Text(ok.Result, "cursor_id") : null;
+        if (paged == null && next == null)
+        {
+            return;
+        }
+
+        lock (_gate)
+        {
+            if (paged != null && paged != next && reply is GameReply.Ok or GameReply.Refused { Code: "cursor_expired" })
+            {
+                _cursors.Remove(paged);
+            }
+
+            if (next != null)
+            {
+                _cursors[next] = hubStream;
+            }
+        }
     }
 
     private Task<VerbReply> VerbAsync(JsonElement parameters, long hubStream, CancellationToken cancellation)
@@ -564,7 +679,10 @@ public sealed class HubSession
             return Refused("line must be a code line: a whole number from 1.");
         }
 
-        return _pipeline.CallAsync(new VerbCall(verb, what, args, _settings.Face, hubStream, line), cancellation);
+        VerbCall call = new(verb, what, args, _settings.Face, hubStream, line);
+        return _settings.Verbs != null
+            ? _settings.Verbs.VerbAsync(call, cancellation)
+            : _pipeline.CallAsync(call, cancellation);
     }
 
     private Task<VerbReply> ExtrasAsync(string method, JsonElement parameters, long hubStream, CancellationToken cancellation)
@@ -583,160 +701,6 @@ public sealed class HubSession
             "wait" => extras.WaitAsync(request, cancellation),
             _ => extras.HoldAsync(request, cancellation)
         };
-    }
-
-    // ---- subscriptions --------------------------------------------------------------------------------------------
-
-    // One mod subscription per caller subscription, under an id of the session's own (s1, s2, ...), so a caller can
-    // neither see nor end another caller's subscription on the shared connection.
-    private async Task SubscribeAsync(string id, JsonElement parameters, int? deadline, long hubStream,
-        CancellationToken cancellation)
-    {
-        lock (_gate)
-        {
-            _subscribing++;
-        }
-
-        try
-        {
-            GameReply reply = await _link.CallAsync(new GameCall("subscribe", parameters, hubStream) { DeadlineMs = deadline },
-                cancellation).ConfigureAwait(false);
-            if (reply is not GameReply.Ok { Result.ValueKind: JsonValueKind.Object } ok ||
-                Text(ok.Result, "subscription") is not { } modId)
-            {
-                Answer(id, HubLines.Reply(id, reply));
-                return;
-            }
-
-            lock (_gate)
-            {
-                _lastSubscription++;
-                string callerId = "s" + _lastSubscription.ToString(CultureInfo.InvariantCulture);
-                _relays[callerId] = new Relay(modId, hubStream);
-                _callerSubscriptions[modId] = callerId;
-                Answer(id, HubLines.Ok(id, HubLines.Element(HubLines.WithSubscription(ok.Result, callerId)), ok));
-                FlushEarly(modId, callerId);
-            }
-        }
-        finally
-        {
-            lock (_gate)
-            {
-                _subscribing--;
-                if (_subscribing == 0)
-                {
-                    _early = null;
-                }
-            }
-        }
-    }
-
-    // Events that came for the subscription before its reply was read, sent after the reply. Under the gate.
-    private void FlushEarly(string modId, string callerId)
-    {
-        if (_early == null)
-        {
-            return;
-        }
-
-        foreach (JsonElement early in _early)
-        {
-            if (Text(early, "subscription") == modId)
-            {
-                Send(HubLines.WithSubscription(early, callerId));
-            }
-        }
-    }
-
-    private async Task UnsubscribeAsync(string id, JsonElement parameters, CancellationToken cancellation)
-    {
-        string? callerId = Text(parameters, "subscription");
-        Relay? relay = null;
-        lock (_gate)
-        {
-            if (callerId != null)
-            {
-                _relays.TryGetValue(callerId, out relay);
-            }
-        }
-
-        if (relay == null)
-        {
-            Answer(id, HubLines.Error(id, "unknown_subscription", $"This session has no subscription '{callerId}'."));
-            return;
-        }
-
-        GameReply reply = await _link.CallAsync(
-            new GameCall("unsubscribe", HubLines.Parameters("subscription", relay.ModId), relay.Stream), cancellation)
-            .ConfigureAwait(false);
-        if (reply is GameReply.Ok or GameReply.Refused { Code: "unknown_subscription" })
-        {
-            lock (_gate)
-            {
-                Forget(callerId!, relay.ModId);
-            }
-        }
-
-        Answer(id, reply is GameReply.Ok { Result.ValueKind: JsonValueKind.Object } ok
-            ? HubLines.Ok(id, HubLines.Element(HubLines.WithSubscription(ok.Result, callerId!)), ok)
-            : HubLines.Reply(id, reply));
-    }
-
-    private async Task UnsubscribeQuietlyAsync(Relay relay, CancellationToken cancellation)
-    {
-        try
-        {
-            await _link.CallAsync(new GameCall("unsubscribe", HubLines.Parameters("subscription", relay.ModId), relay.Stream),
-                cancellation).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // The stream's end below ends it on the mod's side too.
-        }
-    }
-
-    // Raised on the link's reader for every event: a relayed subscription's goes to the caller under its id, a world
-    // change to everyone; the rest (the link's own topics, other sessions' subscriptions) are not this caller's.
-    private void OnEvent(JsonElement message)
-    {
-        string? modId = Text(message, "subscription");
-        lock (_gate)
-        {
-            if (_closing || !_welcomed)
-            {
-                return;
-            }
-
-            if (modId == null)
-            {
-                if (Text(message, "event") == "world_changed")
-                {
-                    Send(message.GetRawText());
-                }
-
-                return;
-            }
-
-            if (_callerSubscriptions.TryGetValue(modId, out string? callerId))
-            {
-                Send(HubLines.WithSubscription(message, callerId));
-                if (Text(message, "event") == "subscription_ended")
-                {
-                    Forget(callerId, modId);
-                }
-            }
-            else if (_subscribing > 0)
-            {
-                (_early ??= []).Add(message);
-            }
-        }
-    }
-
-    // Under the gate.
-    private void Forget(string callerId, string modId)
-    {
-        _relays.Remove(callerId);
-        _callerSubscriptions.Remove(modId);
     }
 
     // ---- messages without a reply ---------------------------------------------------------------------------------
@@ -760,8 +724,8 @@ public sealed class HubSession
     }
 
     // Ends the caller's stream n: its mapped hub stream ends on the mod (its calls not started answer cancelled, its
-    // subscriptions end silently), and a later call on n is refused stream_ended, as the mod would.
-    private async Task<HubSessionEnd?> StreamEndAsync(JsonElement message, string line)
+    // subscriptions and cursors end silently), and a later call on n is refused stream_ended, as the mod would.
+    private HubSessionEnd? StreamEnd(JsonElement message, string line)
     {
         if (KeyProblem(message, StreamKeys) is { } problem)
         {
@@ -782,35 +746,14 @@ public sealed class HubSession
                 return null;
             }
 
+            _openStreams--;
             _ownStreams.Remove(hubStream);
             ForgetStream(hubStream);
         }
 
-        await _link.EndStreamAsync(hubStream).ConfigureAwait(false);
+        // Not awaited: with the game down the link reconnects first, and the caller's next message must not wait.
+        _ = _link.EndStreamAsync(hubStream);
         return null;
-    }
-
-    // Under the gate: the mod ends a stream's subscriptions without an event.
-    private void ForgetStream(long hubStream)
-    {
-        List<string>? gone = null;
-        foreach (KeyValuePair<string, Relay> relay in _relays)
-        {
-            if (relay.Value.Stream == hubStream)
-            {
-                (gone ??= []).Add(relay.Key);
-            }
-        }
-
-        if (gone == null)
-        {
-            return;
-        }
-
-        foreach (string callerId in gone)
-        {
-            Forget(callerId, _relays[callerId].ModId);
-        }
     }
 
     private async Task<HubSessionEnd?> ReleaseAsync(JsonElement message, string line)
@@ -896,12 +839,21 @@ public sealed class HubSession
             return Broken(null, "run_analysis belongs to a run's session; this session serves no run.", line);
         }
 
-        if (_analysed)
+        if (KeyProblem(message, AnalysisKeys) is { } problem)
         {
-            return Broken(null, "The hub takes only the first run_analysis of a session.", line);
+            return Broken(null, problem, line);
         }
 
-        _analysed = true;
+        lock (_gate)
+        {
+            if (_analysed)
+            {
+                return Broken(null, "The hub takes only the first run_analysis of a session.", line);
+            }
+
+            _analysed = true;
+        }
+
         await channel.AnalysisAsync(message).ConfigureAwait(false);
         return null;
     }
@@ -911,6 +863,18 @@ public sealed class HubSession
         if (_settings.RunChannel is not { } channel)
         {
             return Broken(null, "run_end belongs to a run's session; this session serves no run.", line);
+        }
+
+        if (KeyProblem(message, RunEndKeys) is { } problem)
+        {
+            // The run still hears of it, so it ends failed with the reason rather than as a broken session.
+            lock (_gate)
+            {
+                _runEnded = true;
+            }
+
+            await channel.EndedAsync(message).ConfigureAwait(false);
+            return Broken(null, problem, line);
         }
 
         lock (_gate)
@@ -929,7 +893,8 @@ public sealed class HubSession
 
     // ---- helpers --------------------------------------------------------------------------------------------------
 
-    // Under the gate: the hub stream for the caller's stream, a fresh one the first time.
+    // Under the gate: the hub stream for the caller's stream, a fresh one the first time; marked as having carried a
+    // call, so the close ends it.
     private long HubStream(long callerStream)
     {
         if (!_streams.TryGetValue(callerStream, out long hubStream))
@@ -937,8 +902,10 @@ public sealed class HubSession
             hubStream = _link.NewStream();
             _streams[callerStream] = hubStream;
             _ownStreams.Add(hubStream);
+            _openStreams++;
         }
 
+        _carried.Add(hubStream);
         return hubStream;
     }
 
@@ -960,6 +927,23 @@ public sealed class HubSession
         Send(HubLines.Error(id, "protocol_error", message,
             HubLines.Element("{\"line_start\":" + JsonSerializer.Serialize(start) + "}")));
         return HubSessionEnd.ProtocolError;
+    }
+
+    private static int PerStreamLimit(JsonElement? welcome)
+    {
+        if (Child(welcome ?? default, "limits") is { } limits)
+        {
+            foreach (string name in (string[])["max_in_flight_per_stream", "max_in_flight"])
+            {
+                if (Child(limits, name) is { ValueKind: JsonValueKind.Number } limit && limit.TryGetInt32(out int value) &&
+                    value > 0)
+                {
+                    return value;
+                }
+            }
+        }
+
+        return DefaultPerStreamLimit;
     }
 
     private static string? KeyProblem(JsonElement message, string[] allowed) => KeyProblem(message, allowed, out _);
@@ -1063,14 +1047,7 @@ public sealed class HubSession
     {
         internal CancellationTokenSource Cancellation { get; } = new();
 
-        internal Task? Running { get; set; }
-    }
-
-    /// <summary>A relayed subscription: the mod's id and the hub stream it was made on.</summary>
-    private sealed class Relay(string modId, long stream)
-    {
-        internal string ModId { get; } = modId;
-
-        internal long Stream { get; } = stream;
+        /// <summary>Set when the call's task has finished, so CloseAsync can wait for it.</summary>
+        internal TaskCompletionSource Finished { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 }

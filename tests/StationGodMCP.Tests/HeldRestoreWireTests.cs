@@ -696,14 +696,16 @@ public sealed class HeldRestoreWireTests
         _restores.Change(stream, null, false, NoClears(), Sets(0, 1));
         _restores.Wrote(stream, 1000, On, 1);
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int write = 0; write < 1000; write++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            _restores.Wrote(stream, 1000, On, write);
-            _restores.Wrote(new CallContext("c1", 4), 1000, On, write);
-        }
+            for (int write = 0; write < 1000; write++)
+            {
+                _restores.Wrote(stream, 1000, On, write);
+                _restores.Wrote(new CallContext("c1", 4), 1000, On, write);
+            }
+        });
 
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, allocated);
     }
 
     // ---- the rig ----

@@ -206,9 +206,7 @@ public sealed class ProfilingTests
     {
         Prof.Stop();
         OffPath(10);
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        OffPath(1000);
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        long allocated = ThreadAllocations.Of(() => OffPath(1000));
 
         Assert.Equal(0, allocated);
         Assert.Equal(default(ProfScope), Prof.Scope(ProfId.JobApply));

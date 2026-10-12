@@ -15,21 +15,31 @@ internal static class HubLines
     internal const string Supported = "{\"supported\":[2]}";
 
     private static readonly JsonWriterOptions Compact = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-    /// <summary>A game reply passed back under the caller's id: the result with its frame, or the mod's error.</summary>
+    /// <summary>
+    /// A game reply passed back under the caller's id: the result with its frame, or the mod's error; their texts
+    /// (messages, warnings, notes) in verb names, which the mod's rename map does not give protocol methods.
+    /// </summary>
     internal static string Reply(string id, GameReply reply)
     {
         switch (reply)
         {
             case GameReply.Ok ok:
-                return Ok(id, ok.Result, ok);
+                return Ok(id, Said(ok.Result), ok);
             case GameReply.Refused refused:
-                return Error(id, refused.Code, refused.Message, refused.Data);
+                return Error(id, refused.Code, VerbNames.Default.Say(refused.Message),
+                    refused.Data is { } data ? Said(data) : null, refused.MaybeRan);
             case GameReply.Unreachable unreachable:
-                return Error(id, HubSession.GameUnreachable, unreachable.Message, null, unreachable.MaybeRan);
+                return Error(id, HubSession.GameUnreachable, VerbNames.Default.Say(unreachable.Message), null,
+                    unreachable.MaybeRan);
             default:
                 throw new InvalidOperationException("A game reply is ok, refused or unreachable.");
         }
     }
+
+    private static JsonElement Said(JsonElement value) =>
+        value.ValueKind is JsonValueKind.Object or JsonValueKind.Array
+            ? JsonNodes.ToElement(VerbNames.Default.SayAll(JsonNodes.FromElement(value)))
+            : value;
 
     /// <summary>A verb's (or a pipeline method's) reply: the result, or the hub error object.</summary>
     internal static string Reply(string id, VerbReply reply)
@@ -54,7 +64,17 @@ internal static class HubLines
             result.WriteTo(writer);
             if (meta != null)
             {
+                if (meta.Shaped)
+                {
+                    writer.WriteBoolean("shaped", true);
+                }
+
                 writer.WriteNumber("elapsed_ms", meta.ElapsedMs);
+                if (meta.QueueMs is { } queue)
+                {
+                    writer.WriteNumber("queue_ms", queue);
+                }
+
                 writer.WriteNumber("frame", meta.Frame);
                 if (meta.BudgetHit)
                 {
@@ -146,6 +166,36 @@ internal static class HubLines
                 {
                     property.WriteTo(writer);
                 }
+            }
+
+            writer.WriteEndObject();
+        }
+
+        return Text(buffer);
+    }
+
+    /// <summary>
+    /// The world_changed connection event (protocol.md, Connection events) for a world the link learned of, from the
+    /// mod's event or from a welcome after a reconnect: world as the link has it, else {id} ("" for no world).
+    /// </summary>
+    internal static string WorldChanged(JsonElement? world, string? id)
+    {
+        using MemoryStream buffer = new();
+        using (Utf8JsonWriter writer = new(buffer, Compact))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", "event");
+            writer.WriteString("event", "world_changed");
+            writer.WritePropertyName("world");
+            if (world is { ValueKind: JsonValueKind.Object } given)
+            {
+                given.WriteTo(writer);
+            }
+            else
+            {
+                writer.WriteStartObject();
+                writer.WriteString("id", id ?? "");
+                writer.WriteEndObject();
             }
 
             writer.WriteEndObject();

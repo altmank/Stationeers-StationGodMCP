@@ -13,8 +13,9 @@ namespace StationGodMCP.Tests.Scheduling;
 
 /// <summary>
 /// The scheduler's promises held over long mixed workloads from fixed seeds: order on each connection, the budget, one
-/// heavy call per frame that runs under budget or once it has waited its frames, every call eventually served, and no
-/// allocation per frame.
+/// heavy call per frame that runs under budget or once it has waited its frames, every call eventually served, every
+/// client with a call that may start served within a bounded number of frames in each lane, and no allocation per
+/// frame.
 /// </summary>
 public sealed class SchedulerInvariantTests
 {
@@ -40,6 +41,7 @@ public sealed class SchedulerInvariantTests
             connections[index] = rig.Scheduler.Open();
         }
 
+        TurnWatch turns = new TurnWatch(Connections, index => index);
         int queued = 0;
         int ranBefore = 0;
         for (int frame = 1; frame <= 1500; frame++)
@@ -52,6 +54,7 @@ public sealed class SchedulerInvariantTests
                     {
                         FakeCall call = Arrive(rig, random, connections[index], index, sent[index]++);
                         byPosition[(index, call.Position)] = call;
+                        turns.Queued(call);
                         queued++;
                     }
                 }
@@ -59,10 +62,12 @@ public sealed class SchedulerInvariantTests
 
             double frameStart = rig.Clock.NowMs;
             FakeSamples samples = new FakeSamples(rig.Clock, 0.3, random.Next(0, 8));
+            turns.BeforeFrame();
             FrameOutcome outcome = rig.Frame(jobHoldsTick, samples);
 
             Assert.InRange(outcome.HeavyCalls, 0, 1);
             CheckBudget(rig, ranBefore, frameStart, shares.BudgetMs);
+            turns.AfterFrame(rig.Runner.Ran, ranBefore, frame);
             ranBefore = rig.Runner.Ran.Count;
         }
 
@@ -104,13 +109,13 @@ public sealed class SchedulerInvariantTests
             Cycle();
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int measured = 0; measured < 20; measured++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            Cycle();
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int measured = 0; measured < 20; measured++)
+            {
+                Cycle();
+            }
+        });
 
         Assert.Equal(0, allocated);
     }
@@ -145,6 +150,10 @@ public sealed class SchedulerInvariantTests
             nextStream[index] = 3;
         }
 
+        // Connections opened under one name are one client; a connection without one is a client of its own.
+        TurnWatch turns = new TurnWatch(clients.Length,
+            index => clients[index] == null ? -1 - index : Array.IndexOf(clients, clients[index]));
+
         int queued = 0;
         int dropped = 0;
         int ranBefore = 0;
@@ -159,6 +168,7 @@ public sealed class SchedulerInvariantTests
                         int slot = random.Next(1, streams[index].Length);
                         long ending = streams[index][slot];
                         dropped += rig.Scheduler.EndStream(connections[index], ending);
+                        turns.Ended(index, ending);
                         endedAt[(index, ending)] = frame;
                         streams[index][slot] = nextStream[index]++;
                     }
@@ -172,6 +182,7 @@ public sealed class SchedulerInvariantTests
                         {
                             sent[(index, stream)] = position + 1;
                             byPosition[(index, stream, position)] = call;
+                            turns.Queued(call);
                             queued++;
                         }
                     }
@@ -180,10 +191,12 @@ public sealed class SchedulerInvariantTests
 
             double frameStart = rig.Clock.NowMs;
             FakeSamples samples = new FakeSamples(rig.Clock, 0.3, random.Next(0, 8));
+            turns.BeforeFrame();
             FrameOutcome outcome = rig.Frame(jobHoldsTick, samples);
 
             Assert.InRange(outcome.HeavyCalls, 0, 1);
             CheckBudget(rig, ranBefore, frameStart, shares.BudgetMs);
+            turns.AfterFrame(rig.Runner.Ran, ranBefore, frame);
             ranBefore = rig.Runner.Ran.Count;
         }
 
@@ -251,13 +264,13 @@ public sealed class SchedulerInvariantTests
             Cycle();
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int measured = 0; measured < 30; measured++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            Cycle();
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int measured = 0; measured < 30; measured++)
+            {
+                Cycle();
+            }
+        });
 
         Assert.Equal(0, allocated);
     }
@@ -296,13 +309,13 @@ public sealed class SchedulerInvariantTests
             Cycle();
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int measured = 0; measured < Cycles / 2; measured++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            Cycle();
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int measured = 0; measured < Cycles / 2; measured++)
+            {
+                Cycle();
+            }
+        });
 
         Assert.Equal(0, allocated);
         Assert.Equal(12, scheduler.Costs.Count);
@@ -327,7 +340,9 @@ public sealed class SchedulerInvariantTests
             Position = position,
             ArrivedAfterFrame = rig.Scheduler.Frame
         };
-        return rig.Scheduler.Enqueue(connection, stream, call, profile, double.PositiveInfinity).IsQueued ? call : null;
+        Admission admission = rig.Scheduler.Enqueue(connection, stream, call, profile, double.PositiveInfinity);
+        call.Lane = admission.Lane;
+        return admission.IsQueued ? call : null;
     }
 
     private static FakeCall Arrive(SchedulerRig rig, Random random, Connection connection, int index, int position)
@@ -366,7 +381,9 @@ public sealed class SchedulerInvariantTests
             Position = position,
             ArrivedAfterFrame = rig.Scheduler.Frame
         };
-        Assert.True(rig.Scheduler.Enqueue(connection, call, profile, double.PositiveInfinity).IsQueued);
+        Admission admission = rig.Scheduler.Enqueue(connection, call, profile, double.PositiveInfinity);
+        Assert.True(admission.IsQueued);
+        call.Lane = admission.Lane;
         return call;
     }
 
@@ -412,6 +429,118 @@ public sealed class SchedulerInvariantTests
             }
 
             answered.Add((call.Connection, call.Position));
+        }
+    }
+
+    /// <summary>
+    /// Frames without a turn, per client and lane. Before each frame it works out, from the calls still waiting on each
+    /// (connection, stream) in arrival order, which clients have a call that may start in each lane (nothing passes a
+    /// waiting write or cheat call, which itself starts only first in line); after the frame, a client that had one and
+    /// ran nothing in that lane has gone one more frame without a turn. With K clients a light turn comes within K
+    /// frames, since every frame serves at least one light call and a served client goes to the back of the round; a
+    /// heavy turn within HeavyMaxWaitFrames + K, since over budget the lane takes its waited calls by the same rounds.
+    /// A client one of whose streams ends starts counting again.
+    /// </summary>
+    private sealed class TurnWatch
+    {
+        private readonly Func<int, int> _clientOf;
+        private readonly Dictionary<(int, long), List<FakeCall>> _waiting = new Dictionary<(int, long), List<FakeCall>>();
+        private readonly Dictionary<int, int>[] _without = { new Dictionary<int, int>(), new Dictionary<int, int>() };
+        private readonly HashSet<int>[] _mayStart = { new HashSet<int>(), new HashSet<int>() };
+        private readonly HashSet<int>[] _served = { new HashSet<int>(), new HashSet<int>() };
+        private readonly int _clients;
+
+        internal TurnWatch(int connections, Func<int, int> clientOf)
+        {
+            _clientOf = clientOf;
+            HashSet<int> distinct = new HashSet<int>();
+            for (int index = 0; index < connections; index++)
+            {
+                distinct.Add(clientOf(index));
+            }
+
+            _clients = distinct.Count;
+        }
+
+        internal void Queued(FakeCall call)
+        {
+            if (!_waiting.TryGetValue((call.Connection, call.Stream), out List<FakeCall>? calls))
+            {
+                calls = new List<FakeCall>();
+                _waiting.Add((call.Connection, call.Stream), calls);
+            }
+
+            calls.Add(call);
+        }
+
+        internal void Ended(int connection, long stream)
+        {
+            _waiting.Remove((connection, stream));
+            int client = _clientOf(connection);
+            _without[0].Remove(client);
+            _without[1].Remove(client);
+        }
+
+        internal void BeforeFrame()
+        {
+            _mayStart[0].Clear();
+            _mayStart[1].Clear();
+            foreach (KeyValuePair<(int, long), List<FakeCall>> stream in _waiting)
+            {
+                int client = _clientOf(stream.Key.Item1);
+                for (int index = 0; index < stream.Value.Count; index++)
+                {
+                    FakeCall call = stream.Value[index];
+                    if (call.Ordered)
+                    {
+                        if (index == 0)
+                        {
+                            _mayStart[(int)call.Lane].Add(client);
+                        }
+
+                        break;
+                    }
+
+                    _mayStart[(int)call.Lane].Add(client);
+                }
+            }
+        }
+
+        internal void AfterFrame(List<FakeCall> ran, int ranBefore, int frame)
+        {
+            _served[0].Clear();
+            _served[1].Clear();
+            for (int index = ranBefore; index < ran.Count; index++)
+            {
+                FakeCall call = ran[index];
+                _served[(int)call.Lane].Add(_clientOf(call.Connection));
+                _waiting[(call.Connection, call.Stream)].Remove(call);
+            }
+
+            Count(Lane.Light, _clients, frame);
+            Count(Lane.Heavy, SchedulerSettings.DefaultHeavyMaxWaitFrames + _clients, frame);
+        }
+
+        private void Count(Lane lane, int bound, int frame)
+        {
+            Dictionary<int, int> without = _without[(int)lane];
+            HashSet<int> mayStart = _mayStart[(int)lane];
+            foreach (int client in mayStart)
+            {
+                without.TryGetValue(client, out int frames);
+                frames = _served[(int)lane].Contains(client) ? 0 : frames + 1;
+                without[client] = frames;
+                Assert.True(frames <= bound,
+                    $"client {client} went {frames} frames without a {lane} turn by frame {frame} (bound {bound})");
+            }
+
+            foreach (int client in new List<int>(without.Keys))
+            {
+                if (!mayStart.Contains(client))
+                {
+                    without.Remove(client);
+                }
+            }
         }
     }
 

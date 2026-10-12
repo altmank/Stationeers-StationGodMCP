@@ -226,7 +226,10 @@ public sealed class PipeProtocolTests
     }
 }
 
-/// <summary>A pipe listener with a fake mod behind it, on a pipe name of its own.</summary>
+/// <summary>
+/// A pipe listener with a fake mod behind it, on a pipe name of its own; frameClock, when given, is the fake main
+/// thread's clock, and the time a call holds passes on it instead of the wall clock's.
+/// </summary>
 internal sealed class PipeRig : IDisposable
 {
     private readonly DeadlineWatch _deadlines = new DeadlineWatch();
@@ -237,10 +240,10 @@ internal sealed class PipeRig : IDisposable
         ProtocolSettings? settings = null, SubscriptionHub? subscriptions = null,
         Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null, StreamStores? stores = null,
         int resumeWindowMs = 0, IMonotonicClock? resumeClock = null, HeldRestores? restores = null,
-        Func<WorldFacts>? world = null)
+        Func<WorldFacts>? world = null, Scheduling.FakeClock? frameClock = null)
     {
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
-        Mod = new FakeMod(mainThread, _deadlines, stores: stores, world: world);
+        Mod = new FakeMod(mainThread, _deadlines, stores: stores, clock: frameClock, world: world);
         if (subscriptions != null)
         {
             Mod.Samples = subscriptions;
@@ -304,15 +307,17 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     private readonly SemaphoreSlim _added = new SemaphoreSlim(0);
     private readonly Thread? _thread;
     private readonly DeadlineWatch _deadlines;
+    private readonly Scheduling.FakeClock? _clock;
     private readonly object _frame = new object();
     private volatile bool _stopped;
     private int _ran;
     private int _holdMs;
 
     internal FakeMod(bool mainThread, DeadlineWatch deadlines, SchedulerSettings? settings = null,
-        StreamStores? stores = null, IMonotonicClock? clock = null, Func<WorldFacts>? world = null)
+        StreamStores? stores = null, Scheduling.FakeClock? clock = null, Func<WorldFacts>? world = null)
     {
         _deadlines = deadlines;
+        _clock = clock;
         _calls = new LaneScheduler(settings ?? SchedulerSettings.Default, stores, clock, world);
         if (mainThread)
         {
@@ -472,11 +477,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
             return new CallOutcome(new StreamCostCalls(_calls.Costs).Run(queued, queueWaitMs, 1), call.Method);
         }
 
-        int hold = call.Params?.Value<int?>("hold_ms") ?? 0;
-        if (hold > 0)
-        {
-            Thread.Sleep(hold);
-        }
+        Spend(call.Params?.Value<int?>("hold_ms") ?? 0);
 
         Newtonsoft.Json.Linq.JObject result = new Newtonsoft.Json.Linq.JObject
         {
@@ -537,11 +538,23 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
 
     public void Dispose() => _stopped = true;
 
-    private void Hold()
+    private void Hold() => Spend(_holdMs);
+
+    // ms of the main thread's time: on the fake clock when the scheduler runs on one, else asleep.
+    private void Spend(int ms)
     {
-        if (_holdMs > 0)
+        if (ms <= 0)
         {
-            Thread.Sleep(_holdMs);
+            return;
+        }
+
+        if (_clock != null)
+        {
+            _clock.Advance(ms);
+        }
+        else
+        {
+            Thread.Sleep(ms);
         }
     }
 }

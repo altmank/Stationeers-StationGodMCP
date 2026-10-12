@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -151,11 +152,13 @@ internal sealed class ResolvedNetworkView
 }
 
 /// <summary>
-/// The handles one request resolved, collected while it runs (requests run one at a time on the main thread) and
-/// added to its reply as resolved_networks. A plain network id that names the network itself is not listed.
+/// The handles one request resolved, collected while it runs and added to its reply as resolved_networks. A plain
+/// network id that names the network itself is not listed. Thread-static, as Truncations is: the request is collected
+/// on the thread that runs it (the main thread, one request at a time), and no other thread's work reaches its list.
 /// </summary>
 internal static class ResolvedNetworks
 {
+    [ThreadStatic]
     private static List<ResolvedNetworkView>? _current;
 
     internal static void Begin() => _current = null;

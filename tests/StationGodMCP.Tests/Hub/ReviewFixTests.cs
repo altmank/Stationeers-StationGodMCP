@@ -222,7 +222,7 @@ public sealed class ReviewFixTests : IDisposable
     private static string With(JsonObject options, string name, string value) => With(options, name, JsonValue.Create(value));
 
     // Handler names, and handler arguments no verb option is named, from the generated LegacyVerbMap table.
-    private static Regex HandlerNames()
+    internal static Regex HandlerNames()
     {
         JsonNode map = JsonNode.Parse(File.ReadAllText(Path.Combine(
             StationGodMCP.Tests.CatalogueChecks.CatalogueFiles.RepositoryRoot(), "generated", "verbs", "legacy-verb-map.json")))!;

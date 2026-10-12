@@ -44,15 +44,23 @@ public abstract class WriteDecision
 
     public sealed class Stop : WriteDecision
     {
-        public Stop(JsonArray rows, string fix)
+        public Stop(JsonArray rows, string fix, string code = "unseen_target", string? message = null)
         {
             Rows = rows;
             Fix = fix;
+            Code = code;
+            Message = message;
         }
 
         public JsonArray Rows { get; }
 
         public string Fix { get; }
+
+        /// <summary>The error code the stopped call answers (unseen_target unless the gate says otherwise).</summary>
+        public string Code { get; }
+
+        /// <summary>The gate's own message; null for the pipeline's.</summary>
+        public string? Message { get; }
     }
 }
 
@@ -126,8 +134,7 @@ internal static class WriteTargetPaths
 {
     internal static readonly string[] Selectors = ["network", "room", "near", "box"];
 
-    internal static WriteTargets Resolve(WhatEntry what, JsonObject options,
-        IReadOnlyDictionary<string, string>? refs = null)
+    internal static WriteTargets Resolve(WhatEntry what, JsonObject options, IReadOnlyList<RefUse>? refs = null)
     {
         WriteRules rules = what.Write!;
         List<WriteTarget> targets = [];
@@ -157,9 +164,30 @@ internal static class WriteTargetPaths
                 1 => selectors[0],
                 _ => new JsonArray(selectors.ToArray())
             };
-            string? from = refs != null && refs.TryGetValue(path.Path, out string? reference) ? reference : null;
-            targets.Add(new WriteTarget(path.Path, path.Role, ids, selector,
-                from != null ? TargetSource.Ref : TargetSource.Typed, from));
+            // Ids a ref gave keep their ref, one target per ref; the rest of the path's ids were typed.
+            foreach (RefUse use in refs ?? [])
+            {
+                if (use.Path != path.Path)
+                {
+                    continue;
+                }
+
+                List<string> fromRef = [];
+                foreach (string id in use.Ids)
+                {
+                    if (ids.Remove(id))
+                    {
+                        fromRef.Add(id);
+                    }
+                }
+
+                targets.Add(new WriteTarget(path.Path, path.Role, fromRef, null, TargetSource.Ref, use.Ref));
+            }
+
+            if (ids.Count > 0 || selector != null)
+            {
+                targets.Add(new WriteTarget(path.Path, path.Role, ids, selector));
+            }
         }
 
         // The spreads every what names alike, where its x-target does not declare them.

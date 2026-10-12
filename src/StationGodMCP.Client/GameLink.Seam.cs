@@ -46,11 +46,23 @@ public interface IHubLink : IGameLink
     /// <summary>The mod's last welcome; null before the first connection.</summary>
     JsonElement? Welcome { get; }
 
+    /// <summary>The world as the last welcome or world_changed gave it ({id, save, epoch}); null before any.</summary>
+    JsonElement? World { get; }
+
+    /// <summary>limits.max_request_bytes: the longest message the mod takes without closing the connection.</summary>
+    int MaxRequestBytes { get; }
+
+    /// <summary>The catalogue in use: each method's class and x-effects.</summary>
+    GameCatalogue Catalogue { get; }
+
     /// <summary>Every event but ping, raised on the link's reader.</summary>
     event Action<JsonElement>? EventReceived;
 
     /// <summary>Connects now if not connected; false when the game could not be reached.</summary>
     Task<bool> ConnectAsync(CancellationToken cancellation);
+
+    /// <summary>stream_end on the open connection only; nothing when disconnected (the resume window ends it then).</summary>
+    Task EndStreamIfConnectedAsync(long stream);
 
     /// <summary>cursor_close for a walk's cursor, when the mod lists cursors. No reply.</summary>
     Task CursorCloseAsync(string cursorId);
@@ -81,6 +93,13 @@ public sealed class GameCall
     public JsonElement? Rename { get; init; }
 
     public int? DeadlineMs { get; init; }
+
+    /// <summary>
+    /// Called with the mod's reply on the link's reader, before the caller wakes and before any later event is raised,
+    /// so a subscription can be bound before its first update. Not called for a reply the link makes itself
+    /// (unreachable, refused unsent).
+    /// </summary>
+    public Action<GameReply>? OnReply { get; init; }
 }
 
 /// <summary>How a game call ended: answered, refused, or unreachable. None is thrown.</summary>
@@ -107,6 +126,12 @@ public abstract class GameReply
         public double ElapsedMs { get; }
 
         public bool BudgetHit { get; }
+
+        /// <summary>The mod applied the call's shape.</summary>
+        public bool Shaped { get; init; }
+
+        /// <summary>The mod's queue_ms (receipt to start); null when it gave none.</summary>
+        public double? QueueMs { get; init; }
     }
 
     public sealed class Refused : GameReply
@@ -123,6 +148,9 @@ public abstract class GameReply
         public string Message { get; }
 
         public JsonElement? Data { get; }
+
+        /// <summary>The mod's error said the method may have partly run (maybe_ran).</summary>
+        public bool MaybeRan { get; init; }
     }
 
     /// <summary>No answer. MaybeRan is true when the call was written before the break and may have acted.</summary>

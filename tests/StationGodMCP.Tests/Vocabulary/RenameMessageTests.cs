@@ -136,38 +136,39 @@ public sealed class RenameMessageTests
         }
     }
 
-    // 1,000 rounds of six reads: a read that allocated anything would cost at least 24 bytes a round. What is left is
-    // the runtime's own bookkeeping around the measurement (64 bytes or less, the same with no reads at all).
+    // 1,000 rounds of six reads, after three rounds the same way: a read that allocated anything would cost at least 24
+    // bytes a round.
     private const int Rounds = 1000;
-    private const long Bookkeeping = 256;
 
     [Fact]
     public void ReadingArgumentsAllocatesNothingWithoutAMapOrWithOne()
     {
         Args args = new Args(JObject.Parse("""{"reference_id": "12", "name": "Pump", "wait": true, "radius_m": 4.5}"""));
 
-        Assert.InRange(ReadAllocations(args, null, enter: false), 0, Bookkeeping);
-        Assert.InRange(ReadAllocations(args, null), 0, Bookkeeping);
-        Assert.InRange(ReadAllocations(args, VerbNames), 0, Bookkeeping);
+        Assert.Equal(0, ReadAllocations(args, null, enter: false));
+        Assert.Equal(0, ReadAllocations(args, null));
+        Assert.Equal(0, ReadAllocations(args, VerbNames));
     }
 
     private static long ReadAllocations(Args args, RenameMap? map, bool enter = true)
     {
-        Read(args, 3);
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        if (enter)
+        void ReadAsCalled(int rounds)
         {
-            using (Vocabulary.Enter(map))
+            if (enter)
             {
-                Read(args, Rounds);
+                using (Vocabulary.Enter(map))
+                {
+                    Read(args, rounds);
+                }
+            }
+            else
+            {
+                Read(args, rounds);
             }
         }
-        else
-        {
-            Read(args, Rounds);
-        }
 
-        return GC.GetAllocatedBytesForCurrentThread() - before;
+        ReadAsCalled(3);
+        return ThreadAllocations.Of(() => ReadAsCalled(Rounds));
     }
 
     private static readonly string[] PollOnly = { "job_id", "status" };

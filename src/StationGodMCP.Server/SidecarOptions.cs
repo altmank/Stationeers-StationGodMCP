@@ -13,8 +13,7 @@ namespace StationGodMCP.Server;
 /// protocol on stdio instead of MCP; --confirmed-ceiling-s caps a confirmed run's reply wait (30, 0 for none);
 /// --journal-dir is where journals live; --python is the Python for script workers.
 /// </summary>
-internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output, int InlineLimitBytes,
-    string? RecordPath = null)
+internal sealed class SidecarOptions
 {
     internal const int DefaultInlineLimitKb = 200;
 
@@ -24,6 +23,33 @@ internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output,
 
     // A day: a confirmed run's reply that would wait longer is a mistake in the option, not a wish.
     private const int LargestConfirmedCeilingSeconds = 24 * 60 * 60;
+
+    // The options that take a value: the word after one is its value, never an option of its own.
+    private static readonly string[] ValueOptions =
+    [
+        "--pipe", "--host", "--port", "--secret-env", "--client", "--inline-limit-kb", "--output-dir", "--record",
+        "--confirmed-ceiling-s", "--journal-dir", "--python"
+    ];
+
+    internal SidecarOptions(ClientOptions client, OutputFolder output, int inlineLimitBytes, string? recordPath = null)
+    {
+        Client = client;
+        Output = output;
+        InlineLimitBytes = inlineLimitBytes;
+        RecordPath = recordPath;
+    }
+
+    /// <summary>How the game is reached and what this sidecar says in hello.</summary>
+    internal ClientOptions Client { get; }
+
+    /// <summary>Where output files go.</summary>
+    internal OutputFolder Output { get; }
+
+    /// <summary>The reply size above which a reply goes to a file on its own; 0 for never.</summary>
+    internal int InlineLimitBytes { get; }
+
+    /// <summary>The recording's file (hub.md, Recording); null for none.</summary>
+    internal string? RecordPath { get; }
 
     /// <summary>The hub protocol on stdio for one program (hub.md, Modes) instead of MCP.</summary>
     internal bool Hub { get; init; }
@@ -143,27 +169,43 @@ internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output,
         return null;
     }
 
+    // A flag given on its own: the value of an option that takes one ("--client --hub") is skipped.
     private static bool Flag(string[] args, string name)
     {
-        foreach (string arg in args)
+        for (int index = 0; index < args.Length; index++)
         {
-            if (arg.Equals(name, StringComparison.OrdinalIgnoreCase))
+            if (args[index].Equals(name, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
+            }
+
+            foreach (string option in ValueOptions)
+            {
+                if (args[index].Equals(option, StringComparison.OrdinalIgnoreCase))
+                {
+                    index++;
+                    break;
+                }
             }
         }
 
         return false;
     }
 
-    internal abstract record Parsed
+    internal abstract class Parsed
     {
         private Parsed()
         {
         }
 
-        internal sealed record Valid(SidecarOptions Options) : Parsed;
+        internal sealed class Valid(SidecarOptions options) : Parsed
+        {
+            internal SidecarOptions Options { get; } = options;
+        }
 
-        internal sealed record Invalid(string Message) : Parsed;
+        internal sealed class Invalid(string message) : Parsed
+        {
+            internal string Message { get; } = message;
+        }
     }
 }

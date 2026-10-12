@@ -22,13 +22,12 @@ public sealed class VerbExampleTests
     private static readonly Dictionary<string, (string Code, string Why)> Later = new()
     {
         ["check.ignition"] = ("not_available", "id"),
-        ["write.paint"] = ("not_available", "network"),
         ["server.stop"] = ("not_available", "runs piece"),
         ["check.replaceable"] = ("invalid_argument", "no ref 'r12'")
     };
 
     // The hub's own reads around a call, and the protocol method controllers go to: not a what's handler.
-    internal static readonly string[] Helpers = { "thing_health", "player_vitals", "read_logic_many", "inspect_controllers" };
+    internal static readonly string[] Helpers = { "thing_health", "player_vitals", "read_logic_many", "inspect_controllers", "connections" };
 
     public static IEnumerable<object[]> Whats() =>
         VerbCatalogue.Embedded.Verbs
@@ -83,8 +82,9 @@ public sealed class VerbExampleTests
             return;
         }
 
+        // write paint's example paints a network: it reports, listing the pieces it reads (no paint is sent).
         List<string> handlers = what.Handlers.Select(handler => handler.Name).ToList();
-        Assert.Contains(game.Calls, call => handlers.Contains(call.Method) || key == "inspect.controllers" ||
+        Assert.Contains(game.Calls, call => handlers.Contains(call.Method) || key is "inspect.controllers" or "write.paint" ||
                                             LegacyVerbMap.JobPoller((string?)call.Params()["job_id"] ?? "") == call.Method);
         foreach (GameCall sent in game.Calls)
         {

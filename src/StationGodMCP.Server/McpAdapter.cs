@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -31,22 +32,45 @@ internal sealed class McpAdapter : IAsyncDisposable
     private readonly IAsyncDisposable? _owned;
     private readonly CallRecorder? _recorder;
     private readonly VerbPipeline _pipeline;
+    private readonly SeenSet _seen = new();
+    private readonly RunHost? _runs;
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _pending = new(StringComparer.Ordinal);
 
     internal McpAdapter(SidecarOptions options)
         : this(options, new GameLink(options.Client), owned: true)
     {
     }
 
-    /// <summary>A sidecar over a game link of the caller's (tests use a fake one); owned links are closed with it.</summary>
-    internal McpAdapter(SidecarOptions options, IGameLink link, bool owned = false, IShownText? shown = null)
+    /// <summary>
+    /// A sidecar over a game link of the caller's (tests use a fake one); owned links are closed with it. Runs are served
+    /// when the link is a hub link (run_script needs a stream per run and a worker session over it).
+    /// </summary>
+    internal McpAdapter(SidecarOptions options, IGameLink link, bool owned = false, IShownText? shown = null,
+        RunHostSettings? runs = null)
     {
         _options = options;
         _owned = owned ? link as IAsyncDisposable : null;
         _recorder = options.RecordPath is { } path ? new CallRecorder(path) : null;
-        _pipeline = new VerbPipeline(link, recorder: _recorder, shown: shown);
+        _pipeline = new VerbPipeline(link, recorder: _recorder, shown: shown == null ? _seen : new ShownToBoth(_seen, shown));
+        if (link is IHubLink hub)
+        {
+            _runs = new RunHost(hub, _pipeline, _seen, runs ?? new RunHostSettings
+            {
+                ConfirmedCeiling = TimeSpan.FromSeconds(options.ConfirmedCeilingSeconds),
+                Python = options.Python
+            });
+        }
     }
 
     internal VerbPipeline Pipeline => _pipeline;
+
+    /// <summary>The hub's seen set: every reply text sent feeds it.</summary>
+    internal SeenSet Seen => _seen;
+
+    internal RunHost? Runs => _runs;
+
+    /// <summary>Writes a notification line to the MCP client (notifications/progress); set by whoever owns the output.</summary>
+    internal Func<string, Task>? Notify { get; set; }
 
     /// <summary>One MCP message line: the response line, or null for a notification.</summary>
     internal async Task<string?> HandleAsync(string line)
@@ -69,6 +93,11 @@ internal sealed class McpAdapter : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_runs != null)
+        {
+            await _runs.DisposeAsync().ConfigureAwait(false);
+        }
+
         _recorder?.Dispose();
         if (_owned != null)
         {
@@ -110,6 +139,11 @@ internal sealed class McpAdapter : IAsyncDisposable
             string method = methodElement.GetString()!;
             if (method.StartsWith("notifications/", StringComparison.Ordinal))
             {
+                if (method == "notifications/cancelled")
+                {
+                    Cancelled(root);
+                }
+
                 return null;
             }
 
@@ -125,7 +159,7 @@ internal sealed class McpAdapter : IAsyncDisposable
                 },
                 "ping" => new { },
                 "tools/list" => new { tools = catalogue.Tools },
-                "tools/call" => await CallToolAsync(root, catalogue).ConfigureAwait(false),
+                "tools/call" => await CallToolAsync(root, catalogue, requestId).ConfigureAwait(false),
                 _ => throw new McpException(-32601, $"Unknown MCP method '{method}'.")
             };
 
@@ -144,7 +178,7 @@ internal sealed class McpAdapter : IAsyncDisposable
     }
 
     // Every tool result, the game's and the pipeline's own refusals alike, has one shape (ToolReplies).
-    private async Task<object> CallToolAsync(JsonElement root, VerbCatalogue catalogue)
+    private async Task<object> CallToolAsync(JsonElement root, VerbCatalogue catalogue, object? requestId)
     {
         if (!root.TryGetProperty("params", out JsonElement parameters) || parameters.ValueKind != JsonValueKind.Object ||
             !parameters.TryGetProperty("name", out JsonElement nameElement) || nameElement.ValueKind != JsonValueKind.String)
@@ -171,12 +205,14 @@ internal sealed class McpAdapter : IAsyncDisposable
             : default;
         if (arguments.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Object))
         {
-            return Error(new VerbReply.Failed(VerbFailure.InvalidArgument, "The arguments must be a JSON object."));
+            return await ErrorAsync(new VerbReply.Failed(VerbFailure.InvalidArgument, "The arguments must be a JSON object."),
+                verb, null).ConfigureAwait(false);
         }
 
         if (arguments.ValueKind == JsonValueKind.Object && ArgumentCheck.Unsendable(arguments) is { Count: > 0 } unsendable)
         {
-            return Error(new VerbReply.Failed(VerbFailure.InvalidArgument, string.Join(" ", unsendable)));
+            return await ErrorAsync(new VerbReply.Failed(VerbFailure.InvalidArgument, string.Join(" ", unsendable)), verb, null)
+                .ConfigureAwait(false);
         }
 
         JsonObject options = arguments.ValueKind == JsonValueKind.Object
@@ -188,7 +224,8 @@ internal sealed class McpAdapter : IAsyncDisposable
             what = JsonNodes.Text(whatNode);
             if (what == null)
             {
-                return Error(OptionProblem.Refusal(verb, [new OptionProblem("what", "must be a string")]));
+                return await ErrorAsync(OptionProblem.Refusal(verb, [new OptionProblem("what", "must be a string")]), verb, null)
+                    .ConfigureAwait(false);
             }
 
             options.Remove("what");
@@ -197,29 +234,146 @@ internal sealed class McpAdapter : IAsyncDisposable
         OutputChoice output = OutputChoice.Of(options["output_file"] is { } file ? JsonNodes.ToElement(file) : null);
         if (output is OutputChoice.Refused refusedFile)
         {
-            return Error(new VerbReply.Failed(VerbFailure.InvalidArgument,
+            return await ErrorAsync(new VerbReply.Failed(VerbFailure.InvalidArgument,
                 refusedFile.Message.Replace("Argument 'output_file'", "output_file", StringComparison.Ordinal) + " " +
-                _options.Output.WhereFilesGo(Environment.MachineName)));
+                _options.Output.WhereFilesGo(Environment.MachineName)), verb, what).ConfigureAwait(false);
+        }
+
+        if (_runs != null && await RunsAsync(verb, what, options, parameters, requestId).ConfigureAwait(false) is { } runs)
+        {
+            return runs;
         }
 
         VerbReply reply = await _pipeline.CallAsync(new VerbCall(verb, what, options, Face.Direct) { Recorded = true },
             CancellationToken.None).ConfigureAwait(false);
         return reply switch
         {
-            VerbReply.Done done => Sent(Delivered(verb + (what == null ? string.Empty : "_" + what), output,
-                JsonNodes.ToElement(done.Reply)), isError: false),
-            VerbReply.Failed failed => Error(failed),
+            VerbReply.Done done => await SentAsync(Delivered(verb + (what == null ? string.Empty : "_" + what), output,
+                JsonNodes.ToElement(done.Reply)), isError: false, verb, what).ConfigureAwait(false),
+            VerbReply.Failed failed => await ErrorAsync(failed, verb, what).ConfigureAwait(false),
             _ => throw new InvalidOperationException("A verb reply is done or failed.")
         };
     }
 
-    private object Error(VerbReply.Failed failed) => Sent(JsonNodes.ToElement(failed.ToJson()), isError: true);
-
-    // The cap's seen-set hook hears exactly the text the client gets.
-    private object Sent(JsonElement body, bool isError)
+    // run_script, and inspect job and server stop for runs: the run host's. Null when the call is not a run's.
+    private async Task<object?> RunsAsync(string verb, string? what, JsonObject options, JsonElement parameters,
+        object? requestId)
     {
-        _pipeline.TextShown(ToolReplies.TextOf(body));
-        return ToolReplies.Of(body, isError);
+        VerbReply? reply;
+        string? about = JsonNodes.Text(options["id"])?.Trim();
+        if (verb == "run_script")
+        {
+            string? key = requestId is JsonElement id ? id.GetRawText() : null;
+            using CancellationTokenSource cancel = new();
+            if (key != null)
+            {
+                _pending[key] = cancel;
+            }
+
+            try
+            {
+                reply = await _runs!.RunScriptAsync(options, new ReplyHooks
+                {
+                    Progress = ProgressOf(parameters),
+                    Cancelled = cancel.Token
+                }).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (key != null)
+                {
+                    _pending.TryRemove(key, out _);
+                }
+            }
+
+            about = reply is VerbReply.Done { Reply: JsonObject done } && JsonNodes.Text(done["text"]) is { } text
+                ? text.Split(' ', 2)[0]
+                : null;
+        }
+        else if (verb == "inspect" && what == "job")
+        {
+            reply = await _runs!.InspectJobAsync(options).ConfigureAwait(false);
+        }
+        else if (verb == "server" && what == "stop")
+        {
+            reply = _runs!.Stop(options);
+        }
+        else
+        {
+            return null;
+        }
+
+        switch (reply)
+        {
+            case null:
+                return null;
+            case VerbReply.Failed failed:
+                return await ErrorAsync(failed, verb, what).ConfigureAwait(false);
+            case VerbReply.Done { Reply: JsonObject { Count: 1 } body } when JsonNodes.Text(body["text"]) is { } runText:
+                // A run's reply is text, sent as it reads; its seen ids were added as it was written.
+                return await SentAsync(JsonNodes.ToElement(body), isError: false, verb, what, about, runText)
+                    .ConfigureAwait(false);
+            default:
+                return await SentAsync(JsonNodes.ToElement(((VerbReply.Done)reply).Reply), isError: false, verb, what, about)
+                    .ConfigureAwait(false);
+        }
+    }
+
+    // notifications/progress every ProgressEvery while a run_script waits, when the request carried a progressToken.
+    private Func<double, Task>? ProgressOf(JsonElement parameters)
+    {
+        if (!parameters.TryGetProperty("_meta", out JsonElement meta) || meta.ValueKind != JsonValueKind.Object ||
+            !meta.TryGetProperty("progressToken", out JsonElement token) ||
+            token.ValueKind is not (JsonValueKind.String or JsonValueKind.Number))
+        {
+            return null;
+        }
+
+        JsonElement kept = token.Clone();
+        return async seconds =>
+        {
+            if (Notify != null)
+            {
+                await Notify(JsonSerializer.Serialize(new
+                {
+                    jsonrpc = "2.0",
+                    method = "notifications/progress",
+                    @params = new { progressToken = kept, progress = seconds, message = $"the run is {seconds} s in" }
+                }, JsonOptions)).ConfigureAwait(false);
+            }
+        };
+    }
+
+    // A client cancelling a pending run_script stops that run.
+    private void Cancelled(JsonElement root)
+    {
+        if (root.TryGetProperty("params", out JsonElement parameters) && parameters.ValueKind == JsonValueKind.Object &&
+            parameters.TryGetProperty("requestId", out JsonElement id) && _pending.TryGetValue(id.GetRawText(), out
+                CancellationTokenSource? cancel))
+        {
+            cancel.Cancel();
+        }
+    }
+
+    private Task<object> ErrorAsync(VerbReply.Failed failed, string verb, string? what) =>
+        SentAsync(JsonNodes.ToElement(failed.ToJson()), isError: true, verb, what);
+
+    // The cap's seen-set hook hears exactly the JSON text the client gets; the runs' notices ride after it.
+    private async Task<object> SentAsync(JsonElement body, bool isError, string verb, string? what, string? about = null,
+        string? plainText = null)
+    {
+        string text = plainText ?? ToolReplies.TextOf(body);
+        if (plainText == null)
+        {
+            _pipeline.TextShown(text);
+        }
+
+        if (_runs != null && await _runs.NoticesAsync(verb, what, about).ConfigureAwait(false) is { Count: > 0 } notices)
+        {
+            text += "\n" + string.Join("\n", notices);
+        }
+
+        return ToolReplies.Of(body, text, isError);
     }
 
     // The reply inline, or written to a file when output_file asks or when it is larger than the inline limit.
@@ -256,6 +410,16 @@ internal sealed class McpAdapter : IAsyncDisposable
     // An error reply always carries id, null when the request's id could not be read (JSON-RPC 2.0).
     private static string RpcError(object? id, int code, string message) =>
         JsonSerializer.Serialize(new { jsonrpc = "2.0", id = id ?? NullId, error = new { code, message } }, JsonOptions);
+
+    /// <summary>The shown text goes to the hub's seen set and to the hook the caller gave.</summary>
+    private sealed class ShownToBoth(IShownText first, IShownText second) : IShownText
+    {
+        public void Shown(string text)
+        {
+            first.Shown(text);
+            second.Shown(text);
+        }
+    }
 
     private sealed class McpException(int code, string message) : Exception(message)
     {
