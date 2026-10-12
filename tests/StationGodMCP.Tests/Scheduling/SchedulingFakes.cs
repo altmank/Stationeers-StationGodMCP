@@ -36,6 +36,9 @@ internal sealed class FakeCall
     /// <summary>The stream it came on.</summary>
     internal long Stream { get; set; }
 
+    /// <summary>The lane the scheduler queued it in.</summary>
+    internal Lane Lane { get; set; }
+
     /// <summary>Its arrival position on its connection.</summary>
     internal int Position { get; set; }
 

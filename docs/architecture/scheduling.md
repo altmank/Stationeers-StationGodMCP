@@ -75,7 +75,7 @@ Version 2 sorts every call into a lane when it arrives, by its predicted main-th
 | --- | --- | --- |
 | subscriptions | sampling due subscriptions and `sample_logic` | up to `SubscriptionBudgetMs` (default 1.5 ms), at most half of the frame's budget, and at least one due sample per frame |
 | light | calls predicted at or under `HeavyThresholdMs` (1 ms) | the rest of the frame's budget, and at least one call per frame |
-| heavy | calls predicted above `HeavyThresholdMs`, and calls of cost `world`, `plan` or `job` | at most one call per frame, only while the frame is under budget, or once its oldest call has waited `HeavyMaxWaitFrames` frames (10) |
+| heavy | calls predicted above `HeavyThresholdMs`, and calls of cost `world`, `plan` or `job` | at most one call per frame: by rounds while the frame is under budget; over budget, by the same rounds among calls that have waited `HeavyMaxWaitFrames` frames (10) |
 
 The prediction. The catalogue gives the cost class at the call's arguments (`cost`, `x-cost-when`;
 [catalogue.md](catalogue.md)). For `world`, `plan` and `job` the call is heavy, whatever it measured last time, so a
@@ -105,8 +105,8 @@ spent   = 0
 2. Light lane: take calls in rounds (one call per client per round, from its streams in turn, skipping a stream
    whose next call must wait for an earlier write on it); run each; stop when spent >= budget, except that the
    first light call always runs.
-3. Heavy lane: if the lane has a call and (spent < budget or its oldest call has waited >= HeavyMaxWaitFrames
-   frames), take one call, by the same rounds (or the oldest, once it has waited), and run it.
+3. Heavy lane: if spent < budget, take one call by the same rounds and run it; otherwise take one by the same
+   rounds from the calls that have waited >= HeavyMaxWaitFrames frames, if any, and run it.
 4. Expired calls (deadline passed before start) are answered game_timeout as they are met, without cost.
 5. HeldTickJobs.Tick(), previews, highlights, flight recorder, as today.
 ```
@@ -205,7 +205,8 @@ The scheduler is a pure class in `Pure/` with the clock and the cost of each cal
 tests:
 
 - the first light call of a frame always runs, and light calls stop at the budget;
-- at most one heavy call per frame, and a heavy call that has waited `HeavyMaxWaitFrames` runs even over budget;
+- at most one heavy call per frame, and heavy calls that have waited `HeavyMaxWaitFrames` take turns by client even
+  over budget;
 - round-robin: with connection A holding 16 light calls and B holding 1, B's call runs in the first round; a client
   with two busy connections gets one turn per round like a client with one; within a client its streams alternate;
   the heavy lane takes the same turns;
@@ -259,10 +260,13 @@ Where the text above leaves a choice open:
   allocating, and an emptied stream or client leaves its rounds at once. Stream nodes (`StreamQueue`) and client
   nodes are reused once empty, so neither a new stream nor a frame allocates once as many have been open at once
   before.
-- The heavy lane runs the oldest call that may start once it has been passed over in `HeavyMaxWaitFrames` frames,
-  and otherwise takes turns, by client then stream, while the frame is under budget. One heavy call a frame means a burst
-  of heavy calls under always-busy light work runs one a frame from the bound on: a call waits at most
-  `HeavyMaxWaitFrames` frames plus one for each older heavy call still waiting.
+- The heavy lane takes turns, by client then stream, in every frame: while the frame is under budget among all its
+  calls that may start, and over budget among those that have waited `HeavyMaxWaitFrames` frames, where the first
+  client in turn order with such a call runs one and goes to the back while the clients passed over keep their
+  places. A client with one heavy call therefore waits at most `HeavyMaxWaitFrames` frames plus one for each other
+  client ahead of it, however many heavy calls a busy client keeps waiting; the waited calls are not taken oldest
+  first across clients, which would put a one-call client behind every older call of a hub's streams, one frame
+  each.
 - At most 64 light calls a frame, as today's 64 requests, so an unlimited budget still bounds a frame.
 - An expired call is answered when a lane's search meets it; one queued behind a waiting write is met once the write
   has run.
