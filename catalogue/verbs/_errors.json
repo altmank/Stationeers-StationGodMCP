@@ -67,8 +67,10 @@
   },
   "confirm_required": {"description": "A real run needs confirm: false and confirm: true together. Nothing ran."},
   "contact_not_found": {"description": "No trader contact has that reference id. trade contacts lists them."},
+  "cursor_expired": {"description": "The walk is gone: its last page was taken, its run or stream ended, the world is another, or the memory bound freed it. data.position: the entries it had returned. Start the walk again."},
   "device_not_found": {"description": "No device with that id is reachable here. Check the id, or the gateway the call is scoped to."},
   "dish_not_ready": {"description": "The dish has no pivot or pointing part to turn: it is not built far enough. Finish building it."},
+  "dropped": {"description": "The queued job was taken out of the queue before it started, so nothing ran."},
   "duplicate_id": {
     "description": "That request id is already in flight on this connection. Nothing ran; use a new id.",
     "see": {"topic": "errors"}
@@ -158,10 +160,12 @@
   "job_not_found": {
     "description": "No job with that id is running, queued or kept. Job ids are kept for the last jobs only; start the run again if needed."
   },
+  "job_not_waiting": {"description": "The job has started or ended, so it is not in the queue. Follow it with inspect {what: \"job\", id}."},
   "joined_too_large": {
     "description": "Too many atmospheres are joined to the one named. Pass joined: false to move gas from the named one only.",
     "see": {"verb": "inspect", "what": "job"}
   },
+  "lint_refused": {"description": "The write would open a vent, valve or pump onto a network where a lint rule finds a problem, such as oxidiser vented outdoors. Nothing is written; data.rules lists each rule, its message and the thing. Fix the network first, or pass allow: [\"lint\"]."},
   "logic_not_readable": {"description": "The device does not expose that logic type as readable. inspect device lists what it reads."},
   "logic_not_writable": {"description": "The device does not expose that logic type as writable. inspect device lists what it writes."},
   "long_piece": {
@@ -440,6 +444,7 @@
   "slot_refuses": {"description": "The slot does not take that item. Pick a slot that does; inspect slots lists them."},
   "source_too_large": {"description": "The Lua code is over the chip's limit. Split it into library chips (--@module) and require them."},
   "stack_full": {"description": "The stack is full; the rest does not fit. Move fewer, or into an empty slot."},
+  "stream_ended": {"description": "The run's stream has ended, so nothing ran. Start a new run."},
   "structure_broken": {
     "description": "The structure is in its broken build state; the game cannot build on it. Remove it and place a new one.",
     "see": {"verb": "build", "what": "finish"}
@@ -478,6 +483,7 @@
     "see": {"topic": "errors"}
   },
   "too_many_pieces": {"description": "The network has more members than the verb walks. Name a smaller part of it."},
+  "too_many_restores": {"description": "The hold would pass the held restores' bound (256 per run, 4,096 per hub). Nothing is held; end some holds first."},
   "trade_failed": {"description": "The game refused the trade; the message says why."},
   "transfer_not_found": {
     "description": "No gas move with that id is waiting or kept. Start the move again if needed.",
@@ -508,6 +514,7 @@
   "view_stale": {
     "description": "The as_player's game stopped sending its view: the last one is too old or taken too far from where they stand. Use frame world or target, or have them look again."
   },
+  "world_changed": {"description": "Another world has loaded since the call's world (data.world is the current one). Nothing ran. Find the things again in the new world before acting."},
   "would_burst": {
     "description": "The change would take a pipe, tank or network past its pressure limit; the message gives the numbers. Change less; inspect job also takes allow to do it anyway."
   },
