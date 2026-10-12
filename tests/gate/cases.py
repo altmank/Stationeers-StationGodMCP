@@ -165,7 +165,7 @@ def swallowed_refusal(ctx):
     ctx.oracle.set_logic(FIX["cap1"], "Setting", 1000)
     ctx.oracle.set_logic(FIX["cap2"], "Setting", 1000)
     ctx.show(h, [FIX["cap1"]])
-    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['results'] "
+    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['devices'] "
             "if t['reference_id'] != '%s']\n"
             "for handler in ('exc', 'bare'):\n"
             "    try:\n        sg.write('logic', id=ids, logic='Setting', value=3000)\n"
@@ -281,7 +281,7 @@ def unseen_then_confirm(ctx):
     h = ctx.hub()
     ctx.oracle.set_logic(FIX["cap1"], "Setting", 1000)
     ctx.oracle.set_logic(FIX["cap2"], "Setting", 1000)
-    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['results']][:2]\n"
+    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['devices']][:2]\n"
             "sg.write('logic', id=ids, logic='Setting', value=1500)")
     first, _ = h.run_script(code, confirm=True, max_wait=20)
     untouched = ctx.oracle.logic(FIX["cap1"], "Setting") == 1000
