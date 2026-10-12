@@ -1,5 +1,6 @@
 """The sg helpers that are not verbs: wait, watch, hold, ref and help (hub.md, *The hub protocol* and *Runs*)."""
 import time
+from collections.abc import Mapping
 
 from . import _session
 from ._catalogue import VERBS
@@ -50,6 +51,18 @@ def _watch_rows(reads):
     return list(reply.get("results") or [])
 
 
+def hold_ids(ids):
+    """ids as the list hold sends: one id (str or int) is a list of one; a dict (a reply row) or bytes is refused,
+    since neither is an id; any other iterable (a list, a tuple, a set) is a list of ids."""
+    if isinstance(ids, (str, int)) and not isinstance(ids, bool):
+        return [ids]
+    if isinstance(ids, (bytes, bytearray)):
+        raise TypeError("sg.hold ids: an id or a list of ids, not bytes")
+    if isinstance(ids, Mapping):
+        raise TypeError("sg.hold ids: an id or a list of ids, not a dict (pass row['reference_id'])")
+    return list(ids)
+
+
 class hold:
     """with sg.hold(ids, logic, value=None, after=None): writes value now and restores after on exit (normal,
     exception or stop). after left out: the hub reads the current values first. The hub registers the restore with
@@ -59,7 +72,7 @@ class hold:
     `.rows` (the restore's rows)."""
 
     def __init__(self, ids, logic, value=None, after=None):
-        self.ids = [ids] if isinstance(ids, (str, int)) else list(ids)  # any other iterable (a set too) is a list
+        self.ids = hold_ids(ids)
         self.logic = logic
         self.value = value
         self.after = after

@@ -29,8 +29,11 @@ HELLO_TIMEOUT_S = 10.0
 
 
 def encode(message):
-    """One message as the bytes of one line: compact JSON, UTF-8, then a line feed."""
-    return (json.dumps(message, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+    """One message as the bytes of one line: compact JSON, UTF-8, then a line feed. NaN and the infinities raise
+    ValueError (JSON has no such numbers); a lone surrogate in a string is written as its \\uXXXX escape, so the line
+    is always valid UTF-8."""
+    text = json.dumps(message, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n"
+    return text.encode("utf-8", "backslashreplace")
 
 
 class _Pending:
@@ -44,8 +47,10 @@ class _Pending:
 class Transport:
     """One hub-protocol connection. `hello()` opens a session; `call()` sends a call and waits for its reply."""
 
-    def __init__(self, reader, writer, client="sg-py", process=None, on_end_of_stream=None):
-        """on_end_of_stream: called (on the reader thread) once the hub's stream ends or breaks."""
+    def __init__(self, reader, writer, client="sg-py", process=None, on_end_of_stream=None, closable=True):
+        """on_end_of_stream: called (on the reader thread) once the hub's stream ends or breaks. closable=False:
+        close() and `with` do nothing (the script worker's transport, which user code can reach)."""
+        self._closable = closable
         self._on_end_of_stream = on_end_of_stream
         self._reader = reader
         self._writer = writer
@@ -105,11 +110,14 @@ class Transport:
             call_id = str(self._next_id)
             self._pending[call_id] = pending
         try:
-            self._write({"type": "call", "id": call_id, "method": method, "params": params or {}})
-        except TypeError:  # params JSON cannot carry: the caller's mistake, not the connection's
+            data = encode({"type": "call", "id": call_id, "method": method, "params": params or {}})
+        except (TypeError, ValueError, RecursionError) as error:  # the caller's arguments, not the connection
             with self._state_lock:
                 self._pending.pop(call_id, None)
-            raise
+            raise Error("invalid_argument", f"the call's arguments cannot be sent as JSON: {error}",
+                        "pass only str, int, finite float, bool, None, lists and dicts") from None
+        try:
+            self._write_bytes(data)
         except Exception:  # noqa: BLE001 - a closed or broken writer (OSError, ValueError): nothing was sent
             with self._state_lock:
                 self._pending.pop(call_id, None)
@@ -120,9 +128,11 @@ class Transport:
         return pending.reply
 
     def send(self, message):
-        """Writes a message that has no reply (run_analysis, run_end, stream_end). A closed writer raises sg.Error."""
+        """Writes a message that has no reply (run_analysis, run_end, stream_end). A message JSON cannot carry raises
+        TypeError or ValueError (nothing is written); a closed writer raises sg.Error."""
+        data = encode(message)
         try:
-            self._write(message)
+            self._write_bytes(data)
         except (OSError, ValueError):
             raise self._closed_error(maybe_ran=False) from None
 
@@ -139,7 +149,10 @@ class Transport:
         return self._closed
 
     def close(self):
-        """Closes the write side; a child hub then ends its session (hub.md, *Session end*) and exits."""
+        """Closes the write side; a child hub then ends its session (hub.md, *Session end*) and exits. Does nothing
+        on a transport made with closable=False (a worker's: its connection belongs to the hub)."""
+        if not self._closable:
+            return
         try:
             self._writer.close()
         except OSError:
@@ -161,7 +174,9 @@ class Transport:
     # ----- internals -----
 
     def _write(self, message):
-        data = encode(message)
+        self._write_bytes(encode(message))
+
+    def _write_bytes(self, data):
         with self._write_lock:
             self._writer.write(data)
             self._writer.flush()
@@ -255,7 +270,12 @@ def connect(hub_path=None, *hub_args, client="sg-py"):
     command = ["dotnet", program] if program.lower().endswith(".dll") else [program]
     command += ["--hub", *hub_args]
     job = _KillJob.create()  # made before the child starts, so assigning it right after leaves the shortest gap
-    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
+    try:
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
+    except BaseException:
+        if job is not None:
+            job.close()
+        raise
     if job is not None and not job.assign(process.pid):
         job = None
     transport = Transport(process.stdout, process.stdin, client=client, process=process)
@@ -343,6 +363,11 @@ class _KillJob:
             kernel32.CloseHandle(handle)
             raise ctypes.WinError(error)
         return cls(kernel32, handle)
+
+    def close(self):
+        """Frees the job (only when no child was put in it: closing it kills its processes)."""
+        self._kernel32.CloseHandle(self.handle)
+        self.handle = None
 
     def assign(self, pid):
         """Puts the process in the job; False when Windows refuses."""

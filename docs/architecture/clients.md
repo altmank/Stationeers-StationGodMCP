@@ -176,16 +176,26 @@ sg.close()
 The hub pre-starts workers so one is ready when a run comes:
 
 ```text
-python -I -c "<sg.worker.BOOT>" <folder that holds sg>        PYTHONHASHSEED=0
+python -s -P -c "<sg.worker.BOOT>" <folder that holds sg>
+environment: every PYTHON* variable removed; PYTHONHASHSEED=0, PYTHONIOENCODING=utf-8
 ```
 
-`sg.worker.BOOT` is `import sys; sys.path.insert(0, sys.argv[1]); import sg.worker; sg.worker.main()`. A worker serves
-one run and exits, so nothing a run does reaches the next. It moves the protocol to private copies of fds 0 and 1
-(fd 0 becomes the null device, fd 1 stderr), says hello, takes `run.code` from the welcome, sends `run_analysis`
-before any code runs, runs the code as a function body (print of a list of row dicts prints a table), and always sends
-`run_end` with state `done`, `stopped` (whenever the run saw a stop, even one the code swallowed), `pass_end` or
-`failed` (the note-22 text). It exits 2 s after the hub's stream ends. `run_analysis.writes` and `holds` are advisory;
-the hub applies the confirmed run's rules from a run's first write call.
+`sg.worker.BOOT` is `import sys; sys.path.insert(0, sys.argv[1]); import sg.worker; sg.worker.main()`. `-s` leaves the
+user site out and `-P` (Python 3.11+) keeps the working directory off `sys.path`. `-I` is not used: it implies `-E`,
+which ignores `PYTHONHASHSEED`, and then set and str-keyed order would differ between a report run and its confirmed
+run. A worker with hash randomisation on refuses to run (a failed `run_end` that says why).
+
+A worker serves one run and exits, so nothing a run does reaches the next. It moves the protocol to private,
+non-inheritable descriptors numbered 100 and up (fd 0 becomes the null device, fd 1 stderr), which keeps accidental
+writes to fd 1, child processes and `input()` off the protocol; it does not stop code that sets out to find the
+descriptors, so the hub keeps the run's end state itself and kills the worker after `run_end` (C4). The worker says
+hello, takes `run.code` from the welcome, sends `run_analysis` before any code runs, runs the code as a function body
+(print of a list of row dicts prints a table), and always sends `run_end`, encoded as valid JSON in valid UTF-8, with
+state `done`, `stopped` (whenever the hub delivered a stop, even one the code swallowed; an `sg.Stopped` the code
+raises itself is a failure), `pass_end` or `failed` (the note-22 text). Inside a run `sg.connect()` and `sg.close()`
+raise `sg.Error`: the run's connection belongs to the hub. The worker exits 2 s after the hub's stream ends.
+`run_analysis.writes` and `holds` are advisory; the hub applies the confirmed run's rules from a run's first write
+call.
 
 ### Tests
 

@@ -171,10 +171,12 @@ class TransportMisuseTests(unittest.TestCase):
         self.addCleanup(hub.close)
         return hub, transport, writer
 
-    def test_params_json_cannot_carry_raise_type_error_and_leave_nothing_pending(self):
+    def test_params_json_cannot_carry_are_invalid_argument_and_leave_nothing_pending(self):
         _, transport, _ = self.connect()
-        with self.assertRaises(TypeError):
-            transport.call("verb", {"bad": {1, 2}})
+        for bad in ({1, 2}, float("nan"), float("inf")):
+            with self.assertRaises(sg.Error) as raised:
+                transport.call("verb", {"bad": bad})
+            self.assertEqual("invalid_argument", raised.exception.code)
         self.assertEqual({}, transport._pending)
         self.assertTrue(transport.call("verb", {})["ok"])
         transport.close()
@@ -311,6 +313,48 @@ class ChildHubDiesWithParentTests(unittest.TestCase):
             parent.stdout.close()
             if hub_pid is not None and windows_process_alive(hub_pid):
                 os.kill(hub_pid, 9)  # do not leave it holding the test runner's pipes
+
+
+class EncodeTests(unittest.TestCase):
+    def test_a_lone_surrogate_is_escaped_so_the_line_is_valid_utf_8(self):
+        line = _transport.encode({"text": "a" + chr(0xD800) + "\u00e9"})
+        line.decode("utf-8")  # strict: raises if not valid UTF-8
+        self.assertIn(b"\\ud800", line)
+
+    def test_nan_is_refused(self):
+        with self.assertRaises(ValueError):
+            _transport.encode({"value": float("nan")})
+
+
+class NonClosableTests(unittest.TestCase):
+    def test_a_worker_transport_ignores_close_and_with(self):
+        hub, reader, writer = FakeHub.over_pipes(None)
+        self.addCleanup(hub.close)
+        transport = Transport(reader, writer, client="sg-test", closable=False)
+        transport.hello(timeout=5)
+        transport.close()
+        with transport:
+            pass
+        self.assertTrue(transport.call("verb", {})["ok"])
+        writer.close()
+
+
+class JobHandleTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "the Job Object is Windows only")
+    def test_the_job_is_freed_when_the_hub_cannot_start(self):
+        closed = []
+        real_create = _transport._KillJob.create
+
+        def create():
+            job = real_create()
+            real_close = job.close
+            job.close = lambda: (closed.append(True), real_close())
+            return job
+
+        with mock.patch.object(_transport._KillJob, "create", staticmethod(create)):
+            with self.assertRaises(OSError):
+                sg.connect(os.path.join(tempfile.mkdtemp(), "no-such-hub.exe"))
+        self.assertEqual([True], closed)
 
 
 if __name__ == "__main__":

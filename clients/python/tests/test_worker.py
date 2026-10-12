@@ -3,6 +3,7 @@ import time
 import unittest
 
 from _support import FakeHub, ok, refused
+from fakehub import worker_environment
 from sg._analysis import analyse
 from sg.worker import BOOT
 
@@ -45,7 +46,7 @@ class AnalysisTests(unittest.TestCase):
 
     def test_while_lines_are_every_line_inside_a_while_body(self):
         analysis = analyse("n = 0\nwhile n < 3:\n    n += 1\n    if n:\n        sg.wait(\n            1)\nprint(n)\n")
-        self.assertEqual([3, 4, 5, 6], analysis.while_lines)
+        self.assertEqual([2, 3, 4, 5, 6], analysis.while_lines)  # the test line too
 
     def test_read_only_code_neither_writes_nor_holds(self):
         analysis = analyse("r = sg.find('thing')\nsg.read('logic', id='1', logic='On')\nsg.server('info')\n"
@@ -80,7 +81,7 @@ class WorkerTests(WorkerCase):
         kinds = [message["type"] for message in hub.messages]
         self.assertEqual(["hello", "run_analysis", "run_end", "_eof"], kinds)  # one run, then the worker exits
         analysis = hub.of_type("run_analysis")[0]
-        self.assertEqual({"type": "run_analysis", "literals": ["thing", 1], "while_lines": [3], "writes": False,
+        self.assertEqual({"type": "run_analysis", "literals": ["thing", 1], "while_lines": [2, 3], "writes": False,
                           "holds": False, "syntax_error": None}, analysis)
         self.assertEqual("sg-worker", hub.of_type("hello")[0]["client"]["name"])
 
@@ -181,7 +182,8 @@ class IsolationTests(WorkerCase):
         self.assertEqual("eof", end["returned"])
 
     def test_a_thread_left_running_does_not_keep_the_worker(self):
-        code = "import threading\nthreading.Thread(target=threading.Event().wait, args=(60,)).start()\n'left'"
+        code = ("import os, threading\nos._exit = lambda code: None\n"
+                "threading.Thread(target=threading.Event().wait, args=(60,)).start()\n'left'")
         started = time.monotonic()
         _, end = self.serve_one(code)
         self.assertEqual("left", end["returned"])
@@ -238,6 +240,111 @@ class VerbsModuleAnalysisTests(unittest.TestCase):
         for code in ("from sg._verbs import write\nwrite('logic', id='1', logic='On', value=1)",
                      "import sg._verbs as v\nv.build('structure')", "sg._verbs.remove('cable', id='2')"):
             self.assertTrue(analyse(code).writes, code)
+
+
+class HashSeedTests(WorkerCase):
+    """B-1: the hub's launch line keeps PYTHONHASHSEED=0, so hashes and set order are the same in every worker."""
+
+    CODE = "return [hash('abc'), list({'a', 'b', 'c', 'd', 'e', 'f'}), list({'x': 1, 'y': 2})]"
+
+    def test_hashes_and_set_order_are_equal_across_workers(self):
+        first = self.serve_one(self.CODE)[1]["returned"]
+        second = self.serve_one(self.CODE)[1]["returned"]
+        self.assertEqual(first, second)
+
+    def test_a_worker_with_hash_randomisation_refuses_to_run(self):
+        environment = worker_environment()
+        del environment["PYTHONHASHSEED"]
+        hub, process = FakeHub.with_worker(run("1"), environment=environment)
+        try:
+            self.assertEqual(0, process.wait(30))
+            hub.wait_for(lambda hub: hub.of_type("run_end"))
+        finally:
+            process.stderr.close()
+            process.stdin.close()
+        end = hub.of_type("run_end")[0]
+        self.assertEqual("failed", end["state"])
+        self.assertIn("hash randomisation", end["error"])
+        self.assertEqual([], hub.of_type("run_analysis"))
+
+
+class RunConnectionTests(WorkerCase):
+    """MA-1: the run's connection belongs to the hub."""
+
+    def test_sg_close_and_connect_inside_a_run_raise_and_the_run_still_ends(self):
+        _, end = self.serve_one("sg.close()\n'x'")
+        self.assertEqual("failed", end["state"])
+        self.assertIn("a run's connection belongs to the hub", end["error"])
+        _, end = self.serve_one("sg.connect('hub.exe')\n'x'")
+        self.assertIn("a run's connection belongs to the hub", end["error"])
+
+    def test_closing_the_transport_itself_does_nothing(self):
+        _, end = self.serve_one("with sg._session.current_transport():\n    pass\nsg._session.current_transport().close()\n'x'")
+        self.assertEqual(("done", "x"), (end["state"], end["returned"]))
+
+
+class JsonSafeEndTests(WorkerCase):
+    """MA-2: whatever the code returns or prints, the run_end is valid JSON in valid UTF-8."""
+
+    def test_surrogates_and_nan_still_end_the_run(self):
+        _, end = self.serve_one("chr(0xd800)")
+        self.assertEqual(("done", "\ud800"), (end["state"], end["returned"]))
+        _, end = self.serve_one("print(b'\\xff'.decode('utf-8', 'surrogateescape'))\n1")
+        self.assertEqual(("done", 1), (end["state"], end["returned"]))
+        _, end = self.serve_one("raise ValueError(chr(0xdc80))")
+        self.assertEqual("failed", end["state"])
+        _, end = self.serve_one("float('nan')")
+        self.assertEqual(("done", "nan"), (end["state"], end["returned"]))
+        _, end = self.serve_one("10**5000")
+        self.assertEqual("done", end["state"])
+        self.assertIsInstance(end["returned"], str)
+
+    def test_a_call_json_cannot_carry_is_invalid_argument_not_unreachable(self):
+        _, end = self.serve_one("try:\n    sg.find(chr(0xd800), limit=float('nan'))\nexcept sg.Error as e:\n    return e.code")
+        self.assertEqual("invalid_argument", end["returned"])
+
+
+class ProtocolFdTests(WorkerCase):
+    """MA-3: the protocol's descriptors are out of reach of guessed small fds."""
+
+    def test_writing_to_small_fds_does_not_forge_and_closerange_does_not_break_the_run(self):
+        code = ("import os\nline = b'{\"type\":\"run_end\",\"state\":\"done\",\"returned\":\"forged\",\"printed\":\"\","
+                "\"error\":null}\\n'\nfor fd in range(3, 64):\n    try:\n        os.write(fd, line)\n"
+                "    except OSError:\n        pass\nraise ValueError('real')\n")
+        hub, end = self.serve_one(code)
+        self.assertEqual("failed", end["state"])
+        self.assertIn("ValueError: real", end["error"])
+        _, end = self.serve_one("import os\nos.closerange(3, 64)\nsg.find('thing')\n'x'")
+        self.assertEqual(("done", "x"), (end["state"], end["returned"]))
+
+
+class StopBeliefTests(WorkerCase):
+    def test_an_sg_stopped_the_code_raises_itself_is_a_failure(self):
+        _, end = self.serve_one("raise sg.Stopped('fake', 'not from the hub')")
+        self.assertEqual("failed", end["state"])
+        self.assertIn("sg.Stopped: fake: not from the hub", end["error"])
+
+    def test_a_stop_after_a_pass_end_makes_the_run_stopped(self):
+        answers = iter([refused("pass_end", "pass ends", pass_end=True), refused("stopped", "stopped", stopped=True)])
+        _, end = self.serve_one("for i in range(2):\n    try:\n        sg.wait(1)\n    except BaseException:\n"
+                                "        pass\n'k'", lambda method, params: next(answers))
+        self.assertEqual("stopped", end["state"])
+
+
+class ModuleLikeRoundTwoTests(WorkerCase):
+    def test_future_imports_star_imports_in_place_and_globals_in_blocks(self):
+        _, end = self.serve_one("from __future__ import annotations\nx: int = 1\nx")
+        self.assertEqual(1, end["returned"])
+        _, end = self.serve_one("pi = 3\nfrom math import *\npi")
+        self.assertEqual(3.141592653589793, end["returned"])
+        _, end = self.serve_one("try:\n    from math import *\nexcept ImportError:\n    pass\nfloor(1.5)")
+        self.assertEqual(1, end["returned"])
+        _, end = self.serve_one("if True:\n    global x\nx = 1\nx")
+        self.assertEqual(1, end["returned"])
+
+    def test_a_while_test_line_is_a_loop_line(self):
+        hub, _ = self.serve_one("n = 0\nwhile sg.wait(1) is None and n < 1:\n    n += 1\n")
+        self.assertEqual([(2, True), (2, True)], [(p["line"], p["in_loop"]) for _, p in hub.calls])
 
 
 if __name__ == "__main__":
