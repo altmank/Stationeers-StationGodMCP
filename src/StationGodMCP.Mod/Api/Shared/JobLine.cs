@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 
 namespace StationGodMCP.Api.Shared;
@@ -83,6 +84,28 @@ internal sealed class JobLine<T>
 
         start = default!;
         return false;
+    }
+
+    /// <summary>
+    /// Takes every waiting job that matches out of the line into taken, front first; the others keep their order.
+    /// </summary>
+    internal void TakeWhere(Func<T, bool> match, List<KeyValuePair<string, T>> taken)
+    {
+        int kept = 0;
+        for (int index = 0; index < _waiting.Count; index++)
+        {
+            KeyValuePair<string, T> entry = _waiting[index];
+            if (match(entry.Value))
+            {
+                taken.Add(entry);
+            }
+            else
+            {
+                _waiting[kept++] = entry;
+            }
+        }
+
+        _waiting.RemoveRange(kept, _waiting.Count - kept);
     }
 
     /// <summary>The waiting jobs, front first.</summary>

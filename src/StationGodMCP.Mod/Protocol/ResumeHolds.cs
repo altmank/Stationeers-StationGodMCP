@@ -23,7 +23,8 @@ namespace StationGodMCP.Protocol;
 /// tables, and every notice to the main thread (ICallQueue) is posted under it, so the main thread hears a token's
 /// holds, resumes and ends in the order they happened. Owner keys are "r" and a number, never a client_id, and a token
 /// whose state ended gets a new key when it is presented again, so a late notice for the old state never touches the
-/// new. Tick costs one volatile read while nothing is held and allocates nothing.
+/// new. A token whose owner sent session_end is over: presented again, it starts afresh (resumed false), the old state
+/// ends, and a connection still holding it is taken over. Tick costs one volatile read while nothing is held and allocates nothing.
 /// </para>
 /// </summary>
 internal sealed class ResumeHolds
@@ -68,7 +69,8 @@ internal sealed class ResumeHolds
     /// <summary>
     /// hello with a resume token, on the connection's reader thread: the connection becomes the token's (its Owner is
     /// the token's owner key) and gets the token's ended streams. resumed is true when state was there to pick up, held
-    /// or taken over from a live connection.
+    /// or taken over from a live connection; false for a new token, and for one whose owner sent session_end, which
+    /// starts afresh.
     /// </summary>
     internal EndedStreams Claim(string token, Connection connection, out bool resumed)
     {
@@ -76,7 +78,8 @@ internal sealed class ResumeHolds
         EndedStreams ended;
         lock (_sync)
         {
-            if (_byToken.TryGetValue(token, out Hold? hold) && hold != null)
+            _byToken.TryGetValue(token, out Hold? hold);
+            if (hold != null)
             {
                 if (hold.Live != null)
                 {
@@ -88,13 +91,21 @@ internal sealed class ResumeHolds
                     _held--;
                 }
 
-                resumed = true;
+                if (Ended(hold))
+                {
+                    // Its owner sent session_end: that session is over, so the token starts afresh, and the old state
+                    // ends as a stream_end ends each of its streams.
+                    _byToken.Remove(token);
+                    _calls.StreamEnded(this, StreamEnd.AllOf(hold.Owner));
+                    hold = null;
+                }
             }
-            else
+
+            resumed = hold != null;
+            if (hold == null)
             {
                 hold = new Hold(token, OwnerPrefix + Interlocked.Increment(ref _lastOwner));
                 _byToken.Add(token, hold);
-                resumed = false;
             }
 
             hold.Live = connection;
@@ -231,6 +242,15 @@ internal sealed class ResumeHolds
         }
 
         _ending.Clear();
+    }
+
+    // Whether the token's owner sent session_end.
+    private static bool Ended(Hold hold)
+    {
+        lock (hold.Ended)
+        {
+            return hold.Ended.SessionEnded;
+        }
     }
 
     /// <summary>One token's state: its owner key, the streams it ended, and its connection or the end of its window.</summary>

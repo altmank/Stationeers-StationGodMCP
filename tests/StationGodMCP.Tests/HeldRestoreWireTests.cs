@@ -11,6 +11,8 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
+using StationGodMCP.Pure;
+using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Tests.Scheduling;
 using Xunit;
@@ -30,6 +32,7 @@ public sealed class HeldRestoreWireTests
     private const int WindowMs = 60000;
     private const long Pump = 101;
     private const long Valve = 202;
+    private const long Vent = 303;
     private const ushort On = 28;
     private const ushort Setting = 12;
 
@@ -44,6 +47,7 @@ public sealed class HeldRestoreWireTests
         _devices.Set(Pump, On, 0);
         _devices.Set(Pump, Setting, 0);
         _devices.Set(Valve, On, 0);
+        _devices.Set(Vent, On, 1);
     }
 
     [Fact]
@@ -271,8 +275,9 @@ public sealed class HeldRestoreWireTests
 
         Assert.Equal(0, _devices.Get(Pump, On));
         Assert.Equal(0, _devices.Get(Valve, On));
-        Assert.True((bool)Write(client, "after", Pump, "On", 1, stream: 3)["ok"]!);
         Assert.Equal(0, _restores.Held);
+        Assert.Null(client.NextOrNull(100));
+        Assert.False(client.WaitClosed(100));
     }
 
     [Fact]
@@ -420,8 +425,232 @@ public sealed class HeldRestoreWireTests
         Settle(rig);
 
         Assert.Null(client.NextOrNull(100));
-        Assert.True((bool)Write(client, "w1", Pump, "On", 1, stream: 3)["ok"]!);
         Assert.Equal(0, _restores.Applied + _restores.Skipped + _restores.Dropped);
+    }
+
+    // ---- nothing runs after session_end ----
+
+    [Fact]
+    public async Task ALoopWritingTheHeldTargetAfterSessionEndIsRefusedAndTheRestoreIsTheLastWrite()
+    {
+        using PipeRig rig = Rig();
+        using V2Client client = await V2Client.Connect(rig, "hub");
+        Write(client, "w1", Pump, "On", 1, stream: 3);
+        Hold(client, "h1", 3, Set(Pump, "On", 0));
+
+        client.Send("""{"type":"session_end"}""");
+        JObject late = Write(client, "w2", Pump, "On", 1, stream: 3);
+        WaitUntil(() => _restores.Applied == 1);
+        Settle(rig);
+
+        Assert.False((bool)late["ok"]!);
+        Assert.Equal("session_ended", (string?)late["error"]!["code"]);
+        Assert.Contains("Nothing ran", (string?)late["error"]!["message"]);
+        Assert.Equal(0, _devices.Get(Pump, On));
+        Assert.Equal(2, rig.Mod.Ran);
+    }
+
+    [Fact]
+    public async Task EveryCallAfterSessionEndIsRefusedOnEveryStreamForTheConnectionsLife()
+    {
+        using PipeRig rig = Rig();
+        using V2Client client = await V2Client.Connect(rig, "hub");
+        client.Send("""{"type":"session_end"}""");
+
+        JObject write = Write(client, "w1", Pump, "On", 1, stream: 0);
+        JObject hold = Hold(client, "h1", 9, Set(Pump, "On", 0));
+        client.Send("""{"type":"session_end"}""");
+        JObject again = Write(client, "w2", Valve, "On", 1, stream: 4);
+
+        Assert.Equal("session_ended", (string?)write["error"]!["code"]);
+        Assert.Equal("session_ended", (string?)hold["error"]!["code"]);
+        Assert.Equal("session_ended", (string?)again["error"]!["code"]);
+        Assert.Equal(0, rig.Mod.Ran);
+        Assert.Equal(0, _restores.Held);
+        Assert.Equal(0, _devices.Get(Valve, On));
+    }
+
+    [Fact]
+    public async Task AnotherOwnerIsUnaffectedBySessionEnd()
+    {
+        using PipeRig rig = Rig();
+        using V2Client ending = await V2Client.Connect(rig, "hub");
+        using V2Client other = await V2Client.Connect(rig, "hub");
+        Write(ending, "w1", Pump, "On", 1, stream: 3);
+        Hold(ending, "h1", 3, Set(Pump, "On", 0));
+        Write(other, "o1", Valve, "On", 1, stream: 3);
+        Hold(other, "o2", 3, Set(Valve, "On", 0));
+
+        ending.Send("""{"type":"session_end"}""");
+        WaitUntil(() => _restores.Applied == 1);
+
+        Assert.Equal(0, _devices.Get(Pump, On));
+        Assert.True((bool)Write(other, "o3", Pump, "On", 1, stream: 3)["ok"]!);
+        Assert.Equal(1, _devices.Get(Pump, On));
+        Assert.Equal(1, _devices.Get(Valve, On));
+        Assert.Equal(1, _restores.Held);
+    }
+
+    [Fact]
+    public async Task ATokenPresentedAfterSessionEndStartsFreshAndItsWelcomeReportsTheRestores()
+    {
+        using PipeRig rig = Rig();
+        using (V2Client client = await Resume(rig))
+        {
+            Write(client, "w1", Pump, "On", 1, stream: 3);
+            Hold(client, "h1", 3, Set(Pump, "On", 0));
+            client.Send("""{"type":"stream_end","stream":5}""");
+            client.Send("""{"type":"session_end"}""");
+            WaitUntil(() => _restores.Applied == 1);
+        }
+
+        using V2Client second = await Resume(rig);
+
+        Assert.False((bool)second.Welcome["resume"]!["resumed"]!);
+        Assert.Single((JArray)second.Welcome["restores"]!["applied"]!);
+        Assert.True((bool)Write(second, "w2", Pump, "On", 1, stream: 5)["ok"]!);
+        Assert.Equal(1, _devices.Get(Pump, On));
+        WaitUntil(() => rig.Holds.Held == 0);
+    }
+
+    [Fact]
+    public async Task ATokenTakenOverAfterSessionEndStartsFreshAndTheOldConnectionIsToldWhy()
+    {
+        using PipeRig rig = Rig();
+        using V2Client first = await Resume(rig);
+        first.Send("""{"type":"session_end"}""");
+        WaitUntil(() => rig.Mod.SessionEnds.Count == 1);
+
+        using V2Client second = await Resume(rig);
+        JObject goodbye = first.Next();
+
+        Assert.False((bool)second.Welcome["resume"]!["resumed"]!);
+        Assert.Equal("resumed_elsewhere", (string?)goodbye["reason"]);
+        Assert.True((bool)Write(second, "w1", Pump, "On", 1, stream: 3)["ok"]!);
+    }
+
+    // ---- the write rules on an opening restore ----
+
+    [Fact]
+    public async Task AHeldVentClosedWhileOxidiserEntersItsNetworkIsNotReopenedAtSessionEnd()
+    {
+        using PipeRig rig = Rig();
+        using (V2Client client = await Resume(rig))
+        {
+            Hold(client, "h1", 3, Set(Vent, "On", 1));
+            Write(client, "w1", Vent, "On", 0, stream: 3);
+            _devices.Fill(new Dictionary<string, double> { ["Nitrogen"] = 40.0, ["Oxygen"] = 12.5 });
+
+            client.Send("""{"type":"session_end"}""");
+            WaitUntil(() => _restores.Skipped == 1);
+        }
+
+        Assert.Equal(0, _devices.Get(Vent, On));
+        Assert.Equal(0, _restores.Applied);
+        Assert.Equal(1, _devices.Lints);
+        using V2Client second = await Resume(rig);
+        JObject skipped = (JObject)Assert.Single((JArray)second.Welcome["restores"]!["skipped"]!);
+        Assert.Equal("lint", (string?)skipped["reason"]);
+        Assert.Equal(0.0, (double)skipped["current"]!);
+        Assert.Equal(1.0, (double)skipped["value"]!);
+        JToken rule = Assert.Single((JArray)skipped["rules"]!);
+        Assert.Equal("no_oxidiser_vented_outdoors", (string?)rule["rule"]);
+        Assert.Equal(Id(Vent), (string?)rule["reference_id"]);
+        Assert.Contains("vents outdoors", (string?)rule["message"]);
+    }
+
+    [Fact]
+    public async Task AHeldVentOnACleanNetworkIsReopenedAtSessionEnd()
+    {
+        using PipeRig rig = Rig();
+        using V2Client client = await V2Client.Connect(rig, "hub");
+        Hold(client, "h1", 3, Set(Vent, "On", 1));
+        Write(client, "w1", Vent, "On", 0, stream: 3);
+
+        client.Send("""{"type":"session_end"}""");
+        WaitUntil(() => _restores.Applied == 1);
+
+        Assert.Equal(1, _devices.Get(Vent, On));
+        Assert.Equal(1, _devices.Lints);
+        Assert.Equal(0, _restores.Skipped);
+    }
+
+    [Fact]
+    public async Task AClosingRestoreRunsNoLint()
+    {
+        using PipeRig rig = Rig();
+        using V2Client client = await V2Client.Connect(rig, "hub");
+        _devices.Set(Vent, On, 0);
+        _devices.Fill(new Dictionary<string, double> { ["Oxygen"] = 12.5 });
+        Hold(client, "h1", 3, Set(Vent, "On", 0));
+        Write(client, "w1", Vent, "On", 1, stream: 3);
+
+        client.Send("""{"type":"session_end"}""");
+        WaitUntil(() => _restores.Applied == 1);
+
+        Assert.Equal(0, _devices.Get(Vent, On));
+        Assert.Equal(0, _devices.Lints);
+        Assert.Equal(0, _devices.RuleReads);
+    }
+
+    [Fact]
+    public async Task AnOpeningRestoreWhoseLintCannotRunIsSkipped()
+    {
+        using PipeRig rig = Rig();
+        using (V2Client client = await Resume(rig))
+        {
+            Hold(client, "h1", 3, Set(Vent, "On", 1));
+            Write(client, "w1", Vent, "On", 0, stream: 3);
+            _devices.LintFails = true;
+
+            client.Send("""{"type":"session_end"}""");
+            WaitUntil(() => _restores.Skipped == 1);
+        }
+
+        Assert.Equal(0, _devices.Get(Vent, On));
+        using V2Client second = await Resume(rig);
+        JObject skipped = (JObject)Assert.Single((JArray)second.Welcome["restores"]!["skipped"]!);
+        Assert.Equal("lint_unavailable", (string?)skipped["reason"]);
+        Assert.Equal("unavailable", (string?)skipped["rules"]![0]!["rule"]);
+    }
+
+    [Fact]
+    public async Task AWarningOnAnOpeningRestoreDoesNotSkipItAndIsListedOnTheAppliedEntry()
+    {
+        using PipeRig rig = Rig();
+        using (V2Client client = await Resume(rig))
+        {
+            Hold(client, "h1", 3, Set(Vent, "On", 1));
+            Write(client, "w1", Vent, "On", 0, stream: 3);
+            _devices.Indoors();
+            _devices.Fill(new Dictionary<string, double> { ["Methane"] = 10.0, ["Oxygen"] = 20.0 }, 650.0);
+
+            client.Send("""{"type":"session_end"}""");
+            WaitUntil(() => _restores.Applied == 1);
+        }
+
+        Assert.Equal(1, _devices.Get(Vent, On));
+        using V2Client second = await Resume(rig);
+        JObject applied = (JObject)Assert.Single((JArray)second.Welcome["restores"]!["applied"]!);
+        Assert.Equal(new JArray("lint_fuel_oxidiser_mix_temperature"), applied["warnings"]);
+        Assert.Null(applied["rules"]);
+    }
+
+    [Fact]
+    public async Task AnAppliedRestoreWithoutWarningsLeavesThemOut()
+    {
+        using PipeRig rig = Rig();
+        using (V2Client client = await Resume(rig))
+        {
+            Hold(client, "h1", 3, Set(Vent, "On", 1));
+            Write(client, "w1", Vent, "On", 0, stream: 3);
+            client.Send("""{"type":"session_end"}""");
+            WaitUntil(() => _restores.Applied == 1);
+        }
+
+        using V2Client second = await Resume(rig);
+        JObject applied = (JObject)Assert.Single((JArray)second.Welcome["restores"]!["applied"]!);
+        Assert.Null(applied["warnings"]);
     }
 
     // ---- the store alone: bounds ----
@@ -619,11 +848,115 @@ public sealed class HeldRestoreWireTests
         }
     }
 
-    /// <summary>Devices with logic values by (reference id, logic type); On is 28 and Setting 12, as in the game.</summary>
+    /// <summary>
+    /// Devices with logic values by (reference id, logic type); On is 28 and Setting 12, as in the game. The vent (303)
+    /// is an outdoor active vent on pipe network 7, judged by the write rules as OpeningWrites judges a game device;
+    /// Lints counts the rules' runs, RuleReads the rule set asked for.
+    /// </summary>
     private sealed class FakeDevices : IRestoreDevices
     {
         private readonly object _sync = new object();
         private readonly Dictionary<(long, ushort), double> _values = new Dictionary<(long, ushort), double>();
+        private readonly LintRuleSet _rules = LintTestKit.Defaults();
+        private readonly Dictionary<string, LintValue> _network = new Dictionary<string, LintValue>(StringComparer.Ordinal)
+        {
+            ["id"] = LintValue.Of(7), ["kind"] = LintValue.Of("pipe"), ["temperature"] = LintValue.Of(290.0),
+            ["gases"] = Gases(new Dictionary<string, double> { ["Nitrogen"] = 40.0 })
+        };
+
+        private bool _outdoors = true;
+
+        internal int Lints { get; private set; }
+
+        internal int RuleReads { get; private set; }
+
+        /// <summary>The rules throw when they run, as a rule file or game read that fails does.</summary>
+        internal bool LintFails { get; set; }
+
+        internal void Fill(Dictionary<string, double> gases, double temperature = 290.0)
+        {
+            lock (_sync)
+            {
+                _network["gases"] = Gases(gases);
+                _network["temperature"] = LintValue.Of(temperature);
+            }
+        }
+
+        internal void Indoors()
+        {
+            lock (_sync)
+            {
+                _outdoors = false;
+            }
+        }
+
+        public OpeningVerdict Judge(long referenceId, ushort type, double previous, double value)
+        {
+            OpeningDevice kind = referenceId == Vent ? OpeningDevice.Vent
+                : referenceId == Pump ? OpeningDevice.Pump
+                : referenceId == Valve ? OpeningDevice.Valve
+                : OpeningDevice.None;
+            OpeningLogic logic = type == On ? OpeningLogic.On : type == Setting ? OpeningLogic.Setting : OpeningLogic.None;
+            lock (_sync)
+            {
+                try
+                {
+                    return OpeningLint.Judge(kind, logic, previous, value, 2, () =>
+                        {
+                            RuleReads++;
+                            return LintFails ? throw new InvalidOperationException("the rule file broke") : _rules;
+                        },
+                        () =>
+                        {
+                            Lints++;
+                            return new OpeningWorld(new TestLintWorld(), Thing(referenceId, kind), kind);
+                        });
+                }
+                catch (InvalidOperationException error)
+                {
+                    return OpeningVerdict.Unavailable(referenceId, error);
+                }
+            }
+        }
+
+        // The vent on network 7; a pump or valve on no network, so its rules find nothing.
+        private LintRecord Thing(long referenceId, OpeningDevice kind)
+        {
+            LintRecord network = new LintRecord(LintModel.Network, "network:7", _network);
+            Dictionary<string, LintValue> fields = new Dictionary<string, LintValue>(StringComparer.Ordinal)
+            {
+                ["reference_id"] = LintValue.Of(referenceId), ["kind"] = LintValue.Of("device"),
+                ["outdoors"] = LintValue.Of(_outdoors),
+                ["networks"] = LintValue.Objects(kind == OpeningDevice.Vent
+                    ? new List<ILintObject> { network }
+                    : new List<ILintObject>())
+            };
+            if (kind == OpeningDevice.Vent)
+            {
+                fields["prefab"] = LintValue.Of("StructureActiveVent");
+                fields["display_name"] = LintValue.Of("Active Vent");
+                fields["runtime_types"] = LintValue.Strings(new List<string> { "ActiveVent", "Device" });
+            }
+
+            LintRecord thing = new LintRecord(LintModel.Thing, "thing:" + referenceId, fields);
+            if (kind == OpeningDevice.Vent)
+            {
+                _network["devices"] = LintValue.Objects(new List<ILintObject> { thing });
+            }
+
+            return thing;
+        }
+
+        private static LintValue Gases(Dictionary<string, double> gases)
+        {
+            Dictionary<string, LintValue> map = new Dictionary<string, LintValue>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, double> gas in gases)
+            {
+                map[gas.Key] = LintValue.Of(gas.Value);
+            }
+
+            return LintValue.Of(map);
+        }
 
         internal void Set(long id, ushort type, double value)
         {

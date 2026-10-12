@@ -8,19 +8,35 @@ namespace StationGodMCP.Pure.Lint;
 /// <summary>What the write rules said about one write: whether it opens, and their problems and warnings.</summary>
 internal sealed class OpeningVerdict
 {
+    /// <summary>The rule id of the warning a verdict whose rules could not run carries (lint_unavailable).</summary>
+    internal const string UnavailableRule = "unavailable";
+
     /// <summary>A write that opens nothing: no rule ran.</summary>
     internal static readonly OpeningVerdict Closed = new OpeningVerdict(false, new List<LintFinding>(),
         new List<LintFinding>(), 0.0);
 
     internal OpeningVerdict(bool opens, List<LintFinding> problems, List<LintFinding> warnings, double milliseconds)
+        : this(opens, problems, warnings, milliseconds, false)
+    {
+    }
+
+    private OpeningVerdict(bool opens, List<LintFinding> problems, List<LintFinding> warnings, double milliseconds,
+        bool unavailable)
     {
         Opens = opens;
         Problems = problems;
         Warnings = warnings;
         Milliseconds = milliseconds;
+        IsUnavailable = unavailable;
     }
 
     internal bool Opens { get; }
+
+    /// <summary>
+    /// The write opens the device, but the rules could not run (a rule file or a game read threw): no problem is
+    /// known, and the one warning, unavailable, says why. A checked write goes ahead with it; a held restore is skipped.
+    /// </summary>
+    internal bool IsUnavailable { get; }
 
     /// <summary>Findings at level problem, rules in rule-set order: each refuses the write unless allowed.</summary>
     internal List<LintFinding> Problems { get; }
@@ -29,6 +45,15 @@ internal sealed class OpeningVerdict
     internal List<LintFinding> Warnings { get; }
 
     internal double Milliseconds { get; }
+
+    /// <summary>An opening write to the device whose rules threw: the warning unavailable, with the error.</summary>
+    internal static OpeningVerdict Unavailable(long referenceId, Exception error) =>
+        new OpeningVerdict(true, new List<LintFinding>(), new List<LintFinding>
+        {
+            new LintFinding(UnavailableRule, ConflictLevel.Warning, 0,
+                $"The write lint rules could not run on device {referenceId}: {error.GetType().Name}: {error.Message}",
+                referenceId, Vec3.Zero, null, null, null)
+        }, 0.0, true);
 }
 
 /// <summary>
