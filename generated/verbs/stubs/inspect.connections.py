@@ -53,5 +53,5 @@ def inspect(what: Literal['connections'], *,
     Types: Color = {index: int | None, name: str | None, is_default: bool}; Thing = {reference_id: str, prefab_name: str | None, display_name: str |
         None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('connections', id=['2514519', '3575779'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

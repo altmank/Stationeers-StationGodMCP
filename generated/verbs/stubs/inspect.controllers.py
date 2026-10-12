@@ -9,5 +9,5 @@ def inspect(what: Literal['controllers'], *,
       controllers: list[{reference_id: str, display_name: str | None, kind: str, how: str, logic_types: list[str], line: int | None, on: bool | None}]
       count: int
     Example: sg.inspect('controllers', id='4936423')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

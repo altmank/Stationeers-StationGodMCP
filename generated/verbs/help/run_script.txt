@@ -1,6 +1,5 @@
 Options:
 - code (string): Python 3.10 source, run as a function body.
-- confirm (boolean): true: writes act, on targets you have seen. Left out: a report run; nothing acts.
-- repeat (string): A report run's id ('script-14'): run its code again on fresh reads; with confirm: true its reported targets are seen and act.
-- max_wait (number): How long this reply waits (default 30), at most your client's timeout; the run goes on.
+- confirm (boolean): true: writes act, on seen targets. Left out: a report run; nothing changes.
+- max_wait (number): How long this reply waits; a confirmed run answers within 30 s whatever this says (it may only shorten). The run goes on.
 Reply: text

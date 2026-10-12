@@ -18,5 +18,5 @@ def undo(*,
       resolved_networks: list | None
       gas_hold: dict | None
     Example: sg.undo()
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

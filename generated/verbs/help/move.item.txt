@@ -1,5 +1,4 @@
 Items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store.
-Reports first; confirm: true does it.
 Cheat when force: true.
 Options:
 - id (string or array): The item(s); for a vault or silo deposit, whole things by id.

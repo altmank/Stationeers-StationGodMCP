@@ -1,6 +1,6 @@
 {
   "verb": "move",
-  "description": "Move items, gas and players. Reports first; confirm: true moves. gas and player are cheats: ask the user.",
+  "description": "Move items, gas and players. Items by typed ids move at once; a ref, a filter or a store move reports until confirm: true. gas and player are cheats: ask the user.",
   "text": ["Items go into or out of an Ingot Vault or SDB Silo store when to or source is one."],
   "read_only": false,
   "tool": {
@@ -461,10 +461,10 @@
       },
       "write": {
         "report": "mod",
-        "route": "confirm",
+        "route": "acts",
         "cheat": "force: true",
         "x-undo": "mixed",
-        "x-undo-mark": "slot move [undo], [cannot undo: merged into <id>] when it merged or split; store move or force [cannot undo: store move]",
+        "x-undo-mark": "slot move [undo]; a merge into another stack [cannot undo: merged into <id>]; store move or force [cannot undo: store move]",
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},

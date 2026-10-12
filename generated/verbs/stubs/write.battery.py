@@ -23,5 +23,5 @@ def write(what: Literal['battery'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('battery', within='player')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

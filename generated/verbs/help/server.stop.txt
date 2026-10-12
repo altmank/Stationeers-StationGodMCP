@@ -1,4 +1,4 @@
-Stop a script run or a job; with no id, every live run of this session. A script run gets sg.Stopped (a BaseException) once, at its next sg call (at once inside sg.wait or sg.watch), so its finally blocks run: after it, reads and writes act, while waits and watches raise at once. The worker is killed 5 s after the stop (longer while an sg call is in flight, never past 30 s), or on a second stop. A running job is allowed to settle.
+Stop a script run or a job; with no id, every live run. The run gets sg.Stopped once, so its finally runs; held restores and logic writes to targets it already wrote act as CLEANUP until the kill (5 s, longer while a call is in flight, never past 30 s, or a second stop); other writes answer an error row.
 Options:
 - id (string): The run (script-14) or job (place-41). Left out: every live run, answered as one combined list.
 Reply: id, state, line, left [{id, logic, value, line}], in_flight [{job_id, fate}], undo

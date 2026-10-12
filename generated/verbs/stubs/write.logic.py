@@ -8,7 +8,7 @@ def write(what: Literal['logic'], *,
     allow: list[Literal['lint']] = None,  # lint: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed (passed lists it).
 ) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
     """Logic values on devices, as a chip or console writes them; answers previous and read-back values.
-    id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run, ids a find returned that you have not seen make the run a report before anything acts, and stop it after: report, then repeat).
+    id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run an id you have not seen stops the run: run it as a report first, then again with confirm: true).
     Reply, one of:
     (LogicWrite)
       gateway_id: str
@@ -28,5 +28,5 @@ def write(what: Literal['logic'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; LogicType = {id:
         int, name: str | None}
     Example: sg.write('logic', id='4820585', logic='On', value=1)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
