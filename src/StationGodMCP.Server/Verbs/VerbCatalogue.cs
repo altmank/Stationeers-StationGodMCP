@@ -453,6 +453,12 @@ internal sealed class WriteRules
         Cheat = cheat;
     }
 
+    /// <summary>
+    /// x-list-shape: how an id list becomes the handler's list of entries ({arg, each: {handler key: option}, fill:
+    /// {handler key: value}}); null when the what declares none.
+    /// </summary>
+    internal JsonObject? ListShape { get; init; }
+
     /// <summary>The mark a report row carries (x-undo-mark).</summary>
     internal string UndoMark { get; }
 
@@ -474,18 +480,31 @@ internal sealed class WriteRules
         List<TargetPath> targets = [];
         foreach (JsonNode? target in source["x-target"] as JsonArray ?? [])
         {
-            targets.Add(new TargetPath((string)target!["path"]!, (string)target["role"]!));
+            List<string> when = [];
+            foreach (JsonNode? form in target!["when"] as JsonArray ?? [])
+            {
+                when.Add((string)form!);
+            }
+
+            targets.Add(new TargetPath((string)target["path"]!, (string)target["role"]!, when));
         }
 
         return new WriteRules((string)source["report"]!, (string)source["route"]!, (string)source["x-undo"]!,
-            (string)source["x-list"]!, targets, (string?)source["x-undo-mark"], (string?)source["cheat"]);
+            (string)source["x-list"]!, targets, (string?)source["x-undo-mark"], (string?)source["cheat"])
+        {
+            ListShape = source["x-list-shape"] as JsonObject
+        };
     }
 }
 
 /// <summary>An x-target path ("id", "writes[].id") and its role (acts-on or pays-from).</summary>
-internal sealed class TargetPath(string path, string role)
+internal sealed class TargetPath(string path, string role, List<string> when)
 {
     internal string Path { get; } = path;
 
+    /// <summary>acts-on, pays-from, or spread (a selector: the values choose what the write acts on).</summary>
     internal string Role { get; } = role;
+
+    /// <summary>The handler forms (their when) the target belongs to; empty for every form.</summary>
+    internal List<string> When { get; } = when;
 }
