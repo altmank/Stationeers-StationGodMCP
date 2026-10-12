@@ -585,8 +585,9 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "network", "role": "acts-on"},
-          {"path": "items[].id", "role": "acts-on"}
+          {"path": "items[].id", "role": "acts-on"},
+          {"path": "network", "role": "spread"},
+          {"path": "kind", "role": "spread"}
         ]
       },
       "brief": "paint things or a network"
@@ -821,11 +822,7 @@
         "x-undo": "undo",
         "x-undo-mark": "[undo: restores the value, not what happened since]",
         "x-list": "native",
-        "x-target": [
-          {"path": "id", "role": "acts-on"},
-          {"path": "rocket", "role": "acts-on"},
-          {"path": "within", "role": "acts-on"}
-        ]
+        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "rocket", "role": "spread"}, {"path": "within", "role": "spread"}]
       },
       "brief": "set charge"
     },

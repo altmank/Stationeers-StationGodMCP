@@ -35,20 +35,25 @@ Per write what (`write`):
 | `route` | `acts` (typed ids act at once; refs, networks and spreads report until confirm) or `confirm` (reports until confirm) |
 | `cheat` | `always`, or the option that makes it one (`free: true`, `force: true`) |
 | `x-undo`, `x-undo-mark` | `undo`, `cannot` or `mixed`, and the footer's mark text |
-| `x-list` | `native` (the handler takes the list whole), `split` (one call per id), `native-shape`, `one` (a list is refused; also a what with no id option) |
-| `x-target` | option paths whose values name existing things the write acts on (`acts-on`) or pays from (`pays-from`); every path is under the seen rule |
+| `x-list` | `native` (the handler takes the list whole), `split` (one call per id), `native-shape` (one call, the list reshaped), `one` (a list is refused; also a what with no id option) |
+| `x-list-shape` | on `native-shape` where it is not read sample's pairs: the handler argument (`arg`), each entry's handler keys from options (`each`), and keys filled when left out (`fill`) |
+| `x-target` | option paths whose values name existing things the write acts on (`acts-on`) or pays from (`pays-from`), or pick its targets (`spread`: a network, room, box, near, rocket or a filter; decision M6); every path is under the seen rule, a spread as a selector; `when` limits a path to the handlers so named |
 
 ## Readings for the hub (agreed with the orchestrator)
 
 - `x-target`:
   - `refund_to` is `pays-from`: a holder whose contents the job changes.
   - `join_to` and `remove_ids` (cable, pipe, chute builds) are `acts-on`.
-  - `undo`'s `id` (job, bulk write or script run ids) is `acts-on`.
+  - `undo`'s `id` (job, bulk write or script run ids) is `acts-on`; scripts give it (`sg.undo(id=...)`).
   - build structure and build blueprint have no id targets: placement cells are not seen-checked.
   - `materials` is `pays-from` everywhere it appears.
 - `x-undo`: uplink and flight_log are `cannot` (SPEC-NOTES), over DESIGN 7.2's [undo].
-- Report class: move item is `mod` (the 1a path) for refs, filters and store moves; typed ids act at once (note 27).
-  server stop and profiling are write whats with report `none`.
+- move item (PLAN 2.0): typed ids act at once, slot and store moves alike (note 27); a ref or a filter reports until
+  confirm, through the `mod` report path. An id list is one `moves` list, a slot per move (`auto` when left out).
+- Spreads (decision M6): move item's filters (prefab into a store only, name, location, within, near, radius,
+  category), swap's room, network, box, prefab, only and older_than, paint's network and kind, battery's rocket and
+  within.
+- server stop and profiling are write whats with report `none`.
 - `x-list: one` also marks write whats with no id option (build structure, move gas, server command...): there is no
   id list to give.
 - inspect controllers' handler `controllers` is pending (1a). Hand-declared reply shapes (no typed view existed): help,

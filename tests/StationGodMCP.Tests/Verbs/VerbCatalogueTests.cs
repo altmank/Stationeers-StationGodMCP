@@ -112,6 +112,15 @@ public sealed class VerbCatalogueTests
                 {
                     problems.Add(at + ": x-target " + path + " role " + target["role"]);
                 }
+
+                // when: the handlers (by their when) the target counts for, such as a filter only into a store
+                foreach (string when in VerbText.Lines(target["when"]))
+                {
+                    if (!source["handlers"]!.AsArray().Any(handler => (string?)handler!["when"] == when))
+                    {
+                        problems.Add(at + ": x-target " + path + " when '" + when + "' names no handler");
+                    }
+                }
             }
 
             if (options.Contains("id") && (string)write["x-list"]! != "one" && !targets.Any(target => (string)target!["path"]! == "id"))
@@ -154,6 +163,45 @@ public sealed class VerbCatalogueTests
         }
 
         Assert.True(single.Count == 0, "an id that takes no list outside x-list one: " + string.Join(", ", single));
+    }
+
+    [Fact]
+    public void TheC2aReviewFixesHold()
+    {
+        // move item (PLAN 2.0): typed ids act at once; an id list is one moves list with a slot per move
+        JsonObject item = VerbCatalogue.Verb("move")["whats"]!["item"]!.AsObject();
+        JsonObject write = VerbCatalogue.WriteOf(item)!;
+        Assert.Equal("acts", (string?)write["route"]);
+        Assert.Equal("native-shape", (string?)write["x-list"]);
+        Assert.Equal("moves", (string?)write["x-list-shape"]!["arg"]);
+        Assert.Equal("slot", (string?)write["x-list-shape"]!["each"]!["to_slot"]);
+        Assert.Equal("auto", (string?)write["x-list-shape"]!["fill"]!["to_slot"]);
+        Assert.Null(item["example"]!["confirm"]);
+
+        // decision M6: a write what's filter options are spreads the run gate sees
+        string[] spreads = write["x-target"]!.AsArray().Where(target => (string)target!["role"]! == "spread")
+            .Select(target => (string)target!["path"]!).ToArray();
+        Assert.Equal(new[] { "prefab", "name", "location", "within", "near", "radius", "category" }, spreads);
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if (VerbCatalogue.WriteOf(source) is not { } rules)
+            {
+                continue;
+            }
+
+            foreach (string selector in new[] { "network", "room", "near", "box", "rocket" })
+            {
+                if (source["options"]?[selector] != null)
+                {
+                    Assert.True(rules["x-target"]!.AsArray().Any(target =>
+                        (string)target!["path"]! == selector && (string)target["role"]! == "spread"), $"{verb} {what}.{selector}");
+                }
+            }
+        }
+
+        // undo: a script gives the id (sg.undo(id=...))
+        JsonObject undo = VerbCatalogue.Verb("undo")["whats"]![VerbCatalogue.WhatlessKey]!.AsObject();
+        Assert.NotEqual("drop", (string?)VerbCatalogue.Resolve(undo["options"]!["id"]!.AsObject())["x-script"]);
     }
 
     private static void Check(List<string> problems, string at, string key, JsonObject write, string[] allowed)

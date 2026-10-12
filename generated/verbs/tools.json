@@ -629,7 +629,7 @@
     },
     {
       "name": "move",
-      "description": "Move items, gas and players. Items by typed ids move at once; a ref, a filter or a store move reports until confirm: true. gas and player are cheats: ask the user.",
+      "description": "Move items, gas and players. Items by typed ids move at once; a ref or a filter reports until confirm: true. gas and player are cheats: ask the user.",
       "inputSchema": {
         "type": "object",
         "properties": {
