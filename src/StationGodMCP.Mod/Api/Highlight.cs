@@ -38,7 +38,7 @@ internal static class HighlightApi
         }
 
         HighlightRequest request = HighlightRequest.Parse(args);
-        CameraView camera = PlayerView.Current().Require("highlight");
+        CameraView camera = PlayerView.Current().Require(Vocabulary.Tool("highlight"));
         Vec3 eye = camera.Eye;
         List<HighlightTargetView> views = new List<HighlightTargetView>(request.Targets.Count);
         List<ScreenMark> marks = new List<ScreenMark>(request.Targets.Count);
@@ -117,12 +117,13 @@ internal static class HighlightApi
                 Pipe pipe => pipe.PipeNetwork,
                 Chute chute => chute.ChuteNetwork,
                 _ => throw ApiErrors.InvalidArgument(
-                    $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece; give a device " +
-                    $"in {Vocabulary.Arg("reference_ids")}, or name a network or a piece on it.")
+                    $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute " +
+                    $"piece; give a device in {Vocabulary.Arg("reference_ids")}, or name a network or a piece on it.")
             };
             if (network == null)
             {
-                throw ApiErrors.Refused("no_network", $"{name}: {thing.PrefabName} {id} is on no network.");
+                throw ApiErrors.Refused("no_network", $"{Vocabulary.Path(name)}: {thing.PrefabName} {id} is on no " +
+                    "network.");
             }
         }
         else
@@ -131,8 +132,8 @@ internal static class HighlightApi
                       Referencable.Find<PipeNetwork>(id.Value) as IReferencable ??
                       Referencable.Find<ChuteNetwork>(id.Value) ??
                       throw ApiErrors.Refused("network_not_found",
-                          $"{name}: {id} names no thing and no cable, pipe or chute network. A network's id " +
-                          "changes after almost every edit; name a piece on it instead.");
+                          $"{Vocabulary.Path(name)}: {id} names no thing and no cable, pipe or chute network. A " +
+                          "network's id changes after almost every edit; name a piece on it instead.");
         }
 
         resolved = new ThingId(network.ReferenceId);

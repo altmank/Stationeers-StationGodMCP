@@ -89,8 +89,8 @@ internal static class RunApi
             return Status(args, "reference_ids", "waypoints", "cells", "allow_split", "allow_bridge", "root", "wait");
         }
 
-        args.Reject(kind.RemoveTool, "grade", "join", "extra_ends", "piece", "pieces", "branches", "remove_ids",
-            "assume_removed", "allow_split_long", "network_id", "kind", "join_to", "join_trunk");
+        args.Reject("{tool:" + kind.RemoveTool + "}", "grade", "join", "extra_ends", "piece", "pieces", "branches",
+            "remove_ids", "assume_removed", "allow_split_long", "network_id", "kind", "join_to", "join_trunk");
         return Run(args,
             new RunRequest(kind, kind.RemoveTool, null, Removal(args, kind), RunArgs.Options(args, kind)));
     }

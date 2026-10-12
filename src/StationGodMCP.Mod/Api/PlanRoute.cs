@@ -199,12 +199,12 @@ internal static class PlanRouteApi
             for (int index = 0; index < items.Count; index++)
             {
                 string name = $"reserve_ports[{index}]";
-                Args item = items[index] ?? throw ApiErrors.InvalidArgument($"{name} must be " +
+                Args item = items[index] ?? throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be " +
                     $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
                 Thing thing = GameLookup.RequireThing(item.ThingId("reference_id"));
                 int port = item.OptionalInt("port", 0, 64) ??
-                           throw ApiErrors.InvalidArgument($"{name}.{Vocabulary.Arg("port")} is required " +
-                               $"({Vocabulary.Tool("connections")} lists the ends).");
+                           throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}.{Vocabulary.Arg("port")} is " +
+                               $"required ({Vocabulary.Tool("connections")} lists the ends).");
                 cells.Add(RouteEnds.JoiningCell(thing, port, name));
             }
         }
@@ -520,8 +520,9 @@ internal static class PlanRouteApi
         if (blocked != null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with " +
-                $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}, or a free cell.");
+                $"{Vocabulary.Path(name)}.{Vocabulary.Arg("at")}: no {kind.Noun} piece can stand in cell {cell}: " +
+                $"{blocked}. Name a port with {{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}, or a " +
+                "free cell.");
         }
     }
 
@@ -588,7 +589,8 @@ internal static class PlanRouteApi
             }
             catch (ApiException missing) when (missing.Code == "network_not_found")
             {
-                throw ApiErrors.Refused(missing.Code, $"{entry}: {network} names no {kind.Noun} network.");
+                throw ApiErrors.Refused(missing.Code, $"{Vocabulary.Path(entry)}: {network} names no {kind.Noun} " +
+                    "network.");
             }
 
             ids.Add(network.Value);

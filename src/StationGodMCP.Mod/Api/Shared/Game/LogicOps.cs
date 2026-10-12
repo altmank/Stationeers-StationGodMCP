@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Assets.Scripts.Objects.Motherboards;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -152,7 +153,7 @@ internal static class LogicOps
     }
 
     private static ApiException NotAnObject(string name, int index) =>
-        ApiErrors.InvalidArgument($"Argument '{name}[{index}]' must be an object.");
+        ApiErrors.InvalidArgument($"Argument '{Vocabulary.Path(name)}[{index}]' must be an object.");
 
     private static double ValueOf(ScopedTarget device, LogicType type)
     {

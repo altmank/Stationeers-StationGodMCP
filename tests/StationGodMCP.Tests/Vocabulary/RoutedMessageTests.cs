@@ -97,6 +97,54 @@ public sealed class RoutedMessageTests
             Environment.NewLine + string.Join(Environment.NewLine, loose));
     }
 
+    /// <summary>
+    /// A message in Api that quotes a catalogue argument ('reference_id' or `reference_id`) names it through the
+    /// vocabulary ('{arg:reference_id}' in a Text template, a Vocabulary.Arg hole), so a new message cannot reopen the
+    /// gap the rename map closed.
+    /// </summary>
+    [Fact]
+    public void NoMessageInApiQuotesAnArgumentOutsideTheVocabulary()
+    {
+        HashSet<string> arguments = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Pure.Catalogue.CatalogueMethod method in TestCatalogue.File.Value.Catalogue.Methods)
+        {
+            arguments.UnionWith(method.ArgumentNames.Sorted);
+        }
+
+        System.Text.RegularExpressions.Regex quoted =
+            new System.Text.RegularExpressions.Regex(@"['`]([a-z][a-z0-9_]*)['`\[.]");
+        List<string> loose = new List<string>();
+        foreach (SourceFile file in ModSource.Instance.Files)
+        {
+            if (!file.Path.StartsWith("Api/", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (SyntaxToken token in file.Root.DescendantTokens())
+            {
+                if (!token.IsKind(SyntaxKind.StringLiteralToken) && !token.IsKind(SyntaxKind.InterpolatedStringTextToken))
+                {
+                    continue;
+                }
+
+                foreach (System.Text.RegularExpressions.Match match in quoted.Matches(token.ValueText))
+                {
+                    if (arguments.Contains(match.Groups[1].Value))
+                    {
+                        int line = token.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                        loose.Add($"{file.Path}:{line}: {token.ValueText}");
+                    }
+                }
+            }
+        }
+
+        Assert.True(loose.Count == 0,
+            "Name the argument through the vocabulary ('{arg:name}' in a Vocabulary.Text template, or " +
+            "{Vocabulary.Arg(\"name\")} in an interpolated string):" + Environment.NewLine +
+            string.Join(Environment.NewLine, loose));
+    }
+
     [Fact]
     public void NoRoutedMessageIsWorkedOutOnceForEveryCall()
     {

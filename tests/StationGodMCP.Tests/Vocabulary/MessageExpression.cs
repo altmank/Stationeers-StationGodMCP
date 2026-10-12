@@ -77,10 +77,11 @@ internal sealed class MessageExpression
         list.Parent is InvocationExpressionSyntax invocation && list.Arguments.IndexOf(argument) == 0 &&
         (Called(invocation).EndsWith(".Reject") || Called(invocation).EndsWith(".RejectAllBut"));
 
+    // The argument the expression is, through parentheses and the branches of a conditional (one ? "a" : "b").
     private ArgumentSyntax? Argument()
     {
         SyntaxNode? up = Node.Parent;
-        while (up is ParenthesizedExpressionSyntax)
+        while (up is ParenthesizedExpressionSyntax || up is ConditionalExpressionSyntax)
         {
             up = up.Parent;
         }

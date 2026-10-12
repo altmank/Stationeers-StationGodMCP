@@ -169,11 +169,11 @@ internal abstract class HealthRequest
             return Network.From(args);
         }
 
-        args.Reject(one ? "reference_id" : many ? "reference_ids" : "the scan", "kind", "damaged_only");
+        args.Reject(one ? "{arg:reference_id}" : many ? "{arg:reference_ids}" : "the scan", "kind", "damaged_only");
 
         if (one || many)
         {
-            args.Reject(one ? "reference_id" : "reference_ids", ScanOnly);
+            args.Reject(one ? "{arg:reference_id}" : "{arg:reference_ids}", ScanOnly);
             return one
                 ? new One(args.ThingId("reference_id"))
                 : new Many(args.Array("reference_ids", ThingHealthApi.MaximumIds));
@@ -269,7 +269,7 @@ internal abstract class HealthRequest
             double minimum = args.OptionalDouble(name) ?? 0.0;
             if (minimum < 0.0 || minimum >= 1.0)
             {
-                throw ApiErrors.InvalidArgument($"Argument '{name}' must be at least 0 and below 1.");
+                throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(name)}' must be at least 0 and below 1.");
             }
 
             return new Scan(

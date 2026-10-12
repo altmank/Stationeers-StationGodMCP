@@ -151,7 +151,8 @@ internal sealed class HighlightRequest
         for (int index = 0; index < items.Count; index++)
         {
             string path = $"targets[{index}]";
-            targets.Add(Target(items[index] ?? throw ApiErrors.InvalidArgument($"{path} must be an object."), path,
+            targets.Add(Target(items[index] ?? throw ApiErrors.InvalidArgument($"{Vocabulary.Path(path)} must be an " +
+                "object."), path,
                 index));
         }
 
@@ -168,7 +169,8 @@ internal sealed class HighlightRequest
 
         if (forms != 1)
         {
-            throw ApiErrors.InvalidArgument($"{path} takes exactly one of {string.Join(", ", TargetForms)}.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(path)} takes exactly one of " +
+                $"{string.Join(", ", TargetForms)}.");
         }
 
         (Tint tint, string name) = ColorOf(item.Optional("color"), path, index);
@@ -201,7 +203,8 @@ internal sealed class HighlightRequest
         string trimmed = text.Trim();
         if (trimmed.Length > MaximumLabel)
         {
-            throw ApiErrors.InvalidArgument($"{path}.{Vocabulary.Arg("label")} is at most {MaximumLabel} characters.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(path)}.{Vocabulary.Arg("label")} is at most " +
+                $"{MaximumLabel} characters.");
         }
 
         return trimmed.Length == 0 ? null : trimmed;
@@ -233,7 +236,8 @@ internal sealed class HighlightRequest
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{path}.color must be one of {string.Join(", ", ColorNames)}, or [r, g, b] with each 0 to 1.");
+            $"{Vocabulary.Path(path)}.{Vocabulary.Arg("color")} must be one of {string.Join(", ", ColorNames)}, or " +
+            "[r, g, b] with each 0 to 1.");
     }
 
     private static bool Channel(JToken token, out double value)

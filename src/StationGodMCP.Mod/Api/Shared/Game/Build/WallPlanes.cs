@@ -86,7 +86,7 @@ internal sealed class PlaneView
         around = null;
         if (args.OptionalBool("looking") ?? false)
         {
-            CameraHit hit = camera.Require("looking").HitWithin(20.0) ??
+            CameraHit hit = camera.Require(Vocabulary.Arg("looking")).HitWithin(20.0) ??
                             throw ApiErrors.Refused("no_crosshair_hit", "The look ray hits nothing within 20 m.");
             GridStep? outward = ViewBasis.Along(hit.Normal, 10.0);
             Vec3 point = hit.Point;

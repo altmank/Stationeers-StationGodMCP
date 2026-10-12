@@ -233,7 +233,7 @@ internal abstract class DeviceReadParse
 
     private static DeviceReadItem Item(JToken token, string path)
     {
-        JObject item = token as JObject ?? throw new RefusedRequest($"{path} must be an object.");
+        JObject item = token as JObject ?? throw new RefusedRequest($"{Vocabulary.Path(path)} must be an object.");
         RequireKnownKeys(item, path, ItemKeys);
         long id = ReferenceId(item["reference_id"], path);
         IReadOnlyList<SentName>? logic = Present(item["logic"]) is JToken logicToken
@@ -248,7 +248,8 @@ internal abstract class DeviceReadParse
         bool reagents = Present(item["reagents"]) is JToken reagentsToken && Bool(reagentsToken, $"{path}.reagents");
         if (logic == null && slots == null && atmosphere == null && !reagents)
         {
-            throw new RefusedRequest($"{path} asks for nothing: give logic, slots, atmosphere or reagents: true.");
+            throw new RefusedRequest($"{Vocabulary.Path(path)} asks for nothing: give " +
+                Vocabulary.Text("{arg:logic}, {arg:slots}, {arg:atmosphere} or {arg:reagents}: true."));
         }
 
         return new DeviceReadItem(id, logic, slots, atmosphere, reagents);
@@ -274,7 +275,8 @@ internal abstract class DeviceReadParse
     {
         if (!(token is JArray array) || array.Count == 0 || array.Count > maximum)
         {
-            throw new RefusedRequest($"{path} must be an array of 1 to {maximum} logic type names or numbers.");
+            throw new RefusedRequest($"{Vocabulary.Path(path)} must be an array of 1 to {maximum} logic type names " +
+                "or numbers.");
         }
 
         List<SentName> names = new List<SentName>(array.Count);
@@ -286,11 +288,12 @@ internal abstract class DeviceReadParse
             {
                 JTokenType.String => entry.Value<string>() ?? string.Empty,
                 JTokenType.Integer or JTokenType.Float => entry.ToString(Formatting.None),
-                _ => throw new RefusedRequest($"{path}[{index}] must be a logic type name or number."),
+                _ => throw new RefusedRequest($"{Vocabulary.Path(path)}[{index}] must be a logic type name or number."),
             };
             if (!keys.Add(key))
             {
-                throw new RefusedRequest($"{path} names '{key}' twice; each value comes back under the name sent.");
+                throw new RefusedRequest($"{Vocabulary.Path(path)} names '{key}' twice; each value comes back under " +
+                    "the name sent.");
             }
 
             names.Add(new SentName(key, entry));
@@ -304,7 +307,8 @@ internal abstract class DeviceReadParse
         if (!(token is JArray array) || array.Count == 0 || array.Count > DeviceReadBounds.MaximumSlotsPerItem)
         {
             throw new RefusedRequest(
-                $"{path} must be an array of 1 to {DeviceReadBounds.MaximumSlotsPerItem} slots, each {{index, logic}}.");
+                $"{Vocabulary.Path(path)} must be an array of 1 to {DeviceReadBounds.MaximumSlotsPerItem} slots, " +
+                "each {index, logic}.");
         }
 
         List<SlotReadRequest> slots = new List<SlotReadRequest>(array.Count);
@@ -319,7 +323,7 @@ internal abstract class DeviceReadParse
                             throw new RefusedRequest($"{entryPath}.index is required.");
             if (!seen.Add(slotIndex))
             {
-                throw new RefusedRequest($"{path} names slot {slotIndex} twice.");
+                throw new RefusedRequest($"{Vocabulary.Path(path)} names slot {slotIndex} twice.");
             }
 
             IReadOnlyList<SentName>? logic = Present(slot["logic"]) is JToken logicToken
@@ -335,13 +339,14 @@ internal abstract class DeviceReadParse
     {
         JObject atmosphere = token as JObject ??
                              throw new RefusedRequest(
-                                 $"{path} must be an object: {{}} (its own), {{of: \"internal\"}} or {{port: n}}.");
+                                 $"{Vocabulary.Path(path)} must be an object: {{}} (its own), {{of: \"internal\"}} " +
+                                 "or {port: n}.");
         RequireKnownKeys(atmosphere, path, AtmosphereKeys);
         JToken? of = Present(atmosphere["of"]);
         int? port = Integer(atmosphere["port"], $"{path}.port", 0, DeviceReadBounds.MaximumPort);
         if (of != null && port.HasValue)
         {
-            throw new RefusedRequest($"{path} takes of or port, not both.");
+            throw new RefusedRequest($"{Vocabulary.Path(path)} takes of or port, not both.");
         }
 
         if (of != null)
@@ -349,7 +354,7 @@ internal abstract class DeviceReadParse
             if (of.Type != JTokenType.String ||
                 !string.Equals(of.Value<string>()?.Trim(), "internal", System.StringComparison.OrdinalIgnoreCase))
             {
-                throw new RefusedRequest($"{path}.of must be \"internal\".");
+                throw new RefusedRequest($"{Vocabulary.Path(path)}.{Vocabulary.Arg("of")} must be \"internal\".");
             }
 
             return AtmosphereTarget.Internal.Instance;
@@ -393,7 +398,8 @@ internal abstract class DeviceReadParse
             if (System.Array.IndexOf(known, property.Name) < 0)
             {
                 throw new RefusedRequest(
-                    $"{path} has an unknown key '{property.Name}'; it takes {string.Join(", ", known)}.");
+                    $"{Vocabulary.Path(path)} has an unknown key '{property.Name}'; it takes " +
+                    $"{string.Join(", ", known)}.");
             }
         }
     }
@@ -401,7 +407,7 @@ internal abstract class DeviceReadParse
     private static bool Bool(JToken token, string path) =>
         token.Type == JTokenType.Boolean
             ? token.Value<bool>()
-            : throw new RefusedRequest($"{path} must be true or false.");
+            : throw new RefusedRequest($"{Vocabulary.Path(path)} must be true or false.");
 
     private static int? Integer(JToken? token, string path, int minimum, int maximum)
     {
@@ -415,7 +421,7 @@ internal abstract class DeviceReadParse
             !long.TryParse(present.ToString(Formatting.None), NumberStyles.Integer, CultureInfo.InvariantCulture,
                 out long value) || value < minimum || value > maximum)
         {
-            throw new RefusedRequest($"{path} must be an integer from {minimum} to {maximum}.");
+            throw new RefusedRequest($"{Vocabulary.Path(path)} must be an integer from {minimum} to {maximum}.");
         }
 
         return (int)value;

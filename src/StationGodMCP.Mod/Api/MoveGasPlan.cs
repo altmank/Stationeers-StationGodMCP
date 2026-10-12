@@ -478,9 +478,9 @@ internal sealed class GasSide
             if (broken != null)
             {
                 throw ApiErrors.Refused("would_burst",
-                    $"'{name}' {verb} {predicted:0.#} kPa against a limit of {broken.LimitFor(predicted):0.#} kPa " +
-                    $"({broken.Member}: {broken.MaxKpa:0.#} kPa across, {broken.OutsideKpa:0.#} kPa outside). Pass " +
-                    $"{Vocabulary.Arg("force")} to move it anyway.");
+                    $"'{Vocabulary.Path(name)}' {verb} {predicted:0.#} kPa against a limit of " +
+                    $"{broken.LimitFor(predicted):0.#} kPa ({broken.Member}: {broken.MaxKpa:0.#} kPa across, " +
+                    $"{broken.OutsideKpa:0.#} kPa outside). Pass {Vocabulary.Arg("force")} to move it anyway.");
             }
         }
     }
@@ -502,7 +502,7 @@ internal sealed class GasSide
         if (ratio > limit && ratio > Pooled(LiquidSet, Before).LiquidVolumeRatio())
         {
             throw ApiErrors.Refused("would_burst",
-                $"'{name}': liquid would fill {ratio * 100.0:0.##}% of gas pipe network " +
+                $"'{Vocabulary.Path(name)}': liquid would fill {ratio * 100.0:0.##}% of gas pipe network " +
                 $"{gasNetwork.Network!.ReferenceId}, over the {limit * 100.0:0.#}% a gas pipe holds without " +
                 "bursting. " +
                 "Move it into a liquid network or tank, or pass force to move it anyway.");
@@ -523,8 +523,9 @@ internal sealed class GasSide
         if (frozen > limit && frozen > GasSnapshot.Pool(Before).FrozenMol())
         {
             throw ApiErrors.Refused("would_burst",
-                $"'{name}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the {limit:0.#} mol " +
-                $"a network of {after.VolumeL:0} L tolerates. Pass {Vocabulary.Arg("force")} to move it anyway.");
+                $"'{Vocabulary.Path(name)}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the " +
+                $"{limit:0.#} mol a network of {after.VolumeL:0} L tolerates. Pass {Vocabulary.Arg("force")} to move " +
+                "it anyway.");
         }
     }
 
@@ -559,8 +560,9 @@ internal sealed class GasSide
         if (loss != null)
         {
             throw ApiErrors.Refused("would_burst",
-                $"'{name}' is a room: {loss} (the game spawns ice only per cell of 50 mol and holds smaller amounts " +
-                "out of the air). Move liquids into a tank or liquid network, or pass force to move it anyway.");
+                $"'{Vocabulary.Path(name)}' is a room: {loss} (the game spawns ice only per cell of 50 mol and holds " +
+                "smaller amounts out of the air). Move liquids into a tank or liquid network, or pass force to move " +
+                "it anyway.");
         }
     }
 

@@ -103,7 +103,7 @@ internal sealed class RocketWhatIf
     {
         double? value = args.OptionalDouble(name);
         return value.HasValue && !(value.Value > 0.0)
-            ? throw ApiErrors.InvalidArgument($"Argument '{name}' must be above 0.")
+            ? throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(name)}' must be above 0.")
             : value;
     }
 
@@ -111,7 +111,7 @@ internal sealed class RocketWhatIf
     {
         double? value = args.OptionalDouble(name);
         return value.HasValue && (value.Value < minimum || value.Value > maximum || double.IsNaN(value.Value))
-            ? throw ApiErrors.InvalidArgument($"Argument '{name}' must be from {minimum} to {maximum}.")
+            ? throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(name)}' must be from {minimum} to {maximum}.")
             : value;
     }
 

@@ -46,7 +46,7 @@ internal abstract class GasPlace
         GasPlaceArg.Room room => RoomCells.Of(RoomsApi.RequireRoomById(room.RoomId), name),
         GasPlaceArg.RoomOf roomOf => RoomCells.Of(RoomsApi.RequireRoom(roomOf.ThingId, Rooms()), name),
         _ => throw ApiErrors.Refused("refused",
-            $"'{name}': the planet only gives gas up ({Vocabulary.Arg("from")} \"planet\" with " +
+            $"'{Vocabulary.Path(name)}': the planet only gives gas up ({Vocabulary.Arg("from")} \"planet\" with " +
             $"{Vocabulary.Arg("delete")}: true); gas is not moved into it."),
     };
 
@@ -139,8 +139,8 @@ internal abstract class GasPlace
             if (cells.Count == 0)
             {
                 throw ApiErrors.Refused("no_atmosphere",
-                    $"'{name}': none of the {grids.Count} cells of room {RoomsApi.IdOf(room)} has air of its own " +
-                    "yet, so there is nothing to take and nowhere the game would keep it.");
+                    $"'{Vocabulary.Path(name)}': none of the {grids.Count} cells of room {RoomsApi.IdOf(room)} has " +
+                    "air of its own yet, so there is nothing to take and nowhere the game would keep it.");
             }
 
             return new RoomCells(room, grids.Count, cells);

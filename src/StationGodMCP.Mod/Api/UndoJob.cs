@@ -69,7 +69,8 @@ internal static class UndoJobApi
             UndoFactsSource.Given request => request.Facts,
             UndoFactsSource.NotFound { FactsGiven: true } => throw ApiErrors.Refused(notFound!.Code,
                 notFound.Message + $" Its snapshots are gone too (the last {JobSnapshots.KeptJobs} jobs keep theirs), " +
-                "so the created_ids, removed, changed and placed passed are not enough to undo it."),
+                Vocabulary.Text("so the {arg:created_ids}, {arg:removed}, {arg:changed} and {arg:placed} passed " +
+                    "are not enough to undo it.")),
             _ => throw notFound!
         };
         string tool = job.Value<string>("tool") ?? recorded?.Tool ?? "unknown";

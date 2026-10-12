@@ -129,15 +129,16 @@ internal static class GridSurveyApi
         if (!ThingId.TryRead(token, out ThingId id))
         {
             throw ApiErrors.InvalidArgument(
-                $"{name} must be a network id or the reference id of a cable, pipe or chute piece on it.");
+                $"{Vocabulary.Path(name)} must be a network id or the reference id of a cable, pipe or chute piece " +
+                "on it.");
         }
 
         if (GameLookup.TryFindThing(id, out Thing thing))
         {
             IReferencable network = (thing is SmallGrid piece ? NetworkOf(piece) : null) ??
                                     throw ApiErrors.InvalidArgument(
-                                        $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute " +
-                                        "piece on a network; name the network or a piece on it.");
+                                        $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.PrefabName}) is no " +
+                                        "cable, pipe or chute piece on a network; name the network or a piece on it.");
             ThingId resolved = new ThingId(network.ReferenceId);
             ResolvedNetworks.Record(name, new NetworkHandle.ById(id), resolved);
             return resolved;
@@ -149,8 +150,8 @@ internal static class GridSurveyApi
         return known
             ? id
             : throw ApiErrors.Refused("network_not_found",
-                $"{name}: {id} names no thing and no cable, pipe or chute network. A network's id changes after " +
-                "almost every edit; name a piece on it instead.");
+                $"{Vocabulary.Path(name)}: {id} names no thing and no cable, pipe or chute network. A network's id " +
+                "changes after almost every edit; name a piece on it instead.");
     }
 
     private static IReferencable? NetworkOf(SmallGrid piece) => piece switch

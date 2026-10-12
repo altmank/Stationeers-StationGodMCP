@@ -36,7 +36,7 @@ internal static class RouteEnds
         {
             if (array.Count == 0 || array.Count > MaximumStarts)
             {
-                throw ApiErrors.InvalidArgument($"{name} lists 1 to {MaximumStarts} ends.");
+                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} lists 1 to {MaximumStarts} ends.");
             }
 
             for (int index = 0; index < array.Count; index++)
@@ -52,7 +52,8 @@ internal static class RouteEnds
             if (ports.Count == 0 || ports.Count > MaximumStarts || item["port"] != null)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{name}.ports lists 1 to {MaximumStarts} port indexes (and replaces port).");
+                    $"{Vocabulary.Path(name)}.{Vocabulary.Arg("ports")} lists 1 to {MaximumStarts} port indexes (and " +
+                    "replaces port).");
             }
 
             for (int index = 0; index < ports.Count; index++)
@@ -89,7 +90,7 @@ internal static class RouteEnds
     {
         if (!(token is JObject item))
         {
-            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}} or " +
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be {{at: [x, y, z]}} or " +
                 $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
         }
 
@@ -109,8 +110,8 @@ internal static class RouteEnds
         {
             if (ignore.Contains(own.ReferenceId))
             {
-                throw ApiErrors.InvalidArgument($"{name} names a piece being removed (the reroute's old run or " +
-                    $"{Vocabulary.Arg("assume_removed")}).");
+                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} names a piece being removed (the reroute's " +
+                    $"old run or {Vocabulary.Arg("assume_removed")}).");
             }
 
             PieceModel model = PieceShapes.Live(own);
@@ -118,7 +119,8 @@ internal static class RouteEnds
             {
                 throw ApiErrors.Refused("long_piece",
                     $"{own.PrefabName} {own.ReferenceId} is a long straight; start from one of its cells with " +
-                    $"{name}.at, or make it the target (to), where the route may join any of its cells.");
+                    $"{Vocabulary.Path(name)}.{Vocabulary.Arg("at")}, or make it the target (to), where the route " +
+                    "may join any of its cells.");
             }
 
             return OfCells(kind, own, model.Cells, LeavesOnlyOpen(kind, target), name);
@@ -133,7 +135,7 @@ internal static class RouteEnds
         {
             if (ignore.Contains(member.ReferenceId))
             {
-                throw ApiErrors.InvalidArgument($"{name} names a thing being removed " +
+                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} names a thing being removed " +
                     $"({Vocabulary.Arg("assume_removed")}).");
             }
 
@@ -141,8 +143,8 @@ internal static class RouteEnds
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {kind.Noun} piece, a device, nor a " +
-            $"{kind.Noun} thing with ends (an in-line tank, a passive vent).");
+            $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {kind.Noun} piece, a " +
+            $"device, nor a {kind.Noun} thing with ends (an in-line tank, a passive vent).");
     }
 
     /// <summary>
@@ -157,7 +159,7 @@ internal static class RouteEnds
         if (end?.Transform == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{name}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} " +
+                $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} " +
                 $"({Vocabulary.Tool("connections")} lists its ends).");
         }
 
@@ -201,8 +203,8 @@ internal static class RouteEnds
         int? chosen = EndChoice.Pick(candidates, port, out string? error);
         if (!chosen.HasValue)
         {
-            throw ApiErrors.InvalidArgument($"{name}: {member.PrefabName} {member.ReferenceId}: {error} " +
-                $"({Vocabulary.Tool("connections")} lists its ends).");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}: {member.PrefabName} {member.ReferenceId}: " +
+                $"{error} ({Vocabulary.Tool("connections")} lists its ends).");
         }
 
         Connection picked = ends[chosen.Value];
@@ -250,9 +252,10 @@ internal static class RouteEnds
             if (leavingOnly && open.Count == 0)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{name}: {piece.PrefabName} {piece.ReferenceId} has no open end items can leave it by at {cell}; " +
-                    "a route from it would need a junction there, which only works where a route merges into a line " +
-                    "(to). Start from a chute with an open output end, or from a device's output port.");
+                    $"{Vocabulary.Path(name)}: {piece.PrefabName} {piece.ReferenceId} has no open end items can " +
+                    $"leave it by at {cell}; a route from it would need a junction there, which only works where a " +
+                    "route merges into a line (to). Start from a chute with an open output end, or from a device's " +
+                    "output port.");
             }
 
             ends.Add(leavingOnly ? RouteEnd.Leaving(cell, open) : new RouteEnd(cell, open, JunctionCost));
@@ -294,7 +297,8 @@ internal static class RouteEnds
 
         if (ends.Count == 0)
         {
-            throw ApiErrors.Refused("network_empty", $"{name}: network {network} has no {kind.Noun} piece to join.");
+            throw ApiErrors.Refused("network_empty", $"{Vocabulary.Path(name)}: network {network} has no {kind.Noun} " +
+                "piece to join.");
         }
 
         return new RouteEndpoint(ends, new List<long> { network.Value });
@@ -321,17 +325,18 @@ internal static class RouteEnds
         if (port.HasValue && !candidates.Contains(port.Value))
         {
             throw ApiErrors.InvalidArgument(
-                $"{name}.port {port.Value} is not a {kind.Noun} port of {device.PrefabName}; its ports of that kind " +
-                $"are [{string.Join(", ", candidates)}] ({Vocabulary.Tool("connections")} lists them).");
+                $"{Vocabulary.Path(name)}.{Vocabulary.Arg("port")} {port.Value} is not a {kind.Noun} port of " +
+                $"{device.PrefabName}; its ports of that kind are [{string.Join(", ", candidates)}] " +
+                $"({Vocabulary.Tool("connections")} lists them).");
         }
 
         if (!port.HasValue && candidates.Count != 1)
         {
             throw ApiErrors.InvalidArgument(
                 $"{device.PrefabName} {device.ReferenceId} has {candidates.Count} {kind.Noun} ports " +
-                $"[{string.Join(", ", candidates)}]; name one with {name}.{Vocabulary.Arg("port")}, or several with " +
-                $"{name}.{Vocabulary.Arg("ports")} ({Vocabulary.Tool("connections")} or " +
-                $"{Vocabulary.Tool("grid_survey")} lists them).");
+                $"[{string.Join(", ", candidates)}]; name one with {Vocabulary.Path(name)}.{Vocabulary.Arg("port")}, " +
+                $"or several with {Vocabulary.Path(name)}.{Vocabulary.Arg("ports")} " +
+                $"({Vocabulary.Tool("connections")} or {Vocabulary.Tool("grid_survey")} lists them).");
         }
 
         int chosenPort = port ?? candidates[0];
@@ -343,10 +348,10 @@ internal static class RouteEnds
         if (wrongWay != null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{name}: port {chosenPort} of {device.PrefabName} {device.ReferenceId} {wrongWay}; a chute route " +
-                $"runs with the items, so it {(target ? "ends at an input port" : "starts at an output port")} (its " +
-                $"chute ports: [{string.Join(", ", candidates)}]; {Vocabulary.Tool("connections")} lists their " +
-                "roles).");
+                $"{Vocabulary.Path(name)}: port {chosenPort} of {device.PrefabName} {device.ReferenceId} {wrongWay}; " +
+                "a chute route runs with the items, so it " +
+                $"{(target ? "ends at an input port" : "starts at an output port")} (its chute ports: " +
+                $"[{string.Join(", ", candidates)}]; {Vocabulary.Tool("connections")} lists their roles).");
         }
 
         GridCell cell = PieceShapes.Cell(chosen.GetLocalGrid());

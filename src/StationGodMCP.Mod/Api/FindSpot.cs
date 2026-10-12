@@ -201,7 +201,7 @@ internal static class FindSpotApi
         JToken? near = args.Optional("near");
         if (near == null || (near.Type == JTokenType.String && near.Value<string>() == "crosshair"))
         {
-            CameraHit hit = camera.Require("near (or pass near)").HitWithin(20.0) ??
+            CameraHit hit = camera.Require(Vocabulary.Text("{arg:near} (or pass {arg:near})")).HitWithin(20.0) ??
                             throw ApiErrors.Refused("no_crosshair_hit",
                                 Vocabulary.Text("{arg:near}: the look ray hits nothing within 20 m; pass {arg:near}."));
             return hit.Point;
@@ -344,7 +344,7 @@ internal static class FindSpotApi
     private static GridStep Step(string? text, string name) =>
         GridStep.TryParse(text, out GridStep step)
             ? step
-            : throw ApiErrors.InvalidArgument($"{name} must be one of +x, -x, +y, -y, +z, -z.");
+            : throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be one of +x, -x, +y, -y, +z, -z.");
 
     private sealed class Candidate
     {

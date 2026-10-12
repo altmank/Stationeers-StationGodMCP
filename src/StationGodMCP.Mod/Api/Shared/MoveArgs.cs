@@ -38,7 +38,8 @@ internal sealed class MoveRequest
     {
         if (text != null && text.Trim().Length == 0)
         {
-            throw ApiErrors.InvalidArgument($"Argument '{name}' must be a player's name or reference id, not empty.");
+            throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(name)}' must be a player's name or reference " +
+                "id, not empty.");
         }
 
         return text;
@@ -102,7 +103,8 @@ internal abstract class MoveDestination
             return Within(new Vec3(ox, oy, oz), name);
         }
 
-        throw ApiErrors.InvalidArgument($"{name} must be a position: [x, y, z] or {{x, y, z}} in metres.");
+        throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be a position: [x, y, z] or {{x, y, z}} in " +
+            "metres.");
     }
 
     private static Vec3 Within(Vec3 point, string name)
@@ -110,7 +112,8 @@ internal abstract class MoveDestination
         if (System.Math.Abs(point.X) > MaximumCoordinate || System.Math.Abs(point.Y) > MaximumCoordinate ||
             System.Math.Abs(point.Z) > MaximumCoordinate)
         {
-            throw ApiErrors.InvalidArgument($"{name} is beyond {MaximumCoordinate:0} m of the world origin.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} is beyond {MaximumCoordinate:0} m of the world " +
+                "origin.");
         }
 
         return point;

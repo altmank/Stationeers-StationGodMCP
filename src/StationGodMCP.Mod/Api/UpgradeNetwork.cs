@@ -157,7 +157,7 @@ internal static class CleanApi
         {
             if (args.Has(name) && !redundant)
             {
-                throw ApiErrors.InvalidArgument($"{name} goes with remove_redundant; ask for it too.");
+                throw ApiErrors.InvalidArgument($"{Vocabulary.Arg(name)} goes with remove_redundant; ask for it too.");
             }
         }
 
