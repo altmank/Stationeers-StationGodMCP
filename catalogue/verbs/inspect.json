@@ -1,0 +1,1259 @@
+{
+  "verb": "inspect",
+  "description": "Describe one thing, or a few by id, in detail. Read only.",
+  "help": [
+    "Describe one thing, or a few by id, in detail. Read only.",
+    "",
+    "whats:",
+    "- device: a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details",
+    "- prefab: a buildable prefab before it stands anywhere: placement kind, turns, cells, ports",
+    "- slots: a device's slots: occupants, what each takes, slot logic values",
+    "- contents: any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player)",
+    "- health: damage state of things, or of every piece of a network, worst first",
+    "- connections: one pipe, cable, chute or device: its ends and what each joins",
+    "- atmosphere: the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks",
+    "- reagents: the reagents a furnace, centrifuge, mixer or microwave holds",
+    "- genes: the genes of plants, seeds and produce",
+    "- chip: a circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory",
+    "- screen: what a ScriptedScreens screen shows: surfaces and one surface's elements",
+    "- rocket: every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight.",
+    "- vault: what each Ingot Vault stores, and every Remote Vault's link",
+    "- looking_at: what the player's crosshair is on, and where a longer look ray lands",
+    "- player: the player's hunger and thirst: nutrition, hydration, drain, time left",
+    "- planet: the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps",
+    "- weather: the storm schedule, weather events and season",
+    "- controllers: what can write or override a device: chips, logic writers, screen scripts, other runs",
+    "- job: one build, removal, change or gas move by its id (place-41): running, queued or finished",
+    "",
+    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
+    "help {verb: \"inspect\", what} gives a what's options, reply keys and an example."
+  ],
+  "read_only": true,
+  "tool": {
+    "what": "device: a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details; prefab: a buildable prefab before it stands anywhere: placement kind, turns, cells, ports; slots: a device's slots: occupants, what each takes, slot logic values; contents: any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player); health: damage state of things, or of every piece of a network, worst first; connections: one pipe, cable, chute or device: its ends and what each joins; atmosphere: the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks; reagents: the reagents a furnace, centrifuge, mixer or microwave holds; genes: the genes of plants, seeds and produce; chip: a circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors; screen: what a ScriptedScreens screen shows: surfaces and one surface's elements; rocket: every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power; vault: what each Ingot Vault stores, and every Remote Vault's link; looking_at: what the player's crosshair is on, and where a longer look ray lands; player: the player's hunger and thirst: nutrition, hydration, drain, time left; planet: the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps; weather: the storm schedule, weather events and season; job: one build, removal, change or gas move by its id (place-41): running, queued or finished; controllers: what can write or override a device: chips, logic writers, screen scripts, other runs (driven_by on writes names them)",
+    "options": {
+      "id": "device, slots, connections, reagents: An id, a list, a ref ('r3'), or \"looking_at\". contents: A holder's id or \"player\". health: Up to 256 things. atmosphere: A thing, a pipe or landing pad network, or an atmosphere id. genes: Up to 256 plants, seeds or produce. chip: The circuit holder, worn holder, Lua board or the chip. screen: One id, or \"looking_at\" (the thing the crosshair is on). rocket: A rocket's id, name, network or any part; left out, every rocket. vault: One Ingot or Remote Vault; default every vault. controllers: The device(s). job: A job id (place-12, run-4, remove-3...), a script run (script-14), a gas transfer id, or \"paste\"; left out, runs with notices pending. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "prefab": "prefab: Whole prefab name or hash. contents: Only slots holding this prefab (part with *) at any depth.",
+      "network": "A network: its id, a piece or device on it, or {id, port}.",
+      "parts": "Parts: status, source, selectors. Default [status].",
+      "start": "status: first stack address. Default 0.",
+      "targets": "selectors: devices to evaluate; default those on the holder's data network.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out.",
+      "max_wait": "How long this reply waits (default 30), at most your client's timeout; the job or run goes on."
+    },
+    "required": null
+  },
+  "whats": {
+    "device": {
+      "summary": "A device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
+          "required": true,
+          "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
+        },
+        "gateway": {"use": "gateway"},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["logic_types"]}},
+          "description": "logic_types: every logic type with id and access."
+        }
+      },
+      "text": [
+        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "x-script-text": [
+        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "example": {"id": "4820585"},
+      "handlers": [
+        {
+          "name": "describe_device",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {
+              "arg": "include_logic_types",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"logic_types\"]"
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "logic_types",
+        "variants": [
+          {
+            "keys": {
+              "device": "{reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}",
+              "build_state": "{current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None",
+              "rocket": "{network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} | None",
+              "umbilical": "{role: str, open: bool, partner: Thing | None, partner_distance: int, search: {found: str | None, partner_distance: int, how: str, stops: list[{column: int, step: int, reason: str}] | None}} | None",
+              "uplink": "{downlink: {reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} | None} | None, connected: bool, choices: list[{reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} | None}]} | None",
+              "logic_types": "list[{id: int, name: str | None, readable: bool, writable: bool}] | None",
+              "logic_type_count": "int",
+              "writable": "list[str]"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "x-list": "split"
+    },
+    "prefab": {
+      "summary": "A buildable prefab before it stands anywhere: placement kind, turns, cells, ports",
+      "options": {
+        "prefab": {
+          "use": "prefab",
+          "schema": {"type": ["string", "integer"]},
+          "description": "Whole prefab name or hash.",
+          "required": true
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["small_cells"]}},
+          "description": "small_cells: each cell's offset."
+        }
+      },
+      "example": {"prefab": "StructureWallLight"},
+      "handlers": [
+        {
+          "name": "describe_prefab",
+          "args": [
+            {
+              "arg": "include_small_cells",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"small_cells\"]"
+            },
+            {"arg": "prefab", "option": "prefab", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "ports",
+        "variants": [
+          {
+            "keys": {
+              "prefab_name": "str | None",
+              "prefab_hash": "int | None",
+              "display_name": "str | None",
+              "build_states": "int | None",
+              "runtime_type": "str",
+              "placement": "str",
+              "grid_size_m": "float",
+              "small_grid": "bool",
+              "rotation_axes": "str",
+              "allowed_rotations": "list[{facing: str | None, up: str | None, euler: Vec3}]",
+              "small_cell_count": "int",
+              "small_cells": "list[{x: float, y: float, z: float}] | None",
+              "render_box": "{min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size: {x: float, y: float, z: float}}",
+              "grid_box": "{min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size: {x: float, y: float, z: float}} | None",
+              "ports": "list[{index: int, type: str, role: str, flow: str | None, at: {x: float, y: float, z: float}, outward: str}]",
+              "visual_up": "{local: str, lying_allowed: bool, source: str, verified: bool}",
+              "reversible_flow": "{logic_type: str, value: int, reason: str} | None",
+              "has_cursor": "bool",
+              "controls": "{local: str, votes: int, considered: int, source: str, fallback: bool} | None",
+              "engine": "{name: str, max_thrust_n: float, max_exhaust_velocity_ms: float, specific_impulse_s: float, max_fuel_flow_rate: float, efficiency: float, efficiency_percent: float, mass_kg: float, chamber_volume_l: float, feed: str | None, inputs: list[{input: int, role: str, pipe: str | None, pipe_max_kpa: float | None}] | None, max_moles_per_tick: float | None, litres_per_tick: float | None, max_pressure_per_tick_kpa: float | None, flow_rate_min_l: float | None, flow_rate_max_l: float | None} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      }
+    },
+    "slots": {
+      "summary": "A device's slots: occupants, what each takes, slot logic values",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
+          "required": true,
+          "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
+        },
+        "gateway": {"use": "gateway"},
+        "slot": {
+          "schema": {"type": "integer", "minimum": 0},
+          "description": "One slot index; left out, every slot.",
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "x-script-text": [
+        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "example": {"id": "1199811"},
+      "handlers": [
+        {
+          "name": "inspect_slots",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "slot_index", "option": "slot", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "slots",
+        "variants": [
+          {
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "device": "{reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}",
+              "slots": "list[{index: int, underlying_slot_index: int | None, display_name: str | None, string_key: str | None, slot_class: {id: int, name: str | None} | None, empty: bool, interactable: bool, locked: bool, swappable: bool, hides_occupant: bool, specific_prefab_hashes: list[int] | None, occupant: {reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None} | None, logic_values: list[{logic_slot_type: LogicType, value: float}], logic_value_count: int}]",
+              "count": "int",
+              "slot_count": "int"
+            }
+          }
+        ],
+        "types": ["LogicType"]
+      },
+      "x-list": "split"
+    },
+    "contents": {
+      "summary": "any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player)",
+      "options": {
+        "id": {"use": "id", "description": "A holder's id or \"player\".", "required": true},
+        "depth": {
+          "schema": {"type": "integer", "minimum": 1, "maximum": 6},
+          "description": "Levels of nested slots.",
+          "default": "3",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["empty"]}},
+          "description": "empty: keep empty slots."
+        },
+        "prefab": {"use": "prefab", "description": "Only slots holding this prefab (part with *) at any depth."},
+        "name": {"use": "name"},
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 600},
+          "description": "A silo's stored entries listed.",
+          "default": "10",
+          "x-script": "The first n in order (a silo's stored entries listed); left out, every one."
+        },
+        "offset": {"use": "offset", "schema": {"type": "integer", "minimum": 0, "maximum": 600}}
+      },
+      "text": [
+        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.",
+        "Iteration and refs go over slots; a silo's stored entries are paged with limit and offset, not iterated."
+      ],
+      "x-script-text": [
+        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.",
+        "Iteration goes over slots; a silo's stored entries are not iterated."
+      ],
+      "example": {"id": "player"},
+      "handlers": [
+        {
+          "name": "container_contents",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "depth", "option": "depth", "change": "kept"},
+            {"arg": "include_empty", "option": "include", "change": "merged", "note": "include: [\"empty\"]"},
+            {
+              "arg": "prefab_contains",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a part is written with *: '*Battery*'"
+            },
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {"arg": "entries_limit", "option": "limit", "change": "renamed"},
+            {"arg": "entries_offset", "option": "offset", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "slots",
+        "variants": [
+          {
+            "keys": {
+              "reference_id": "str",
+              "prefab_name": "str | None",
+              "display_name": "str | None",
+              "position": "Vec3",
+              "distance_m": "float | None",
+              "slots": "list[{index: int, display_name: str | None, slot_class: str, occupant: {reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, slots: list[SlotView] | None, slots_not_shown: int | None} | None}]",
+              "empty_slots_omitted": "int | None",
+              "silo": "{count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int, entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int, contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}]} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "x-list": "split"
+    },
+    "health": {
+      "summary": "damage state of things, or of every piece of a network, worst first",
+      "options": {
+        "id": {"use": "id", "description": "Up to 256 things."},
+        "network": {"use": "network"},
+        "kind": {
+          "schema": {"type": "string", "enum": ["pipe", "cable", "chute"]},
+          "description": "The network's kind.",
+          "default": "pipe",
+          "x-script": "same"
+        },
+        "damaged_only": {
+          "schema": {"type": "boolean"},
+          "description": "Network: only damaged and broken pieces.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
+        "offset": {"use": "offset"}
+      },
+      "example": {"network": "5012345", "kind": "pipe", "damaged_only": true},
+      "handlers": [
+        {
+          "name": "thing_health",
+          "note": "id/ids/network forms are inspect health; the world scan (no id, no network) is find what: damaged",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "network_id", "option": "network", "change": "renamed"},
+            {"arg": "kind", "option": "kind", "change": "kept"},
+            {"arg": "damaged_only", "option": "damaged_only", "change": "kept"},
+            {
+              "arg": "min_ratio",
+              "option": "",
+              "change": "dropped",
+              "note": "old name of min_damage_ratio, still read today"
+            },
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "offset", "option": "offset", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "things",
+        "variants": [
+          {
+            "label": "Health",
+            "view": "Health",
+            "keys": {
+              "reference_id": "str",
+              "prefab_name": "str | None",
+              "display_name": "str | None",
+              "custom_name": "str | None",
+              "build_state": "{current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None",
+              "condition": "str",
+              "kind": "str",
+              "type": "str",
+              "damage_state": "str",
+              "damage_state_class": "str | None",
+              "max_damage": "float | None",
+              "total_damage": "float | None",
+              "damage_ratio": "float | None",
+              "health_percent": "int | None",
+              "band": "str | None",
+              "damage": "{brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None",
+              "is_broken": "bool",
+              "broken_build_state": "bool | None",
+              "being_destroyed": "bool",
+              "pipe_burst": "str | None",
+              "damage_record": "list[str] | None",
+              "position": "Vec3",
+              "distance_m": "float | None",
+              "networks": "list[{kind: str, id: str}] | None"
+            }
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          },
+          {
+            "label": "HealthNetwork",
+            "view": "HealthNetwork",
+            "keys": {
+              "network_id": "str",
+              "kind": "str",
+              "pieces": "int",
+              "damaged_only": "bool",
+              "warning": "str | None",
+              "broken_neighbour_count": "int",
+              "broken_neighbours": "list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} | None, touches: str}] | None",
+              "things": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str, kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio: float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed: bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id: str}] | None}]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool"
+            }
+          },
+          {
+            "label": "HealthScan",
+            "view": "HealthScan",
+            "keys": {
+              "things": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str, kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio: float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed: bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id: str}] | None}]",
+              "count": "int",
+              "total": "int",
+              "structures": "int",
+              "broken": "int",
+              "scanned": "int",
+              "min_damage_ratio": "float",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool",
+              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
+            }
+          }
+        ],
+        "types": ["Error", "Vec3"]
+      },
+      "x-list": "native"
+    },
+    "connections": {
+      "summary": "one pipe, cable, chute or device: its ends and what each joins",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
+          "required": true,
+          "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
+        }
+      },
+      "text": [
+        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "x-script-text": [
+        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "example": {"id": ["2514519", "3575779"]},
+      "handlers": [
+        {
+          "name": "connections",
+          "note": "reference_id form is inspect connections (now takes a list); network and box forms are survey network",
+          "args": [
+            {
+              "arg": "reference_id",
+              "option": "id",
+              "change": "default-changed",
+              "note": "renamed to the shared name id; optional before, required now in this what",
+              "default": ["absent", "required"]
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "ends",
+        "variants": [
+          {
+            "label": "Connections",
+            "view": "Connections",
+            "keys": {
+              "thing": "Thing",
+              "position": "Vec3",
+              "rotation": "{facing: str | None, up: str | None, euler: Vec3} | None",
+              "own_network": "{kind: str, id: str} | None",
+              "color": "Color | None",
+              "ends": "list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, network: {kind: str, id: str} | None, connected: list[Thing]}]",
+              "count": "int"
+            }
+          },
+          {
+            "label": "NetworkMembers",
+            "view": "NetworkMembers",
+            "keys": {
+              "network": "{kind: str, id: str}",
+              "summary": "Any | None",
+              "warning": "str | None",
+              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "count": "int",
+              "structure_count": "int",
+              "device_count": "int",
+              "offset": "int",
+              "limit": "int",
+              "total": "int",
+              "has_more": "bool"
+            }
+          },
+          {
+            "label": "NetworkOverview",
+            "view": "NetworkOverview",
+            "keys": {
+              "network": "{kind: str, id: str}",
+              "summary": "Any | None",
+              "warning": "str | None",
+              "broken_neighbour_count": "int",
+              "broken_neighbours": "list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} | None, touches: str}] | None",
+              "structure_count": "int",
+              "device_count": "int",
+              "by_prefab": "list[{prefab_name: str, display_name: str | None, member: str, count: int, colors: dict[str, int] | None}]",
+              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "open_ends": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "open_end_count": "int"
+            }
+          },
+          {
+            "label": "AreaOpenEnds",
+            "view": "AreaOpenEnds",
+            "keys": {
+              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "count": "int",
+              "offset": "int",
+              "limit": "int",
+              "total": "int",
+              "has_more": "bool"
+            }
+          }
+        ],
+        "types": ["Color", "Thing", "Vec3"]
+      },
+      "x-list": "split"
+    },
+    "atmosphere": {
+      "summary": "the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks",
+      "options": {
+        "id": {"use": "id", "description": "A thing, a pipe or landing pad network, or an atmosphere id.", "required": true}
+      },
+      "text": [
+        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "x-script-text": [
+        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "example": {"id": "2005300"},
+      "handlers": [
+        {
+          "name": "atmosphere_contents",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "atmospheres",
+        "variants": [
+          {
+            "keys": {
+              "reference_id": "str",
+              "subject": "Any",
+              "atmospheres": "list[{source: str, owner: Any, slot_index: int | None, slot_name: str | None, atmosphere: {reference_id: str, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float, liquid_volume_l: float, contents: list[{gas: str, display_name: str | None, state: str, amount_mol: float, liquid_l: float | None}], water: {liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l: float}} | None}]",
+              "count": "int"
+            }
+          }
+        ]
+      },
+      "x-list": "split"
+    },
+    "reagents": {
+      "summary": "the reagents a furnace, centrifuge, mixer or microwave holds",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
+          "required": true,
+          "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
+        }
+      },
+      "text": [
+        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "x-script-text": [
+        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+      ],
+      "example": {"id": "4191359"},
+      "handlers": [
+        {
+          "name": "reagents",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "reagents",
+        "variants": [
+          {
+            "keys": {
+              "reference_id": "str",
+              "prefab_name": "str | None",
+              "display_name": "str | None",
+              "total": "float",
+              "reagents": "list[{reagent: str, name: str | None, quantity: float, unit: str | None}]"
+            }
+          }
+        ]
+      },
+      "x-list": "split"
+    },
+    "genes": {
+      "summary": "the genes of plants, seeds and produce",
+      "options": {
+        "id": {"use": "id", "description": "Up to 256 plants, seeds or produce.", "required": true},
+        "unit": {
+          "schema": {"type": "integer", "minimum": 0},
+          "description": "With one id: which gene set, 0-based; default the top.",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}},
+          "description": "notes: the tool's fixed text."
+        }
+      },
+      "example": {"id": "3311223"},
+      "handlers": [
+        {
+          "name": "plant_genes",
+          "note": "reading is inspect genes; editing is write genes",
+          "args": [
+            {
+              "arg": "reference_id",
+              "option": "id",
+              "change": "default-changed",
+              "note": "renamed to id; one plant also takes write genes.id when editing (genes given); optional before, required now in this what",
+              "default": ["absent", "required"]
+            },
+            {
+              "arg": "reference_ids",
+              "option": "id",
+              "change": "default-changed",
+              "note": "renamed to the shared name id; optional before, required now in this what",
+              "default": ["absent", "required"]
+            },
+            {"arg": "unit", "option": "unit", "change": "kept"},
+            {
+              "arg": "include_notes",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"notes\"]; also on write genes when editing"
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "genes",
+        "variants": [
+          {
+            "label": "PlantGenes",
+            "view": "PlantGenes",
+            "keys": {
+              "thing": "Thing",
+              "holder": "str",
+              "gene_set_count": "int",
+              "unit": "int",
+              "is_top": "bool",
+              "genes": "list[{gene: str, value: float | None, stability: float | None, meaning: str | None, effect: Any | None}]"
+            }
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          },
+          {
+            "label": "GenesWritten",
+            "view": "GenesWritten",
+            "keys": {
+              "thing": "Thing",
+              "holder": "str",
+              "unit": "int",
+              "is_top": "bool",
+              "results": "list[{index: int, ok: bool, gene: str, previous_value: float | None, error: Error} | {index: int, ok: bool, gene: str, previous_value: float | None, value: float} | {index: int, ok: bool} | {index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          }
+        ],
+        "types": ["Error", "Thing"]
+      },
+      "x-list": "native"
+    },
+    "chip": {
+      "summary": "A circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory",
+      "options": {
+        "id": {"use": "id", "description": "The circuit holder, worn holder, Lua board or the chip.", "required": true},
+        "gateway": {"use": "gateway"},
+        "parts": {
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["status", "source", "selectors"]}},
+          "description": "Parts: status, source, selectors.",
+          "default": "[status]",
+          "x-script": "Parts: status, source, selectors. (default [status])"
+        },
+        "start": {
+          "schema": {"type": "integer", "minimum": 0},
+          "description": "status: first stack address.",
+          "default": "0",
+          "x-script": "same"
+        },
+        "count": {
+          "schema": {"type": "integer", "minimum": 0, "maximum": 512},
+          "description": "status: stack values; 0 for none.",
+          "default": "64",
+          "x-script": "same"
+        },
+        "log": {
+          "schema": {"type": "integer", "minimum": 0, "maximum": 200},
+          "description": "status: last Lua log lines; 0 for none.",
+          "default": "5",
+          "x-script": "same"
+        },
+        "targets": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 256},
+          "description": "selectors: devices to evaluate; default those on the holder's data network.",
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "One part answers that part's reply as it is; several answer {status, source, selectors}.",
+        "A source is often longer than the reply cap: add whole: true to read it all."
+      ],
+      "x-script-text": [
+        "One part answers that part's reply as it is; several answer {status, source, selectors}.",
+        "A source is often longer than the reply cap: add whole: True to read it all."
+      ],
+      "example": {"id": "4820585", "parts": ["status", "source"]},
+      "handlers": [
+        {
+          "name": "get_ic_status",
+          "when": "status",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "stack_start", "option": "start", "change": "renamed"},
+            {"arg": "stack_count", "option": "count", "change": "renamed"},
+            {"arg": "log_lines", "option": "log", "change": "renamed"},
+            {
+              "arg": "include_source",
+              "option": "parts",
+              "change": "merged",
+              "note": "parts: [\"status\", \"source\"] (see MAP-14, MAP-26)"
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "get_ic_source",
+          "when": "source",
+          "note": "parts: [\"source\"]",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "resolve_ic_selectors",
+          "when": "selectors",
+          "note": "parts: [\"selectors\"]",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "target_reference_ids", "option": "targets", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "pins",
+        "variants": [
+          {
+            "label": "IcNoChip",
+            "view": "IcNoChip",
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "pins": "list[{index: int, reference_id: str | None, prefab_name: str | None, display_name: str | None, label: str | None, reachable: bool}]",
+              "holder": "Thing"
+            }
+          },
+          {
+            "label": "IcStatus",
+            "view": "IcStatus",
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "source": "str | None",
+              "line_number": "float",
+              "compilation_error": "bool",
+              "error_line": "str | None",
+              "error_type": "str | None",
+              "error_code": "str | None",
+              "compile_error_line": "int | None",
+              "compile_error_type": "str | None",
+              "housing": "{kind: str, on: bool, powered: bool, operable: bool}",
+              "pins": "list[{index: int, reference_id: str | None, prefab_name: str | None, display_name: str | None, label: str | None, reachable: bool}]",
+              "runtime": "{execution: {next_address: int, current_line: str | None, paused: bool}, registers: list[{index: int, aliases: list[str], value: float}], register_count: int, stack_pointer_register: int, stack_pointer: float | None, return_address_register: int, return_address: float | None, stack: {size: int, start_address: int, values: list[float], count: int}, aliases: list[{name: str | None, target: str | None, index: int | None}], defines: list[{name: str | None, value: float}], jump_tags: list[{name: str | None, value: int}]} | None",
+              "language": "str",
+              "holder": "Thing",
+              "chip": "Thing",
+              "source_length": "int",
+              "lua": "{compiling: bool, has_runtime: bool, init_complete: bool, library: bool, source_version: int | None, last_error: {kind: str, line: int, message: str, traceback: str | None} | None, log: {lines: list[str], line_count: int} | None, unavailable: str | None} | None"
+            }
+          },
+          {
+            "label": "IcSource",
+            "view": "IcSource",
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "source": "str | None",
+              "line_number": "float",
+              "language": "str",
+              "holder": "Thing",
+              "chip": "Thing",
+              "source_length": "int",
+              "lua": "{compiling: bool, has_runtime: bool, init_complete: bool, library: bool, source_version: int | None, last_error: {kind: str, line: int, message: str, traceback: str | None} | None, log: {lines: list[str], line_count: int} | None, unavailable: str | None} | None"
+            }
+          },
+          {
+            "label": "IcSelectors",
+            "view": "IcSelectors",
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "db": "{reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}",
+              "pins": "list[{selector: str, connected: bool, target: {reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int, is_gateway: bool, worn_by: str | None, worn_slot: str | None} | None}]",
+              "aliases": "list[{name: str | None, target: str | None, index: int | None}]",
+              "stable_selectors": "list[{reference_id: str, display_name: str | None, prefab_name: str | None, prefab_hash: int, name_hash: int | None, reachable: bool, collision_count: int, ic10_example: str | None}]",
+              "stable_selector_count": "int",
+              "batch_device_count": "int | None"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "x-list": "split"
+    },
+    "screen": {
+      "summary": "what a ScriptedScreens screen shows: surfaces and one surface's elements",
+      "options": {
+        "id": {"use": "id", "description": "One id, or \"looking_at\" (the thing the crosshair is on).", "required": true},
+        "gateway": {"use": "gateway"},
+        "surface": {"schema": {"type": "string"}, "description": "The surface; default the main screen's.", "x-script": "same"},
+        "type": {
+          "schema": {"type": "string"},
+          "description": "Only elements of this type (button, label, gauge...).",
+          "x-script": "same"
+        },
+        "text": {
+          "schema": {"type": "string"},
+          "description": "Only elements whose text, label, title or value holds this.",
+          "x-script": "same"
+        },
+        "shown_only": {
+          "schema": {"type": "boolean"},
+          "description": "Leave out hidden elements.",
+          "default": "true",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["style", "image"]}},
+          "description": "style: colours and fonts; image: a PNG (not on a dedicated server)."
+        },
+        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "25"},
+        "offset": {"use": "offset"}
+      },
+      "example": {"id": "4860097", "text": "error"},
+      "handlers": [
+        {
+          "name": "screen_read",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "surface", "option": "surface", "change": "kept"},
+            {"arg": "type", "option": "type", "change": "kept"},
+            {"arg": "text_contains", "option": "text", "change": "renamed"},
+            {"arg": "shown_only", "option": "shown_only", "change": "kept"},
+            {"arg": "include_style", "option": "include", "change": "merged", "note": "include: [\"style\"]"},
+            {"arg": "image", "option": "include", "change": "merged", "note": "include: [\"image\"]"},
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "offset", "option": "offset", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "elements",
+        "variants": [
+          {
+            "keys": {
+              "holder": "Thing",
+              "chip_id": "str",
+              "surfaces": "list[{name: str, element_count: int, shown_on: list[int]}]",
+              "surface": "str",
+              "width": "float | None",
+              "height": "float | None",
+              "elements": "list[{id: str, type: str, box: {x: float, y: float, w: float, h: float} | None, shown: bool, touch: bool, props: dict, style: dict | None}]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool",
+              "image": "{path: str, surface: str, width: int, height: int} | None"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "x-list": "split"
+    },
+    "rocket": {
+      "summary": "every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight",
+      "options": {
+        "id": {"use": "id", "description": "A rocket's id, name, network or any part; left out, every rocket."},
+        "compact": {
+          "schema": {"type": "boolean"},
+          "description": "Short form (default): no mass parts, tanks, power devices or checks; false: the whole report.",
+          "default": "true",
+          "x-script": "Short form (default): no mass parts, tanks, power devices or checks; False: the whole report."
+        },
+        "self_test": {
+          "schema": {"type": "boolean"},
+          "description": "Compare the forecast's formulas with the game's numbers.",
+          "default": "true (false with compact)",
+          "x-script": "self_test (boolean, default True (False with compact)): Compare the forecast's formulas with the game's numbers."
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["parts", "explain"]}},
+          "description": "parts: every part with pose and slots; explain: what the numbers mean."
+        }
+      },
+      "example": {"compact": true},
+      "handlers": [
+        {
+          "name": "rocket_status",
+          "args": [
+            {"arg": "rocket_id", "option": "id", "change": "renamed"},
+            {"arg": "self_test", "option": "self_test", "change": "kept"},
+            {
+              "arg": "compact",
+              "option": "compact",
+              "change": "default-changed",
+              "note": "false becomes true: inspect rocket answers the compact form unless compact: false (COLD-3-05)",
+              "default": ["false", "true"]
+            },
+            {"arg": "parts", "option": "include", "change": "merged", "note": "include: [\"parts\"]"},
+            {"arg": "explain", "option": "include", "change": "merged", "note": "include: [\"explain\"]"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "rockets",
+        "variants": [
+          {
+            "keys": {
+              "rockets": "list[{reference_id: str, network_id: str, name: str, automated_landing: bool, auto_shut_off: bool, manned: bool, re_entry_profile: str, re_entry_altitude_m: float, where: {state: str, mode: str, current: {reference_id: str, name: str, code: str, code_value: int, type: str, charted: bool} | None, target: {reference_id: str, name: str, code: str, code_value: int, type: str, charted: bool} | None, progress: float, altitude_m: float | None, velocity_ms: float, acceleration_ms2: float, flight_rule: str, route: list[{from: str, to: str, to_code: str, distance: float, done: float | None, charted: bool}], uncharted: list[str] | None}, mass: {total_kg: float, structure_kg: float, gas_kg: float, cargo_kg: float, payload_kg: float, parts: list[{name: str, count: int, kg: float}] | None}, fuel: list[{network_id: str, engines: int, pipe_litres: float, pipe_mol: float, total_mol: float, temperature_k: float, liquid_mol: float, liquid_litres: float, pipe_gas_kpa: float, feeds: list[str] | None, mix: dict[str, float], tanks: list[{reference_id: str, name: str, litres: float, mol: float, temperature_k: float, pressure_kpa: float, counts_for_mass: bool}] | None}], pipe_networks: list[{network_id: str, volume_l: float, total_mol: float, pressure_kpa: float, temperature_k: float, gases_mol: dict[str, float], feeds: list[str]}], engines: list[{reference_id: str, name: str, kind: str, engine: str | None, feed: str | None, input2_network_id: str | None, heat_exchange_network_id: str | None, missing_input: str | None, on: bool, powered: bool, throttle: float, thrust_n: float, passed_mol: float, exhaust_velocity_ms: float, exhaust_k: float, prefab_max_thrust_n: float, used_w: float, input_network_id: str | None, modelled: bool}], thrust: {current_n: float, max_recorded_n: float, prefab_max_n: float, max_expected_n: float, achievable_full_n: float | None, recorded_exceeds_achievable: bool, how_recorded: str | None, combustion: {rate: float, source: str, note: str | None} | None}, landing_check: {confidence: float, band: str, min_required_thrust_n: float | None, expected_thrust_n: float, mass_kg: float, altitude_m: float, delta_v: float, gravity: float, source: str}, landing_at_pad: {pad: str, orbital: bool, confidence: float, band: str, min_required_thrust_n: float | None, expected_thrust_n: float, mass_kg: float, altitude_m: float, delta_v: float, gravity: float} | None, collects: list[str] | None, cargo: list[{reference_id: str, name: str, filled: int, slots: int, kg: float}], power: {charge_j: float, capacity_j: float, percent: float, load_w: float, seconds_left: float | None, engine_w: float, devices: list[{reference_id: str, name: str, on: bool, now_w: float, on_w: float, stays_on_at_arrival: bool}] | None}, burn_time: {game_estimate_s: float, full_throttle_s: float | None, current_throttle_s: float | None}, checks: list[{name: str, game: float | None, ours: float | None, ok: bool}] | None, notes: list[str], parts: list[{reference_id: str, prefab: str, name: str | None, role: str, offset: dict[str, float], rotation: {facing: str | None, up: str | None, euler: Vec3}, contents: list[str] | None}] | None}]",
+              "count": "int",
+              "explanations": "list[str] | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "x-list": "split"
+    },
+    "vault": {
+      "summary": "what each Ingot Vault stores, and every Remote Vault's link",
+      "options": {"id": {"use": "id", "description": "One Ingot or Remote Vault; default every vault."}},
+      "example": {},
+      "handlers": [
+        {
+          "name": "vault_contents",
+          "args": [
+            {"arg": "vault_id", "option": "id", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "vaults",
+        "variants": [
+          {
+            "keys": {
+              "vaults": "list[{vault: Thing, position: Vec3, on_off: bool, powered: bool, stock: list[{kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, max_stack: float | None, quantity: float}], pending_vends: int}]",
+              "remote_vaults": "list[{remote: Thing, vault_id: str | None, connection: str}]"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "x-list": "split"
+    },
+    "looking_at": {
+      "summary": "what the player's crosshair is on, and where a longer look ray lands",
+      "options": {
+        "distance": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 50},
+          "description": "How far the look ray is cast.",
+          "default": "10",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["player", "interactable", "view", "hit", "body", "all"]}
+          },
+          "description": "Parts to add."
+        }
+      },
+      "example": {},
+      "handlers": [
+        {
+          "name": "looking_at",
+          "args": [
+            {"arg": "max_distance_m", "option": "distance", "change": "renamed"},
+            {"arg": "include", "option": "include", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "player": "{reference_id: str, display_name: str | None, position: Vec3} | None",
+              "target": "{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, kind: str, runtime_type: str, position: Vec3, distance_m: float | None, is_device: bool, has_atmosphere: bool, parent: {reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None} | None, rotation: {facing: str | None, up: str | None, euler: Vec3} | None, body: {origin: {x: float, y: float, z: float}, render_box: {min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size: {x: float, y: float, z: float}}, centre_offset: {x: float, y: float, z: float}, grid_box: {min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size: {x: float, y: float, z: float}} | None, grid_cells: int} | None, facing_me: bool | None} | None",
+              "interactable": "{action: str, display_name: str | None, contextual_name: str | None, state: int, slot: {slot_index: int, slot_name: str | None, occupant: Thing | None} | None} | None",
+              "view": "{eye: {x: float, y: float, z: float}, forward: {x: float, y: float, z: float}, right: {x: float, y: float, z: float}, up: {x: float, y: float, z: float}, yaw_deg: float, pitch_deg: float, axes: {forward: str, right: str, up: str, back: str, left: str, down: str, look: str}, ambiguous: bool, third_person: bool, seated: bool, source: str, age_s: float} | None",
+              "hit": "{point: {x: float, y: float, z: float}, distance_m: float, face: str | None, thing: Thing | None, normal: {x: float, y: float, z: float}, face_plane: str | None, cell_2m: Vec3, small_cell: {x: float, y: float, z: float}, support: str, local_on_target: {right_m: float, up_m: float, forward_m: float} | None} | None"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      }
+    },
+    "player": {
+      "summary": "the player's hunger and thirst: nutrition, hydration, drain, time left",
+      "options": {},
+      "text": ["No options."],
+      "example": {},
+      "handlers": [{"name": "player_vitals", "args": []}],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "reference_id": "str",
+              "display_name": "str | None",
+              "nutrition": "float",
+              "nutrition_capacity": "float",
+              "hydration": "float",
+              "hydration_capacity": "float",
+              "food_quality": "float",
+              "food_quality_multiplier": "float",
+              "mood": "float",
+              "thirst_temperature": "{temperature_k: float | None, source: str}",
+              "difficulty": "{id: str | None, hunger_rate: float, hydration_rate: float, offline_metabolism: float}",
+              "hunger": "{per_second: float, per_hour: float, awake_per_second: float, awake_per_hour: float, time_left_s: float | None, time_left_awake_s: float | None, factors: Any}",
+              "thirst": "{per_second: float, per_hour: float, awake_per_second: float, awake_per_hour: float, time_left_s: float | None, time_left_awake_s: float | None, factors: Any} | None",
+              "warnings": "{nutrition_warning: float, nutrition_critical: float, hydration_warning: float, hydration_critical: float}",
+              "game_tick_s": "float"
+            }
+          }
+        ]
+      }
+    },
+    "planet": {
+      "summary": "the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps",
+      "options": {},
+      "text": ["No options."],
+      "example": {},
+      "handlers": [
+        {
+          "name": "planet",
+          "args": [
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "gases",
+        "variants": [
+          {
+            "label": "PlanetNotLoaded",
+            "view": "PlanetNotLoaded",
+            "keys": {
+              "terraforming_mod": "{version: str | None, state: str | None, temperature_adjustment_k: float | None} | None"
+            }
+          },
+          {
+            "label": "Planet",
+            "view": "Planet",
+            "keys": {
+              "gases": "list[{gas: str, display_name: str | None, state: str, amount_mol: float, per_cell_mol: float, partial_kpa: float | None, freezes_below_k: float | None, min_liquid_pressure_kpa: float | None, condenses_below_today_coldest_k: float | None, condenses_below_orbit_coldest_k: float | None}]",
+              "reservoirs": "{liquid_clouds: {volume_l: float, liquid_l: float, amount_mol: float, contents: list[{gas: str, amount_mol: float}]} | None, ice_clouds: {volume_l: float, liquid_l: float, amount_mol: float, contents: list[{gas: str, amount_mol: float}]} | None, ice_caps: {volume_l: float, liquid_l: float, amount_mol: float, contents: list[{gas: str, amount_mol: float}]} | None}",
+              "starting_air": "{per_cell_mol: float, mol: float, gases: list[{gas: str, amount_mol: float}]}",
+              "terraforming_mod": "{version: str | None, state: str | None, temperature_adjustment_k: float | None} | None"
+            }
+          }
+        ]
+      }
+    },
+    "weather": {
+      "summary": "the storm schedule, weather events and season",
+      "options": {},
+      "text": ["No options."],
+      "example": {},
+      "handlers": [{"name": "weather", "args": []}],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "world_has_weather": "bool",
+              "state": "str",
+              "current": "{id: str | None, name: str | None, running: bool, starts_in_s: float, length_s: float} | None",
+              "days_past": "int",
+              "days_since_last": "int",
+              "cooldown_days": "int",
+              "world_start_delay_days": "float",
+              "can_schedule_now": "bool",
+              "schedulable_in_days": "int",
+              "events": "list[{id: str | None, name: str | None, cooldown_days_min: int, cooldown_days_max: int, start_delay_s_min: float, start_delay_s_max: float, duration_s_min: float, duration_s_max: float, temperature_offset_day_k: float | None, temperature_offset_night_k: float | None, solar_ratio: float | None, active_in_orbit: bool}]",
+              "season": "{true_anomaly_deg: float, year_length_days: float, solar_energy_percent: float, day_of_year: float} | None"
+            }
+          }
+        ]
+      }
+    },
+    "job": {
+      "summary": "one build, removal, swap or gas move by its id (place-41), or a script run (script-14): running, queued or finished. With no id: runs with notices pending (stopped or killed with something left, writes not done, or done and not yet seen)",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "A job id (place-12, run-4, remove-3...), a script run (script-14), a gas transfer id, or \"paste\" (the last blueprint paste). Left out: the list above."
+        },
+        "max_wait": {
+          "use": "max_wait",
+          "description": "How long this reply waits, at most your client's timeout; the job or run goes on."
+        },
+        "verbose": {"use": "verbose", "description": "The whole job and preflight."}
+      },
+      "text": [
+        "status: queued or waiting (not started yet), then applied, applied_with_differences, applied_unchecked, stopped or refused (jobs); queued, then applied or failed (gas moves). Only queued and waiting are not final.",
+        "A script run answers run_script's text block: script-N and its state (done, REPORT, stopped, killed, or running with the line and what it waits on), the returned value, and the footer so far, with its cost line."
+      ],
+      "x-script-text": [
+        "status: queued or waiting (not started yet), then applied, applied_with_differences, applied_unchecked, stopped or refused (jobs); queued, then applied or failed (gas moves). Only queued and waiting are not final.",
+        "A script run answers run_script's text block: script-N and its state (done, REPORT, stopped, killed, or running with the line and what it waits on), the returned value, and the footer so far, with its cost line.",
+        "Reply keys: a job answers its own job view (BuildJob, RunJob, SwapJob, UpgradeJob, UndoJob, JobQueued; one per help call: help {topic: \"types\", subtopic: \"BuildJob\"}); a script run answers run_script's text block."
+      ],
+      "example": {"id": "place-41"},
+      "handlers": [
+        {"name": "hub:job_poll", "when": "a job id (place-12, remove-3, run-4, write-N, script-N)", "args": []},
+        {
+          "name": "move_gas",
+          "when": "a gas move's transfer id",
+          "args": [
+            {
+              "arg": "transfer_id",
+              "option": "id",
+              "change": "moved",
+              "note": "the outcome of a move is inspect what: job"
+            }
+          ]
+        },
+        {
+          "name": "paste_blueprint",
+          "when": "a blueprint paste (status: true)",
+          "args": [{"arg": "status", "option": "id", "change": "moved", "note": "inspect {what: job, id: \"paste\"}"}]
+        }
+      ],
+      "reply": {"variants": []},
+      "x-list": "split"
+    },
+    "controllers": {
+      "summary": "controllers: what can write or override a device: IC chips (through their pins, and batch writers reaching it over its data network), logic writer and memory structures, Lua screen scripts, and writers the hub knows (the dashboard's hub, other runs). A write or report on a driven device carries driven_by naming the controller",
+      "options": {"id": {"use": "id", "description": "The device(s).", "required": true}},
+      "x-script-summary": "What can write or override a device: IC chips (pins, batch writers on its data network), logic writers, Lua screen scripts, other runs.",
+      "example": {"id": "4936423"},
+      "handlers": [{"name": "controllers", "pending": "1a: the controllers index (queued)", "args": []}],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "reference_id": "str",
+              "display_name": "str | None",
+              "controllers": "list[{reference_id: str, display_name: str | None, kind: str, how: str, logic_types: list[str], line: int | None, on: bool | None}]",
+              "count": "int"
+            }
+          }
+        ]
+      },
+      "x-list": "split"
+    }
+  }
+}

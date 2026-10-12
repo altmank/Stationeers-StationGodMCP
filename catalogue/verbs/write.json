@@ -1,0 +1,968 @@
+{
+  "verb": "write",
+  "description": "Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks. Ids you type out act at once; a ref or network reports until confirm: true. A write on a device a chip or another writer drives warns driven_by. memory, battery and genes are cheats: they report until confirm: true.",
+  "help": [
+    "Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks. Ids you type out act at once; a ref or network reports until confirm: true. memory, battery and genes are cheats: they report until confirm: true.",
+    "",
+    "whats:",
+    "- logic: logic values on devices, as a chip or console writes them; answers previous and read-back values",
+    "- memory: up to 512 values into a device's memory from start, as a chip's put does. Cheat. (cheat)",
+    "- chip: a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart",
+    "- screen: touch a control on a ScriptedScreens screen, as a player's touch does",
+    "- label: rename things as the hand Labeller does; empty name gives back the game's name",
+    "- paint: paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours",
+    "- flight_log: start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log",
+    "- uplink: point a Logic Rocket Uplink at a Logic Rocket Downlink",
+    "- battery: set the charge of batteries and cells: full by default, or a ratio or joules. Cheat. (cheat)",
+    "- genes: edit plant genes as the Gene Splicer does. Cheat. (cheat)",
+    "",
+    "Every what here takes: id.",
+    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
+    "help {verb: \"write\", what} gives a what's options, reply keys and an example."
+  ],
+  "read_only": false,
+  "tool": {
+    "what": "logic: logic values on devices, as a chip or console writes them; answers previous and read-back values; memory: up to 512 values into a device's memory from start, as a chip's put does; chip: a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart; screen: touch a control on a ScriptedScreens screen, as a player's touch does; label: rename things as the hand Labeller does; empty name gives back the game's name; paint: paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours; flight_log: start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log; uplink: point a Logic Rocket Uplink at a Logic Rocket Downlink; battery: set the charge of batteries and cells: full by default, or a ratio or joules; genes: edit plant genes as the Gene Splicer does",
+    "options": {
+      "id": "logic: Device(s) or a ref; every one gets logic = value. memory, genes: An id, a list, or \"looking_at\". chip, screen: One id, or \"looking_at\" (the thing the crosshair is on). label: One id; a list or a ref names each '<label> 1', '<label> 2' in id order. paint: Things to paint the one color, or a ref. flight_log: A rocket's id, name, network or any part; left out when there is one rocket. uplink: The uplink. battery: Batteries or cells (up to 256). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error. chip, screen, uplink and flight_log take one id: a list is refused, naming run_script.",
+      "logic": "Logic type name or number.",
+      "writes": "Separate writes, each {id, logic, value}, applied in order.",
+      "confirm": "true acts; left out, it reports.",
+      "start": "First address.",
+      "code": "The complete program: IC10, or Lua for a Lua chip.",
+      "pins": "{d0..d5: device id or null}; pins left out keep their device.",
+      "allow": "[\"lint\"]: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed.",
+      "run": "pause, step, resume (IC10) or restart (Lua).",
+      "event": "Default click.",
+      "labels": "Several renames, each {id, label}, in order.",
+      "network": "A pipe, cable or chute network (its id, a piece on it, or a device with kind): paints its pieces.",
+      "items": "{id, color} pairs, a colour each.",
+      "downlink": "The downlink to follow.",
+      "rocket": "Every battery of this rocket.",
+      "within": "Every cell in this holder's slots, nested; \"player\" for the player.",
+      "genes": "Gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1}).",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out."
+    },
+    "required": null
+  },
+  "whats": {
+    "logic": {
+      "summary": "logic values on devices, as a chip or console writes them; answers previous and read-back values",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "Device(s) or a ref; every one gets logic = value.",
+          "x-script": "Device(s); every one gets logic = value."
+        },
+        "logic": {"schema": {"type": ["string", "integer"]}, "description": "Logic type name or number.", "x-script": "same"},
+        "value": {"schema": {"type": "number"}, "description": "A finite number.", "x-script": "same"},
+        "writes": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
+          "description": "Separate writes, each {id, logic, value}, applied in order.",
+          "x-script": "same"
+        },
+        "gateway": {"use": "gateway"},
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["lint"]}},
+          "description": "lint: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed (passed lists it)."
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "text": [
+        "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. A ref reports each target's current value until confirm: true. To write every device of a kind, find them with a limit above their count (has_more false), then pass the ref."
+      ],
+      "x-script-text": [
+        "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run, ids a find returned that you have not seen make the run a report before anything acts, and stop it after: report, then repeat)."
+      ],
+      "example": {"id": "4820585", "logic": "On", "value": 1},
+      "handlers": [
+        {
+          "name": "write_logic",
+          "when": "one write",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {
+              "arg": "reference_id",
+              "option": "id",
+              "change": "default-changed",
+              "note": "renamed to the shared name id; required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {
+              "arg": "logic_type",
+              "option": "logic",
+              "change": "default-changed",
+              "note": "renamed to the shared name logic; required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {
+              "arg": "value",
+              "option": "value",
+              "change": "default-changed",
+              "note": "required by its tool; write logic takes value or writes",
+              "default": ["required", "absent"]
+            }
+          ]
+        },
+        {
+          "name": "write_logic_many",
+          "when": "several",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {
+              "arg": "writes",
+              "option": "writes",
+              "change": "default-changed",
+              "note": "items are {id, logic, value}; required by its tool; write logic takes writes or id x value",
+              "default": ["required", "absent"]
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "results",
+        "variants": [
+          {
+            "label": "one write",
+            "view": "LogicWrite",
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "logic_type": "LogicType",
+              "requested_value": "float",
+              "previous_value": "float | None",
+              "current_value": "float | None"
+            }
+          },
+          {
+            "label": "several",
+            "view": "LogicBatch",
+            "keys": {
+              "gateway_id": "str",
+              "results": "list[{index: int, ok: bool, reference_id: str | None, logic_type: LogicType | None, error: Error} | {index: int, ok: bool, reference_id: str, logic_type: LogicType, value: float} | {index: int, ok: bool, reference_id: str, logic_type: LogicType, requested_value: float, previous_value: float | None, current_value: float | None} | {index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          }
+        ],
+        "types": ["Error", "LogicType"]
+      },
+      "write": {
+        "report": "hub",
+        "route": "acts",
+        "x-undo": "mixed",
+        "x-undo-mark": "[undo] held settings; [cannot undo: action] pulse and action types",
+        "x-list": "native",
+        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "writes[].id", "role": "acts-on"}]
+      }
+    },
+    "memory": {
+      "summary": "up to 512 values into a device's memory from start, as a chip's put does. Cheat",
+      "options": {
+        "id": {
+          "use": "id",
+          "schema": {"type": "string"},
+          "description": "One id, or \"looking_at\" (the thing the crosshair is on).",
+          "required": true
+        },
+        "gateway": {"use": "gateway"},
+        "start": {
+          "schema": {"type": "integer", "minimum": 0},
+          "description": "First address.",
+          "required": true,
+          "x-script": "same"
+        },
+        "values": {
+          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 512},
+          "description": "Values written from start.",
+          "required": true,
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "x-script-text": ["Reports in a report run; acts in a confirmed run. Cheat: ask the user first."],
+      "example": {"id": "4820585", "start": 10, "values": [1, 0, 2], "confirm": true},
+      "handlers": [
+        {
+          "name": "write_memory",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "start_address", "option": "start", "change": "renamed"},
+            {"arg": "values", "option": "values", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "start_address": "int",
+              "requested_values": "list[float]",
+              "previous_values": "list[float] | None",
+              "current_values": "list[float] | None",
+              "count": "int",
+              "stack_size": "int | None"
+            }
+          }
+        ]
+      },
+      "write": {
+        "report": "mod",
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo]",
+        "x-list": "one",
+        "x-target": [{"path": "id", "role": "acts-on"}]
+      }
+    },
+    "chip": {
+      "summary": "A circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart",
+      "options": {
+        "id": {
+          "use": "id",
+          "schema": {"type": "string"},
+          "description": "One id, or \"looking_at\" (the thing the crosshair is on).",
+          "required": true
+        },
+        "gateway": {"use": "gateway"},
+        "code": {
+          "schema": {"type": "string"},
+          "description": "The complete program: IC10, or Lua for a Lua chip.",
+          "x-script": "same"
+        },
+        "code_file": {
+          "schema": {"type": "string"},
+          "description": "A file path on the MCP server's machine whose text is sent as code.",
+          "x-script": "same"
+        },
+        "pins": {
+          "schema": {"type": "object"},
+          "description": "{d0..d5: device id or null}; pins left out keep their device.",
+          "x-script": "{d0..d5: device id or None}; pins left out keep their device."
+        },
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["off_network"]}},
+          "description": "off_network: a pin device not on the housing's data network."
+        },
+        "run": {
+          "schema": {"type": "string", "enum": ["pause", "step", "resume", "restart"]},
+          "description": "pause, step, resume (IC10) or restart (Lua).",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["code"]}},
+          "description": "code: echo the program as stored."
+        }
+      },
+      "text": [
+        "Given together, they apply in this order: code, pins, run. The reply is {code, pins, run} with the parts given; the first failure stops the rest, named in not_run.",
+        "One id only: a list is refused, naming run_script (this write cannot be undone)."
+      ],
+      "x-script-text": [
+        "Given together, they apply in this order: code, pins, run. The reply is {code, pins, run} with the parts given; the first failure stops the rest, named in not_run.",
+        "One id only: a list is refused (x-list one: this write cannot be undone)."
+      ],
+      "example": {"id": "4820585", "code_file": "C:/work/ctl.ic10"},
+      "handlers": [
+        {
+          "name": "set_ic_source",
+          "when": "source",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {
+              "arg": "source",
+              "option": "code",
+              "change": "default-changed",
+              "note": "source means an origin elsewhere (move, route) (see MAP-08); required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {"arg": "include_source", "option": "include", "change": "merged", "note": "include: [\"code\"]"},
+            {"arg": "source_file", "option": "code_file", "change": "renamed"}
+          ]
+        },
+        {
+          "name": "set_ic_pins",
+          "when": "pins",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {
+              "arg": "pins",
+              "option": "pins",
+              "change": "default-changed",
+              "note": "required by its tool; write chip takes code, pins or run",
+              "default": ["required", "absent"]
+            },
+            {"arg": "allow_off_network", "option": "allow", "change": "merged", "note": "allow: [\"off_network\"]"}
+          ]
+        },
+        {
+          "name": "control_ic_execution",
+          "when": "run",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {
+              "arg": "action",
+              "option": "run",
+              "change": "default-changed",
+              "note": "renamed to the shared name run; required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            }
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "label": "source",
+            "view": "IcSourceSet",
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "source": "str | None",
+              "line_number": "float",
+              "compilation_error": "bool",
+              "error_line": "str | None",
+              "error_type": "str | None",
+              "error_code": "str | None",
+              "compile_error_line": "int | None",
+              "compile_error_type": "str | None",
+              "language": "str",
+              "holder": "Thing",
+              "chip": "Thing",
+              "source_length": "int",
+              "lua": "{compiling: bool, has_runtime: bool, init_complete: bool, library: bool, source_version: int | None, last_error: {kind: str, line: int, message: str, traceback: str | None} | None, log: {lines: list[str], line_count: int} | None, unavailable: str | None} | None",
+              "warnings": "list[{code: str, message: str}]"
+            }
+          },
+          {
+            "label": "pins",
+            "view": "SetIcPins",
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "has_data_network": "bool",
+              "changes": "list[{index: int, previous_reference_id: str | None, reference_id: str | None, changed: bool}]",
+              "pins": "list[{index: int, reference_id: str | None, prefab_name: str | None, display_name: str | None, label: str | None, reachable: bool}]"
+            }
+          },
+          {
+            "label": "run",
+            "view": "IcControl",
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "action": "str",
+              "paused": "bool",
+              "previous_line": "float",
+              "line_number": "float",
+              "compilation_error": "bool",
+              "error_line": "str | None",
+              "error_type": "str | None",
+              "error_code": "str | None",
+              "compile_error_line": "int | None",
+              "compile_error_type": "str | None",
+              "language": "str",
+              "holder": "Thing",
+              "chip": "Thing",
+              "lua": "{compiling: bool, has_runtime: bool, init_complete: bool, library: bool, source_version: int | None, last_error: {kind: str, line: int, message: str, traceback: str | None} | None, log: {lines: list[str], line_count: int} | None, unavailable: str | None} | None"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "write": {
+        "report": "hub",
+        "route": "acts",
+        "x-undo": "mixed",
+        "x-undo-mark": "source [cannot undo: chip source]; pins [undo]; run [cannot undo: run control]",
+        "x-list": "one",
+        "x-target": [{"path": "id", "role": "acts-on"}]
+      }
+    },
+    "screen": {
+      "summary": "touch a control on a ScriptedScreens screen, as a player's touch does",
+      "options": {
+        "id": {
+          "use": "id",
+          "schema": {"type": "string"},
+          "description": "One id, or \"looking_at\" (the thing the crosshair is on).",
+          "required": true
+        },
+        "gateway": {"use": "gateway"},
+        "surface": {"schema": {"type": "string"}, "description": "The surface; default the main screen's.", "x-script": "same"},
+        "element": {
+          "schema": {"type": "string"},
+          "description": "The element to touch (inspect screen lists them).",
+          "x-script": "same"
+        },
+        "pixel": {
+          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 2},
+          "description": "Or a point [x, y] in pixels from the top left.",
+          "x-script": "same"
+        },
+        "event": {
+          "schema": {"type": "string", "enum": ["click", "change", "toggle"]},
+          "description": "",
+          "default": "click",
+          "x-script": "same"
+        },
+        "text": {"schema": {"type": "string"}, "description": "With change: the new value as text.", "x-script": "same"},
+        "as_player": {
+          "schema": {"type": "string"},
+          "description": "The name the handler receives; default the player's.",
+          "x-script": "same"
+        }
+      },
+      "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
+      "x-script-text": ["One id only: a list is refused (x-list one: this write cannot be undone)."],
+      "example": {"id": "4860097", "element": "start"},
+      "handlers": [
+        {
+          "name": "screen_press",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "surface", "option": "surface", "change": "kept"},
+            {"arg": "element_id", "option": "element", "change": "renamed"},
+            {"arg": "at", "option": "pixel", "change": "renamed"},
+            {"arg": "event", "option": "event", "change": "kept"},
+            {"arg": "value", "option": "text", "change": "renamed"},
+            {"arg": "player", "option": "as_player", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "holder": "Thing",
+              "surface": "str",
+              "element": "{id: str, type: str, box: {x: float, y: float, w: float, h: float} | None, shown: bool, touch: bool, props: dict, style: dict | None}",
+              "event": "str",
+              "value": "str | None",
+              "player": "str",
+              "accepted": "bool"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "write": {
+        "report": "hub",
+        "route": "acts",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: screen press]",
+        "x-list": "one",
+        "x-target": [{"path": "id", "role": "acts-on"}]
+      }
+    },
+    "label": {
+      "summary": "rename things as the hand Labeller does; empty name gives back the game's name",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "One id; a list or a ref names each '<label> 1', '<label> 2' in id order.",
+          "x-script": "One id; a list names each '<label> 1', '<label> 2' in id order."
+        },
+        "label": {
+          "schema": {"type": "string"},
+          "description": "The new name; empty gives back the game's name.",
+          "x-script": "same"
+        },
+        "labels": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "Several renames, each {id, label}, in order.",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "text": ["Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry)."],
+      "example": {"id": "1199811", "label": "O2 Tank 1"},
+      "handlers": [
+        {
+          "name": "label",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "name", "option": "label", "change": "renamed"},
+            {"arg": "labels", "option": "labels", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "results",
+        "variants": [
+          {
+            "label": "Labelled",
+            "view": "Labelled",
+            "keys": {
+              "index": "int",
+              "ok": "bool",
+              "reference_id": "str",
+              "prefab_name": "str | None",
+              "written": "str",
+              "sent_to_host": "bool",
+              "previous": "{display_name: str | None, custom_name: str | None}",
+              "current": "{display_name: str | None, custom_name: str | None}"
+            }
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          }
+        ],
+        "types": ["Error"]
+      },
+      "write": {
+        "report": "hub",
+        "route": "acts",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo]",
+        "x-list": "native",
+        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "labels[].id", "role": "acts-on"}]
+      }
+    },
+    "paint": {
+      "summary": "paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "Things to paint the one color, or a ref.",
+          "x-script": "Things to paint the one color."
+        },
+        "network": {
+          "use": "network",
+          "description": "A pipe, cable or chute network (its id, a piece on it, or a device with kind): paints its pieces."
+        },
+        "kind": {
+          "schema": {"type": "string", "enum": ["pipe", "cable", "chute"]},
+          "description": "With network given as a device: which of its networks.",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["devices"]}},
+          "description": "devices: also paint the network's devices."
+        },
+        "color": {"schema": {"type": "string"}, "description": "A colour name, an index, or 'default'.", "x-script": "same"},
+        "items": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
+          "description": "{id, color} pairs, a colour each.",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "example": {"network": "4639870", "kind": "pipe", "color": "Red"},
+      "handlers": [
+        {
+          "name": "paint",
+          "args": [
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "color", "option": "color", "change": "kept"},
+            {"arg": "items", "option": "items", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "colors",
+        "variants": [
+          {
+            "label": "PaintColors",
+            "view": "PaintColors",
+            "keys": {"colors": "list[{index: int, name: str | None, paint_only: bool}]", "count": "int"}
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          }
+        ],
+        "types": ["Error"]
+      },
+      "write": {
+        "report": "hub",
+        "route": "acts",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo]",
+        "x-list": "native",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "network", "role": "acts-on"},
+          {"path": "items[].id", "role": "acts-on"}
+        ]
+      }
+    },
+    "flight_log": {
+      "summary": "start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log",
+      "options": {
+        "action": {
+          "schema": {"type": "string", "enum": ["start", "stop", "clear"]},
+          "description": "",
+          "required": true,
+          "x-script": "same"
+        },
+        "id": {
+          "use": "id",
+          "schema": {"type": "string"},
+          "description": "A rocket's id, name, network or any part; left out when there is one rocket."
+        },
+        "interval_s": {
+          "schema": {"type": "number", "minimum": 0.1, "maximum": 600},
+          "description": "start: game seconds between samples.",
+          "default": "1",
+          "x-script": "same"
+        },
+        "capacity": {
+          "schema": {"type": "integer", "minimum": 10, "maximum": 100000},
+          "description": "start: samples kept.",
+          "default": "3600",
+          "x-script": "same"
+        },
+        "csv": {
+          "schema": {"type": "boolean"},
+          "description": "start: also write a CSV next to the save.",
+          "default": "false",
+          "x-script": "same"
+        }
+      },
+      "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
+      "x-script-text": ["One id only: a list is refused (x-list one: this write cannot be undone)."],
+      "example": {"action": "start", "id": "Tanker"},
+      "handlers": [
+        {
+          "name": "rocket_flight_log",
+          "note": "action read and list are read flight_log; start, stop and clear are write flight_log",
+          "args": [
+            {
+              "arg": "interval_s",
+              "option": "interval_s",
+              "change": "moved",
+              "note": "start, stop and clear are write flight_log (COMPLETE-1-03)"
+            },
+            {
+              "arg": "capacity",
+              "option": "capacity",
+              "change": "moved",
+              "note": "start, stop and clear are write flight_log (COMPLETE-1-03)"
+            },
+            {
+              "arg": "csv",
+              "option": "csv",
+              "change": "moved",
+              "note": "start, stop and clear are write flight_log (COMPLETE-1-03)"
+            }
+          ]
+        }
+      ],
+      "reply": {
+        "list": "events",
+        "variants": [
+          {
+            "label": "FlightLog",
+            "view": "FlightLog",
+            "keys": {
+              "rocket_id": "str",
+              "rocket_name": "str",
+              "recording": "bool",
+              "interval_s": "float",
+              "csv_path": "str | None",
+              "capacity": "int",
+              "held": "int",
+              "recorded": "int",
+              "from_t": "float | None",
+              "to_t": "float | None",
+              "fuel_used_mol": "float | None",
+              "lowest_altitude_m": "float | None",
+              "fastest_descent_ms": "float",
+              "peak_thrust_n": "float",
+              "lowest_confidence": "float | None",
+              "lowest_battery_j": "float | None",
+              "last": "{t: float, state: str, node: str, target: str, progress: float, altitude_m: float, velocity_ms: float, acceleration_ms2: float, mass_kg: float, fuel_mol: float, fuel_k: float, fuel_kpa: float, throttle: float, thrust_n: float, max_recorded_thrust_n: float, confidence: float, battery_j: float, cargo_slots: int, burn_time_s: float, rule: str} | None",
+              "events": "list[{t: float, what: str}]",
+              "events_dropped": "int",
+              "rows": "list[{t: float, state: str, node: str, target: str, progress: float, altitude_m: float, velocity_ms: float, acceleration_ms2: float, mass_kg: float, fuel_mol: float, fuel_k: float, fuel_kpa: float, throttle: float, thrust_n: float, max_recorded_thrust_n: float, confidence: float, battery_j: float, cargo_slots: int, burn_time_s: float, rule: str}]",
+              "offset": "int",
+              "every": "int",
+              "has_more": "bool"
+            }
+          },
+          {"label": "FlightLogCleared", "view": "FlightLogCleared", "keys": {"cleared": "bool"}},
+          {
+            "label": "FlightLogList",
+            "view": "FlightLogList",
+            "keys": {
+              "logs": "list[{rocket_id: str, rocket_name: str, recording: bool, interval_s: float, csv_path: str | None, capacity: int, held: int, recorded: int, from_t: float | None, to_t: float | None, fuel_used_mol: float | None, lowest_altitude_m: float | None, fastest_descent_ms: float, peak_thrust_n: float, lowest_confidence: float | None, lowest_battery_j: float | None, last: {t: float, state: str, node: str, target: str, progress: float, altitude_m: float, velocity_ms: float, acceleration_ms2: float, mass_kg: float, fuel_mol: float, fuel_k: float, fuel_kpa: float, throttle: float, thrust_n: float, max_recorded_thrust_n: float, confidence: float, battery_j: float, cargo_slots: int, burn_time_s: float, rule: str} | None, events: list[{t: float, what: str}], events_dropped: int, rows: list[{t: float, state: str, node: str, target: str, progress: float, altitude_m: float, velocity_ms: float, acceleration_ms2: float, mass_kg: float, fuel_mol: float, fuel_k: float, fuel_kpa: float, throttle: float, thrust_n: float, max_recorded_thrust_n: float, confidence: float, battery_j: float, cargo_slots: int, burn_time_s: float, rule: str}], offset: int, every: int, has_more: bool}]",
+              "count": "int"
+            }
+          }
+        ]
+      },
+      "write": {
+        "report": "hub",
+        "route": "acts",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: flight log]",
+        "x-list": "one",
+        "x-target": [{"path": "id", "role": "acts-on"}]
+      }
+    },
+    "uplink": {
+      "summary": "point a Logic Rocket Uplink at a Logic Rocket Downlink",
+      "options": {
+        "id": {"use": "id", "schema": {"type": "string"}, "description": "The uplink.", "required": true},
+        "downlink": {"schema": {"type": "string"}, "description": "The downlink to follow.", "required": true, "x-script": "same"},
+        "gateway": {"use": "gateway"}
+      },
+      "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
+      "x-script-text": ["One id only: a list is refused (x-list one: this write cannot be undone)."],
+      "example": {"id": "5100200", "downlink": "5100377"},
+      "handlers": [
+        {
+          "name": "set_uplink",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "downlink_id", "option": "downlink", "change": "renamed"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "uplink": "Thing",
+              "previous_downlink": "{reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} | None} | None",
+              "link": "{downlink: {reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} | None} | None, connected: bool, choices: list[{reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} | None}]}"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "write": {
+        "report": "hub",
+        "route": "acts",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: uplink]",
+        "x-list": "one",
+        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "downlink", "role": "acts-on"}]
+      }
+    },
+    "battery": {
+      "summary": "set the charge of batteries and cells: full by default, or a ratio or joules. Cheat",
+      "options": {
+        "id": {"use": "id", "description": "Batteries or cells (up to 256)."},
+        "rocket": {"schema": {"type": "string"}, "description": "Every battery of this rocket.", "x-script": "same"},
+        "within": {
+          "schema": {"type": "string"},
+          "description": "Every cell in this holder's slots, nested; \"player\" for the player.",
+          "x-script": "same"
+        },
+        "ratio": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 1},
+          "description": "Charge as a share of capacity.",
+          "default": "full",
+          "x-script": "Charge as a share of capacity. (default full)"
+        },
+        "joules": {
+          "schema": {"type": "number", "minimum": 0},
+          "description": "Charge in joules, clamped.",
+          "default": "full",
+          "x-script": "Charge in joules, clamped. (default full)"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "x-script-text": ["Reports in a report run; acts in a confirmed run. Cheat: ask the user first."],
+      "example": {"within": "player", "confirm": true},
+      "handlers": [
+        {
+          "name": "set_battery_charge",
+          "args": [
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "rocket_id", "option": "rocket", "change": "renamed"},
+            {"arg": "in_id", "option": "within", "change": "renamed"},
+            {"arg": "ratio", "option": "ratio", "change": "kept"},
+            {"arg": "joules", "option": "joules", "change": "kept"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "results",
+        "variants": [
+          {
+            "keys": {
+              "dry_run": "bool",
+              "goal": "{kind: str, value: float | None}",
+              "found_in": "Thing | None",
+              "results": "list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, kind: str, held_by: Thing | None, capacity_j: float, before_j: float, after_j: float, before_ratio: float | None, after_ratio: float | None, clamped: bool | None} | {index: int, ok: bool, reference_id: str | None, error: Error} | {index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int",
+              "added_j": "float"
+            }
+          }
+        ],
+        "types": ["Error", "Thing"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo: restores the value, not what happened since]",
+        "x-list": "native",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "rocket", "role": "acts-on"},
+          {"path": "within", "role": "acts-on"}
+        ]
+      }
+    },
+    "genes": {
+      "summary": "edit plant genes as the Gene Splicer does. Cheat",
+      "options": {
+        "id": {
+          "use": "id",
+          "schema": {"type": "string"},
+          "description": "One id, or \"looking_at\" (the thing the crosshair is on).",
+          "required": true
+        },
+        "unit": {
+          "schema": {"type": "integer", "minimum": 0},
+          "description": "Which gene set; default the top.",
+          "x-script": "same"
+        },
+        "genes": {
+          "schema": {"type": "object"},
+          "description": "Gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1}).",
+          "required": true,
+          "x-script": "same"
+        },
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["out_of_range"]}},
+          "description": "out_of_range: write values outside -1..1 too."
+        },
+        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "confirm": {"use": "confirm"}
+      },
+      "x-script-text": ["Reports in a report run; acts in a confirmed run. Cheat: ask the user first."],
+      "example": {"id": "3311223", "genes": {"GrowthSpeedMultiplier": 1}, "confirm": true},
+      "handlers": [
+        {
+          "name": "plant_genes",
+          "note": "reading is inspect genes; editing is write genes",
+          "args": [
+            {
+              "arg": "genes",
+              "option": "genes",
+              "change": "moved",
+              "note": "editing is write what: genes (cheat, confirm)"
+            },
+            {
+              "arg": "force",
+              "option": "allow",
+              "change": "moved",
+              "note": "allow: [\"out_of_range\"]; force means other things elsewhere (see MAP-12)"
+            }
+          ]
+        }
+      ],
+      "reply": {
+        "list": "results",
+        "variants": [
+          {
+            "label": "PlantGenes",
+            "view": "PlantGenes",
+            "keys": {
+              "thing": "Thing",
+              "holder": "str",
+              "gene_set_count": "int",
+              "unit": "int",
+              "is_top": "bool",
+              "genes": "list[{gene: str, value: float | None, stability: float | None, meaning: str | None, effect: Any | None}]"
+            }
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          },
+          {
+            "label": "GenesWritten",
+            "view": "GenesWritten",
+            "keys": {
+              "thing": "Thing",
+              "holder": "str",
+              "unit": "int",
+              "is_top": "bool",
+              "results": "list[{index: int, ok: bool, gene: str, previous_value: float | None, error: Error} | {index: int, ok: bool, gene: str, previous_value: float | None, value: float} | {index: int, ok: bool} | {index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          }
+        ],
+        "types": ["Error", "Thing"]
+      },
+      "write": {
+        "report": "mod",
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo]",
+        "x-list": "one",
+        "x-target": [{"path": "id", "role": "acts-on"}]
+      }
+    }
+  }
+}

@@ -1,0 +1,242 @@
+{
+  "verb": "check",
+  "description": "Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk. Read only.",
+  "help": [
+    "Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk. Read only.",
+    "",
+    "whats:",
+    "- layout: lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more",
+    "- rules: the lint rule set: list, validate a file, fields, functions, run examples, explain a finding",
+    "- replaceable: could a player place each thing again exactly where it stands, every neighbour present",
+    "- ignition: whether carried items, or a tank or network by id, would catch fire in the air around them",
+    "",
+    "Every what here takes: id.",
+    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
+    "help {verb: \"check\", what} gives a what's options, reply keys and an example."
+  ],
+  "read_only": true,
+  "tool": {
+    "what": "layout: lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more; rules: the lint rule set: list, validate a file, fields, functions, run examples, explain a finding; replaceable: could a player place each thing again exactly where it stands, every neighbour present; ignition: whether carried items, or a tank or network by id, would catch fire in the air around them",
+    "options": {
+      "box": "Two corners; at most 4000 2 m cells.",
+      "id": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024). ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "action": "Default list.",
+      "at": "explain: a cell.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out."
+    },
+    "required": null
+  },
+  "whats": {
+    "layout": {
+      "summary": "lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more",
+      "options": {
+        "room": {"use": "room"},
+        "box": {"use": "box", "description": "Two corners; at most 4000 2 m cells."},
+        "codes": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 64},
+          "description": "Only findings of these codes.",
+          "x-script": "same"
+        },
+        "exclude_codes": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 64},
+          "description": "Leave these codes out.",
+          "x-script": "same"
+        },
+        "id": {"use": "id", "description": "Narrows: only findings on these things (up to 256); room or box is still needed."},
+        "since": {
+          "schema": {"type": "string"},
+          "description": "Only findings on this id and higher ids (what was made after it).",
+          "x-script": "same"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 500},
+          "description": "Findings returned.",
+          "default": "25",
+          "x-script": "The first n in order (findings returned); left out, every one."
+        }
+      },
+      "example": {"room": "17"},
+      "handlers": [
+        {
+          "name": "lint_layout",
+          "args": [
+            {"arg": "room_id", "option": "room", "change": "renamed"},
+            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
+            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
+            {"arg": "codes", "option": "codes", "change": "kept"},
+            {"arg": "exclude_codes", "option": "exclude_codes", "change": "kept"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "since_id", "option": "since", "change": "renamed"},
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "findings",
+        "variants": [
+          {
+            "keys": {
+              "region": "str",
+              "cells": "int",
+              "pieces": "int",
+              "devices": "int",
+              "structures": "int",
+              "doors": "int",
+              "counts": "dict[str, int]",
+              "findings": "list[{code: str, level: str, message: str, reference_id: str | None, other_id: str | None, at: {x: float, y: float, z: float}, subject: str | None, rule_id: str | None}]",
+              "total": "int",
+              "filtered_out": "int | None",
+              "has_more": "bool",
+              "rule_source": "{mod_file: str | None, save_file: str | None, rules: int, from_save: list[str], disabled: list[str], errors: list[{file: str, rule_id: str | None, field: str | None, line: int, column: int, position: int | None, message: str}]}",
+              "elapsed_ms": "float"
+            }
+          }
+        ]
+      },
+      "x-list": "native"
+    },
+    "rules": {
+      "summary": "the lint rule set: list, validate a file, fields, functions, run examples, explain a finding",
+      "options": {
+        "action": {
+          "schema": {"type": "string", "enum": ["list", "validate", "fields", "functions", "test", "explain"]},
+          "description": "",
+          "default": "list",
+          "x-script": "same"
+        },
+        "rule": {"schema": {"type": "string"}, "description": "One rule (list, test, explain).", "x-script": "same"},
+        "full": {
+          "schema": {"type": "boolean"},
+          "description": "list: every rule's file and expressions.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "rules_text": {"schema": {"type": "string"}, "description": "validate: a lint-rules.json's content.", "x-script": "same"},
+        "id": {"use": "id", "description": "explain: a thing, network or room id."},
+        "port": {
+          "schema": {"type": "integer", "minimum": 0, "maximum": 64},
+          "description": "explain: the port index.",
+          "x-script": "same"
+        },
+        "other": {"schema": {"type": "string"}, "description": "explain: the other thing of a pair rule.", "x-script": "same"},
+        "at": {"schema": {"type": "array"}, "description": "explain: a cell.", "x-script": "same"}
+      },
+      "example": {"action": "explain", "rule": "door_keepout", "id": "1199811"},
+      "handlers": [
+        {
+          "name": "lint_rules",
+          "args": [
+            {"arg": "action", "option": "action", "change": "kept"},
+            {"arg": "rule_id", "option": "rule", "change": "renamed"},
+            {"arg": "full", "option": "full", "change": "kept"},
+            {"arg": "text", "option": "rules_text", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "port", "option": "port", "change": "kept"},
+            {"arg": "other_id", "option": "other", "change": "renamed"},
+            {"arg": "at", "option": "at", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "rules",
+        "variants": [
+          {
+            "keys": {
+              "action": "str",
+              "rule_source": "{mod_file: str | None, save_file: str | None, rules: int, from_save: list[str], disabled: list[str], errors: list[{file: str, rule_id: str | None, field: str | None, line: int, column: int, position: int | None, message: str}]}",
+              "rules": "list[{id: str, level: str, level_when: str | None, on: list[str], source: str, file: str | None, description: str | None, select: str | None, let: dict[str, str] | None, assert: str | None, message: str | None, other: str | None, examples: int}] | None",
+              "types": "list[{name: str, doc: str, fields: list[{name: str, type: str, doc: str}]}] | None",
+              "sets": "dict[str, str] | None",
+              "functions": "list[{name: str, signature: str, doc: str, form: bool, cached: bool}] | None",
+              "tests": "list[{id: str, passed: bool, examples: list[{expected: str, index: int, actual: str, ok: bool, message: str | None, error: str | None}]}] | None",
+              "all_passed": "bool | None",
+              "explained": "list[{rule: str, subject: str, outcome: str, level: str | None, message: str | None, error: str | None, values: list[{expression: str, values: list[str]}]}] | None",
+              "valid": "bool | None"
+            }
+          }
+        ]
+      },
+      "x-list": "split"
+    },
+    "replaceable": {
+      "summary": "could a player place each thing again exactly where it stands, every neighbour present",
+      "options": {"id": {"use": "id", "description": "Things to check (1 to 1024).", "required": true}},
+      "example": {"id": "r12.things"},
+      "handlers": [
+        {
+          "name": "check_replaceable",
+          "args": [
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "results",
+        "variants": [
+          {
+            "keys": {
+              "results": "list[{reference_id: str, prefab_name: str | None, replaceable: bool | None, rule: str | None, reason: str | None}]"
+            }
+          }
+        ]
+      },
+      "x-list": "native"
+    },
+    "ignition": {
+      "summary": "whether carried items, or a tank or network by id, would catch fire in the air around them",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items."
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["prefabs"]}},
+          "description": "prefabs: every prefab's ignition temperatures."
+        }
+      },
+      "example": {"id": "2005300"},
+      "handlers": [
+        {
+          "name": "ignition_risk",
+          "args": [
+            {"arg": "include_prefabs", "option": "include", "change": "merged", "note": "include: [\"prefabs\"]"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "items",
+        "variants": [
+          {
+            "keys": {
+              "player": "{reference_id: str, display_name: str | None, position: Vec3} | None",
+              "cell": "{temperature_k: float, pressure_kpa: float, energy_j: float, inflamed: bool, oxygen_mol: float, in_room: bool} | None",
+              "items": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot: str | None, in_hand: bool, holder: Thing | None, atmosphere: str, burning: bool, hidden: bool, flashpoint_k: float | None, flashpoint_effective_k: float | None, autoignition_k: float | None, ignites_now: bool, health_ratio: float | None}]",
+              "prefabs": "list[{prefab_name: str | None, display_name: str | None, flashpoint_k: float | None, autoignition_k: float | None}] | None"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "x-list": "split"
+    }
+  }
+}

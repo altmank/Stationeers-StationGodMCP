@@ -1,0 +1,266 @@
+{
+  "verb": "server",
+  "description": "StationGod and the game server: mod version, health and costs, profiling, the in-game console. command is a cheat.",
+  "help": [
+    "StationGod and the game server: mod version, health and costs, profiling, the in-game console. command is a cheat.",
+    "",
+    "whats:",
+    "- info: the running mod: version, per-method calls and times, game members, its cost to the game, and live script runs with status and cost",
+    "- profiling: profile StationGod's main-thread cost: on, off, reset, report",
+    "- console: the latest in-game console lines, oldest first",
+    "- stop: stop a script run or job, or every live run with no id (finally blocks run; the reply lists what it left changed)",
+    "- command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings. Cheat, not undoable. (cheat)",
+    "",
+    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
+    "help {verb: \"server\", what} gives a what's options, reply keys and an example."
+  ],
+  "read_only": false,
+  "tool": {
+    "what": "info: the running mod: version, per-method calls and times, game members, its cost to the game, and live script runs with their status and cost; profiling: profile StationGod's main-thread cost: on, off, reset, report; console: the latest in-game console lines, oldest first; command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings; stop: stop a script run or job (id), or every live run (no id): the script gets sg.Stopped, so its finally blocks run",
+    "options": {
+      "confirm": "true acts; left out, it reports.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out.",
+      "id": "The run or job to stop: 'script-14'. Left out: every live run."
+    },
+    "required": null
+  },
+  "whats": {
+    "info": {
+      "summary": "the running mod: version, per-method calls and times, game members, its cost to the game",
+      "options": {
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["counters"]}},
+          "description": "counters: job holds, print log, lint chip programs, batch console, prefab index."
+        }
+      },
+      "example": {},
+      "handlers": [
+        {
+          "name": "mod_info",
+          "args": [
+            {"arg": "include_counters", "option": "include", "change": "merged", "note": "include: [\"counters\"]"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "methods",
+        "variants": [
+          {
+            "keys": {
+              "mod_id": "str",
+              "mod_version": "str",
+              "assembly_version": "str | None",
+              "informational_version": "str | None",
+              "pipe_name": "str",
+              "methods": "list[{method: str, calls: int, errors: int, total_ms: float, mean_ms: float | None, max_ms: float}]",
+              "count": "int",
+              "reflection": "list[{member: str, resolved: bool, optional: bool}]",
+              "missing_count": "int",
+              "runtime": "{uptime_s: float, world_epoch: int, request_budget_ms: float | None, frames: {busy_frames: int, requests_served: int, requests_per_frame_mean: float | None, requests_per_frame_max: int, frame_ms: {total: float, mean: float | None, max: float}, budget_stops: int, expired: int}, memory: {gc_collections: int, gc_max_generation: int, gc_total_memory_bytes: int, mono_used_bytes: int | None, mono_heap_bytes: int | None}, methods: list[{method: str, calls: int, errors: int, main_thread_ms: float, handler_ms: {total: float, mean: float | None, max: float}, serialize_ms: {total: float, mean: float | None, max: float}, queue_wait_ms: {total: float, mean: float | None, max: float}, reply_bytes: {total: float, mean: float | None, max: float}}], method_count: int, catalogue_drift: list[{method: str, argument: str, reads: int}], connections: list[{client_id: str, client: str | None, label: str | None, transport: str, protocol: int | None, in_flight: int, served: int, bytes_sent: int, subscriptions: int, methods: list[{method: str, calls: int, errors: int, total_ms: float}], method_count: int}] | None, job_settles: {run: int, skipped: int, unchecked: int}, prefab_index: {ready: bool, verify: bool, things: int, names: int, verified: int, differences: int, arrived: int | None, left: int | None}, job_holds: {under_100ms: int, under_1s: int, under_10s: int, under_60s: int, over_60s: int} | None, print_log: {records: int, capacity: int} | None, lint_chip_programs: int | None, batch_console: {lines: int, lines_per_minute: float} | None, frame_ms: {frames: int, p50: float | None, p90: float | None, p99: float | None, over_8ms: int, buckets: list[int]} | None, profiling: {since_s: float, slow_frame_ms: float, frame_ms: {p50: float | None, p95: float | None, max: float | None}, worst_frame_ms: float | None, top: list[{name: str, ms: float}]} | None}"
+            }
+          }
+        ]
+      }
+    },
+    "profiling": {
+      "summary": "profile StationGod's main-thread cost: on, off, reset, report",
+      "options": {
+        "action": {
+          "schema": {"type": "string", "enum": ["on", "off", "reset", "report"]},
+          "description": "",
+          "required": true,
+          "x-script": "same"
+        },
+        "slow_frame_ms": {
+          "schema": {"type": "number", "minimum": 1, "maximum": 1000},
+          "description": "on: frames over this are logged.",
+          "default": "8",
+          "x-script": "same"
+        },
+        "csv": {
+          "schema": {"type": "boolean"},
+          "description": "on: true starts the rolling CSV, false stops it.",
+          "x-script": "on: True starts the rolling CSV, False stops it."
+        }
+      },
+      "example": {"action": "report"},
+      "handlers": [
+        {
+          "name": "profiling",
+          "args": [
+            {"arg": "action", "option": "action", "change": "kept"},
+            {"arg": "slow_frame_ms", "option": "slow_frame_ms", "change": "kept"},
+            {"arg": "csv", "option": "csv", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "scopes",
+        "variants": [
+          {
+            "keys": {
+              "enabled": "bool",
+              "since_s": "float | None",
+              "slow_frame_ms": "float | None",
+              "csv_path": "str | None",
+              "csv": "{path: str, writing: bool, rows: int, dropped: int, error: str | None} | None",
+              "failure": "str | None",
+              "timed_methods": "int",
+              "untimed_methods": "list[str]",
+              "frames": "{recorded: int, window: int, stationgod_ms: {p50: float | None, p95: float | None, max: float | None}, heap_delta_bytes: {p50: float | None, p95: float | None, max: float | None}, heap_deltas_dropped: int, slow: int} | None",
+              "scopes": "list[{name: str, kind: str, total_ms: float, self_ms: float, count: int, mean_ms: float, p95_frame_ms: float | None, max_frame_ms: float | None}] | None",
+              "worst_frame": "{frame: int, ms: float, heap_delta_bytes: int | None, scopes: list[{name: str, ms: float}], scopes_not_listed: int, calls: list[{name: str, ms: float}], calls_not_listed: int} | None",
+              "calls": "list[{method: str, calls: int, errors: int, queue_wait_ms: {total: float, mean: float | None, max: float}, execute_ms: {total: float, mean: float | None, max: float}, serialize_ms: {total: float, mean: float | None, max: float}, reply_bytes: {total: float, mean: float | None, max: float}}] | None",
+              "tick_holds": "{count: int, total_ms: float, max_ms: float, recent: list[{job: str, tool: str | None, ms: float, frames: int, holding: bool}]} | None"
+            }
+          }
+        ]
+      },
+      "write": {
+        "report": "none",
+        "route": "acts",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo: the other action]",
+        "x-list": "one",
+        "x-target": []
+      }
+    },
+    "console": {
+      "summary": "the latest in-game console lines, oldest first",
+      "options": {
+        "lines": {
+          "schema": {"type": "integer", "minimum": 1, "maximum": 500},
+          "description": "How many recent lines.",
+          "default": "40",
+          "x-script": "same"
+        }
+      },
+      "example": {"lines": 80},
+      "handlers": [
+        {
+          "name": "read_console",
+          "args": [
+            {"arg": "lines", "option": "lines", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "lines",
+        "variants": [
+          {
+            "keys": {
+              "requested_lines": "int",
+              "line_count": "int",
+              "console_available": "bool",
+              "lines": "list[{time: str | None, level: str | None, text: str | None}]"
+            }
+          }
+        ]
+      }
+    },
+    "command": {
+      "summary": "run any console command and answer what it printed: spawn, delete, teleport, storms, settings. Cheat, not undoable",
+      "options": {
+        "command": {"schema": {"type": "string"}, "description": "The whole command line.", "required": true, "x-script": "same"},
+        "lines": {
+          "schema": {"type": "integer", "minimum": 1, "maximum": 500},
+          "description": "Most lines returned (the oldest kept).",
+          "default": "100",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "text": [
+        "Read-only commands (help, rocket print) also need confirm: true; the game does not mark which commands change nothing."
+      ],
+      "x-script-text": [
+        "Reports in a report run; acts in a confirmed run. Cheat: ask the user first.",
+        "Read-only commands (help, rocket print) also only report in a report run; the game does not mark which commands change nothing."
+      ],
+      "example": {"command": "help", "confirm": true},
+      "handlers": [
+        {
+          "name": "run_console_command",
+          "args": [
+            {"arg": "command", "option": "command", "change": "kept"},
+            {"arg": "max_output_lines", "option": "lines", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "output",
+        "variants": [
+          {
+            "keys": {
+              "command": "str",
+              "command_key": "str | None",
+              "scope": "str",
+              "help_text": "str | None",
+              "arguments": "list[str] | None",
+              "run_simulation": "bool",
+              "console_available": "bool",
+              "completes_asynchronously": "bool",
+              "output_complete": "bool",
+              "output_line_count": "int",
+              "truncated": "bool",
+              "concurrent_log_lines": "int",
+              "output": "list[{time: str | None, level: str | None, text: str | None}]",
+              "note": "str"
+            }
+          }
+        ]
+      },
+      "write": {
+        "report": "mod",
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: console]",
+        "x-list": "one",
+        "x-target": []
+      }
+    },
+    "stop": {
+      "summary": "stop a script run or a job; with no id, every live run of this session. A script run gets sg.Stopped (a BaseException) once, at its next sg call (at once inside sg.wait or sg.watch), so its finally blocks run: after it, reads and writes act, while waits and watches raise at once. The worker is killed 5 s after the stop (longer while an sg call is in flight, never past 30 s), or on a second stop. A running job is allowed to settle",
+      "options": {
+        "id": {
+          "use": "id",
+          "schema": {"type": "string"},
+          "description": "The run (script-14) or job (place-41). Left out: every live run, answered as one combined list."
+        }
+      },
+      "x-script-text": [
+        "Reply keys: id, state (stopped or killed), line, left [{id, logic, value, line}] (what the run changed and did not restore), in_flight [{job_id, fate}] (fate: finishing, undo script-N includes it once done | dropped), undo."
+      ],
+      "example": {"id": "script-14"},
+      "handlers": [{"name": "hub:stop", "args": []}],
+      "reply": {"variants": []},
+      "write": {
+        "report": "none",
+        "route": "acts",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: stop]",
+        "x-list": "one",
+        "x-target": []
+      }
+    }
+  }
+}

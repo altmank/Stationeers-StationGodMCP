@@ -1,0 +1,431 @@
+{
+  "verb": "read",
+  "description": "Read live values: logic (one, many, with slots, atmosphere and reagents in one frame), memory, a device snapshot, values over time, the clock, flight logs. Read only.",
+  "help": [
+    "Read live values: logic (one, many, with slots, atmosphere and reagents in one frame), memory, a device snapshot, values over time, the clock, flight logs. Read only.",
+    "",
+    "whats:",
+    "- logic: logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame",
+    "- snapshot: every readable logic value of matching devices, in one frame",
+    "- memory: up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status)",
+    "- sample: watch up to 32 logic values for up to 30 s: first readings and every change with its time",
+    "- clock: game time, paused, time of day, days past",
+    "- flight_log: a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)",
+    "",
+    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
+    "help {verb: \"read\", what} gives a what's options, reply keys and an example."
+  ],
+  "read_only": true,
+  "tool": {
+    "what": "logic: logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame; snapshot: every readable logic value of matching devices, in one frame; memory: up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status); sample: watch up to 32 logic values for up to 30 s: first readings and every change with its time; clock: game time, paused, time of day, days past; flight_log: a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)",
+    "options": {
+      "id": "logic: Device(s); with logic, every id is read for every logic type. snapshot: Only these devices. memory: One id, or \"looking_at\" (the thing the crosshair is on). sample: An id, a list, a ref ('r3'), or \"looking_at\". flight_log: A rocket's id, name, network or any part; left out when there is one rocket. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "logic": "logic: Logic type(s): name (Temperature) or number. snapshot: Logic types; left out, every one. sample:",
+      "reads": "logic: Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads. sample: Separate {id, logic} pairs.",
+      "prefab": "Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.",
+      "start": "First address.",
+      "action": "Default read.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out."
+    },
+    "required": null
+  },
+  "whats": {
+    "logic": {
+      "summary": "logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame",
+      "options": {
+        "id": {"use": "id", "description": "Device(s); with logic, every id is read for every logic type."},
+        "logic": {
+          "schema": {"type": ["string", "integer", "array"]},
+          "description": "Logic type(s): name (Temperature) or number.",
+          "x-script": "same"
+        },
+        "reads": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
+          "description": "Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads.",
+          "x-script": "Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: True}: up to 256 pairs, or 128 per-item reads."
+        },
+        "gateway": {"use": "gateway"},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["clock"]}},
+          "description": "clock: the game clock in the same frame."
+        }
+      },
+      "text": [
+        "One rule for the reply: one id and one logic type answer {reference_id, logic_type {id, name}, value}. id and logic lists, or reads whose every entry is a pair, answer one row per (id, logic) pair, index counting the pairs: results [{index, ok, reference_id, logic_type, value} or {index, ok, reference_id, error}], up to 256. Any entry with a logic list, slots, atmosphere or reagents, or include, answers one row per item in one frame: results [{index, ok, reference_id, logic {Type: value}, logic_errors, slots, atmosphere, reagents, errors} or {index, ok, reference_id, error}], up to 128 items and 1,024 values; more is refused, naming the bound.",
+        "The two list forms: id: [a, b], logic: [\"On\", \"Power\"] answers 4 rows, one per (id, logic) pair: {index, ok, reference_id, logic_type {id, name}, value}. reads: [{id: a, logic: [\"On\", \"Power\"]}, {id: b, logic: [\"On\", \"Power\"]}] answers 2 rows, one per id: {index, ok, reference_id, logic {On: 1, Power: 40.2}}."
+      ],
+      "example": {"id": ["1199811", "1199812"], "logic": ["Pressure", "Temperature"]},
+      "handlers": [
+        {
+          "name": "read_logic",
+          "when": "one id, one logic type",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {
+              "arg": "reference_id",
+              "option": "id",
+              "change": "default-changed",
+              "note": "renamed to the shared name id; required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {
+              "arg": "logic_type",
+              "option": "logic",
+              "change": "default-changed",
+              "note": "renamed to the shared name logic; required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            }
+          ]
+        },
+        {
+          "name": "read_logic_many",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {
+              "arg": "reads",
+              "option": "reads",
+              "change": "default-changed",
+              "note": "items are {id, logic}; id x logic lists cover most uses; required by its tool; read logic also takes id x logic (see MAP-14)",
+              "default": ["required", "absent"]
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "read_devices",
+          "when": "anything else",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "include", "option": "include", "change": "kept"},
+            {
+              "arg": "items",
+              "option": "reads",
+              "change": "default-changed",
+              "note": "items {reference_id,...} become reads {id,...} (see MAP-14); required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "results",
+        "variants": [
+          {
+            "label": "one id, one logic type",
+            "view": "LogicRead",
+            "keys": {"gateway_id": "str", "reference_id": "str", "logic_type": "LogicType", "value": "float"}
+          },
+          {
+            "label": "pairs",
+            "view": "LogicBatch",
+            "keys": {
+              "gateway_id": "str",
+              "results": "list[{index: int, ok: bool, reference_id: str | None, logic_type: LogicType | None, error: Error} | {index: int, ok: bool, reference_id: str, logic_type: LogicType, value: float} | {index: int, ok: bool, reference_id: str, logic_type: LogicType, requested_value: float, previous_value: float | None, current_value: float | None} | {index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          },
+          {
+            "label": "with slots, atmosphere, reagents or clock",
+            "view": "ReadDevices",
+            "keys": {
+              "gateway_id": "str",
+              "clock": "{game_time_s: float, paused: bool, time_of_day_ratio: float, days_past: int} | None",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int",
+              "results": "list[{index: int, ok: bool, reference_id: str, error: Error} | {index: int, ok: bool, reference_id: str, logic: dict[str, float] | None, logic_errors: dict[str, Error] | None, slots: list[{index: int, logic: dict[str, float] | None, logic_errors: dict[str, Error] | None, error: Error | None}] | None, atmosphere: {source: str, atmosphere_id: str, network_id: str | None, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float, liquid_volume_l: float, contents: list[{gas: str, state: str, amount_mol: float, liquid_l: float | None}]} | None, reagents: {total: float, reagents: list[{reagent: str, name: str | None, quantity: float, unit: str | None}]} | None, errors: dict[str, Error] | None} | {index: int, ok: bool, error: Error}]"
+            }
+          }
+        ],
+        "types": ["Error", "LogicType"]
+      },
+      "x-list": "native"
+    },
+    "snapshot": {
+      "summary": "every readable logic value of matching devices, in one frame",
+      "options": {
+        "id": {"use": "id", "description": "Only these devices."},
+        "prefab": {"use": "prefab"},
+        "name": {"use": "name"},
+        "logic": {
+          "schema": {"type": "array", "items": {"type": ["string", "integer"]}, "maxItems": 64},
+          "description": "Logic types; left out, every one.",
+          "x-script": "same"
+        },
+        "gateway": {"use": "gateway"},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["zero_ratios"]}},
+          "description": "zero_ratios: keep gas and liquid ratios reading 0."
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 256},
+          "description": "Devices returned.",
+          "default": "2",
+          "x-script": "The first n in order (devices returned); left out, every one."
+        }
+      },
+      "example": {"prefab": "StructureBatteryLarge", "limit": 10},
+      "handlers": [
+        {
+          "name": "network_snapshot",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {
+              "arg": "prefab_hash",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a name is resolved to its hash (see MAP-29)"
+            },
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {"arg": "logic_types", "option": "logic", "change": "renamed"},
+            {
+              "arg": "include_zero_ratios",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"zero_ratios\"]"
+            },
+            {"arg": "max_devices", "option": "limit", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "devices",
+        "variants": [
+          {
+            "keys": {
+              "gateway_id": "str",
+              "devices": "list[{device: {reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}, logic_values: list[Any], logic_value_count: int, zero_ratios_omitted: int | None}]",
+              "count": "int",
+              "matched_count": "int",
+              "truncated": "bool"
+            }
+          }
+        ]
+      },
+      "x-list": "native"
+    },
+    "memory": {
+      "summary": "up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status)",
+      "options": {
+        "id": {"use": "id", "description": "One id, or \"looking_at\" (the thing the crosshair is on).", "required": true},
+        "gateway": {"use": "gateway"},
+        "start": {
+          "schema": {"type": "integer", "minimum": 0},
+          "description": "First address.",
+          "required": true,
+          "x-script": "same"
+        },
+        "count": {
+          "schema": {"type": "integer", "minimum": 1, "maximum": 512},
+          "description": "Values to read.",
+          "required": true,
+          "x-script": "same"
+        }
+      },
+      "example": {"id": "4820585", "start": 0, "count": 32},
+      "handlers": [
+        {
+          "name": "read_memory",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "start_address", "option": "start", "change": "renamed"},
+            {"arg": "count", "option": "count", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "gateway_id": "str",
+              "reference_id": "str",
+              "start_address": "int",
+              "values": "list[float]",
+              "count": "int",
+              "stack_size": "int | None"
+            }
+          }
+        ]
+      },
+      "x-list": "split"
+    },
+    "sample": {
+      "summary": "watch up to 32 logic values for up to 30 s: first readings and every change with its time",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
+          "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
+        },
+        "logic": {"schema": {"type": ["string", "integer", "array"]}, "description": "", "x-script": "same"},
+        "reads": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 32},
+          "description": "Separate {id, logic} pairs.",
+          "x-script": "same"
+        },
+        "gateway": {"use": "gateway"},
+        "seconds": {
+          "schema": {"type": "number", "minimum": 0.1, "maximum": 30},
+          "description": "How long to watch.",
+          "default": "5",
+          "x-script": "same"
+        },
+        "interval": {
+          "schema": {"type": "number", "minimum": 0.05, "maximum": 5},
+          "description": "Least time between samples (s).",
+          "default": "0.5",
+          "x-script": "same"
+        }
+      },
+      "x-script-text": [
+        "Reply keys: gateway_id, started_at_utc, duration_seconds, interval_seconds, sample_count, change_count, changes.",
+        "A list of ids keeps this reply: one series of changes over all of them (x-list native-shape)."
+      ],
+      "example": {"id": "1199811", "logic": "Pressure", "seconds": 10},
+      "handlers": [
+        {
+          "name": "sample_logic",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {
+              "arg": "targets",
+              "option": "reads",
+              "change": "default-changed",
+              "note": "or id x logic; required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {"arg": "duration_seconds", "option": "seconds", "change": "renamed"},
+            {"arg": "interval_seconds", "option": "interval", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {"variants": []},
+      "x-list": "native-shape"
+    },
+    "clock": {
+      "summary": "game time, paused, time of day, days past",
+      "options": {},
+      "text": ["No options."],
+      "example": {},
+      "handlers": [{"name": "game_clock", "args": []}],
+      "reply": {
+        "variants": [{"keys": {"game_time_s": "float", "paused": "bool", "time_of_day_ratio": "float", "days_past": "int"}}]
+      }
+    },
+    "flight_log": {
+      "summary": "A rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)",
+      "options": {
+        "action": {
+          "schema": {"type": "string", "enum": ["read", "list"]},
+          "description": "",
+          "default": "read",
+          "x-script": "same"
+        },
+        "id": {"use": "id", "description": "A rocket's id, name, network or any part; left out when there is one rocket."},
+        "every": {
+          "schema": {"type": "integer", "minimum": 1, "maximum": 100000},
+          "description": "read: every n-th row.",
+          "default": "1",
+          "x-script": "same"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 200},
+          "description": "read: rows.",
+          "default": "12",
+          "x-script": "The first n in order (read: rows); left out, every one."
+        },
+        "offset": {"use": "offset"}
+      },
+      "example": {"limit": 20},
+      "handlers": [
+        {
+          "name": "rocket_flight_log",
+          "note": "action read and list are read flight_log; start, stop and clear are write flight_log",
+          "args": [
+            {"arg": "action", "option": "action", "change": "kept"},
+            {"arg": "rocket_id", "option": "id", "change": "renamed"},
+            {"arg": "offset", "option": "offset", "change": "kept"},
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "every", "option": "every", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "rows",
+        "variants": [
+          {
+            "label": "FlightLog",
+            "view": "FlightLog",
+            "keys": {
+              "rocket_id": "str",
+              "rocket_name": "str",
+              "recording": "bool",
+              "interval_s": "float",
+              "csv_path": "str | None",
+              "capacity": "int",
+              "held": "int",
+              "recorded": "int",
+              "from_t": "float | None",
+              "to_t": "float | None",
+              "fuel_used_mol": "float | None",
+              "lowest_altitude_m": "float | None",
+              "fastest_descent_ms": "float",
+              "peak_thrust_n": "float",
+              "lowest_confidence": "float | None",
+              "lowest_battery_j": "float | None",
+              "last": "{t: float, state: str, node: str, target: str, progress: float, altitude_m: float, velocity_ms: float, acceleration_ms2: float, mass_kg: float, fuel_mol: float, fuel_k: float, fuel_kpa: float, throttle: float, thrust_n: float, max_recorded_thrust_n: float, confidence: float, battery_j: float, cargo_slots: int, burn_time_s: float, rule: str} | None",
+              "events": "list[{t: float, what: str}]",
+              "events_dropped": "int",
+              "rows": "list[{t: float, state: str, node: str, target: str, progress: float, altitude_m: float, velocity_ms: float, acceleration_ms2: float, mass_kg: float, fuel_mol: float, fuel_k: float, fuel_kpa: float, throttle: float, thrust_n: float, max_recorded_thrust_n: float, confidence: float, battery_j: float, cargo_slots: int, burn_time_s: float, rule: str}]",
+              "offset": "int",
+              "every": "int",
+              "has_more": "bool"
+            }
+          },
+          {"label": "FlightLogCleared", "view": "FlightLogCleared", "keys": {"cleared": "bool"}},
+          {
+            "label": "FlightLogList",
+            "view": "FlightLogList",
+            "keys": {
+              "logs": "list[{rocket_id: str, rocket_name: str, recording: bool, interval_s: float, csv_path: str | None, capacity: int, held: int, recorded: int, from_t: float | None, to_t: float | None, fuel_used_mol: float | None, lowest_altitude_m: float | None, fastest_descent_ms: float, peak_thrust_n: float, lowest_confidence: float | None, lowest_battery_j: float | None, last: {t: float, state: str, node: str, target: str, progress: float, altitude_m: float, velocity_ms: float, acceleration_ms2: float, mass_kg: float, fuel_mol: float, fuel_k: float, fuel_kpa: float, throttle: float, thrust_n: float, max_recorded_thrust_n: float, confidence: float, battery_j: float, cargo_slots: int, burn_time_s: float, rule: str} | None, events: list[{t: float, what: str}], events_dropped: int, rows: list[{t: float, state: str, node: str, target: str, progress: float, altitude_m: float, velocity_ms: float, acceleration_ms2: float, mass_kg: float, fuel_mol: float, fuel_k: float, fuel_kpa: float, throttle: float, thrust_n: float, max_recorded_thrust_n: float, confidence: float, battery_j: float, cargo_slots: int, burn_time_s: float, rule: str}], offset: int, every: int, has_more: bool}]",
+              "count": "int"
+            }
+          }
+        ]
+      },
+      "x-list": "split"
+    }
+  }
+}
