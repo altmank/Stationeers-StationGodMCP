@@ -981,6 +981,13 @@ public sealed class HubSession
 
         if (KeyProblem(message, RunEndKeys) is { } problem)
         {
+            // The run still hears of it, so it ends failed with the reason rather than as a broken session.
+            lock (_gate)
+            {
+                _runEnded = true;
+            }
+
+            await channel.EndedAsync(message).ConfigureAwait(false);
             return Broken(null, problem, line);
         }
 

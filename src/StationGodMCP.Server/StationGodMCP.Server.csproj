@@ -30,4 +30,10 @@
     <EmbeddedResource Include="..\..\generated\verbs\help\*.txt" LogicalName="generated/verbs/help/%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\..\generated\verbs\stubs\*.py" LogicalName="generated/verbs/stubs/%(Filename)%(Extension)" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The sg package the script workers run (hub.md, Runs): shipped next to the binary, in python/sg. -->
+    <Content Include="..\..\clients\python\sg\**\*" Exclude="..\..\clients\python\sg\**\__pycache__\**"
+             Link="python\sg\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

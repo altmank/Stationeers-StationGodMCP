@@ -23,9 +23,12 @@ internal static class ToolReplies
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    internal static object Of(JsonElement body, bool isError) => new
+    internal static object Of(JsonElement body, bool isError) => Of(body, TextOf(body), isError);
+
+    /// <summary>The result with a text copy of its own: a run's plain text, or the JSON text with notices after it.</summary>
+    internal static object Of(JsonElement body, string text, bool isError) => new
     {
-        content = new[] { new { type = "text", text = TextOf(body) } },
+        content = new[] { new { type = "text", text } },
         structuredContent = body,
         isError
     };
