@@ -13,8 +13,10 @@ namespace StationGodMCP.Pure.Scheduling;
 /// reply is serialised, and each frame counts once per stream however many of its calls ran in it. Keyed by
 /// CallContext, so a resume token's streams keep their counts across a reconnect. The lane scheduler records each call
 /// it runs and passes on every stream end (stream_end, an owner's end); a world change leaves the counts, which are
-/// about streams rather than the world. Main thread only. A stream's entry is allocated at its first call; every later
-/// call is a dictionary lookup and three additions.
+/// about streams rather than the world. A call deferred over frames adds each later slice's milliseconds (from its
+/// start to its serialised reply, if it answers in it) and the slice's frame if over budget, but is one call. Main
+/// thread only. A stream's entry is allocated at its first call; every later call or slice is a dictionary lookup and
+/// three additions.
 /// </summary>
 internal sealed class StreamCosts : IStreamStore
 {
@@ -28,7 +30,17 @@ internal sealed class StreamCosts : IStreamStore
     /// One call of the context ran for ms on the main thread, ending in frame; overBudget when the frame's request time
     /// had reached its budget by then. A call with no context (None) is not counted.
     /// </summary>
-    internal void Record(CallContext context, double ms, bool overBudget, long frame)
+    internal void Record(CallContext context, double ms, bool overBudget, long frame) =>
+        Add(context, 1, ms, overBudget, frame);
+
+    /// <summary>
+    /// A later slice of a deferred call of the context ran for ms, ending in frame: its time and frame count as Record's,
+    /// the call is not counted again.
+    /// </summary>
+    internal void RecordSlice(CallContext context, double ms, bool overBudget, long frame) =>
+        Add(context, 0, ms, overBudget, frame);
+
+    private void Add(CallContext context, long calls, double ms, bool overBudget, long frame)
     {
         if (context.IsNone)
         {
@@ -41,7 +53,7 @@ internal sealed class StreamCosts : IStreamStore
             _byStream.Add(context, counters);
         }
 
-        counters.Calls++;
+        counters.Calls += calls;
         counters.MainThreadMs += ms;
         if (overBudget && counters.LastOverBudgetFrame != frame)
         {

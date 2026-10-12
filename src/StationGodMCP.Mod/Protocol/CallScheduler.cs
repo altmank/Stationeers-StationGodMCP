@@ -68,7 +68,9 @@ internal interface ICallScheduler
 /// <para>
 /// Each call it runs is timed on the scheduler's clock from its start to its serialised reply (the span the
 /// dispatcher's RunCall covers) and counted for its context in Costs, with whether the frame's request budget had been
-/// reached by then; stream ends reach Costs with the stores.
+/// reached by then; stream ends reach Costs with the stores. Each later slice of a deferred call adds its time (and its
+/// frame, if over budget by its end) to the same stream in Costs and to the call's method in its connection's counts,
+/// without counting the call again.
 /// </para>
 /// </summary>
 internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
@@ -97,7 +99,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         _stores = stores ?? StreamStores.Main;
         _clock = clock ?? StopwatchClock.Instance;
         _scheduler = new FrameScheduler<QueuedCall>(settings, this, _clock, new CostPredictor());
-        Deferred = new DeferredCalls(_clock, _world);
+        Deferred = new DeferredCalls(_clock, _world, SliceRan);
     }
 
     /// <summary>The started calls going on with work over frames.</summary>
@@ -172,6 +174,12 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     }
 
     void ICallRunner<QueuedCall>.Expire(QueuedCall call) => call.Drop(call.TimeoutReply());
+
+    private void SliceRan(QueuedCall call, double ms)
+    {
+        Costs.RecordSlice(call.Context, ms, CurrentFrame.BudgetReached(_clock.NowMs), _scheduler.Frame);
+        call.CountSliceOnConnection(ms);
+    }
 
     bool ICallRunner<QueuedCall>.IsAnswered(QueuedCall call) => call.State.IsAnswered;
 

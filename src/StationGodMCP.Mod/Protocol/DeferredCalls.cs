@@ -16,6 +16,8 @@ namespace StationGodMCP.Protocol;
 /// answers it cancelled and its connection's close drops it; its owner's session_end answers it cancelled too, and a
 /// call a shutdown answered (shutting_down, from the connection's thread) is dropped. A stopped call's work is dropped
 /// and holds nothing.
+/// Each slice is timed on the clock, from its first step to its serialised reply when it answers, and handed to
+/// sliceRan with its call: a call's cost is its run and every slice.
 /// Main thread only; a frame allocates nothing here beyond what the work does.
 /// </summary>
 internal sealed class DeferredCalls : ISliceLane
@@ -23,12 +25,14 @@ internal sealed class DeferredCalls : ISliceLane
     private readonly List<Entry> _entries = new List<Entry>();
     private readonly IMonotonicClock _clock;
     private readonly Func<WorldFacts> _world;
+    private readonly Action<QueuedCall, double>? _sliceRan;
     private int _next;
 
-    internal DeferredCalls(IMonotonicClock clock, Func<WorldFacts> world)
+    internal DeferredCalls(IMonotonicClock clock, Func<WorldFacts> world, Action<QueuedCall, double>? sliceRan = null)
     {
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _world = world ?? throw new ArgumentNullException(nameof(world));
+        _sliceRan = sliceRan;
     }
 
     internal int Count => _entries.Count;
@@ -57,6 +61,7 @@ internal sealed class DeferredCalls : ISliceLane
 
         Entry entry = _entries[_next];
         string? reply = null;
+        double began = _clock.NowMs;
         try
         {
             using (CallContext.Enter(entry.Call.Context))
@@ -71,10 +76,12 @@ internal sealed class DeferredCalls : ISliceLane
         {
             // Work that throws past its own reply building: the call is answered, and the frame and the others go on.
             ProtocolLog.Warning($"A deferred call's work failed: {exception}");
+            _sliceRan?.Invoke(entry.Call, _clock.NowMs - began);
             Stop(_next, "internal_error", exception.Message);
             return;
         }
 
+        _sliceRan?.Invoke(entry.Call, _clock.NowMs - began);
         if (reply == null)
         {
             _next++;

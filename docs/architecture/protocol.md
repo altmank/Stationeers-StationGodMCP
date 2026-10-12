@@ -413,7 +413,9 @@ For each stream the mod counts, from the stream's first call: `calls`, the calls
 `main_thread_ms`, their whole main-thread time from the start of each call to its serialised reply, which
 `elapsed_ms` leaves out (*Replies*); and `over_budget_frames`, the frames in which one of its calls ended with the
 frame's request time at or past the budget, as `budget_hit` judges it but after serialising, each frame counted once
-per stream however many of its calls ran in it. A `sample_logic` call counts its start only; its later samples are the
+per stream however many of its calls ran in it. A call whose work goes on over frames (a `find_things` page) is one
+call whose `main_thread_ms` adds every slice of that work, each slice's frame judged as above; mod_info's per-connection
+ms per method adds them the same way. A `sample_logic` call counts its start only; its later samples are the
 subscription lane's. Without `streams` the reply lists every stream of the caller with counts, in stream order; with
 `streams` (1 to 256 numbers) it lists each one asked, in the order asked, with 0s for a stream that has none. The
 counts belong to the caller's connection, or to its resume token, so they survive a resume (*Resuming*); another
