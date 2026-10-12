@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
@@ -33,8 +34,10 @@ namespace StationGodMCP.Api;
 /// that stopped matching is still walked, with its current values), and measures distances from where the player is
 /// now, as a first page does. A walk's page (the first one's included) stops when its main-thread time, with the
 /// serialising its entries will cost (EntryCost), reaches the frame's budget (PageBudget), whatever limit asked: it
-/// always holds one thing, and the reply's next and the note's reason frame_budget say where the walk goes on. Read
-/// only.
+/// always holds one thing, and the reply's next and the note's reason frame_budget say where the walk goes on. A walk's
+/// first call builds its ordered ids in slices (WalkBuild): the candidates are taken as it starts, distances measured
+/// from where the player stood then; what does not fit the frame goes on over later frames with the call deferred
+/// (IPendingResult), and the call answers with its first page once the ids are in order. Read only.
 /// </summary>
 internal static class FindThingsApi
 {
@@ -42,7 +45,7 @@ internal static class FindThingsApi
     private const int MaximumLimit = 500;
 
     [Profiled]
-    internal static FindThingsView Handle(Args args)
+    internal static object Handle(Args args)
     {
         WalkRequest walk = WalkRequest.From(args);
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
@@ -55,17 +58,20 @@ internal static class FindThingsApi
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
         ListOrder order = ListOrderArg.From(args);
         List<Thing> things = ThingIndex.Things(filter.Prefab) ?? Pools.Snapshot(OcclusionManager.AllThings);
+        Vector3? from = StandingAt(origin);
+        if (walk.Opens)
+        {
+            WalkFirstPage first = new WalkFirstPage(walk, page, order, origin.IsPresent,
+                new WalkBuild<Thing>(things, new WalkFilter(filter, from), order));
+            return first.Step(CurrentFrame.EndMs) ? first.Result() : first;
+        }
+
         List<ThingHit> hits = new List<ThingHit>();
         foreach (Thing thing in things)
         {
-            if (thing != null && !thing.IsCursor && !thing.IsBeingDestroyed && !(thing is Organ) && filter.Keeps(thing))
+            if (Matches(thing, filter, from, out double? distance))
             {
-                Vector3 position = PositionOf(thing);
-                double? distance = origin.ExactDistanceTo(position);
-                if (filter.IsNear(distance) && filter.IsInside(position))
-                {
-                    hits.Add(new ThingHit(thing, distance));
-                }
+                hits.Add(new ThingHit(thing, distance));
             }
         }
 
@@ -73,23 +79,35 @@ internal static class FindThingsApi
         Slice<ThingHit> slice = Slice<ThingHit>.Of(hits, page);
         List<FoundThingView> views = new List<FoundThingView>(slice.Items.Count);
         List<ColorSwatch> swatches = PaintApi.Swatches();
-        PageBudget budget = walk.Opens ? FrameBudget() : PageBudget.None;
         foreach (ThingHit hit in slice.Items)
         {
-            if (!budget.Allows(views.Count))
-            {
-                break;
-            }
-
             views.Add(ViewOf(hit.Thing, origin, swatches));
         }
 
-        bool cut = views.Count < slice.Items.Count;
-        string? cursorId = walk.Keep(hits, views.Count, static hit => hit.Thing.ReferenceId);
-        walk.Note("things", page, views.Count, hits.Count, cursorId, ListOrders.PagingAdvice(order, origin.IsPresent),
-            cut);
-        EntryCost.FindThings.Expect(views.Count);
-        return new FindThingsView(Slice<FoundThingView>.Page(views, page, hits.Count), things.Count, origin.View, cursorId, null, views.Count);
+        walk.Note("things", page, views.Count, hits.Count, null, ListOrders.PagingAdvice(order, origin.IsPresent));
+        return new FindThingsView(Slice<FoundThingView>.Page(views, page, hits.Count), things.Count, origin.View);
+    }
+
+    // Where the player stands now, for distances: null without a player.
+    private static Vector3? StandingAt(PlayerOrigin origin)
+    {
+        Human? player = origin.Player;
+        return player != null ? player.Position : (Vector3?)null;
+    }
+
+    // Whether a thing is one the filter keeps, and its unrounded distance from where the player stood (null without
+    // one). Things being destroyed (or gone), cursors and organs never are.
+    private static bool Matches(Thing thing, ThingFilter filter, Vector3? from, out double? distance)
+    {
+        distance = null;
+        if (thing == null || thing.IsCursor || thing.IsBeingDestroyed || thing is Organ || !filter.Keeps(thing))
+        {
+            return false;
+        }
+
+        Vector3 position = PositionOf(thing);
+        distance = from.HasValue ? Vector3.Distance(from.Value, position) : (double?)null;
+        return filter.IsNear(distance) && filter.IsInside(position);
     }
 
     // A walk's page stops at the frame's budget, leaving room for serialising what it holds.
@@ -109,6 +127,77 @@ internal static class FindThingsApi
         EntryCost.FindThings.Expect(views.Count);
         return new FindThingsView(Slice<FoundThingView>.Walked(views, step.Offset, page.Limit, step.Total, step.HasMore),
             0, origin.View, step.CursorId, step.Skipped, step.Next);
+    }
+
+    // A walk's first call: its ordered ids built in slices, then its first page served from them as a later page is.
+    // The page needs room of its own, so a build that ends with the frame's budget spent serves it in the next slice.
+    private sealed class WalkFirstPage : IPendingResult
+    {
+        private readonly WalkRequest _walk;
+        private readonly PageRequest _page;
+        private readonly ListOrder _order;
+        private readonly bool _measured;
+        private readonly WalkBuild<Thing> _build;
+
+        internal WalkFirstPage(WalkRequest walk, PageRequest page, ListOrder order, bool measured,
+            WalkBuild<Thing> build)
+        {
+            _walk = walk;
+            _page = page;
+            _order = order;
+            _measured = measured;
+            _build = build;
+        }
+
+        public bool Step(double untilMs)
+        {
+            if (_build.Done)
+            {
+                return true;
+            }
+
+            return _build.Run(StopwatchClock.Instance, untilMs) && StopwatchClock.Instance.NowMs < untilMs;
+        }
+
+        public object Result()
+        {
+            PlayerOrigin origin = PlayerOrigin.Current();
+            List<ColorSwatch> swatches = PaintApi.Swatches();
+            List<FoundThingView> views = new List<FoundThingView>(Math.Min(_page.Limit, _build.Count));
+            WalkStep step = _walk.First(_build.Ids(), _page.Limit,
+                id => Live(id) is Thing thing ? ViewOf(thing, origin, swatches) : null, views, FrameBudget());
+            _walk.Note("things", _page, views.Count, step.CursorId != null ? step.Total : views.Count, step.CursorId,
+                ListOrders.PagingAdvice(_order, _measured), step.Cut);
+            EntryCost.FindThings.Expect(views.Count);
+            return new FindThingsView(Slice<FoundThingView>.Walked(views, 0, _page.Limit, step.Total, step.HasMore),
+                _build.Candidates, origin.View, step.CursorId, step.Skipped > 0 ? step.Skipped : (int?)null,
+                step.Next);
+        }
+    }
+
+    // find_things' filter as a walk's build asks it, distances from where the player stood when the walk started.
+    private sealed class WalkFilter : IWalkFilter<Thing>
+    {
+        private readonly ThingFilter _filter;
+        private readonly Vector3? _from;
+
+        internal WalkFilter(ThingFilter filter, Vector3? from)
+        {
+            _filter = filter;
+            _from = from;
+        }
+
+        public bool TryKey(Thing thing, out ListKey key)
+        {
+            if (Matches(thing, _filter, _from, out double? distance))
+            {
+                key = new ThingHit(thing, distance).Key;
+                return true;
+            }
+
+            key = default;
+            return false;
+        }
     }
 
     // The thing a walk's id still names, or null when it is gone or being destroyed.

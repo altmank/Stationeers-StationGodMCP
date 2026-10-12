@@ -89,10 +89,36 @@ internal sealed class WalkRequest
             rest[index] = idOf(sorted[returned + index]);
         }
 
-        return _cursors.Open(CallContext.Current, rest, returned) ?? throw ApiErrors.InvalidArgument(
-            $"The walk has {rest.Length.ToString(CultureInfo.InvariantCulture)} more entries than a cursor holds " +
-            $"({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filter, or page with " +
-            $"{Vocabulary.Arg("offset")}.");
+        return _cursors.Open(CallContext.Current, rest, returned) ?? throw TooLong(rest);
+    }
+
+    private ApiException TooLong(long[] rest) => ApiErrors.InvalidArgument(
+        $"The walk has {rest.Length.ToString(CultureInfo.InvariantCulture)} more entries than a cursor holds " +
+        $"({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filter, or page with " +
+        $"{Vocabulary.Arg("offset")}.");
+
+    /// <summary>
+    /// The first page of a walk whose ordered ids were built ahead (WalkBuild): up to limit things that still exist, in
+    /// order, into into, fewer when budget stops it (at least one); when ids remain they stay in WalkCursors under the
+    /// caller's (connection, stream) and the step names the cursor. A rest longer than the store holds in all is
+    /// invalid_argument.
+    /// </summary>
+    internal WalkStep First<T>(long[] ids, int limit, Func<long, T?> live, List<T> into, PageBudget budget)
+        where T : class
+    {
+        int count = into.Count;
+        int next = WalkCursors.Take(ids, 0, limit, live, into, budget, out int skipped);
+        int returned = into.Count - count;
+        bool more = next < ids.Length;
+        string? cursorId = null;
+        if (more)
+        {
+            long[] rest = new long[ids.Length - next];
+            Array.Copy(ids, next, rest, 0, rest.Length);
+            cursorId = _cursors.Open(CallContext.Current, rest, returned, skipped) ?? throw TooLong(rest);
+        }
+
+        return new WalkStep(cursorId, 0, skipped, ids.Length, more, null, more && returned < limit, next);
     }
 
     /// <summary>

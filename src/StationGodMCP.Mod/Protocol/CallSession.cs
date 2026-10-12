@@ -444,9 +444,18 @@ internal sealed class CallSession : Session
             _inFlight.TryGetValue(id, out call);
         }
 
-        if (call != null && call.Drop(call.CancelledReply()))
+        if (call == null)
+        {
+            return;
+        }
+
+        if (call.Drop(call.CancelledReply()))
         {
             _host.Withdraw(call);
+        }
+        else
+        {
+            call.RequestCancel();
         }
     }
 

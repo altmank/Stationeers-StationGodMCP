@@ -12,7 +12,9 @@ namespace StationGodMCP.Pure.Scheduling;
 /// <item>the subscription lane takes due samples until it has spent its share (the first always runs);</item>
 /// <item>the light lane takes calls in rounds until the frame has spent its budget (the first always runs);</item>
 /// <item>the heavy lane runs at most one call by the same rounds: any call while the frame is under budget, and over
-/// budget only one that has waited HeavyMaxWaitFrames frames.</item>
+/// budget only one that has waited HeavyMaxWaitFrames frames;</item>
+/// <item>the slice lane (calls deferred over frames, such as a walk's build) runs one slice in what is left of the
+/// budget, and over budget a single step once it has waited HeavyMaxWaitFrames frames.</item>
 /// </list>
 /// Rounds have two levels: each client (the connections opened with the same client key, or one connection opened
 /// without one) has one turn per round, and within a client its streams, a stream being one (connection, stream
@@ -41,6 +43,7 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     private readonly Stack<Client> _spareClients = new Stack<Client>(ExpectedConnections);
     private long _arrivals;
     private int _expired;
+    private int _sliceWaitFrames;
 
     internal FrameScheduler(SchedulerSettings settings, ICallRunner<TCall> runner, IMonotonicClock clock,
         CostPredictor predictor)
@@ -195,10 +198,11 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     }
 
     /// <summary>
-    /// One frame: samples, then light calls, then at most one heavy call. While it runs, CurrentFrame holds the frame's
-    /// start and budget, so a reply built inside it can tell whether the budget was reached.
+    /// One frame: samples, then light calls, then at most one heavy call, then one slice of deferred work. While it
+    /// runs, CurrentFrame holds the frame's start and budget, so a reply built inside it can tell whether the budget
+    /// was reached and work sized to the frame knows where to stop.
     /// </summary>
-    internal FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples)
+    internal FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ISliceLane? slices = null)
     {
         Frame++;
         _expired = 0;
@@ -210,6 +214,7 @@ internal sealed class FrameScheduler<TCall> where TCall : class
             int taken = RunSamples(samples, startMs, shares.SubscriptionMs);
             int light = RunLight(startMs, shares.BudgetMs, out bool lightStopped);
             int heavy = RunHeavy(startMs, shares.BudgetMs, out bool heavyStopped);
+            RunSlice(slices, startMs + shares.BudgetMs);
             return new FrameOutcome(taken, light, heavy, _expired, _clock.NowMs - startMs, lightStopped || heavyStopped);
         }
         finally
@@ -233,6 +238,25 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         }
 
         return taken;
+    }
+
+    // Deferred work gets what the frame's calls left of its budget; a frame with none left runs no slice, unless the work
+    // has waited HeavyMaxWaitFrames such frames, when it takes a single step, so it always moves.
+    private void RunSlice(ISliceLane? slices, double untilMs)
+    {
+        if (slices == null || !slices.HasWork)
+        {
+            _sliceWaitFrames = 0;
+            return;
+        }
+
+        if (_clock.NowMs >= untilMs && ++_sliceWaitFrames <= _settings.HeavyMaxWaitFrames)
+        {
+            return;
+        }
+
+        _sliceWaitFrames = 0;
+        slices.RunSlice(untilMs);
     }
 
     private int RunLight(double startMs, double budgetMs, out bool budgetStopped)

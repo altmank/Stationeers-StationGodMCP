@@ -162,7 +162,9 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);
             ok = handled.Ok;
-            return new CallOutcome(handled.Json, handled.Method);
+            return handled.Work != null
+                ? CallOutcome.Continued(handled.Work, handled.Method)
+                : new CallOutcome(handled.Json, handled.Method);
         }
         catch (Exception exception)
         {

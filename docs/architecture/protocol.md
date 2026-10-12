@@ -223,7 +223,13 @@ Each store remembers the last 1,024 jobs it evicted; an id evicted before those,
 
 A walk pages one search through to its end, each entry at most once and in the search's own order (feature
 `cursors`; `find_things` today). The first call passes `cursor: true` and runs as it would without it: scan, filter,
-sort, the first `limit` entries. When more follow, the mod keeps the reference ids of the rest, in that order, under a
+sort, the first `limit` entries. The scan is spread over frames so that no frame passes its request budget: the
+candidates are taken when the call starts (things built later are not in the walk), filtered one at a time, then
+sorted in bounded steps (insertion-sorted runs of 16, then merge passes of at most 256 moves a step), each frame
+taking what the frame's calls left of the budget after them (*scheduling.md*, the slice lane). `nearest` is measured
+from where the player stood when the call started. Meanwhile the call is deferred: it holds its place in flight, and
+`cancel`, the end of its stream or connection, its deadline or a world change stop it with nothing kept. It answers
+with its first page once its ids are in order; a world small enough answers in the frame it started in. When more follow, the mod keeps the reference ids of the rest, in that order, under a
 cursor owned by the call's connection and stream, and the reply adds `cursor_id` (a short string such as `"k12"`,
 never reused while the mod runs). With nothing more to come there is no cursor and no `cursor_id`. `offset` with
 `cursor` is refused `invalid_argument`.
@@ -324,7 +330,8 @@ example `sample_logic`) gets its declared duration, at the arguments given, adde
 timeout adds it too.
 
 `cancel` drops a call that has not started; its reply is `cancelled`. A call that has started cannot be stopped and is
-answered normally. Cancelling an unknown id does nothing. A building run queued with `wait: true` has been answered
+answered normally, except a walk's first call still building its ids over frames (*Walks*): `cancel` stops the build,
+answered `cancelled`, and nothing is kept. Cancelling an unknown id does nothing. A building run queued with `wait: true` has been answered
 already, so `cancel` cannot reach it; `drop_job` takes it out of the job queue before it starts (*Protocol methods*).
 
 ### A call's world
@@ -356,7 +363,7 @@ the game tick): this call or earlier calls in the frame spent it, a heavy call's
 counted from its start, subscription samples included. It is never true when the budget is unlimited (0), nor for a
 call answered outside the scheduler's frame. A call that finished before the budget was reached says nothing even if
 later calls in the same frame reached it, because its reply is built before the frame ends. A deferred call
-(`sample_logic`) takes the flag for the frame its reply is built in, not the one it started in. Replies for calls that
+(`sample_logic`, a walk's first call built over frames) takes the flag for the frame its reply is built in, not the one it started in. Replies for calls that
 never ran (`game_timeout`, `cancelled`, `too_many_in_flight`) never carry it. The per-frame `budget_stops` count in
 `mod_info` is unchanged.
 
@@ -469,14 +476,14 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `cursor_expired` | A walk's later page names a cursor that is gone: its walk ended, `cursor_close`, its stream's or connection's end, a world change, the memory bound, or another connection or stream owns it (see *Walks*). Nothing ran. | `{cursor_id, position}`, `position` null when unknown | no; start the walk again |
 | `request_too_large` | A message longer than `limits.max_request_bytes`. The connection is closed. | `{limit}` | no |
 | `reply_too_large` | The reply would exceed `shape.max_bytes` or `limits.max_reply_bytes`. The method ran. | `{bytes, limit, counts}` | only if the method is read class |
-| `game_timeout` | The call was not started before its deadline. Nothing ran. As today. | none | yes |
-| `cancelled` | Cancelled before it started, by `cancel` or `stream_end`. Nothing ran. Also a `sample_logic` call whose stream ended before its run finished: its samples are dropped. | none | yes |
+| `game_timeout` | The call was not started before its deadline. Nothing ran. As today. Also a walk's first call whose deadline passed while it built its ids over frames: nothing is kept. | none | yes |
+| `cancelled` | Cancelled before it started, by `cancel` or `stream_end`. Nothing ran. Also a `sample_logic` call whose stream ended before its run finished: its samples are dropped. Also a walk's first call stopped by `cancel` or its stream's end while it built its ids over frames: nothing is kept. | none | yes |
 | `shutting_down` | The mod is stopping or the world is unloading; the call was not started. | none | yes |
 | `game_changed` | A game member this method needs is missing in this game build. As today. | none | no |
 | `internal_error` | A bug. The method may have partly run. As today. | none | no |
 | `subscription_limit` | A subscription would exceed a per-subscription, connection or global limit. | `{limit, requested, projected_ms_per_s}` | no; poll instead |
 | `unknown_subscription` | `unsubscribe` of an id this connection does not have. | none | no |
-| `world_changed` | The call's `world` is not the current world: another world loaded after the call was sent. Nothing ran (*A call's world*). | `{world: {id, save, epoch}}`, the current world (`id` empty while none runs) | no; find the ids again |
+| `world_changed` | The call's `world` is not the current world: another world loaded after the call was sent. Nothing ran (*A call's world*). Also a walk's first call whose world was left while it built its ids over frames: nothing is kept. | `{world: {id, save, epoch}}`, the current world (`id` empty while none runs) | no; find the ids again |
 | `too_many_restores` | A `hold_restore` change would pass 256 restores on the stream or 4,096 on the owner (the connection, or its resume token). Nothing changed. | `{limit, scope}`, `scope` `stream` or `owner` | after clearing some |
 
 ## Shaping

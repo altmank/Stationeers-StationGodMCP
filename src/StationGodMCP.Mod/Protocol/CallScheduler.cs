@@ -60,6 +60,10 @@ internal interface ICallScheduler
 /// answered too_many_in_flight unrun, with the limit and its scope. Ended streams and closed connections reach the
 /// per-stream stores here, at the start of the frame.
 /// <para>
+/// A call that goes on with work over frames (CallOutcome.Continued) joins Deferred, the frame's slice lane, until it
+/// answers; ended streams, closed connections and the calls' own cancels, deadlines and worlds stop it there.
+/// </para>
+/// <para>
 /// Each call it runs is timed on the scheduler's clock from its start to its serialised reply (the span the
 /// dispatcher's RunCall covers) and counted for its context in Costs, with whether the frame's request budget had been
 /// reached by then; stream ends reach Costs with the stores.
@@ -91,7 +95,11 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         _stores = stores ?? StreamStores.Main;
         _clock = clock ?? StopwatchClock.Instance;
         _scheduler = new FrameScheduler<QueuedCall>(settings, this, _clock, new CostPredictor());
+        Deferred = new DeferredCalls(_clock, _world);
     }
+
+    /// <summary>The started calls going on with work over frames.</summary>
+    internal DeferredCalls Deferred { get; }
 
     internal SchedulerSettings Settings { get; }
 
@@ -118,7 +126,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     {
         _runner = runner;
         TakeInbox();
-        return _scheduler.RunFrame(jobHoldsTick, samples);
+        return _scheduler.RunFrame(jobHoldsTick, samples, Deferred);
     }
 
     void ICallRunner<QueuedCall>.Run(QueuedCall call)
@@ -151,6 +159,10 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         if (!outcome.IsDeferred)
         {
             call.Finish(outcome.Reply, outcome.Method);
+        }
+        else if (outcome.Work != null)
+        {
+            Deferred.Add(call, outcome.Work, outcome.Method);
         }
     }
 
@@ -204,6 +216,8 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
                         _scheduler.Close(closing);
                         _connections.Remove(posted.Source);
                     }
+
+                    Deferred.Closed(posted.Source);
 
                     if (posted.Source is Connection connection)
                     {
@@ -264,6 +278,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         }
 
         _stores.End(end);
+        Deferred.Ended(end);
         Costs.Ended(end);
     }
 
