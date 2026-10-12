@@ -103,10 +103,13 @@ spent   = 0
 1. Subscriptions: take due samples (subscriptions and sample_logic) in round-robin order across connections; read
    each; stop when spent >= subMax, except that the first due sample always runs.
 2. Light lane: take calls in rounds (one call per client per round, from its streams in turn, skipping a stream
-   whose next call must wait for an earlier write on it); run each; stop when spent >= budget, except that the
+   whose next call must wait for an earlier write on it or for a deferred call of it to answer); run each; stop when spent >= budget, except that the
    first light call always runs.
 3. Heavy lane: if spent < budget, take one call by the same rounds and run it; otherwise take one by the same
    rounds from the calls that have waited >= HeavyMaxWaitFrames frames, if any, and run it.
+3b. Slice lane: calls deferred with work over frames (a walk's first call building its ids, DeferredCalls) are
+   checked (cancel, deadline, stream end, world), then one of them in turn runs a slice until spent reaches budget;
+   with no budget left it waits, and takes a single step once it has waited HeavyMaxWaitFrames frames.
 4. Expired calls (deadline passed before start) are answered game_timeout as they are met, without cost.
 5. HeldTickJobs.Tick(), previews, highlights, flight recorder, as today.
 ```
@@ -130,7 +133,13 @@ stream that may start does not.
 The ordering rule from [protocol.md](protocol.md) (*Order on one stream*) is enforced here: a stream's call that must
 wait for an earlier write on the same stream is skipped in its round, not run out of order. A write in the heavy lane
 therefore holds back that stream's later light calls, which is what the client asked for by sending them in that
-order; the connection's other streams go on.
+order; the connection's other streams go on. A deferred call holds its stream the same way until it answers: when the
+runner leaves a call it ran unanswered (a find page going on in the slice lane, `sample_logic`), FrameScheduler counts
+it on its (connection, stream) and starts nothing more there, reads included, until the call's state is answered.
+The holds are looked at as each frame starts and again after the subscription lane, so a `sample_logic` run that
+answers with its last sample frees its stream for that frame's calls; every way a deferred call ends answers it
+(its result, cancel, deadline, world change, session_end, shutdown), and `stream_end` or the connection closing let
+go of the stream at once, answered or not.
 
 What the owner sees. A frame with nothing heavy costs at most about the budget, as today. A frame with a heavy call
 costs the budget plus that call, as today for a frame that met one, but such frames are never back to back while light
@@ -297,7 +306,7 @@ subscription admission. The wiring and the binding are below; subscription admis
 - `StationGodMod.Update` calls `RunFrame(HeldTickJobs.HoldsTick, subscriptionHub)` where `ProcessPendingRequests` was;
   `DispatchStats` gets each `FrameOutcome` (served, milliseconds, budget stop, expired calls).
 - A runner may leave a call running (`CallOutcome.Deferred`) and answer it later with `QueuedCall.Finish`;
-  `sample_logic` does.
+  `sample_logic` does. Such a call holds its stream until it is answered (*Order on one stream*).
 - The call context (`Pure/Protocol/CallContext.cs`): `LaneScheduler` enters each call's `CallContext` (the
   connection's `client_id` and the call's stream) around its run, so `CallContext.Current` tells a store which stream
   it works for without a handler argument; it is `None` outside a call. A building job keeps the context of the call

@@ -12,15 +12,20 @@ namespace StationGodMCP.Pure.Scheduling;
 /// <item>the subscription lane takes due samples until it has spent its share (the first always runs);</item>
 /// <item>the light lane takes calls in rounds until the frame has spent its budget (the first always runs);</item>
 /// <item>the heavy lane runs at most one call by the same rounds: any call while the frame is under budget, and over
-/// budget only one that has waited HeavyMaxWaitFrames frames.</item>
+/// budget only one that has waited HeavyMaxWaitFrames frames;</item>
+/// <item>the slice lane (calls deferred over frames, such as a walk's build) runs one slice in what is left of the
+/// budget, and over budget a single step once it has waited HeavyMaxWaitFrames frames.</item>
 /// </list>
 /// Rounds have two levels: each client (the connections opened with the same client key, or one connection opened
 /// without one) has one turn per round, and within a client its streams, a stream being one (connection, stream
 /// number), take that client's turns in round robin. A call is sorted into its lane when it arrives (CostPredictor).
 /// On one stream a write or cheat call starts only once every earlier call of that stream is answered, and nothing
 /// starts before an earlier write or cheat of that stream is answered; reads may pass reads, and calls on different
-/// streams never wait for each other (protocol.md, Order on one stream). A call whose deadline has passed is answered
-/// game_timeout when the scheduler meets it, unrun and uncharged.
+/// streams never wait for each other (protocol.md, Order on one stream). A call the runner leaves unanswered goes on
+/// over later frames and holds its stream until it answers: no later call of that stream starts meanwhile, reads
+/// included. Holds are looked at as each frame starts and again after the subscription lane; ending the stream or
+/// closing the connection lets go of them at once. A call whose deadline has passed is answered game_timeout when the
+/// scheduler meets it, unrun and uncharged.
 /// Main thread only, and allocation-free per frame: listener threads hand their calls to the main thread, which
 /// enqueues them before RunFrame. Stream and client nodes are reused once empty, so neither a new stream nor a frame
 /// allocates once the scheduler has seen as many at once before.
@@ -39,8 +44,10 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     private readonly Stack<Waiting> _spare = new Stack<Waiting>(ExpectedConnections);
     private readonly Stack<StreamQueue> _spareStreams = new Stack<StreamQueue>(ExpectedConnections);
     private readonly Stack<Client> _spareClients = new Stack<Client>(ExpectedConnections);
+    private readonly List<Held> _held = new List<Held>(ExpectedConnections);
     private long _arrivals;
     private int _expired;
+    private int _sliceWaitFrames;
 
     internal FrameScheduler(SchedulerSettings settings, ICallRunner<TCall> runner, IMonotonicClock clock,
         CostPredictor predictor)
@@ -53,6 +60,9 @@ internal sealed class FrameScheduler<TCall> where TCall : class
 
     /// <summary>Frames run so far.</summary>
     internal long Frame { get; private set; }
+
+    /// <summary>Started calls still unanswered, each holding its stream.</summary>
+    internal int Holding => _held.Count;
 
     /// <summary>
     /// A new connection. client is the key it shares its place in the rounds by (compared with Equals: the
@@ -75,12 +85,23 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         return new Connection(node);
     }
 
-    /// <summary>Drops the connection's waiting calls on every stream unrun and unanswered, and refuses any more.</summary>
+    /// <summary>
+    /// Drops the connection's waiting calls on every stream unrun and unanswered, lets go of its streams' holds, and
+    /// refuses any more.
+    /// </summary>
     internal void Close(Connection connection)
     {
         if (connection.IsClosed)
         {
             return;
+        }
+
+        for (int index = _held.Count - 1; index >= 0; index--)
+        {
+            if (ReferenceEquals(_held[index].Queue.Owner, connection))
+            {
+                LetGo(index);
+            }
         }
 
         List<StreamQueue> live = connection.Live;
@@ -104,14 +125,23 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     }
 
     /// <summary>
-    /// Drops the stream's waiting calls unrun and unanswered (whoever ended the stream answers them); the connection's
-    /// other streams are untouched. Returns how many it dropped.
+    /// Drops the stream's waiting calls unrun and unanswered (whoever ended the stream answers them) and lets go of its
+    /// hold (whoever ended it stops its started calls); the connection's other streams are untouched. Returns how many
+    /// calls it dropped.
     /// </summary>
     internal int EndStream(Connection connection, long stream)
     {
         if (!connection.Streams.TryGetValue(stream, out StreamQueue? queue))
         {
             return 0;
+        }
+
+        for (int index = _held.Count - 1; index >= 0 && queue.Holds > 0; index--)
+        {
+            if (ReferenceEquals(_held[index].Queue, queue))
+            {
+                LetGo(index);
+            }
         }
 
         int dropped = queue.Calls.Count;
@@ -160,6 +190,8 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         waiting.DeadlineMs = deadlineMs;
         waiting.ArrivedAfterFrame = Frame;
         waiting.Arrival = _arrivals++;
+        waiting.Owner = connection;
+        waiting.Stream = stream;
         queue.Calls.Add(waiting);
         Joined(queue, lane);
         return Admission.Queued(lane);
@@ -195,10 +227,11 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     }
 
     /// <summary>
-    /// One frame: samples, then light calls, then at most one heavy call. While it runs, CurrentFrame holds the frame's
-    /// start and budget, so a reply built inside it can tell whether the budget was reached.
+    /// One frame: samples, then light calls, then at most one heavy call, then one slice of deferred work. While it
+    /// runs, CurrentFrame holds the frame's start and budget, so a reply built inside it can tell whether the budget
+    /// was reached and work sized to the frame knows where to stop.
     /// </summary>
-    internal FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples)
+    internal FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ISliceLane? slices = null)
     {
         Frame++;
         _expired = 0;
@@ -207,9 +240,12 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         CurrentFrame.Begin(startMs, shares.BudgetMs);
         try
         {
+            LetGoOfAnswered();
             int taken = RunSamples(samples, startMs, shares.SubscriptionMs);
+            LetGoOfAnswered();
             int light = RunLight(startMs, shares.BudgetMs, out bool lightStopped);
             int heavy = RunHeavy(startMs, shares.BudgetMs, out bool heavyStopped);
+            RunSlice(slices, startMs + shares.BudgetMs);
             return new FrameOutcome(taken, light, heavy, _expired, _clock.NowMs - startMs, lightStopped || heavyStopped);
         }
         finally
@@ -233,6 +269,25 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         }
 
         return taken;
+    }
+
+    // Deferred work gets what the frame's calls left of its budget; a frame with none left runs no slice, unless the work
+    // has waited HeavyMaxWaitFrames such frames, when it takes a single step, so it always moves.
+    private void RunSlice(ISliceLane? slices, double untilMs)
+    {
+        if (slices == null || !slices.HasWork)
+        {
+            _sliceWaitFrames = 0;
+            return;
+        }
+
+        if (_clock.NowMs >= untilMs && ++_sliceWaitFrames <= _settings.HeavyMaxWaitFrames)
+        {
+            return;
+        }
+
+        _sliceWaitFrames = 0;
+        slices.RunSlice(untilMs);
     }
 
     private int RunLight(double startMs, double budgetMs, out bool budgetStopped)
@@ -391,7 +446,8 @@ internal sealed class FrameScheduler<TCall> where TCall : class
 
     /// <summary>
     /// The index of the stream's first call in this lane that may start now, or -1. Expired calls met on the way are
-    /// answered and removed. A write or cheat call may start only first in line, and stops the search either way.
+    /// answered and removed. A write or cheat call may start only first in line, and stops the search either way; a
+    /// stream holding an unanswered started call starts nothing.
     /// </summary>
     private int Eligible(StreamQueue queue, Lane lane)
     {
@@ -408,6 +464,11 @@ internal sealed class FrameScheduler<TCall> where TCall : class
                 _expired++;
                 Recycle(waiting);
                 continue;
+            }
+
+            if (queue.Holds > 0)
+            {
+                return -1;
             }
 
             if (waiting.Profile.IsOrdered)
@@ -430,10 +491,50 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     {
         TCall call = waiting.Call!;
         CallProfile profile = waiting.Profile;
+        Connection owner = waiting.Owner!;
+        long stream = waiting.Stream;
         Recycle(waiting);
         double before = _clock.NowMs;
         _runner.Run(call);
         _predictor.Observe(profile, _clock.NowMs - before);
+        if (!_runner.IsAnswered(call))
+        {
+            Hold(owner, stream, call);
+        }
+    }
+
+    /// <summary>A started call goes on unanswered: its stream starts nothing more until it answers.</summary>
+    private void Hold(Connection owner, long stream, TCall call)
+    {
+        if (!owner.Streams.TryGetValue(stream, out StreamQueue? queue))
+        {
+            queue = OpenStream(owner, stream);
+        }
+
+        queue.Holds++;
+        _held.Add(new Held(queue, call));
+    }
+
+    private void LetGoOfAnswered()
+    {
+        for (int index = _held.Count - 1; index >= 0; index--)
+        {
+            if (_runner.IsAnswered(_held[index].Call))
+            {
+                StreamQueue queue = _held[index].Queue;
+                LetGo(index);
+                ReleaseIfIdle(queue);
+            }
+        }
+    }
+
+    // Takes a hold out by moving the last one into its place; the caller releases the stream once nothing is left there.
+    private void LetGo(int index)
+    {
+        _held[index].Queue.Holds--;
+        int last = _held.Count - 1;
+        _held[index] = _held[last];
+        _held.RemoveAt(last);
     }
 
     private StreamQueue OpenStream(Connection connection, long stream)
@@ -484,10 +585,7 @@ internal sealed class FrameScheduler<TCall> where TCall : class
             TurnsOf(lane).Remove(client);
         }
 
-        if (queue.Calls.Count == 0)
-        {
-            Release(queue);
-        }
+        ReleaseIfIdle(queue);
     }
 
     private void DropAll(StreamQueue queue)
@@ -498,6 +596,17 @@ internal sealed class FrameScheduler<TCall> where TCall : class
             Waiting waiting = calls[calls.Count - 1];
             RemoveAt(queue, calls.Count - 1);
             Recycle(waiting);
+        }
+
+        ReleaseIfIdle(queue);
+    }
+
+    /// <summary>A stream with no call waiting and none started unanswered is reused.</summary>
+    private void ReleaseIfIdle(StreamQueue queue)
+    {
+        if (queue.Owner != null && queue.Calls.Count == 0 && queue.Holds == 0)
+        {
+            Release(queue);
         }
     }
 
@@ -517,12 +626,13 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     private void Recycle(Waiting waiting)
     {
         waiting.Call = null;
+        waiting.Owner = null;
         _spare.Push(waiting);
     }
 
     private Ring<Client> TurnsOf(Lane lane) => lane == Lane.Light ? _light : _heavy;
 
-    /// <summary>One connection: its client, its streams with calls waiting, and their total.</summary>
+    /// <summary>One connection: its client, its streams with calls waiting or held, and the calls' total.</summary>
     internal sealed class Connection
     {
         internal Connection(Client client)
@@ -537,7 +647,7 @@ internal sealed class FrameScheduler<TCall> where TCall : class
 
         internal Client Client { get; }
 
-        /// <summary>The streams with calls waiting, by number.</summary>
+        /// <summary>The streams with calls waiting or held by a started call, by number.</summary>
         internal Dictionary<long, StreamQueue> Streams { get; } = new Dictionary<long, StreamQueue>();
 
         /// <summary>The same streams as a list (each knows its index), for closing without allocating.</summary>
@@ -606,7 +716,10 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         internal Ring<StreamQueue> Streams(Lane lane) => lane == Lane.Light ? _lightStreams : _heavyStreams;
     }
 
-    /// <summary>One stream of a connection: its calls waiting in the scheduler, in arrival order.</summary>
+    /// <summary>
+    /// One stream of a connection: its calls waiting in the scheduler, in arrival order, and how many of its started
+    /// calls are still unanswered.
+    /// </summary>
     internal sealed class StreamQueue : RingNode
     {
         internal StreamQueue(int maxInFlight)
@@ -622,6 +735,23 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         internal int LiveIndex { get; set; }
 
         internal List<Waiting> Calls { get; }
+
+        /// <summary>Its started calls still unanswered; while any is, none of its calls starts.</summary>
+        internal int Holds { get; set; }
+    }
+
+    /// <summary>A started call still unanswered and the stream it holds.</summary>
+    private readonly struct Held
+    {
+        internal Held(StreamQueue queue, TCall call)
+        {
+            Queue = queue;
+            Call = call;
+        }
+
+        internal StreamQueue Queue { get; }
+
+        internal TCall Call { get; }
     }
 
     /// <summary>One waiting call; reused once it leaves, so arrivals do not allocate.</summary>
@@ -640,6 +770,11 @@ internal sealed class FrameScheduler<TCall> where TCall : class
 
         /// <summary>Its place in the order of every arrival, all connections together.</summary>
         internal long Arrival { get; set; }
+
+        /// <summary>The connection and stream it came on: the stream it holds if it goes on unanswered.</summary>
+        internal Connection? Owner { get; set; }
+
+        internal long Stream { get; set; }
     }
 
     /// <summary>

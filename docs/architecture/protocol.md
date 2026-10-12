@@ -223,7 +223,14 @@ Each store remembers the last 1,024 jobs it evicted; an id evicted before those,
 
 A walk pages one search through to its end, each entry at most once and in the search's own order (feature
 `cursors`; `find_things` today). The first call passes `cursor: true` and runs as it would without it: scan, filter,
-sort, the first `limit` entries. When more follow, the mod keeps the reference ids of the rest, in that order, under a
+sort, the first `limit` entries. The scan (`find_things`' with or without `cursor`) is spread over frames so that no
+frame passes its request budget: the
+candidates are taken when the call starts (things built later are not in the walk), filtered one at a time, then
+sorted in bounded steps (insertion-sorted runs of 16, then merge passes of at most 256 moves a step), each frame
+taking what the frame's calls left of the budget after them (*scheduling.md*, the slice lane). `nearest` is measured
+from where the player stood when the call started. Meanwhile the call is deferred: it holds its place in flight and its stream (*Order on one stream*), and
+`cancel`, the end of its stream or connection, its deadline or a world change stop it with nothing kept. It answers
+with its first page once its ids are in order; a world small enough answers in the frame it started in. When more follow, the mod keeps the reference ids of the rest, in that order, under a
 cursor owned by the call's connection and stream, and the reply adds `cursor_id` (a short string such as `"k12"`,
 never reused while the mod runs). With nothing more to come there is no cursor and no `cursor_id`. `offset` with
 `cursor` is refused `invalid_argument`.
@@ -239,6 +246,13 @@ order, so other arguments are refused `invalid_argument` rather than ignored. A 
 - describes each thing as the first page does, distances measured from where the player is at that call;
 - keeps the reply's keys: `offset` is the walk's entries passed before the page (returned or skipped), `total` the
   walk's length at its first call, `has_more` whether ids remain, `scanned` 0; `cursor_id` while more remain.
+
+Every `find_things` page, a walk's or not, is also taken over frames: each frame describes the page's entries until
+the frame's request budget is reached, and the next frame goes on where it stopped, within the same call, until the
+page holds `limit` entries or the list ends. The call answers once, with the reply a one-shot call gives (the same
+entries, keys and `truncated`); a page that fits its frame answers in it. Its reply is serialised in one piece: when
+the moving average of the method's ms per entry says serialising it would not fit what is left of the frame, it is
+serialised at the start of the call's next slice instead, so that frame holds the serialising alone.
 
 A cursor is freed when the page that takes its last ids is answered; by `{"type":"cursor_close","cursor_id":"k12"}`
 from the connection that owns it (no reply, like `cancel`; an unknown id or another connection's cursor does
@@ -267,7 +281,12 @@ Replies may arrive in any order and are matched by `id`. The server keeps this o
 - A call whose effective class is write or cheat (see *Method classes*) does not start until every earlier
   call on the same stream has been answered.
 - No call starts until every earlier write or cheat call on the same stream has been answered.
-- Reads may overtake reads, and calls on different streams never wait for each other.
+- A deferred call (one that goes on over later frames after it starts: every `find_things` page, `sample_logic`)
+  holds its stream until it answers: no later call on that stream starts meanwhile, reads included. However it ends
+  (its answer, `cancel`, its deadline, a world change, `stream_end`, `session_end`, a shutdown, the connection
+  closing), the stream goes on. A find followed by a write on one stream therefore finds the world from before the
+  write.
+- Otherwise reads may overtake reads, and calls on different streams never wait for each other.
 
 The order covers handlers and their replies, not work that continues after the reply. A building tool's real run
 answers with a `job_id` while its job goes on over later frames
@@ -317,7 +336,8 @@ example `sample_logic`) gets its declared duration, at the arguments given, adde
 timeout adds it too.
 
 `cancel` drops a call that has not started; its reply is `cancelled`. A call that has started cannot be stopped and is
-answered normally. Cancelling an unknown id does nothing. A building run queued with `wait: true` has been answered
+answered normally, except a walk's first call still building its ids over frames (*Walks*): `cancel` stops the build,
+answered `cancelled`, and nothing is kept. Cancelling an unknown id does nothing. A building run queued with `wait: true` has been answered
 already, so `cancel` cannot reach it; `drop_job` takes it out of the job queue before it starts (*Protocol methods*).
 
 ### A call's world
@@ -349,7 +369,7 @@ the game tick): this call or earlier calls in the frame spent it, a heavy call's
 counted from its start, subscription samples included. It is never true when the budget is unlimited (0), nor for a
 call answered outside the scheduler's frame. A call that finished before the budget was reached says nothing even if
 later calls in the same frame reached it, because its reply is built before the frame ends. A deferred call
-(`sample_logic`) takes the flag for the frame its reply is built in, not the one it started in. Replies for calls that
+(`sample_logic`, a walk's first call built over frames) takes the flag for the frame its reply is built in, not the one it started in. Replies for calls that
 never ran (`game_timeout`, `cancelled`, `too_many_in_flight`) never carry it. The per-frame `budget_stops` count in
 `mod_info` is unchanged.
 
@@ -393,7 +413,9 @@ For each stream the mod counts, from the stream's first call: `calls`, the calls
 `main_thread_ms`, their whole main-thread time from the start of each call to its serialised reply, which
 `elapsed_ms` leaves out (*Replies*); and `over_budget_frames`, the frames in which one of its calls ended with the
 frame's request time at or past the budget, as `budget_hit` judges it but after serialising, each frame counted once
-per stream however many of its calls ran in it. A `sample_logic` call counts its start only; its later samples are the
+per stream however many of its calls ran in it. A call whose work goes on over frames (a `find_things` page) is one
+call whose `main_thread_ms` adds every slice of that work, each slice's frame judged as above; mod_info's per-connection
+ms per method adds them the same way. A `sample_logic` call counts its start only; its later samples are the
 subscription lane's. Without `streams` the reply lists every stream of the caller with counts, in stream order; with
 `streams` (1 to 256 numbers) it lists each one asked, in the order asked, with 0s for a stream that has none. The
 counts belong to the caller's connection, or to its resume token, so they survive a resume (*Resuming*); another
@@ -462,14 +484,14 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `cursor_expired` | A walk's later page names a cursor that is gone: its walk ended, `cursor_close`, its stream's or connection's end, a world change, the memory bound, or another connection or stream owns it (see *Walks*). Nothing ran. | `{cursor_id, position}`, `position` null when unknown | no; start the walk again |
 | `request_too_large` | A message longer than `limits.max_request_bytes`. The connection is closed. | `{limit}` | no |
 | `reply_too_large` | The reply would exceed `shape.max_bytes` or `limits.max_reply_bytes`. The method ran. | `{bytes, limit, counts}` | only if the method is read class |
-| `game_timeout` | The call was not started before its deadline. Nothing ran. As today. | none | yes |
-| `cancelled` | Cancelled before it started, by `cancel` or `stream_end`. Nothing ran. Also a `sample_logic` call whose stream ended before its run finished: its samples are dropped. | none | yes |
+| `game_timeout` | The call was not started before its deadline. Nothing ran. As today. Also a walk's first call whose deadline passed while it built its ids over frames: nothing is kept. | none | yes |
+| `cancelled` | Cancelled before it started, by `cancel` or `stream_end`. Nothing ran. Also a `sample_logic` call whose stream ended before its run finished: its samples are dropped. Also a walk's first call stopped by `cancel` or its stream's end while it built its ids over frames: nothing is kept. | none | yes |
 | `shutting_down` | The mod is stopping or the world is unloading; the call was not started. | none | yes |
 | `game_changed` | A game member this method needs is missing in this game build. As today. | none | no |
 | `internal_error` | A bug. The method may have partly run. As today. | none | no |
 | `subscription_limit` | A subscription would exceed a per-subscription, connection or global limit. | `{limit, requested, projected_ms_per_s}` | no; poll instead |
 | `unknown_subscription` | `unsubscribe` of an id this connection does not have. | none | no |
-| `world_changed` | The call's `world` is not the current world: another world loaded after the call was sent. Nothing ran (*A call's world*). | `{world: {id, save, epoch}}`, the current world (`id` empty while none runs) | no; find the ids again |
+| `world_changed` | The call's `world` is not the current world: another world loaded after the call was sent. Nothing ran (*A call's world*). Also a walk's first call whose world was left while it built its ids over frames: nothing is kept. | `{world: {id, save, epoch}}`, the current world (`id` empty while none runs) | no; find the ids again |
 | `too_many_restores` | A `hold_restore` change would pass 256 restores on the stream or 4,096 on the owner (the connection, or its resume token). Nothing changed. | `{limit, scope}`, `scope` `stream` or `owner` | after clearing some |
 
 ## Shaping

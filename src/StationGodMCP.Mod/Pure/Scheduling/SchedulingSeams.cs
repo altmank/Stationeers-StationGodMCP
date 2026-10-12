@@ -30,6 +30,24 @@ internal interface ICallRunner<in TCall>
 
     /// <summary>Answers game_timeout for a call whose deadline passed before it started; must not run it.</summary>
     void Expire(TCall call);
+
+    /// <summary>
+    /// Whether the call has its answer. A call Run left unanswered goes on over later frames (a find page, sample_logic)
+    /// and holds its stream until this turns true.
+    /// </summary>
+    bool IsAnswered(TCall call);
+}
+
+/// <summary>
+/// Work a started call goes on with over later frames (a walk's build, its call deferred meanwhile), run after the
+/// frame's calls in what is left of its request budget (FrameScheduler).
+/// </summary>
+internal interface ISliceLane
+{
+    bool HasWork { get; }
+
+    /// <summary>One slice of the work, until the clock reaches untilMs: at least one step, even past it.</summary>
+    void RunSlice(double untilMs);
 }
 
 /// <summary>

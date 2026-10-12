@@ -81,11 +81,11 @@ internal sealed class WalkCursors : ICursorStore
     internal long IdsHeld { get; private set; }
 
     /// <summary>
-    /// Keeps the rest of a walk whose first page returned returned things: rest is the ids after that page, in order,
-    /// and the store takes the array. Evicts the least recently used cursors until the new one fits. Null when rest
-    /// alone is longer than MaximumIds: such a walk is not kept.
+    /// Keeps the rest of a walk whose first page returned returned things (and passed over skipped gone ones): rest is
+    /// the ids after that page, in order, and the store takes the array. Evicts the least recently used cursors until
+    /// the new one fits. Null when rest alone is longer than MaximumIds: such a walk is not kept.
     /// </summary>
-    internal string? Open(CallContext owner, long[] rest, int returned)
+    internal string? Open(CallContext owner, long[] rest, int returned, int skipped = 0)
     {
         if (owner.IsNone)
         {
@@ -103,7 +103,8 @@ internal sealed class WalkCursors : ICursorStore
         }
 
         long number = ++_lastNumber;
-        Cursor cursor = new Cursor(number, IdPrefix + number.ToString(CultureInfo.InvariantCulture), owner, rest, returned);
+        Cursor cursor = new Cursor(number, IdPrefix + number.ToString(CultureInfo.InvariantCulture), owner, rest,
+            returned, skipped);
         _open.Add(number, cursor);
         IdsHeld += rest.Length;
         Append(cursor);
@@ -112,11 +113,12 @@ internal sealed class WalkCursors : ICursorStore
 
     /// <summary>
     /// The next page of the caller's walk: live gives an id's thing, or null when it no longer exists, and every thing
-    /// found goes into into until it holds limit. False when the cursor is not the caller's to use (cursor_expired);
+    /// found goes into into until it holds limit, or until budget stops it (at least one thing; the cursor goes on
+    /// from there at the next call). False when the cursor is not the caller's to use (cursor_expired);
     /// step then carries only ExpiredPosition. The page that takes the last ids frees the cursor.
     /// </summary>
     internal bool TryNext<T>(CallContext caller, string cursorId, int limit, Func<long, T?> live, List<T> into,
-        out WalkStep step)
+        out WalkStep step, PageBudget budget = default)
         where T : class
     {
         long number = NumberOf(cursorId);
@@ -133,25 +135,10 @@ internal sealed class WalkCursors : ICursorStore
         }
 
         int offset = cursor.Passed;
-        int skipped = 0;
-        int found = 0;
         long[] ids = cursor.Ids;
-        int index = cursor.Next;
-        while (index < ids.Length && found < limit)
-        {
-            T? thing = live(ids[index]);
-            index++;
-            if (thing == null)
-            {
-                skipped++;
-            }
-            else
-            {
-                into.Add(thing);
-                found++;
-            }
-        }
-
+        int count = into.Count;
+        int index = Take(ids, cursor.Next, limit, live, into, budget, out int skipped);
+        int found = into.Count - count;
         cursor.Next = index;
         cursor.Returned += found;
         bool more = index < ids.Length;
@@ -167,6 +154,36 @@ internal sealed class WalkCursors : ICursorStore
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// One page of a walk's ids from index from: live gives an id's thing, or null when it no longer exists (skipped and
+    /// counted), and every thing found goes into into until the page holds limit or budget stops it (never before the
+    /// first). Returns the index after the last id taken.
+    /// </summary>
+    internal static int Take<T>(long[] ids, int from, int limit, Func<long, T?> live, List<T> into, PageBudget budget,
+        out int skipped)
+        where T : class
+    {
+        skipped = 0;
+        int found = 0;
+        int index = from;
+        while (index < ids.Length && found < limit && budget.Allows(found))
+        {
+            T? thing = live(ids[index]);
+            index++;
+            if (thing == null)
+            {
+                skipped++;
+            }
+            else
+            {
+                into.Add(thing);
+                found++;
+            }
+        }
+
+        return index;
     }
 
     /// <summary>cursor_close: frees the cursor when the owner holds it; anything else does nothing.</summary>
@@ -286,13 +303,13 @@ internal sealed class WalkCursors : ICursorStore
     /// <summary>One walk: its ids after the first page, how far it has got, and its place in the recency list.</summary>
     private sealed class Cursor
     {
-        internal Cursor(long number, string id, CallContext owner, long[] ids, int returned)
+        internal Cursor(long number, string id, CallContext owner, long[] ids, int returned, int skipped)
         {
             Number = number;
             Id = id;
             Owner = owner;
             Ids = ids;
-            First = returned;
+            First = returned + skipped;
             Returned = returned;
         }
 
@@ -304,7 +321,7 @@ internal sealed class WalkCursors : ICursorStore
 
         internal long[] Ids { get; }
 
-        /// <summary>Things the first page returned, before Ids.</summary>
+        /// <summary>Entries the first page passed (returned or skipped), before Ids.</summary>
         internal int First { get; }
 
         /// <summary>The index in Ids of the next id to take.</summary>

@@ -27,6 +27,9 @@ internal sealed class MethodCallCount
         Errors += ok ? 0 : 1;
         TotalMs += ms;
     }
+
+    /// <summary>A later slice of a call already counted: its time only.</summary>
+    internal void AddMs(double ms) => TotalMs += ms;
 }
 
 /// <summary>
@@ -51,6 +54,15 @@ internal sealed class ConnectionCalls
         }
 
         count.Add(ok, ms);
+    }
+
+    /// <summary>A later slice of a call of the method already recorded (deferred over frames): its ms, not a call.</summary>
+    internal void AddMs(string method, double ms)
+    {
+        if (_byMethod.TryGetValue(method, out MethodCallCount count))
+        {
+            count.AddMs(ms);
+        }
     }
 
     /// <summary>The most-called methods, most first (then by name), at most limit of them.</summary>

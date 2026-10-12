@@ -119,7 +119,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
     /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic, drop_job, stream_costs,
     /// hold_restore and inspect_controllers count as answered). The lane scheduler times the same span for the call's
-    /// stream (stream_costs).
+    /// stream (stream_costs), and adds the slices of a call deferred over frames to both.
     /// </summary>
     public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
@@ -162,7 +162,9 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);
             ok = handled.Ok;
-            return new CallOutcome(handled.Json, handled.Method);
+            return handled.Work != null
+                ? CallOutcome.Continued(handled.Work, handled.Method)
+                : new CallOutcome(handled.Json, handled.Method);
         }
         catch (Exception exception)
         {
@@ -175,9 +177,9 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         finally
         {
             string method = KnownMethod(call.Request.Method);
-            if (method != UnknownMethod && call.Source is Connection connection)
+            if (method != UnknownMethod)
             {
-                connection.Calls.Record(method, ok, (Stopwatch.GetTimestamp() - began) * 1000.0 / Stopwatch.Frequency);
+                call.CountOnConnection(method, ok, (Stopwatch.GetTimestamp() - began) * 1000.0 / Stopwatch.Frequency);
             }
 
             if (started != 0)

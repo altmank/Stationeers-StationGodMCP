@@ -89,22 +89,43 @@ internal sealed class WalkRequest
             rest[index] = idOf(sorted[returned + index]);
         }
 
-        return _cursors.Open(CallContext.Current, rest, returned) ?? throw ApiErrors.InvalidArgument(
-            $"The walk has {rest.Length.ToString(CultureInfo.InvariantCulture)} more entries than a cursor holds " +
-            $"({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filter, or page with " +
-            $"{Vocabulary.Arg("offset")}.");
+        return _cursors.Open(CallContext.Current, rest, returned) ?? throw TooLong(rest);
+    }
+
+    private ApiException TooLong(long[] rest) => ApiErrors.InvalidArgument(
+        $"The walk has {rest.Length.ToString(CultureInfo.InvariantCulture)} more entries than a cursor holds " +
+        $"({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filter, or page with " +
+        $"{Vocabulary.Arg("offset")}.");
+
+    /// <summary>
+    /// After the first page of a walk whose ordered ids were built ahead (WalkBuild): when the call asked for a cursor
+    /// and ids remain after next (the page returned returned things and passed over skipped gone ones), keeps them in
+    /// WalkCursors under the caller's (connection, stream) and returns the cursor id; null otherwise. A rest longer
+    /// than the store holds in all is invalid_argument.
+    /// </summary>
+    internal string? KeepRest(long[] ids, int next, int returned, int skipped)
+    {
+        if (!Opens || next >= ids.Length)
+        {
+            return null;
+        }
+
+        long[] rest = new long[ids.Length - next];
+        Array.Copy(ids, next, rest, 0, rest.Length);
+        return _cursors.Open(CallContext.Current, rest, returned, skipped) ?? throw TooLong(rest);
     }
 
     /// <summary>
     /// A later page: up to limit things that still exist (live gives null for a gone one), in the walk's order, into
-    /// into. A cursor that is not the caller's to use is cursor_expired.
+    /// into, fewer when budget stops it (at least one; the rest stays for the next call to Next, so a page may be
+    /// taken over frames). A cursor that is not the caller's to use is cursor_expired.
     /// </summary>
-    internal WalkStep Next<T>(int limit, Func<long, T?> live, List<T> into)
+    internal WalkStep Next<T>(int limit, Func<long, T?> live, List<T> into, PageBudget budget = default)
         where T : class
     {
         string cursorId = CursorId ?? throw new InvalidOperationException(Vocabulary.Text("Next is for a call with " +
             "{arg:cursor_id}."));
-        if (!_cursors.TryNext(CallContext.Current, cursorId, limit, live, into, out WalkStep step))
+        if (!_cursors.TryNext(CallContext.Current, cursorId, limit, live, into, out WalkStep step, budget))
         {
             throw Expired(cursorId, step.ExpiredPosition);
         }
