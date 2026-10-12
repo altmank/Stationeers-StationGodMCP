@@ -3,6 +3,6 @@ Options:
 - id (string or array): One plant, in full.
 - include (list of unplanted): unplanted: crops and seeds not planted.
 - verbose (boolean, default false): The long form of the reply.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: game_time_s, day_length_s, debug_fast_growth, plants, count
 Example: find {what: "plant"}

@@ -8,6 +8,6 @@ Options:
 - ratio (number, default full): Charge as a share of capacity.
 - joules (number, default full): Charge in joules, clamped.
 - confirm (boolean, default false): true does it; left out, the call only reports what it would do.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: dry_run, goal {kind, value}, found_in {reference_id, prefab_name, display_name}, results [{index, ok, reference_id, prefab_name, display_name, kind, held_by, capacity_j, before_j, after_j, before_ratio, after_ratio, clamped, ok, reference_id, error, ok, error}], count, success_count, error_count, added_j
 Example: write {what: "battery", within: "player", confirm: true}

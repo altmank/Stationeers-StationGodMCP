@@ -26,5 +26,5 @@ def check(what: Literal['rules'], *,
           str, values: list[str]}]}] | None
       valid: bool | None
     Example: sg.check('rules', action='explain', rule='door_keepout', id='1199811')
-    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

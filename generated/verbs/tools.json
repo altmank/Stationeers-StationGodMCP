@@ -213,7 +213,7 @@
           "id": {
             "type": ["string", "array"],
             "items": {"type": "string"},
-            "description": "The root device (an APC output, a generator). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+            "description": "The root device (an APC output, a generator). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error."
           },
           "port": {"type": "integer"},
           "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
@@ -422,7 +422,7 @@
           "id": {
             "type": ["string", "array"],
             "items": {"type": "string"},
-            "description": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024). ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+            "description": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024). ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error."
           },
           "since": {"type": "string"},
           "limit": {"type": "integer"},
@@ -526,7 +526,7 @@
           "id": {
             "type": ["string", "array"],
             "items": {"type": "string"},
-            "description": "frame, pipe, chute: An id, a list, a ref ('r3'), or \"looking_at\". cable: Pieces (up to 4096). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+            "description": "frame, pipe, chute: An id, a list, a ref ('r3'), or \"looking_at\". cable: Pieces (up to 4096). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error."
           },
           "room": {"type": "string"},
           "into": {
@@ -599,7 +599,7 @@
           "id": {
             "type": ["string", "array"],
             "items": {"type": "string"},
-            "description": "structure: The structures. cable, pipe, chute: Pieces. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+            "description": "structure: The structures. cable, pipe, chute: Pieces. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error."
           },
           "allow": {"type": "array", "items": {"enum": ["contents", "breach", "broken", "burst", "unsupported", "split"]}},
           "refund_to": {"type": ["string", "integer", "array"]},
@@ -693,7 +693,7 @@
           "id": {
             "type": ["string", "array"],
             "items": {"type": "string"},
-            "description": "inventory: One contact; left out, every contact. buy, sell: The trader contact. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+            "description": "inventory: One contact; left out, every contact. buy, sell: The trader contact. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error."
           },
           "card": {
             "type": "string",

@@ -4,7 +4,7 @@ def plan(what: Literal['aim'], *,
     contact: str = None,  # Dish only: the trader contact.
 ) -> dict:
     """Horizontal and Vertical that point a solar panel at the sun, or a satellite dish at a trader contact.
-    A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
+    A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Write the answer with write logic (Horizontal, Vertical).
     Reply, one of:
     (SolarFixed)
@@ -41,5 +41,5 @@ def plan(what: Literal['aim'], *,
       stale_pose_deg: float
       samples: int
     Example: sg.plan('aim', id='3300111')
-    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

@@ -8,6 +8,6 @@ Options:
 - port (integer): explain: the port index.
 - other (string): explain: the other thing of a pair rule.
 - at (list): explain: a cell.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: action, rule_source {mod_file, save_file, rules, from_save, disabled, errors}, rules [{id, level, level_when, on, source, file, description, select, let, assert, message, other, examples}], types [{name, doc, fields}], sets, functions [{name, signature, doc, form, cached}], tests [{id, passed, examples}], all_passed, explained [{rule, subject, outcome, level, message, error, values}], valid
 Example: check {what: "rules", action: "explain", rule: "door_keepout", id: "1199811"}

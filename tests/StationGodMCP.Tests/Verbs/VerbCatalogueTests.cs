@@ -204,6 +204,17 @@ public sealed class VerbCatalogueTests
         Assert.NotEqual("drop", (string?)VerbCatalogue.Resolve(undo["options"]!["id"]!.AsObject())["x-script"]);
     }
 
+    [Fact]
+    public void PerIdRowsArePlansShape()
+    {
+        // PLAN 2.0 and SPEC-NOTES 14: per-id list rows are {index, ok, reference_id, payload | error}
+        Regex old = new(@"reference_id, \.\.\.|\{reference_id, error\}");
+        List<string> found = Generated.Value.Where(file => old.IsMatch(file.Value)).Select(file => file.Key).ToList();
+        Assert.True(found.Count == 0, "old row shape in: " + string.Join(", ", found));
+        Assert.Contains("{index, ok, reference_id, payload | error}", VerbHelp.IdListLine);
+        Assert.Contains("{index, ok, reference_id, payload | error}", VerbStubs.IdListLine);
+    }
+
     private static void Check(List<string> problems, string at, string key, JsonObject write, string[] allowed)
     {
         string? value = (string?)write[key];

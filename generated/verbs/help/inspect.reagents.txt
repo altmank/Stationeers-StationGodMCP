@@ -1,7 +1,7 @@
 The reagents a furnace, centrifuge, mixer or microwave holds.
 Options:
 - id (string or array, required): Target: an id, a list of ids, a ref ("r3": the ids that reply showed; "r3.rockets.parts"), or "looking_at" (the thing the crosshair is on); "player" where the what says.
-id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: reference_id, prefab_name, display_name, total, reagents [{reagent, name, quantity, unit}]
 Example: inspect {what: "reagents", id: "4191359"}

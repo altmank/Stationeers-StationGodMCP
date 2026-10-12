@@ -24,5 +24,5 @@ def trade(what: Literal['sell'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('sell', id='7', items=[{'prefab': 'ItemGoldIngot', 'quantity': 20}])
-    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

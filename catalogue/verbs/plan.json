@@ -762,11 +762,11 @@
         "contact": {"schema": {"type": "string"}, "description": "Dish only: the trader contact.", "x-script": "same"}
       },
       "text": [
-        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.",
+        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys.",
         "Write the answer with write logic (Horizontal, Vertical)."
       ],
       "x-script-text": [
-        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.",
+        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.",
         "Write the answer with write logic (Horizontal, Vertical)."
       ],
       "example": {"id": "3300111"},
