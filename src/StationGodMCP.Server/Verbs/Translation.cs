@@ -40,6 +40,12 @@ internal sealed class HandlerCall
 
     /// <summary>A reshaping of the reply the catalogue declares (find device's paging and prefab parts).</summary>
     internal Func<JsonNode?, JsonNode?>? Reshape { get; init; }
+
+    /// <summary>
+    /// The list the hub filters or pages itself (find device's devices): the handler is asked for all of it, past the
+    /// mod's default cut, and its truncated note for that list is dropped.
+    /// </summary>
+    internal string? WholeList { get; init; }
 }
 
 /// <summary>A handler's file argument with the option names a caller uses for it (code_file into code).</summary>

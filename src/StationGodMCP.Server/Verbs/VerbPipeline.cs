@@ -444,6 +444,11 @@ public sealed partial class VerbPipeline
         }
 
         (JsonElement? shape, Unparsed unparsed) = Shape(options);
+        if (handlerCall.WholeList != null)
+        {
+            shape = WithWhole(shape, handlerCall.WholeList);
+        }
+
         List<HandlerCall> chunks = Chunks(handlerCall);
         if (chunks.Count > 1)
         {
@@ -473,6 +478,11 @@ public sealed partial class VerbPipeline
             if (handlerCall.Reshape != null)
             {
                 result = handlerCall.Reshape(result);
+            }
+
+            if (handlerCall.WholeList != null)
+            {
+                Untruncated(result, handlerCall.WholeList);
             }
 
             if (unparsed.Fields.Count > 0 || unparsed.Omit.Count > 0)
@@ -787,6 +797,45 @@ public sealed partial class VerbPipeline
         return fields == null && omit == null && limits == null
             ? (null, new Unparsed([], []))
             : new SidecarArguments(default, fields, new OutputChoice.Inline(), omit, limits).Shape();
+    }
+
+    /// <summary>The most entries a shape's limit asks for (the mod's ShapeRequest.MaximumLimit).</summary>
+    internal const int WholeLimit = 100000;
+
+    /// <summary>A shape that asks for all of one list (past the mod's default cut), keeping the caller's shape.</summary>
+    internal static JsonElement WithWhole(JsonElement? shape, string list, int count = WholeLimit)
+    {
+        JsonObject merged = shape is { } given ? JsonObject.Create(given)! : new JsonObject();
+        if (merged["limit"] is not JsonObject limits)
+        {
+            limits = new JsonObject();
+            merged["limit"] = limits;
+        }
+
+        limits[list] = count;
+        return JsonNodes.ToElement(merged);
+    }
+
+    // The hub took the whole list: the mod's note that it was cut is no longer so.
+    private static void Untruncated(JsonNode? result, string list)
+    {
+        if (result?["truncated"] is not JsonArray notes)
+        {
+            return;
+        }
+
+        for (int index = notes.Count - 1; index >= 0; index--)
+        {
+            if (JsonNodes.Text(notes[index]?["list"]) == list)
+            {
+                notes.RemoveAt(index);
+            }
+        }
+
+        if (notes.Count == 0 && result is JsonObject reply)
+        {
+            reply.Remove("truncated");
+        }
     }
 
     private static JsonElement? Given(JsonObject options, string name) =>

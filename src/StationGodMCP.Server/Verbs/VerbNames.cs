@@ -17,7 +17,10 @@ internal sealed class VerbNames
 
     // Keys whose string values are texts for a reader: messages, warnings, notes and fixes, at any depth.
     private static readonly string[] TextKeys = ["message", "messages", "warning", "warnings", "note", "notes", "fix",
-        "problem", "problems", "hint", "error", "errors", "reason"];
+        "problem", "problems", "hint", "error", "errors", "reason", "more", "truncated"];
+
+    // How the mod's truncated notes name the pipe's own shape: a caller of the verbs says list_limits, nothing more.
+    private static readonly Regex PipeShape = new(@"\s*\(shape\.limit on the pipe[^)]*\)", RegexOptions.CultureInvariant);
 
     // The protocol methods a what goes to, by their verb phrase.
     private static readonly (string Method, string Phrase)[] ProtocolMethods =
@@ -98,8 +101,16 @@ internal sealed class VerbNames
     internal static VerbNames Default => Built.Value;
 
     /// <summary>The text with every handler name in it said in verb names.</summary>
-    internal string Say(string text) =>
-        _names == null || text.Length == 0 ? text : _names.Replace(text, match => _phrases[match.Value]);
+    internal string Say(string text)
+    {
+        if (text.Length == 0)
+        {
+            return text;
+        }
+
+        string said = text.Contains("shape.limit", StringComparison.Ordinal) ? PipeShape.Replace(text, string.Empty) : text;
+        return _names == null ? said : _names.Replace(said, match => _phrases[match.Value]);
+    }
 
     /// <summary>The texts of a reply or error object (messages, warnings, notes, fixes), said in verb names in place.</summary>
     internal JsonNode? SayAll(JsonNode? node)

@@ -756,7 +756,8 @@ public sealed partial class VerbPipeline
             }
 
             HandlerCall read = new("connections", args, _map.Rename.For(what, "connections"));
-            GameReply reply = await SendAsync(read, call.Stream, null, cancellation).ConfigureAwait(false);
+            GameReply reply = await SendAsync(read, call.Stream, WithWhole(null, "members", 500), cancellation)
+                .ConfigureAwait(false);
             if (reply is not GameReply.Ok ok)
             {
                 return (Failure(reply, read, what), null, null);
@@ -869,7 +870,8 @@ public sealed partial class VerbPipeline
         }
 
         HandlerCall read = new("thing_health", new JsonObject { ["reference_ids"] = asked }, _map.Rename.For(what, "thing_health"));
-        if (await SendAsync(read, stream, null, cancellation).ConfigureAwait(false) is GameReply.Ok ok)
+        if (await SendAsync(read, stream, WithWhole(null, "results", asked.Count), cancellation).ConfigureAwait(false)
+            is GameReply.Ok ok)
         {
             foreach (JsonObject row in BulkWrites.Rows(JsonNodes.FromElement(ok.Result)))
             {
