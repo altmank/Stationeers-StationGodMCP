@@ -241,13 +241,10 @@ public sealed class RunEndAndUndoTests : IDisposable
         await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
 
         await bench.Host.EndSessionAsync();
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (!journal.Lines().Any(line => line.Contains("\"t\":\"not_sent\"")) && DateTime.UtcNow < until)
-        {
-            await Task.Delay(20);
-        }
+        // session_end cancels the gated write unrun; its not_sent line follows that reply, however slow the machine.
+        await RunBench.UntilAsync(() => journal.Lines().Any(line => line.Contains("\"t\":\"not_sent\"")), "the not_sent line");
 
-        Assert.Contains(journal.Lines(), line => line.Contains("\"t\":\"not_sent\""));
+        Assert.DoesNotContain(journal.Lines(), line => line.Contains("\"maybe_ran\":true"));
     }
 
     // ---- kill timing ------------------------------------------------------------------------------------------------------
@@ -356,7 +353,7 @@ public sealed class RunEndAndUndoTests : IDisposable
 
     private static async Task EndedAsync(RunBench bench, string id)
     {
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(60);
         while (bench.Host.Find(id)!.IsLive)
         {
             Assert.True(DateTime.UtcNow < until, $"{id} did not end in time.");

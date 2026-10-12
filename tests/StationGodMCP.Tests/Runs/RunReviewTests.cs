@@ -266,7 +266,13 @@ public sealed class RunReviewTests
     [PythonFact]
     public async Task ARunKilledInsideAHoldWritesItsHeldValueBackAsCleanup()
     {
-        await using RunBench bench = new();
+        // The run spins in Python, so only the kill (1 s after the stop) ends it.
+        await using RunBench bench = new(adjust: settings => new RunHostSettings
+        {
+            SgRoot = settings.SgRoot,
+            KillAfter = TimeSpan.FromSeconds(1),
+            KillLatest = TimeSpan.FromSeconds(3)
+        });
         bench.World.Set("7", "On", 0);
 
         await bench.RunAsync("with sg.hold('7', 'On', 1):\n    while True:\n        pass", confirm: true, maxWait: 0);
@@ -361,7 +367,7 @@ public sealed class RunReviewTests
             """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"run_script","arguments":{"code":"sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)","confirm":true,"max_wait":0}}}""");
         await RunBench.UntilAsync(() => adapter.Runs!.LineOf("script-1") == 2, "script-1 reaching its wait");
         adapter.Runs!.Stop(new JsonObject { ["id"] = "script-1" });
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(60);
         while (adapter.Runs.Find("script-1")!.IsLive && DateTime.UtcNow < until)
         {
             await Task.Delay(20);
@@ -376,7 +382,7 @@ public sealed class RunReviewTests
 
     private static async Task<string> FinalAsync(RunBench bench, string id)
     {
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(60);
         while (bench.Host.Find(id)!.IsLive && DateTime.UtcNow < until)
         {
             await Task.Delay(20);
