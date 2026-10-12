@@ -16,12 +16,20 @@ namespace StationGodMCP.Pure;
 internal sealed class OutstandingWork
 {
     private readonly TimeSpan _limit;
+    private readonly Func<Task, TimeSpan, bool> _waitWithin;
     private Task? _outstanding;
     private string? _owner;
 
     internal OutstandingWork(TimeSpan limit)
+        : this(limit, WaitUpTo)
+    {
+    }
+
+    /// <summary>waitWithin waits for the work up to the limit: false when the limit passed first.</summary>
+    internal OutstandingWork(TimeSpan limit, Func<Task, TimeSpan, bool> waitWithin)
     {
         _limit = limit;
+        _waitWithin = waitWithin;
     }
 
     /// <summary>Whether work that overran its limit is still running.</summary>
@@ -42,7 +50,7 @@ internal sealed class OutstandingWork
         Task<T> task = Task.Run(work);
         try
         {
-            if (!task.Wait(_limit))
+            if (!_waitWithin(task, _limit))
             {
                 _outstanding = task;
                 _owner = owner;
@@ -56,6 +64,8 @@ internal sealed class OutstandingWork
 
         return task.Result;
     }
+
+    private static bool WaitUpTo(Task task, TimeSpan limit) => task.Wait(limit);
 
     /// <summary>
     /// Every frame: Running while overrun work goes on, Idle when there is none, or Ended once (with the work's
