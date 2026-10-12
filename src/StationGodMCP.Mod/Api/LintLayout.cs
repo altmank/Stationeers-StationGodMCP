@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -73,14 +74,16 @@ internal static class LintLayoutApi
     {
         if (args.Has("room_id") == (args.Has("min") || args.Has("max")))
         {
-            throw ApiErrors.InvalidArgument("Pass room_id (from rooms) or min and max (a box, in metres).");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:room_id} (from {tool:rooms}) or {arg:min} and " +
+                "{arg:max} (a box, in metres)."));
         }
 
         if (args.Has("room_id"))
         {
             if (!ThingId.TryRead(args.Optional("room_id"), out ThingId id))
             {
-                throw ApiErrors.InvalidArgument("room_id must be a room id as rooms reports it.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:room_id} must be a room id as {tool:rooms} " +
+                    "reports it."));
             }
 
             Room room = StructureAirRecord.FindRoom(id.Value) ??
@@ -96,7 +99,8 @@ internal static class LintLayoutApi
         }
 
         Vec3 min = PointOf(args.Optional("min")!, "min");
-        Vec3 max = PointOf(args.Optional("max") ?? throw ApiErrors.InvalidArgument("Pass max too."), "max");
+        Vec3 max = PointOf(
+            args.Optional("max") ?? throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:max} too.")), "max");
         long count = LargeCells.CountInBox(min, max);
         if (count > MaximumCells)
         {

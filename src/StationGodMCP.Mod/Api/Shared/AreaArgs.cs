@@ -2,6 +2,7 @@
 
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -22,7 +23,8 @@ internal static class AreaArgs
         bool near = args.Has("near") || args.Has("radius_m");
         if (box && near)
         {
-            throw ApiErrors.InvalidArgument("Give min and max, or near with radius_m, not both.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Give {arg:min} and {arg:max}, or {arg:near} with " +
+                "{arg:radius_m}, not both."));
         }
 
         if (box)
@@ -36,10 +38,11 @@ internal static class AreaArgs
         }
 
         double radius = args.OptionalDouble("radius_m") ??
-                        throw ApiErrors.InvalidArgument("near needs radius_m, in metres.");
+                        throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:near} needs {arg:radius_m}, in metres."));
         if (!(radius > 0.0) || radius > MaximumRadiusM)
         {
-            throw ApiErrors.InvalidArgument($"Argument 'radius_m' must be above 0 and at most {MaximumRadiusM:0} m.");
+            throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg("radius_m")}' must be above 0 and at most " +
+                $"{MaximumRadiusM:0} m.");
         }
 
         return PointArea.Near(Point(args, "near"), radius);
@@ -49,8 +52,8 @@ internal static class AreaArgs
     {
         JToken token = args.Optional(name) ??
                        throw ApiErrors.InvalidArgument(name == "near"
-                           ? "radius_m needs near: [x, y, z] metres."
-                           : "Give both min and max, the corners of the box.");
+                           ? Vocabulary.Text("{arg:radius_m} needs {arg:near}: [x, y, z] metres.")
+                           : Vocabulary.Text("Give both {arg:min} and {arg:max}, the corners of the box."));
         Metres point = BuildArgs.PositionOf(token, name);
         return new Vec3(point.X, point.Y, point.Z);
     }

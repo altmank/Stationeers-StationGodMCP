@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure.DeviceReads;
 
@@ -207,7 +208,8 @@ internal abstract class DeviceReadParse
         if (!(token is JArray array) || array.Count == 0 || array.Count > DeviceReadBounds.MaximumItems)
         {
             throw new RefusedRequest(
-                $"Argument 'items' must be an array of 1 to {DeviceReadBounds.MaximumItems} entries.");
+                $"Argument '{Vocabulary.Arg("items")}' must be an array of 1 to {DeviceReadBounds.MaximumItems} " +
+                "entries.");
         }
 
         List<DeviceReadItem> items = new List<DeviceReadItem>(array.Count);
@@ -254,13 +256,15 @@ internal abstract class DeviceReadParse
 
     private static long ReferenceId(JToken? token, string path)
     {
-        JToken present = Present(token) ?? throw new RefusedRequest($"{path}.reference_id is required.");
+        JToken present = Present(token) ?? throw new RefusedRequest($"{path}.{Vocabulary.Arg("reference_id")} is " +
+            "required.");
         string text = present.Type == JTokenType.String
             ? present.Value<string>() ?? string.Empty
             : present.Type == JTokenType.Integer ? present.ToString(Formatting.None) : string.Empty;
         if (!long.TryParse(text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long id))
         {
-            throw new RefusedRequest($"{path}.reference_id must be a reference id as a decimal string.");
+            throw new RefusedRequest($"{path}.{Vocabulary.Arg("reference_id")} must be a reference id as a decimal " +
+                "string.");
         }
 
         return id;
@@ -363,7 +367,7 @@ internal abstract class DeviceReadParse
 
         if (!(token is JArray array))
         {
-            throw new RefusedRequest("Argument 'include' must be an array; it takes \"clock\".");
+            throw new RefusedRequest(Vocabulary.Text("Argument '{arg:include}' must be an array; it takes \"clock\"."));
         }
 
         bool clock = false;

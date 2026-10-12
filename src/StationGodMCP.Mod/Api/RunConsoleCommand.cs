@@ -5,6 +5,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
+using StationGodMCP.Pure.Protocol;
 using Util.Commands;
 
 namespace StationGodMCP.Api;
@@ -40,7 +41,7 @@ internal static class RunConsoleCommandApi
         string command = args.String("command").Trim();
         if (command.Length == 0)
         {
-            throw ApiErrors.InvalidArgument("Argument 'command' must not be empty.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:command}' must not be empty."));
         }
 
         int maximumLines = args.OptionalInt("max_output_lines", 1, ConsoleBridge.MaximumConsoleLines) ??
@@ -91,16 +92,17 @@ internal static class RunConsoleCommandApi
 
         // An asynchronous command started a UniTask and returned; its result is printed frames later.
         string note = capture.Asynchronous
-            ? $"'{key}' finishes on a background task, so it returned before its result was printed. Whatever is " +
-              "in 'output' is only what had been printed by the time this call returned, and an EMPTY list is not " +
-              "evidence that the command printed nothing, succeeded or failed. Call read_console a second or two " +
-              "later to see the outcome."
+            ? $"'{key}' finishes on a background task, so it returned before its result was printed. Whatever is in " +
+                "'output' is only what had been printed by the time this call returned, and an EMPTY list is not " +
+                "evidence that the command printed nothing, succeeded or failed. Call " +
+                $"{Vocabulary.Tool("read_console")} a second or two later to see the outcome."
             : capture.OutputLineCount == 0 ? Silent : Printed;
         if (capture.ConcurrentLines > 0)
         {
             note += $" {capture.ConcurrentLines} further line(s) were printed into the console from a background " +
-                    "thread while this command ran; Unity mirrors errors and their stack traces in that way. They " +
-                    "are deliberately not mixed into the output above, and are visible through read_console.";
+                "thread while this command ran; Unity mirrors errors and their stack traces in that way. They are " +
+                "deliberately not mixed into the output above, and are visible through " +
+                $"{Vocabulary.Tool("read_console")}.";
         }
 
         return note;

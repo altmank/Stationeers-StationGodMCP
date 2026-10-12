@@ -9,6 +9,7 @@ using Objects.Rockets;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
 using StationGodMCP.Pure.Shaping;
 using UnityEngine;
@@ -42,7 +43,8 @@ internal static class RocketFlightLogApi
             case "read":
                 return Show(RocketFlightRecorder.Require(Id(args)), args);
             default:
-                throw ApiErrors.InvalidArgument("Argument 'action' must be start, stop, read, list or clear.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:action}' must be start, stop, read, " +
+                    "list or clear."));
         }
     }
 
@@ -54,7 +56,7 @@ internal static class RocketFlightLogApi
         double interval = args.OptionalDouble("interval_s") ?? 1.0;
         if (interval < 0.1 || interval > 600.0)
         {
-            throw ApiErrors.InvalidArgument("Argument 'interval_s' must be from 0.1 to 600.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:interval_s}' must be from 0.1 to 600."));
         }
 
         int capacity = args.OptionalInt("capacity", 10, 100000) ?? DefaultCapacity;
@@ -103,7 +105,8 @@ internal static class RocketFlightLogApi
         if (page.Offset > 0 || next < entry.Buffer.Count)
         {
             Truncations.Note("rows", rows.Count, reachable,
-                $"pass limit (max {page.Maximum}), every, or offset {next} (offset counts samples)", false);
+                $"pass {Vocabulary.Arg("limit")} (max {page.Maximum}), {Vocabulary.Arg("every")}, or " +
+                $"{Vocabulary.Arg("offset")} {next} ({Vocabulary.Arg("offset")} counts samples)", false);
         }
         return View(entry, rows, page.Offset, every);
     }
@@ -177,7 +180,8 @@ internal static class RocketFlightRecorder
     internal static RocketFlightLogEntry Require(long rocketId) =>
         Logs.TryGetValue(rocketId, out RocketFlightLogEntry entry)
             ? entry
-            : throw ApiErrors.Refused("no_flight_log", "This rocket has no flight log: start one with action start.");
+            : throw ApiErrors.Refused("no_flight_log", Vocabulary.Text("This rocket has no flight log: start one " +
+                "with {arg:action} start."));
 
     internal static RocketFlightLogEntry Stop(long rocketId)
     {

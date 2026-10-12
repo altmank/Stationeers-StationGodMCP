@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -46,7 +47,8 @@ internal static class ListOrderArg
         if (!Pure.ListOrders.TryParse(given, out Pure.ListOrder order))
         {
             throw ApiErrors.InvalidArgument(
-                $"Argument 'order' must be {Pure.ListOrders.Nearest} or {Pure.ListOrders.ReferenceId}; '{given}' is neither.");
+                $"Argument '{Vocabulary.Arg("order")}' must be {Pure.ListOrders.Nearest} or " +
+                $"{Pure.ListOrders.ReferenceId}; '{given}' is neither.");
         }
 
         return order;

@@ -13,6 +13,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -207,7 +208,9 @@ internal static class PlacementLayout
                 allow ? ConflictLevel.Warning : ConflictLevel.Problem,
                 System.FormattableString.Invariant($"{inKeepOut} of its cells stand in the keep-out of door {door} (its face and {facts.Band.Metres} m ") +
                 "either side, inside its rectangle)" +
-                (allow ? "; allowed (allow_door_keepout)." : "; move it, or pass allow_door_keepout."), door));
+                (allow
+                    ? Vocabulary.Text("; allowed ({arg:allow_door_keepout}).")
+                    : Vocabulary.Text("; move it, or pass {arg:allow_door_keepout}.")), door));
         }
 
         // Once per window: the wall sections a mounted piece rests on may have named it already.

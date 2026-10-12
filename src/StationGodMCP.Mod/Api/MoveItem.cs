@@ -14,6 +14,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -81,7 +82,7 @@ internal static class MoveItemApi
             case MoveItemRequest.Batch batch:
                 return MoveEach(batch.Moves);
             default:
-                throw ApiErrors.InvalidArgument("Unknown move_item form.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {tool:move_item} form."));
         }
     }
 
@@ -235,7 +236,8 @@ internal abstract class SlotChoice
         int? index = args.OptionalInt("to_slot", 0, int.MaxValue);
         return index.HasValue
             ? new Exact(index.Value)
-            : throw ApiErrors.InvalidArgument("Argument 'to_slot' is required: a slot index, or \"auto\".");
+            : throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:to_slot}' is required: a slot index, " +
+                "or \"auto\"."));
     }
 
     internal sealed class Exact : SlotChoice
@@ -291,7 +293,8 @@ internal sealed class ItemMove
         SlotChoice slot = SlotChoice.Parse(args);
         if (force && slot is SlotChoice.Auto)
         {
-            throw ApiErrors.InvalidArgument("force needs to_slot as a slot index, not \"auto\".");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:force} needs {arg:to_slot} as a slot index, not " +
+                "\"auto\"."));
         }
 
         return new ItemMove(
@@ -350,8 +353,8 @@ internal static class MovePlanner
         if (quantity != 1)
         {
             return ApiErrors.InvalidArgument(
-                $"Slot {slot.SlotIndex} of {Names.Of(target)} is a plant slot: planting takes one {Names.Of(item)} "
-                + "off the stack, as a player plants, so pass quantity 1.");
+                $"Slot {slot.SlotIndex} of {Names.Of(target)} is a plant slot: planting takes one {Names.Of(item)} " +
+                $"off the stack, as a player plants, so pass {Vocabulary.Arg("quantity")} 1.");
         }
 
         return GrowerSlots.PlantingPrefab(item) == null
@@ -379,8 +382,8 @@ internal static class MovePlanner
                     + "fertiliser, added only when it is empty.");
             case GrowerRefusal.OneUnit:
                 return ApiErrors.InvalidArgument(
-                    $"{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {Names.Of(item)} off the "
-                    + "stack, so pass quantity 1.");
+                    $"{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {Names.Of(item)} off the " +
+                    $"stack, so pass {Vocabulary.Arg("quantity")} 1.");
             default:
                 return null;
         }
@@ -445,7 +448,8 @@ internal static class MovePlanner
     {
         return IsVaultDisplaySlot(target, index)
             ? ApiErrors.Refused("vault_display_slot",
-                $"Slot {index} of {Names.Of(target)} only shows the vault's store; use vault_deposit to store items.")
+                $"Slot {index} of {Names.Of(target)} only shows the vault's store; use " +
+                $"{Vocabulary.Tool("vault_deposit")} to store items.")
             : null;
     }
 
@@ -473,8 +477,9 @@ internal static class MovePlanner
         return GrowerSlotRule.TakesOut(GrowerSlots.KindOf(from.Parent, from), item is Plant, item is Seed)
             ? PartsInUse.Refusal(item, allowInUse)
             : ApiErrors.Refused("planted",
-                $"{Names.Of(item)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, "
-                + "only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.");
+                $"{Names.Of(item)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, " +
+                $"only harvests its fruit or seeds once it is mature or seeding (see {Vocabulary.Tool("plants")}) or " +
+                "clears it.");
     }
 
     // quantity counts a stack's items; anything else (a water packet, a canister) moves whole, as 1.
@@ -505,7 +510,7 @@ internal static class MovePlanner
             case SlotChoice.Auto _:
                 return AutoSlot(move, item, target, quantity, out slot, out mergeInto);
             default:
-                return ApiErrors.InvalidArgument("Unknown to_slot.");
+                return ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {arg:to_slot}."));
         }
     }
 
@@ -601,8 +606,8 @@ internal static class MovePlanner
         {
             case OccupantRefusal.MergeOff:
                 return ApiErrors.Refused("slot_occupied",
-                    $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} "
-                    + "does not join it.");
+                    $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and {Vocabulary.Arg("merge")} is false, " +
+                    $"so {Names.Of(item)} does not join it.");
             case OccupantRefusal.CannotJoin:
                 return ApiErrors.Refused("slot_occupied",
                     $"{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, which {Names.Of(item)} cannot join.");
@@ -726,8 +731,8 @@ internal sealed class MovePlan
                 ? MergeInto.Quantity - mergedBefore
                 : landed is Stackable stack ? stack.Quantity : 1;
             return new ItemMovedView(index, itemId, from, to, moved, merged, new ThingId(landed.ReferenceId),
-                $"The game threw during the move ({thrown.GetType().Name}: {thrown.Message}), but the slot holds "
-                + "the result, so the move is done; check it with container_contents.");
+                $"The game threw during the move ({thrown.GetType().Name}: {thrown.Message}), but the slot holds the " +
+                $"result, so the move is done; check it with {Vocabulary.Tool("container_contents")}.");
         }
     }
 

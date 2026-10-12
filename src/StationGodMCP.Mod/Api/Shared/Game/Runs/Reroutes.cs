@@ -5,6 +5,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -61,7 +62,7 @@ internal static class Reroutes
     {
         if (!(GameLookup.RequireThing(from.Id) is SmallGrid a) || !(GameLookup.RequireThing(to.Id) is SmallGrid b))
         {
-            throw ApiErrors.InvalidArgument("between names two devices or pieces.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:between} names two devices or pieces."));
         }
 
         RerouteNetworkChoice choice = RerouteNetworks.Shared(EndOf(kind, a, from.Port, "reroute.between[0]"),
@@ -158,7 +159,7 @@ internal static class Reroutes
         {
             throw ApiErrors.InvalidArgument(
                 $"{name}.port {port.Value} is not a {kind.Noun} port of {label}; its {kind.Noun} ports are " +
-                $"[{string.Join("; ", ports)}] (connections lists them).");
+                $"[{string.Join("; ", ports)}] ({Vocabulary.Tool("connections")} lists them).");
         }
 
         return new RerouteEndNetworks($"{label} port {port.Value}", new List<EndNetwork> { named });

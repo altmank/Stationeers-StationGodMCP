@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -64,7 +65,8 @@ internal static class DeviceMemory
                 : double.NaN;
             if (double.IsNaN(value) || double.IsInfinity(value))
             {
-                throw ApiErrors.InvalidArgument($"Argument 'values[{index}]' must be a finite number.");
+                throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg("values")}[{index}]' must be a finite " +
+                    "number.");
             }
 
             values.Add(value);

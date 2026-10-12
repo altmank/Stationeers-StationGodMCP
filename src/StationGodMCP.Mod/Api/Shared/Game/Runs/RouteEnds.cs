@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -88,7 +89,8 @@ internal static class RouteEnds
     {
         if (!(token is JObject item))
         {
-            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}} or {{reference_id, port}}.");
+            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}} or " +
+                $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
         }
 
         Args fields = new Args(item);
@@ -107,7 +109,8 @@ internal static class RouteEnds
         {
             if (ignore.Contains(own.ReferenceId))
             {
-                throw ApiErrors.InvalidArgument($"{name} names a piece being removed (the reroute's old run or assume_removed).");
+                throw ApiErrors.InvalidArgument($"{name} names a piece being removed (the reroute's old run or " +
+                    $"{Vocabulary.Arg("assume_removed")}).");
             }
 
             PieceModel model = PieceShapes.Live(own);
@@ -130,7 +133,8 @@ internal static class RouteEnds
         {
             if (ignore.Contains(member.ReferenceId))
             {
-                throw ApiErrors.InvalidArgument($"{name} names a thing being removed (assume_removed).");
+                throw ApiErrors.InvalidArgument($"{name} names a thing being removed " +
+                    $"({Vocabulary.Arg("assume_removed")}).");
             }
 
             return OfFreeEnd(kind, member, fields.OptionalInt("port", 0, 64), type, name, ignore);
@@ -153,7 +157,8 @@ internal static class RouteEnds
         if (end?.Transform == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{name}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} (connections lists its ends).");
+                $"{name}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} " +
+                $"({Vocabulary.Tool("connections")} lists its ends).");
         }
 
         GridCell local = PieceShapes.Cell(end.GetLocalGrid());
@@ -197,7 +202,7 @@ internal static class RouteEnds
         if (!chosen.HasValue)
         {
             throw ApiErrors.InvalidArgument($"{name}: {member.PrefabName} {member.ReferenceId}: {error} " +
-                                            "(connections lists its ends).");
+                $"({Vocabulary.Tool("connections")} lists its ends).");
         }
 
         Connection picked = ends[chosen.Value];
@@ -317,15 +322,16 @@ internal static class RouteEnds
         {
             throw ApiErrors.InvalidArgument(
                 $"{name}.port {port.Value} is not a {kind.Noun} port of {device.PrefabName}; its ports of that kind " +
-                $"are [{string.Join(", ", candidates)}] (connections lists them).");
+                $"are [{string.Join(", ", candidates)}] ({Vocabulary.Tool("connections")} lists them).");
         }
 
         if (!port.HasValue && candidates.Count != 1)
         {
             throw ApiErrors.InvalidArgument(
                 $"{device.PrefabName} {device.ReferenceId} has {candidates.Count} {kind.Noun} ports " +
-                $"[{string.Join(", ", candidates)}]; name one with {name}.port, or several with {name}.ports " +
-                "(connections or grid_survey lists them).");
+                $"[{string.Join(", ", candidates)}]; name one with {name}.{Vocabulary.Arg("port")}, or several with " +
+                $"{name}.{Vocabulary.Arg("ports")} ({Vocabulary.Tool("connections")} or " +
+                $"{Vocabulary.Tool("grid_survey")} lists them).");
         }
 
         int chosenPort = port ?? candidates[0];
@@ -338,8 +344,9 @@ internal static class RouteEnds
         {
             throw ApiErrors.InvalidArgument(
                 $"{name}: port {chosenPort} of {device.PrefabName} {device.ReferenceId} {wrongWay}; a chute route " +
-                $"runs with the items, so it {(target ? "ends at an input port" : "starts at an output port")} " +
-                $"(its chute ports: [{string.Join(", ", candidates)}]; connections lists their roles).");
+                $"runs with the items, so it {(target ? "ends at an input port" : "starts at an output port")} (its " +
+                $"chute ports: [{string.Join(", ", candidates)}]; {Vocabulary.Tool("connections")} lists their " +
+                "roles).");
         }
 
         GridCell cell = PieceShapes.Cell(chosen.GetLocalGrid());

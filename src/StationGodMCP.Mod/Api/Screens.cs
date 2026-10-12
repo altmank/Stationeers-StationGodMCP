@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Screens;
 using UnityEngine;
 
@@ -112,13 +113,14 @@ internal static class ScreenPressApi
         string eventName = (args.OptionalString("event") ?? "click").Trim().ToLowerInvariant();
         if (Array.IndexOf(Events, eventName) < 0)
         {
-            throw ApiErrors.InvalidArgument("Argument 'event' must be click, change or toggle.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:event}' must be click, change or toggle."));
         }
 
         string? value = args.OptionalString("value");
         if (eventName == "change" && value == null)
         {
-            throw ApiErrors.InvalidArgument("event change needs value: the control's new value as text.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:event} change needs {arg:value}: the control's new " +
+                "value as text."));
         }
 
         List<ScreenElementData> elements = Screens.ElementsOf(host, surface);
@@ -142,14 +144,16 @@ internal static class ScreenPressApi
         bool byId = args.Has("element_id");
         if (byId == args.Has("at"))
         {
-            throw ApiErrors.InvalidArgument("Pass element_id or at (a point [x, y] on the surface), one of them.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:element_id} or {arg:at} (a point [x, y] on " +
+                "the surface), one of them."));
         }
 
         if (byId)
         {
             string id = args.String("element_id");
             return elements.Find(element => element.Element.Id == id) ?? throw ApiErrors.Refused(
-                "element_not_found", $"Surface '{surface}' has no element '{id}'; screen_read lists them.");
+                "element_not_found", $"Surface '{surface}' has no element '{id}'; {Vocabulary.Tool("screen_read")} " +
+                    "lists them.");
         }
 
         JArray at = args.Array("at", 2);
@@ -158,14 +162,16 @@ internal static class ScreenPressApi
             !double.TryParse(at[1].ToString(), System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out double y))
         {
-            throw ApiErrors.InvalidArgument("Argument 'at' must be [x, y]: surface pixels from the top-left corner.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:at}' must be [x, y]: surface pixels from " +
+                "the top-left corner."));
         }
 
         ScreenElement? hit = layout.ControlAt(elements.ConvertAll(static element => element.Element), x, y);
         return hit != null
             ? elements.Find(element => element.Element.Id == hit.Id)!
             : throw ApiErrors.Refused("no_control_at",
-                $"No shown control stands at ({x}, {y}) on surface '{surface}'; screen_read gives each element's box.");
+                $"No shown control stands at ({x}, {y}) on surface '{surface}'; {Vocabulary.Tool("screen_read")} " +
+                "gives each element's box.");
     }
 }
 

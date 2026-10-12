@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Globalization;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure.Routing;
 
@@ -35,6 +36,7 @@ internal static class PortSplitSummary
 
     /// <summary>The warning's text for one device.</summary>
     internal static string Message(string tool, string device, IReadOnlyList<string> ports) =>
-        $"{tool}'s check: {device} would lose its connection on port{(ports.Count == 1 ? "" : "s")} " +
-        $"{string.Join(", ", ports)}; remove_structure removes it anyway (verbose: each port in full).";
+        $"{Vocabulary.Tool(tool)}'s check: {device} would lose its connection on port{(ports.Count == 1 ? "" : "s")} " +
+        $"{string.Join(", ", ports)}; {Vocabulary.Tool("remove_structure")} removes it anyway (verbose: each port in " +
+        "full).";
 }

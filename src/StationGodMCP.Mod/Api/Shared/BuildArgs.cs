@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -348,7 +349,8 @@ internal static class BuildArgs
                 if (args.Declares(field) && args.Has(field))
                 {
                     throw ApiErrors.InvalidArgument(
-                        $"Argument '{field}' does not go with placements: give it in each placement (placements[0].{field}).");
+                        $"Argument '{field}' does not go with {Vocabulary.Arg("placements")}: give it in each " +
+                        $"placement ({Vocabulary.Arg("placements")}[0].{field}).");
                 }
             }
             List<Args?> items = args.Objects("placements", MaximumPlacements);
@@ -365,7 +367,8 @@ internal static class BuildArgs
         }
         else
         {
-            throw ApiErrors.InvalidArgument("Pass placements, or prefab and at for one placement.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:placements}, or {arg:prefab} and {arg:at} for " +
+                "one placement."));
         }
 
         bool confirmed = Confirmed(args);
@@ -389,7 +392,7 @@ internal static class BuildArgs
 
         if (!args.Has("reference_ids"))
         {
-            throw ApiErrors.InvalidArgument("Pass reference_ids.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:reference_ids}."));
         }
 
         List<ThingId> ids = args.ThingIds("reference_ids", MaximumRemovals);
@@ -409,11 +412,14 @@ internal static class BuildArgs
     internal static PlacementArgs Placement(Args item, int index, string prefix)
     {
         PrefabRef prefab = PrefabOf(item.Optional("prefab"), prefix + "prefab");
-        JToken at = item.Optional("at") ?? throw ApiErrors.InvalidArgument($"{prefix}at is required.");
+        JToken at = item.Optional("at") ?? throw ApiErrors.InvalidArgument($"{prefix}{Vocabulary.Arg("at")} is " +
+            "required.");
         JObject? orient = item.OptionalObject("orient");
         if (orient != null && (item.Has("rotation") || item.Has("facing") || item.Has("face") || item.Has("up")))
         {
-            throw ApiErrors.InvalidArgument($"{prefix}orient chooses the turn: leave out rotation, facing, face and up.");
+            throw ApiErrors.InvalidArgument($"{prefix}{Vocabulary.Arg("orient")} chooses the turn: leave out " +
+                $"{Vocabulary.Arg("rotation")}, {Vocabulary.Arg("facing")}, {Vocabulary.Arg("face")} and " +
+                $"{Vocabulary.Arg("up")}.");
         }
 
         if (orient != null)
@@ -425,7 +431,7 @@ internal static class BuildArgs
         double? above = item.OptionalDouble("above_floor_m");
         if (above.HasValue && (above.Value < 0 || above.Value > 20))
         {
-            throw ApiErrors.InvalidArgument($"{prefix}above_floor_m must be 0 to 20.");
+            throw ApiErrors.InvalidArgument($"{prefix}{Vocabulary.Arg("above_floor_m")} must be 0 to 20.");
         }
 
         return new PlacementArgs(index, prefab, AtOf(at, prefix + "at"),
@@ -442,7 +448,8 @@ internal static class BuildArgs
         if (mount != null && (word == null ||
                               !(word == "wall" || word == "floor" || word == "ceiling" || GridStep.TryParse(word, out _))))
         {
-            throw ApiErrors.InvalidArgument($"{prefix}orient.mount must be wall, floor, ceiling or an axis (+x .. -z).");
+            throw ApiErrors.InvalidArgument($"{prefix}{Vocabulary.Arg("orient")}.{Vocabulary.Arg("mount")} must be " +
+                "wall, floor, ceiling or an axis (+x .. -z).");
         }
     }
 
@@ -486,7 +493,8 @@ internal static class BuildArgs
 
         if (item.Has("rotation") || item.Has("face"))
         {
-            throw ApiErrors.InvalidArgument($"Give at most one of {prefix}rotation, {prefix}facing and {prefix}face.");
+            throw ApiErrors.InvalidArgument($"Give at most one of {prefix}{Vocabulary.Arg("rotation")}, " +
+                $"{prefix}{Vocabulary.Arg("facing")} and {prefix}{Vocabulary.Arg("face")}.");
         }
 
         GridStep? up = item.Has("up") ? Step(item.OptionalString("up"), prefix + "up") : (GridStep?)null;
@@ -526,7 +534,8 @@ internal static class BuildArgs
         int forms = (item.Has("rotation") ? 1 : 0) + (item.Has("facing") ? 1 : 0) + (item.Has("face") ? 1 : 0);
         if (forms > 1)
         {
-            throw ApiErrors.InvalidArgument($"Give at most one of {prefix}rotation, {prefix}facing and {prefix}face.");
+            throw ApiErrors.InvalidArgument($"Give at most one of {prefix}{Vocabulary.Arg("rotation")}, " +
+                $"{prefix}{Vocabulary.Arg("facing")} and {prefix}{Vocabulary.Arg("face")}.");
         }
 
         GridStep? up = item.Has("up") ? Step(item.OptionalString("up"), prefix + "up") : (GridStep?)null;
@@ -534,7 +543,8 @@ internal static class BuildArgs
         {
             if (up.HasValue)
             {
-                throw ApiErrors.InvalidArgument($"{prefix}up goes with facing or face, not rotation.");
+                throw ApiErrors.InvalidArgument($"{prefix}{Vocabulary.Arg("up")} goes with " +
+                    $"{Vocabulary.Arg("facing")} or {Vocabulary.Arg("face")}, not {Vocabulary.Arg("rotation")}.");
             }
 
             return EulerOf(item.Optional("rotation")!, prefix + "rotation");
@@ -551,7 +561,8 @@ internal static class BuildArgs
         }
 
         return up.HasValue
-            ? throw ApiErrors.InvalidArgument($"{prefix}up goes with facing or face.")
+            ? throw ApiErrors.InvalidArgument($"{prefix}{Vocabulary.Arg("up")} goes with {Vocabulary.Arg("facing")} " +
+                $"or {Vocabulary.Arg("face")}.")
             : RotationSpec.Default;
     }
 
@@ -646,8 +657,8 @@ internal static class BuildArgs
 
     private static BuildForm<T> Poll<T>(Args args, params string[] others)
     {
-        args.Reject("job_id", others);
-        args.Reject("job_id", "dry_run", "confirm", GasHoldVerdict.AcknowledgeArgument);
+        args.Reject("{arg:job_id}", others);
+        args.Reject("{arg:job_id}", "dry_run", "confirm", GasHoldVerdict.AcknowledgeArgument);
         return new BuildForm<T>.Poll(args.String("job_id").Trim(), args.OptionalBool(VerboseArgument) ?? false);
     }
 
@@ -658,13 +669,14 @@ internal static class BuildArgs
         bool confirm = args.OptionalBool("confirm") ?? false;
         if (dryRun && confirm)
         {
-            throw ApiErrors.InvalidArgument("confirm: true needs dry_run: false; nothing was changed.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:confirm}: true needs {arg:dry_run}: false; nothing " +
+                "was changed."));
         }
 
         if (!dryRun && !confirm)
         {
             throw ApiErrors.Refused("confirm_required",
-                "A real run needs dry_run: false and confirm: true; nothing was changed.");
+                Vocabulary.Text("A real run needs {arg:dry_run}: false and {arg:confirm}: true; nothing was changed."));
         }
 
         return !dryRun;

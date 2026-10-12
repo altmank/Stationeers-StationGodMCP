@@ -6,6 +6,7 @@ using Assets.Scripts.Objects;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
@@ -102,7 +103,8 @@ internal static class RunArgs
                     (args.Has("pieces") ? 1 : 0);
         if (forms > 1)
         {
-            throw ApiErrors.InvalidArgument("Pass one of waypoints, cells, piece or pieces.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass one of {arg:waypoints}, {arg:cells}, {arg:piece} " +
+                "or {arg:pieces}."));
         }
 
         string? error;
@@ -198,7 +200,8 @@ internal static class RunArgs
         {
             if (args.Has("branches"))
             {
-                throw ApiErrors.InvalidArgument("branches go with waypoints or cells, not pieces.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:branches} go with {arg:waypoints} or " +
+                    "{arg:cells}, not {arg:pieces}."));
             }
 
             return RunShape.Pieces(run, out string? piecesError) ??
@@ -210,7 +213,8 @@ internal static class RunArgs
         {
             if (args.Has("piece"))
             {
-                throw ApiErrors.InvalidArgument("branches go with waypoints or cells, not piece.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:branches} go with {arg:waypoints} or " +
+                    "{arg:cells}, not {arg:piece}."));
             }
 
             List<Args?> items = args.Objects("branches", MaximumBranches);
@@ -220,7 +224,8 @@ internal static class RunArgs
                             throw ApiErrors.InvalidArgument($"branches[{index}] must be {{waypoints}} or {{cells}}.");
                 if (item.Has("waypoints") == item.Has("cells"))
                 {
-                    throw ApiErrors.InvalidArgument($"branches[{index}] needs waypoints or cells (one of them).");
+                    throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("branches")}[{index}] needs " +
+                        $"{Vocabulary.Arg("waypoints")} or {Vocabulary.Arg("cells")} (one of them).");
                 }
 
                 string? error;
@@ -254,7 +259,8 @@ internal static class RunArgs
             if (item == null || at == null || !GridStep.TryParse(item.OptionalString("toward"), out GridStep step))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"extra_ends[{index}] must be {{at: [x, y, z], toward: \"+x\"|\"-x\"|\"+y\"|\"-y\"|\"+z\"|\"-z\"}}.");
+                    $"{Vocabulary.Arg("extra_ends")}[{index}] must be {{at: [x, y, z], toward: " +
+                    "\"+x\"|\"-x\"|\"+y\"|\"-y\"|\"+z\"|\"-z\"}.");
             }
 
             extra.Add(new ExtraEnd(CellOf(PositionOf(at, $"extra_ends[{index}].at")), step));
@@ -281,7 +287,7 @@ internal static class RunArgs
         if (name == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"Argument 'grade' is required: one of {string.Join(", ", kind.GradeNames)}.");
+                $"Argument '{Vocabulary.Arg("grade")}' is required: one of {string.Join(", ", kind.GradeNames)}.");
         }
 
         return kind.GradeOf(name) ??

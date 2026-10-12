@@ -63,7 +63,8 @@ internal sealed class WalkRequest
             if (CallContext.Current.IsNone)
             {
                 throw ApiErrors.InvalidArgument(
-                    "Argument 'cursor' needs a call on a protocol 2 connection, whose stream owns the cursor.");
+                    Vocabulary.Text("Argument '{arg:cursor}' needs a call on a protocol 2 connection, whose stream " +
+                        "owns the cursor."));
             }
         }
 
@@ -90,7 +91,8 @@ internal sealed class WalkRequest
 
         return _cursors.Open(CallContext.Current, rest, returned) ?? throw ApiErrors.InvalidArgument(
             $"The walk has {rest.Length.ToString(CultureInfo.InvariantCulture)} more entries than a cursor holds " +
-            $"({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filter, or page with offset.");
+            $"({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filter, or page with " +
+            $"{Vocabulary.Arg("offset")}.");
     }
 
     /// <summary>
@@ -100,7 +102,8 @@ internal sealed class WalkRequest
     internal WalkStep Next<T>(int limit, Func<long, T?> live, List<T> into)
         where T : class
     {
-        string cursorId = CursorId ?? throw new InvalidOperationException("Next is for a call with cursor_id.");
+        string cursorId = CursorId ?? throw new InvalidOperationException(Vocabulary.Text("Next is for a call with " +
+            "{arg:cursor_id}."));
         if (!_cursors.TryNext(CallContext.Current, cursorId, limit, live, into, out WalkStep step))
         {
             throw Expired(cursorId, step.ExpiredPosition);
@@ -118,7 +121,7 @@ internal sealed class WalkRequest
         if (cursorId != null)
         {
             Pure.Shaping.Truncations.Note(list, returned, total,
-                "pass cursor_id " + cursorId + " for the next page (limit up to " +
+                Vocabulary.Text("pass {arg:cursor_id} ") + cursorId + " for the next page (limit up to " +
                 page.Maximum.ToString(CultureInfo.InvariantCulture) + ")");
         }
         else if (!Continues)
@@ -131,7 +134,8 @@ internal sealed class WalkRequest
     internal static ApiException Expired(string cursorId, int? position) =>
         new ApiException(WalkCursors.CursorExpiredCode,
             $"Cursor {cursorId} is gone: its walk ended, it was closed, its stream ended, the world changed, it was " +
-            "evicted to bound memory, or another stream owns it. Start the walk again with cursor true.",
+            "evicted to bound memory, or another stream owns it. Start the walk again with " +
+            $"{Vocabulary.Arg("cursor")} true.",
             new ExpiredCursorView(cursorId, position));
 }
 

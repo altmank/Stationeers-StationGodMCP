@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Views;
 
@@ -212,7 +213,8 @@ internal sealed class GasCheckView
         if (release > 0.0)
         {
             text += $" Up to {Mol(release)} mol may leak out once the networks the plan leaves over their weakest " +
-                    "pipe burst (allow_burst, will_burst); that release is expected and not put back.";
+                $"pipe burst ({Vocabulary.Arg("allow_burst")}, will_burst); that release is expected and not put " +
+                "back.";
         }
 
         if (deleted > 0.0)
@@ -223,9 +225,9 @@ internal sealed class GasCheckView
         return text;
     }
 
-    private const string HoldText =
-        " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss " +
-        "(acknowledge_gas_lost with this job's id, only after the user has agreed).";
+    private static string HoldText =>
+        Vocabulary.Text(" Further pipe jobs are refused until the world is loaded again, or until a run acknowledges " +
+            "this loss ({arg:acknowledge_gas_lost} with this job's id, only after the user has agreed).");
 
     private static string Mol(double moles) => moles.ToString("0.###", CultureInfo.InvariantCulture);
 

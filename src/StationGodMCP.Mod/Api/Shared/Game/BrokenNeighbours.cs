@@ -6,6 +6,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -38,7 +39,8 @@ internal static class BrokenNeighbours
         }
 
         Truncations.Note("broken_neighbours", shown, found.Count,
-            "thing_health {broken_only: true, near_player_m} or find_things {broken: true} near the network");
+            Vocabulary.Text("{tool:thing_health} {{arg:broken_only}: true, {arg:near_player_m}} or " +
+                "{tool:find_things} {{arg:broken}: true} near the network"));
         return new BrokenNeighbourReport(views, found.Count,
             BrokenNeighbourSearch.Warning(found.Count, kind, listed, "broken_neighbours"));
     }

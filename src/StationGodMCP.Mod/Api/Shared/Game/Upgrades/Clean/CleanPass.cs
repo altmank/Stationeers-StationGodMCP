@@ -5,6 +5,7 @@ using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -301,12 +302,13 @@ internal sealed class EndCleanupGoal : SwapGoal
         "the piece it replaces, the singles of a split and the long piece of a merge cover exactly the old cells in " +
         "the old line, and the link survey refuses the run otherwise. A device never loses a link.";
 
-    private const string CostNote =
-        "Coils or kits are charged as the coil's or kit's own merge placement charges pieces placed over others " +
-        "(MultiMergeConstructor.Construct: the new pieces' entry quantity less the old ones'). A split costs more " +
-        "than it gives back; the shortfall is taken from the source's inventory (from_id, default the player) " +
-        "and the run is refused with not_enough_coils when it holds too few. Nothing is ever made for free. A merge " +
-        "or a removal gives back: with refund, as deconstruction gives it, made at the source.";
+    private static string CostNote =>
+        Vocabulary.Text("Coils or kits are charged as the coil's or kit's own merge placement charges pieces placed " +
+            "over others (MultiMergeConstructor.Construct: the new pieces' entry quantity less the old ones'). A " +
+            "split costs more than it gives back; the shortfall is taken from the source's inventory ({arg:from_id}, " +
+            "default the player) and the run is refused with not_enough_coils when it holds too few. Nothing is ever " +
+            "made for free. A merge or a removal gives back: with refund, as deconstruction gives it, made at the " +
+            "source.");
 
     private readonly List<ICleanOperation> _operations;
 

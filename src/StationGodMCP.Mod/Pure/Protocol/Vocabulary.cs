@@ -9,9 +9,9 @@ namespace StationGodMCP.Pure.Protocol;
 /// <summary>
 /// The words the mod's messages print for argument and tool names: the running call's rename map (RenameMap) when it
 /// sent one, else the names themselves. A message names an argument through Arg, a tool through Tool, or, as one
-/// constant text, through Text with {arg:name} and {tool:name} in it. Without a map every one gives today's text: Arg
-/// and Tool return the name they were given, and Text a text worked out once per template; so a call without a map
-/// allocates nothing more than before.
+/// constant text, through Text with {arg:name} and {tool:name} in it (Format for a composite format string). Without
+/// a map every one gives today's text: Arg and Tool return the name they were given, and Text a text worked out once
+/// per template; so a call without a map allocates nothing more than before.
 /// <para>
 /// Current is thread-static, as CallContext is: ApiHost enters the call's map around the handler and the reply's
 /// serialisation on the main thread, and the connection's reader thread enters it around the full argument check.
@@ -120,8 +120,20 @@ internal static class Vocabulary
         return plain;
     }
 
-    /// <summary>The template with each mark replaced by its name as map says it (as it is, for no map).</summary>
-    internal static string Render(string template, RenameMap? map)
+    /// <summary>
+    /// As Text, for a composite format string (string.Format): a phrase's braces are doubled, so they print as braces.
+    /// </summary>
+    internal static string Format(string template)
+    {
+        RenameMap? map = _current;
+        return map == null ? Text(template) : Render(template, map, true);
+    }
+
+    /// <summary>
+    /// The template with each mark replaced by its name as map says it (as it is, for no map); formatted: the phrase
+    /// goes into a composite format string, so its braces are doubled.
+    /// </summary>
+    internal static string Render(string template, RenameMap? map, bool formatted = false)
     {
         int mark = NextMark(template, 0, out int nameStart);
         if (mark < 0)
@@ -142,7 +154,8 @@ internal static class Vocabulary
             string name = template.Substring(nameStart, close - nameStart);
             bool tool = template[mark + 1] == 't';
             said.Append(template, copied, mark - copied);
-            said.Append(map == null ? name : tool ? map.Tool(name) : map.Argument(name));
+            string phrase = map == null ? name : tool ? map.Tool(name) : map.Argument(name);
+            said.Append(formatted ? phrase.Replace("{", "{{").Replace("}", "}}") : phrase);
             copied = close + 1;
             mark = NextMark(template, copied, out nameStart);
         }

@@ -6,6 +6,7 @@ using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -39,13 +40,13 @@ internal static class PlanetGasRemoval
         args.Reject("planet", "to", "force", "joined", "transfer_id", "dry_run");
         if (args.OptionalBool("delete") != true)
         {
-            throw ApiErrors.InvalidArgument("From 'planet' only delete: true is supported.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("From 'planet' only {arg:delete}: true is supported."));
         }
 
         if (!args.Has("gases"))
         {
-            throw ApiErrors.InvalidArgument("Name the gases to take out of the planet's air ('gases'); " +
-                                            "removing all of it is refused.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Name the gases to take out of the planet's air " +
+                "('{arg:gases}'); removing all of it is refused."));
         }
 
         Chemistry.GasType[] gases = GasMoveRequest.ParseGases(args.Array("gases", 64));
@@ -215,7 +216,7 @@ internal sealed class PlanetGasRemovalView
     public int Ticks { get; }
 
     public string Note =>
-        "Applied on the next atmospherics ticks; read the planet tool to see the result. A removal of all of a gas " +
-        "is repeated for " + Ticks + " ticks to take back what outdoor cells hand back, and also clears the clouds " +
-        "and ice caps.";
+        Vocabulary.Text("Applied on the next atmospherics ticks; read the {tool:planet} tool to see the result. " +
+                        "A removal of all of a gas is repeated for ") + Ticks +
+        " ticks to take back what outdoor cells hand back, and also clears the clouds and ice caps.";
 }

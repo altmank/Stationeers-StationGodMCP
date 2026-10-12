@@ -214,8 +214,9 @@ internal static class ApiHost
             if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
             {
                 throw ApiErrors.Refused("method_not_found", method != null && declared.RunsInSidecar(method)
-                    ? $"{Vocabulary.Tool(method)} is answered by the MCP server (the sidecar) from the catalogue, not by the game; call it through MCP, or read the catalogue's help."
-                    : $"Unknown StationGodMCP method '{Vocabulary.Tool(method ?? string.Empty)}'.");
+                    ? $"{Vocabulary.Tool(method)} is answered by the MCP server (the sidecar) from the catalogue, " +
+                        "not by the game; call it through MCP, or read the catalogue's help."
+                    : $"Unknown StationGodMCP method '{method}'.");
             }
 
             declared.Check(call);

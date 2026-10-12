@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -29,7 +30,8 @@ internal static class RerouteArgs
         if (!(token is JArray array) || array.Count != 2)
         {
             throw ApiErrors.InvalidArgument(
-                "reroute.between names exactly two ends: a reference id, or {reference_id, port} for a device port.");
+                Vocabulary.Text("{arg:reroute}.{arg:between} names exactly two ends: a reference id, or " +
+                    "{{arg:reference_id}, {arg:port}} for a device port."));
         }
 
         List<RerouteEndArg> ends = new List<RerouteEndArg>(2);
@@ -50,7 +52,8 @@ internal static class RerouteArgs
 
         if (!(token is JObject item))
         {
-            throw ApiErrors.InvalidArgument($"{name} must be a reference id or {{reference_id, port}}.");
+            throw ApiErrors.InvalidArgument($"{name} must be a reference id or {{{Vocabulary.Arg("reference_id")}, " +
+                $"{Vocabulary.Arg("port")}}}.");
         }
 
         Args fields = new Args(item);

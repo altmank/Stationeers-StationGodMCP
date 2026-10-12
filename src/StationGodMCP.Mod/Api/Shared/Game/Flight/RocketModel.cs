@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Pipes;
 using Assets.Scripts.Serialization;
 using Newtonsoft.Json.Linq;
 using Objects.Rockets;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
 using UnityEngine;
 
@@ -70,8 +71,8 @@ internal sealed class RocketWhatIf
                     property.Value.Value<double>() < 0.0)
                 {
                     throw ApiErrors.InvalidArgument(
-                        $"fuel_mix.{property.Name}: give a gas or liquid name (e.g. Methane, Oxygen, LiquidHydrazine) " +
-                        "and a fraction of 0 or more.");
+                        $"{Vocabulary.Arg("fuel_mix")}.{property.Name}: give a gas or liquid name (e.g. Methane, " +
+                        "Oxygen, LiquidHydrazine) and a fraction of 0 or more.");
                 }
 
                 fractions[index] = property.Value.Value<double>();

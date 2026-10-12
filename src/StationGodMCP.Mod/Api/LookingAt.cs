@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.RemoteView;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -62,7 +63,7 @@ internal static class LookingAtApi
         double reach = args.OptionalPositiveDouble("max_distance_m") ?? DefaultReachM;
         if (reach > MaximumReachM)
         {
-            throw ApiErrors.InvalidArgument($"max_distance_m is at most {MaximumReachM}.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("max_distance_m")} is at most {MaximumReachM}.");
         }
 
         CameraView camera = PlayerView.Current().Require("looking_at");
@@ -95,7 +96,8 @@ internal static class LookingAtApi
             parts |= word != null && PartWords.TryGetValue(word, out LookParts part)
                 ? part
                 : throw ApiErrors.InvalidArgument(
-                    $"Argument '{IncludeArgument}' takes {string.Join(", ", PartWords.Keys)}; '{entry}' is not one of them.");
+                    $"Argument '{Vocabulary.Arg(IncludeArgument)}' takes {string.Join(", ", PartWords.Keys)}; " +
+                    $"'{entry}' is not one of them.");
         }
 
         return parts;

@@ -7,6 +7,7 @@ using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -45,7 +46,8 @@ internal abstract class GasPlace
         GasPlaceArg.Room room => RoomCells.Of(RoomsApi.RequireRoomById(room.RoomId), name),
         GasPlaceArg.RoomOf roomOf => RoomCells.Of(RoomsApi.RequireRoom(roomOf.ThingId, Rooms()), name),
         _ => throw ApiErrors.Refused("refused",
-            $"'{name}': the planet only gives gas up (from \"planet\" with delete: true); gas is not moved into it."),
+            $"'{name}': the planet only gives gas up ({Vocabulary.Arg("from")} \"planet\" with " +
+            $"{Vocabulary.Arg("delete")}: true); gas is not moved into it."),
     };
 
     internal abstract bool SameAs(GasPlace other);

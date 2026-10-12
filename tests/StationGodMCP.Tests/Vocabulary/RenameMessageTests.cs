@@ -69,6 +69,17 @@ public sealed class RenameMessageTests
                 .RejectAllBut("a later page ({arg:cursor_id})", "cursor_id", "limit"));
 
     [Fact]
+    public void AnAreaGivenTwoWays() =>
+        Says("Give min and max, or near with radius_m, not both.", "Give box and box, or near with radius, not both.",
+            () => AreaArgs.Parse(new Args(JObject.Parse("""{"min": [0, 0, 0], "near": [1, 1, 1]}"""))));
+
+    [Fact]
+    public void AHandlerLiteralNamingAnotherTool() =>
+        Says("Argument 'room_id' must be a room id as rooms reports it.",
+            "Argument 'id (a room)' must be a room id as survey {what: \"rooms\"} reports it.",
+            () => StructureSwapArgs.Parse(new Args(JObject.Parse("""{"to": "W", "room_id": "kitchen"}""")), true));
+
+    [Fact]
     public void AnUnknownArgumentWithItsNearestName() =>
         Says("Unknown argument 'reference_idd'; did you mean 'reference_id'? describe_device takes: gateway_id, " +
              "include_logic_types, reference_id. Nothing was run.",

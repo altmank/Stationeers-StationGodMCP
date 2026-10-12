@@ -14,6 +14,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -219,7 +220,7 @@ internal sealed class ThingFilter
         if (kind != AnyKind && !ThingKinds.IsKind(kind))
         {
             throw ApiErrors.InvalidArgument(
-                "Argument 'kind' must be any, item, dynamic, structure, entity or other.");
+                Vocabulary.Text("Argument '{arg:kind}' must be any, item, dynamic, structure, entity or other."));
         }
 
         string? runtimeType = args.OptionalString("runtime_type");

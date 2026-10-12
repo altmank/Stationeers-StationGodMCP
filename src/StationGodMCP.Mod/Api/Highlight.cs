@@ -10,6 +10,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -116,8 +117,8 @@ internal static class HighlightApi
                 Pipe pipe => pipe.PipeNetwork,
                 Chute chute => chute.ChuteNetwork,
                 _ => throw ApiErrors.InvalidArgument(
-                    $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece; give a " +
-                    "device in reference_ids, or name a network or a piece on it.")
+                    $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece; give a device " +
+                    $"in {Vocabulary.Arg("reference_ids")}, or name a network or a piece on it.")
             };
             if (network == null)
             {

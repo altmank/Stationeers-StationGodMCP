@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -65,7 +66,8 @@ internal sealed class AssumedRemovals
             else if (!(thing is SmallGrid small))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"assume_removed: {Names.Of(thing)} ({thing.PrefabName} {id}) does not stand on the small grid.");
+                    $"{Vocabulary.Arg("assume_removed")}: {Names.Of(thing)} ({thing.PrefabName} {id}) does not stand " +
+                    "on the small grid.");
             }
             else if (kind.Family.IsPiece(small))
             {

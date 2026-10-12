@@ -17,6 +17,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -62,13 +63,14 @@ internal static class ConnectionsApi
         if (thing == network)
         {
             throw ApiErrors.InvalidArgument(
-                "Pass reference_id, network_id with kind, or min and max (open ends in a box).");
+                Vocabulary.Text("Pass {arg:reference_id}, {arg:network_id} with {arg:kind}, or {arg:min} and " +
+                    "{arg:max} (open ends in a box)."));
         }
 
         if (thing)
         {
-            args.Reject("reference_id", "kind", "limit", "offset", "prefab_contains", "open_ends_only", "min", "max",
-                "near", "radius_m", "summarize");
+            args.Reject("{arg:reference_id}", "kind", "limit", "offset", "prefab_contains", "open_ends_only", "min",
+                "max", "near", "radius_m", "summarize");
             return EndsReader.Read(GameLookup.RequireThing(args.ThingId("reference_id")));
         }
 
@@ -78,7 +80,7 @@ internal static class ConnectionsApi
             "cable" => new CableFamily(),
             "pipe" => new PipeFamily(),
             "chute" => new ChuteFamily(),
-            _ => throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.")
+            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:kind}' must be pipe, cable or chute."))
         };
         ThingId id = NetworkHandles.Resolve(args, "network_id", family);
         if (args.OptionalBool("summarize") ?? false)
@@ -100,7 +102,8 @@ internal static class ConnectionsApi
         if (args.OptionalBool("open_ends_only") == false)
         {
             throw ApiErrors.InvalidArgument(
-                "The box form lists open ends only; drop open_ends_only false, or name a network_id for all members.");
+                Vocabulary.Text("The box form lists open ends only; drop {arg:open_ends_only} false, or name a " +
+                    "{arg:network_id} for all members."));
         }
 
         PieceSelection.Box box = UpgradeApi.BoxOf(args);
@@ -117,7 +120,7 @@ internal static class ConnectionsApi
 
         if (families.Count == 0)
         {
-            throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:kind}' must be pipe, cable or chute."));
         }
 
         List<NetworkMemberView> found = new List<NetworkMemberView>();
@@ -466,7 +469,7 @@ internal static class NetworkReader
                 NetworkMembers members = Members(chutes.StructureList, chutes.DeviceList);
                 return new Found(members, new ChuteSummaryView(members.All.Count));
             default:
-                throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:kind}' must be pipe, cable or chute."));
         }
     }
 
@@ -613,7 +616,8 @@ internal static class NetworkReader
         return new NetworkMembersView(new NetworkRefView(kind, id), summary,
             Slice<NetworkMemberView>.Page(views, request, page.Total), members.StructureCount,
             members.All.Count - members.StructureCount,
-            BrokenNeighbours.WarningFor(kind, members.All, "members", "broken_neighbours with summarize true"));
+            BrokenNeighbours.WarningFor(kind, members.All, "members", Vocabulary.Text("broken_neighbours with " +
+                "{arg:summarize} true")));
     }
 
     // The indexes of a member's ends of the network's kind that nothing is attached at (EndsReader.AttachedAt).

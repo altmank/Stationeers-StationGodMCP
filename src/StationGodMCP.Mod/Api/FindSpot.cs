@@ -14,6 +14,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
 
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api;
@@ -59,7 +60,7 @@ internal static class FindSpotApi
         double radius = args.OptionalPositiveDouble("radius_m") ?? DefaultRadiusM;
         if (radius > MaximumRadiusM)
         {
-            throw ApiErrors.InvalidArgument($"radius_m is at most {MaximumRadiusM}.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("radius_m")} is at most {MaximumRadiusM}.");
         }
 
         SpotRequirements require = Requirements(args.OptionalObject("require"));
@@ -142,8 +143,9 @@ internal static class FindSpotApi
         if (checkedSpots.Count + rejected < passed.Count)
         {
             Truncations.Note("spots", System.Math.Min(limit, checkedSpots.Count), checkedSpots.Count + 1,
-                $"pass max_checks (max {MaximumChecks}): {passed.Count - checkedSpots.Count - rejected} spots that " +
-                "passed the geometry filter were not checked", atLeast: true);
+                $"pass {Vocabulary.Arg("max_checks")} (max {MaximumChecks}): " +
+                $"{passed.Count - checkedSpots.Count - rejected} spots that passed the geometry filter were not " +
+                "checked", atLeast: true);
         }
         else
         {
@@ -201,7 +203,7 @@ internal static class FindSpotApi
         {
             CameraHit hit = camera.Require("near (or pass near)").HitWithin(20.0) ??
                             throw ApiErrors.Refused("no_crosshair_hit",
-                                "near: the look ray hits nothing within 20 m; pass near.");
+                                Vocabulary.Text("{arg:near}: the look ray hits nothing within 20 m; pass {arg:near}."));
             return hit.Point;
         }
 
@@ -241,7 +243,8 @@ internal static class FindSpotApi
 
         if (!ThingId.TryRead(args.Optional("room_id"), out ThingId id))
         {
-            throw ApiErrors.InvalidArgument("room_id must be a room id as rooms reports it.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:room_id} must be a room id as {tool:rooms} reports " +
+                "it."));
         }
 
         Room found = StructureAirRecord.FindRoom(id.Value) ??
@@ -473,7 +476,7 @@ internal static class FindSpotApi
             if (require.PortsReachable && layout.View.PortChecks != null &&
                 layout.View.PortChecks.Exists(port => port.Blocked != null && !port.Joins))
             {
-                return "a port's joining cell is blocked (ports_reachable)";
+                return Vocabulary.Text("a port's joining cell is blocked ({arg:ports_reachable})");
             }
 
             return null;

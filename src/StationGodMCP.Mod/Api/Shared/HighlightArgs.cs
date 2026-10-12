@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -200,7 +201,7 @@ internal sealed class HighlightRequest
         string trimmed = text.Trim();
         if (trimmed.Length > MaximumLabel)
         {
-            throw ApiErrors.InvalidArgument($"{path}.label is at most {MaximumLabel} characters.");
+            throw ApiErrors.InvalidArgument($"{path}.{Vocabulary.Arg("label")} is at most {MaximumLabel} characters.");
         }
 
         return trimmed.Length == 0 ? null : trimmed;

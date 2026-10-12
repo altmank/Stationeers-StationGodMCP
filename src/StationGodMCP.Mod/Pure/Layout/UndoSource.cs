@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -62,25 +63,27 @@ internal sealed class UndoSource
         long? from = fromId ?? job.FromId;
         if (fromId.HasValue)
         {
-            notes.Add($"from_id {fromId.Value}: the caller's source pays and takes the refunds (instead of " +
+            notes.Add($"{Vocabulary.Arg("from_id")} {fromId.Value}: the caller's source pays and takes the refunds " +
+                "(instead of " +
                       (job.FromId.HasValue ? $"the job's own, {job.FromId.Value})." : "the player)."));
         }
         else if (job.FromId.HasValue)
         {
-            notes.Add($"from_id {job.FromId.Value}: the job's own source pays and takes the refunds.");
+            notes.Add($"{Vocabulary.Arg("from_id")} {job.FromId.Value}: the job's own source pays and takes the " +
+                "refunds.");
         }
 
         if (refundTo != null)
         {
-            notes.Add($"refund_to {refundTo.Name}: the caller's choice for the removals' refund.");
+            notes.Add($"{Vocabulary.Arg("refund_to")} {refundTo.Name}: the caller's choice for the removals' refund.");
         }
 
         RefundRoute? refund = refundTo;
         if (refund == null && job.Free)
         {
             refund = RefundRoute.Nothing;
-            notes.Add("The job placed for free (free: true): removing what it built gives nothing back " +
-                      "(refund_to none).");
+            notes.Add(Vocabulary.Text("The job placed for {arg:free} ({arg:free}: true): removing what it built " +
+                "gives nothing back ({arg:refund_to} none)."));
         }
 
         if (job.RefundedNothing)

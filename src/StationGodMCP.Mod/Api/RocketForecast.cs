@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
 
 namespace StationGodMCP.Api;
@@ -31,7 +32,7 @@ internal static class RocketForecastApi
         float floor = (float)(args.OptionalDouble("min_confidence") ?? 0.25);
         if (floor < 0f || floor > 1f)
         {
-            throw ApiErrors.InvalidArgument("Argument 'min_confidence' must be from 0 to 1.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:min_confidence}' must be from 0 to 1."));
         }
 
         bool limits = args.OptionalBool("limits") ?? true;
@@ -152,8 +153,8 @@ internal static class RocketForecastApi
         if (!Rocket.IsValidMannedTarget(target) || (stops && !SpaceRoutes.IsPad(target)))
         {
             throw ApiErrors.Refused("manned_target",
-                $"Someone sits in a Crew Module Chair: the rocket may only target a launch mount (ground or orbital); the " +
-                $"game clears {SpaceRoutes.NameOf(target)} as a target. Give a pad as 'to'.");
+                "Someone sits in a Crew Module Chair: the rocket may only target a launch mount (ground or orbital); " +
+                $"the game clears {SpaceRoutes.NameOf(target)} as a target. Give a pad as '{Vocabulary.Arg("to")}'.");
         }
     }
 
@@ -172,7 +173,7 @@ internal static class RocketForecastApi
             }
         }
 
-        throw ApiErrors.InvalidArgument("Argument 'profile' must be Low, Medium, High or Max.");
+        throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:profile}' must be Low, Medium, High or Max."));
     }
 
     // The destination: 'to', else the rocket's target, else the launch pad (return and land).
@@ -192,7 +193,8 @@ internal static class RocketForecastApi
         if (rocket.RocketState == RocketState.OnLaunchMount)
         {
             throw ApiErrors.Refused("no_target",
-                "The rocket stands on its pad with no target: give 'to' (a node's name or code).");
+                Vocabulary.Text("The rocket stands on its pad with no target: give '{arg:to}' (a node's name or " +
+                    "code)."));
         }
 
         return SpaceRoutes.ResolveFor("pad", rocket);
@@ -213,12 +215,13 @@ internal static class RocketForecastApi
         double transferJ = args.OptionalDouble("transfer_battery_j") ?? 0.0;
         if (park < 0f)
         {
-            throw ApiErrors.InvalidArgument("Argument 'park_s' must be 0 or more.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:park_s}' must be 0 or more."));
         }
 
         if (transferMol.HasValue && partnerId.HasValue)
         {
-            throw ApiErrors.InvalidArgument("Give transfer_mol or transfer_with, not both.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Give {arg:transfer_mol} or {arg:transfer_with}, not " +
+                "both."));
         }
 
         SiteRead? site = MiningReads.SiteOf(target);
@@ -249,7 +252,8 @@ internal static class RocketForecastApi
             if (SpaceRoutes.IsPad(target) && (mine || addSlots > 0 || back || deploy))
             {
                 throw ApiErrors.InvalidArgument(
-                    "mine, fill_holds, add_cargo_slots, deploy_payload and then_return are for a stop in space; 'to' is a pad.");
+                    Vocabulary.Text("{arg:mine}, {arg:fill_holds}, {arg:add_cargo_slots}, {arg:deploy_payload} and " +
+                        "{arg:then_return} are for a stop in space; '{arg:to}' is a pad."));
             }
 
             double load = args.OptionalDouble("park_load_w") ??
@@ -269,7 +273,8 @@ internal static class RocketForecastApi
             if (rocket.IsManned && !Rocket.IsValidMannedTarget(pad))
             {
                 throw ApiErrors.Refused("manned_target",
-                    $"Someone sits in a Crew Module Chair: return_to must be a launch mount, not {SpaceRoutes.NameOf(pad)}.");
+                    $"Someone sits in a Crew Module Chair: {Vocabulary.Arg("return_to")} must be a launch mount, not " +
+                    $"{SpaceRoutes.NameOf(pad)}.");
             }
 
             string? problem = RoutePlanner.AddRoute(target, pad, profile, plan.Legs, plan.Hops);
@@ -323,13 +328,15 @@ internal static class RocketForecastApi
         if (!target.HasAction(RocketMode.Deploy))
         {
             throw ApiErrors.InvalidArgument(
-                $"deploy_payload: {SpaceRoutes.NameOf(target)} offers no Deploy action (payloads deploy only at the planet's orbit node).");
+                $"{Vocabulary.Arg("deploy_payload")}: {SpaceRoutes.NameOf(target)} offers no Deploy action (payloads " +
+                "deploy only at the planet's orbit node).");
         }
 
         double kg = parts.PayloadKg;
         if (kg <= 0.0)
         {
-            assumptions.Add("deploy_payload: no payload is attached to a bay, so nothing leaves (give payload_kg to try one).");
+            assumptions.Add(Vocabulary.Text("{arg:deploy_payload}: no payload is attached to a bay, so nothing " +
+                "leaves (give {arg:payload_kg} to try one)."));
         }
 
         return kg;
@@ -364,7 +371,7 @@ internal static class RocketForecastApi
         Rocket partner = RocketLocator.Find(partnerId.Value);
         if (partner == rocket)
         {
-            throw ApiErrors.InvalidArgument("transfer_with: give another rocket.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:transfer_with}: give another rocket."));
         }
 
         RocketParts other = RocketParts.Of(partner);
@@ -402,7 +409,8 @@ internal static class RocketForecastApi
         if (paired == 0)
         {
             throw ApiErrors.InvalidArgument(
-                $"transfer_with: no gas or liquid umbilical socket on {partner.DisplayName} matches one on this rocket.");
+                $"{Vocabulary.Arg("transfer_with")}: no gas or liquid umbilical socket on {partner.DisplayName} " +
+                "matches one on this rocket.");
         }
 
         return transfers;
@@ -487,8 +495,8 @@ internal static class RocketForecastApi
 
         if ((what.BatteryJ.HasValue || what.BatteryPercent.HasValue) && !craft.Power.HasBattery)
         {
-            assumptions.Add("Warning: battery_j and battery_percent change nothing: the rocket has no battery, so its " +
-                            "engines are unpowered off the tower. Add a battery to it.");
+            assumptions.Add(Vocabulary.Text("Warning: {arg:battery_j} and {arg:battery_percent} change nothing: the " +
+                "rocket has no battery, so its engines are unpowered off the tower. Add a battery to it."));
         }
 
         if (craft.Engines.Count > 0)

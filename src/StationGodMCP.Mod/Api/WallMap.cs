@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api;
@@ -44,13 +45,14 @@ internal static class WallMapApi
         Vec3 around = args.Has("around") ? PlaneView.PointOf(args.Optional("around")!) : looked ?? Vec3.Zero;
         if (!args.Has("around") && looked == null)
         {
-            throw ApiErrors.InvalidArgument("Pass around (a point on or near the plane) with plane.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:around} (a point on or near the plane) with " +
+                "{arg:plane}."));
         }
 
         double radius = args.OptionalPositiveDouble("radius_m") ?? DefaultRadiusM;
         if (radius > MaximumRadiusM)
         {
-            throw ApiErrors.InvalidArgument($"radius_m is at most {MaximumRadiusM}.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("radius_m")} is at most {MaximumRadiusM}.");
         }
 
         WallMap map = Build(plane, around, radius, facts, out Dictionary<long, char> keys, out List<SmallGrid> things);
@@ -153,8 +155,10 @@ internal static class WallMapApi
         }
 
         Args spec = new Args(request);
-        double w = spec.OptionalPositiveDouble("w") ?? throw ApiErrors.InvalidArgument("free_rects.w is required (m).");
-        double h = spec.OptionalPositiveDouble("h") ?? throw ApiErrors.InvalidArgument("free_rects.h is required (m).");
+        double w = spec.OptionalPositiveDouble("w") ??
+                   throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:free_rects}.w is required (m)."));
+        double h = spec.OptionalPositiveDouble("h") ??
+                   throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:free_rects}.h is required (m)."));
         int wide = System.Math.Max(1, (int)System.Math.Ceiling(w * 2.0 - 1e-6));
         int high = System.Math.Max(1, (int)System.Math.Ceiling(h * 2.0 - 1e-6));
         List<FreeRectView> rects = new List<FreeRectView>();
@@ -164,7 +168,8 @@ internal static class WallMapApi
         if (found.Count >= limit)
         {
             Truncations.Note("free_rects", found.Count, found.Count,
-                $"pass free_rects.limit (max {MaximumRects}); the search stopped at limit, so more may fit",
+                $"pass {Vocabulary.Arg("free_rects")}.{Vocabulary.Arg("limit")} (max {MaximumRects}); the search " +
+                "stopped at limit, so more may fit",
                 atLeast: true);
         }
 

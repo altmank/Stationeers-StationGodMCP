@@ -18,6 +18,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Routing;
 using UnityEngine;
 
@@ -207,8 +208,8 @@ internal static class RemovePlanner
         string where = thing is DynamicThing { ParentSlot: { } } ? "carried or in a slot" : "loose";
         string what = thing is Item ? "an item" : thing is DynamicThing ? "a movable thing" : "a thing";
         plan.Problems.Add(new BuildIssueView("not_a_structure",
-            $"{Names.Of(thing)} ({thing.PrefabName}) is {what} ({where}), not a structure; move_item moves items " +
-            "and movable things.", index, id));
+            $"{Names.Of(thing)} ({thing.PrefabName}) is {what} ({where}), not a structure; " +
+            $"{Vocabulary.Tool("move_item")} moves items and movable things.", index, id));
         return null;
     }
 
@@ -277,7 +278,8 @@ internal static class RemovePlanner
             PipeNetwork? named = DeviceGas.Named(target.Network.Value);
             if (named == null)
             {
-                facts.GasRefusal = $"gas_to {target.Network.Value} names no pipe network and no pipe on one";
+                facts.GasRefusal = $"{Vocabulary.Arg("gas_to")} {target.Network.Value} names no pipe network and no " +
+                    "pipe on one";
                 return;
             }
 
@@ -988,7 +990,7 @@ internal static class RemovePlanner
 
             int? index = IndexOf(run.Pieces, issue.Id);
             ThingId? id = issue.Id.HasValue ? new ThingId(issue.Id.Value) : (ThingId?)null;
-            string message = $"{kind.RemoveTool}'s check: {issue.Message}";
+            string message = $"{Vocabulary.Tool(kind.RemoveTool)}'s check: {issue.Message}";
             switch (issue.Code)
             {
                 case "would_burst" when run.GasByModel:
@@ -997,14 +999,16 @@ internal static class RemovePlanner
                     break;
                 case "would_split":
                     plan.Warnings.Add(new BuildIssueView("would_split",
-                        $"{kind.RemoveTool}'s check: {RemovalRule.SplitWarning(issue.Message)}", index, id));
+                        $"{Vocabulary.Tool(kind.RemoveTool)}'s check: " +
+                        $"{RemovalRule.SplitWarning(issue.Message)}", index, id));
                     break;
                 case UpgradeFamily.HoldsContents:
                 case "contents_would_move":
                     (plan.Arguments.Allow.Contents ? plan.Warnings : plan.Problems).Add(new BuildIssueView(
                         issue.Code, plan.Arguments.Allow.Contents
-                            ? $"{kind.RemoveTool}'s check: {RemovalRule.AllowedContents(issue.Message)}"
-                            : message + " (allow_contents)", index, id));
+                            ? $"{Vocabulary.Tool(kind.RemoveTool)}'s check: " +
+                                $"{RemovalRule.AllowedContents(issue.Message)}"
+                            : message + Vocabulary.Text(" ({arg:allow_contents})"), index, id));
                     break;
                 case "cannot_remove" when index.HasValue && AlreadyRefused(plan, index.Value):
                     break;
@@ -1020,7 +1024,8 @@ internal static class RemovePlanner
 
         foreach (LayoutIssue issue in run.Plan.Warnings)
         {
-            plan.Warnings.Add(new BuildIssueView(issue.Code, $"{kind.RemoveTool}'s check: {issue.Message}",
+            plan.Warnings.Add(new BuildIssueView(issue.Code, $"{Vocabulary.Tool(kind.RemoveTool)}'s check: " +
+                $"{issue.Message}",
                 IndexOf(run.Pieces, issue.Id), issue.Id.HasValue ? new ThingId(issue.Id.Value) : (ThingId?)null));
         }
     }
@@ -1033,8 +1038,9 @@ internal static class RemovePlanner
             if (count > 0)
             {
                 plan.Warnings.Add(new BuildIssueView("network_piece",
-                    $"{count} {kind.Noun} piece(s) are removed as {kind.RemoveTool} removes them (a network kept " +
-                    $"whole keeps its id and contents); {kind.RemoveTool} also takes cells and waypoints."));
+                    $"{count} {kind.Noun} piece(s) are removed as {Vocabulary.Tool(kind.RemoveTool)} removes them (a " +
+                    $"network kept whole keeps its id and contents); {Vocabulary.Tool(kind.RemoveTool)} also takes " +
+                    $"{Vocabulary.Arg("cells")} and {Vocabulary.Arg("waypoints")}."));
             }
         }
     }
@@ -1075,7 +1081,8 @@ internal static class RemovePlanner
         if (human == null && route.NeedsHolder)
         {
             plan.Problems.Add(new BuildIssueView("no_local_player",
-                $"{player.Absence} Nothing to give the refund to; pass from_id, or refund_to ground or none."));
+                $"{player.Absence} Nothing to give the refund to; pass {Vocabulary.Arg("from_id")}, or " +
+                $"{Vocabulary.Arg("refund_to")} ground or none."));
             return;
         }
 

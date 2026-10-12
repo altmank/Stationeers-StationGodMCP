@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -312,16 +313,17 @@ internal static class UndoPlanner
         List<string> notes = new List<string>();
         if (System.Array.IndexOf(Tools, job.Tool) < 0)
         {
-            diverged.Add($"{job.JobId} is a {job.Tool} job; undo_job undoes place_* and remove_* jobs only " +
-                         "(paste_blueprint has its own undo).");
+            diverged.Add($"{job.JobId} is a {Vocabulary.Tool(job.Tool)} job; {Vocabulary.Tool("undo_job")} undoes " +
+                $"place_* and remove_* jobs only ({Vocabulary.Tool("paste_blueprint")} has its own undo).");
             return new UndoPlan(new List<long>(), new List<ThingSnapshot>(), diverged, notes);
         }
 
         List<UndoStep> undo = job.UndoneBy.FindAll(step => !step.Refused);
         if (undo.Count > 0)
         {
-            diverged.Add($"{job.JobId} was already undone: undo_job started {string.Join(", ", undo)}. Nothing is " +
-                         "left to undo; undo those jobs, the last first, to have it back.");
+            diverged.Add($"{job.JobId} was already undone: {Vocabulary.Tool("undo_job")} started " +
+                $"{string.Join(", ", undo)}. Nothing is left to undo; undo those jobs, the last first, to have it " +
+                "back.");
             return new UndoPlan(new List<long>(), new List<ThingSnapshot>(), diverged, notes,
                 undo.ConvertAll(step => step.JobId));
         }
@@ -380,8 +382,9 @@ internal static class UndoPlanner
             }
             else if (snapshot.Piece != null && snapshot.Piece.Grade == null)
             {
-                diverged.Add($"{id} ({snapshot.Prefab}) is a network piece no coil or kit lays; undo_job builds " +
-                             $"network pieces again only through {snapshot.Piece.Tool}, so its guards apply.");
+                diverged.Add($"{id} ({snapshot.Prefab}) is a network piece no coil or kit lays; " +
+                    $"{Vocabulary.Tool("undo_job")} builds network pieces again only through " +
+                    $"{Vocabulary.Tool(snapshot.Piece.Tool)}, so its guards apply.");
             }
             else if (standing(id) != null)
             {

@@ -92,6 +92,20 @@ public sealed class VocabularyTests
     }
 
     [Fact]
+    public void AFormatTemplateKeepsAPhrasesBracesOutOfTheFormat()
+    {
+        const string template = "{arg:above_floor_m}: no floor below {0:0.#}; see {tool:find_items}.";
+
+        Assert.Equal("above_floor_m: no floor below 2.5; see find_items.",
+            string.Format(System.Globalization.CultureInfo.InvariantCulture, Vocabulary.Format(template), 2.5));
+        using (Vocabulary.Enter(VerbMap()))
+        {
+            Assert.Equal("above_floor_m: no floor below 2.5; see find {what: \"items\"}.",
+                string.Format(System.Globalization.CultureInfo.InvariantCulture, Vocabulary.Format(template), 2.5));
+        }
+    }
+
+    [Fact]
     public void ATemplateWithoutAMapAllocatesNothingAfterItsFirstUse()
     {
         const string template = "Pass {arg:job_id}, or {arg:reference_ids}.";
@@ -116,6 +130,20 @@ public sealed class VocabularyTests
         Assert.Equal(0, allocated);
         Assert.Same(first, again);
         Assert.Equal("Pass job_id, or reference_ids.", again);
+    }
+
+    [Fact]
+    public void AFixedListIsTheSameListWithoutAMapAndTheCallersWordsWithOne()
+    {
+        TextList notes = new TextList("A real run needs {arg:dry_run}: false.", "Nothing to name.");
+
+        List<string> plain = notes.Said();
+        Assert.Equal(new[] { "A real run needs dry_run: false.", "Nothing to name." }, plain);
+        Assert.Same(plain, notes.Said());
+        using (Vocabulary.Enter(VerbMap()))
+        {
+            Assert.Equal(new[] { "A real run needs confirm: false.", "Nothing to name." }, notes.Said());
+        }
     }
 
     [Fact]

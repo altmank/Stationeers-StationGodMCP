@@ -1,5 +1,7 @@
 #nullable enable
 
+using StationGodMCP.Pure.Protocol;
+
 namespace StationGodMCP.Api.Shared;
 
 /// <summary>
@@ -26,13 +28,15 @@ internal static class JobDrops
         if (runningId == id)
         {
             throw ApiErrors.Refused(NotWaitingCode,
-                $"Job {id} has started; it cannot be dropped. Poll it with job_id to follow it to its end.");
+                $"Job {id} has started; it cannot be dropped. Poll it with {Vocabulary.Arg("job_id")} to follow it " +
+                "to its end.");
         }
 
         if (ended)
         {
             throw ApiErrors.Refused(NotWaitingCode,
-                $"Job {id} has ended; there is nothing to drop. Poll it with job_id for its result.");
+                $"Job {id} has ended; there is nothing to drop. Poll it with {Vocabulary.Arg("job_id")} for its " +
+                "result.");
         }
 
         throw ApiErrors.Refused("job_not_found", $"No job {id} is running, queued or among the last {kept}.");

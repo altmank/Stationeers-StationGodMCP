@@ -7,6 +7,7 @@ using Networks;
 using Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -102,8 +103,9 @@ internal sealed class RemoveDeadChutes : ICleanOperation
         if (_riding == RidingPolicy.Refuse && riding.Count > 0)
         {
             pass.Plan.Problem(ItemsRidingCode,
-                $"{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let " +
-                "the items pass or take them out with move_item, or pass riding: skip to leave those pieces.");
+                $"{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let the " +
+                $"items pass or take them out with {Vocabulary.Tool("move_item")}, or pass " +
+                $"{Vocabulary.Arg("riding")}: skip to leave those pieces.");
         }
     }
 

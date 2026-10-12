@@ -11,6 +11,7 @@ using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -348,8 +349,8 @@ internal static class UpgradePlanner
         if (plan.Unmatched.Count > 0 && !request.SkipUnmatched)
         {
             plan.Problem("unmatched_pieces",
-                $"{plan.Unmatched.Count} piece(s) have no replacement (see unmatched_pieces); pass skip_unmatched to " +
-                "leave them as they are.");
+                $"{plan.Unmatched.Count} piece(s) have no replacement (see unmatched_pieces); pass " +
+                $"{Vocabulary.Arg("skip_unmatched")} to leave them as they are.");
         }
 
         CountCoils(plan, request);
@@ -379,7 +380,7 @@ internal static class UpgradePlanner
             case PieceSelection.Box box:
                 return Capped(InBox(family, box));
             default:
-                throw ApiErrors.InvalidArgument("Pass network_id or reference_ids.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:network_id} or {arg:reference_ids}."));
         }
     }
 
@@ -387,7 +388,8 @@ internal static class UpgradePlanner
         members.Count <= MaximumPieces
             ? members
             : throw ApiErrors.Refused("too_many_pieces",
-                $"{members.Count} pieces; at most {MaximumPieces} per run. Name them with reference_ids in parts.");
+                $"{members.Count} pieces; at most {MaximumPieces} per run. Name them with " +
+                $"{Vocabulary.Arg("reference_ids")} in {Vocabulary.Arg("parts")}.");
 
     // Each small cell of the box once, every piece once however many cells it fills.
     internal static List<SmallGrid> InBox(UpgradeFamily family, PieceSelection.Box box)
@@ -436,7 +438,7 @@ internal static class UpgradePlanner
                 plan.Problem($"not_a_{family.NetworkKind}_piece",
                     $"{Names.Of(thing)} ({thing.PrefabName}) is not a {family.NetworkKind} piece" +
                     (thing is CableRuptured
-                        ? "; a burnt cable is on no network: remove it with remove_cables."
+                        ? Vocabulary.Text("; a burnt cable is on no network: remove it with {tool:remove_cables}.")
                         : "."), thing);
             }
             else
@@ -533,8 +535,8 @@ internal static class UpgradePlanner
         if (player.Player == null && needsPlayer)
         {
             plan.Problem("no_local_player",
-                $"{player.Absence} Nothing to take coils from (or, with refund_to source, to give the refund to); " +
-                "pass from_id.");
+                $"{player.Absence} Nothing to take coils from (or, with {Vocabulary.Arg("refund_to")} source, to " +
+                $"give the refund to); pass {Vocabulary.Arg("from_id")}.");
         }
 
         return player.Player;

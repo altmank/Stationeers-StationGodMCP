@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -157,7 +158,7 @@ internal abstract class RefundRoute
         error = null;
         if (words.Count == 0 || words.Count > MaximumTargets)
         {
-            error = $"refund_to as a list takes 1 to {MaximumTargets} targets.";
+            error = $"{Vocabulary.Arg("refund_to")} as a list takes 1 to {MaximumTargets} targets.";
             return null;
         }
 
@@ -167,14 +168,14 @@ internal abstract class RefundRoute
             RefundTarget? target = RefundTarget.Of(word);
             if (target == null)
             {
-                error = $"refund_to target '{word}' must be inventory, source, storage, ground or a container's " +
-                        "reference id.";
+                error = $"{Vocabulary.Arg("refund_to")} target '{word}' must be inventory, source, storage, ground " +
+                    "or a container's reference id.";
                 return null;
             }
 
             if (targets.Exists(known => known.Word == target.Word))
             {
-                error = $"refund_to names {target.Word} twice.";
+                error = $"{Vocabulary.Arg("refund_to")} names {target.Word} twice.";
                 return null;
             }
 
@@ -276,18 +277,21 @@ internal static class RefundChainRule
             string? why = target.Kind switch
             {
                 RefundTarget.InventoryName when !reach.Player =>
-                    "inventory skipped: there is no player (a dedicated server; pass from_id of a player).",
+                    Vocabulary.Text("inventory skipped: there is no player (a dedicated server; pass {arg:from_id} " +
+                        "of a player)."),
                 RefundTarget.SourceName when !reach.SourceStack => "source skipped: " + reach.From switch
                 {
-                    RefundFrom.Absent => "there is no from_id to top up.",
-                    RefundFrom.Missing => "from_id names no thing.",
-                    _ => "from_id is not a stack to top up."
+                    RefundFrom.Absent => Vocabulary.Text("there is no {arg:from_id} to top up."),
+                    RefundFrom.Missing => Vocabulary.Text("{arg:from_id} names no thing."),
+                    _ => Vocabulary.Text("{arg:from_id} is not a stack to top up.")
                 },
                 RefundTarget.StorageName when !reach.Storage => "storage skipped: " + reach.From switch
                 {
-                    RefundFrom.Absent => "there is no from_id and no local player whose slots could take it.",
-                    RefundFrom.Missing => "from_id names no thing.",
-                    _ => "from_id has no slot a refund could go into, and is stored in nothing that has one."
+                    RefundFrom.Absent => Vocabulary.Text("there is no {arg:from_id} and no local player whose slots " +
+                        "could take it."),
+                    RefundFrom.Missing => Vocabulary.Text("{arg:from_id} names no thing."),
+                    _ => Vocabulary.Text("{arg:from_id} has no slot a refund could go into, and is stored in nothing " +
+                        "that has one.")
                 },
                 _ => null
             };

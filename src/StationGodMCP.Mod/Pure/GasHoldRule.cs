@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Globalization;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -118,7 +119,8 @@ internal abstract class GasHoldVerdict
 
         internal override string Note(GasHoldStage stage) => Given == null
             ? "No gas hold is in place."
-            : $"{AcknowledgeArgument} \"{Given}\": no gas hold is in place, so there is nothing to lift.";
+            : $"{Vocabulary.Arg(AcknowledgeArgument)} \"{Given}\": no gas hold is in place, so there is nothing to " +
+                "lift.";
     }
 
     /// <summary>A hold is in place, but the run touches no pipe network: it runs, and the hold stays.</summary>
@@ -133,7 +135,7 @@ internal abstract class GasHoldVerdict
 
         internal override string Note(GasHoldStage stage) =>
             $"Pipe jobs are held ({Hold!.Describe()}), but this run touches no pipe network, so the hold does not " +
-            "apply to it and stays" + (Given != null ? $"; {AcknowledgeArgument} was not used." : ".");
+            "apply to it and stays" + (Given != null ? $"; {Vocabulary.Arg(AcknowledgeArgument)} was not used." : ".");
     }
 
     /// <summary>A verdict that refuses the run: its error code and message.</summary>
@@ -166,9 +168,10 @@ internal abstract class GasHoldVerdict
         internal override string Code => "gas_check_failed";
 
         internal override string Message =>
-            $"Job {Hold!.JobId}'s gas check failed: {Hold.Summary} Poll that job with job_id for its gas_check. " +
-            $"Pipe jobs stay refused until the world is loaded again, or until a run passes {AcknowledgeArgument}: " +
-            $"\"{Hold.JobId}\" to accept the loss; ask the user before acknowledging it. Nothing was changed.";
+            $"Job {Hold!.JobId}'s gas check failed: {Hold.Summary} Poll that job with {Vocabulary.Arg("job_id")} for " +
+            "its gas_check. Pipe jobs stay refused until the world is loaded again, or until a run passes " +
+            $"{Vocabulary.Arg(AcknowledgeArgument)}: \"{Hold.JobId}\" to accept the loss; ask the user before " +
+            "acknowledging it. Nothing was changed.";
     }
 
     /// <summary>A hold is in place and the run acknowledges another job's loss.</summary>
@@ -184,9 +187,9 @@ internal abstract class GasHoldVerdict
         internal override string Code => "gas_hold_mismatch";
 
         internal override string Message =>
-            $"{AcknowledgeArgument} names \"{Given}\", but pipe jobs are held by {Hold!.Describe()} " +
-            $"({Hold.Summary}). Only {AcknowledgeArgument}: \"{Hold.JobId}\" lifts that hold, and only after the " +
-            "user has agreed to accept that loss. Nothing was changed.";
+            $"{Vocabulary.Arg(AcknowledgeArgument)} names \"{Given}\", but pipe jobs are held by {Hold!.Describe()} " +
+            $"({Hold.Summary}). Only {Vocabulary.Arg(AcknowledgeArgument)}: \"{Hold.JobId}\" lifts that hold, and " +
+            "only after the user has agreed to accept that loss. Nothing was changed.";
     }
 
     /// <summary>A hold is in place and the run names the job that set it: the hold is lifted and the run goes on.</summary>
@@ -202,14 +205,14 @@ internal abstract class GasHoldVerdict
         internal override string Note(GasHoldStage stage) => stage switch
         {
             GasHoldStage.DryRun =>
-                $"Pipe jobs are held: {Hold!.Describe()}. A real run with {AcknowledgeArgument} \"{Hold.JobId}\" " +
-                "would accept that loss, lift the hold and go on; a dry run lifts nothing.",
+                $"Pipe jobs are held: {Hold!.Describe()}. A real run with {Vocabulary.Arg(AcknowledgeArgument)} " +
+                $"\"{Hold.JobId}\" would accept that loss, lift the hold and go on; a dry run lifts nothing.",
             GasHoldStage.Started =>
                 $"GAS LOSS ACKNOWLEDGED: {Hold!.Describe()} ({Hold.Summary}). The hold on pipe jobs is lifted; a later " +
                 "gas check that fails holds them again.",
             GasHoldStage.Queued =>
-                $"Queued with {AcknowledgeArgument} \"{Hold!.JobId}\" ({Hold.Describe()}): the hold is lifted when " +
-                "this run starts, if that job's loss still holds pipe jobs then; until then it stays.",
+                $"Queued with {Vocabulary.Arg(AcknowledgeArgument)} \"{Hold!.JobId}\" ({Hold.Describe()}): the hold " +
+                "is lifted when this run starts, if that job's loss still holds pipe jobs then; until then it stays.",
             _ =>
                 $"Nothing was started, so the hold ({Hold!.Describe()}) was not lifted."
         };
@@ -229,8 +232,8 @@ internal static class GasHoldRule
     /// </summary>
     internal static string? BlankRefusal(string? acknowledge) =>
         acknowledge != null && string.IsNullOrWhiteSpace(acknowledge)
-            ? $"{GasHoldVerdict.AcknowledgeArgument} is empty; pass the id of the job whose gas check failed " +
-              "(run-N, upgrade-N, place-N, remove-N), or leave it out."
+            ? $"{Vocabulary.Arg(GasHoldVerdict.AcknowledgeArgument)} is empty; pass the id of the job whose gas " +
+                "check failed (run-N, upgrade-N, place-N, remove-N), or leave it out."
             : null;
 
     internal static GasHoldVerdict Judge(GasLoss? hold, bool touchesPipes, string? acknowledge)

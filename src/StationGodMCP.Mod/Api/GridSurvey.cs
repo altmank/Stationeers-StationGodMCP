@@ -20,6 +20,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -167,14 +168,16 @@ internal static class GridSurveyApi
     {
         if (args.Has("room_id") == (args.Has("min") || args.Has("max")))
         {
-            throw ApiErrors.InvalidArgument("Pass min and max (a box, in metres) or room_id (from rooms).");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:min} and {arg:max} (a box, in metres) or " +
+                "{arg:room_id} (from {tool:rooms})."));
         }
 
         if (args.Has("room_id"))
         {
             if (!ThingId.TryRead(args.Optional("room_id"), out ThingId id))
             {
-                throw ApiErrors.InvalidArgument("Argument 'room_id' must be a room id as rooms reports it.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:room_id}' must be a room id as " +
+                    "{tool:rooms} reports it."));
             }
 
             Room room = StructureAirRecord.FindRoom(id.Value) ??
@@ -191,7 +194,8 @@ internal static class GridSurveyApi
 
         GridCell min = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("min")!, "min"));
         GridCell max = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("max") ??
-                                                          throw ApiErrors.InvalidArgument("Pass max too."), "max"));
+                                                          throw ApiErrors.InvalidArgument(
+                                                              Vocabulary.Text("Pass {arg:max} too.")), "max"));
         long count = SmallCellCode.CountIn(min, max);
         if (count > MaximumCells)
         {

@@ -10,6 +10,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -61,7 +62,7 @@ internal static class PlantGenesApi
             case GenesRequest.Write write:
                 return GeneWriter.Write(RequirePlant(write.Id), write);
             default:
-                throw ApiErrors.InvalidArgument("Unknown plant_genes form.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {tool:plant_genes} form."));
         }
     }
 
@@ -73,7 +74,8 @@ internal static class PlantGenesApi
             if (!ThingId.TryRead(ids[index], out ThingId id))
             {
                 batch.Failed(
-                    index, ApiErrors.InvalidArgument("Argument 'reference_id' must be an Int64 encoded as a string."));
+                    index, ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:reference_id}' must be an Int64 " +
+                        "encoded as a string.")));
             }
             else if (!TryFindPlant(id, out Plant? plant, out ApiException? error))
             {
@@ -137,12 +139,12 @@ internal abstract class GenesRequest
         bool many = args.Has("reference_ids");
         if (one == many)
         {
-            throw ApiErrors.InvalidArgument("Pass reference_id or reference_ids.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:reference_id} or {arg:reference_ids}."));
         }
 
         if (many)
         {
-            args.Reject("reference_ids, which only reads", "genes", "force", "unit");
+            args.Reject("{arg:reference_ids}, which only reads", "genes", "force", "unit");
             return new ReadMany(args.Array("reference_ids", PlantGenesApi.MaximumIds));
         }
 
@@ -158,7 +160,8 @@ internal abstract class GenesRequest
         if (!genes.HasValues)
         {
             throw ApiErrors.InvalidArgument(
-                "Argument 'genes' must be an object of gene name to value, with at least one gene.");
+                Vocabulary.Text("Argument '{arg:genes}' must be an object of gene name to value, with at least one " +
+                    "gene."));
         }
 
         return new Write(id, unit, GeneArgs.RequireNumbers(genes), args.OptionalBool("force") ?? false);
@@ -572,8 +575,8 @@ internal static class GeneWriter
         if (!force && (value < GeneView.Minimum || value > GeneView.Maximum))
         {
             error = ApiErrors.Refused("out_of_range",
-                $"Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; " +
-                "pass force to write it anyway.");
+                $"Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass " +
+                $"{Vocabulary.Arg("force")} to write it anyway.");
             return false;
         }
 

@@ -4,6 +4,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -42,7 +43,8 @@ internal static class ReplaceStructuresApi
                 StructureSwapPlan plan = StructureSwapPlanner.Plan(request);
                 if (!run.Confirmed)
                 {
-                    args.Reject("a dry run (it is for a confirmed run or a job_id poll)", JobBrief.VerboseArgument);
+                    args.Reject("a dry run (it is for a confirmed run or a {arg:job_id} poll)",
+                        JobBrief.VerboseArgument);
                     return StructureReports.Of(plan, StructureReports.DryRun, null);
                 }
 
@@ -55,7 +57,8 @@ internal static class ReplaceStructuresApi
                     JobPreflightSummaryView.Of(StructureReports.Of(plan, StructureReports.DryRun, null)),
                     args.OptionalBool(JobBrief.VerboseArgument) ?? false);
             default:
-                throw ApiErrors.InvalidArgument("Pass job_id, or reference_ids or room_id.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:job_id}, or {arg:reference_ids} or " +
+                    "{arg:room_id}."));
         }
     }
 }

@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Pipes;
 using Networks;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -165,7 +166,7 @@ internal static class ChuteFlowCheck
         {
             plan.Warnings.Add(new LayoutIssue(Unchecked,
                 $"The chute networks here have more than {ChuteSurroundings.MaximumPieces} pieces; each junction " +
-                "takes its first turn unchecked. Check its flow in grid_survey after building."));
+                $"takes its first turn unchecked. Check its flow in {Vocabulary.Tool("grid_survey")} after building."));
             return picked;
         }
 

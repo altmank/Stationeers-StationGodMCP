@@ -4,6 +4,7 @@ using Assets.Scripts.Objects.Electrical;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -57,7 +58,7 @@ internal static class ControlIcExecutionApi
     }
 
     private static ApiException BadAction() =>
-        ApiErrors.InvalidArgument("Argument 'action' must be pause, step, resume, or restart.");
+        ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:action}' must be pause, step, resume, or restart."));
 
     // Refusals come before the pause, so a refused step leaves a running chip running.
     private static void Step(IcTarget ic, ProgrammableChip chip)

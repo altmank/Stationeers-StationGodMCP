@@ -6,6 +6,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Util;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -17,35 +18,33 @@ internal static class BuildReports
     internal const string Scheduled = "scheduled";
     internal const string Refused = "refused";
 
-    private static readonly List<string> PlaceNotes = new List<string>
-    {
+    private static readonly TextList PlaceNotes = new TextList(
         "Checked as the game's own cursor checks a placement (CanConstruct, a face mount's support, nothing loose " +
         "inside a piece that fills its cell), again just before each piece is built.",
         "A piece is built as a kit builds it (Constructor.SpawnConstruct) and raised to the chosen build state; the " +
         "cost is every build state's items up to that state (state 0 is the kit), taken from the source as a kit's " +
         "placement takes them. Tools, welder fuel and battery charge are not charged.",
-        "A real run needs dry_run: false and confirm: true; poll the job with job_id.",
-        "Cables, pipes and chutes: place_cables, place_pipes and place_chutes pick pieces by their connections and " +
-        "guard merges; walls and frames in place: replace_walls, replace_frames."
-    };
+        "A real run needs {arg:dry_run}: false and {arg:confirm}: true; poll the job with {arg:job_id}.",
+        "Cables, pipes and chutes: {tool:place_cables}, {tool:place_pipes} and {tool:place_chutes} pick pieces by " +
+        "their connections and guard merges; walls and frames in place: {tool:replace_walls}, {tool:replace_frames}.");
 
-    private static readonly List<string> RemoveNotes = new List<string>
-    {
+    private static readonly TextList RemoveNotes = new TextList(
         "Gives back what deconstructing by hand does: every build state's items down to the kit; a broken piece " +
         "gives nothing, as the game's deconstruction of a broken thing gives nothing.",
         "Refused: indestructible, a launching or landing rocket's part, the game's own refusal (a fuselage piece: " +
         "nothing on top, no internals left in its cells), a device attached to it; unless allowed: broken " +
-        "(allow_broken), items or gas inside (allow_contents), a removal joining spaces whose pressures differ by 1 kPa or more " +
-        "(allow_breach), a device mounted on it or standing on it left with nothing else to rest on " +
-        "(allow_unsupported: it stays and works, but cannot be rebuilt in place until something supports it). The breach check judges the whole request at once: a face stays sealed while anything " +
-        "left on it, or a finished frame beside it, blocks air.",
+        "({arg:allow_broken}), items or gas inside ({arg:allow_contents}), a removal joining spaces whose pressures " +
+        "differ by 1 kPa or more ({arg:allow_breach}), a device mounted on it or standing on it left with nothing " +
+        "else to rest on ({arg:allow_unsupported}: it stays and works, but cannot be rebuilt in place until " +
+        "something supports it). The breach check judges the whole request at once: a face stays sealed while " +
+        "anything left on it, or a finished frame beside it, blocks air.",
         "An in-line tank or passive vent whose removal squeezes the network left past its weakest pipe is refused " +
-        "(would_burst) unless allow_burst, e.g. outdoors: then will_burst names the pipes expected to burst, where " +
-        "they leak (a room id or outdoors) and the gas expected out, and the job's gas check expects that release.",
-        "Cable, pipe and chute pieces are removed as remove_cables, remove_pipes and remove_chutes remove them; " +
-        "their would_split is a warning here.",
-        "A real run needs dry_run: false and confirm: true; poll the job with job_id."
-    };
+        "(would_burst) unless {arg:allow_burst}, e.g. outdoors: then will_burst names the pipes expected to burst, " +
+        "where they leak (a room id or outdoors) and the gas expected out, and the job's gas check expects that " +
+        "release.",
+        "Cable, pipe and chute pieces are removed as {tool:remove_cables}, {tool:remove_pipes} and " +
+        "{tool:remove_chutes} remove them; their would_split is a warning here.",
+        "A real run needs {arg:dry_run}: false and {arg:confirm}: true; poll the job with {arg:job_id}.");
 
     internal static PlaceReportView Of(PlacePlan plan, string status, string? jobId)
     {
@@ -54,7 +53,8 @@ internal static class BuildReports
         if (!layouts)
         {
             Pure.Shaping.Truncations.Note("placements[].layout", 0, plan.Placements.Count,
-                "pass verbose: true (a report that is not ready leaves the layout previews out)");
+                Vocabulary.Text("pass {arg:verbose}: true (a report that is not ready leaves the layout previews " +
+                    "out)"));
         }
         List<PlacementView> placements = new List<PlacementView>(plan.Placements.Count);
         foreach (PlannedPlacement placement in plan.Placements)
@@ -70,7 +70,7 @@ internal static class BuildReports
         }
 
         return new PlaceReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings,
-                plan.Arguments.Detail.Notes ? PlaceNotes : null),
+                plan.Arguments.Detail.Notes ? PlaceNotes.Said() : null),
             placements, materials, plan.From != null ? GameLookup.ViewOf(plan.From) : null, plan.Arguments.Free);
     }
 
@@ -89,7 +89,7 @@ internal static class BuildReports
         }
 
         return new RemoveReportView(new BuildHeader(status, jobId, plan.Problems, plan.Warnings,
-                plan.Arguments.IncludeNotes ? RemoveNotes : null),
+                plan.Arguments.IncludeNotes ? RemoveNotes.Said() : null),
             removals, Amounts(all), RefundArgs.View(plan.Arguments.RefundTo),
             plan.From != null ? GameLookup.ViewOf(plan.From) : null,
             plan.Bursts.ConvertAll(static burst => new BurstView(burst)), RemovalRefundPlan(plan, all));

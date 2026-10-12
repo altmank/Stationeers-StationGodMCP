@@ -13,6 +13,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.DeviceReads;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -36,7 +37,7 @@ internal static class ReadDevicesApi
         {
             DeviceReadParse.Parsed parsed => parsed.Request,
             DeviceReadParse.Refused refused => throw ApiErrors.InvalidArgument(refused.Message),
-            _ => throw ApiErrors.InvalidArgument("Unknown read_devices request."),
+            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {tool:read_devices} request.")),
         };
 
         return Read(scope, request);
@@ -249,7 +250,8 @@ internal static class ReadDevicesApi
             ? AtmosphereOwners.CompactOf(network.Atmosphere, AtmosphereOwners.SourceOf(network),
                 new ThingId(network.ReferenceId))
             : throw ApiErrors.Refused("no_atmosphere",
-                $"Network {network.ReferenceId} has no atmosphere yet (atmosphere_contents reports it as null).");
+                $"Network {network.ReferenceId} has no atmosphere yet ({Vocabulary.Tool("atmosphere_contents")} " +
+                "reports it as null).");
 
     private static ApiException NoAtmosphere(Subject subject, string why) =>
         ApiErrors.Refused("no_atmosphere", $"{subject.Name} ({subject.Id}) {why}.");

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure.Lint;
 
@@ -365,7 +366,8 @@ internal sealed class LintCompiler
     private LintCompiled CompileCall(CallNode call, LintScope scope, HashSet<string> facts)
     {
         LintFunction function = _library.Find(call.Name) ??
-                                throw new LintSyntaxException($"no function '{call.Name}' (lint_rules functions lists them)",
+                                throw new LintSyntaxException($"no function '{call.Name}' " +
+                                    $"({Vocabulary.Tool("lint_rules")} functions lists them)",
                                     call.Position);
         if (call.Named.Count > 0)
         {

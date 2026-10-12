@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -246,7 +247,7 @@ internal static class EditGuards
             {
                 problems.Add(new LayoutIssue(WouldBridge,
                     $"The edit would join networks {string.Join(", ", merge.NetworksBefore)} into one; name every " +
-                    "one of them in allow_bridge if that is meant."));
+                    $"one of them in {Vocabulary.Arg("allow_bridge")} if that is meant."));
             }
         }
 
@@ -263,8 +264,8 @@ internal static class EditGuards
                 problems.Add(new LayoutIssue(WouldBridge,
                     $"The edit would put ports {string.Join(", ", ports)} of device {bridge.Device} on one network " +
                     "(both sides of an APC or transformer, a battery's input and output, a pump's two sides, a " +
-                    "device's chute output fed back into its own input); name the device in allow_bridge if that " +
-                    "is meant.", null, bridge.Device));
+                    "device's chute output fed back into its own input); name the device in " +
+                    $"{Vocabulary.Arg("allow_bridge")} if that is meant.", null, bridge.Device));
             }
         }
 
@@ -278,9 +279,9 @@ internal static class EditGuards
         {
             ForecastSplit split = forecast.Splits[index];
             problems.Add(new LayoutIssue(WouldSplit,
-                $"Network {split.Network} would fall into {split.Parts.Count} networks." +
-                $"{SplitAnalysis.Describe(details[index], roots?.IsNamed ?? false)} Pass allow_split if that is " +
-                "meant.", null, split.Network));
+                $"Network {split.Network} would fall into {split.Parts.Count} " +
+                $"networks.{SplitAnalysis.Describe(details[index], roots?.IsNamed ?? false)} Pass " +
+                $"{Vocabulary.Arg("allow_split")} if that is meant.", null, split.Network));
         }
 
         foreach (ForecastPort port in forecast.Cut)
@@ -291,7 +292,8 @@ internal static class EditGuards
                 : string.Empty;
             problems.Add(new LayoutIssue(WouldSplit,
                 $"Port {port.Index} of device {port.DeviceId} would lose its connection to network " +
-                $"{port.NetworkBefore}.{cutNote} Pass allow_split if that is meant.", null, port.DeviceId));
+                $"{port.NetworkBefore}.{cutNote} Pass {Vocabulary.Arg("allow_split")} if that is " +
+                "meant.", null, port.DeviceId));
         }
 
         return problems;

@@ -1,5 +1,6 @@
 #nullable enable
 
+using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Pure;
 
 /// <summary>
@@ -8,7 +9,8 @@ namespace StationGodMCP.Pure;
 /// </summary>
 internal static class LogicTypeNumber
 {
-    internal const string RangeMessage = "Numeric logic_type must be a whole number from 0 to 65535.";
+    internal static string RangeMessage =>
+        Vocabulary.Text("Numeric {arg:logic_type} must be a whole number from 0 to 65535.");
 
     internal static bool TryId(double value, out ushort id)
     {

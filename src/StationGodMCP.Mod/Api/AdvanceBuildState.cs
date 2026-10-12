@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -114,7 +115,8 @@ internal static class AdvanceBuildStateApi
                 $"{name} is complete (build state {current} of {last})."),
             BuildStepRefusal.Damaged => ApiErrors.Refused("structure_damaged",
                 $"{name} is damaged; the game builds on it only once it is repaired."),
-            _ => ApiErrors.InvalidArgument($"Argument 'to_state' must be above {current} and at most {last}.")
+            _ => ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg("to_state")}' must be above {current} and at " +
+                $"most {last}.")
         };
 
     // from_id's first thing, else the local player: where the materials come from.
@@ -131,6 +133,6 @@ internal static class AdvanceBuildStateApi
         return human != null
             ? human
             : throw ApiErrors.Refused("no_local_player",
-                $"{player.Absence} Nothing to take materials from; pass from_id.");
+                $"{player.Absence} Nothing to take materials from; pass {Vocabulary.Arg("from_id")}.");
     }
 }

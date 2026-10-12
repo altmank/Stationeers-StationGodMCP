@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -25,7 +26,7 @@ internal static class PrefabMatches
 
         if (args.Has("prefab"))
         {
-            throw ApiErrors.InvalidArgument("Give prefab or prefabs, not both.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Give {arg:prefab} or {arg:prefabs}, not both."));
         }
 
         JArray array = args.Array("prefabs", MaximumPrefabs);

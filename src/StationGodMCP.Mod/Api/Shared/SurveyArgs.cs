@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -68,7 +69,8 @@ internal sealed class SurveySections
             if (word == null || !Words.TryGetValue(word, out SurveySection part))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"Argument '{Argument}' takes {string.Join(", ", Words.Keys)}; '{entry}' is not one of them.");
+                    $"Argument '{Vocabulary.Arg(Argument)}' takes {string.Join(", ", Words.Keys)}; '{entry}' is not " +
+                    "one of them.");
             }
 
             parts |= part;
@@ -166,7 +168,8 @@ internal sealed class SurveyKinds
             if (word == null || !Words.TryGetValue(word, out int kind))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"Argument '{KindsArgument}' takes {string.Join(", ", Words.Keys)}; '{entry}' is not one of them.");
+                    $"Argument '{Vocabulary.Arg(KindsArgument)}' takes {string.Join(", ", Words.Keys)}; '{entry}' is " +
+                    "not one of them.");
             }
 
             kinds |= kind;
@@ -263,6 +266,7 @@ internal static class SurveyCellDetails
 
         return Words.TryGetValue(word, out SurveyCellDetail detail)
             ? detail
-            : throw ApiErrors.InvalidArgument($"Argument '{CellDetailArgument}' takes occupancy or full; '{word}' is neither.");
+            : throw ApiErrors.InvalidArgument(
+                $"Argument '{Vocabulary.Arg(CellDetailArgument)}' takes occupancy or full; '{word}' is neither.");
     }
 }

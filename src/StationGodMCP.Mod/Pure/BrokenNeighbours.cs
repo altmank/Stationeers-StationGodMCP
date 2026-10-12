@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -85,10 +86,11 @@ internal static class ReplaceInPlace
 {
     internal static string Call(string placeTool, long id, PieceModel piece, string? grade)
     {
-        StringBuilder call = new StringBuilder(placeTool).Append(" {");
+        StringBuilder call = new StringBuilder(Vocabulary.Tool(placeTool)).Append(" {");
         if (piece.Cells.Count == 1)
         {
-            call.Append("piece: {at: ").Append(Point(piece.Cells[0])).Append(", ends: [");
+            call.Append(Vocabulary.Text("{arg:piece}: {{arg:at}: ")).Append(Point(piece.Cells[0]))
+                .Append(Vocabulary.Text(", {arg:ends}: ["));
             List<string> directions = EndCleanup.DirectionsOf(piece.Ends);
             for (int index = 0; index < directions.Count; index++)
             {
@@ -99,11 +101,12 @@ internal static class ReplaceInPlace
         }
         else
         {
-            call.Append("waypoints: [").Append(Point(Extreme(piece.Cells, -1))).Append(", ")
+            call.Append(Vocabulary.Text("{arg:waypoints}: [")).Append(Point(Extreme(piece.Cells, -1))).Append(", ")
                 .Append(Point(Extreme(piece.Cells, 1))).Append(']');
         }
 
-        call.Append(", grade: \"").Append(grade ?? "<its grade>").Append("\", remove_ids: [\"")
+        call.Append(Vocabulary.Text(", {arg:grade}: \"")).Append(grade ?? "<its grade>")
+            .Append(Vocabulary.Text("\", {arg:remove_ids}: [\""))
             .Append(id.ToString(CultureInfo.InvariantCulture)).Append("\"]}");
         return call.ToString();
     }
@@ -111,7 +114,7 @@ internal static class ReplaceInPlace
     /// <summary>The refusal's advice: the call, run as a dry run first.</summary>
     internal static string Advice(string placeTool, long id, PieceModel piece, string? grade) =>
         "To replace it in one job, as a player would: " + Call(placeTool, id, piece, grade) +
-        " (a dry run first, then dry_run false and confirm true).";
+        Vocabulary.Text(" (a dry run first, then {arg:dry_run} false and {arg:confirm} true).");
 
     // The cell with the lowest (sign -1) or highest (sign 1) x + y + z: the two ends of a straight piece.
     private static GridCell Extreme(IReadOnlyList<GridCell> cells, int sign)

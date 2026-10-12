@@ -1,0 +1,709 @@
+{
+  "Api/AdvanceBuildState.cs": [
+    "Argument 'to_state' must be above {current} and at most {last}.",
+    "{player.Absence} Nothing to take materials from; pass from_id."
+  ],
+  "Api/ApiHost.cs": [
+    "{method} is answered by the MCP server (the sidecar) from the catalogue, not by the game; call it through MCP, or read the catalogue's help."
+  ],
+  "Api/BuildStructures.cs": [
+    "Pass job_id, or placements.",
+    "Pass job_id, or reference_ids."
+  ],
+  "Api/Connections.cs": [
+    "Argument 'kind' must be pipe, cable or chute.",
+    "Argument 'kind' must be pipe, cable or chute.",
+    "Argument 'kind' must be pipe, cable or chute.",
+    "Pass reference_id, network_id with kind, or min and max (open ends in a box).",
+    "The box form lists open ends only; drop open_ends_only false, or name a network_id for all members.",
+    "broken_neighbours with summarize true",
+    "reference_id"
+  ],
+  "Api/ControlIcExecution.cs": [
+    "Argument 'action' must be pause, step, resume, or restart."
+  ],
+  "Api/DeepMinerSpots.cs": [
+    "pass count (max {MaximumCount}); the search stopped at count spots, so more may lie farther out"
+  ],
+  "Api/FeedPathsApi.cs": [
+    "{root.PrefabName} {root.ReferenceId} is on {networks.Count} {kind.Noun} networks [{string.Join(\", \", networks)}]; name one with network_id or port (connections lists them)."
+  ],
+  "Api/FindItems.cs": [
+    "Argument 'group_by' must be {ItemGroupings.Holder} or {ItemGroupings.Prefab}; '{given}' is neither."
+  ],
+  "Api/FindSpot.cs": [
+    "a port's joining cell is blocked (ports_reachable)",
+    "near: the look ray hits nothing within 20 m; pass near.",
+    "pass max_checks (max {MaximumChecks}): {passed.Count - checkedSpots.Count - rejected} spots that passed the geometry filter were not checked",
+    "radius_m is at most {MaximumRadiusM}.",
+    "room_id must be a room id as rooms reports it."
+  ],
+  "Api/FindThings.cs": [
+    "Argument 'kind' must be any, item, dynamic, structure, entity or other."
+  ],
+  "Api/GridSurvey.cs": [
+    "Argument 'room_id' must be a room id as rooms reports it.",
+    "Pass max too.",
+    "Pass min and max (a box, in metres) or room_id (from rooms)."
+  ],
+  "Api/Highlight.cs": [
+    "{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece; give a device in reference_ids, or name a network or a piece on it."
+  ],
+  "Api/LintLayout.cs": [
+    "Pass max too.",
+    "Pass room_id (from rooms) or min and max (a box, in metres).",
+    "room_id must be a room id as rooms reports it."
+  ],
+  "Api/LintRules.cs": [
+    "action is list, validate, fields, functions, test or explain.",
+    "explain needs reference_id (a thing, network or room id) or at (a cell, [x, y, z]).",
+    "explain needs rule_id.",
+    "name one subject: other_id for a pair, port for one port of a device"
+  ],
+  "Api/LookingAt.cs": [
+    "Argument '{IncludeArgument}' takes {string.Join(\", \", PartWords.Keys)}; '{entry}' is not one of them.",
+    "max_distance_m is at most {MaximumReachM}."
+  ],
+  "Api/MoveGas.cs": [
+    "'from' and 'to' are the same atmosphere or room.",
+    "'{item}' is not a gas name as atmosphere_contents reports them (Oxygen, Nitrogen, CarbonDioxide, LiquidOxygen, Steam...).",
+    "'{name}' is the planet's or a world cell's atmosphere; name a room ({\"room_id\"} or {\"room_of\"}) instead.",
+    "'{name}': atmosphere {atmosphere.ReferenceId} is a {atmosphere.Mode} atmosphere. A single world cell is not moved to or from; name its room ({\"room_id\"} or {\"room_of\"}) instead.",
+    "Name the gases to take out of a room ('gases'): a room's air is never emptied by omission.",
+    "Pass 'to', or 'delete: true' to destroy the gas; not both, not neither.",
+    "transfer_id"
+  ],
+  "Api/MoveGasJoins.cs": [
+    "More than {GasJoins.MaximumMembers} atmospheres are joined; pass joined: false to move from the named one only."
+  ],
+  "Api/MoveGasPlaces.cs": [
+    "'{name}': the planet only gives gas up (from \"planet\" with delete: true); gas is not moved into it."
+  ],
+  "Api/MoveGasPlan.cs": [
+    "'to' is joined to 'from' (the game mixes them every tick), so the gas would flow straight back. Pass joined: false to move between them anyway.",
+    "'{name}' {verb} {predicted:0.#} kPa against a limit of {broken.LimitFor(predicted):0.#} kPa ({broken.Member}: {broken.MaxKpa:0.#} kPa across, {broken.OutsideKpa:0.#} kPa outside). Pass force to move it anyway.",
+    "'{name}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the {limit:0.#} mol a network of {after.VolumeL:0} L tolerates. Pass force to move it anyway."
+  ],
+  "Api/MoveItem.cs": [
+    "Argument 'to_slot' is required: a slot index, or \"auto\".",
+    "Slot {index} of {Names.Of(target)} only shows the vault's store; use vault_deposit to store items.",
+    "Slot {slot.SlotIndex} of {Names.Of(target)} is a plant slot: planting takes one {Names.Of(item)} off the stack, as a player plants, so pass quantity 1.",
+    "The game threw during the move ({thrown.GetType().Name}: {thrown.Message}), but the slot holds the result, so the move is done; check it with container_contents.",
+    "Unknown move_item form.",
+    "Unknown to_slot.",
+    "force needs to_slot as a slot index, not \"auto\".",
+    "{Names.Of(item)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.",
+    "{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} does not join it.",
+    "{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {Names.Of(item)} off the stack, so pass quantity 1."
+  ],
+  "Api/MovePlayer.cs": [
+    "near_player is {player.DisplayName}, the player being moved.",
+    "to_id {id} is {player.DisplayName} or something they carry, so it moves with them."
+  ],
+  "Api/Paint.cs": [
+    "Argument 'color' applies only to reference_ids; each item carries its own color.",
+    "Argument 'color' is required.",
+    "Argument 'color' must be a string.",
+    "Argument 'items[{index}]' must be an object.",
+    "Argument 'reference_id' must be a reference id as a decimal string.",
+    "Arguments 'reference_ids' and 'color' go together.",
+    "Pass reference_ids with color, or items, not both.",
+    "Unknown paint form."
+  ],
+  "Api/PasteBlueprint.cs": [
+    "Argument 'anchor' is required.",
+    "Argument 'rotation' must be 0, 90, 180 or 270."
+  ],
+  "Api/PlaceRuns.cs": [
+    "A real run needs dry_run: false and confirm: true; nothing was changed.",
+    "Pass one of reference_ids, waypoints or cells (plan_removal also takes network_id).",
+    "Pass waypoints, cells, piece or pieces.",
+    "a dry run (it is for a confirmed run or a job_id poll)",
+    "confirm: true needs dry_run: false; nothing was changed.",
+    "job_id",
+    "job_id",
+    "plan_removal"
+  ],
+  "Api/PlanRoute.cs": [
+    "The style's air penalty gave up (search_limit) looking for a route over frames or along walls; this route ignores it (as style free). Lower margin_m or bring the ends closer to try again.",
+    "Waypoints are cell centres in metres; pass place_arguments to the place tool (add dry_run false and confirm true to build). The dry run is that tool's own, with the same guards.",
+    "allow_door_keepout: the route may pass through doorways (their face and the band either side).",
+    "assume_removed: the route takes none of the assumed pieces' cells, so it can also be built while they still stand (leave remove_ids out of place_arguments and remove them in a later job).",
+    "assume_removed: the route takes the cells of {inTheWay.Count} assumed piece(s) (in_the_way): they go in the same job (place_arguments.remove_ids) or before it.",
+    "assume_removed: {assumed.Missing.Count} id(s) name nothing standing (already gone?): {string.Join(\", \", assumed.Missing)}.",
+    "avoid_networks: no cell beside a piece of another network than the ends' own.",
+    "axis_order must be any, vertical_first or horizontal_first.",
+    "margin_m is at most {MaximumMarginM}.",
+    "no_route: no way between the ends under the rules inside the search box (margin_m around the ends); loosen a rule, raise margin_m, plan as if old pieces in the way were gone (assume_removed), or check the ends with grid_survey.",
+    "reroute needs reference_ids (the old run's pieces) or between: [a, b] (ids, or {reference_id, port}).",
+    "reroute takes its ends from the old run; leave out from and to.",
+    "search_limit: gave up after {tree.Expanded} cells; bring the ends closer or lower margin_m.",
+    "through_air: {visibility.Air} new cells float in air (on no frame and no wall plane); no route over frames or along walls of at most max_length ({maxLength}) cells exists inside the search box. Raise margin_m to look wider, raise max_length when the way round is longer, or build a frame under the gap.",
+    "through_air: {visibility.Air} new cells float in air; this route was found with style free.",
+    "too_long: every way under the rules is longer than max_length.",
+    "trunk needs from: the drops (ports or cells) that branch from it.",
+    "trunk needs waypoints or cells (one of them).",
+    "trunk replaces to and does not go with reroute: every start branches from the trunk, whose own ends join what they meet.",
+    "would_loop: the start and the target are already on one network, so any route between them closes a loop. To reach another port of a device already on the network, give both ports in from (from: {reference_id, ports: [...]}) so they share one run.",
+    "{name} must be {reference_id, port}.",
+    "{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with {reference_id, port}, or a free cell.",
+    "{name}.port is required (connections lists the ends)."
+  ],
+  "Api/PlanetGasRemoval.cs": [
+    "Applied on the next atmospherics ticks; read the planet tool to see the result. A removal of all of a gas is repeated for {Ticks} ticks to take back what outdoor cells hand back, and also clears the clouds and ice caps.",
+    "From 'planet' only delete: true is supported.",
+    "Name the gases to take out of the planet's air ('gases'); removing all of it is refused."
+  ],
+  "Api/PlantGenes.cs": [
+    "Argument 'genes' must be an object of gene name to value, with at least one gene.",
+    "Argument 'reference_id' must be an Int64 encoded as a string.",
+    "Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass force to write it anyway.",
+    "Pass reference_id or reference_ids.",
+    "Unknown plant_genes form.",
+    "reference_ids, which only reads"
+  ],
+  "Api/ReadDevices.cs": [
+    "Network {network.ReferenceId} has no atmosphere yet (atmosphere_contents reports it as null).",
+    "Unknown read_devices request."
+  ],
+  "Api/ReplaceStructures.cs": [
+    "Pass job_id, or reference_ids or room_id.",
+    "a dry run (it is for a confirmed run or a job_id poll)"
+  ],
+  "Api/RocketFlightLog.cs": [
+    "Argument 'action' must be start, stop, read, list or clear.",
+    "Argument 'interval_s' must be from 0.1 to 600.",
+    "This rocket has no flight log: start one with action start.",
+    "pass limit (max {page.Maximum}), every, or offset {next} (offset counts samples)"
+  ],
+  "Api/RocketForecast.cs": [
+    "Argument 'min_confidence' must be from 0 to 1.",
+    "Argument 'park_s' must be 0 or more.",
+    "Argument 'profile' must be Low, Medium, High or Max.",
+    "Give transfer_mol or transfer_with, not both.",
+    "Someone sits in a Crew Module Chair: return_to must be a launch mount, not {SpaceRoutes.NameOf(pad)}.",
+    "Someone sits in a Crew Module Chair: the rocket may only target a launch mount (ground or orbital); the game clears {SpaceRoutes.NameOf(target)} as a target. Give a pad as 'to'.",
+    "The rocket stands on its pad with no target: give 'to' (a node's name or code).",
+    "Warning: battery_j and battery_percent change nothing: the rocket has no battery, so its engines are unpowered off the tower. Add a battery to it.",
+    "deploy_payload: no payload is attached to a bay, so nothing leaves (give payload_kg to try one).",
+    "deploy_payload: {SpaceRoutes.NameOf(target)} offers no Deploy action (payloads deploy only at the planet's orbit node).",
+    "mine, fill_holds, add_cargo_slots, deploy_payload and then_return are for a stop in space; 'to' is a pad.",
+    "transfer_with: give another rocket.",
+    "transfer_with: no gas or liquid umbilical socket on {partner.DisplayName} matches one on this rocket."
+  ],
+  "Api/RocketStatus.cs": [
+    "The landing check assumes {view.MaxExpectedN:0} N but the fuel now gives {view.AchievableFullN:0} N at full throttle: a landing it passes can still crash. See rocket_forecast.",
+    "{Names.Of(parts.Unmodelled[index])} is a {parts.Unmodelled[index].GetType().Name}, none of the game's six engine classes: rocket_forecast refuses it."
+  ],
+  "Api/Rooms.cs": [
+    "No closed room has room_id {roomId}; the rooms tool lists them (a room's id changes when it is worked out again)."
+  ],
+  "Api/RunConsoleCommand.cs": [
+    " {capture.ConcurrentLines} further line(s) were printed into the console from a background thread while this command ran; Unity mirrors errors and their stack traces in that way. They are deliberately not mixed into the output above, and are visible through read_console.",
+    "'{key}' finishes on a background task, so it returned before its result was printed. Whatever is in 'output' is only what had been printed by the time this call returned, and an EMPTY list is not evidence that the command printed nothing, succeeded or failed. Call read_console a second or two later to see the outcome.",
+    "Argument 'command' must not be empty."
+  ],
+  "Api/Screens.cs": [
+    "Argument 'at' must be [x, y]: surface pixels from the top-left corner.",
+    "Argument 'event' must be click, change or toggle.",
+    "No shown control stands at ({x}, {y}) on surface '{surface}'; screen_read gives each element's box.",
+    "Pass element_id or at (a point [x, y] on the surface), one of them.",
+    "Surface '{surface}' has no element '{id}'; screen_read lists them.",
+    "event change needs value: the control's new value as text."
+  ],
+  "Api/SetBatteryCharge.cs": [
+    "Pass exactly one of reference_ids, rocket_id or in_id.",
+    "reference_ids[{index}] must be a reference id as a decimal string.",
+    "{foundIn.DisplayName} {foundIn.ReferenceId} holds {stores.Count} batteries, over the {MaximumTargets} one call sets; name them in reference_ids calls. Nothing was changed.",
+    "{name} stores no power itself; its slots hold {held.Count} battery cell(s) (first {held[0].Thing.ReferenceId}): set them with in_id {thing.ReferenceId}."
+  ],
+  "Api/SetIcPins.cs": [
+    "Argument 'pins' must be an object mapping at least one pin name (d0..d5) to a device reference ID string, or to null to clear that pin.",
+    "Pin d{index}: device {id} ({Names.Of(device)}) is not on IC Housing {_housing.ReferenceId}'s data network, so the chip would not reach it through the pin. Connect it to the housing's data network, or pass allow_off_network to store it anyway."
+  ],
+  "Api/SetUplink.cs": [
+    "{downlinkId} is no downlink this uplink can follow: a built, logic readable Logic Rocket Downlink. describe_device on the uplink lists them in uplink.choices."
+  ],
+  "Api/Shared/AreaArgs.cs": [
+    "Argument 'radius_m' must be above 0 and at most {MaximumRadiusM:0} m.",
+    "Give both min and max, the corners of the box.",
+    "Give min and max, or near with radius_m, not both.",
+    "near needs radius_m, in metres.",
+    "radius_m needs near: [x, y, z] metres."
+  ],
+  "Api/Shared/Args.cs": [
+    "{_path}.{name}"
+  ],
+  "Api/Shared/BlueprintArgs.cs": [
+    "Another paste is still placing ({created} pieces created so far); nothing was started. Wait until paste_blueprint status says it is no longer active, then paste again."
+  ],
+  "Api/Shared/BuildArgs.cs": [
+    "A real run needs dry_run: false and confirm: true; nothing was changed.",
+    "Argument '{field}' does not go with placements: give it in each placement (placements[0].{field}).",
+    "Give at most one of {prefix}rotation, {prefix}facing and {prefix}face.",
+    "Give at most one of {prefix}rotation, {prefix}facing and {prefix}face.",
+    "Pass placements, or prefab and at for one placement.",
+    "Pass reference_ids.",
+    "confirm: true needs dry_run: false; nothing was changed.",
+    "job_id",
+    "job_id",
+    "{prefix}above_floor_m must be 0 to 20.",
+    "{prefix}at is required.",
+    "{prefix}orient chooses the turn: leave out rotation, facing, face and up.",
+    "{prefix}orient.mount must be wall, floor, ceiling or an axis (+x .. -z).",
+    "{prefix}up goes with facing or face, not rotation.",
+    "{prefix}up goes with facing or face."
+  ],
+  "Api/Shared/DeclaredArguments.cs": [
+    "Unknown argument '{property.Name}'. ",
+    "Unknown argument '{property.Name}'; did you mean '{nearest}'? ",
+    "{problems}{method} takes: {list}. Nothing was run."
+  ],
+  "Api/Shared/Game/BrokenNeighbours.cs": [
+    "thing_health {broken_only: true, near_player_m} or find_things {broken: true} near the network"
+  ],
+  "Api/Shared/Game/Build/AtResolver.cs": [
+    "{name}.relative_to must be \"player\", \"crosshair\", a reference id or {reference_id}."
+  ],
+  "Api/Shared/Game/Build/BuildReports.cs": [
+    "A real run needs dry_run: false and confirm: true; poll the job with job_id.",
+    "A real run needs dry_run: false and confirm: true; poll the job with job_id.",
+    "An in-line tank or passive vent whose removal squeezes the network left past its weakest pipe is refused (would_burst) unless allow_burst, e.g. outdoors: then will_burst names the pipes expected to burst, where they leak (a room id or outdoors) and the gas expected out, and the job's gas check expects that release.",
+    "Cable, pipe and chute pieces are removed as remove_cables, remove_pipes and remove_chutes remove them; their would_split is a warning here.",
+    "Cables, pipes and chutes: place_cables, place_pipes and place_chutes pick pieces by their connections and guard merges; walls and frames in place: replace_walls, replace_frames.",
+    "Refused: indestructible, a launching or landing rocket's part, the game's own refusal (a fuselage piece: nothing on top, no internals left in its cells), a device attached to it; unless allowed: broken (allow_broken), items or gas inside (allow_contents), a removal joining spaces whose pressures differ by 1 kPa or more (allow_breach), a device mounted on it or standing on it left with nothing else to rest on (allow_unsupported: it stays and works, but cannot be rebuilt in place until something supports it). The breach check judges the whole request at once: a face stays sealed while anything left on it, or a finished frame beside it, blocks air.",
+    "pass verbose: true (a report that is not ready leaves the layout previews out)"
+  ],
+  "Api/Shared/Game/Build/Orienter.cs": [
+    "{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or {reference_id}."
+  ],
+  "Api/Shared/Game/Build/PlacePlanner.cs": [
+    " (broken there: {string.Join(\", \", names)}; a broken structure still takes its place; remove it first with remove_structure allow_broken)",
+    "above_floor_m: no floor below ({0:0.##}, {1:0.##}, {2:0.##}) within {3:0} m (no floor plate on a plane down to y {4:0}, and no frame under one); give at as a point instead.",
+    "{player.Absence} Nothing to take materials from; pass from_id.",
+    "{prefab.PrefabName} is a network piece; this places exactly it and the game joins whatever its ends touch, with no would_bridge check. {tool} picks pieces by their connections and guards merges.",
+    "{prefab.PrefabName} is not placed on a cell face; use facing or rotation instead of face.",
+    "{prefab.PrefabName} moves gas the other way with Mode 1 (Left); the chosen turn meets the flow only so. Write it after building (write_logic)."
+  ],
+  "Api/Shared/Game/Build/Placement.cs": [
+    "No loaded prefab is {reference}; prefab names are as find_things and looking_at report them (e.g. StructureWallLight)."
+  ],
+  "Api/Shared/Game/Build/PlacementLayout.cs": [
+    "; allowed (allow_door_keepout).",
+    "; move it, or pass allow_door_keepout."
+  ],
+  "Api/Shared/Game/Build/RemovePlanner.cs": [
+    "gas_to {target.Network.Value} names no pipe network and no pipe on one",
+    "{Names.Of(thing)} ({thing.PrefabName}) is {what} ({where}), not a structure; move_item moves items and movable things.",
+    "{count} {kind.Noun} piece(s) are removed as {kind.RemoveTool} removes them (a network kept whole keeps its id and contents); {kind.RemoveTool} also takes cells and waypoints.",
+    "{kind.RemoveTool}'s check: {RemovalRule.AllowedContents(issue.Message)}",
+    "{kind.RemoveTool}'s check: {RemovalRule.SplitWarning(issue.Message)}",
+    "{kind.RemoveTool}'s check: {issue.Message}",
+    "{kind.RemoveTool}'s check: {issue.Message}",
+    "{message} (allow_contents)",
+    "{player.Absence} Nothing to give the refund to; pass from_id, or refund_to ground or none."
+  ],
+  "Api/Shared/Game/Build/WallPlanes.cs": [
+    "Pass plane (e.g. \"z=668\", an even metre) or looking: true."
+  ],
+  "Api/Shared/Game/ChipPrograms.cs": [
+    "A Lua chip cannot {action}: it runs a whole tick(dt) per game tick, with no line to stop at. Use restart to run it again from the start, or set_ic_source to change it.",
+    "restart is for Lua chips; an IC10 chip restarts at line 0 when set_ic_source writes it."
+  ],
+  "Api/Shared/Game/DeviceMemory.cs": [
+    "Argument 'values[{index}]' must be a finite number."
+  ],
+  "Api/Shared/Game/Devices.cs": [
+    "; atmosphere_contents reads its gas (TotalMoles and the rest)",
+    "{Names.Of(item)} ({id}) is an item, not a device: the device tools reach a logic item only while a player wears or holds it. container_contents shows the slots of any thing.",
+    "{Names.Of(thing)} ({id}) is not a device: it has logic of its own but is not in the game's device list, so the device tools do not reach it (list_devices shows what they reach).",
+    "{Names.Of(thing)} ({id}) is not a device: it has no logic. container_contents shows the slots of any thing.",
+    "{id} is a {kind} network, not a device: the logic tools read devices. connections lists its members{(kind == \"pipe\" ? \"; atmosphere_contents reads its gas (TotalMoles and the rest)\" : string.Empty)}."
+  ],
+  "Api/Shared/Game/Flight/RocketModel.cs": [
+    "fuel_mix.{property.Name}: give a gas or liquid name (e.g. Methane, Oxygen, LiquidHydrazine) and a fraction of 0 or more."
+  ],
+  "Api/Shared/Game/Flight/SpaceRoutes.cs": [
+    "There are {rockets.Count} rockets: give rocket_id, one of {string.Join(\", \", names)}."
+  ],
+  "Api/Shared/Game/HeldTickJobs.cs": [
+    "The game tick is held by something else (a save or a world settings change); try again, or pass wait: true to queue the run.",
+    "{(_active != null ? $\"Job {_active.Id} is still running\" : \"Jobs are waiting for the slot\")}; nothing was changed. Poll it with job_id, or pass wait: true to queue this run behind it."
+  ],
+  "Api/Shared/Game/JobGas.cs": [
+    "Its atmosphere work ran past the {AtmosphericsThread.LimitSeconds} s limit and finished after the job had stopped, so the pipe networks' contents were not checked; look at them (atmosphere_contents) before acknowledging."
+  ],
+  "Api/Shared/Game/Lint/LintDryRun.cs": [
+    "The dry_run lint rules could not run: {error.GetType().Name}: {error.Message}",
+    "{finding.Message} Refused by lint rule {finding.Code} (level problem). To allow it, set its \"level\" to \"warning\" or \"enabled\": false in the save's lint-rules.json (lint_rules lists the files)."
+  ],
+  "Api/Shared/Game/LogicTypes.cs": [
+    "Missing required argument 'logic_type'."
+  ],
+  "Api/Shared/Game/NetworkHandles.cs": [
+    "{entry}: {Names.Of(device)} ({device.PrefabName}) has no two {family.NetworkKind} ports that could share a network, so it bridges nothing; name a network, a piece of one or {reference_id, port}.",
+    "{entry}: {handle.Id} names no thing and no {family.NetworkKind} network. A piece's id changes when an edit replaces it (a split, a junction); read it again (connections).",
+    "{name}: {device.PrefabName} {device.ReferenceId} is on {networks.Count} {family.NetworkKind} networks [{string.Join(\", \", networks)}]; name one with {reference_id, port} (ports: {Ports(device, family)})."
+  ],
+  "Api/Shared/Game/Refunds.cs": [
+    "refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go into.",
+    "refund_to names {id}, and there is no thing with that reference id."
+  ],
+  "Api/Shared/Game/Runs/AssumedRemovals.cs": [
+    "assume_removed: {Names.Of(thing)} ({thing.PrefabName} {id}) does not stand on the small grid."
+  ],
+  "Api/Shared/Game/Runs/ChuteFlowCheck.cs": [
+    "The chute networks here have more than {ChuteSurroundings.MaximumPieces} pieces; each junction takes its first turn unchecked. Check its flow in grid_survey after building."
+  ],
+  "Api/Shared/Game/Runs/Reroutes.cs": [
+    "between names two devices or pieces.",
+    "{name}.port {port.Value} is not a {kind.Noun} port of {label}; its {kind.Noun} ports are [{string.Join(\"; \", ports)}] (connections lists them)."
+  ],
+  "Api/Shared/Game/Runs/RouteEnds.cs": [
+    "{device.PrefabName} {device.ReferenceId} has {candidates.Count} {kind.Noun} ports [{string.Join(\", \", candidates)}]; name one with {name}.port, or several with {name}.ports (connections or grid_survey lists them).",
+    "{name} must be {at: [x, y, z]} or {reference_id, port}.",
+    "{name} names a piece being removed (the reroute's old run or assume_removed).",
+    "{name} names a thing being removed (assume_removed).",
+    "{name}.port {port.Value} is not a {kind.Noun} port of {device.PrefabName}; its ports of that kind are [{string.Join(\", \", candidates)}] (connections lists them).",
+    "{name}: port {chosenPort} of {device.PrefabName} {device.ReferenceId} {wrongWay}; a chute route runs with the items, so it {(target ? \"ends at an input port\" : \"starts at an output port\")} (its chute ports: [{string.Join(\", \", candidates)}]; connections lists their roles).",
+    "{name}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} (connections lists its ends).",
+    "{name}: {member.PrefabName} {member.ReferenceId}: {error} (connections lists its ends)."
+  ],
+  "Api/Shared/Game/Runs/RunArgs.cs": [
+    "Argument 'grade' is required: one of {string.Join(\", \", kind.GradeNames)}.",
+    "Pass one of waypoints, cells, piece or pieces.",
+    "branches go with waypoints or cells, not piece.",
+    "branches go with waypoints or cells, not pieces.",
+    "branches[{index}] needs waypoints or cells (one of them).",
+    "extra_ends[{index}] must be {at: [x, y, z], toward: \"+x\"|\"-x\"|\"+y\"|\"-y\"|\"+z\"|\"-z\"}."
+  ],
+  "Api/Shared/Game/Runs/RunPlanner.cs": [
+    "Allowed (allow_door_keepout).",
+    "Route around the doorway, or pass allow_door_keepout.",
+    "The edit joins what is already joined another way: {forecast.Loops.Count} new link(s) close a loop ({string.Join(\", \", links.GetRange(0, System.Math.Min(links.Count, 8)))}; negative ids are new pieces). The network gets a second path between those points; clean_cables or clean_pipes remove_loops would cut it again. Keep it only if the redundancy is meant; to reach a second port of a device already on the network, route to that port from the network in one plan (several ports in from).",
+    "assume_removed: {Names.Of(thing)} ({thing.PrefabName}) does not stand on the small grid.",
+    "{Names.Of(thing)} ({thing.PrefabName}) is not a {kind.Noun} piece; remove_structure removes other structures.",
+    "{piece.PrefabName} {piece.ReferenceId} ({live.Cells.Count} cells) is split into single pieces in the same job so the run can join it (allow_split_long false refuses instead).",
+    "{plan.AssumedPresent.Count} thing(s) in assume_removed still stand (first {plan.AssumedPresent[0]}); remove them first, or pass the {plan.Request.Kind.Noun} pieces as remove_ids to remove them in this job.",
+    "{plan.AssumedPresent.Count} thing(s) in assume_removed still stand; this check treats them as gone. A real run is refused until they are removed (remove the {kind.Noun} pieces in the same job by passing them as remove_ids instead).",
+    "{player.Absence} No player {role}; pass from_id.",
+    "{player.Absence} The refund is an estimate, and a real removal takes from_id to receive it."
+  ],
+  "Api/Shared/Game/Runs/RunTaps.cs": [
+    " The nearest: the run end at {Metres(best.From)} stops {Gap(best)} {Describe(plan, best.Piece)} (tap: {TapText(best)}; join_trunk: true adds it).",
+    "The run end at {Metres(tip.Cell)} stops {Gap(miss)} {Describe(plan, miss.Piece)} without joining it (the run's own open end there points {OpenStep(plan.Layout, tip.Cell)}). If the run should join that network, add the tap ({TapText(miss)}; join_to with join_trunk: true adds it); if the networks are meant to stay apart, ignore this.",
+    "join_to: the run does not join network {target}; it would stay a network of its own or join another.{near}{along}",
+    "join_trunk needs join_to: the network the tap should reach (a network id, or {reference_id, port} of a device on it).",
+    "join_trunk: no run end is next to, or one cell short of, a piece of network {target}; route the run to it (plan with to: {network_id}) instead.",
+    "join_trunk: none of the {Math.Min(candidates.Count, MaximumTries)} taps tried towards network {target} plans ready; the run is left as given.",
+    "join_trunk: the run stopped {Gap(miss)} {Describe(plan, miss.Piece)}; the tap ({TapText(miss)}) is added, so the run joins network {target}."
+  ],
+  "Api/Shared/Game/Silos.cs": [
+    "Nothing with reference id {id} is in the world: {Names.Of(silo)} ({silo.ReferenceId}) stores it as entry {index} ({root.PrefabName}). silo_withdraw takes it out."
+  ],
+  "Api/Shared/Game/Structures/StructureSwapPlanner.cs": [
+    "It is broken (the game's broken state; the game cannot repair it, only deconstruct it); remove it with remove_structure allow_broken and build a new one.",
+    "No room {room.Id}; take a room_id from rooms.",
+    "{member.PrefabName} is not among from_prefabs.",
+    "{plan.Unmatched.Count} piece(s) cannot be swapped (see unmatched_pieces); pass skip_unmatched to leave them as they are.",
+    "{player.Absence} Nothing to take materials from (or, with refund_to source, to give the refund to); pass from_id."
+  ],
+  "Api/Shared/Game/Upgrades/Clean/CleanPass.cs": [
+    "Coils or kits are charged as the coil's or kit's own merge placement charges pieces placed over others (MultiMergeConstructor.Construct: the new pieces' entry quantity less the old ones'). A split costs more than it gives back; the shortfall is taken from the source's inventory (from_id, default the player) and the run is refused with not_enough_coils when it holds too few. Nothing is ever made for free. A merge or a removal gives back: with refund, as deconstruction gives it, made at the source."
+  ],
+  "Api/Shared/Game/Upgrades/Clean/RemoveDeadChutes.cs": [
+    "{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let the items pass or take them out with move_item, or pass riding: skip to leave those pieces."
+  ],
+  "Api/Shared/Game/Upgrades/NetworkRecords.cs": [
+    "Pipe network {Id} has a gas change waiting for the next atmospherics tick (a game event or a queued move_gas); try again."
+  ],
+  "Api/Shared/Game/Upgrades/UpgradePlan.cs": [
+    "; a burnt cable is on no network: remove it with remove_cables.",
+    "Pass network_id or reference_ids.",
+    "{members.Count} pieces; at most {MaximumPieces} per run. Name them with reference_ids in parts.",
+    "{plan.Unmatched.Count} piece(s) have no replacement (see unmatched_pieces); pass skip_unmatched to leave them as they are.",
+    "{player.Absence} Nothing to take coils from (or, with refund_to source, to give the refund to); pass from_id."
+  ],
+  "Api/Shared/Game/WorldItems.cs": [
+    "Argument 'location' must be any, ground, player, stored, machine_stock or silo."
+  ],
+  "Api/Shared/GasPlaceArg.cs": [
+    "Argument '{name}' must be a reference id as a decimal string, \"planet\", {\"room_id\": \"<id>\"} (a room as the rooms tool reports it) or {\"room_of\": \"<reference id>\"} (the room that thing is in)."
+  ],
+  "Api/Shared/HighlightArgs.cs": [
+    "{path}.label is at most {MaximumLabel} characters."
+  ],
+  "Api/Shared/JobDrops.cs": [
+    "Job {id} has ended; there is nothing to drop. Poll it with job_id for its result.",
+    "Job {id} has started; it cannot be dropped. Poll it with job_id to follow it to its end."
+  ],
+  "Api/Shared/MoveArgs.cs": [
+    "Pass exactly one destination: at [x, y, z], to_id or near_player."
+  ],
+  "Api/Shared/NetworkHandle.cs": [
+    "{name} must be a network id, a piece or device reference id, or {reference_id, port}.",
+    "{name} needs reference_id (a device, with port, or a piece).",
+    "{name} takes reference_id and port only; '{property.Name}' is not one of them."
+  ],
+  "Api/Shared/Paging.cs": [
+    "Argument 'order' must be {Pure.ListOrders.Nearest} or {Pure.ListOrders.ReferenceId}; '{given}' is neither."
+  ],
+  "Api/Shared/PrefabMatches.cs": [
+    "Give prefab or prefabs, not both."
+  ],
+  "Api/Shared/ProfilingArgs.cs": [
+    "Argument 'action' must be on, off, reset or report.",
+    "Argument 'slow_frame_ms' must be from {Number(SlowFrameLimits.MinimumMs)} to {Number(SlowFrameLimits.MaximumMs)}.",
+    "Arguments 'slow_frame_ms' and 'csv' go with action on only."
+  ],
+  "Api/Shared/RefundArgs.cs": [
+    "refund false gives nothing back; leave out refund_to, or leave out refund to choose where it goes.",
+    "refund true and refund_to none disagree; pass one of them.",
+    "refund_to as a number must be a container's reference id.",
+    "refund_to must be a string or a list of targets.",
+    "refund_to must be source, ground, none, inventory, storage, a container's reference id, or a list of inventory, source, storage, ground and container ids.",
+    "refund_to[{index}] must be a target word or a container's reference id."
+  ],
+  "Api/Shared/RerouteArgs.cs": [
+    "reroute.between names exactly two ends: a reference id, or {reference_id, port} for a device port.",
+    "{name} must be a reference id or {reference_id, port}."
+  ],
+  "Api/Shared/SiloArgs.cs": [
+    " or entries_offset {next.ToString(CultureInfo.InvariantCulture)}",
+    "Argument 'prefab_name' must name a prefab, not be empty.",
+    "Argument 'quantity' is required: how many items to take.",
+    "Argument 'to_slot' must be a slot index, or \"auto\".",
+    "Name the things: items, reference_ids, or a filter (prefab_contains, name_contains, location, within_id, near_player_m).",
+    "Name what to take with exactly one of prefab_name and prefab_hash.",
+    "pass entries_limit (max {Maximum.ToString(CultureInfo.InvariantCulture)}){(next < total ? \" or entries_offset \" + next.ToString(CultureInfo.InvariantCulture) : string.Empty)}",
+    "reference_ids"
+  ],
+  "Api/Shared/SourceArgs.cs": [
+    "Argument '{Argument}' must name 1 to {MaximumSources} things."
+  ],
+  "Api/Shared/StructureSwapArgs.cs": [
+    "A real run needs dry_run: false and confirm: true; nothing was changed.",
+    "Argument 'room_id' must be a room id as rooms reports it.",
+    "Argument 'to' is required: the prefab name of the new piece.",
+    "Argument 'to' must be a prefab name.",
+    "Pass reference_ids or room_id (from rooms), exactly one of them.",
+    "confirm: true needs dry_run: false; nothing was changed.",
+    "from_prefabs[{index}] must be a prefab name.",
+    "job_id"
+  ],
+  "Api/Shared/SurveyArgs.cs": [
+    "Argument '{Argument}' takes {string.Join(\", \", Words.Keys)}; '{entry}' is not one of them.",
+    "Argument '{CellDetailArgument}' takes occupancy or full; '{word}' is neither.",
+    "Argument '{KindsArgument}' takes {string.Join(\", \", Words.Keys)}; '{entry}' is not one of them."
+  ],
+  "Api/Shared/VaultTransferArgs.cs": [
+    "Argument 'items' must name at least one thing; leave it out to move everything.",
+    "from_vault_id and to_vault_id name the same vault; nothing to move.",
+    "items[{index}]: name what to move with exactly one of prefab_name, prefab_hash or reagent."
+  ],
+  "Api/Shared/WalkRequest.cs": [
+    "Argument 'cursor' needs a call on a protocol 2 connection, whose stream owns the cursor.",
+    "Cursor {cursorId} is gone: its walk ended, it was closed, its stream ended, the world changed, it was evicted to bound memory, or another stream owns it. Start the walk again with cursor true.",
+    "Next is for a call with cursor_id.",
+    "The walk has {rest.Length.ToString(CultureInfo.InvariantCulture)} more entries than a cursor holds ({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filter, or page with offset.",
+    "pass cursor_id {cursorId} for the next page (limit up to {page.Maximum.ToString(CultureInfo.InvariantCulture)})"
+  ],
+  "Api/Shared/WriteMode.cs": [
+    "A real run needs dry_run: false and confirm: true; nothing was changed.",
+    "confirm: true needs dry_run: false; nothing was changed."
+  ],
+  "Api/ShowPreview.cs": [
+    "Nothing to draw: pass placements (or prefab and at), cells or boxes.",
+    "show_preview takes placements, not a job_id."
+  ],
+  "Api/SiloWithdraw.cs": [
+    " and {more} more kinds (container_contents lists them)",
+    "The game could not load entry {entry.Index} ({entry.PrefabName}) from its save data; it stays in the silo. Entries before it were taken (container_contents shows the silo).",
+    "{Names.Of(holder)} has no room for all {request.Quantity} {Names.Of(template)} ({placement.Pooled.Unplaced + placement.Whole.Unplaced} left over; a thing stored with contents or a stored food takes an empty slot of its own). Free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed."
+  ],
+  "Api/ThingHealth.cs": [
+    "Argument 'kind' must be pipe, cable or chute.",
+    "Argument 'reference_id' must be an Int64 encoded as a string.",
+    "Pass one of reference_id, reference_ids or network_id.",
+    "Unknown thing_health form.",
+    "network_id"
+  ],
+  "Api/TraderTrade.cs": [
+    "The player ({human.DisplayName}) carries no credit card; pass credit_card_id.",
+    "items[{index}] needs name, prefab_name or both.",
+    "{matches.Count} of the trader's entries are {Wanted(item)}; give both name and prefab_name.",
+    "{player.Absence} No player carries a credit card; pass credit_card_id."
+  ],
+  "Api/UndoJob.cs": [
+    "A real run needs dry_run: false and confirm: true; nothing was changed.",
+    "confirm: true needs dry_run: false; nothing was changed.",
+    "refund_to ground: remove_structure puts each refund where its piece stood; the pieces a piece run removes give theirs on the ground in front of the source, as that tool does.",
+    "{count} piece(s) the job built are removed by {groups[index].Tool} itself (remove_ids), in the job that builds the old pieces again: the network is never left cut between two jobs, and that run's guards see it as it ends up."
+  ],
+  "Api/UpgradeNetwork.cs": [
+    "A real run needs dry_run: false and confirm: true; nothing was changed.",
+    "Argument 'riding' must be skip or refuse.",
+    "Argument 'to' must be heavy or super_heavy.",
+    "Argument 'to' must be insulated or repair.",
+    "Pass max too.",
+    "Pass min too.",
+    "a dry run (it is for a confirmed run or a job_id poll)",
+    "confirm: true needs dry_run: false; nothing was changed.",
+    "job_id",
+    "job_id",
+    "keep_ids spares pieces from remove_loops and remove_redundant; ask for one of them too.",
+    "network_id (from connections) or reference_ids",
+    "network_id (from connections), reference_ids, or min and max (a box)"
+  ],
+  "Api/VaultDeposit.cs": [
+    "Argument 'kind' must be any, ingot, ore or ice.",
+    "Name the items: items, reference_ids, or a filter (prefab_contains, name_contains, location, within_id, near_player_m, kind).",
+    "reference_ids"
+  ],
+  "Api/VaultWithdraw.cs": [
+    "Argument 'quantity' is required.",
+    "Name what to take with exactly one of prefab_name, prefab_hash or reagent.",
+    "{Names.Of(holder)} takes {VaultAmount.Of(plan.Placed)} of {quantity} {Names.Of(prefab)}; free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed."
+  ],
+  "Api/Views/FindThingsViews.cs": [
+    "Argument 'location' must be {Any}, {string.Join(\", \", All)}; '{given}' is none of them."
+  ],
+  "Api/Views/GasCheckViews.cs": [
+    " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss (acknowledge_gas_lost with this job's id, only after the user has agreed).",
+    " Up to {Mol(release)} mol may leak out once the networks the plan leaves over their weakest pipe burst (allow_burst, will_burst); that release is expected and not put back."
+  ],
+  "Api/Views/GridSurveyViews.cs": [
+    "Each cell is a 2 m cell at its centre (odd metres). empty: true when it holds nothing. frame_id: its frame. faces: its faces +x, -x, +y, -y, +z, -z, each '.' nothing, 'w' wall, 'g' window, 'x' door (door over window over wall); left out when all are '.'. small: its 64 small cells (0.5 m) at -1, -0.5, 0 and +0.5 m from the centre along each axis, character index x + 4y + 16z: '.' empty, 'c' cable, 'p' pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's empty cell; left out when all are '.'. cell_detail full adds room, frame build state, face structure ids and the support string.",
+    "Each cell is a 2 m cell at its centre (odd metres). small: its 64 small-grid cells (0.5 m) at -1, -0.5, 0 and +0.5 m from the centre along each axis (index 0 to 3; index 0 lies on the cell's minimum face plane, shared with the neighbour), character index x + 4y + 16z. '.' empty, 'c' cable, 'p' pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), 'r' a rocket's empty cell (its fuselage decides which kind of piece it takes). Frames and walls never block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable (and a cable a pipe) only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, chute or 'o'. support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell the small cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a frame's face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air (plan_*_route style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the configured band either side inside its rectangle: the planners never route there without allow_door_keepout; the floor slab under a threshold is not in it) and 'g' a window's face (routes pay extra, crosses_window). A door's face is no wall support. network_visibility counts each listed network's cells the same way (inside, frame_surface, wall, air) and lists the floating (air) ones."
+  ],
+  "Api/Views/IcViews.cs": [
+    "pass stack_start (now {StartAddress}) and stack_count (max {Size})"
+  ],
+  "Api/Views/InventoryViews.cs": [
+    "pass depth (max 6), or container_contents of the occupant"
+  ],
+  "Api/Views/RunViews.cs": [
+    "a network lists its first riding items only; grid_survey kinds [\"chute\"] gives each chute's carries",
+    "poll with job_id and verbose: true (log.created_ids lists every id built)"
+  ],
+  "Api/WallMap.cs": [
+    "Pass around (a point on or near the plane) with plane.",
+    "free_rects.h is required (m).",
+    "free_rects.w is required (m).",
+    "pass free_rects.limit (max {MaximumRects}); the search stopped at limit, so more may fit",
+    "radius_m is at most {MaximumRadiusM}."
+  ],
+  "Pure/BatteryCharge.cs": [
+    "Argument 'joules' must be 0 or more.",
+    "Argument 'ratio' must be from 0 to 1."
+  ],
+  "Pure/BrokenNeighbours.cs": [
+    "\", remove_ids: [\"",
+    ", ends: [",
+    ", grade: \"",
+    "To replace it in one job, as a player would: {Call(placeTool, id, piece, grade)} (a dry run first, then dry_run false and confirm true).",
+    "piece: {at: ",
+    "waypoints: ["
+  ],
+  "Pure/BuildRules.cs": [
+    " (pass root to name one).",
+    " Pass allow_split if that is meant.",
+    "from_id {holder} is inside {removedContainer}, which this request removes",
+    "from_id {holder} is removed by this request",
+    "it holds {facts.GasMoles:0.###} mol of gas or liquid and gas_to finds no pipe network to take it: {facts.GasRefusal}",
+    "refund_to container {container} is inside {removedContainer}, which this request removes",
+    "refund_to container {container} is removed by this request",
+    "removing it squeezes {0} to {1:0.#} kPa (now {2:0.#} kPa), over its weakest pipe (rated {3:0.#} kPa); allow_burst is set, so it goes ahead",
+    "removing it takes {0:0.#} L off pipe network {1} and {2}: {3:0.#} kPa now, {4:0.#} kPa after, over the weakest pipe left (rated {5:0.#} kPa), which would burst; take at least {6:0.#} % of its gas out first (move_gas), or pass allow_burst where a burst is acceptable (outdoors)",
+    "{(removedContainer == null ? $\"from_id {holder} is removed by this request\" : $\"from_id {holder} is inside {removedContainer}, which this request removes\")}, so the refund would be destroyed with it; pass another from_id, or refund_to ground or none.",
+    "{(removedContainer == null ? $\"refund_to container {container} is removed by this request\" : $\"refund_to container {container} is inside {removedContainer}, which this request removes\")}, so the refund would be destroyed with it; name another container in refund_to.",
+    "{trimmed.Replace(\" (pass root to name one).\", \".\").TrimEnd('.')}; remove_structure only warns of a split and removes it anyway (plan_removal or remove_pipes with root name the devices a root still reaches).",
+    "{trimmed.TrimEnd('.')}; allow_contents is set, so it is removed anyway.",
+    "{what}; allow_contents is set, so {consequence}",
+    "{what}; {consequence}. Empty it first, or pass allow_contents to remove it anyway"
+  ],
+  "Pure/Catalogue/Catalogue.cs": [
+    "Argument '{path}' is given twice; name each key once."
+  ],
+  "Pure/DeviceReads/DeviceReadRequest.cs": [
+    "Argument 'include' must be an array; it takes \"clock\".",
+    "Argument 'items' must be an array of 1 to {DeviceReadBounds.MaximumItems} entries.",
+    "{path}.reference_id is required.",
+    "{path}.reference_id must be a reference id as a decimal string."
+  ],
+  "Pure/GasHoldRule.cs": [
+    "; {AcknowledgeArgument} was not used.",
+    "Job {Hold!.JobId}'s gas check failed: {Hold.Summary} Poll that job with job_id for its gas_check. Pipe jobs stay refused until the world is loaded again, or until a run passes {AcknowledgeArgument}: \"{Hold.JobId}\" to accept the loss; ask the user before acknowledging it. Nothing was changed.",
+    "Pipe jobs are held: {Hold!.Describe()}. A real run with {AcknowledgeArgument} \"{Hold.JobId}\" would accept that loss, lift the hold and go on; a dry run lifts nothing.",
+    "Queued with {AcknowledgeArgument} \"{Hold!.JobId}\" ({Hold.Describe()}): the hold is lifted when this run starts, if that job's loss still holds pipe jobs then; until then it stays.",
+    "{AcknowledgeArgument} \"{Given}\": no gas hold is in place, so there is nothing to lift.",
+    "{AcknowledgeArgument} names \"{Given}\", but pipe jobs are held by {Hold!.Describe()} ({Hold.Summary}). Only {AcknowledgeArgument}: \"{Hold.JobId}\" lifts that hold, and only after the user has agreed to accept that loss. Nothing was changed.",
+    "{GasHoldVerdict.AcknowledgeArgument} is empty; pass the id of the job whose gas check failed (run-N, upgrade-N, place-N, remove-N), or leave it out."
+  ],
+  "Pure/GrowerSlotRule.cs": [
+    "{plantSlot}; fertiliser goes into the grower's fertiliser slot {fertiliserSlot.Value}, as a player's hand sends it: pass to_slot {fertiliserSlot.Value} or auto."
+  ],
+  "Pure/Layout/Undo.cs": [
+    "{id} ({snapshot.Prefab}) is a network piece no coil or kit lays; undo_job builds network pieces again only through {snapshot.Piece.Tool}, so its guards apply.",
+    "{job.JobId} is a {job.Tool} job; undo_job undoes place_* and remove_* jobs only (paste_blueprint has its own undo).",
+    "{job.JobId} was already undone: undo_job started {string.Join(\", \", undo)}. Nothing is left to undo; undo those jobs, the last first, to have it back."
+  ],
+  "Pure/Layout/UndoSource.cs": [
+    "The job placed for free (free: true): removing what it built gives nothing back (refund_to none).",
+    "from_id {fromId.Value}: the caller's source pays and takes the refunds (instead of {(job.FromId.HasValue ? $\"the job's own, {job.FromId.Value}).\" : \"the player).\")}",
+    "from_id {job.FromId.Value}: the job's own source pays and takes the refunds.",
+    "refund_to {refundTo.Name}: the caller's choice for the removals' refund."
+  ],
+  "Pure/Lint/LintCompiler.cs": [
+    "no function '{call.Name}' (lint_rules functions lists them)"
+  ],
+  "Pure/LogicTypeNumber.cs": [
+    "Numeric logic_type must be a whole number from 0 to 65535."
+  ],
+  "Pure/PartInUseRule.cs": [
+    "{item} ({itemId}) is in slot {holder.SlotIndex} of {holder.Named}, which is using it: {Consequence(part)}. Take a spare instead, or pass allow_in_use true to take it anyway."
+  ],
+  "Pure/PrefabIndex.cs": [
+    "An index query needs a prefab, prefabs or prefab_contains."
+  ],
+  "Pure/RedundantPieces.cs": [
+    "remove_redundant: it is in keep_ids, so it never goes."
+  ],
+  "Pure/RefundRoute.cs": [
+    "from_id has no slot a refund could go into, and is stored in nothing that has one.",
+    "from_id is not a stack to top up.",
+    "from_id names no thing.",
+    "from_id names no thing.",
+    "inventory skipped: there is no player (a dedicated server; pass from_id of a player).",
+    "refund_to as a list takes 1 to {MaximumTargets} targets.",
+    "refund_to names {target.Word} twice.",
+    "refund_to target '{word}' must be inventory, source, storage, ground or a container's reference id.",
+    "there is no from_id and no local player whose slots could take it.",
+    "there is no from_id to top up."
+  ],
+  "Pure/Routing/EditGuards.cs": [
+    "Network {split.Network} would fall into {split.Parts.Count} networks.{SplitAnalysis.Describe(details[index], roots?.IsNamed ?? false)} Pass allow_split if that is meant.",
+    "Port {port.Index} of device {port.DeviceId} would lose its connection to network {port.NetworkBefore}.{cutNote} Pass allow_split if that is meant.",
+    "The edit would join networks {string.Join(\", \", merge.NetworksBefore)} into one; name every one of them in allow_bridge if that is meant.",
+    "The edit would put ports {string.Join(\", \", ports)} of device {bridge.Device} on one network (both sides of an APC or transformer, a battery's input and output, a pump's two sides, a device's chute output fed back into its own input); name the device in allow_bridge if that is meant."
+  ],
+  "Pure/Routing/PortSplitSummary.cs": [
+    "{tool}'s check: {device} would lose its connection on port{(ports.Count == 1 ? \"\" : \"s\")} {string.Join(\", \", ports)}; remove_structure removes it anyway (verbose: each port in full)."
+  ],
+  "Pure/Routing/RerouteNetworks.cs": [
+    "{a.Name} and {b.Name} share {shared.Count} {noun} networks: {string.Join(\"; \", candidates)}. Name the port of a device end: between: [{reference_id, port}, ...]."
+  ],
+  "Pure/Routing/RunLayout.cs": [
+    " ({tool} with split_long_straights)",
+    "Cell {entry.Cell} is where a piece joining port {port.Index} of device {port.DeviceId} stands; the piece placed there has no end towards it ({step.Name}), so nothing can join that port afterwards. Route around it (plan_*_route reserve_ports), or join it (extra_ends)."
+  ],
+  "Pure/Routing/SplitAnalysis.cs": [
+    " No root is on it (pass root to name one)."
+  ],
+  "Pure/Shaping/Truncations.cs": [
+    " or offset {(offset + returned).ToString(CultureInfo.InvariantCulture)}",
+    "; offset {offset.ToString(CultureInfo.InvariantCulture)} skipped the first entries",
+    "pass limit (max {maximum.ToString(CultureInfo.InvariantCulture)}){next}{earlier}{advice}",
+    "pass list_limits {\"{list}\": {total.ToString(CultureInfo.InvariantCulture)}} (shape.limit on the pipe; max {ShapeRequest.MaximumLimit.ToString(CultureInfo.InvariantCulture)})"
+  ]
+}

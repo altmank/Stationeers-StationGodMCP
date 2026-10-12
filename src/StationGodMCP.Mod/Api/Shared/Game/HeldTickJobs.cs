@@ -99,14 +99,15 @@ internal static class HeldTickJobs
             if (_active == null && tickTaken)
             {
                 throw ApiErrors.Refused("tick_held",
-                    "The game tick is held by something else (a save or a world settings change); try again, or " +
-                    "pass wait: true to queue the run.");
+                    Vocabulary.Text("The game tick is held by something else (a save or a world settings change); " +
+                        "try again, or pass {arg:wait}: true to queue the run."));
             }
 
             GasHoldReply.Record(hold, GasHoldStage.NotStarted);
             return new JobBusyView(tool, _active?.Id ?? string.Empty, Waiting.Count,
                 (_active != null ? $"Job {_active.Id} is still running" : "Jobs are waiting for the slot") +
-                "; nothing was changed. Poll it with job_id, or pass wait: true to queue this run behind it.");
+                Vocabulary.Text("; nothing was changed. Poll it with {arg:job_id}, or pass {arg:wait}: true to queue " +
+                    "this run behind it."));
         }
 
         string id = NextId(prefix);
