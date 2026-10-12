@@ -196,14 +196,18 @@ time.sleep(60)
 """
 
 
-def hub_program(folder, source):
-    """A command that runs source with this Python (a .cmd on Windows, a shell script elsewhere)."""
+def hub_program(folder, source, pause=False):
+    """A command that runs source with this Python (a .cmd on Windows, a shell script elsewhere). pause: the .cmd
+    waits about a second before it starts Python, so the job assignment of cmd.exe (right after it starts) is done
+    before cmd.exe has a child; a real hub is the assigned process itself."""
     script = os.path.join(folder, "child_hub.py")
     with open(script, "w", encoding="utf-8") as file:
         file.write(source)
     if sys.platform == "win32":
         program = os.path.join(folder, "hub.cmd")
         with open(program, "w", encoding="utf-8") as file:
+            if pause:
+                file.write("@ping -n 2 127.0.0.1 >nul\n")
             file.write(f'@"{sys.executable}" "{script}" %*\n')
     else:
         program = os.path.join(folder, "hub")
@@ -254,7 +258,7 @@ time.sleep(60)
 STUBBORN_HUB = r"""
 import json, os, sys, time
 sys.stdin.buffer.readline()
-with open(sys.argv[-1] if False else os.environ["SG_TEST_PID_FILE"], "w") as file:
+with open(os.environ["SG_TEST_PID_FILE"], "w") as file:
     file.write(str(os.getpid()))
 sys.stdout.buffer.write((json.dumps({"type": "welcome", "protocol": 2, "features": ["pipeline"]}) + "\n").encode())
 sys.stdout.buffer.flush()
@@ -281,7 +285,7 @@ def windows_process_alive(pid):
 class ChildHubDiesWithParentTests(unittest.TestCase):
     def test_killing_the_program_kills_its_child_hub(self):
         folder = tempfile.mkdtemp()
-        program = hub_program(folder, STUBBORN_HUB)
+        program = hub_program(folder, STUBBORN_HUB, pause=True)
         parent_script = os.path.join(folder, "parent.py")
         with open(parent_script, "w", encoding="utf-8") as file:
             file.write(PARENT)
@@ -289,6 +293,7 @@ class ChildHubDiesWithParentTests(unittest.TestCase):
         environment = dict(os.environ, SG_TEST_PID_FILE=pid_file)
         parent = subprocess.Popen([sys.executable, parent_script, PACKAGE_ROOT, program], stdout=subprocess.PIPE,
                                   env=environment)
+        hub_pid = None
         try:
             self.assertEqual(b"connected", parent.stdout.readline().strip())
             with open(pid_file, encoding="utf-8") as file:
@@ -304,6 +309,8 @@ class ChildHubDiesWithParentTests(unittest.TestCase):
             if parent.poll() is None:
                 parent.kill()
             parent.stdout.close()
+            if hub_pid is not None and windows_process_alive(hub_pid):
+                os.kill(hub_pid, 9)  # do not leave it holding the test runner's pipes
 
 
 if __name__ == "__main__":
