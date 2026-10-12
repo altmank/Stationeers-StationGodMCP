@@ -51,6 +51,18 @@ internal sealed class RunWorld : IHubLink
     /// <summary>A call answered before the world's own handling (null: the world answers).</summary>
     public Func<GameCall, GameReply?>? Override { get; set; }
 
+    /// <summary>How long a call waits before it is answered (cancellable); null or zero: at once.</summary>
+    public Func<GameCall, TimeSpan>? CallDelay { get; set; }
+
+    /// <summary>True for a (id, logic, value) write the game refuses (its row answers ok: false).</summary>
+    public Func<string, string, double, bool>? RefusesWrite { get; set; }
+
+    /// <summary>True makes stream_end throw, as a link fault would.</summary>
+    public bool EndStreamThrows { get; set; }
+
+    /// <summary>The world changes here without the event reaching anyone yet (the race a world change can win).</summary>
+    public void ChangeWorldQuietly(string world) => WorldId = world;
+
     public StreamCost Cost { get; set; } = new(0, 12, 48.0, 2);
 
     public List<long> Ended { get; } = new();
@@ -106,7 +118,7 @@ internal sealed class RunWorld : IHubLink
 
     public long NewStream() => Interlocked.Increment(ref _lastStream);
 
-    public Task<GameReply> CallAsync(GameCall call, CancellationToken cancellation)
+    public async Task<GameReply> CallAsync(GameCall call, CancellationToken cancellation)
     {
         JsonObject args = JsonNode.Parse(call.Parameters.GetRawText())!.AsObject();
         bool report = args["dry_run"] is JsonValue dry && dry.GetValueKind() == JsonValueKind.True;
@@ -116,12 +128,28 @@ internal sealed class RunWorld : IHubLink
             _log.Add(report ? "report:" + call.Method : call.Method);
         }
 
-        if (Override?.Invoke(call) is { } given)
+        // As GameLink does: a call made for a world the link has left is refused unsent.
+        if (call.World != null && call.World != WorldId)
         {
-            return Task.FromResult(given);
+            lock (_gate)
+            {
+                _log.Add("refused_world " + call.Method);
+            }
+
+            return FakeGameLink.Refused("world_changed", "the world changed");
         }
 
-        return Task.FromResult(call.Method switch
+        if (CallDelay?.Invoke(call) is { } delay && delay > TimeSpan.Zero)
+        {
+            await Task.Delay(delay, cancellation);
+        }
+
+        if (Override?.Invoke(call) is { } given)
+        {
+            return given;
+        }
+
+        return (call.Method switch
         {
             "thing_health" => Names(args),
             "read_logic_many" => Reads(args),
@@ -174,6 +202,18 @@ internal sealed class RunWorld : IHubLink
             string logic = Text(write["logic_type"] ?? write["logic"]);
             double value = (double)write["value"]!.AsValue().GetValue<double>();
             double before = Value(id, logic);
+            if (!report && RefusesWrite?.Invoke(id, logic, value) == true)
+            {
+                rows.Add(new JsonObject
+                {
+                    ["index"] = index++,
+                    ["ok"] = false,
+                    ["reference_id"] = id,
+                    ["error"] = new JsonObject { ["code"] = "logic_not_writable", ["message"] = "the device refused it" }
+                });
+                continue;
+            }
+
             if (!report)
             {
                 Set(id, logic, value);
@@ -208,6 +248,11 @@ internal sealed class RunWorld : IHubLink
 
     public Task EndStreamAsync(long stream)
     {
+        if (EndStreamThrows)
+        {
+            throw new IOException("the link broke");
+        }
+
         lock (_gate)
         {
             Ended.Add(stream);
@@ -218,6 +263,21 @@ internal sealed class RunWorld : IHubLink
     }
 
     public Task SessionEndAsync() => Task.CompletedTask;
+
+    public Task<GameReply> HoldRestoreAsync(long stream, JsonElement change, string? world, CancellationToken cancellation)
+    {
+        if (world != null && world != WorldId)
+        {
+            lock (_gate)
+            {
+                _log.Add("refused_world hold_restore");
+            }
+
+            return Task.FromResult(FakeGameLink.Refused("world_changed", "the world changed"));
+        }
+
+        return HoldRestoreAsync(stream, change, cancellation);
+    }
 
     public Task<GameReply> HoldRestoreAsync(long stream, JsonElement change, CancellationToken cancellation)
     {
