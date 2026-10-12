@@ -33,8 +33,9 @@ internal static class LogicOps
 
     /// <summary>
     /// One write's checks: the device in scope, the type writable, the value there now, and the write rules when the
-    /// write opens the device (OpeningWrites; a problem refuses with lint_refused unless allowLint). They act on
-    /// nothing; index names the entry of a list in the warnings.
+    /// write opens the device (OpeningWrites; a problem refuses with lint_refused unless allowLint), with the
+    /// controllers that write the same logic type on it (DrivenBy). They act on nothing; index names the entry of a
+    /// list in the warnings.
     /// </summary>
     internal static LogicWritePlan Check(DeviceScope scope, LogicWriteArgs write, bool allowLint, int? index)
     {
@@ -45,7 +46,7 @@ internal static class LogicOps
         LogicRead requested = new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(write.Type),
             write.Value);
         return new LogicWritePlan(scope.Id, device, write.Type,
-            WriteLint.Checked(requested, previous, verdict, allowLint, index));
+            WriteLint.Checked(requested, previous, verdict, allowLint, index, DrivenBy.For(device, write.Type)));
     }
 
     /// <summary>
@@ -108,6 +109,7 @@ internal static class LogicOps
     internal static BatchResultView WriteMany(DeviceScope scope, List<Args?> items, bool allowLint, bool report,
         List<BuildIssueView> warnings)
     {
+        using Controllers.Scope controllers = Controllers.Open();
         BatchBuilder batch = new BatchBuilder(items.Count);
         for (int index = 0; index < items.Count; index++)
         {

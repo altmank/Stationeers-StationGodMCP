@@ -126,6 +126,10 @@ those presses would; anything else is refused `invalid_downlink`. Its reply's `p
   and can differ from the request: the device clamps it (`On` 7 reads 1), ignores it (a paint-only colour index on the
   LED display), or moves toward it over time (a solar panel's angle). The write still succeeds; compare the two when
   it matters.
+- `write_logic` and each written item of `write_logic_many` carry `driven_by` when a chip, logic writer or batch
+  writer on the device's data networks writes the same logic type to it: `[{kind, reference_id, prefab_name,
+  logic_type, via, line}]` (`via` is the pin, `db`, `id`, the batch instruction or `output`; `line` is the chip's
+  0-based line). The value you wrote can be written back on the chip's next pass. It is left out when nothing does.
 - In `read_logic_many`, `write_logic_many` and `sample_logic` every result has its `index`; a failed one also names
   the `reference_id` and `logic_type` it asked for (null where the entry's own could not be read) and its `error`.
 - `read_memory` and `write_memory` check the whole range against the device's `stack_size` before touching it: an

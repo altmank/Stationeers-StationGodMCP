@@ -129,6 +129,16 @@ another non-device), `logic_not_readable` (a device with no readable logic), `no
 data network without `allow_off_network`), `invalid_argument` (a bad `pins` object, pin name or id, a pin listed
 twice, the housing itself).
 
+## Who writes a device
+
+A device written by a chip is written back on the chip's next pass. `write_logic` and `write_logic_many` say so in
+`driven_by` when a chip on the device's data network writes the same logic type to it, and the protocol method
+`inspect_controllers` lists every controller of a device or a network (see `docs/architecture/protocol.md`, Protocol
+methods). A chip counts when its code writes the device through a pin (`s d0 On 1`, also through `alias`), `db`, its
+id (`sd`), or a batch to its prefab hash (`sb`, and `sbn` with its name), with defines and `HASH("...")` resolved; a
+Lua chip through `ic.write`, `ic.write_id` or `batch_write` with constant arguments. A device register (`dr0`) or
+anything held in a register is not followed. Each program is parsed once and kept until its source changes.
+
 ## Multiplayer
 
 Writes happen on the host. `set_ic_source` sends the chip to the other players and `set_ic_pins` sends the new pins,

@@ -2,7 +2,7 @@
   "name": "write_logic",
   "summary": "Write one logic value to a device, by logic type name or number, as a chip or console would. Answers the value read back at once.",
   "help": {
-    "text": "Returns requested_value, previous_value and current_value. current_value is read back at once and can differ from the request: the device clamps it (On 7 reads 1), ignores it (a colour index only paint sets), or moves toward it over time (a solar panel turning). The write still succeeds. A write that opens a vent, valve, pump or regulator (On or Open from 0 to 1, a vent's Mode from inward to outward, a turbo pump's Mode turned the other way, a volume pump's Setting from 0) first runs the write lint rules on the pipe networks it opens to, as they stand at the write, every time (see lint). A problem refuses the write as lint_refused (its data lists each rule, message and thing) unless allow_lint; a warning comes back in warnings [{code, message, index, reference_id}], absent when there are none. A write that opens nothing runs no rule. A report (dry_run) answers {report_only, problems, gateway_id, reference_id, logic_type, requested_value, previous_value (the device's value before the write), opens, warnings} and writes nothing (see report_only).",
+    "text": "Returns requested_value, previous_value and current_value, read back at once: the device can clamp it (On 7 reads 1), ignore it (a colour index only paint sets) or move toward it over time (a solar panel turning); the write still succeeds. driven_by, present only when a controller writes the same logic type on the device, lists them ({kind, reference_id, logic_type, via, line}); one may write the value back. A write that opens a vent, valve, pump or regulator (On or Open from 0 to 1, a vent's Mode from inward to outward, a turbo pump's Mode turned, a volume pump's Setting from 0) first runs the write lint rules on the pipe networks it opens to, as they stand, every time (see lint); one that opens nothing runs none. A problem refuses it as lint_refused (data: each rule, message and thing) unless allow_lint; warnings come back in warnings [{code, message, index, reference_id}], absent when none. A report (dry_run) answers {report_only, problems, gateway_id, reference_id, logic_type, requested_value, previous_value, opens, warnings, driven_by} and writes nothing (see report_only).",
     "shared": ["gateways", "logic", "lint", "report_only"]
   },
   "class": "write",
@@ -42,7 +42,8 @@
       "previous_value": {"type": ["number", "null"]},
       "current_value": {"type": ["number", "null"]},
       "opens": {"type": "boolean"},
-      "warnings": {"type": "array"}
+      "warnings": {"type": "array"},
+      "driven_by": {"type": "array"}
     }
   },
   "x-views": ["LogicWriteView", "ReportRefusedView", "LogicWriteReportView"],

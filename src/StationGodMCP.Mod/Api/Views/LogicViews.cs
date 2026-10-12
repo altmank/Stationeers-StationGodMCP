@@ -45,8 +45,8 @@ internal sealed class LogicRead
 }
 
 /// <summary>
-/// write_logic: one value written, with what the device read before and after, and the warnings its checks raised
-/// (absent when there are none).
+/// write_logic: one value written, with what the device read before and after, the warnings its checks raised (absent
+/// when there are none), and the controllers that write the same logic type on the device (absent when none does).
 /// </summary>
 internal sealed class LogicWriteView
 {
@@ -59,6 +59,7 @@ internal sealed class LogicWriteView
         PreviousValue = write.Checked.PreviousValue;
         CurrentValue = write.CurrentValue;
         Warnings = write.Checked.ReplyWarnings;
+        DrivenBy = write.Checked.DrivenBy;
     }
 
     public string GatewayId { get; }
@@ -76,11 +77,15 @@ internal sealed class LogicWriteView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<BuildIssueView>? Warnings { get; }
+
+    /// <summary>The controllers that write the same logic type on this device; left out when none does.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ControllerView>? DrivenBy { get; }
 }
 
 /// <summary>
 /// write_logic's report (dry_run): the write its checks passed, the value there now, whether it opens the device (so
-/// the write rules ran), and their warnings; nothing written.
+/// the write rules ran), their warnings, and the controllers that write the same logic type on it; nothing written.
 /// </summary>
 internal sealed class LogicWriteReportView
 {
@@ -93,6 +98,7 @@ internal sealed class LogicWriteReportView
         PreviousValue = write.PreviousValue;
         Opens = write.Opens;
         Warnings = write.Warnings;
+        DrivenBy = write.DrivenBy;
     }
 
     public bool ReportOnly => true;
@@ -114,16 +120,22 @@ internal sealed class LogicWriteReportView
     public bool Opens { get; }
 
     public List<BuildIssueView> Warnings { get; }
+
+    /// <summary>The controllers that write the same logic type on this device; left out when none does.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ControllerView>? DrivenBy { get; }
 }
 
 /// <summary>
 /// A logic write its checks passed: the device, type and value, the value there before, whether it opens the device
-/// (OpeningTransition), and the warnings the checks raised. Every write_logic and write_logic_many reply and report is
-/// assembled from one, so a fact the checks find goes here and into the views that show it.
+/// (OpeningTransition), the warnings the checks raised, and the controllers that write the same logic type on the
+/// device (DrivenBy; null when none). Every write_logic and write_logic_many reply and report is assembled from one,
+/// so a fact the checks find goes here and into the views that show it.
 /// </summary>
 internal sealed class LogicWriteChecked
 {
-    internal LogicWriteChecked(LogicRead requested, double? previousValue, bool opens, List<BuildIssueView> warnings)
+    internal LogicWriteChecked(LogicRead requested, double? previousValue, bool opens, List<BuildIssueView> warnings,
+        List<ControllerView>? drivenBy)
     {
         ReferenceId = requested.ReferenceId;
         LogicType = requested.LogicType;
@@ -131,6 +143,7 @@ internal sealed class LogicWriteChecked
         PreviousValue = previousValue;
         Opens = opens;
         Warnings = warnings;
+        DrivenBy = drivenBy;
     }
 
     internal ThingId ReferenceId { get; }
@@ -145,6 +158,8 @@ internal sealed class LogicWriteChecked
 
     internal List<BuildIssueView> Warnings { get; }
 
+    internal List<ControllerView>? DrivenBy { get; }
+
     /// <summary>The warnings as an acting reply carries them: null for none, so the key is left out.</summary>
     internal List<BuildIssueView>? ReplyWarnings => Warnings.Count > 0 ? Warnings : null;
 }
@@ -158,8 +173,10 @@ internal sealed class LogicWrite
         CurrentValue = currentValue;
     }
 
-    internal LogicWrite(LogicRead requested, double? previousValue, double? currentValue)
-        : this(new LogicWriteChecked(requested, previousValue, false, new List<BuildIssueView>()), currentValue)
+    internal LogicWrite(LogicRead requested, double? previousValue, double? currentValue,
+        List<ControllerView>? drivenBy = null)
+        : this(new LogicWriteChecked(requested, previousValue, false, new List<BuildIssueView>(), drivenBy),
+            currentValue)
     {
     }
 
@@ -281,6 +298,7 @@ internal sealed class LogicWriteItemView : BatchItemView
         RequestedValue = write.Checked.RequestedValue;
         PreviousValue = write.Checked.PreviousValue;
         CurrentValue = write.CurrentValue;
+        DrivenBy = write.Checked.DrivenBy;
     }
 
     public ThingId ReferenceId { get; }
@@ -292,6 +310,10 @@ internal sealed class LogicWriteItemView : BatchItemView
     public double? PreviousValue { get; }
 
     public double? CurrentValue { get; }
+
+    /// <summary>As write_logic's: left out when no controller writes the same logic type on the device.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ControllerView>? DrivenBy { get; }
 }
 
 /// <summary>One write of write_logic_many's report, as its checks passed it; its warnings are the report's.</summary>
@@ -304,6 +326,7 @@ internal sealed class LogicWritePlannedItemView : BatchItemView
         RequestedValue = write.RequestedValue;
         PreviousValue = write.PreviousValue;
         Opens = write.Opens;
+        DrivenBy = write.DrivenBy;
     }
 
     public ThingId ReferenceId { get; }
@@ -316,6 +339,10 @@ internal sealed class LogicWritePlannedItemView : BatchItemView
     public double? PreviousValue { get; }
 
     public bool Opens { get; }
+
+    /// <summary>As write_logic's: left out when no controller writes the same logic type on the device.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ControllerView>? DrivenBy { get; }
 }
 
 /// <summary>

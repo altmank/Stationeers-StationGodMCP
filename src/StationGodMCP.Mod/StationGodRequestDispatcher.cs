@@ -106,6 +106,8 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     private static readonly JobDropCalls Drops = new JobDropCalls(HeldTickJobs.DropWaiting);
 
+    private static readonly ControllerCalls ControllerInspections = new ControllerCalls(Controllers.Inspect);
+
     // A method name the frame's call list, the slow-frame log and a connection's counts may show: one the mod answers,
     // else "unknown".
     private static string KnownMethod(string? method) =>
@@ -113,8 +115,9 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     /// <summary>
     /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
-    /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic, drop_job, stream_costs and
-    /// hold_restore count as answered). The lane scheduler times the same span for the call's stream (stream_costs).
+    /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic, drop_job, stream_costs,
+    /// hold_restore and inspect_controllers count as answered). The lane scheduler times the same span for the call's
+    /// stream (stream_costs).
     /// </summary>
     public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
@@ -147,6 +150,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             if (StreamCostCalls.Handles(call.Request.Method))
             {
                 return new CallOutcome(_costs.Run(call, queueWaitMs, UnityEngine.Time.frameCount), call.Request.Method);
+            }
+
+            if (ControllerCalls.Handles(call.Request.Method))
+            {
+                return new CallOutcome(ControllerInspections.Run(call, queueWaitMs, UnityEngine.Time.frameCount),
+                    call.Request.Method);
             }
 
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);

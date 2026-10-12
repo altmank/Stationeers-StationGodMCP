@@ -290,7 +290,7 @@ public sealed class WriteLintTests
                 });
             LogicRead requestedRead = new LogicRead(new ThingId(device.ReferenceId!.Value), new LogicTypeView(28, "On"),
                 requested);
-            return WriteLint.Checked(requestedRead, previous, verdict, allow, index);
+            return WriteLint.Checked(requestedRead, previous, verdict, allow, index, null);
         }
 
         private static Dictionary<string, LintValue> Network(long id, Dictionary<string, double> gases) =>

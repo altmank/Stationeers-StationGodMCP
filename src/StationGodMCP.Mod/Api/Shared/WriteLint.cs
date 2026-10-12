@@ -24,13 +24,13 @@ internal static class WriteLint
     internal const string CodePrefix = "lint_";
 
     /// <summary>
-    /// A write checked against the write rules: its value there before, whether it opens the device, and its warnings;
-    /// throws lint_refused for a problem not allowed.
+    /// A write checked against the write rules: its value there before, whether it opens the device, its warnings, and
+    /// the controllers that write the same logic type on the device; throws lint_refused for a problem not allowed.
     /// </summary>
     internal static LogicWriteChecked Checked(LogicRead requested, double? previous, OpeningVerdict verdict, bool allow,
-        int? index) =>
+        int? index, List<ControllerView>? drivenBy) =>
         new LogicWriteChecked(requested, previous, verdict.Opens,
-            Warnings(verdict, allow, requested.ReferenceId, index));
+            Warnings(verdict, allow, requested.ReferenceId, index), drivenBy);
 
     /// <summary>The write's warnings from the verdict; throws lint_refused for a problem not allowed.</summary>
     internal static List<BuildIssueView> Warnings(OpeningVerdict verdict, bool allow, ThingId device, int? index)

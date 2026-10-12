@@ -332,8 +332,9 @@ serialising finish; no thread waits for it, unlike today's listener, which block
 ### Protocol methods
 
 Six methods belong to the protocol itself. They are listed in the catalogue's `protocol_methods` section and are
-called like any other method. `catalogue`, `subscribe`, `unsubscribe` and `stream_costs` are read class. `drop_job` and
-`hold_restore` are write class: each changes what will happen to the world, so on its connection it waits for every earlier call to be answered and later
+called like any other method. `catalogue`, `subscribe`, `unsubscribe`, `stream_costs` and `inspect_controllers` are read
+class. `drop_job` and `hold_restore` are write class: each changes what will happen to the world, so on its connection
+it waits for every earlier call to be answered and later
 calls wait for it (*Order on one stream*), a poll sent after it answers the drop, and a client never sends it again
 after a broken connection (*Reconnecting*).
 
@@ -345,6 +346,7 @@ after a broken connection (*Reconnecting*).
 | `drop_job` | `{job_id}` | `{job_id, dropped: true}` |
 | `stream_costs` | `{streams?: [n, ...]}` | `{streams: [{stream, calls, main_thread_ms, over_budget_frames}]}` |
 | `hold_restore` | `{set?: [{reference_id, logic_type, value}], clear?: [{reference_id, logic_type}], clear_all?}` | `{restores: [{reference_id, logic_type, value}]}`; see *Held restores* |
+| `inspect_controllers` | one of `{reference_id}`, `{reference_ids: [...]}`, `{network_id}` | `{network_id?, devices: [{reference_id, prefab_name, controllers, error?}], checked}` |
 
 `drop_job` takes a building run that waits in the job queue (`wait: true`, answered `status: queued`) out of the queue
 before it starts; the jobs behind it move up by one, and nothing in the world changes. A later poll of its `job_id`
@@ -365,6 +367,31 @@ connection's streams are never read. A stream's counts end with it (`stream_end`
 token, a token's window passing), so a hub reads a run's final counts with `stream_costs` before it sends that run's
 `stream_end`; a world change keeps them. The `stream_costs` call's own cost is counted after its reply is built, so it
 is not in that reply.
+
+`inspect_controllers` answers what can write or override each device asked about (a hub routes it as
+`inspect {what: "controllers"}`). It takes exactly one of `reference_id` (a device that is not found refuses the call),
+`reference_ids` (1 to 256, each listed in order, one not found carrying its `error`) or `network_id` (a cable network:
+only its data devices that have a controller are listed; `checked` counts every device looked at). Each controller is
+`{kind, reference_id, prefab_name, logic_type, via, line?, slot?}`:
+
+- `chip`: a program in a circuit holder on one of the device's data networks (`reference_id` is the device holding it:
+  the IC Housing, the Console). `via` is `db` (the housing itself), `d0` to `d5` (a pin set to the device), `id`
+  (`sd`, Lua `write_id`), or the batch instruction (`sb`, `sbn`, `sbs`, `sbns`, Lua `batch_write...`) when its prefab
+  hash, and for `sbn` its name hash, match the device. `line` is the program's 0-based line of the first such write;
+  `slot: true` marks a slot write (`ss`, `sbs`), whose `logic_type` is a slot logic type.
+- `logic_writer`: a Logic Writer or Writer Switch whose output is the device (`via: output`).
+- `batch_writer`: a Logic Batch Writer of the device's prefab on its output network (`via: prefab_hash`).
+- `mirror`: a Logic Mirror set to the device; it passes on whatever is written to it, so `logic_type` is null.
+
+Pins through an alias are followed (an alias set twice counts for each device, an alias of an alias is followed) and
+defines and `HASH("...")` are resolved. Not resolved: a device register (`dr0`), an id, prefab or name hash held in a
+register, a logic type given as a number, a Lua device index or id held in a variable. A Logic Memory writes no
+device, a Logic Transmitter links to another transmitter, and a ScriptedScreens screen draws only: its Lua script's
+writes are a `chip`'s. A device reached only through a rocket data link, or a housing on no data network, is not seen.
+
+`write_logic` and `write_logic_many` replies and reports (`dry_run`) carry `driven_by` on each written or checked
+item, only when a controller writes the same logic type on that device (a slot write or a mirror never counts): the
+same controller entries.
 
 ## Errors
 
@@ -833,6 +860,22 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
 - `Protocol/StreamCostCalls.cs` answers `stream_costs` on the main thread, routed by the dispatcher like `drop_job`.
   The hub's final counts come from reading before `stream_end`, rather than from counts kept past the end: nothing
   is held for streams that have gone, and a run's last call is answered before its hub ends the stream.
+
+### As built: controllers
+
+- `Protocol/ControllerCalls.cs` reads `inspect_controllers`' params and answers on the main thread, routed by the
+  dispatcher like `drop_job`; `Api/Shared/Game/Controllers.cs` finds the controllers.
+- Each program is parsed once per exact source text (`Pure/Lint/ChipProgramCache.cs`, shared with the lint engine's
+  chip functions): at most 1024 programs, emptied when full and when a world is left (`chip_programs` in
+  `WorldStores`). A changed source is a new key, so nothing goes stale.
+- Nothing else is kept between calls. A call gathers each network it touches once: its data devices, its program
+  holders (source, pins) and logic units. The first 8 devices asked of a network are matched straight against its
+  sources; from the 8th on, the network is indexed by target id and prefab hash (`Pure/Controllers/`). On a synthetic
+  network of 707 devices and 150 chips of 30 lines (net8): gathering from a warm cache about 0.03 ms (parsing all 150
+  cold about 1.6 ms), one write's lookup about 0.04 ms, 256 writes about 1 ms, the whole network about 2 ms; the game's
+  own walk of the data device list and the holders' sources comes on top.
+- `write_logic_many` opens one scan for the batch (`Controllers.Open`), so a network is gathered once per call;
+  `DrivenBy.For(device, logic type)` is the hook a write path calls per item.
 
 ### As built: resuming
 

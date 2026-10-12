@@ -680,6 +680,13 @@
     "pass free_rects.limit (max {MaximumRects}); the search stopped at limit, so more may fit",
     "radius_m is at most {MaximumRadiusM}."
   ],
+  "Protocol/ControllerCalls.cs": [
+    "Argument '{name}' must be a reference id, such as \"4612280\".",
+    "Argument 'reference_ids' must be a list of 1 to {MaximumIds} reference ids.",
+    "Argument 'reference_ids[{index}]' must be a reference id, such as \"4612280\".",
+    "Pass exactly one of reference_id (a device), reference_ids (a list) or network_id (a cable network).",
+    "{InspectControllersMethod} has no argument '{property.Name}'; it takes one of reference_id, reference_ids or network_id."
+  ],
   "Pure/BatteryCharge.cs": [
     "Argument 'joules' must be 0 or more.",
     "Argument 'ratio' must be from 0 to 1."
