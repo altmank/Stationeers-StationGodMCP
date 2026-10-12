@@ -39,10 +39,17 @@ class WorkerCase(unittest.TestCase):
 class AnalysisTests(unittest.TestCase):
     """The AST pass, in process (the worker sends exactly this; WorkerTests checks that it is sent first)."""
 
-    def test_literals_are_ints_and_strs_with_f_string_pieces_and_no_bools(self):
+    def test_literals_are_numbers_and_strs_with_f_string_pieces_and_no_bools(self):
         analysis = analyse("pump = '122643'\nn = 15\nflag = True\nx = 2.5\nsg.write('logic', id=pump, logic='Open',"
                            " value=1)\nlabel = f'tank {n} of {pump}'\nm = -4\n")
-        self.assertEqual(["122643", 15, "logic", "Open", 1, "tank ", " of ", -4, 4], analysis.literals)
+        self.assertEqual(["122643", 15, 2.5, "logic", "Open", 1, "tank ", " of ", -4, 4], analysis.literals)
+
+    def test_float_literals_count_as_numbers_with_negatives_and_without_bools_nan_or_inf(self):
+        analysis = analyse("box = [[1.5, 2.0, 3.5], [-4.25, 5, 6]]\nnear = [700.5, 202, 660]\nok = True\n"
+                           "big = 1e400\nlabel = f'at {1.5}'\n")
+        self.assertEqual([1.5, 2.0, 3.5, -4.25, 4.25, 5, 6, 700.5, 202, 660, "at "], analysis.literals)
+        self.assertIsInstance(analysis.literals[1], float)  # 2.0 stays a JSON number; the hub compares by value
+        self.assertNotIn(True, [value for value in analysis.literals if isinstance(value, bool)])
 
     def test_while_lines_are_every_line_inside_a_while_body(self):
         analysis = analyse("n = 0\nwhile n < 3:\n    n += 1\n    if n:\n        sg.wait(\n            1)\nprint(n)\n")
