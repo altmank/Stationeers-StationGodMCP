@@ -78,7 +78,7 @@ public sealed class ReplyCompactionTests
         game.Answer = call => Task.FromResult<string?>(call.Ok("""{"devices":[]}""", shaped: true));
 
         await Program.HandleMcpMessageAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_devices","arguments":{"list_limits":{"devices":200}}}}""",
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find","arguments":{"what":"device","list_limits":{"devices":200}}}}""",
             new Program.GameTransportSettings(game.Target));
 
         FakeCall forwarded = Assert.Single(game.CallsTo("list_devices"));
@@ -108,7 +108,7 @@ public sealed class ReplyCompactionTests
         game.Answer = call => Task.FromResult<string?>(call.Ok("""{"legs":[]}""", shaped: false));
 
         await Program.HandleMcpMessageAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rocket_forecast","arguments":{"to":"pad","limits":true}}}""",
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"plan","arguments":{"what":"flight","node":"pad","limits":true}}}""",
             new Program.GameTransportSettings(game.Target));
 
         FakeCall forwarded = Assert.Single(game.CallsTo("rocket_forecast"));

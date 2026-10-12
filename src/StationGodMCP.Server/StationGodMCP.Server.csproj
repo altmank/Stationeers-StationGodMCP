@@ -21,4 +21,13 @@
          assembled from catalogue/). -->
     <ProjectReference Include="..\StationGodMCP.Client\StationGodMCP.Client.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The verbs: their source (VerbCatalogue reads options, handlers and write rules from it) and what is generated
+         from it (the tools array, help pages and Python stubs), served as they are. -->
+    <EmbeddedResource Include="..\..\catalogue\verbs\*.json" LogicalName="catalogue/verbs/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\generated\verbs\tools.json" LogicalName="generated/verbs/tools.json" />
+    <EmbeddedResource Include="..\..\generated\verbs\help\*.txt" LogicalName="generated/verbs/help/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\generated\verbs\stubs\*.py" LogicalName="generated/verbs/stubs/%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

@@ -48,7 +48,7 @@ internal static class Wire
     /// deadline_ms only when the caller gave one.
     /// </summary>
     internal static string Call(IReadOnlySet<string> features, string id, string method, JsonElement parameters,
-        JsonElement? shape, int? deadlineMs) => Write(writer =>
+        JsonElement? shape, int? deadlineMs, JsonElement? rename = null) => Write(writer =>
     {
         writer.WriteString("type", "call");
         writer.WriteString("id", id);
@@ -73,6 +73,13 @@ internal static class Wire
         if (deadlineMs is { } deadline)
         {
             writer.WriteNumber("deadline_ms", deadline);
+        }
+
+        // An older server refuses the key as an unknown one, so it goes only where welcome lists the feature.
+        if (rename is { ValueKind: JsonValueKind.Object } names && features.Contains("rename"))
+        {
+            writer.WritePropertyName("rename");
+            names.WriteTo(writer);
         }
     });
 

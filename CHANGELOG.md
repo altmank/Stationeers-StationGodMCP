@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The sidecar serves the verbs.** tools/list is the 15 verbs plus help and run_script (generated/verbs/tools.json)
+  with their instructions; today's 104 tools are no longer listed or callable. Each verb call is checked against its
+  what's options before anything is sent (every problem at once as `invalid_argument`, with the nearest valid names,
+  in verb names), translated onto today's handlers with a `rename` envelope so the mod's messages come back in verb
+  names, and a list of ids is sent whole, split into one call per id (rows `{index, ok, reference_id, ...}` with
+  `count`, `success_count`, `error_count`), or refused naming run_script, as the what declares. `help` answers the
+  generated pages and, with `lang: "python"`, the stub. `--record <path>` appends one line per call. run_script,
+  script runs, refs and the write rule are not in this release yet (`not_available`).
+
 - **Frame cost measurement.** `mod_info` `include_counters` adds `runtime.frame_ms`: StationGod's request time per
   busy frame as fixed buckets, reported as `p50`, `p90`, `p99` and `over_8ms` (the default reply is unchanged).
   Replies gain `budget_hit: true` when the frame's request budget had been reached as the call's handler finished;
