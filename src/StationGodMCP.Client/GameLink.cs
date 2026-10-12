@@ -359,8 +359,8 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
     }
 
     /// <summary>
-    /// Ends what the mod pins for the stream (job snapshots). Sent only when the welcome lists feature release; the mod
-    /// does not yet, so today this does nothing.
+    /// Ends what the mod pins for the stream (its jobs' snapshots; protocol.md, Job pins). Sent only when the welcome
+    /// lists feature release; a mod without it pins nothing, so there is nothing to end.
     /// </summary>
     public async Task ReleaseAsync(long stream)
     {

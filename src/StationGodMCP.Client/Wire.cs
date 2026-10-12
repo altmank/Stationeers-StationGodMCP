@@ -134,7 +134,7 @@ internal static class Wire
 
     internal static string SessionEnd() => Write(writer => writer.WriteString("type", "session_end"));
 
-    // protocol.md does not define release yet; this takes stream_end's shape and is sent only when the mod lists it.
+    // protocol.md, Job pins: the stream's job pins go. Sent only when the mod lists the feature release.
     internal static string Release(long stream) => Write(writer =>
     {
         writer.WriteString("type", "release");

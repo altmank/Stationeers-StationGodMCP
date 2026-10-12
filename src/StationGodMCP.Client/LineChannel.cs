@@ -87,6 +87,13 @@ internal sealed class LineChannel(Stream stream) : IAsyncDisposable
 
         try
         {
+            // The turn may come only as the channel closes (an earlier write ending on the same cancellation): then
+            // nothing of this line has left.
+            if (cancellation.IsCancellationRequested)
+            {
+                return Sending.NotWritten.Instance;
+            }
+
             await stream.WriteAsync(bytes, cancellation).ConfigureAwait(false);
             await stream.FlushAsync(cancellation).ConfigureAwait(false);
             return Sending.Written.Instance;
