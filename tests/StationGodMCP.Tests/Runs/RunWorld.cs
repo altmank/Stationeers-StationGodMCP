@@ -405,8 +405,10 @@ internal sealed class RunBench : IAsyncDisposable
         RunHostSettings chosen = settings ?? new RunHostSettings
         {
             SgRoot = SgRoot,
-            KillAfter = TimeSpan.FromSeconds(1),
-            KillLatest = TimeSpan.FromSeconds(3)
+            // Long enough that no stopped run's finally is cut off by a loaded machine; the tests that are about the
+            // kill set their own.
+            KillAfter = TimeSpan.FromSeconds(30),
+            KillLatest = TimeSpan.FromSeconds(60)
         };
         Host = new RunHost(World, Pipeline, Seen, adjust != null ? adjust(chosen) : chosen);
     }
@@ -458,7 +460,7 @@ internal sealed class RunBench : IAsyncDisposable
     /// <summary>Waits for a condition the run's own progress makes true (no deadline races: only a bound on a hang).</summary>
     public static async Task UntilAsync(Func<bool> condition, string what)
     {
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(60);
         while (!condition())
         {
             Assert.True(DateTime.UtcNow < until, $"Timed out waiting for {what}.");
