@@ -97,7 +97,7 @@ public sealed class DeferredStreamHoldTests
     [Fact]
     public void ThePassedDeadlineLetsGoOfTheStream() =>
         EndingFreesTheStream(Find(steps: 1000, deadlineMs: 1000),
-            (_, call) => _clock.Advance(LaneScheduler.ClockMs(call.DeadlineAt)), "refused game_timeout");
+            (_, call) => _clock.Advance(call.DeadlineAtMs), "refused game_timeout");
 
     [Fact]
     public void AnotherWorldLetsGoOfTheStream() =>
@@ -294,7 +294,7 @@ public sealed class DeferredStreamHoldTests
 
         internal LoggedCall(object source, CallContext context, string name, CallProfile profile, int deadlineMs,
             Func<LoggedCall, CallOutcome> run)
-            : base(DeadlineAfter(deadlineMs), profile)
+            : base(DeadlineAfterMs(deadlineMs), profile)
         {
             _source = source;
             _context = context;

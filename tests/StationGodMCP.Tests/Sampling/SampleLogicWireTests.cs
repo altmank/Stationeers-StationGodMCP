@@ -27,6 +27,7 @@ namespace StationGodMCP.Tests.Sampling;
 public sealed class SampleLogicWireTests
 {
     private readonly ToggleReader _logic = new ToggleReader();
+    private readonly Scheduling.FakeClock _clock = new Scheduling.FakeClock();
     private long _frame = 1;
     private double _realS;
 
@@ -42,7 +43,7 @@ public sealed class SampleLogicWireTests
             ["duration_seconds"] = 0.3,
             ["interval_seconds"] = 0.1
         }));
-        WaitUntil(() => hub.SampleLogicRuns == 1, rig, atS: 0.0);
+        StartRuns(rig, hub, 1, atS: 0.0);
         Frame(rig, 0.0);
 
         Assert.Null(client.NextOrNull(100));
@@ -79,7 +80,7 @@ public sealed class SampleLogicWireTests
             ["duration_seconds"] = 0.1,
             ["interval_seconds"] = 0.1
         }));
-        WaitUntil(() => hub.SampleLogicRuns == 1, rig, atS: 0.0);
+        StartRuns(rig, hub, 1, atS: 0.0);
 
         _frame++;
         _realS = 0.0;
@@ -140,12 +141,13 @@ public sealed class SampleLogicWireTests
             ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
             ["duration_seconds"] = 5
         }));
-        WaitUntil(() => hub.SampleLogicRuns == 1, rig, atS: 0.0);
+        StartRuns(rig, hub, 1, atS: 0.0);
 
         client.Dispose();
         Stopwatch waited = Stopwatch.StartNew();
-        while (rig.Mod.ClosedSources.IsEmpty && waited.ElapsedMilliseconds < 5000)
+        while (rig.Mod.ClosedSources.IsEmpty)
         {
+            Assert.True(waited.ElapsedMilliseconds < 30000, "the close never reached the mod");
             await Task.Delay(20);
         }
 
@@ -166,7 +168,7 @@ public sealed class SampleLogicWireTests
         };
         client.Send(CallOn("1", parameters, 3));
         client.Send(CallOn("2", parameters, 0));
-        WaitUntil(() => hub.SampleLogicRuns == 2, rig, atS: 0.0);
+        StartRuns(rig, hub, 2, atS: 0.0);
 
         client.Send("""{"type":"stream_end","stream":3}""");
         JObject reply = NextAfterFrames(rig, client);
@@ -205,8 +207,10 @@ public sealed class SampleLogicWireTests
         client.Send(call.ToString(Formatting.None));
 
         // Past its 100 ms deadline, but not past the deadline plus its 1 s duration: it still starts.
-        await Task.Delay(400);
-        WaitUntil(() => hub.SampleLogicRuns == 1, rig, atS: 0.0);
+        rig.Mod.WaitSubmitted(1);
+        _clock.Advance(400);
+        rig.Deadlines.CheckNow();
+        StartRuns(rig, hub, 1, atS: 0.0);
         Assert.Null(client.NextOrNull(50));
     }
 
@@ -214,7 +218,8 @@ public sealed class SampleLogicWireTests
 
     private PipeRig Rig(SubscriptionHub hub, bool strict = true) =>
         new PipeRig(mainThread: false, subscriptions: hub, settings: new ProtocolSettings(32, strictArguments: strict),
-            tick: () => new SamplingTick(_frame, 0), realTick: () => new RealTimeTick(_frame, _realS, DateTimeOffset.UnixEpoch));
+            tick: () => new SamplingTick(_frame, 0), realTick: () => new RealTimeTick(_frame, _realS, DateTimeOffset.UnixEpoch),
+            frameClock: _clock, deadlineClock: _clock);
 
     private static string CallOn(string id, JObject parameters, long stream) =>
         new JObject
@@ -244,26 +249,19 @@ public sealed class SampleLogicWireTests
         rig.Mod.RunFrame();
     }
 
-    // Runs frames at a fixed real time until the condition holds (the call has reached the main thread).
-    private void WaitUntil(Func<bool> condition, PipeRig rig, double atS)
+    // Once the calls have reached the queue, the one frame at a fixed real time that starts their runs.
+    private void StartRuns(PipeRig rig, SubscriptionHub hub, int calls, double atS)
     {
-        Stopwatch watch = Stopwatch.StartNew();
-        while (!condition())
-        {
-            if (watch.ElapsedMilliseconds > 5000)
-            {
-                throw new TimeoutException("the call did not start");
-            }
-
-            Frame(rig, atS);
-            System.Threading.Thread.Sleep(10);
-        }
+        rig.Mod.WaitSubmitted(calls);
+        Frame(rig, atS);
+        Assert.Equal(calls, hub.SampleLogicRuns);
     }
 
+    // Frames until a line comes; the bound only ends a hang.
     private JObject NextAfterFrames(PipeRig rig, V2Client client)
     {
         Stopwatch watch = Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 5000)
+        while (watch.ElapsedMilliseconds < 30000)
         {
             Frame(rig, _realS);
             JObject? message = client.NextOrNull(20);

@@ -134,7 +134,7 @@ internal sealed class DeferredCalls : ISliceLane
             {
                 Stop(index, ProtocolCall.CancelledCode, "Cancelled while its work went on over frames; nothing is kept.");
             }
-            else if (now >= LaneScheduler.ClockMs(entry.Call.DeadlineAt))
+            else if (now >= entry.Call.DeadlineAtMs)
             {
                 Stop(index, ProtocolCall.TimeoutCode,
                     "The call's deadline passed while its work went on over frames; nothing is kept.");

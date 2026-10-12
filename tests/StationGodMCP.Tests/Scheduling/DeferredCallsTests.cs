@@ -139,7 +139,7 @@ public sealed class DeferredCallsTests
         DeferredCall late = new DeferredCall(_connection, Hub, new FakeWork(_clock, 0.5, 1000));
         scheduler.Add(late);
         scheduler.RunFrame(false, null, new NoRunner());
-        _clock.Advance(LaneScheduler.ClockMs(late.DeadlineAt));
+        _clock.Advance(late.DeadlineAtMs);
         scheduler.RunFrame(false, null, new NoRunner());
 
         DeferredCall moved = new DeferredCall(_connection, Hub, new FakeWork(_clock, 0.5, 1000), 600000);
@@ -271,7 +271,7 @@ public sealed class DeferredCallsTests
         private readonly IDeferredWork _work;
 
         internal DeferredCall(object source, CallContext context, IDeferredWork work, int deadlineMs = 60000)
-            : base(DeadlineAfter(deadlineMs), new CallProfile("find_things", MethodClass.Read,
+            : base(DeadlineAfterMs(deadlineMs), new CallProfile("find_things", MethodClass.Read,
                 new CallCost(CostClass.World, 1)))
         {
             _source = source;
@@ -313,7 +313,7 @@ public sealed class DeferredCallsTests
         private readonly double _costMs;
 
         internal CostCall(object source, CallContext context, FakeClock clock, double costMs)
-            : base(DeadlineAfter(60000), new CallProfile("game_clock", MethodClass.Read,
+            : base(DeadlineAfterMs(60000), new CallProfile("game_clock", MethodClass.Read,
                 new CallCost(CostClass.Instant, 1)))
         {
             _source = source;

@@ -18,10 +18,10 @@ namespace StationGodMCP.Protocol;
 /// </summary>
 internal abstract class QueuedCall
 {
-    protected QueuedCall(long deadlineAt, CallProfile profile)
+    protected QueuedCall(double deadlineAtMs, CallProfile profile)
     {
         ReceivedAt = Stopwatch.GetTimestamp();
-        DeadlineAt = deadlineAt;
+        DeadlineAtMs = deadlineAtMs;
         Profile = profile;
     }
 
@@ -75,8 +75,11 @@ internal abstract class QueuedCall
     /// <summary>Stopwatch.GetTimestamp when it was received.</summary>
     internal long ReceivedAt { get; }
 
-    /// <summary>Stopwatch.GetTimestamp after which, still queued, it is answered game_timeout unrun.</summary>
-    internal long DeadlineAt { get; }
+    /// <summary>
+    /// The deadline clock's time (DeadlineWatch.Clock: StopwatchClock in the mod) after which, still queued, it is
+    /// answered game_timeout unrun.
+    /// </summary>
+    internal double DeadlineAtMs { get; }
 
     /// <summary>The connection it came from, for taking calls from each connection in turn; null for none.</summary>
     internal virtual object? Source => null;
@@ -138,6 +141,9 @@ internal abstract class QueuedCall
         Deliver(reply, null);
         return true;
     }
+
+    /// <summary>A deadline that many ms from now on StopwatchClock, the mod's deadline clock.</summary>
+    internal static double DeadlineAfterMs(int milliseconds) => StopwatchClock.Instance.NowMs + milliseconds;
 
     internal static long DeadlineAfter(int milliseconds) =>
         Stopwatch.GetTimestamp() + (long)(milliseconds * (double)Stopwatch.Frequency / 1000.0);
@@ -259,9 +265,9 @@ internal sealed class ProtocolCall : QueuedCall
     private readonly CallContext _context;
     private readonly string? _clientName;
 
-    internal ProtocolCall(CallRequest request, CallProfile profile, int deadlineMilliseconds, object source,
+    internal ProtocolCall(CallRequest request, CallProfile profile, double deadlineAtMs, object source,
         CallContext context, string? clientName, Action<ProtocolCall, string, string?> deliver)
-        : base(DeadlineAfter(deadlineMilliseconds), profile)
+        : base(deadlineAtMs, profile)
     {
         Request = request;
         _source = source;
@@ -367,10 +373,17 @@ internal sealed class DeadlineWatch : IDisposable
     private int _checking;
     private long _timedOut;
 
-    internal DeadlineWatch()
+    internal DeadlineWatch(IMonotonicClock? clock = null)
     {
+        Clock = clock ?? StopwatchClock.Instance;
         _timer = new Timer(Check, null, PeriodMilliseconds, PeriodMilliseconds);
     }
+
+    /// <summary>The clock call deadlines are set and checked on.</summary>
+    internal IMonotonicClock Clock { get; }
+
+    /// <summary>One check now, as the timer's are.</summary>
+    internal void CheckNow() => Check(null);
 
     /// <summary>Calls answered game_timeout so far.</summary>
     internal long TimedOut => Interlocked.Read(ref _timedOut);
@@ -401,7 +414,7 @@ internal sealed class DeadlineWatch : IDisposable
 
         try
         {
-            long now = Stopwatch.GetTimestamp();
+            double now = Clock.NowMs;
             foreach (QueuedCall call in _queued.Keys)
             {
                 if (!call.State.IsQueued)
@@ -410,7 +423,7 @@ internal sealed class DeadlineWatch : IDisposable
                     continue;
                 }
 
-                if (now < call.DeadlineAt || !call.State.TryDrop())
+                if (now < call.DeadlineAtMs || !call.State.TryDrop())
                 {
                     continue;
                 }

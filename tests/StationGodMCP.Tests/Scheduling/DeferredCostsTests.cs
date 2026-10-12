@@ -108,7 +108,7 @@ public sealed class DeferredCostsTests : IDisposable
         private readonly double _runMs;
 
         internal SlicedCall(object source, CallContext context, FakeClock clock, IDeferredWork work, double runMs = 1.0)
-            : base(DeadlineAfter(60000), new CallProfile("find_things", MethodClass.Read,
+            : base(DeadlineAfterMs(60000), new CallProfile("find_things", MethodClass.Read,
                 new CallCost(CostClass.Instant, 1)))
         {
             _source = source;

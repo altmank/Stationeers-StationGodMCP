@@ -6,12 +6,17 @@ using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Tests.Scheduling;
 
-/// <summary>A clock the fakes move: a call or sample costs exactly what it says.</summary>
+/// <summary>
+/// A clock the fakes move: a call or sample costs exactly what it says. One thread moves it; any may read it (the
+/// deadline timer does).
+/// </summary>
 internal sealed class FakeClock : IMonotonicClock
 {
-    public double NowMs { get; private set; }
+    private double _nowMs;
 
-    internal void Advance(double ms) => NowMs += ms;
+    public double NowMs => System.Threading.Volatile.Read(ref _nowMs);
+
+    internal void Advance(double ms) => System.Threading.Volatile.Write(ref _nowMs, _nowMs + ms);
 }
 
 /// <summary>A call with a name, a main-thread cost and the connection it came on.</summary>
