@@ -28,7 +28,7 @@ internal static class VerbOutputs
         files["legacy-verb-map.json"] = CatalogueFiles.Serialize(VerbText.Parsed(LegacyVerbMapTable.Build()));
         files["sizes.json"] = CatalogueFiles.Serialize(VerbText.Parsed(VerbSizes.Table(tools)));
         files["help/_index.txt"] = VerbHelp.Index();
-        foreach (string topic in VerbCatalogue.Shared["topics"]!.AsObject().Select(pair => pair.Key))
+        foreach (string topic in VerbHelp.TopicKeys())
         {
             files["help/topic." + topic + ".txt"] = VerbHelp.Topic(topic);
         }

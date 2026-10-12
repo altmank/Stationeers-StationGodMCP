@@ -1,21 +1,9 @@
 {
   "verb": "find",
-  "description": "List things in the world or an area, filtered, a page at a time, nearest first. Read only.",
+  "description": "List things in the world or an area, filtered, nearest first. Read only.",
+  "text": ["Pages: limit, offset, has_more; order nearest (default) or id."],
   "read_only": true,
-  "tool": {
-    "options": {
-      "prefab": "Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.",
-      "category": "Only this kind of thing. Default any.",
-      "location": "thing: ground, player, stored, built or world (players, animals). Default any. item: Where the item is. Default any.",
-      "near": "thing, item: Centre: [x, y, z], \"player\", \"looking_at\" or a thing's id (its position); with radius. container, frame, damaged: \"player\" only. ore: The point to report and search from; default the player's position.",
-      "box": "Two corners [[x, y, z], [x, y, z]].",
-      "within": "Only items inside this holder at any depth (and its machine stock or silo store).",
-      "group_by": "holder: sum per holder and prefab; prefab: sum per prefab; place: per prefab split into ground, carried, stored, machine stock and silo, with top holders.",
-      "id": "plant: One plant, in full. room: A thing: only the room it is in. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
-      "fields": "Keys to keep.",
-      "omit": "Key paths to leave out."
-    }
-  },
+  "tool": {"options": {"prefab": "Whole name, hash, or parts with * ('*Tank*Insulated*'); or a list."}},
   "whats": {
     "thing": {
       "summary": "any object: structures, devices, tanks, loose items, players, animals",
@@ -135,7 +123,8 @@
           }
         ],
         "types": ["Color", "Vec3"]
-      }
+      },
+      "brief": "any object: structures, devices, items, players"
     },
     "item": {
       "summary": "stackable items and kits with quantity and holders, anywhere: ground, carried, stored, machine stock, silos; a kit such as Kit (Battery Large) is an item to find and move, a built structure is not; group_by sums them",
@@ -292,7 +281,8 @@
           }
         ],
         "types": ["Thing", "Vec3"]
-      }
+      },
+      "brief": "stackable items and kits anywhere; group_by sums"
     },
     "device": {
       "summary": "devices with logic, in the world or on one gateway's data networks",
@@ -337,7 +327,8 @@
             }
           }
         ]
-      }
+      },
+      "brief": "devices with logic"
     },
     "container": {
       "summary": "outermost holders with at least one item: lockers, crates, machines, a backpack on the floor",
@@ -394,7 +385,8 @@
           }
         ],
         "types": ["Vec3"]
-      }
+      },
+      "brief": "holders with items"
     },
     "frame": {
       "summary": "outer frames (a face on outside air), with exposed faces and airtightness",
@@ -451,7 +443,8 @@
           }
         ],
         "types": ["Vec3"]
-      }
+      },
+      "brief": "outer frames"
     },
     "pad": {
       "summary": "landing pads for traders and rockets (not power or teleport pads), by the game's checks: size, runway, which ships fit",
@@ -480,7 +473,8 @@
           }
         ],
         "types": ["Vec3"]
-      }
+      },
+      "brief": "landing pads"
     },
     "water": {
       "summary": "canisters, tanks, devices and pipe networks holding water or steam, largest first",
@@ -525,7 +519,8 @@
           }
         ],
         "types": ["Vec3"]
-      }
+      },
+      "brief": "water and steam sources"
     },
     "ore": {
       "summary": "deep miner spots: the ore profile at a point, and the nearest spots holding given ores",
@@ -597,7 +592,8 @@
           }
         ],
         "types": ["Vec3"]
-      }
+      },
+      "brief": "deep miner ore spots"
     },
     "food": {
       "summary": "every food and drink: nutrition, hydration, decay, totals",
@@ -630,7 +626,8 @@
           }
         ],
         "types": ["Vec3"]
-      }
+      },
+      "brief": "food and drink"
     },
     "plant": {
       "summary": "plants in trays, planters and stations: stage, health, problems, time to harvest",
@@ -672,7 +669,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "plants: stage, health, harvest"
     },
     "room": {
       "summary": "closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in",
@@ -711,7 +709,8 @@
         ],
         "types": ["Thing", "Vec3"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "closed rooms: pressure, gases"
     },
     "gateway": {
       "summary": "the device scopes: 'world' and each StationGod Gateway with its status",
@@ -729,7 +728,8 @@
             }
           }
         ]
-      }
+      },
+      "brief": "device scopes (gateways)"
     },
     "damaged": {
       "summary": "damaged and broken things in the world, worst first",
@@ -856,7 +856,8 @@
           }
         ],
         "types": ["Error", "Vec3"]
-      }
+      },
+      "brief": "damaged and broken things"
     }
   }
 }

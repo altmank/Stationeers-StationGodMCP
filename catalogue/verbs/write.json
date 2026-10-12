@@ -1,30 +1,11 @@
 {
   "verb": "write",
-  "description": "Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks. Ids you type out act at once; a ref or network reports until confirm: true. A write on a device a chip or another writer drives warns driven_by. memory, battery and genes are cheats: they report until confirm: true.",
+  "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery and genes are cheats: ask the user.",
+  "text": [
+    "A write on a device that a chip or another writer drives warns driven_by (inspect {what: \"controllers\", id} lists them). Opening a vent, valve or pump runs the network lint: a problem refuses unless allow: [\"lint\"]."
+  ],
   "read_only": false,
-  "tool": {
-    "options": {
-      "id": "logic: Device(s) or a ref; every one gets logic = value. memory, genes: An id, a list, or \"looking_at\". chip, screen: One id, or \"looking_at\" (the thing the crosshair is on). label: One id; a list or a ref names each '<label> 1', '<label> 2' in id order. paint: Things to paint the one color, or a ref. flight_log: A rocket's id, name, network or any part; left out when there is one rocket. uplink: The uplink. battery: Batteries or cells (up to 256). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error. chip, screen, uplink and flight_log take one id: a list is refused, naming run_script.",
-      "logic": "Logic type name or number.",
-      "writes": "Separate writes, each {id, logic, value}, applied in order.",
-      "confirm": "true acts; left out, it reports.",
-      "start": "First address.",
-      "code": "The complete program: IC10, or Lua for a Lua chip.",
-      "pins": "{d0..d5: device id or null}; pins left out keep their device.",
-      "allow": "[\"lint\"]: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed.",
-      "run": "pause, step, resume (IC10) or restart (Lua).",
-      "event": "Default click.",
-      "labels": "Several renames, each {id, label}, in order.",
-      "network": "A pipe, cable or chute network (its id, a piece on it, or a device with kind): paints its pieces.",
-      "items": "{id, color} pairs, a colour each.",
-      "downlink": "The downlink to follow.",
-      "rocket": "Every battery of this rocket.",
-      "within": "Every cell in this holder's slots, nested; \"player\" for the player.",
-      "genes": "Gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1}).",
-      "fields": "Keys to keep.",
-      "omit": "Key paths to leave out."
-    }
-  },
+  "tool": {"options": {"allow": "lint: pass a network lint problem."}},
   "whats": {
     "logic": {
       "summary": "logic values on devices, as a chip or console writes them; answers previous and read-back values",
@@ -140,7 +121,8 @@
         "x-undo-mark": "[undo] held settings; [cannot undo: action] pulse and action types",
         "x-list": "native",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "writes[].id", "role": "acts-on"}]
-      }
+      },
+      "brief": "logic values on devices"
     },
     "memory": {
       "summary": "up to 512 values into a device's memory from start, as a chip's put does",
@@ -202,7 +184,8 @@
         "x-undo-mark": "[undo]",
         "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
-      }
+      },
+      "brief": "device memory"
     },
     "chip": {
       "summary": "a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart",
@@ -371,7 +354,8 @@
         "x-undo-mark": "source [cannot undo: chip source]; pins [undo]; run [cannot undo: run control]",
         "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
-      }
+      },
+      "brief": "chip source, pins, run state"
     },
     "screen": {
       "summary": "touch a control on a ScriptedScreens screen, as a player's touch does",
@@ -452,7 +436,8 @@
         "x-undo-mark": "[cannot undo: screen press]",
         "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
-      }
+      },
+      "brief": "press a screen control"
     },
     "label": {
       "summary": "rename things as the hand Labeller does; empty name gives back the game's name",
@@ -523,7 +508,8 @@
         "x-undo-mark": "[undo]",
         "x-list": "native",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "labels[].id", "role": "acts-on"}]
-      }
+      },
+      "brief": "rename things"
     },
     "paint": {
       "summary": "paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours",
@@ -602,7 +588,8 @@
           {"path": "network", "role": "acts-on"},
           {"path": "items[].id", "role": "acts-on"}
         ]
-      }
+      },
+      "brief": "paint things or a network"
     },
     "flight_log": {
       "summary": "start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log",
@@ -716,7 +703,8 @@
         "x-undo-mark": "[cannot undo: flight log]",
         "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
-      }
+      },
+      "brief": "start, stop, clear a recorder"
     },
     "uplink": {
       "summary": "point a Logic Rocket Uplink at a Logic Rocket Downlink",
@@ -757,7 +745,8 @@
         "x-undo-mark": "[cannot undo: uplink]",
         "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "downlink", "role": "acts-on"}]
-      }
+      },
+      "brief": "point an uplink"
     },
     "battery": {
       "summary": "set the charge of batteries and cells: full by default, or a ratio or joules",
@@ -837,7 +826,8 @@
           {"path": "rocket", "role": "acts-on"},
           {"path": "within", "role": "acts-on"}
         ]
-      }
+      },
+      "brief": "set charge"
     },
     "genes": {
       "summary": "edit plant genes as the Gene Splicer does",
@@ -938,7 +928,8 @@
         "x-undo-mark": "[undo]",
         "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
-      }
+      },
+      "brief": "edit plant genes"
     }
   }
 }

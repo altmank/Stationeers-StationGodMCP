@@ -1,4 +1,5 @@
-Read live values: logic (one, many, with slots, atmosphere and reagents in one frame), memory, a device snapshot, values over time, the clock, flight logs. Read only.
+Read live values: logic, memory, a snapshot, samples over time, the clock, flight logs. Read only.
+logic reads one value, many, or slots, atmosphere and reagents with them, all in one frame.
 
 whats:
 - logic: logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame

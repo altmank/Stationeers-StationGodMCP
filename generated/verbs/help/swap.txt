@@ -1,4 +1,5 @@
 Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. Reports first; confirm: true does it.
+A report carries report_only: true and lists every target with its current and new value.
 
 whats:
 - wall: replace walls and windows with another wall or window prefab without opening a face

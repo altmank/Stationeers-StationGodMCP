@@ -1,4 +1,6 @@
-Build new things as a player would, paying materials: structures, cable, pipe and chute runs, blueprints. Reports first; confirm: true builds and answers when the job is done.
+Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done.
+A build that pays from the player's inventory warns materials_from_player.
+A report carries report_only: true and lists every target with its current and new value.
 
 whats:
 - structure: any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job

@@ -1,4 +1,4 @@
-Work out how, changing nothing: cable, pipe and chute routes, removal prices, free spots for a prefab, rocket flights and landings, mining yields, aim angles. Read only.
+Work out how, changing nothing: routes, removal prices, free spots, rocket flights, mining yields, aim angles. Read only.
 
 whats:
 - route: a cable, pipe or chute route between ends, ports or networks, dry-run as the build would; answers build_arguments

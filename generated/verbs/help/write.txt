@@ -1,4 +1,6 @@
-Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks. Ids you type out act at once; a ref or network reports until confirm: true. A write on a device a chip or another writer drives warns driven_by. memory, battery and genes are cheats: they report until confirm: true.
+Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery and genes are cheats: ask the user.
+A write on a device that a chip or another writer drives warns driven_by (inspect {what: "controllers", id} lists them). Opening a vent, valve or pump runs the network lint: a problem refuses unless allow: ["lint"].
+A report carries report_only: true and lists every target with its current and new value.
 
 whats:
 - logic: logic values on devices, as a chip or console writes them; answers previous and read-back values

@@ -1,4 +1,5 @@
 StationGod and the game server: mod version, health and costs, profiling, the in-game console. command is a cheat.
+A report carries report_only: true and lists every target with its current and new value.
 
 whats:
 - info: the running mod: version, per-method calls and times, game members, its cost to the game

@@ -85,7 +85,7 @@ internal static class VerbToolList
 
         foreach (string option in order)
         {
-            JsonObject property = merged[option];
+            JsonObject property = Published(merged[option]);
             if (briefs[option] is JsonValue brief)
             {
                 property["description"] = (string)brief!;
@@ -101,6 +101,37 @@ internal static class VerbToolList
             ["inputSchema"] = new JsonObject { ["type"] = "object", ["properties"] = properties }
         };
     }
+
+    /// <summary>
+    /// The part of an option's schema the tool list carries: its types, enum and item schema. Bounds (minimum,
+    /// maximum, minItems, maxItems) stay in the catalogue, where the hub's OptionCheck holds calls to them and the
+    /// help page states them.
+    /// </summary>
+    internal static JsonObject Published(JsonObject schema)
+    {
+        JsonObject published = new();
+        bool hasEnum = schema["enum"] is JsonArray;
+        foreach ((string key, JsonNode? value) in schema)
+        {
+            if (key == "enum" || (key == "type" && !hasEnum))
+            {
+                // an enum's values give its type, so its "type" is left out
+                published[key] = value?.DeepClone();
+            }
+            else if (key == "items" && value is JsonObject items && SaysMore(items))
+            {
+                published[key] = Published(items);
+            }
+        }
+
+        return published;
+    }
+
+    // An item schema worth publishing: an enum, or a scalar type (an array's object or array items say nothing the
+    // help does not).
+    private static bool SaysMore(JsonObject items) =>
+        items["enum"] is JsonArray ||
+        VerbText.TypesOf(items).Any(type => type is "string" or "integer" or "number" or "boolean");
 
     /// <summary>
     /// Two whats' schemas for one option as one: the types joined, enums joined when both have one, items merged,

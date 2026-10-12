@@ -1,12 +1,12 @@
 Verbs (each a tool; most take what):
-- find: List things in the world or an area, filtered, a page at a time, nearest first.
+- find: List things in the world or an area, filtered, nearest first.
 - inspect: Describe one thing, or a few by id, in detail.
 - survey: Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths.
-- read: Read live values: logic (one, many, with slots, atmosphere and reagents in one frame), memory, a device snapshot, values over time, the clock, flight logs.
-- write: Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks.
-- plan: Work out how, changing nothing: cable, pipe and chute routes, removal prices, free spots for a prefab, rocket flights and landings, mining yields, aim angles.
+- read: Read live values: logic, memory, a snapshot, samples over time, the clock, flight logs.
+- write: Set values and states.
+- plan: Work out how, changing nothing: routes, removal prices, free spots, rocket flights, mining yields, aim angles.
 - check: Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk.
-- build: Build new things as a player would, paying materials: structures, cable, pipe and chute runs, blueprints.
+- build: Build new things as a player would, paying materials.
 - swap: Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks.
 - remove: Take things away as a player would, with refunds and guards.
 - move: Move items, gas and players.
@@ -17,5 +17,5 @@ Verbs (each a tool; most take what):
 - help: StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic.
 - run_script: Run Python 3.10 against the game: one call made of verb calls.
 
-Topics: errors, paging, positions, refs, shaping, targets, writes, scripts, types
+Topics: errors, paging, positions, refs, shaping, targets, writes, scripts, types, cheats
 help {verb} lists a verb's whats; help {verb, what} gives one in full; help {topic} gives a topic.

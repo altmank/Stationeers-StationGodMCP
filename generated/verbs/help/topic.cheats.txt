@@ -1,0 +1,11 @@
+A cheat changes the world in a way a player could not. Ask the user first. A cheat reports until confirm: true.
+- write memory: up to 512 values into a device's memory from start, as a chip's put does
+- write battery: set the charge of batteries and cells: full by default, or a ratio or joules
+- write genes: edit plant genes as the Gene Splicer does
+- build structure with free: true: any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job
+- build blueprint: paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks
+- build finish with free: true: build a placed structure on to a later build state, paying each state's materials
+- move item with force: true: items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store
+- move gas: move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump
+- move player: move a player anywhere at once: to a point, beside a thing or another player
+- server command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings

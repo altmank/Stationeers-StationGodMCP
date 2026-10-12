@@ -1,34 +1,12 @@
 {
   "verb": "build",
-  "description": "Build new things as a player would, paying materials: structures, cable, pipe and chute runs, blueprints. Reports first; confirm: true builds and answers when the job is done.",
+  "description": "Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done.",
+  "text": ["A build that pays from the player's inventory warns materials_from_player."],
   "read_only": false,
   "tool": {
     "options": {
-      "placements": "Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color}, built in order in one job; or one at the top level.",
-      "prefab": "Prefab name or hash.",
-      "at": "structure: A point, \"looking_at\", or a relative or look-face form (help positions). blueprint: World position of the blueprint's anchor.",
-      "spread": "{from, to, step} or a list: this prefab every step metres along each line; reports first.",
-      "facing": "Where the front points.",
-      "up": "Where the top points. Default +y (+z when facing is vertical).",
-      "face": "Face-placed pieces (walls): the cell face it sits on.",
-      "orient": "{mount, upright, controls_toward, ports, flow}: choose the turn by intent.",
-      "build_state": "finished (default), first, or a state index.",
-      "materials": "Holder(s) that pay, in order; ids or \"player\".",
-      "from_plan": "A ref of a plan route or plan spot reply (\"r9\"; one spot: \"r9.spots.2\", default the first): build its build_arguments; options given here are added.",
-      "confirm": "true acts; left out, it reports.",
-      "grade": "cable: Default heavy. pipe: Required except when repeating. chute: Default chute.",
-      "waypoints": "Points joined by straight axis lines.",
-      "piece": "One piece {at, ends}.",
-      "pieces": "Separate pieces, each {at, ends}.",
-      "branches": "Side runs, each {waypoints or cells, attach}.",
-      "extra_ends": "Extra ends on run cells, each {at, toward}.",
-      "join": "What the run joins. Default ends.",
-      "allow_bridge": "Networks and devices whose joining is meant.",
-      "join_to": "The network the run must end on.",
-      "fields": "Keys to keep.",
-      "omit": "Key paths to leave out.",
-      "id": "One structure, a list or a ref: one job per id, in order. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
-      "state": "The build state to reach; default the next."
+      "from_plan": "A plan route or spot reply's ref ('r9'): build its build_arguments.",
+      "grade": "cable: default heavy; pipe: required; chute: chute."
     }
   },
   "whats": {
@@ -236,7 +214,8 @@
         "x-undo-mark": "[undo]",
         "x-list": "one",
         "x-target": [{"path": "materials", "role": "pays-from"}]
-      }
+      },
+      "brief": "any structure a kit builds, by prefab, at a point"
     },
     "cable": {
       "summary": "a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload",
@@ -457,7 +436,8 @@
           {"path": "materials", "role": "pays-from"},
           {"path": "refund_to", "role": "pays-from"}
         ]
-      }
+      },
+      "brief": "a cable run or pieces"
     },
     "pipe": {
       "summary": "a pipe run or pieces from the grade's kit, with the pipe guards and a gas check",
@@ -680,7 +660,8 @@
           {"path": "materials", "role": "pays-from"},
           {"path": "refund_to", "role": "pays-from"}
         ]
-      }
+      },
+      "brief": "a pipe run or pieces"
     },
     "chute": {
       "summary": "a chute run or pieces from Kit (Chute), source to sink, with flow guards",
@@ -901,7 +882,8 @@
           {"path": "materials", "role": "pays-from"},
           {"path": "refund_to", "role": "pays-from"}
         ]
-      }
+      },
+      "brief": "a chute run or pieces"
     },
     "blueprint": {
       "summary": "paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks",
@@ -999,7 +981,8 @@
         "x-undo-mark": "[undo] the newest paste only",
         "x-list": "one",
         "x-target": []
-      }
+      },
+      "brief": "paste a blueprint"
     },
     "finish": {
       "summary": "build a placed structure on to a later build state, paying each state's materials",
@@ -1070,7 +1053,8 @@
         "x-undo-mark": "[cannot undo: change job]",
         "x-list": "split",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "materials", "role": "pays-from"}]
-      }
+      },
+      "brief": "a placed structure on to a later build state"
     }
   },
   "reply_top": {"placed": "list[str]"}

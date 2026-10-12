@@ -1,4 +1,6 @@
-Move items, gas and players. Items go into or out of an Ingot Vault or SDB Silo store when to or source is one. Reports first; confirm: true moves. gas and player are cheats.
+Move items, gas and players. Reports first; confirm: true moves. gas and player are cheats: ask the user.
+Items go into or out of an Ingot Vault or SDB Silo store when to or source is one.
+A report carries report_only: true and lists every target with its current and new value.
 
 whats:
 - item: items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store

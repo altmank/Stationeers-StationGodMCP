@@ -351,7 +351,7 @@ public sealed class VerbCatalogueTests
         JsonObject today = CatalogueFiles.ReadJson(Path.Combine(CatalogueFiles.SourceRoot, "errors.json")).AsObject();
         Assert.Equal(today.Select(pair => pair.Key).OrderBy(code => code, StringComparer.Ordinal),
             errors.Select(pair => pair.Key).OrderBy(code => code, StringComparer.Ordinal));
-        HashSet<string> topics = new(VerbCatalogue.Shared["topics"]!.AsObject().Select(pair => pair.Key));
+        HashSet<string> topics = new(VerbHelp.TopicKeys());
         foreach ((string code, JsonNode? error) in errors)
         {
             Assert.False(string.IsNullOrWhiteSpace((string?)error!["description"]), code);

@@ -35,10 +35,40 @@ internal static class VerbHelp
         return text.ToString();
     }
 
-    internal static IEnumerable<string> TopicNames() =>
-        VerbCatalogue.Shared["topics"]!.AsObject().Select(pair => pair.Key).Where(key => !key.Contains('.'));
+    internal const string CheatsTopic = "cheats";
 
-    internal static string Topic(string key) => (string)VerbCatalogue.Shared["topics"]![key]!;
+    /// <summary>The topic names help {} lists: the shared topics, and cheats (generated from the write rules).</summary>
+    internal static IEnumerable<string> TopicNames() =>
+        VerbCatalogue.Shared["topics"]!.AsObject().Select(pair => pair.Key).Where(key => !key.Contains('.'))
+            .Append(CheatsTopic);
+
+    /// <summary>Every topic key help {topic[, subtopic]} answers.</summary>
+    internal static IEnumerable<string> TopicKeys() =>
+        VerbCatalogue.Shared["topics"]!.AsObject().Select(pair => pair.Key).Append(CheatsTopic);
+
+    internal static string Topic(string key) => key == CheatsTopic ? Cheats() : (string)VerbCatalogue.Shared["topics"]![key]!;
+
+    /// <summary>The line every page of a writing verb carries: what a report answers (shared report_top).</summary>
+    internal static string ReportLine() =>
+        "A report carries " + string.Join(", ", VerbCatalogue.Shared["report_top"]!.AsObject().Select(pair => pair.Key + ": true")) +
+        " and lists every target with its current and new value.";
+
+    /// <summary>The cheats: every what whose write rules declare cheat, always or under an option.</summary>
+    internal static string Cheats()
+    {
+        StringBuilder text = new("A cheat changes the world in a way a player could not. Ask the user first. A cheat reports until confirm: true.\n");
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if (VerbCatalogue.WriteOf(source)?["cheat"] is JsonValue cheat)
+            {
+                string call = what == VerbCatalogue.WhatlessKey ? verb : verb + " " + what;
+                text.Append("- ").Append(call).Append((string)cheat! == "always" ? "" : " with " + (string)cheat!)
+                    .Append(": ").Append((string)source["summary"]!).Append('\n');
+            }
+        }
+
+        return text.ToString();
+    }
 
     internal static string VerbPage(JsonObject verb)
     {
@@ -49,7 +79,18 @@ internal static class VerbHelp
         }
 
         StringBuilder text = new();
-        text.Append((string)verb["description"]!).Append("\n\nwhats:\n");
+        text.Append((string)verb["description"]!).Append('\n');
+        foreach (string line in VerbText.Lines(verb["text"]))
+        {
+            text.Append(line).Append('\n');
+        }
+
+        if (VerbCatalogue.WhatsOf(verb).Any(what => VerbCatalogue.WriteOf(what.What) != null))
+        {
+            text.Append(ReportLine()).Append('\n');
+        }
+
+        text.Append("\nwhats:\n");
         List<HashSet<string>> optionSets = new();
         foreach ((string what, JsonObject source) in VerbCatalogue.WhatsOf(verb))
         {

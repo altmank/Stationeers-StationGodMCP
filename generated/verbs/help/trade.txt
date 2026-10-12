@@ -1,4 +1,5 @@
 Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. buy and sell report until confirm: true.
+A report carries report_only: true and lists every target with its current and new value.
 
 whats:
 - contacts: every trader contact in the sky and every satellite dish with where it points

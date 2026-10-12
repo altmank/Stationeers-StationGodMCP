@@ -1,19 +1,9 @@
 {
   "verb": "read",
-  "description": "Read live values: logic (one, many, with slots, atmosphere and reagents in one frame), memory, a device snapshot, values over time, the clock, flight logs. Read only.",
+  "description": "Read live values: logic, memory, a snapshot, samples over time, the clock, flight logs. Read only.",
+  "text": ["logic reads one value, many, or slots, atmosphere and reagents with them, all in one frame."],
   "read_only": true,
-  "tool": {
-    "options": {
-      "id": "logic: Device(s); with logic, every id is read for every logic type. snapshot: Only these devices. memory: One id, or \"looking_at\" (the thing the crosshair is on). sample: An id, a list, a ref ('r3'), or \"looking_at\". flight_log: A rocket's id, name, network or any part; left out when there is one rocket. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
-      "logic": "logic: Logic type(s): name (Temperature) or number. snapshot: Logic types; left out, every one. sample:",
-      "reads": "logic: Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads. sample: Separate {id, logic} pairs.",
-      "prefab": "Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.",
-      "start": "First address.",
-      "action": "Default read.",
-      "fields": "Keys to keep.",
-      "omit": "Key paths to leave out."
-    }
-  },
+  "tool": {"options": {}},
   "whats": {
     "logic": {
       "summary": "logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame",
@@ -134,7 +124,8 @@
         ],
         "types": ["Error", "LogicType"]
       },
-      "x-list": "native"
+      "x-list": "native",
+      "brief": "logic values; slots, atmosphere, reagents in one frame"
     },
     "snapshot": {
       "summary": "every readable logic value of matching devices, in one frame",
@@ -204,7 +195,8 @@
           }
         ]
       },
-      "x-list": "native"
+      "x-list": "native",
+      "brief": "every logic value of matching devices"
     },
     "memory": {
       "summary": "up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status)",
@@ -254,7 +246,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a device's memory"
     },
     "sample": {
       "summary": "watch up to 32 logic values for up to 30 s: first readings and every change with its time",
@@ -326,7 +319,8 @@
           }
         ]
       },
-      "x-list": "native-shape"
+      "x-list": "native-shape",
+      "brief": "values over up to 30 s"
     },
     "clock": {
       "summary": "game time, paused, time of day, days past",
@@ -336,7 +330,8 @@
       "handlers": [{"name": "game_clock", "args": []}],
       "reply": {
         "variants": [{"keys": {"game_time_s": "float", "paused": "bool", "time_of_day_ratio": "float", "days_past": "int"}}]
-      }
+      },
+      "brief": "game time"
     },
     "flight_log": {
       "summary": "a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)",
@@ -424,7 +419,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "flight recorder rows"
     }
   }
 }

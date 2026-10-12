@@ -1,35 +1,8 @@
 {
   "verb": "plan",
-  "description": "Work out how, changing nothing: cable, pipe and chute routes, removal prices, free spots for a prefab, rocket flights and landings, mining yields, aim angles. Read only.",
+  "description": "Work out how, changing nothing: routes, removal prices, free spots, rocket flights, mining yields, aim angles. Read only.",
   "read_only": true,
-  "tool": {
-    "options": {
-      "start": "(route) {at}, {id} of a piece, {id, port} of a device, or a list.",
-      "end": "(route) As start, one, or {network}.",
-      "reroute": "{id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.",
-      "trunk": "Bus mode instead of end: {waypoints} or {cells} every start branches from.",
-      "grade": "cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.",
-      "style": "What the route keeps to. Default supported.",
-      "join": "What the run joins. Default ends.",
-      "allow_bridge": "Networks and devices whose joining is meant.",
-      "join_to": "The network the route must end on. Default end's network.",
-      "reserve_cells": "Cells kept free for another run.",
-      "reserve_ports": "{id, port} ports whose joining cell stays free.",
-      "materials": "Holder(s) that pay, in order; ids or \"player\".",
-      "id": "removal: Pieces to price. flight: A rocket's id, name, network or any part; left out when there is one rocket. mining: A rocket's id or name; left out when there is one. aim: The solar panel or the satellite dish; a list answers one entry each. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
-      "waypoints": "The pieces along these lines.",
-      "network": "Every piece of this network, up to 1024.",
-      "prefab": "Whole prefab name or hash.",
-      "near": "[x, y, z], \"player\", \"looking_at\" (the crosshair) or an id. Default looking_at.",
-      "facing": "Try every spot with this facing.",
-      "require": "{one_section, min_bottom_above_floor_m, ports_reachable, avoid_doors, front_clear_m, no_visual_overlap}.",
-      "node": "flight: Destination node: name, map code, id, or 'pad'; default the rocket's target, else its pad. mining: A node: its deposit and sites; left out, every charted node with a deposit.",
-      "what_if": "Replace measured values: {fuel_mol, fuel_temperature_k, fuel_mix {gas: fraction}, thrust_scale 0-10, throttle 0-100, cargo_slots, add_cargo_kg, payload_kg, battery_j, battery_percent, extra_load_w}.",
-      "contact": "Dish only: the trader contact.",
-      "fields": "Keys to keep.",
-      "omit": "Key paths to leave out."
-    }
-  },
+  "tool": {"options": {}},
   "whats": {
     "route": {
       "summary": "a cable, pipe or chute route between ends, ports or networks, dry-run as the build would; answers build_arguments",
@@ -330,7 +303,8 @@
           }
         ],
         "types": ["Thing", "Vec3"]
-      }
+      },
+      "brief": "cable, pipe or chute route"
     },
     "removal": {
       "summary": "price a removal of cable, pipe or chute pieces without doing it, ever: ids, cells or a whole network",
@@ -447,7 +421,8 @@
         ],
         "types": ["Thing", "Vec3"]
       },
-      "x-list": "native"
+      "x-list": "native",
+      "brief": "removal price"
     },
     "spot": {
       "summary": "free places to put one prefab you are about to build, near a point, on a face plane or a room's walls, checked by the game's cursor; answers build_arguments",
@@ -548,7 +523,8 @@
           }
         ],
         "types": ["Vec3"]
-      }
+      },
+      "brief": "free spots for a prefab"
     },
     "flight": {
       "summary": "fly a copy of a rocket to a node or pad, tick by tick: launch, hops, re-entry, landing, fuel, power and the verdict; the landing check",
@@ -715,7 +691,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "rocket flight and landing check"
     },
     "mining": {
       "summary": "what a rocket can collect per site, by the game's formulas: yield per cycle and hour, what stops it",
@@ -771,7 +748,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "rocket mining yield"
     },
     "aim": {
       "summary": "horizontal and Vertical that point a solar panel at the sun, or a satellite dish at a trader contact",
@@ -865,7 +843,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "solar panel or dish angles"
     }
   }
 }

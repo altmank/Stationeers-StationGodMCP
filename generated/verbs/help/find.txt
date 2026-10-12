@@ -1,4 +1,5 @@
-List things in the world or an area, filtered, a page at a time, nearest first. Read only.
+List things in the world or an area, filtered, nearest first. Read only.
+Pages: limit, offset, has_more; order nearest (default) or id.
 
 whats:
 - thing: any object: structures, devices, tanks, loose items, players, animals

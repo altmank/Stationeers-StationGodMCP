@@ -1,4 +1,5 @@
 Take things away as a player would, with refunds and guards. Reports first; confirm: true removes and answers when the job is done.
+A report carries report_only: true and lists every target with its current and new value.
 
 whats:
 - structure: built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit

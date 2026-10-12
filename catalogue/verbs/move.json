@@ -1,27 +1,12 @@
 {
   "verb": "move",
-  "description": "Move items, gas and players. Items go into or out of an Ingot Vault or SDB Silo store when to or source is one. Reports first; confirm: true moves. gas and player are cheats.",
+  "description": "Move items, gas and players. Reports first; confirm: true moves. gas and player are cheats: ask the user.",
+  "text": ["Items go into or out of an Ingot Vault or SDB Silo store when to or source is one."],
   "read_only": false,
   "tool": {
     "options": {
-      "id": "The item(s); for a vault or silo deposit, whole things by id. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
-      "quantity": "Slot move: how many off the stack, default the whole item. Out of a vault: grams of ingot or a count of ore or ice; out of a silo: an item count; required for both.",
-      "to": "item: The holder that gets them: a container, belt, suit, \"player\", a vault or a silo. gas: A thing id, \"looking_at\" or a room; left out with delete. player: Destination: beside this thing (an id).",
-      "moves": "Up to 64 moves in order, each {id, quantity, to, slot, merge, allow}.",
-      "source": "item: A vault or silo to take from. gas: A thing id, \"looking_at\", \"planet\" (with delete), or a room {room} or {room_of}.",
-      "prefab": "Into a store: filter; out of a store: the item to take (whole name or hash).",
-      "items": "Store moves: lines {id, quantity} (deposit) or {prefab, reagent, quantity} (vault to vault: grams of ingot, a count of ore or ice; \"all\" moves every line; required vault to vault, where a top-level prefab and quantity become one line).",
-      "location": "Into a store: filter. Default any.",
-      "within": "Into a store: only things inside this holder.",
-      "near": "\"player\" only.",
-      "category": "Into a vault: filter. Default any.",
-      "confirm": "true acts; left out, it reports.",
-      "gases": "Gas names as inspect atmosphere gives them; left out, every gas and liquid.",
-      "player": "The player to move, by name; default the player.",
-      "at": "Destination point.",
-      "to_player": "Destination: beside this player (a name).",
-      "fields": "Keys to keep.",
-      "omit": "Key paths to leave out."
+      "to": "item: the holder that gets them (a vault or silo makes a store move). gas: a thing or room.",
+      "source": "item: a vault or silo. gas: a thing, room or planet."
     }
   },
   "whats": {
@@ -490,7 +475,8 @@
           {"path": "moves[].to", "role": "acts-on"},
           {"path": "items[].id", "role": "acts-on"}
         ]
-      }
+      },
+      "brief": "items and kits into a slot, the player, or a vault or silo"
     },
     "gas": {
       "summary": "move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump",
@@ -594,7 +580,8 @@
         "x-undo-mark": "[cannot undo: gas move]",
         "x-list": "one",
         "x-target": [{"path": "source", "role": "pays-from"}, {"path": "to", "role": "acts-on"}]
-      }
+      },
+      "brief": "gas between atmospheres, or delete it"
     },
     "player": {
       "summary": "move a player anywhere at once: to a point, beside a thing or another player",
@@ -660,7 +647,8 @@
         "x-undo-mark": "[cannot undo: player move]",
         "x-list": "one",
         "x-target": [{"path": "player", "role": "acts-on"}]
-      }
+      },
+      "brief": "a player to a point, thing or player"
     }
   }
 }

@@ -2,19 +2,7 @@
   "verb": "inspect",
   "description": "Describe one thing, or a few by id, in detail. Read only.",
   "read_only": true,
-  "tool": {
-    "options": {
-      "id": "device, slots, connections, reagents: An id, a list, a ref ('r3'), or \"looking_at\". contents: A holder's id or \"player\". health: Up to 256 things. atmosphere: A thing, a pipe or landing pad network, or an atmosphere id. genes: Up to 256 plants, seeds or produce. chip: The circuit holder, worn holder, Lua board or the chip. screen: One id, or \"looking_at\" (the thing the crosshair is on). rocket: A rocket's id, name, network or any part; left out, every rocket. vault: One Ingot or Remote Vault; default every vault. controllers: The device(s). job: A job id (place-12, run-4, remove-3...), a script run (script-14), a gas transfer id, or \"paste\"; left out, runs with notices pending. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
-      "prefab": "prefab: Whole prefab name or hash. contents: Only slots holding this prefab (part with *) at any depth.",
-      "network": "A network: its id, a piece or device on it, or {id, port}.",
-      "parts": "Parts: status, source, selectors. Default [status].",
-      "start": "status: first stack address. Default 0.",
-      "targets": "selectors: devices to evaluate; default those on the holder's data network.",
-      "fields": "Keys to keep.",
-      "omit": "Key paths to leave out.",
-      "max_wait": "How long this reply waits (default 30), at most your client's timeout; the job or run goes on."
-    }
-  },
+  "tool": {"options": {}},
   "whats": {
     "device": {
       "summary": "a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details",
@@ -76,7 +64,8 @@
         ],
         "types": ["Thing"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a device's logic types"
     },
     "prefab": {
       "summary": "a buildable prefab before it stands anywhere: placement kind, turns, cells, ports",
@@ -141,7 +130,8 @@
           }
         ],
         "types": ["Vec3"]
-      }
+      },
+      "brief": "a prefab before it is built"
     },
     "slots": {
       "summary": "a device's slots: occupants, what each takes, slot logic values",
@@ -196,7 +186,8 @@
         ],
         "types": ["LogicType"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a device's slots"
     },
     "contents": {
       "summary": "any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player)",
@@ -274,7 +265,8 @@
         ],
         "types": ["Vec3"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a holder's contents, nested"
     },
     "health": {
       "summary": "damage state of things, or of every piece of a network, worst first",
@@ -404,7 +396,8 @@
         ],
         "types": ["Error", "Vec3"]
       },
-      "x-list": "native"
+      "x-list": "native",
+      "brief": "damage of things or a network"
     },
     "connections": {
       "summary": "one pipe, cable, chute or device: its ends and what each joins",
@@ -507,7 +500,8 @@
         ],
         "types": ["Color", "Thing", "Vec3"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a piece's ends and joins"
     },
     "atmosphere": {
       "summary": "the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks",
@@ -546,7 +540,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "the gas one thing holds"
     },
     "reagents": {
       "summary": "the reagents a furnace, centrifuge, mixer or microwave holds",
@@ -591,7 +586,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a machine's reagents"
     },
     "genes": {
       "summary": "the genes of plants, seeds and produce",
@@ -684,7 +680,8 @@
         ],
         "types": ["Error", "Thing"]
       },
-      "x-list": "native"
+      "x-list": "native",
+      "brief": "plant genes"
     },
     "chip": {
       "summary": "a circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory",
@@ -849,7 +846,8 @@
         ],
         "types": ["Thing"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a chip's status, source, selectors"
     },
     "screen": {
       "summary": "what a ScriptedScreens screen shows: surfaces and one surface's elements",
@@ -926,7 +924,8 @@
         ],
         "types": ["Thing"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a screen's surfaces and elements"
     },
     "rocket": {
       "summary": "every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight",
@@ -986,7 +985,8 @@
         ],
         "types": ["Vec3"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "rockets now"
     },
     "vault": {
       "summary": "what each Ingot Vault stores, and every Remote Vault's link",
@@ -1016,7 +1016,8 @@
         ],
         "types": ["Thing", "Vec3"]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "Ingot Vault stock"
     },
     "looking_at": {
       "summary": "what the player's crosshair is on, and where a longer look ray lands",
@@ -1063,7 +1064,8 @@
           }
         ],
         "types": ["Thing", "Vec3"]
-      }
+      },
+      "brief": "what the crosshair is on"
     },
     "player": {
       "summary": "the player's hunger and thirst: nutrition, hydration, drain, time left",
@@ -1093,7 +1095,8 @@
             }
           }
         ]
-      }
+      },
+      "brief": "the player's hunger and thirst"
     },
     "planet": {
       "summary": "the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps",
@@ -1132,7 +1135,8 @@
             }
           }
         ]
-      }
+      },
+      "brief": "the planet's atmosphere"
     },
     "weather": {
       "summary": "the storm schedule, weather events and season",
@@ -1158,7 +1162,8 @@
             }
           }
         ]
-      }
+      },
+      "brief": "storms and season"
     },
     "job": {
       "summary": "one build, removal, swap or gas move by its id (place-41), or a script run (script-14): running, queued or finished. With no id: runs with notices pending (stopped or killed with something left, writes not done, or done and not yet seen)",
@@ -1209,7 +1214,8 @@
           {"label": "a script run", "keys": {"text": "str"}}
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "a job or script run, by id"
     },
     "controllers": {
       "summary": "controllers: what can write or override a device: IC chips (through their pins, and batch writers reaching it over its data network), logic writer and memory structures, Lua screen scripts, and writers the hub knows (the dashboard's hub, other runs). A write or report on a driven device carries driven_by naming the controller",
@@ -1229,7 +1235,8 @@
           }
         ]
       },
-      "x-list": "split"
+      "x-list": "split",
+      "brief": "what writes or overrides a device"
     }
   }
 }
