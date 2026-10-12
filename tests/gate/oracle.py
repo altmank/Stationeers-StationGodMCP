@@ -23,7 +23,7 @@ class Oracle:
         self.events = []
         self.conn.start(self._on_message, lambda *a: None)
 
-    def _on_message(self, msg):
+    def _on_message(self, conn, msg, size=0):
         with self._cond:
             if msg.get("type") == "reply":
                 self._replies[msg.get("id")] = msg
