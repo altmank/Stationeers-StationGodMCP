@@ -254,13 +254,14 @@ public sealed class ResumeWireTests
 
         _clock.Advance(999);
         holds.Tick();
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int frame = 0; frame < 1000; frame++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            holds.Tick();
-        }
+            for (int frame = 0; frame < 1000; frame++)
+            {
+                holds.Tick();
+            }
+        });
 
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.Equal(0, allocated);
         Assert.Empty(calls.Ended);
 

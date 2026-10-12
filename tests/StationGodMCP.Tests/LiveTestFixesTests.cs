@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Threading;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -223,5 +224,26 @@ public sealed class JoinTargetTests
         Assert.Equal(2, entries.Count);
         Assert.Equal("to.network_id", (string?)entries[0]["argument"]);
         Assert.Equal("allow_bridge[0]", (string?)entries[1]["argument"]);
+    }
+
+    [Fact]
+    public void AnotherThreadsRequestNeitherClearsNorAddsToThisThreadsList()
+    {
+        ResolvedNetworks.Begin();
+        ResolvedNetworks.Record("to.network_id", NetworkHandle.Read(new JValue("5001"), "to.network_id"),
+            new ThingId(140001));
+        Thread other = new Thread(() =>
+        {
+            ResolvedNetworks.Begin();
+            ResolvedNetworks.Record("join_to", NetworkHandle.Read(new JValue("5009"), "join_to"), new ThingId(140009));
+            ResolvedNetworks.Take();
+        });
+        other.Start();
+        other.Join();
+
+        List<ResolvedNetworkView>? taken = ResolvedNetworks.Take();
+
+        Assert.NotNull(taken);
+        Assert.Equal("to.network_id", Assert.Single(taken!).Argument);
     }
 }

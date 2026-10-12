@@ -230,13 +230,13 @@ public sealed class FrameHistogramTests
             stats.Frame(1 + warm % 3, warm % 300 * 0.1, warm % 7 == 0);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int measured = 0; measured < 10_000; measured++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            stats.Frame(1 + measured % 3, measured % 300 * 0.1, measured % 7 == 0);
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int measured = 0; measured < 10_000; measured++)
+            {
+                stats.Frame(1 + measured % 3, measured % 300 * 0.1, measured % 7 == 0);
+            }
+        });
 
         Assert.Equal(0, allocated);
     }
