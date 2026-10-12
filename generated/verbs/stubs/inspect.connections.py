@@ -3,7 +3,7 @@ def inspect(what: Literal['connections'], *,
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
 ) -> dict:  # main list: r['ends']; iterating or indexing it walks every page, in order
     """One pipe, cable, chute or device: its ends and what each joins.
-    A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
+    A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply, one of:
     (Connections)
       thing: Thing
@@ -53,5 +53,5 @@ def inspect(what: Literal['connections'], *,
     Types: Color = {index: int | None, name: str | None, is_default: bool}; Thing = {reference_id: str, prefab_name: str | None, display_name: str |
         None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('connections', id=['2514519', '3575779'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

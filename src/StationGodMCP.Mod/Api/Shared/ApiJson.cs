@@ -40,6 +40,22 @@ internal static class ApiJson
     }
 
     /// <summary>
+    /// How many characters WriteShared would write for value, counted as they are written, so the text is never built
+    /// (the kept jobs' size estimate, KeptJobSizes.Final). Main thread only.
+    /// </summary>
+    internal static long Length(object? value)
+    {
+        CharacterCount count = new CharacterCount();
+        using (JsonTextWriter writer = new JsonTextWriter(count))
+        {
+            writer.Formatting = Shared.Formatting;
+            Shared.Serialize(writer, value, null);
+        }
+
+        return count.Characters;
+    }
+
+    /// <summary>
     /// A reply envelope as JSON text with its result shaped as it is written (ShapingJsonWriter). Without anything to
     /// leave out the text is byte for byte WriteShared's. Main thread only.
     /// </summary>
@@ -98,6 +114,20 @@ internal static class ApiJson
 
     /// <summary>A reply as JSON text with a serializer of its own: safe on any thread.</summary>
     internal static string WriteFresh(object? reply) => JsonConvert.SerializeObject(reply, Settings);
+
+    // A text writer that keeps only how many characters it was given.
+    private sealed class CharacterCount : TextWriter
+    {
+        internal long Characters { get; private set; }
+
+        public override Encoding Encoding => Encoding.Unicode;
+
+        public override void Write(char value) => Characters++;
+
+        public override void Write(char[] buffer, int index, int count) => Characters += count;
+
+        public override void Write(string? value) => Characters += value?.Length ?? 0;
+    }
 
     private static JsonSerializerSettings Create()
     {

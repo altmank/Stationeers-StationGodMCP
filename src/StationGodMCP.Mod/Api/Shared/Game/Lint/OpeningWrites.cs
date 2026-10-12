@@ -1,7 +1,6 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Objects.Pipes;
@@ -14,8 +13,9 @@ namespace StationGodMCP.Api.Shared.Game.Lint;
 /// The write rules on a logic write to a game device (OpeningLint): which device it is (ActiveVent, PoweredVent and
 /// PassiveVent are vents; thing.flow names valves, pumps and regulators), whether the write opens it, and the rules
 /// over its pipe networks as they hold now. A write of any other logic type, or to a thing that is not a structure (a
-/// worn item), costs one switch. When the rules cannot run, the write goes ahead with the warning lint_unavailable.
-/// Main thread only.
+/// worn item), costs one switch. When the rules cannot run, the verdict is unavailable (OpeningVerdict.IsUnavailable):
+/// a checked write goes ahead with the warning lint_unavailable, a held restore is skipped. The checked write
+/// (LogicOps.Check) and a held restore (RestoreDevices.Judge) both judge here. Main thread only.
 /// </summary>
 internal static class OpeningWrites
 {
@@ -37,12 +37,7 @@ internal static class OpeningWrites
         catch (Exception error)
         {
             // A rule file or a game read that throws: the write is not held up by a check that cannot run.
-            return new OpeningVerdict(true, new List<LintFinding>(), new List<LintFinding>
-            {
-                new LintFinding("unavailable", ConflictLevel.Warning, 0,
-                    $"The write lint rules could not run on device {structure.ReferenceId}: " +
-                    $"{error.GetType().Name}: {error.Message}", structure.ReferenceId, Vec3.Zero, null, null, null)
-            }, 0.0);
+            return OpeningVerdict.Unavailable(structure.ReferenceId, error);
         }
     }
 

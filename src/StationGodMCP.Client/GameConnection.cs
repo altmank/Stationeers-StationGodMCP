@@ -31,12 +31,15 @@ internal sealed class GameConnection
         }
 
         Features = features;
-        int inFlight = Wire.Child(welcome, "limits") is { } limits &&
-                       Wire.Child(limits, "max_in_flight") is { ValueKind: JsonValueKind.Number } limit &&
-                       limit.TryGetInt32(out int count) && count > 0
-            ? count
-            : 16;
+        JsonElement? limits = Wire.Child(welcome, "limits");
+        int inFlight = Limit(limits, "max_in_flight") ?? 16;
         Slots = new SemaphoreSlim(inFlight);
+        PerStreamLimit = Limit(limits, "max_in_flight_per_stream") ?? inFlight;
+        int perConnection = Limit(limits, "max_in_flight_per_connection") ?? 256;
+        // Without streams every call is on the mod's stream 0, so its one-stream limit is the whole limit.
+        PerConnectionLimit = features.Contains("streams") ? perConnection : Math.Min(perConnection, inFlight);
+        Resumed = Wire.Child(welcome, "resume") is { } resume &&
+                  Wire.Child(resume, "resumed") is { ValueKind: JsonValueKind.True };
         World = Wire.Child(welcome, "server") is { } server ? Wire.Child(server, "world") : null;
         CatalogueHash = Wire.Child(welcome, "catalogue") is { } catalogue ? Wire.Text(catalogue, "hash") : null;
     }
@@ -49,6 +52,15 @@ internal sealed class GameConnection
 
     /// <summary>One slot per call in flight: welcome's max_in_flight.</summary>
     internal SemaphoreSlim Slots { get; }
+
+    /// <summary>limits.max_in_flight_per_stream, else max_in_flight, else 16.</summary>
+    internal int PerStreamLimit { get; }
+
+    /// <summary>limits.max_in_flight_per_connection (256 when absent); max_in_flight when the mod has no streams.</summary>
+    internal int PerConnectionLimit { get; }
+
+    /// <summary>welcome.resume.resumed: the mod picked up the state it held for the resume token.</summary>
+    internal bool Resumed { get; }
 
     /// <summary>welcome.server.world: {id, save, epoch}; null when the welcome has none.</summary>
     internal JsonElement? World { get; }
@@ -82,6 +94,23 @@ internal sealed class GameConnection
             Close();
             return false;
         }
+    }
+
+    /// <summary>Writes one message and says whether it can have reached the server; anything but Written closes it.</summary>
+    internal async Task<Sending> SendAsync(string line)
+    {
+        if (!Alive)
+        {
+            return Sending.NotWritten.Instance;
+        }
+
+        Sending sent = await _channel.TryWriteLineAsync(line, _closing.Token).ConfigureAwait(false);
+        if (sent is not Sending.Written)
+        {
+            Close();
+        }
+
+        return sent;
     }
 
     /// <summary>
@@ -122,6 +151,12 @@ internal sealed class GameConnection
         }
     }
 
+    private static int? Limit(JsonElement? limits, string key) =>
+        limits is { } given && Wire.Child(given, key) is { ValueKind: JsonValueKind.Number } limit &&
+        limit.TryGetInt32(out int count) && count > 0
+            ? count
+            : null;
+
     internal void Close()
     {
         if (Interlocked.Exchange(ref _closed, 1) == 1)
@@ -151,6 +186,29 @@ internal sealed class PendingCall(string id, Action<GameConnection, JsonElement>
     }
 
     internal void End(CallEnd end) => _end.TrySetResult(end);
+}
+
+/// <summary>How writing one line ended: written whole, never started, or failed part way (it may have left).</summary>
+internal abstract class Sending
+{
+    private Sending()
+    {
+    }
+
+    internal sealed class Written : Sending
+    {
+        internal static readonly Written Instance = new();
+    }
+
+    internal sealed class NotWritten : Sending
+    {
+        internal static readonly NotWritten Instance = new();
+    }
+
+    internal sealed class Broken : Sending
+    {
+        internal static readonly Broken Instance = new();
+    }
 }
 
 /// <summary>How a written call ended on its connection: a reply, or the connection broke first.</summary>

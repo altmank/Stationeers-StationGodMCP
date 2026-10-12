@@ -4,7 +4,7 @@
   "read_only": false,
   "tool": {
     "options": {
-      "id": "frame, pipe, chute: An id, a list, a ref ('r3'), or \"looking_at\". cable: Pieces (up to 4096). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "id": "frame, pipe, chute: An id, a list, a ref ('r3'), or \"looking_at\". cable: Pieces (up to 4096). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.",
       "materials": "Holder(s) that pay, in order; ids or \"player\".",
       "confirm": "true acts; left out, it reports.",
       "into": "wall: The new wall prefab. frame: The new frame prefab; default each frame's own (finishes it). cable: Upgrade to this grade (heavy was today's default). One of into or tidy is required. pipe: insulated (today's default), or repair: burst pieces become new. One of into or tidy is required.",
@@ -135,9 +135,11 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "room", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "room", "role": "spread"},
+          {"path": "prefab", "role": "spread"},
+          {"path": "into", "role": "spread"}
         ]
       }
     },
@@ -266,9 +268,11 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "room", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "room", "role": "spread"},
+          {"path": "prefab", "role": "spread"},
+          {"path": "into", "role": "spread"}
         ]
       }
     },
@@ -497,9 +501,15 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "network", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "network", "role": "spread"},
+          {"path": "only", "role": "spread"},
+          {"path": "older_than", "role": "spread"},
+          {"path": "into", "role": "spread"},
+          {"path": "tidy", "role": "spread"},
+          {"path": "spare", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     },
@@ -735,9 +745,15 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "network", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "network", "role": "spread"},
+          {"path": "only", "role": "spread"},
+          {"path": "older_than", "role": "spread"},
+          {"path": "into", "role": "spread"},
+          {"path": "tidy", "role": "spread"},
+          {"path": "spare", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     },
@@ -883,9 +899,12 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "network", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "network", "role": "spread"},
+          {"path": "box", "role": "spread"},
+          {"path": "spare", "role": "spread"},
+          {"path": "riding", "role": "spread"}
         ]
       }
     }

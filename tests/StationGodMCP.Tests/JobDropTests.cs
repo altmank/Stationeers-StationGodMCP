@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using Xunit;
 
@@ -21,14 +22,12 @@ namespace StationGodMCP.Tests;
 /// </summary>
 public sealed class JobDropTests
 {
-    private const int Kept = 16;
-
     [Fact]
     public void AWaitingJobLeavesTheLineAndHandsBackWhatWouldHaveStartedIt()
     {
         JobLine<string> line = Line("upgrade-2", "upgrade-3", "upgrade-4");
 
-        string start = JobDrops.Take(line, "upgrade-3", "upgrade-1", false, Kept);
+        string start = JobDrops.Take(line, "upgrade-3", "upgrade-1", false);
 
         Assert.Equal("start upgrade-3", start);
         Assert.Null(line.PositionOf("upgrade-3"));
@@ -40,7 +39,7 @@ public sealed class JobDropTests
     {
         JobLine<string> line = Line("upgrade-2");
 
-        ApiException refused = Assert.Throws<ApiException>(() => JobDrops.Take(line, "upgrade-1", "upgrade-1", false, Kept));
+        ApiException refused = Assert.Throws<ApiException>(() => JobDrops.Take(line, "upgrade-1", "upgrade-1", false));
 
         Assert.Equal("job_not_waiting", refused.Code);
         Assert.StartsWith("Job upgrade-1 has started; it cannot be dropped.", refused.Message);
@@ -51,7 +50,7 @@ public sealed class JobDropTests
     public void AnEndedJobIsRefusedAsEnded()
     {
         ApiException refused = Assert.Throws<ApiException>(() =>
-            JobDrops.Take(Line("upgrade-2"), "upgrade-0", "upgrade-1", true, Kept));
+            JobDrops.Take(Line("upgrade-2"), "upgrade-0", "upgrade-1", true));
 
         Assert.Equal("job_not_waiting", refused.Code);
         Assert.StartsWith("Job upgrade-0 has ended;", refused.Message);
@@ -61,10 +60,10 @@ public sealed class JobDropTests
     public void AnUnknownIdIsNotFoundWordedAsAPollIs()
     {
         ApiException refused = Assert.Throws<ApiException>(() =>
-            JobDrops.Take(Line("upgrade-2"), "upgrade-9", null, false, Kept));
+            JobDrops.Take(Line("upgrade-2"), "upgrade-9", null, false));
 
         Assert.Equal("job_not_found", refused.Code);
-        Assert.Equal("No job upgrade-9 is running, queued or among the last 16.", refused.Message);
+        Assert.Equal("No job upgrade-9 is running, queued or among the ended jobs kept.", refused.Message);
     }
 
     [Fact]
@@ -75,6 +74,34 @@ public sealed class JobDropTests
         Assert.Equal("refused", (string?)view["status"]);
         Assert.Equal("dropped", (string?)view["error"]!["code"]);
         Assert.Equal("Dropped from the queue before it started; nothing was changed.", (string?)view["error"]!["message"]);
+    }
+
+    [Fact]
+    public void ASessionEndTakesEveryWaitingJobOfItsOwnerAndLeavesTheOthersInOrder()
+    {
+        JobLine<CallContext> line = new JobLine<CallContext>(8);
+        line.Add("upgrade-2", new CallContext("r1", 3));
+        line.Add("upgrade-3", new CallContext("r2", 3));
+        line.Add("upgrade-4", new CallContext("r1", 7));
+        line.Add("upgrade-5", CallContext.None);
+        List<KeyValuePair<string, CallContext>> taken = new List<KeyValuePair<string, CallContext>>();
+
+        JobDrops.TakeOwners(line, "r1", static context => context, taken);
+
+        Assert.Equal(new[] { "upgrade-2", "upgrade-4" }, taken.ConvertAll(job => job.Key));
+        Assert.Equal(1, line.PositionOf("upgrade-3"));
+        Assert.Equal(2, line.PositionOf("upgrade-5"));
+        Assert.Equal(2, line.Count);
+    }
+
+    [Fact]
+    public void AJobDroppedAtASessionEndAnswersSessionEnded()
+    {
+        JObject view = JObject.Parse(ApiJson.WriteShared(new JobDroppedView("upgrade-3", "upgrade_pipes",
+            JobDrops.SessionEnded())));
+
+        Assert.Equal("refused", (string?)view["status"]);
+        Assert.Equal("session_ended", (string?)view["error"]!["code"]);
     }
 
     [Fact]
@@ -163,7 +190,7 @@ public sealed class JobDropTests
         dropped = taken;
         JobDropCalls drops = new JobDropCalls(id =>
         {
-            JobDrops.Take(line, id, "upgrade-1", ended.Contains(id), Kept);
+            JobDrops.Take(line, id, "upgrade-1", ended.Contains(id));
             taken.Add(id);
             return new JobDropReplyView(id);
         });

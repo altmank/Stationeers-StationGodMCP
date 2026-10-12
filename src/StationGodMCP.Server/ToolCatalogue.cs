@@ -5,12 +5,11 @@ using StationGodMCP.Client;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// The MCP tools a method catalogue gives: every method whose x-mcp is not hidden becomes a tool with its name and
-/// description, its params as inputSchema (plus the sidecar's own output_file, fields and omit when its x-shaping is
-/// lists, and its x-file-arguments, each making the argument it fills optional),
-/// and annotations that call it read only exactly when its class is read and no x-class-when gives it another. The
-/// server's name and instructions come from the catalogue too. The sidecar starts with the catalogue it was built with
-/// and switches to the mod's when the mod's hash differs.
+/// Today's mod methods (the handlers the verbs map onto) as tools: every method whose x-mcp is not hidden with its name
+/// and description, its params as inputSchema (plus output_file, fields and omit when its x-shaping is lists, and its
+/// x-file-arguments), and annotations that call it read only exactly when its class is read and no x-class-when gives it
+/// another. The MCP surface no longer lists or calls them (tools/list answers the verbs, VerbCatalogue); they remain the
+/// handler schemas the catalogue checks and LegacyVerbMap's targets are held to.
 /// </summary>
 internal sealed record ToolSet(
     JsonElement Tools,
@@ -175,7 +174,7 @@ internal sealed record ToolSet(
     }
 }
 
-/// <summary>The built-in tool set, by the names the tests and the first tools/list use.</summary>
+/// <summary>The built-in method tool set, by the names the catalogue tests use.</summary>
 internal static class ToolCatalogue
 {
     /// <summary>The tools/list array.</summary>

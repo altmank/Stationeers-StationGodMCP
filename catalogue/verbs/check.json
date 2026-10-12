@@ -5,7 +5,7 @@
   "tool": {
     "options": {
       "box": "Two corners; at most 4000 2 m cells.",
-      "id": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024). ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "id": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024). ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.",
       "action": "Default list.",
       "at": "explain: a cell.",
       "fields": "Keys to keep.",

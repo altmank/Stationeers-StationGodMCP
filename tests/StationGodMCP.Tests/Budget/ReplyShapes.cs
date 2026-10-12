@@ -247,7 +247,8 @@ internal static class ReplyShapes
         {
             // The game counters come with include_counters (about 515 bytes more).
             S<ModInfoView>().Absent("RuntimeView.JobHolds", "RuntimeView.PrintLog", "RuntimeView.LintChipPrograms",
-                    "RuntimeView.BatchConsole", "RuntimeView.FrameMs", "PrefabIndexView.Arrived", "PrefabIndexView.Left")
+                    "RuntimeView.BatchConsole", "RuntimeView.FrameMs", "RuntimeView.JobStores", "PrefabIndexView.Arrived",
+                    "PrefabIndexView.Left")
                 .List("ModInfoView.Methods", W.Methods).List("ModInfoView.Reflection", W.ReflectedMembers)
                 .List("RuntimeView.Methods", D.RuntimeMethods).List("RuntimeView.CatalogueDrift", 0).List("RuntimeView.Connections", 2).List("ConnectionView.Methods", ConnectionView.MethodsShown)
                 .List("ProfilingSummaryView.Top", ProfilingSummaryView.TopShown)

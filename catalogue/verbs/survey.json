@@ -13,7 +13,7 @@
       "half_width": "Half-width of the map in metres. Default 4.",
       "free_rects": "{w, h, one_section, require_wall, limit}: where a w x h rectangle fits.",
       "near": "Centre: [x, y, z], \"player\", \"looking_at\" or a thing's id (its position); with radius.",
-      "id": "The root device (an APC output, a generator). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "id": "The root device (an APC output, a generator). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
     }

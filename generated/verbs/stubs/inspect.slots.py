@@ -5,7 +5,7 @@ def inspect(what: Literal['slots'], *,
     slot: int = None,  # One slot index; left out, every slot.
 ) -> dict:  # main list: r['slots']; iterating or indexing it walks every page, in order
     """A device's slots: occupants, what each takes, slot logic values.
-    A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
+    A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:
       gateway_id: str
       reference_id: str
@@ -19,5 +19,5 @@ def inspect(what: Literal['slots'], *,
       slot_count: int
     Types: LogicType = {id: int, name: str | None}
     Example: sg.inspect('slots', id='1199811')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

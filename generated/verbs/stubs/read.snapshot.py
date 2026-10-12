@@ -18,5 +18,5 @@ def read(what: Literal['snapshot'], *,
       matched_count: int
       truncated: bool
     Example: sg.read('snapshot', prefab='StructureBatteryLarge', limit=10)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

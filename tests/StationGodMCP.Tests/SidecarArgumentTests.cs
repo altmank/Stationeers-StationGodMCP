@@ -183,7 +183,7 @@ public sealed class SidecarReplyTests
     [Fact]
     public async Task AMissingPipeSaysSo()
     {
-        JsonElement result = Result(await Handle(Call(3, "game_clock", "{}"), AbsentPipe()));
+        JsonElement result = Result(await Handle(Call(3, "read", """{"what":"clock"}"""), AbsentPipe()));
 
         AssertError(result, "game_unavailable");
         Assert.StartsWith("No StationGodMCP pipe ", result.GetProperty("structuredContent").GetProperty("message").GetString());
@@ -195,7 +195,7 @@ public sealed class SidecarReplyTests
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Error("thing_not_found", "No thing with reference id 9."));
 
-        JsonElement result = Result(await Handle(Call(4, "describe_device", """{"reference_id":"9"}"""),
+        JsonElement result = Result(await Handle(Call(4, "inspect", """{"what":"device","id":"9"}"""),
             new Program.GameTransportSettings(game.Target)));
 
         AssertError(result, "thing_not_found");
@@ -205,7 +205,7 @@ public sealed class SidecarReplyTests
     public async Task ANonJsonLineIsAParseErrorWithItsId()
     {
         JsonElement reply = await Handle(
-            """{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"write_logic","arguments":{"value":Infinity}}}""",
+            """{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"write","arguments":{"what":"logic","value":Infinity}}}""",
             AbsentPipe());
 
         Assert.Equal(7, reply.GetProperty("id").GetInt32());

@@ -250,6 +250,12 @@ internal interface ICallQueue
     void CursorClosed(string owner, string cursorId);
 
     /// <summary>
+    /// release from a connection of that owner: at the next frame, before its calls run, the pin stores drop the
+    /// stream's job pins.
+    /// </summary>
+    void PinsReleased(string owner, long stream);
+
+    /// <summary>
     /// The owner's session ended abruptly (session_end; a resume token's window that passed; a connection without a
     /// token that closed without bye): at the next frame its held restores apply, before its streams end.
     /// </summary>

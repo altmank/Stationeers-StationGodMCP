@@ -2,6 +2,6 @@ Closed rooms measured cell by cell: volume, pressure, temperature, gases; or the
 Options:
 - id (string or array): A thing: only the room it is in.
 - include (list of cells | devices): cells: every cell centre; devices: the devices in each room.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: rooms [{room_id, room_type, cell_count, volume_l, pressure_kpa, temperature_k, total_mol, heat_capacity_j_per_k, thermal_energy_j, gases, bounds, contains_local_player, devices, cells}], local_player_room_id
 Example: find {what: "room", id: "4820585"}

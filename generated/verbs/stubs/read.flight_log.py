@@ -49,5 +49,5 @@ def read(what: Literal['flight_log'], *,
           burn_time_s: float, rule: str}], offset: int, every: int, has_more: bool}]
       count: int
     Example: sg.read('flight_log', limit=20)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

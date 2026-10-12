@@ -80,6 +80,10 @@ A small save file:
   network that changes after it (a fill heating up) is not watched. The shipped write rules are
   `no_oxidiser_vented_outdoors` and `fuel_oxidiser_mix_temperature`; a save's file can add `"write"` to any rule
   that reads only those sets.
+- **Held restores** (protocol `hold_restore`, the hub's `sg.hold`) run the same write rules when the mod applies one
+  that opens its device, judged against the value the device holds then. There is no `allow_lint`: a problem, or
+  rules that cannot run, skip the restore (reason `lint` or `lint_unavailable` in the next `welcome`), and a warning
+  is listed on the applied entry. A restore that opens nothing runs no rule.
 - **`lint_rules`** lists the rules in effect (`list`), validates (`validate`), shows the model (`fields`) and the
   library (`functions`), runs each rule's examples (`test`) and explains a finding (`explain`): the rule run again on
   one subject, with every value it read, so you can see why it fired.

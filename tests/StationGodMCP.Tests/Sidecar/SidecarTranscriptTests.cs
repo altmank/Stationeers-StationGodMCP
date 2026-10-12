@@ -16,9 +16,10 @@ using Xunit;
 namespace StationGodMCP.Tests.Sidecar;
 
 /// <summary>
-/// MCP transcripts through the sidecar against an in-process fake game: the tool list from the catalogue and its
-/// change, arguments checked by the mod (the sidecar checks only its own), fields sent as shape and never applied
-/// again, output files and the inline limit, sample_logic, and several calls over one connection.
+/// MCP transcripts through the sidecar against an in-process fake game: the verb tool list and instructions (today's
+/// tools no longer listed or callable), options checked by the hub before anything is sent, verbs translated onto the
+/// handlers with fields sent as shape and never applied again, the rename envelope on the wire, output files and the
+/// inline limit, and several calls over one connection.
 /// </summary>
 public sealed class SidecarTranscriptTests : IDisposable
 {
@@ -33,67 +34,59 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task InitializeAdvertisesAChangingToolList()
+    public async Task InitializeGivesTheVerbInstructionsAndAFixedToolList()
     {
         await using McpAdapter sidecar = Sidecar(new GameTarget.Pipe("StationGodMCP-absent-" + Guid.NewGuid().ToString("N")));
 
         JsonElement result = Result(await sidecar.HandleAsync(
             """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}"""));
 
-        Assert.True(result.GetProperty("capabilities").GetProperty("tools").GetProperty("listChanged").GetBoolean());
+        Assert.False(result.GetProperty("capabilities").GetProperty("tools").GetProperty("listChanged").GetBoolean());
         Assert.Equal(Program.ServerVersion, result.GetProperty("serverInfo").GetProperty("version").GetString());
-        Assert.Equal(ToolCatalogue.Instructions, result.GetProperty("instructions").GetString());
+        Assert.Equal(GeneratedTools()["instructions"]!.GetValue<string>(), result.GetProperty("instructions").GetString());
     }
 
     [Fact]
-    public async Task TheToolListIsTheBuiltInCataloguesBeforeAnyGame()
+    public async Task TheToolListIsTheGeneratedVerbTools()
     {
         await using McpAdapter sidecar = Sidecar(new GameTarget.Pipe("StationGodMCP-absent-" + Guid.NewGuid().ToString("N")));
 
         JsonElement result = Result(await sidecar.HandleAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}"""));
 
-        // The same tools; the wire writes them with plain escaping, the built-in element with the default encoder.
-        Assert.True(JsonNode.DeepEquals(JsonNode.Parse(ToolCatalogue.Tools.GetRawText()), JsonNode.Parse(result.GetProperty("tools").GetRawText())));
-        Assert.Equal(104, result.GetProperty("tools").GetArrayLength());
+        Assert.True(JsonNode.DeepEquals(GeneratedTools()["tools"], JsonNode.Parse(result.GetProperty("tools").GetRawText())));
+        Assert.Equal(17, result.GetProperty("tools").GetArrayLength());
     }
 
     [Fact]
-    public async Task AnotherCatalogueChangesTheToolsAndTellsTheAgent()
+    public async Task TodaysToolsAreNotCallableAndTheModsCatalogueChangesNothing()
     {
         await using FakeGame game = FakeGame.OnPipe();
         game.CatalogueHash = "sha256:" + new string('c', 64);
         game.CatalogueJson = ClientTests.CatalogueWithout("weather");
-        ConcurrentQueue<string> notices = new();
-        await using McpAdapter sidecar = Sidecar(game.Target, notice =>
-        {
-            notices.Enqueue(notice);
-            return Task.CompletedTask;
-        });
+        await using McpAdapter sidecar = Sidecar(game.Target);
 
-        await sidecar.HandleAsync(Call(1, "game_clock", "{}"));
+        await sidecar.HandleAsync(Call(1, "read", """{"what":"clock"}"""));
         JsonElement tools = Result(await sidecar.HandleAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}""")).GetProperty("tools");
+        JsonElement old = await Reply(sidecar, Call(3, "game_clock", "{}"));
 
-        Assert.Equal("""{"jsonrpc":"2.0","method":"notifications/tools/list_changed"}""", Assert.Single(notices));
-        Assert.Equal(103, tools.GetArrayLength());
-        Assert.DoesNotContain("weather", tools.EnumerateArray().Select(tool => tool.GetProperty("name").GetString()));
-        JsonElement unknown = await Reply(sidecar, Call(3, "weather", "{}"));
-        Assert.Equal(-32602, unknown.GetProperty("error").GetProperty("code").GetInt32());
+        Assert.Equal(17, tools.GetArrayLength());
+        Assert.Equal(-32602, old.GetProperty("error").GetProperty("code").GetInt32());
+        Assert.Single(game.CallsTo("game_clock"));
     }
 
     [Fact]
-    public async Task OnVersionTwoABadArgumentIsTheModsToRefuse()
+    public async Task ABadOptionIsRefusedBeforeTheGameInVerbNames()
     {
         await using FakeGame game = FakeGame.OnPipe();
-        game.Answer = call => Task.FromResult<string?>(call.Method == "move_item"
-            ? call.Error("invalid_argument", "Unknown argument 'quantty'; did you mean 'quantity'?")
-            : call.Ok("{}"));
         await using McpAdapter sidecar = Sidecar(game.Target);
-        await sidecar.HandleAsync(Call(1, "game_clock", "{}"));
 
-        JsonElement result = Result(await sidecar.HandleAsync(Call(2, "move_item", """{"reference_id":"1","quantty":2}""")));
+        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "move", """{"what":"item","id":"1","quantty":2}""")));
 
         AssertError(result, "invalid_argument");
-        Assert.Equal("""{"reference_id":"1","quantty":2}""", Assert.Single(game.CallsTo("move_item")).Params.GetRawText());
+        JsonElement problem = result.GetProperty("structuredContent").GetProperty("data").GetProperty("problems")[0];
+        Assert.Equal("quantty", problem.GetProperty("path").GetString());
+        Assert.Equal("quantity", problem.GetProperty("nearest")[0].GetString());
+        Assert.Empty(game.CallsTo("move_item"));
     }
 
     [Fact]
@@ -103,12 +96,38 @@ public sealed class SidecarTranscriptTests : IDisposable
         game.Answer = call => Task.FromResult<string?>(call.Ok("""{"things":[{"position":{"x":1}}]}""", shaped: true));
         await using McpAdapter sidecar = Sidecar(game.Target);
 
-        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "find_things", """{"kind":"structure","fields":["things.position.x"]}""")));
+        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "find",
+            """{"what":"thing","category":"structure","fields":["things.position.x"]}""")));
 
         FakeCall call = Assert.Single(game.CallsTo("find_things"));
         Assert.Equal("""{"kind":"structure"}""", call.Params.GetRawText());
         Assert.Equal("""{"fields":["things.position.x"]}""", call.Shape!.Value.GetRawText());
         Assert.Equal("""{"things":[{"position":{"x":1}}]}""", result.GetProperty("structuredContent").GetRawText());
+    }
+
+    [Fact]
+    public async Task TheRenameEnvelopeGoesOnTheWireWhenTheModListsIt()
+    {
+        await using FakeGame game = FakeGame.OnPipe();
+        game.Features = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "rename"];
+        await using McpAdapter sidecar = Sidecar(game.Target);
+
+        await sidecar.HandleAsync(Call(1, "find", """{"what":"thing","name":"Tank"}"""));
+
+        JsonElement rename = Assert.Single(game.CallsTo("find_things")).Message.GetProperty("rename");
+        Assert.Equal("name", rename.GetProperty("args").GetProperty("name_contains").GetString());
+        Assert.Equal("find {what: \"thing\"}", rename.GetProperty("tools").GetProperty("find_things").GetString());
+    }
+
+    [Fact]
+    public async Task AModWithoutTheRenameFeatureGetsNoRename()
+    {
+        await using FakeGame game = FakeGame.OnPipe();
+        await using McpAdapter sidecar = Sidecar(game.Target);
+
+        await sidecar.HandleAsync(Call(1, "find", """{"what":"thing","name":"Tank"}"""));
+
+        Assert.False(Assert.Single(game.CallsTo("find_things")).Message.TryGetProperty("rename", out _));
     }
 
     [Fact]
@@ -119,10 +138,9 @@ public sealed class SidecarTranscriptTests : IDisposable
             ? call.Ok("""{"things":[{"reference_id":"1"}]}""", shaped: true)
             : call.Ok("{}"));
         await using McpAdapter sidecar = Sidecar(game.Target);
-        await sidecar.HandleAsync(Call(1, "game_clock", "{}"));
 
-        JsonElement result = Result(await sidecar.HandleAsync(Call(2, "find_things",
-            """{"fields":[" reference_id ","prefab-name","reference_id"]}""")));
+        JsonElement result = Result(await sidecar.HandleAsync(Call(2, "find",
+            """{"what":"thing","fields":[" reference_id ","prefab-name","reference_id"]}""")));
 
         Assert.Equal("""{"fields":["reference_id"]}""", Assert.Single(game.CallsTo("find_things")).Shape!.Value.GetRawText());
         Assert.Equal("""{"things":[{"reference_id":"1"}],"fields_unmatched":["prefab-name"]}""",
@@ -130,14 +148,19 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task ALargeReplyGoesToAFileOnItsOwn()
+    public async Task ALargeReplyIsCutAndWithWholeGoesToAFileOnItsOwn()
     {
         await using FakeGame game = FakeGame.OnPipe();
         string big = "[" + string.Join(",", Enumerable.Range(0, 3000).Select(n => $$"""{"reference_id":"{{n}}","prefab_name":"{{new string('x', 80)}}"}""")) + "]";
         game.Answer = call => Task.FromResult<string?>(call.Ok($$"""{"count":3000,"things":{{big}}}"""));
         await using McpAdapter sidecar = Sidecar(game.Target);
 
-        JsonElement pointer = Result(await sidecar.HandleAsync(Call(1, "find_things", "{}"))).GetProperty("structuredContent");
+        JsonElement cut = Result(await sidecar.HandleAsync(Call(1, "find", """{"what":"thing"}"""))).GetProperty("structuredContent");
+        JsonElement pointer = Result(await sidecar.HandleAsync(Call(2, "find", """{"what":"thing","whole":true}"""))).GetProperty("structuredContent");
+
+        Assert.Equal(3000, cut.GetProperty("cut").GetProperty("total").GetInt32());
+        Assert.StartsWith("r", cut.GetProperty("ref").GetString());
+        Assert.True(Encoding.UTF8.GetByteCount(cut.GetRawText()) <= 4096 + 512);
 
         Assert.True(pointer.GetProperty("auto_output_file").GetBoolean());
         Assert.Equal(3000, pointer.GetProperty("counts").GetProperty("things").GetInt32());
@@ -153,7 +176,7 @@ public sealed class SidecarTranscriptTests : IDisposable
         game.Answer = call => Task.FromResult<string?>(call.Ok($$"""{"text":"{{big}}"}"""));
         await using McpAdapter sidecar = new(new SidecarOptions(new ClientOptions(game.Target), new OutputFolder(_folder), 0));
 
-        JsonElement reply = Result(await sidecar.HandleAsync(Call(1, "get_ic_source", """{"reference_id":"1"}"""))).GetProperty("structuredContent");
+        JsonElement reply = Result(await sidecar.HandleAsync(Call(1, "inspect", """{"what":"chip","id":"1","parts":["source"]}"""))).GetProperty("structuredContent");
 
         Assert.Equal(big.Length, reply.GetProperty("text").GetString()!.Length);
         Assert.False(Directory.Exists(_folder));
@@ -166,23 +189,24 @@ public sealed class SidecarTranscriptTests : IDisposable
         game.Answer = call => Task.FromResult<string?>(call.Error("thing_not_found", "No thing with reference id 9."));
         await using McpAdapter sidecar = Sidecar(game.Target);
 
-        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "find_things", """{"output_file":true}""")));
+        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "find", """{"what":"thing","output_file":true}""")));
 
         AssertError(result, "thing_not_found");
         Assert.False(Directory.Exists(_folder));
     }
 
     [Fact]
-    public async Task SampleLogicGoesToTheMod()
+    public async Task ReadSampleGoesToSampleLogicWithEveryPair()
     {
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok("""{"sample_count":3,"changes":[]}"""));
         await using McpAdapter sidecar = Sidecar(game.Target);
 
-        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "sample_logic", """{"targets":[{"reference_id":"1","logic_type":"On"}]}""")));
+        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "read", """{"what":"sample","id":"1","logic":"On"}""")));
 
         Assert.Equal(3, result.GetProperty("structuredContent").GetProperty("sample_count").GetInt32());
-        Assert.Single(game.CallsTo("sample_logic"));
+        Assert.Equal("""{"targets":[{"reference_id":"1","logic_type":"On"}]}""",
+            Assert.Single(game.CallsTo("sample_logic")).Params.GetRawText());
         Assert.Empty(game.CallsTo("read_logic_many"));
     }
 
@@ -207,7 +231,7 @@ public sealed class SidecarTranscriptTests : IDisposable
             return call.Ok("""{"value":1}""");
         };
         string input = string.Concat(Enumerable.Range(1, 5).Select(id =>
-            Call(id, "read_logic", """{"reference_id":"1","logic_type":"On"}""") + "\n"));
+            Call(id, "read", """{"what":"logic","id":"1","logic":"On"}""") + "\n"));
         using MemoryStream output = new();
 
         await Program.ServeAsync(new SidecarOptions(new ClientOptions(game.Target), new OutputFolder(_folder), 200 * 1024),
@@ -229,7 +253,7 @@ public sealed class SidecarTranscriptTests : IDisposable
             name => name == ClientOptions.DefaultSecretVariable ? FakeGame.TestSecret : null)).Options;
         await using McpAdapter sidecar = new(options);
 
-        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "mod_info", "{}")));
+        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "server", """{"what":"info"}""")));
 
         Assert.False(result.GetProperty("isError").GetBoolean());
         Assert.Equal("probe-read", game.Received.Skip(1).First().GetProperty("client").GetProperty("name").GetString());
@@ -247,7 +271,8 @@ public sealed class SidecarTranscriptTests : IDisposable
                 _ => null
             })).Options;
         SidecarOptions given = Assert.IsType<SidecarOptions.Parsed.Valid>(SidecarOptions.Parse(
-            ["--pipe", "StationGodMCP-Test", "--output-dir", "C:\\o", "--inline-limit-kb", "0", "--secret-env", "S"], name => name == "S" ? "x" : null)).Options;
+            ["--pipe", "StationGodMCP-Test", "--output-dir", "C:\\o", "--inline-limit-kb", "0", "--secret-env", "S",
+                "--record", "C:\\rec.jsonl"], name => name == "S" ? "x" : null)).Options;
 
         Assert.Equal(new GameTarget.Pipe("StationGodMCP"), defaults.Client.Target);
         Assert.Equal(200 * 1024, defaults.InlineLimitBytes);
@@ -256,14 +281,20 @@ public sealed class SidecarTranscriptTests : IDisposable
         Assert.Equal(new GameTarget.Pipe("StationGodMCP-Test"), given.Client.Target);
         Assert.Equal(0, given.InlineLimitBytes);
         Assert.Equal("S", given.Client.SecretVariable);
+        Assert.Equal("C:\\rec.jsonl", given.RecordPath);
+        Assert.Null(defaults.RecordPath);
         Assert.Equal(new GameTarget.Tcp("h", 8765),
             Assert.IsType<SidecarOptions.Parsed.Valid>(SidecarOptions.Parse(["--host", "h"], _ => null)).Options.Client.Target);
         Assert.IsType<SidecarOptions.Parsed.Invalid>(SidecarOptions.Parse(["--host", "h", "--port", "0"], _ => null));
         Assert.IsType<SidecarOptions.Parsed.Invalid>(SidecarOptions.Parse(["--inline-limit-kb", "-1"], _ => null));
     }
 
-    private McpAdapter Sidecar(GameTarget target, Func<string, Task>? notify = null) =>
-        new(new SidecarOptions(new ClientOptions(target), new OutputFolder(_folder), SidecarOptions.DefaultInlineLimitKb * 1024), notify);
+    private McpAdapter Sidecar(GameTarget target) =>
+        new(new SidecarOptions(new ClientOptions(target), new OutputFolder(_folder), SidecarOptions.DefaultInlineLimitKb * 1024));
+
+    private static JsonNode GeneratedTools() =>
+        JsonNode.Parse(File.ReadAllText(Path.Combine(StationGodMCP.Tests.CatalogueChecks.CatalogueFiles.RepositoryRoot(),
+            "generated", "verbs", "tools.json")))!;
 
     private static async Task<JsonElement> Reply(McpAdapter sidecar, string line)
     {

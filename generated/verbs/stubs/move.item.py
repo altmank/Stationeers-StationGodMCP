@@ -7,7 +7,7 @@ def move(what: Literal['item'], *,
     merge: bool = True,  # Join a matching stack in the slot.
     force: bool = False,  # Into an empty slot by index even when hidden. Cheat.
     allow: list[Literal['in_use', 'ground']] = None,  # in_use: take a part its device is using; ground: what does not fit goes on the ground.
-    moves: list = None,  # Up to 64 moves in order, each {id, quantity, to, slot, merge, allow}.
+    moves: list = None,  # Up to 64 moves in order, each {id, to, slot, quantity, merge, allow}; slot auto when left out.
     source: str = None,  # A vault or silo to take from.
     prefab: str | int | list = None,  # Into a store: filter; out of a store: the item to take (whole name or hash).
     reagent: str = None,  # Out of a vault: the stored reagent (Iron, Steel).
@@ -25,7 +25,6 @@ def move(what: Literal['item'], *,
     Filters (prefab parts, name, location, within, near, category) work for moves into a store; slot moves take ids.
     Out of a vault: sg.move('item', source='4191359', prefab='ItemIronIngot', quantity=500, to='player').
     Into a silo by filter: sg.move('item', to='5200100', prefab='*Ore*', location='player').
-    Reports in a report run; acts in a confirmed run.
     Cheat when force: true: ask the user first.
     Reply, one of:
     (ItemMoved)
@@ -102,5 +101,4 @@ def move(what: Literal['item'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.move('item', id='3311223', to='player')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
     """

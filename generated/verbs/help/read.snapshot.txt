@@ -7,6 +7,6 @@ Options:
 - gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
 - include (list of zero_ratios): zero_ratios: keep gas and liquid ratios reading 0.
 - limit (integer, default 2): Devices returned.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: gateway_id, devices [{device, logic_values, logic_value_count, zero_ratios_omitted}], count, matched_count, truncated
 Example: read {what: "snapshot", prefab: "StructureBatteryLarge", limit: 10}

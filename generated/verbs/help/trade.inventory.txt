@@ -2,6 +2,6 @@ What each contact buys and sells: prices, stock, conditions, and what you hold t
 Options:
 - id (string or array): One contact; left out, every contact.
 - card (string): The card whose holder's goods count; default the player's.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: contacts [{reference_id, trader, display_name, shuttle, pad_size_tiles, contacted, buys, sells}]
 Example: trade {what: "inventory", id: "7"}

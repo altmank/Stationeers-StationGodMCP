@@ -13,8 +13,8 @@ using Xunit;
 namespace StationGodMCP.Tests.Sidecar;
 
 /// <summary>
-/// tool_info answers the catalogue's help in three levels without the game, and every error, the sidecar's and the
-/// mod's, carries the see its code has in the catalogue.
+/// The method catalogue's help (ToolHelp) in three levels and the see each mod error carries; through the sidecar, the
+/// help verb answers the generated pages without the game.
 /// </summary>
 public sealed class ToolInfoTests
 {
@@ -72,29 +72,30 @@ public sealed class ToolInfoTests
     }
 
     [Fact]
-    public async Task TheSidecarAnswersToolInfoWithoutTheGame()
+    public async Task TheSidecarAnswersHelpFromTheGeneratedPagesWithoutTheGame()
     {
         await using McpAdapter sidecar = Sidecar();
 
-        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "tool_info", """{"tool":"tool_info","topic":"levels"}""")));
-        JsonElement missing = Result(await sidecar.HandleAsync(Call(2, "tool_info", """{"topic":"no_such_topic"}""")));
+        JsonElement result = Result(await sidecar.HandleAsync(Call(1, "help", """{"verb":"find"}""")));
+        JsonElement missing = Result(await sidecar.HandleAsync(Call(2, "help", """{"topic":"pagng"}""")));
 
         Assert.False(result.GetProperty("isError").GetBoolean());
-        Assert.Equal("levels", result.GetProperty("structuredContent").GetProperty("topic").GetString());
+        Assert.StartsWith("List things in the world", result.GetProperty("structuredContent").GetProperty("text").GetString());
         Assert.True(missing.GetProperty("isError").GetBoolean());
         Assert.Equal("help_not_found", missing.GetProperty("structuredContent").GetProperty("code").GetString());
-        Assert.Equal("levels", missing.GetProperty("structuredContent").GetProperty("see").GetProperty("topic").GetString());
+        Assert.Equal("paging",
+            missing.GetProperty("structuredContent").GetProperty("data").GetProperty("nearest")[0].GetString());
     }
 
     [Fact]
-    public async Task TheSidecarsOwnErrorsCarryTheirSee()
+    public async Task WithoutTheGameAVerbAnswersGameUnavailable()
     {
         await using McpAdapter sidecar = Sidecar();
 
-        JsonElement unreachable = Result(await sidecar.HandleAsync(Call(1, "game_clock", "{}")));
+        JsonElement unreachable = Result(await sidecar.HandleAsync(Call(1, "read", """{"what":"clock"}""")));
 
+        Assert.True(unreachable.GetProperty("isError").GetBoolean());
         Assert.Equal("game_unavailable", unreachable.GetProperty("structuredContent").GetProperty("code").GetString());
-        Assert.Equal("errors", unreachable.GetProperty("structuredContent").GetProperty("see").GetProperty("topic").GetString());
     }
 
     [Fact]

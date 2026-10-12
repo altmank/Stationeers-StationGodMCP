@@ -144,6 +144,9 @@ internal sealed class ProtocolHost
     /// <summary>The owner's session ended abruptly (session_end, a slow client): its held restores apply at the next frame.</summary>
     internal void SessionEnded(string owner) => _calls.SessionEnded(owner);
 
+    /// <summary>release from a connection of that owner: the main thread drops the stream's job pins.</summary>
+    internal void PinsReleased(string owner, long stream) => _calls.PinsReleased(owner, stream);
+
     /// <summary>cursor_close from a connection of that owner: the main thread frees the cursor if the owner holds it.</summary>
     internal void CursorClosed(string owner, string cursorId) => _calls.CursorClosed(owner, cursorId);
 

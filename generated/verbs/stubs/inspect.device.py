@@ -5,7 +5,7 @@ def inspect(what: Literal['device'], *,
     include: list[Literal['logic_types']] = None,  # logic_types: every logic type with id and access.
 ) -> dict:  # main list: r['logic_types']; iterating or indexing it walks every page, in order
     """A device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details.
-    A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
+    A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:
       device: {reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int,
           is_gateway: bool, worn_by: str | None, worn_slot: str | None}
@@ -23,5 +23,5 @@ def inspect(what: Literal['device'], *,
       writable: list[str]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('device', id='4820585')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

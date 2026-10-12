@@ -6,14 +6,15 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Protocol;
 
 /// <summary>
 /// The game side of held restores, on the main thread: a logic type by name or number, whether a device takes a held
-/// restore of it (it must write and read the type: the overwrite check reads it), and the device's value read and
-/// written as write_logic reads and writes it.
+/// restore of it (it must write and read the type: the overwrite check reads it), the device's value read and written
+/// as write_logic reads and writes it, and the write rules on a restore as a checked write runs them.
 /// </summary>
 internal interface IRestoreDevices
 {
@@ -28,6 +29,12 @@ internal interface IRestoreDevices
 
     /// <summary>Writes the value as write_logic does; false with the refusal's code when it cannot.</summary>
     bool TryWrite(long referenceId, ushort type, double value, out string problem);
+
+    /// <summary>
+    /// The write rules on writing value over previous, the device's value now (OpeningWrites.Judge, the checked
+    /// write's judge): OpeningVerdict.Closed, no rule run, when the write opens nothing; run afresh each time.
+    /// </summary>
+    OpeningVerdict Judge(long referenceId, ushort type, double previous, double value);
 }
 
 /// <summary>
@@ -41,6 +48,13 @@ internal interface IRestoreDevices
 /// (Wrote), or, when the stream has not written it since first registering it, the value the device held then (setting
 /// the same device and logic type again changes the value to write, not the check). A device that holds another value
 /// has been changed by someone else, and its restore is skipped and reported.
+/// </para>
+/// <para>
+/// A restore that opens its device (OpeningTransition: the restore value against the device's value now, on a vent,
+/// valve, pump or regulator) runs the write rules as a checked write does, at apply time, with no allow_lint: a problem
+/// skips it with reason lint and the rules that found one, and so do rules that cannot run (lint_unavailable), since
+/// no one is there to judge the opening; a warning lets it apply and is listed on its applied entry. Any other restore
+/// runs no rule.
 /// </para>
 /// <para>
 /// Bounded: MaximumPerStream restores per stream and MaximumPerOwner per owner; a change past either is refused whole.
@@ -59,6 +73,12 @@ internal sealed class HeldRestores : ISessionEndStore
 
     /// <summary>A skipped restore's reason when the device no longer holds the stream's last written value.</summary>
     internal const string ChangedReason = "changed";
+
+    /// <summary>A skipped restore's reason when it opens its device and a write rule finds a problem.</summary>
+    internal const string LintReason = "lint";
+
+    /// <summary>A skipped restore's reason when it opens its device and the write rules could not run.</summary>
+    internal const string LintUnavailableReason = "lint_unavailable";
 
     /// <summary>Tokens whose results wait for a welcome; past it the oldest is forgotten.</summary>
     internal const int MaximumReports = 64;
@@ -90,7 +110,7 @@ internal sealed class HeldRestores : ISessionEndStore
     /// <summary>Restores written since the mod loaded (mod_info runtime.restores).</summary>
     internal long Applied { get; private set; }
 
-    /// <summary>Restores not written because the device was changed, gone or refused the write.</summary>
+    /// <summary>Restores not written: the device was changed, gone or refused the write, or the write rules held it.</summary>
     internal long Skipped { get; private set; }
 
     /// <summary>Restores dropped unwritten because the world they were registered in is gone.</summary>
@@ -324,6 +344,15 @@ internal sealed class HeldRestores : ISessionEndStore
             return;
         }
 
+        OpeningVerdict verdict = _devices.Judge(id, restore.Key.LogicType, now, restore.Value);
+        if (verdict.IsUnavailable || verdict.Problems.Count > 0)
+        {
+            Skipped++;
+            report?.Skip(new RestoreResultView(restore, verdict.IsUnavailable ? LintUnavailableReason : LintReason, now,
+                WriteLint.Rules(verdict.IsUnavailable ? verdict.Warnings : verdict.Problems)));
+            return;
+        }
+
         if (!_devices.TryWrite(id, restore.Key.LogicType, restore.Value, out problem))
         {
             Skipped++;
@@ -332,7 +361,8 @@ internal sealed class HeldRestores : ISessionEndStore
         }
 
         Applied++;
-        report?.Apply(new RestoreResultView(restore, null, null));
+        report?.Apply(new RestoreResultView(restore, null, null, null,
+            verdict.Warnings.Count > 0 ? WriteLint.Codes(verdict.Warnings) : null));
     }
 
     // The owner's report, made when its connection holds a resume token; null without one. Main thread.
@@ -567,11 +597,13 @@ internal sealed class HeldRestoresView
 
 /// <summary>
 /// One restore's result in welcome.restores: its stream, device, logic type and value; for a skipped one the reason
-/// (changed, or the refusal's code) and, where it was read, the device's value then.
+/// (changed, lint, lint_unavailable, or the refusal's code) and, where it was read, the device's value then; for one
+/// the write rules skipped, the rules as lint_refused lists them; for an applied one, the write rules' warning codes.
 /// </summary>
 internal sealed class RestoreResultView
 {
-    internal RestoreResultView(HeldRestores.Restore restore, string? reason, double? current)
+    internal RestoreResultView(HeldRestores.Restore restore, string? reason, double? current,
+        List<LintRefusedRuleView>? rules = null, List<string>? warnings = null)
     {
         Stream = restore.Stream;
         ReferenceId = new ThingId(restore.Key.ReferenceId);
@@ -579,6 +611,8 @@ internal sealed class RestoreResultView
         Value = restore.Value;
         Reason = reason;
         Current = current;
+        Rules = rules;
+        Warnings = warnings;
     }
 
     public long Stream { get; }
@@ -594,6 +628,12 @@ internal sealed class RestoreResultView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public double? Current { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<LintRefusedRuleView>? Rules { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Warnings { get; }
 }
 
 /// <summary>

@@ -65,5 +65,5 @@ def inspect(what: Literal['chip'], *,
       batch_device_count: int | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('chip', id='4820585', parts=['status', 'source'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

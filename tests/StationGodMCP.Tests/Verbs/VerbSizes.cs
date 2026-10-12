@@ -29,8 +29,8 @@ internal static class VerbSizes
     /// </summary>
     internal const int TodayPerFreshContext = 1_832 + 3_315;
 
-    /// <summary>The verbs' deferred listing (17 tool names), measured on the probe's surface; it depends on the names only.</summary>
-    internal const int VerbListingTokens = 635;
+    /// <summary>The verbs' deferred listing (17 tool names plus the instructions), measured on the generated list.</summary>
+    internal const int VerbListingTokens = 646;
 
     internal const double FullListShareMax = 0.25;
 
@@ -50,6 +50,9 @@ internal static class VerbSizes
 
     internal static int CommonLoadTokens(JsonObject list) =>
         list["tools"]!.AsArray().Where(tool => CommonVerbs.Contains((string)tool!["name"]!)).Sum(tool => ToolTokens(tool!));
+
+    internal static int ScriptLoadTokens(JsonObject list) =>
+        ToolTokens(list["tools"]!.AsArray().Single(tool => (string)tool!["name"]! == "run_script")!);
 
     /// <summary>The size table: the whole list and each tool, against today and the targets.</summary>
     internal static JsonObject Table(JsonObject list)
@@ -80,6 +83,13 @@ internal static class VerbSizes
                 ["verbs_common_load"] = common,
                 ["verbs"] = VerbListingTokens + common,
                 ["common_verbs"] = new JsonArray(CommonVerbs.Select(verb => (JsonNode)JsonValue.Create(verb)!).ToArray())
+            },
+            // run_script loads only on script tasks (waits, polls, timed or repeated work): its own row, added to the
+            // common load for such a task
+            ["script_task"] = new JsonObject
+            {
+                ["run_script_load"] = ScriptLoadTokens(list),
+                ["verbs"] = VerbListingTokens + common + ScriptLoadTokens(list)
             },
             ["instructions"] = Tokens((string)list["instructions"]!),
             ["per_tool_max"] = PerVerbMax,

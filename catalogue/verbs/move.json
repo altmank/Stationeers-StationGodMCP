@@ -1,6 +1,6 @@
 {
   "verb": "move",
-  "description": "Move items, gas and players. Reports first; confirm: true moves. gas and player are cheats: ask the user.",
+  "description": "Move items, gas and players. Items by typed ids move at once; a ref or a filter reports until confirm: true. gas and player are cheats: ask the user.",
   "text": ["Items go into or out of an Ingot Vault or SDB Silo store when to or source is one."],
   "read_only": false,
   "tool": {
@@ -49,7 +49,7 @@
         },
         "moves": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
-          "description": "Up to 64 moves in order, each {id, quantity, to, slot, merge, allow}.",
+          "description": "Up to 64 moves in order, each {id, to, slot, quantity, merge, allow}; slot auto when left out.",
           "x-script": "same"
         },
         "source": {"schema": {"type": "string"}, "description": "A vault or silo to take from.", "x-script": "same"},
@@ -90,12 +90,15 @@
           "default": "vault 256, silo 64",
           "x-script": "Into a store: move at most this many things, nearest first. (default vault 256, silo 64)"
         },
-        "confirm": {"use": "confirm"}
+        "confirm": {
+          "use": "confirm",
+          "description": "Typed ids act at once; with a filter or a ref, true acts and left out reports."
+        }
       },
       "text": [
         "Which handler runs: with slot or moves, a slot move. Otherwise a vault or silo as to or source makes a store move; everything else is a slot move. The reply's first key route names it: slot, into_vault, out_of_vault, vault_to_vault, into_silo or out_of_silo.",
         "Filters (prefab parts, name, location, within, near, category) work for moves into a store; slot moves take ids.",
-        "Out of a vault: move {what: \"item\", source: \"4191359\", prefab: \"ItemIronIngot\", quantity: 500, to: \"player\", confirm: true}.",
+        "Out of a vault: move {what: \"item\", source: \"4191359\", prefab: \"ItemIronIngot\", quantity: 500, to: \"player\"}.",
         "Into a silo by filter: move {what: \"item\", to: \"5200100\", prefab: \"*Ore*\", location: \"player\"}."
       ],
       "x-script-text": [
@@ -104,7 +107,7 @@
         "Out of a vault: sg.move('item', source='4191359', prefab='ItemIronIngot', quantity=500, to='player').",
         "Into a silo by filter: sg.move('item', to='5200100', prefab='*Ore*', location='player')."
       ],
-      "example": {"id": "3311223", "to": "player", "confirm": true},
+      "example": {"id": "3311223", "to": "player"},
       "handlers": [
         {
           "name": "move_item",
@@ -135,7 +138,12 @@
             {"arg": "merge", "option": "merge", "change": "kept"},
             {"arg": "force", "option": "force", "change": "kept"},
             {"arg": "allow_in_use", "option": "allow", "change": "merged", "note": "allow: [\"in_use\"]"},
-            {"arg": "moves", "option": "moves", "change": "kept"},
+            {
+              "arg": "moves",
+              "option": "moves",
+              "change": "merged",
+              "note": "each entry's id, to, slot and allow become reference_id, to_id, to_slot (auto when left out) and allow_in_use; an id list becomes one moves list (x-list-shape)"
+            },
             {"arg": "fields", "option": "fields", "change": "kept"},
             {"arg": "omit", "option": "omit", "change": "kept"},
             {"arg": "list_limits", "option": "list_limits", "change": "kept"},
@@ -461,20 +469,38 @@
       },
       "write": {
         "report": "mod",
-        "route": "confirm",
+        "route": "acts",
         "cheat": "force: true",
         "x-undo": "mixed",
-        "x-undo-mark": "slot move [undo], [cannot undo: merged into <id>] when it merged or split; store move or force [cannot undo: store move]",
-        "x-list": "native",
+        "x-undo-mark": "slot move [undo]; a merge into another stack [cannot undo: merged into <id>]; store move or force [cannot undo: store move]",
+        "x-list": "native-shape",
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "to", "role": "acts-on"},
           {"path": "source", "role": "pays-from"},
-          {"path": "within", "role": "acts-on"},
           {"path": "moves[].id", "role": "acts-on"},
           {"path": "moves[].to", "role": "acts-on"},
-          {"path": "items[].id", "role": "acts-on"}
-        ]
+          {"path": "items[].id", "role": "acts-on"},
+          {"path": "prefab", "role": "spread", "when": ["into a vault", "into a silo"]},
+          {"path": "name", "role": "spread"},
+          {"path": "location", "role": "spread"},
+          {"path": "within", "role": "spread"},
+          {"path": "near", "role": "spread"},
+          {"path": "radius", "role": "spread"},
+          {"path": "category", "role": "spread"}
+        ],
+        "x-list-shape": {
+          "arg": "moves",
+          "each": {
+            "reference_id": "id",
+            "to_id": "to",
+            "to_slot": "slot",
+            "quantity": "quantity",
+            "merge": "merge",
+            "allow_in_use": "allow"
+          },
+          "fill": {"to_slot": "auto"}
+        }
       },
       "brief": "items and kits into a slot, the player, or a vault or silo"
     },
@@ -646,7 +672,11 @@
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: player move]",
         "x-list": "one",
-        "x-target": [{"path": "player", "role": "acts-on"}]
+        "x-target": [
+          {"path": "player", "role": "acts-on"},
+          {"path": "to", "role": "acts-on"},
+          {"path": "to_player", "role": "acts-on"}
+        ]
       },
       "brief": "a player to a point, thing or player"
     }

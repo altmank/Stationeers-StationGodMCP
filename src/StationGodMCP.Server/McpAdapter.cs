@@ -7,21 +7,17 @@ using StationGodMCP.Client;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// The sidecar: MCP on one side, the StationGod client on the other, over one connection for the life of the sidecar,
-/// opened at the first call (an agent session usually starts before the game). tools/list comes from the catalogue;
-/// when the mod's catalogue differs from the built-in one, the tools switch to it and the agent is told
-/// (notifications/tools/list_changed). tools/call reads file arguments (x-file-arguments), takes out the sidecar's own arguments (fields, omit, output_file), sends
-/// the call, writes the reply to a file when asked or when it is larger than the inline limit, and wraps the result or
-/// error in the one MCP result shape (ToolReplies). The sidecar checks only what cannot be sent as written and its own
-/// arguments; the rest are the mod's to check.
+/// The sidecar: MCP on one side, the verb pipeline on the other, over one game connection for the life of the sidecar,
+/// opened at the first call (an agent session usually starts before the game). tools/list answers the generated verb
+/// tools (generated/verbs/tools.json) and initialize their instructions; tools/call sends the verb call through the
+/// VerbPipeline on the direct face (stream 0), writes the reply to a file when output_file asks or when it is larger
+/// than the inline limit, and wraps the result or error in the one MCP result shape (ToolReplies).
 /// </summary>
 internal sealed class McpAdapter : IAsyncDisposable
 {
     private const string McpProtocolVersion = "2025-06-18";
-    private const string ListChanged = """{"jsonrpc":"2.0","method":"notifications/tools/list_changed"}""";
 
     private static readonly JsonElement NullId = JsonSerializer.SerializeToElement<object?>(null);
-    private static readonly JsonElement NoArguments = JsonSerializer.SerializeToElement(new Dictionary<string, object>());
     // Plain JSON escaping: the default encoder writes every quote inside a string as a six-character \u escape, and
     // apostrophes and pluses too, which makes the tool list and each reply's text copy larger for nothing.
     internal static readonly JsonSerializerOptions JsonOptions = new()
@@ -32,20 +28,25 @@ internal sealed class McpAdapter : IAsyncDisposable
     };
 
     private readonly SidecarOptions _options;
-    private readonly StationGodClient _client;
-    private readonly Func<string, Task> _notify;
-    private ToolSet _tools = ToolSet.BuiltIn;
+    private readonly IAsyncDisposable? _owned;
+    private readonly CallRecorder? _recorder;
+    private readonly VerbPipeline _pipeline;
 
-    internal McpAdapter(SidecarOptions options, Func<string, Task>? notify = null)
+    internal McpAdapter(SidecarOptions options)
+        : this(options, new GameLink(options.Client), owned: true)
     {
-        _options = options;
-        _notify = notify ?? (_ => Task.CompletedTask);
-        _client = new StationGodClient(options.Client);
-        _client.CatalogueChanged += OnCatalogueChanged;
     }
 
-    /// <summary>The tools as tools/list answers them now.</summary>
-    internal ToolSet Tools => Volatile.Read(ref _tools);
+    /// <summary>A sidecar over a game link of the caller's (tests use a fake one); owned links are closed with it.</summary>
+    internal McpAdapter(SidecarOptions options, IGameLink link, bool owned = false, IShownText? shown = null)
+    {
+        _options = options;
+        _owned = owned ? link as IAsyncDisposable : null;
+        _recorder = options.RecordPath is { } path ? new CallRecorder(path) : null;
+        _pipeline = new VerbPipeline(link, recorder: _recorder, shown: shown);
+    }
+
+    internal VerbPipeline Pipeline => _pipeline;
 
     /// <summary>One MCP message line: the response line, or null for a notification.</summary>
     internal async Task<string?> HandleAsync(string line)
@@ -66,7 +67,14 @@ internal sealed class McpAdapter : IAsyncDisposable
         }
     }
 
-    public ValueTask DisposeAsync() => _client.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        _recorder?.Dispose();
+        if (_owned != null)
+        {
+            await _owned.DisposeAsync().ConfigureAwait(false);
+        }
+    }
 
     private async Task<string?> HandleRequestAsync(JsonElement root)
     {
@@ -105,19 +113,19 @@ internal sealed class McpAdapter : IAsyncDisposable
                 return null;
             }
 
-            ToolSet tools = Tools;
+            VerbCatalogue catalogue = _pipeline.Catalogue;
             object result = method switch
             {
                 "initialize" => new
                 {
                     protocolVersion = RequestedProtocolVersion(root),
-                    capabilities = new { tools = new { listChanged = true } },
-                    serverInfo = new { name = tools.ServerName, version = Program.ServerVersion },
-                    instructions = tools.Instructions
+                    capabilities = new { tools = new { listChanged = false } },
+                    serverInfo = new { name = ToolCatalogue.ServerName, version = Program.ServerVersion },
+                    instructions = catalogue.Instructions
                 },
                 "ping" => new { },
-                "tools/list" => new { tools = tools.Tools },
-                "tools/call" => await CallToolAsync(root, tools).ConfigureAwait(false),
+                "tools/list" => new { tools = catalogue.Tools },
+                "tools/call" => await CallToolAsync(root, catalogue).ConfigureAwait(false),
                 _ => throw new McpException(-32601, $"Unknown MCP method '{method}'.")
             };
 
@@ -129,13 +137,14 @@ internal sealed class McpAdapter : IAsyncDisposable
         }
         catch (Exception exception)
         {
+            // The details (handler names among them) go to the log; the agent gets no internals.
             Console.Error.WriteLine($"[StationGodMCP] {exception}");
-            return RpcError(requestId, -32603, exception.Message);
+            return RpcError(requestId, -32603, "Internal error in the MCP server; its log has the details.");
         }
     }
 
-    // Every tool result, the game's and the sidecar's own refusals alike, has one shape (ToolReplies).
-    private async Task<object> CallToolAsync(JsonElement root, ToolSet tools)
+    // Every tool result, the game's and the pipeline's own refusals alike, has one shape (ToolReplies).
+    private async Task<object> CallToolAsync(JsonElement root, VerbCatalogue catalogue)
     {
         if (!root.TryGetProperty("params", out JsonElement parameters) || parameters.ValueKind != JsonValueKind.Object ||
             !parameters.TryGetProperty("name", out JsonElement nameElement) || nameElement.ValueKind != JsonValueKind.String)
@@ -143,76 +152,82 @@ internal sealed class McpAdapter : IAsyncDisposable
             throw new McpException(-32602, "tools/call needs params with a string name.");
         }
 
-        string tool = nameElement.GetString()!;
-        if (!tools.InputSchemas.TryGetValue(tool, out JsonElement schema))
+        string verb = nameElement.GetString()!;
+        JsonElement given = parameters.TryGetProperty("arguments", out JsonElement raw) ? raw : default;
+        JsonObject recorded = given.ValueKind == JsonValueKind.Object ? JsonObject.Create(given.Clone())! : new JsonObject();
+        string? whatGiven = JsonNodes.Text(recorded["what"]);
+        recorded.Remove("what");
+        _pipeline.RecordInput(Face.Direct, 0, verb, whatGiven, recorded);
+        if (catalogue.Verb(verb) == null)
         {
-            throw new McpException(-32602, $"Unknown StationGodMCP tool '{tool}'.");
+            List<string> nearest = Nearest.Of(verb, catalogue.VerbNames);
+            throw new McpException(-32602, $"Unknown StationGodMCP tool '{verb}'" +
+                                           (nearest.Count > 0 ? $"; nearest: {string.Join(", ", nearest)}." : "."));
         }
 
-        JsonElement arguments = parameters.TryGetProperty("arguments", out JsonElement value) && value.ValueKind != JsonValueKind.Null
-            ? value.Clone()
-            : NoArguments;
-
-        IReadOnlyList<FileArgument> files = tools.FileArgumentsOf(tool);
-        IReadOnlyList<string> problems = ArgumentCheck.Unsendable(arguments) is { Count: > 0 } unsendable
-            ? unsendable
-            : ArgumentCheck.ProblemsOf(schema, arguments, SidecarArguments.Names.Concat(files.Select(file => file.Name)));
-        if (problems.Count > 0)
+        JsonElement arguments = parameters.TryGetProperty("arguments", out JsonElement value) &&
+                                value.ValueKind != JsonValueKind.Null
+            ? value
+            : default;
+        if (arguments.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Object))
         {
-            return ToolReplies.Error(ToolFailure.InvalidArgument, string.Join(" ", problems), tools.SeeOf(ToolFailure.InvalidArgument));
+            return Error(new VerbReply.Failed(VerbFailure.InvalidArgument, "The arguments must be a JSON object."));
         }
 
-        if (tool == ToolHelp.Method)
+        if (arguments.ValueKind == JsonValueKind.Object && ArgumentCheck.Unsendable(arguments) is { Count: > 0 } unsendable)
         {
-            return HelpReply(tools.Help, arguments);
+            return Error(new VerbReply.Failed(VerbFailure.InvalidArgument, string.Join(" ", unsendable)));
         }
 
-        switch (FileArguments.Read(arguments, files))
+        JsonObject options = arguments.ValueKind == JsonValueKind.Object
+            ? JsonObject.Create(arguments.Clone())!
+            : new JsonObject();
+        string? what = null;
+        if (options["what"] is { } whatNode)
         {
-            case FileRead.Refused refusedFile:
-                return ToolReplies.Error(ToolFailure.InvalidArgument, refusedFile.Message, tools.SeeOf(ToolFailure.InvalidArgument));
-            case FileRead.Ready ready:
-                arguments = ready.Arguments;
-                break;
+            what = JsonNodes.Text(whatNode);
+            if (what == null)
+            {
+                return Error(OptionProblem.Refusal(verb, [new OptionProblem("what", "must be a string")]));
+            }
+
+            options.Remove("what");
         }
 
-        SidecarArguments call = SidecarArguments.Take(arguments);
-        if (call.Output is OutputChoice.Refused refused)
+        OutputChoice output = OutputChoice.Of(options["output_file"] is { } file ? JsonNodes.ToElement(file) : null);
+        if (output is OutputChoice.Refused refusedFile)
         {
-            return ToolReplies.Error(ToolFailure.InvalidArgument,
-                refused.Message + " " + _options.Output.WhereFilesGo(Environment.MachineName),
-                tools.SeeOf(ToolFailure.InvalidArgument));
+            return Error(new VerbReply.Failed(VerbFailure.InvalidArgument,
+                refusedFile.Message.Replace("Argument 'output_file'", "output_file", StringComparison.Ordinal) + " " +
+                _options.Output.WhereFilesGo(Environment.MachineName)));
         }
 
-        (JsonElement? shape, Unparsed unparsed) = call.Shape();
-        CallOutcome outcome = await _client.CallAsync(tool, call.Forwarded, shape).ConfigureAwait(false);
-
-        return outcome.Match(
-            answered => ToolReplies.Of(Delivered(tool, call.Output, SidecarArguments.WithUnmatched(answered.Result, unparsed)), isError: false),
-            gameError => ToolReplies.Of(gameError.Error, isError: true),
-            noAnswer => ToolReplies.Error(ToolFailure.GameUnavailable, noAnswer.Message, tools.SeeOf(ToolFailure.GameUnavailable)));
-    }
-
-    // tool_info: answered here from the catalogue's help, with or without the game.
-    private static object HelpReply(ToolHelp help, JsonElement arguments)
-    {
-        string? Text(string name) =>
-            arguments.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
-
-        return help.Answer(Text("tool"), Text("topic"), Text("subtopic")) switch
+        VerbReply reply = await _pipeline.CallAsync(new VerbCall(verb, what, options, Face.Direct) { Recorded = true },
+            CancellationToken.None).ConfigureAwait(false);
+        return reply switch
         {
-            HelpAnswer.Found found => ToolReplies.Of(found.Reply, isError: false),
-            HelpAnswer.Refused refused => ToolReplies.Error(refused.Code, refused.Message, refused.See),
-            _ => throw new InvalidOperationException("tool_info gave no answer.")
+            VerbReply.Done done => Sent(Delivered(verb + (what == null ? string.Empty : "_" + what), output,
+                JsonNodes.ToElement(done.Reply)), isError: false),
+            VerbReply.Failed failed => Error(failed),
+            _ => throw new InvalidOperationException("A verb reply is done or failed.")
         };
     }
 
+    private object Error(VerbReply.Failed failed) => Sent(JsonNodes.ToElement(failed.ToJson()), isError: true);
+
+    // The cap's seen-set hook hears exactly the text the client gets.
+    private object Sent(JsonElement body, bool isError)
+    {
+        _pipeline.TextShown(ToolReplies.TextOf(body));
+        return ToolReplies.Of(body, isError);
+    }
+
     // The reply inline, or written to a file when output_file asks or when it is larger than the inline limit.
-    private JsonElement Delivered(string tool, OutputChoice output, JsonElement result)
+    private JsonElement Delivered(string name, OutputChoice output, JsonElement result)
     {
         if (output is OutputChoice.ToFile asked)
         {
-            return _options.Output.Write(tool, asked.Target, result);
+            return _options.Output.Write(name, asked.Target, result);
         }
 
         if (_options.InlineLimitBytes <= 0 || Encoding.UTF8.GetByteCount(result.GetRawText()) <= _options.InlineLimitBytes)
@@ -220,7 +235,7 @@ internal sealed class McpAdapter : IAsyncDisposable
             return result;
         }
 
-        JsonElement written = _options.Output.Write(tool, new OutputTarget.Auto(), result);
+        JsonElement written = _options.Output.Write(name, new OutputTarget.Auto(), result);
         if (written.TryGetProperty("output_file_error", out _))
         {
             return written;
@@ -229,22 +244,6 @@ internal sealed class McpAdapter : IAsyncDisposable
         JsonObject pointer = JsonObject.Create(written)!;
         pointer["auto_output_file"] = true;
         return JsonSerializer.SerializeToElement(pointer);
-    }
-
-    private void OnCatalogueChanged(GameCatalogue catalogue)
-    {
-        try
-        {
-            Volatile.Write(ref _tools, ToolSet.From(catalogue.Document));
-        }
-        catch (Exception exception) when (exception is InvalidOperationException or NullReferenceException or
-                                              KeyNotFoundException or FormatException or ArgumentException)
-        {
-            Console.Error.WriteLine($"[StationGodMCP] The game's catalogue ({catalogue.Hash}) gives no tool list; keeping the built-in one: {exception.Message}");
-            Volatile.Write(ref _tools, ToolSet.BuiltIn);
-        }
-
-        _ = _notify(ListChanged);
     }
 
     private static string RequestedProtocolVersion(JsonElement root) =>

@@ -66,7 +66,8 @@ internal static class LogicOps
     /// <summary>
     /// The game write of write_logic and of a held restore: the device's own setter, as a chip's s instruction writes;
     /// refused when the device does not expose the type as writable, write_failed when its setter throws. It runs no
-    /// write rules and reports to no held restore: a restore is the mod's own write.
+    /// write rules and reports to no held restore: its callers judge first, a checked write in Check and a held
+    /// restore in HeldRestores (both through OpeningWrites.Judge), and a restore is the mod's own write.
     /// </summary>
     internal static void SetValue(ScopedTarget device, LogicType type, double value)
     {

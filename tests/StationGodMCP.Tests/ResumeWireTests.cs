@@ -453,6 +453,10 @@ public sealed class ResumeWireTests
 
         public void SessionEnded(string owner) => SessionEnds.Add(owner);
 
+        public void PinsReleased(string owner, long stream)
+        {
+        }
+
         internal List<string> SessionEnds { get; } = new List<string>();
 
         public void Closed(object source)

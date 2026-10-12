@@ -88,13 +88,20 @@ and pages in the rest on `len`, an index, `sorted` or a second pass. The hub bac
 where the handler has one (`find_things`), and otherwise with `offset` pages.
 
 The program face is a reading: PLAN names programs as `sg` users but gives no write rule for them; they get the
-direct rule, since nothing reviews a program's run as a whole.
+direct rule, since nothing reviews a program's run as a whole. So a program's pass-through takes only read-class mod
+methods with no `x-effects` (plus `subscribe`, `unsubscribe`, `cursor_close`, `release`); every write goes through
+`verb`, where the write rule and the recording apply. A script worker's session takes no mod methods at all: only
+`verb`, `ref`, `more`, `wait` and `hold`, on its run's stream.
 
 ## Runs
 
-A run is one `run_script` call. Its worker is a warm Python process from the pool (`PYTHONHASHSEED=0`, in a Windows
-Job Object with kill-on-close so workers die with the hub). The hub gives the worker its run on stdin as the
-`welcome` of a hub-protocol session, with one extra key:
+A run is one `run_script` call. Its worker is a pre-started Python process from the pool (`PYTHONHASHSEED=0`, in a
+Windows Job Object with kill-on-close so workers die with the hub), started as
+`python -s -P -c "<sg.worker.BOOT>" <dir holding sg>` with every `PYTHON*` variable removed from its
+environment and `PYTHONHASHSEED=0` set (`-I` would ignore the seed); the worker refuses to run with hash randomisation on. A worker serves one run and exits; the pool starts the next while
+a run runs, so no state of one run reaches another. The hub refuses every call of a session after its `run_end`, and
+takes a run's end state from its own record (a stop it delivered is `stopped`, whatever the worker says).
+The worker sends `hello` and gets its run in the `welcome` of a hub-protocol session, with one extra key:
 
 ```json
 {"type":"welcome", ..., "features":[..., "pipeline"],
@@ -112,11 +119,12 @@ The worker then, before any user code runs, sends one `run_analysis` message (no
   26).
 - `while_lines`: lines inside a `while` body (for the report pass's second-wait rule).
 - `writes`, `holds`: whether the code calls a write verb (`write`, `build`, `swap`, `remove`, `move`, `trade`, `undo`,
-  or `server` with a write what) or `sg.hold`. A run with neither is read-only (its reply waits as a report run's).
+  or `server` with a write what) or `sg.hold`. A run with neither is read-only (its reply waits as a report run's). The AST is advisory: a run's first write call
+  switches its reply wait to the confirmed ceiling.
 - The hub takes only the first `run_analysis` of a session; later ones are refused `protocol_error`.
 
 Each `sg` call is a `call` with `method` `verb`, `ref`, `wait` or `hold`, and `params.line` (the code line, 1-based)
-added. When the code ends the worker sends `run_end` (no reply) and exits back to the pool:
+added. When the code ends the worker sends `run_end` (no reply) and exits:
 
 ```json
 {"type":"run_end","state":"done","returned":{...},"printed":"...","error":null}

@@ -25,5 +25,5 @@ def plan(what: Literal['mining'], *,
       count: int
       notes: list[str]
     Example: sg.plan('mining', collectable_only=True)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

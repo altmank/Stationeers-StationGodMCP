@@ -13,6 +13,9 @@ internal static class Program
     {
         switch (SidecarOptions.Parse(args, Environment.GetEnvironmentVariable))
         {
+            case SidecarOptions.Parsed.Valid { Options.Hub: true } hub:
+                await HubMode.ServeAsync(hub.Options, Console.OpenStandardInput(), Console.OpenStandardOutput());
+                return 0;
             case SidecarOptions.Parsed.Valid valid:
                 await ServeAsync(valid.Options, Console.OpenStandardInput(), Console.OpenStandardOutput());
                 return 0;
@@ -27,7 +30,7 @@ internal static class Program
     /// <summary>
     /// MCP over newline-delimited JSON-RPC on the two streams until the input ends. Messages are handled as they come,
     /// several at once, so a slow tool call does not hold up the next; responses and notifications are written whole,
-    /// one line at a time.
+    /// one line at a time. The process's one GameLink is made here and closed when the input ends.
     /// </summary>
     internal static async Task ServeAsync(SidecarOptions options, Stream input, Stream output)
     {
@@ -52,7 +55,8 @@ internal static class Program
             }
         }
 
-        await using McpAdapter adapter = new(options, WriteAsync);
+        await using GameLink link = new(options.Client);
+        await using McpAdapter adapter = new(options, link);
         List<Task> running = [];
         string? line;
         while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
@@ -76,7 +80,7 @@ internal static class Program
         await Task.WhenAll(running).ConfigureAwait(false);
     }
 
-    /// <summary>Every tool's input schema as the built-in tools/list publishes it, by tool name.</summary>
+    /// <summary>Every mod method's input schema (the handlers the verbs map onto), by method name.</summary>
     internal static IReadOnlyDictionary<string, JsonElement> InputSchemas => ToolCatalogue.InputSchemas;
 
     /// <summary>One message through a sidecar of its own, closed afterwards.</summary>

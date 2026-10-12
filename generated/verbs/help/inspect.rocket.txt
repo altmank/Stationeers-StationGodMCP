@@ -4,6 +4,6 @@ Options:
 - compact (boolean, default true): Short form (default): no mass parts, tanks, power devices or checks; false: the whole report.
 - self_test (boolean, default true (false with compact)): Compare the forecast's formulas with the game's numbers.
 - include (list of parts | explain): parts: every part with pose and slots; explain: what the numbers mean.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: rockets [{reference_id, network_id, name, automated_landing, auto_shut_off, manned, re_entry_profile, re_entry_altitude_m, where, mass, fuel, pipe_networks, engines, thrust, landing_check, landing_at_pad, collects, cargo, power, burn_time, checks, notes, parts}], count, explanations
 Example: inspect {what: "rocket", compact: true}

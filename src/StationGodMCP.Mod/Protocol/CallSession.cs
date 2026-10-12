@@ -12,7 +12,7 @@ namespace StationGodMCP.Protocol;
 
 /// <summary>
 /// The protocol on one connection: hello and welcome, then calls by id, several in flight, answered in any order and
-/// matched by id; cancel; stream_end; cursor_close; session_end; events. The first message must be hello; anything else is a protocol error that
+/// matched by id; cancel; stream_end; release; cursor_close; session_end; events. The first message must be hello; anything else is a protocol error that
 /// closes the connection. Lines are parsed and checked here, on the connection's reader thread; only the methods
 /// themselves run on the main thread.
 /// <para>
@@ -29,6 +29,10 @@ namespace StationGodMCP.Protocol;
 /// drops its unstarted calls and leaves its streams to the token: held for the window, then ended. A bye ends the
 /// token's state when the connection closes.
 /// </para>
+/// <para>
+/// session_end (protocol.md, Held restores) marks the owner's session ended: its unstarted calls are answered cancelled,
+/// its held restores apply at the next frame, and every later call of the owner is refused session_ended unrun.
+/// </para>
 /// </summary>
 internal sealed class CallSession : Session
 {
@@ -39,17 +43,18 @@ internal sealed class CallSession : Session
     internal const int MaxInFlightPerConnection = SchedulerSettings.DefaultMaxInFlightPerConnection;
 
     internal const string StreamEndedCode = "stream_ended";
+    internal const string SessionEndedCode = "session_ended";
     internal const int MaxRequestBytes = 4194304;
     internal const string CatalogueMethod = "catalogue";
     internal const string AnonymousClient = "anonymous";
 
     /// <summary>What welcome lists in features: what this server does beyond the basics.</summary>
     internal static readonly string[] Features =
-        { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors", "rename" };
+        { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors", "rename", "release" };
 
     /// <summary>The features with subscriptions, when the server has them.</summary>
     internal static readonly string[] FeaturesWithSubscriptions =
-        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "rename" };
+        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "rename", "release" };
 
     private static readonly string[] FeaturesWithResume = WithResume(Features);
 
@@ -126,6 +131,9 @@ internal sealed class CallSession : Session
                 break;
             case ClientMessage.EndOfStream ended:
                 EndStream(ended.Stream);
+                break;
+            case ClientMessage.Release release:
+                _host.PinsReleased(_connection.Owner, release.Stream);
                 break;
             case ClientMessage.CursorClose closed:
                 _host.CursorClosed(_connection.Owner, closed.CursorId);
@@ -268,10 +276,21 @@ internal sealed class CallSession : Session
 
     private void Accept(ClientMessage.Call call)
     {
+        bool sessionEnded;
         bool ended;
         lock (_ended)
         {
+            sessionEnded = _ended.SessionEnded;
             ended = _ended.Contains(call.Stream);
+        }
+
+        if (sessionEnded)
+        {
+            _connection.Send(Wire.Refusal(call.Id, SessionEndedCode,
+                "This connection sent session_end, and nothing it sends after that runs: its held restores are the " +
+                "session's last writes. Nothing ran. Open a new session to go on.",
+                new Dictionary<string, long> { ["stream"] = call.Stream }));
+            return;
         }
 
         if (ended)
@@ -448,10 +467,24 @@ internal sealed class CallSession : Session
         }
     }
 
-    // session_end: the connection's unstarted calls are answered cancelled and never run, so none of them writes after
-    // the held restores; then the owner's restores apply at the next frame. Its streams stay open.
+    // session_end: from now on every call of the owner is refused session_ended unrun, on any stream and on any
+    // connection that resumes its token (ResumeHolds starts such a token afresh); the connection's unstarted calls are
+    // answered cancelled and never run, and the calls already started finish in the frame they started in, so the
+    // owner's restores, applied at the start of the next frame, are its session's last writes. A second session_end
+    // changes nothing. The connection stays open.
     private void EndSession()
     {
+        bool first;
+        lock (_ended)
+        {
+            first = _ended.EndSession();
+        }
+
+        if (!first)
+        {
+            return;
+        }
+
         foreach (ProtocolCall call in Waiting())
         {
             if (call.Drop(call.CancelledReply()))

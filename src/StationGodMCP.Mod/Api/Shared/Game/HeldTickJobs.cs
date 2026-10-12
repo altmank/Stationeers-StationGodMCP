@@ -7,6 +7,7 @@ using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
 using UnityEngine;
@@ -28,21 +29,21 @@ namespace StationGodMCP.Api.Shared.Game;
 /// step runs until a state packet written after the end of the last step's frame has gone out (JobReplication), so a
 /// client replays each step's changes in the order the host made them. A job keeps the CallContext of the call that
 /// started or queued it, and each of its steps (a queued job's creation included) runs in that context, so a store kept
-/// per stream sees the job's steps as its caller's. Every job that reaches its final status (finished or failed, or
-/// dropped before it started: by drop_job, by the world it was queued in being left, or refused as it left the queue)
-/// is handed to Ended with the view its polls answer from then on, on the main thread (the jobs subscription topic).
+/// per stream sees the job's steps as its caller's; the job is pinned to that context as its id is minted (KeptJobs),
+/// so its snapshot and final status outlast unpinned jobs until the caller's stream is released or its owner ends.
+/// Every job that reaches its final status (finished or failed, or dropped before it started: by drop_job, by the world
+/// it was queued in being left, or refused as it left the queue) is handed to Ended with the view its polls answer
+/// from then on, on the main thread (the jobs subscription topic), and kept (KeptJobs.Finals, bounded by memory).
 /// </summary>
 internal static class HeldTickJobs
 {
     private const float TickWaitSeconds = 15f;
-    /// <summary>Finished jobs kept for polls and undo_job, across every client.</summary>
-    internal const int KeptJobs = 16;
 
-    internal const string JobNotFoundCode = "job_not_found";
+    internal const string JobNotFoundCode = JobDrops.NotFoundCode;
     internal const int MaximumWaiting = 8;
 
-    private static readonly Dictionary<string, object> Finished = new Dictionary<string, object>();
-    private static readonly Queue<string> FinishedOrder = new Queue<string>();
+    // Ended jobs' final views, kept for polls and undo_job across every client, bounded by memory (KeptJobs).
+    private static readonly KeptJobStore<object> Finished = KeptJobs.Main.Finals;
     private static readonly JobLine<QueuedJob> Waiting = new JobLine<QueuedJob>(MaximumWaiting);
 
     // What the gas hold meant for each job that acknowledged a loss, so a poll's reply repeats its gas_hold.
@@ -53,6 +54,11 @@ internal static class HeldTickJobs
     private static bool _tickHeld;
     private static bool _releaseOwed;
     private static long _next;
+
+    static HeldTickJobs()
+    {
+        Finished.Evicted += static id => Holds.Remove(id);
+    }
 
     /// <summary>
     /// Told of each job's final view as the job reaches it, once per job; null for no one. Set by the mod to the
@@ -91,6 +97,7 @@ internal static class HeldTickJobs
         if (_active == null && Waiting.Count == 0 && !tickTaken)
         {
             string started = NextId(prefix);
+            KeptJobs.Main.Pin(started, CallContext.Current);
             object view = Launch(started, tool, create, CallContext.Current).View();
             GasHold.Lift(hold);
             GasHoldReply.Record(hold, GasHoldStage.Started);
@@ -128,6 +135,8 @@ internal static class HeldTickJobs
             return new JobBusyView(tool, _active?.Id ?? string.Empty, Waiting.Count,
                 $"{MaximumWaiting} runs are already queued; nothing was changed. Try again once one has started.");
         }
+
+        KeptJobs.Main.Pin(id, CallContext.Current);
 
         GasHoldReply.Record(hold, GasHoldStage.Queued);
         Keep(id, hold, GasHoldStage.Queued);
@@ -182,10 +191,11 @@ internal static class HeldTickJobs
             return new JobQueuedView(id, ToolOf(id), position.Value, _active?.Id, null);
         }
 
-        return Finished.TryGetValue(id, out object view)
-            ? view
-            : throw ApiErrors.Refused(JobNotFoundCode, $"No job {id} is running, queued or among the last {KeptJobs}.");
+        return Finished.Of(id) ?? throw JobDrops.NotFound(id);
     }
+
+    /// <summary>Whether the job's final status was evicted under its memory bound (undo_expired).</summary>
+    internal static bool Evicted(string id) => Finished.WasEvicted(id);
 
     /// <summary>
     /// drop_job, on the main thread: takes a waiting job out of the queue (the jobs behind it move up) and keeps it as
@@ -195,7 +205,7 @@ internal static class HeldTickJobs
     /// </summary>
     internal static object DropWaiting(string id)
     {
-        QueuedJob queued = JobDrops.Take(Waiting, id, _active?.Id, Finished.ContainsKey(id), KeptJobs);
+        QueuedJob queued = JobDrops.Take(Waiting, id, _active?.Id, Finished.Contains(id));
         if (Holds.TryGetValue(id, out JobHold kept))
         {
             Holds[id] = new JobHold(kept.Verdict, GasHoldStage.NotStarted);
@@ -203,6 +213,31 @@ internal static class HeldTickJobs
 
         Remember(id, new JobDroppedView(id, queued.Tool, JobDrops.Dropped()));
         return new JobDropReplyView(id);
+    }
+
+    /// <summary>
+    /// The owner's session ended abruptly (HeldJobSessionEnds): every job its calls queued leaves the line, kept as
+    /// finished with a JobDroppedView whose poll answers session_ended, so none starts after the owner's held restores.
+    /// The running job runs on, whoever started it.
+    /// </summary>
+    internal static void DropOwner(string owner)
+    {
+        if (Waiting.Count == 0)
+        {
+            return;
+        }
+
+        List<KeyValuePair<string, QueuedJob>> taken = new List<KeyValuePair<string, QueuedJob>>();
+        JobDrops.TakeOwners(Waiting, owner, static queued => queued.Context, taken);
+        foreach (KeyValuePair<string, QueuedJob> entry in taken)
+        {
+            if (Holds.TryGetValue(entry.Key, out JobHold kept))
+            {
+                Holds[entry.Key] = new JobHold(kept.Verdict, GasHoldStage.NotStarted);
+            }
+
+            Remember(entry.Key, new JobDroppedView(entry.Key, entry.Value.Tool, JobDrops.SessionEnded()));
+        }
     }
 
     private static string ToolOf(string id)
@@ -395,7 +430,6 @@ internal static class HeldTickJobs
 
         Waiting.Clear();
         Finished.Clear();
-        FinishedOrder.Clear();
         Holds.Clear();
     }
 
@@ -444,19 +478,25 @@ internal static class HeldTickJobs
         }
     }
 
-    // A job's final view: kept for its polls (the last KeptJobs), and told to Ended.
+    // A job's final view: kept for its polls (KeptJobs: its size the view as polls write it), and told to Ended.
     private static void Remember(string id, object view)
     {
-        Finished[id] = view;
-        FinishedOrder.Enqueue(id);
-        while (FinishedOrder.Count > KeptJobs)
-        {
-            string forgotten = FinishedOrder.Dequeue();
-            Finished.Remove(forgotten);
-            Holds.Remove(forgotten);
-        }
-
+        Finished.Put(id, view, KeptJobSizes.Final(PolledLength(id, view)));
         Ended?.Invoke(view);
+    }
+
+    private static long PolledLength(string id, object view)
+    {
+        try
+        {
+            return ApiJson.Length(view);
+        }
+        catch (Exception exception)
+        {
+            // A view that will not serialise fails its polls too; it is kept at the entry's size, never lost.
+            StationGodMod.LogWarning($"job {id}'s final view could not be measured: {exception.Message}");
+            return 0;
+        }
     }
 
     private static void Keep(string id, GasHoldVerdict hold, GasHoldStage stage)
@@ -593,4 +633,19 @@ internal abstract class JobStep
 
         internal bool ReleaseTick { get; }
     }
+}
+
+/// <summary>
+/// The job line as a session-end store (StreamStores.Main): an owner's abrupt end drops the jobs its calls queued
+/// (HeldTickJobs.DropOwner). A stream's end leaves jobs as they are.
+/// </summary>
+internal sealed class HeldJobSessionEnds : ISessionEndStore
+{
+    internal static HeldJobSessionEnds Instance { get; } = new HeldJobSessionEnds();
+
+    public void Ended(StreamEnd end)
+    {
+    }
+
+    public void SessionEnded(string owner) => HeldTickJobs.DropOwner(owner);
 }

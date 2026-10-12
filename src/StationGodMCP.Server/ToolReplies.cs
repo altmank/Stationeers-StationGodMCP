@@ -25,10 +25,13 @@ internal static class ToolReplies
 
     internal static object Of(JsonElement body, bool isError) => new
     {
-        content = new[] { new { type = "text", text = JsonSerializer.Serialize(body, TextOptions) } },
+        content = new[] { new { type = "text", text = TextOf(body) } },
         structuredContent = body,
         isError
     };
+
+    /// <summary>The reply's text copy, exactly as the result's content carries it.</summary>
+    internal static string TextOf(JsonElement body) => JsonSerializer.Serialize(body, TextOptions);
 
     private static readonly JsonSerializerOptions ErrorOptions = new()
     {

@@ -4,7 +4,7 @@
   "read_only": false,
   "tool": {
     "options": {
-      "id": "structure: The structures. cable, pipe, chute: Pieces. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "id": "structure: The structures. cable, pipe, chute: Pieces. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.",
       "materials": "structure: The one holder for source and storage refunds: an id or \"player\". Default the player. cable, pipe, chute: Holder(s) that pay, in order; ids or \"player\".",
       "confirm": "true acts; left out, it reports.",
       "waypoints": "The piece in every cell along these lines.",
@@ -293,7 +293,10 @@
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "waypoints", "role": "spread"},
+          {"path": "cells", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     },
@@ -441,7 +444,10 @@
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "waypoints", "role": "spread"},
+          {"path": "cells", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     },
@@ -587,7 +593,10 @@
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "waypoints", "role": "spread"},
+          {"path": "cells", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     }

@@ -37,6 +37,28 @@ public interface IGameLink
     Task<JsonElement?> WaitJobAsync(string jobId, TimeSpan timeout, CancellationToken cancellation);
 }
 
+/// <summary>
+/// What a hub session needs of the link beyond the verbs' calls (hub.md, The hub protocol): the mod's last welcome to
+/// answer hello with, the events to relay, and the messages a caller's session passes through.
+/// </summary>
+public interface IHubLink : IGameLink
+{
+    /// <summary>The mod's last welcome; null before the first connection.</summary>
+    JsonElement? Welcome { get; }
+
+    /// <summary>Every event but ping, raised on the link's reader.</summary>
+    event Action<JsonElement>? EventReceived;
+
+    /// <summary>Connects now if not connected; false when the game could not be reached.</summary>
+    Task<bool> ConnectAsync(CancellationToken cancellation);
+
+    /// <summary>cursor_close for a walk's cursor, when the mod lists cursors. No reply.</summary>
+    Task CursorCloseAsync(string cursorId);
+
+    /// <summary>release of the stream's job pins, when the mod lists release. No reply.</summary>
+    Task ReleaseAsync(long stream);
+}
+
 /// <summary>One call as the hub sends it. The link adds the world id.</summary>
 public sealed class GameCall
 {

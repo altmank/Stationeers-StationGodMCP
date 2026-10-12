@@ -448,7 +448,7 @@ public sealed class ShapingTests
     public async Task TheSidecarSendsFieldsAsShapeAndKeepsAShapedReply()
     {
         (string forwarded, JsonElement result) = await CallThroughSidecar(
-            """{"kind":"structure","fields":["things.position.x"]}""", """{"things":[{"position":{"x":1}}]}""", shaped: true);
+            """{"what":"thing","category":"structure","fields":["things.position.x"]}""", """{"things":[{"position":{"x":1}}]}""", shaped: true);
 
         using JsonDocument request = JsonDocument.Parse(forwarded);
         Assert.Equal("""{"kind":"structure"}""", request.RootElement.GetProperty("params").GetRawText());
@@ -461,7 +461,7 @@ public sealed class ShapingTests
     public async Task AnUnshapedReplyIsPassedOnAsItCame()
     {
         (_, JsonElement result) = await CallThroughSidecar(
-            """{"kind":"structure","fields":["reference_id"]}""", """{"things":[{"reference_id":"1","position":{"x":1}}]}""",
+            """{"what":"thing","category":"structure","fields":["reference_id"]}""", """{"things":[{"reference_id":"1","position":{"x":1}}]}""",
             shaped: false);
 
         Assert.Equal("""{"things":[{"reference_id":"1","position":{"x":1}}]}""", result.GetRawText());
@@ -470,7 +470,7 @@ public sealed class ShapingTests
     [Fact]
     public async Task NoShapeIsSentWithoutFields()
     {
-        (string forwarded, _) = await CallThroughSidecar("""{"kind":"structure"}""", """{"things":[]}""", shaped: false);
+        (string forwarded, _) = await CallThroughSidecar("""{"what":"thing","category":"structure"}""", """{"things":[]}""", shaped: false);
 
         using JsonDocument request = JsonDocument.Parse(forwarded);
         Assert.False(request.RootElement.TryGetProperty("shape", out _));
@@ -482,7 +482,7 @@ public sealed class ShapingTests
         game.Answer = call => Task.FromResult<string?>(call.Ok(result, shaped));
 
         string? line = await Program.HandleMcpMessageAsync(
-            $$$"""{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_things","arguments":{{{arguments}}}}}""",
+            $$$"""{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find","arguments":{{{arguments}}}}}""",
             new Program.GameTransportSettings(game.Target));
         using JsonDocument reply = JsonDocument.Parse(line!);
         return (Assert.Single(game.CallsTo("find_things")).Message.GetRawText(),

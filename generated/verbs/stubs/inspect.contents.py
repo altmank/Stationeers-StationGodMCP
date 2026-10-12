@@ -8,7 +8,7 @@ def inspect(what: Literal['contents'], *,
     limit: int = 10,  # The first n in order (a silo's stored entries listed); left out, every one.
 ) -> dict:  # main list: r['slots']; iterating or indexing it walks every page, in order
     """Any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player).
-    A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
+    A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Iteration goes over slots; a silo's stored entries are not iterated.
     Reply:
       reference_id: str
@@ -24,5 +24,5 @@ def inspect(what: Literal['contents'], *,
           contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}]} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('contents', id='player')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

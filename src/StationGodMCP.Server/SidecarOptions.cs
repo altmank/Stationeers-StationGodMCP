@@ -8,13 +8,42 @@ namespace StationGodMCP.Server;
 /// StationGodMCP), or --host (else STATIONGODMCP_HOST) with --port (else STATIONGODMCP_PORT, else 8765) for TCP;
 /// --secret-env names the variable of the TCP shared secret (STATIONGODMCP_SECRET);
 /// --client names this sidecar in hello; --output-dir (else STATIONGODMCP_OUTPUT_DIR) is where output files go;
-/// --inline-limit-kb is the reply size above which a reply goes to a file on its own (200, 0 for never).
+/// --inline-limit-kb is the reply size above which a reply goes to a file on its own (200, 0 for never); --record appends
+/// the recording (docs/architecture/hub.md, Recording) to a file. The hub's options (hub.md, Modes): --hub serves the hub
+/// protocol on stdio instead of MCP; --confirmed-ceiling-s caps a confirmed run's reply wait (30, 0 for none);
+/// --journal-dir is where journals live; --python is the Python for script workers.
 /// </summary>
-internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output, int InlineLimitBytes)
+internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output, int InlineLimitBytes,
+    string? RecordPath = null)
 {
     internal const int DefaultInlineLimitKb = 200;
 
+    internal const int DefaultConfirmedCeilingSeconds = 30;
+
     private const int LargestInlineLimitKb = 1024 * 1024;
+
+    // A day: a confirmed run's reply that would wait longer is a mistake in the option, not a wish.
+    private const int LargestConfirmedCeilingSeconds = 24 * 60 * 60;
+
+    /// <summary>The hub protocol on stdio for one program (hub.md, Modes) instead of MCP.</summary>
+    internal bool Hub { get; init; }
+
+    /// <summary>The longest a confirmed run's reply waits, whatever max_wait says; 0 is no ceiling.</summary>
+    internal int ConfirmedCeilingSeconds { get; init; } = DefaultConfirmedCeilingSeconds;
+
+    /// <summary>Where journals live (hub.md, The journal).</summary>
+    internal string JournalDirectory { get; init; } = DefaultJournalDirectory(Environment.GetEnvironmentVariable);
+
+    /// <summary>The Python for script workers: the program, then the arguments that come before the worker's own.</summary>
+    internal IReadOnlyList<string> Python { get; init; } = DefaultPython;
+
+    /// <summary>
+    /// Whether this hub adopts, at start, the journals other hubs left (hub.md, The journal): a hub serving an MCP client
+    /// does; a --hub child never does, since the MCP client's hub is the one that reports them.
+    /// </summary>
+    internal bool AdoptsJournals => !Hub;
+
+    private static IReadOnlyList<string> DefaultPython => OperatingSystem.IsWindows() ? ["py", "-3"] : ["python3"];
 
     internal static Parsed Parse(string[] args, Func<string, string?> environment)
     {
@@ -41,6 +70,28 @@ internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output,
                 $"--inline-limit-kb '{limitText}' must be a whole number of KB from 0 (never) to {LargestInlineLimitKb}.");
         }
 
+        string ceilingText = Argument(args, "--confirmed-ceiling-s") ??
+                             DefaultConfirmedCeilingSeconds.ToString(CultureInfo.InvariantCulture);
+        if (!int.TryParse(ceilingText, NumberStyles.None, CultureInfo.InvariantCulture, out int ceiling) ||
+            ceiling > LargestConfirmedCeilingSeconds)
+        {
+            return new Parsed.Invalid(
+                $"--confirmed-ceiling-s '{ceilingText}' must be a whole number of seconds from 0 (no ceiling) to " +
+                $"{LargestConfirmedCeilingSeconds}.");
+        }
+
+        string? journal = Argument(args, "--journal-dir");
+        if (journal != null && string.IsNullOrWhiteSpace(journal))
+        {
+            return new Parsed.Invalid("--journal-dir must name a folder.");
+        }
+
+        string? python = Argument(args, "--python");
+        if (python != null && string.IsNullOrWhiteSpace(python))
+        {
+            return new Parsed.Invalid("--python must name the Python program for script workers.");
+        }
+
         ClientOptions client = new(target)
         {
             ClientName = Argument(args, "--client"),
@@ -49,7 +100,34 @@ internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output,
             ReadEnvironment = environment
         };
         OutputFolder output = OutputFolder.From(Argument(args, "--output-dir"), environment(OutputFolder.EnvironmentVariable));
-        return new Parsed.Valid(new SidecarOptions(client, output, limitKb * 1024));
+        string? record = Argument(args, "--record");
+        return new Parsed.Valid(new SidecarOptions(client, output, limitKb * 1024,
+            string.IsNullOrWhiteSpace(record) ? null : record.Trim())
+        {
+            Hub = Flag(args, "--hub"),
+            ConfirmedCeilingSeconds = ceiling,
+            JournalDirectory = journal != null ? Path.GetFullPath(journal.Trim()) : DefaultJournalDirectory(environment),
+            Python = python != null ? [python.Trim()] : DefaultPython
+        });
+    }
+
+    /// <summary>%LOCALAPPDATA%\StationGodMCP\journal on Windows, else $XDG_STATE_HOME/stationgodmcp/journal.</summary>
+    internal static string DefaultJournalDirectory(Func<string, string?> environment)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            string local = environment("LOCALAPPDATA") is { Length: > 0 } given
+                ? given
+                : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return Path.Combine(local, "StationGodMCP", "journal");
+        }
+
+        // XDG's own default when the variable is unset or empty.
+        string state = environment("XDG_STATE_HOME") is { Length: > 0 } xdg
+            ? xdg
+            : Path.Combine(environment("HOME") ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".local", "state");
+        return Path.Combine(state, "stationgodmcp", "journal");
     }
 
     private static string? Argument(string[] args, string name)
@@ -63,6 +141,19 @@ internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output,
         }
 
         return null;
+    }
+
+    private static bool Flag(string[] args, string name)
+    {
+        foreach (string arg in args)
+        {
+            if (arg.Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     internal abstract record Parsed
