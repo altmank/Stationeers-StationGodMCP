@@ -234,7 +234,10 @@ public sealed class SidecarTranscriptTests : IDisposable
             Call(id, "read", """{"what":"logic","id":"1","logic":"On"}""") + "\n"));
         using MemoryStream output = new();
 
-        await Program.ServeAsync(new SidecarOptions(new ClientOptions(game.Target), new OutputFolder(_folder), 200 * 1024),
+        await Program.ServeAsync(new SidecarOptions(new ClientOptions(game.Target), new OutputFolder(_folder), 200 * 1024)
+            {
+                JournalDirectory = Path.Combine(_folder, "journal")
+            },
             new MemoryStream(Encoding.UTF8.GetBytes(input)), output);
 
         string[] lines = Encoding.UTF8.GetString(output.ToArray()).Split('\n', StringSplitOptions.RemoveEmptyEntries);

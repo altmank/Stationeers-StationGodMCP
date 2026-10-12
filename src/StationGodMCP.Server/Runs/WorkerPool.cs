@@ -171,10 +171,14 @@ internal sealed class WorkerPool : IDisposable
         IReadOnlyList<string> resolved = _python;
         try
         {
+            // Every standard stream redirected: a child given the hub's own stdin would make process creation wait on
+            // the hub's pending read of it (Windows serialises a synchronous pipe handle), so the run would wait for
+            // the MCP client's next message.
             ProcessStartInfo ask = new(_python[0])
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,
+                RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
@@ -189,6 +193,8 @@ internal sealed class WorkerPool : IDisposable
             using Process? process = Process.Start(ask);
             if (process != null)
             {
+                process.StandardInput.Close();
+                _ = process.StandardError.ReadToEndAsync();
                 string output = process.StandardOutput.ReadToEnd().Trim();
                 if (process.WaitForExit(ResolveWait) && process.ExitCode == 0 && output.Length > 0 && File.Exists(output))
                 {
