@@ -13,6 +13,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Shaping;
 
@@ -136,7 +137,8 @@ internal static class ApiHost
         };
 
     /// <summary>
-    /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame). Top-level argument
+    /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame, budget_hit when the
+    /// frame's request budget was reached as the handler finished). Top-level argument
     /// names are checked here unless the connection's reader thread already refused unknown ones (StrictArguments: the
     /// full check); the result is shaped by the call's shape, and a reply larger than max_reply_bytes (or the shape's
     /// max_bytes) is answered reply_too_large.
@@ -145,19 +147,20 @@ internal static class ApiHost
     {
         Stopwatch watch = Stopwatch.StartNew();
         Answer answer = Run(call, watch);
+        bool budgetHit = CurrentFrame.BudgetReached(StopwatchClock.Instance.NowMs);
         double queueMs = Math.Round(queueWaitMs, ElapsedDecimals);
         long serializeStarted = Stopwatch.GetTimestamp();
         string json;
         try
         {
-            json = SerializeCall(ref answer, queueMs, frame);
+            json = SerializeCall(ref answer, queueMs, frame, budgetHit);
         }
         catch (Exception exception)
         {
             // The serializer failing on a tool's reply object: answered internal_error, as any tool failure is.
             StationGodMod.LogWarning($"API reply could not be serialised: {exception}");
             answer = answer.Failed(new ErrorView("internal_error", exception.Message));
-            json = SerializeCall(ref answer, queueMs, frame);
+            json = SerializeCall(ref answer, queueMs, frame, budgetHit);
         }
 
         double serializeMs = MillisecondsSince(serializeStarted);
@@ -166,24 +169,27 @@ internal static class ApiHost
     }
 
     /// <summary>The reply message: always written through the shaping writer, which also counts the lists.</summary>
-    private static string SerializeCall(ref Answer answer, double queueMs, long frame)
+    private static string SerializeCall(ref Answer answer, double queueMs, long frame, bool budgetHit)
     {
         using ProfScope serializing = Prof.Scope(ProfId.CallSerialize);
         if (!answer.Ok)
         {
-            return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame));
+            return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame,
+                budgetHit));
         }
 
         ShapeRequest shape = answer.Shape ?? ShapeRequest.None;
         ShapedText shaped = ApiJson.WriteReply(
-            CallReplyView.Of(answer.RequestId, answer.Result!, answer.Shape != null, answer.HandlerMs, queueMs, frame), shape,
+            CallReplyView.Of(answer.RequestId, answer.Result!, answer.Shape != null, answer.HandlerMs, queueMs, frame,
+                budgetHit), shape,
             answer.Truncations);
         int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
         int limit = Math.Min(shape.MaxBytes ?? MaxReplyBytes, MaxReplyBytes);
         if (bytes > limit)
         {
             answer = answer.Failed(ReplyTooLarge.Of(bytes, limit, shaped.Outcome));
-            return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame));
+            return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame,
+                budgetHit));
         }
 
         return shaped.Json;

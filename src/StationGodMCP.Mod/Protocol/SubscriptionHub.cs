@@ -131,12 +131,13 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         {
             // The request boundary: a bug in the read path answers this call, never the frame.
             return ApiJson.WriteShared(CallReplyView.Failed(request.Id, new ErrorView("internal_error", exception.Message),
-                Elapsed(watch), queueMs, _tick.Frame));
+                Elapsed(watch), queueMs, _tick.Frame, BudgetHit()));
         }
 
+        bool budgetHit = BudgetHit();
         return ApiJson.WriteShared(result is ErrorView error
-            ? CallReplyView.Failed(request.Id, error, Elapsed(watch), queueMs, _tick.Frame)
-            : CallReplyView.Of(request.Id, result, false, Elapsed(watch), queueMs, _tick.Frame));
+            ? CallReplyView.Failed(request.Id, error, Elapsed(watch), queueMs, _tick.Frame, budgetHit)
+            : CallReplyView.Of(request.Id, result, false, Elapsed(watch), queueMs, _tick.Frame, budgetHit));
     }
 
     public bool RunNextDueSample()
@@ -277,6 +278,9 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     private static double Elapsed(Stopwatch watch) => Math.Round(watch.Elapsed.TotalMilliseconds, 2);
 
+    /// <summary>The reply's budget_hit: whether the frame the reply is built in has reached its request budget.</summary>
+    private static bool BudgetHit() => CurrentFrame.BudgetReached(StopwatchClock.Instance.NowMs);
+
     /// <summary>A sample_logic call waiting for its run to end, and how its reply is written.</summary>
     private sealed class SampleLogicCall
     {
@@ -297,14 +301,15 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
         /// <summary>
         /// The reply: the result shaped as the call asked, or the error. elapsed_ms is the run's whole real time, from
-        /// its start to its last sample.
+        /// its start to its last sample; budget_hit is for the frame this reply is built in, not the one the run began in.
         /// </summary>
         internal string Reply(object? result, ErrorView? error, long frame)
         {
             double elapsedMs = Elapsed(_since);
+            bool budgetHit = BudgetHit();
             return result == null
-                ? ApiJson.WriteShared(CallReplyView.Failed(_id, error!, elapsedMs, _queueMs, frame))
-                : ApiJson.WriteShaped(CallReplyView.Of(_id, result, _shape != null, elapsedMs, _queueMs, frame),
+                ? ApiJson.WriteShared(CallReplyView.Failed(_id, error!, elapsedMs, _queueMs, frame, budgetHit))
+                : ApiJson.WriteShaped(CallReplyView.Of(_id, result, _shape != null, elapsedMs, _queueMs, frame, budgetHit),
                     _shape ?? ShapeRequest.None).Json;
         }
     }

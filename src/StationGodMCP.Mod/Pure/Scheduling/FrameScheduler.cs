@@ -114,17 +114,28 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         return false;
     }
 
-    /// <summary>One frame: samples, then light calls, then at most one heavy call.</summary>
+    /// <summary>
+    /// One frame: samples, then light calls, then at most one heavy call. While it runs, CurrentFrame holds the frame's
+    /// start and budget, so a reply built inside it can tell whether the budget was reached.
+    /// </summary>
     internal FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples)
     {
         Frame++;
         _expired = 0;
         FrameShares shares = _settings.SharesFor(jobHoldsTick);
         double startMs = _clock.NowMs;
-        int taken = RunSamples(samples, startMs, shares.SubscriptionMs);
-        int light = RunLight(startMs, shares.BudgetMs, out bool lightStopped);
-        int heavy = RunHeavy(startMs, shares.BudgetMs, out bool heavyStopped);
-        return new FrameOutcome(taken, light, heavy, _expired, _clock.NowMs - startMs, lightStopped || heavyStopped);
+        CurrentFrame.Begin(startMs, shares.BudgetMs);
+        try
+        {
+            int taken = RunSamples(samples, startMs, shares.SubscriptionMs);
+            int light = RunLight(startMs, shares.BudgetMs, out bool lightStopped);
+            int heavy = RunHeavy(startMs, shares.BudgetMs, out bool heavyStopped);
+            return new FrameOutcome(taken, light, heavy, _expired, _clock.NowMs - startMs, lightStopped || heavyStopped);
+        }
+        finally
+        {
+            CurrentFrame.End();
+        }
     }
 
     private int RunSamples(ISampleLane? samples, double startMs, double shareMs)

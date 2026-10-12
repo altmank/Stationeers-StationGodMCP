@@ -64,7 +64,7 @@ internal static class ShapingChecks
         Assert.Equal(serialised, Mod(view, Nothing).Json);
         if (view != null)
         {
-            CallReplyView envelope = CallReplyView.Of("w1", view, false, 1.25, 0.5, 1);
+            CallReplyView envelope = CallReplyView.Of("w1", view, false, 1.25, 0.5, 1, false);
             Assert.Equal(JsonConvert.SerializeObject(envelope, ApiJson.Settings),
                 ApiJson.WriteShaped(ApiJson.Fresh(), envelope, Nothing, ShapingRoot.Envelope).Json);
         }

@@ -8,13 +8,13 @@ namespace StationGodMCP.Api.Views;
 
 /// <summary>
 /// A reply: type reply, the call's id, ok, shaped (on a result: whether the call's shape was applied), the
-/// result or the error, and, when the call reached a handler, its main-thread time, its wait in the queue and the frame
-/// it ran in.
+/// result or the error, and, when the call reached a handler, its main-thread time, its wait in the queue, the frame
+/// it ran in and, only when true, budget_hit.
 /// </summary>
 internal sealed class CallReplyView
 {
     private CallReplyView(string? id, bool ok, bool? shaped, object? result, ErrorView? error, double? elapsedMs,
-        double? queueMs, long? frame)
+        double? queueMs, long? frame, bool budgetHit)
     {
         Id = id;
         Ok = ok;
@@ -24,6 +24,7 @@ internal sealed class CallReplyView
         ElapsedMs = elapsedMs;
         QueueMs = queueMs;
         Frame = frame;
+        BudgetHit = budgetHit ? true : null;
     }
 
     public string Type => "reply";
@@ -51,16 +52,29 @@ internal sealed class CallReplyView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public long? Frame { get; }
 
-    internal static CallReplyView Of(string? id, object result, bool shaped, double elapsedMs, double queueMs, long frame) =>
-        new CallReplyView(id, true, shaped, result, null, elapsedMs, queueMs, frame);
+    /// <summary>
+    /// True when, as this call's handler finished (before its reply was serialised), StationGod's request time in this
+    /// frame had reached the frame's request budget (CurrentFrame.BudgetReached): this call or earlier calls in the
+    /// frame spent it, a heavy call's overrun included. Absent otherwise, so the usual reply gains no bytes. A call that
+    /// finished before the budget was reached says nothing of later calls in the same frame that reached it; the reply
+    /// is built before the frame ends. Never true with an unlimited budget or outside a scheduler frame; a deferred
+    /// call (sample_logic) takes it from the frame its reply is built in. Refused replies never carry it.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? BudgetHit { get; }
 
-    /// <summary>An error from a handler: with its times and frame.</summary>
-    internal static CallReplyView Failed(string? id, ErrorView error, double elapsedMs, double queueMs, long frame) =>
-        new CallReplyView(id, false, null, null, error, elapsedMs, queueMs, frame);
+    internal static CallReplyView Of(string? id, object result, bool shaped, double elapsedMs, double queueMs, long frame,
+        bool budgetHit) =>
+        new CallReplyView(id, true, shaped, result, null, elapsedMs, queueMs, frame, budgetHit);
+
+    /// <summary>An error from a handler: with its times, frame and budget_hit.</summary>
+    internal static CallReplyView Failed(string? id, ErrorView error, double elapsedMs, double queueMs, long frame,
+        bool budgetHit) =>
+        new CallReplyView(id, false, null, null, error, elapsedMs, queueMs, frame, budgetHit);
 
     /// <summary>An error for a call that never reached a handler (refused, timed out, cancelled).</summary>
     internal static CallReplyView Refused(string? id, ErrorView error) =>
-        new CallReplyView(id, false, null, null, error, null, null, null);
+        new CallReplyView(id, false, null, null, error, null, null, null, false);
 }
 
 /// <summary>game_clock: the game's clock, for clients that must count game time.</summary>

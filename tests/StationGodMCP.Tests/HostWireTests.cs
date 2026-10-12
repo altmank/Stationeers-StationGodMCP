@@ -15,10 +15,10 @@ public sealed class HostWireTests
     {
         WireCheck.Same(
             new { type = "reply", id = "7", ok = true, shaped = false, result = new { member_count = 0 }, elapsed_ms = 1.25, queue_ms = 0.5, frame = 9L },
-            CallReplyView.Of("7", new ChuteSummaryView(0), false, 1.25, 0.5, 9));
+            CallReplyView.Of("7", new ChuteSummaryView(0), false, 1.25, 0.5, 9, false));
         WireCheck.Same(
             new { type = "reply", id = "7", ok = false, error = new { code = "method_not_found", message = "m" }, elapsed_ms = 0.1, queue_ms = 0.5, frame = 9L },
-            CallReplyView.Failed("7", new ErrorView("method_not_found", "m"), 0.1, 0.5, 9));
+            CallReplyView.Failed("7", new ErrorView("method_not_found", "m"), 0.1, 0.5, 9, false));
         WireCheck.Same(
             new { type = "reply", id = (string?)null, ok = false, error = new { code = "game_timeout", message = "t" } },
             CallReplyView.Refused(null, new ErrorView("game_timeout", "t")));
