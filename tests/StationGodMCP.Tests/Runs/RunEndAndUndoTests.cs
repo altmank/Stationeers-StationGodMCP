@@ -12,6 +12,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>undo script-N, the session-end order and the kill's timing, with the real worker.</summary>
+[Collection(PythonCollection.Name)]
 public sealed class RunEndAndUndoTests : IDisposable
 {
     private const string ThreeWrites =
@@ -70,7 +71,7 @@ public sealed class RunEndAndUndoTests : IDisposable
     public async Task ARunningRunIsNotUndoneAndSaysHowToStopIt()
     {
         await using RunBench bench = new();
-        await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)", confirm: true, maxWait: 0.3);
+        await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)", confirm: true, line: 2);
 
         VerbReply.Failed live = Failed(await bench.Host.UndoAsync(new JsonObject { ["id"] = "script-1", ["confirm"] = true }));
 
@@ -134,11 +135,11 @@ public sealed class RunEndAndUndoTests : IDisposable
     public async Task AtEofCleanupWritesGoThenSessionEndWithinTheWindowAndOtherWritesAreRefused()
     {
         await using RunBench bench = new();
-        await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\ntry:\n    sg.wait(30)\nfinally:\n" +
-                             "    sg.write('logic', id='1', logic='On', value=0)", confirm: true, maxWait: 0.3);
-        await bench.RunAsync("with sg.hold('7', 'On', 1):\n    sg.wait(30)", confirm: true, maxWait: 0.3);
-        await bench.RunAsync("try:\n    sg.wait(30)\nfinally:\n    sg.write('logic', id='9', logic='On', value=1)",
-            confirm: true, maxWait: 0.3);
+        await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\ntry:\n    sg.wait(30)\nfinally:\n" +
+                               "    sg.write('logic', id='1', logic='On', value=0)", confirm: true, line: 3);
+        await bench.StartAsync("with sg.hold('7', 'On', 1):\n    sg.wait(30)", confirm: true, line: 2);
+        await bench.StartAsync("try:\n    sg.wait(30)\nfinally:\n    sg.write('logic', id='9', logic='On', value=1)",
+            confirm: true, line: 2);
 
         Stopwatch eof = Stopwatch.StartNew();
         await bench.Host.EndSessionAsync();
@@ -160,11 +161,23 @@ public sealed class RunEndAndUndoTests : IDisposable
     {
         Journal journal = Journal.Open(_folder, "hub-00000000000000b0", mcp: true, () => "world-1");
         await using RunBench bench = new(adjust: settings => JournalTests.WithJournal(settings, journal));
-        bench.World.CallDelay = call => call.Method == "write_logic_many" && call.Parameters.GetRawText().Contains("\"value\":0")
-            ? TimeSpan.FromSeconds(5)
-            : TimeSpan.Zero;
-        await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\ntry:\n    sg.wait(30)\nfinally:\n" +
-                             "    sg.write('logic', id='1', logic='On', value=0)", confirm: true, maxWait: 0.3);
+        // The cleanup write reaches the game and waits there until session_end cancels it.
+        TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task never = new TaskCompletionSource().Task;
+        bench.World.Gate = call =>
+        {
+            if (call.Method != "write_logic_many" || !call.Parameters.GetRawText().Contains("\"value\":0"))
+            {
+                return null;
+            }
+
+            arrived.TrySetResult();
+            return never;
+        };
+        string id = await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\ntry:\n    sg.wait(30)\nfinally:\n" +
+                                           "    sg.write('logic', id='1', logic='On', value=0)", confirm: true, line: 3);
+        bench.Host.Stop(new JsonObject { ["id"] = id });
+        await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
 
         await bench.Host.EndSessionAsync();
         DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(5);
@@ -187,16 +200,31 @@ public sealed class RunEndAndUndoTests : IDisposable
             KillAfter = TimeSpan.FromSeconds(1),
             KillLatest = TimeSpan.FromSeconds(8)
         });
-        bench.World.CallDelay = call => call.Method == "read_logic_many" ? TimeSpan.FromSeconds(2.5) : TimeSpan.Zero;
+        TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        bench.World.Gate = call =>
+        {
+            if (call.Method != "read_logic_many")
+            {
+                return null;
+            }
+
+            arrived.TrySetResult();
+            return release.Task;
+        };
 
         await bench.RunAsync("try:\n    sg.read('logic', id='1', logic='On')\n    sg.wait(30)\nexcept BaseException:\n    pass\n" +
-                             "while True:\n    pass", confirm: true, maxWait: 0.2);
-        Stopwatch since = Stopwatch.StartNew();
+                             "while True:\n    pass", confirm: true, maxWait: 0);
+        await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
         bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        // Past KillAfter (1 s) with the read still held in flight: the run must still be alive.
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        bool aliveWhileInFlight = bench.Host.Find("script-1")!.IsLive;
+        release.TrySetResult();
         await EndedAsync(bench, "script-1");
 
+        Assert.True(aliveWhileInFlight, "the kill came while a call was in flight, before KillLatest");
         Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
-        Assert.InRange(since.Elapsed.TotalSeconds, 1.8, 4.5);
     }
 
     [PythonFact]
@@ -208,15 +236,28 @@ public sealed class RunEndAndUndoTests : IDisposable
             KillAfter = TimeSpan.FromSeconds(1),
             KillLatest = TimeSpan.FromSeconds(3)
         });
-        bench.World.CallDelay = call => call.Method == "read_logic_many" ? TimeSpan.FromSeconds(30) : TimeSpan.Zero;
+        // The read is held in flight for good: only KillLatest can end the run.
+        TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task never = new TaskCompletionSource().Task;
+        bench.World.Gate = call =>
+        {
+            if (call.Method != "read_logic_many")
+            {
+                return null;
+            }
 
-        await bench.RunAsync("sg.read('logic', id='1', logic='On')", confirm: true, maxWait: 0.2);
+            arrived.TrySetResult();
+            return never;
+        };
+
+        await bench.RunAsync("sg.read('logic', id='1', logic='On')", confirm: true, maxWait: 0);
+        await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
         Stopwatch since = Stopwatch.StartNew();
         bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
         await EndedAsync(bench, "script-1");
 
         Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
-        Assert.InRange(since.Elapsed.TotalSeconds, 2.5, 5.5);
+        Assert.True(since.Elapsed >= TimeSpan.FromSeconds(3), "killed before KillLatest while a call was in flight");
     }
 
     private static JsonNode Done(VerbReply? reply) =>

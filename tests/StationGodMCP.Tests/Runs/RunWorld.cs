@@ -55,6 +55,12 @@ internal sealed class RunWorld : IHubLink
     /// <summary>How long a call waits before it is answered (cancellable); null or zero: at once.</summary>
     public Func<GameCall, TimeSpan>? CallDelay { get; set; }
 
+    /// <summary>
+    /// A gate a call waits on before it is answered (null: none): the test opens it, so a call stays in flight for
+    /// exactly as long as the test says. session_end answers a gated call cancelled, as the mod does.
+    /// </summary>
+    public Func<GameCall, Task?>? Gate { get; set; }
+
     /// <summary>True for a (id, logic, value) write the game refuses (its row answers ok: false).</summary>
     public Func<string, string, double, bool>? RefusesWrite { get; set; }
 
@@ -143,6 +149,19 @@ internal sealed class RunWorld : IHubLink
             }
 
             return FakeGameLink.Refused("world_changed", "the world changed");
+        }
+
+        if (Gate?.Invoke(call) is { } gate)
+        {
+            using CancellationTokenSource either = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _sessionEnd.Token);
+            try
+            {
+                await gate.WaitAsync(either.Token);
+            }
+            catch (OperationCanceledException) when (_sessionEnd.IsCancellationRequested && !cancellation.IsCancellationRequested)
+            {
+                return FakeGameLink.Refused("cancelled", "session_end cancelled the call before it ran");
+            }
         }
 
         if (CallDelay?.Invoke(call) is { } delay && delay > TimeSpan.Zero)
@@ -396,6 +415,32 @@ internal sealed class RunBench : IAsyncDisposable
     /// <summary>Why the run tests cannot run here (no Python), or null.</summary>
     public static string? MissingPython => PythonProblem.Value;
 
+    /// <summary>
+    /// Starts a run and returns once its latest sg call comes from the given line (it is inside that call, a wait say),
+    /// so what the test does next meets the run where the test means it to: no reply wait races the worker's start.
+    /// </summary>
+    public async Task<string> StartAsync(string code, bool confirm, int line)
+    {
+        string text = await RunAsync(code, confirm, maxWait: 0);
+        string id = text.Split(' ', 2)[0];
+        await UntilAsync(() => Host.LineOf(id) == line, $"{id} reaching line {line}");
+        return id;
+    }
+
+    /// <summary>Waits for a condition the run's own progress makes true (no deadline races: only a bound on a hang).</summary>
+    public static async Task UntilAsync(Func<bool> condition, string what)
+    {
+        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while (!condition())
+        {
+            Assert.True(DateTime.UtcNow < until, $"Timed out waiting for {what}.");
+            await Task.Delay(10);
+        }
+    }
+
+    /// <summary>Waits for the run to end.</summary>
+    public Task EndedAsync(string id) => UntilAsync(() => !Host.Find(id)!.IsLive, $"{id} to end");
+
     public async Task<string> RunAsync(string code, bool confirm = false, double? maxWait = null)
     {
         JsonObject options = new() { ["code"] = code };
@@ -450,6 +495,16 @@ internal sealed class RunBench : IAsyncDisposable
             return $"Python 3 (py -3 or python3) is not installed ({exception.Message}): the run tests need the real script worker.";
         }
     }
+}
+
+/// <summary>
+/// The tests that start Python workers or measure time: one collection, run on its own after the rest, so neither they
+/// nor the rest of the suite steal the CPU from each other's timing.
+/// </summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class PythonCollection
+{
+    public const string Name = "Python workers and timing";
 }
 
 /// <summary>A test that needs the real script worker: skipped, saying why, when Python 3 cannot run.</summary>

@@ -11,6 +11,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>The seen set's extraction rules (hub.md, The seen set), and the MCP adapter feeding it and serving runs.</summary>
+[Collection(PythonCollection.Name)]
 public sealed class SeenSetTests
 {
     [Fact]

@@ -443,6 +443,9 @@ public sealed partial class RunHost : IAsyncDisposable
         }
     }
 
+    /// <summary>The code line a live run's latest sg call came from; null when it has made none or is not live.</summary>
+    internal int? LineOf(string id) => NotesOf(id)?.Run?.Line;
+
     private Notes? NotesOf(string id)
     {
         lock (_gate)

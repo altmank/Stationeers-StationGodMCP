@@ -16,6 +16,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>The C4 review's safety findings, each as a run that would have gone wrong before.</summary>
+[Collection(PythonCollection.Name)]
 public sealed class RunReviewTests
 {
     // A write to 1, then a wait the test stops, then a finally of the test's choosing.
@@ -39,14 +40,14 @@ public sealed class RunReviewTests
         await using RunBench bench = new();
         bench.World.Set("7", "On", 0);
 
-        await bench.RunAsync(
+        await bench.StartAsync(
             "with sg.hold('7', 'On', 1):\n    try:\n        sg.wait(30)\n    finally:\n" +
             "        from sg import _session\n" +
             "        r = _session.request('hold', {'phase': 'exit', 'ids': ['9'], 'logic': 'On', 'after': 5})\n" +
             "        print('forged', r['rows'][0]['ok'])\n" +
             "        r = _session.request('hold', {'phase': 'exit', 'ids': ['7'], 'logic': 'On', 'after': 99})\n" +
             "        print('real', r['rows'][0]['ok'], r['rows'][0]['value'])\n",
-            confirm: true, maxWait: 0.5);
+            confirm: true, line: 3);
         bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
         string text = await FinalAsync(bench, "script-1");
 
@@ -115,7 +116,7 @@ public sealed class RunReviewTests
     public async Task AScriptMayNotInspectOrStopAnotherRunNorEveryRun()
     {
         await using RunBench bench = new();
-        await bench.RunAsync("print('pump 4820585')\nsg.wait(30)", confirm: true, maxWait: 0.3);
+        await bench.StartAsync("print('pump 4820585')\nsg.wait(30)", confirm: true, line: 2);
 
         string other = await bench.RunAsync("print(sg.inspect('job', id='script-1'))");
         string every = await bench.RunAsync("sg.server('stop')", confirm: true);
@@ -181,9 +182,21 @@ public sealed class RunReviewTests
             KillLatest = settings.KillLatest,
             Journal = journal
         });
-        bench.World.CallDelay = call => call.Method == "write_logic_many" ? TimeSpan.FromSeconds(20) : TimeSpan.Zero;
+        TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task never = new TaskCompletionSource().Task;
+        bench.World.Gate = call =>
+        {
+            if (call.Method != "write_logic_many")
+            {
+                return null;
+            }
 
-        await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)", confirm: true, maxWait: 0.5);
+            arrived.TrySetResult();
+            return never;
+        };
+
+        await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)", confirm: true, maxWait: 0);
+        await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
         bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
         bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
         string text = await FinalAsync(bench, "script-1");
@@ -241,8 +254,8 @@ public sealed class RunReviewTests
     {
         await using RunBench bench = new();
 
-        await bench.RunAsync(StopInFinally(
-            "    with sg.hold('1', 'On', 0) as held:\n        print('body ran')\n"), confirm: true, maxWait: 0.5);
+        await bench.StartAsync(StopInFinally(
+            "    with sg.hold('1', 'On', 0) as held:\n        print('body ran')\n"), confirm: true, line: 3);
         bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
         string text = await FinalAsync(bench, "script-1");
 
@@ -256,7 +269,8 @@ public sealed class RunReviewTests
         await using RunBench bench = new();
         bench.World.Set("7", "On", 0);
 
-        await bench.RunAsync("with sg.hold('7', 'On', 1):\n    while True:\n        pass", confirm: true, maxWait: 0.5);
+        await bench.RunAsync("with sg.hold('7', 'On', 1):\n    while True:\n        pass", confirm: true, maxWait: 0);
+        await RunBench.UntilAsync(() => bench.World.Value("7", "On") == 1, "the hold's write");
         bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
         string text = await FinalAsync(bench, "script-1");
 
@@ -340,7 +354,8 @@ public sealed class RunReviewTests
             KillLatest = TimeSpan.FromSeconds(3)
         });
         await adapter.HandleAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"run_script","arguments":{"code":"sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)","confirm":true,"max_wait":0.5}}}""");
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"run_script","arguments":{"code":"sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)","confirm":true,"max_wait":0}}}""");
+        await RunBench.UntilAsync(() => adapter.Runs!.LineOf("script-1") == 2, "script-1 reaching its wait");
         adapter.Runs!.Stop(new JsonObject { ["id"] = "script-1" });
         DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(10);
         while (adapter.Runs.Find("script-1")!.IsLive && DateTime.UtcNow < until)

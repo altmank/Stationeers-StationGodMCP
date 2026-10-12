@@ -9,6 +9,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>Report and confirmed runs with the real worker: what acts, what is reported, what stops a run.</summary>
+[Collection(PythonCollection.Name)]
 public sealed class RunRouteTests
 {
     private const string WriteOne = "sg.write('logic', id='122643', logic='Open', value=1)";

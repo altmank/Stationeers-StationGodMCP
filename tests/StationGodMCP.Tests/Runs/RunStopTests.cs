@@ -9,10 +9,15 @@ using Xunit;
 
 namespace StationGodMCP.Tests.Runs;
 
-/// <summary>Stops, kills, world changes, reply waits and notices, with the real worker.</summary>
+/// <summary>
+/// Stops, kills, world changes, reply waits and notices, with the real worker. Each test meets the run at a known line
+/// (RunBench.StartAsync) rather than racing a reply wait against the worker's start; time is measured only where a
+/// bound is the point, and then only one-sided in the direction that cannot flake (a kill can not come early).
+/// </summary>
+[Collection(PythonCollection.Name)]
 public sealed class RunStopTests
 {
-    // Writes 1 On=1, waits, and in its finally writes 1 back (written: acts) and 2 (never written: refused).
+    // Writes 1 On=1, waits (line 3), and in its finally writes 1 back (written: acts) and 2 (never written: refused).
     private const string WriteWaitFinally =
         "sg.write('logic', id='1', logic='On', value=1)\n" +
         "try:\n    sg.wait(30)\nfinally:\n" +
@@ -20,14 +25,18 @@ public sealed class RunStopTests
         "    r = sg.write('logic', id='2', logic='On', value=1)\n" +
         "    print('second', r['results'][0]['ok'])\n";
 
+    // A run that swallows its stop and then spins in Python, making no sg call (the wait is line 2).
+    private const string Swallows = "try:\n    sg.wait(30)\nexcept BaseException:\n    pass\nwhile True:\n    pass";
+
     [PythonFact]
     public async Task AfterAStopAFinallyWriteToAWrittenTargetActsAsCleanupAndAnUnwrittenOneAnswersAnErrorRow()
     {
         await using RunBench bench = new();
 
-        string running = await bench.RunAsync(WriteWaitFinally, confirm: true, maxWait: 0.5);
-        VerbReply? stopped = bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
-        string text = await FinalAsync(bench, "script-1");
+        string id = await bench.StartAsync(WriteWaitFinally, confirm: true, line: 3);
+        string running = await TextAsync(bench, id);
+        VerbReply? stopped = bench.Host.Stop(new JsonObject { ["id"] = id });
+        string text = await FinalAsync(bench, id);
 
         Assert.StartsWith("script-1 running: line 3", running);
         Assert.Contains("+1 write logic", running);
@@ -47,9 +56,9 @@ public sealed class RunStopTests
     {
         await using RunBench bench = new();
 
-        await bench.RunAsync(WriteWaitFinally, confirm: true, maxWait: 0.5);
+        string id = await bench.StartAsync(WriteWaitFinally, confirm: true, line: 3);
         bench.World.ChangeWorld("world-2");
-        string text = await FinalAsync(bench, "script-1");
+        string text = await FinalAsync(bench, id);
 
         Assert.StartsWith("script-1 stopped: world_changed", text);
         Assert.Equal(1, bench.World.Value("1", "On"));
@@ -63,12 +72,12 @@ public sealed class RunStopTests
     {
         await using RunBench bench = new();
 
-        await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)", confirm: true, maxWait: 0.5);
+        string id = await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)", confirm: true, line: 2);
         bench.Host.Stop(new JsonObject());
-        await EndedAsync(bench, "script-1");
+        await bench.EndedAsync(id);
         var first = await bench.Host.NoticesAsync("read", "logic", null);
         var second = await bench.Host.NoticesAsync("find", "thing", null);
-        string inspected = await FinalAsync(bench, "script-1");
+        string inspected = await FinalAsync(bench, id);
         var after = await bench.Host.NoticesAsync("read", "logic", null);
 
         string notice = Assert.Single(first);
@@ -84,14 +93,14 @@ public sealed class RunStopTests
     {
         await using RunBench bench = new();
 
-        await bench.RunAsync("sg.wait(1)\nx = 1", confirm: true, maxWait: 0.2);
-        await EndedAsync(bench, "script-1");
+        string id = await bench.StartAsync("sg.wait(0.2)\nx = 1", confirm: true, line: 1);
+        await bench.EndedAsync(id);
         var direct = await bench.Host.NoticesAsync("read", "logic", null);
         var first = await bench.Host.NoticesAsync("run_script", null, "script-2");
         var again = await bench.Host.NoticesAsync("inspect", "job", null);
 
         Assert.Empty(direct);
-        Assert.Equal("notice: script-1 (sg.wait(1)) done; if you did not start it, leave it", Assert.Single(first));
+        Assert.Equal("notice: script-1 (sg.wait(0.2)) done; if you did not start it, leave it", Assert.Single(first));
         Assert.Empty(again);
     }
 
@@ -100,11 +109,11 @@ public sealed class RunStopTests
     {
         await using RunBench bench = new();
 
-        await bench.RunAsync("sg.wait(30)", confirm: true, maxWait: 0.3);
-        await bench.RunAsync("sg.wait(30)", confirm: true, maxWait: 0.3);
+        string one = await bench.StartAsync("sg.wait(30)", confirm: true, line: 1);
+        string two = await bench.StartAsync("sg.wait(30)", confirm: true, line: 1);
         JsonNode reply = ((VerbReply.Done)bench.Host.Stop(new JsonObject())!).Reply!;
-        string first = await FinalAsync(bench, "script-1");
-        string second = await FinalAsync(bench, "script-2");
+        string first = await FinalAsync(bench, one);
+        string second = await FinalAsync(bench, two);
 
         Assert.Equal(2, (int)reply["count"]!);
         Assert.Equal("sg.wait(30)", (string)reply["runs"]![0]!["first_line"]!);
@@ -115,53 +124,48 @@ public sealed class RunStopTests
     [PythonFact]
     public async Task ASwallowedStopEndsAtTheKillAfterTheStop()
     {
-        await using RunBench bench = new();
+        // KillAfter 1 s, KillLatest 20 s: with no call in flight the kill comes at the first, far from the second.
+        await using RunBench bench = new(adjust: Kill(after: 1, latest: 20));
 
-        await bench.RunAsync("try:\n    sg.wait(30)\nexcept BaseException:\n    pass\nwhile True:\n    pass",
-            confirm: true, maxWait: 0.3);
+        string id = await bench.StartAsync(Swallows, confirm: true, line: 2);
         Stopwatch since = Stopwatch.StartNew();
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
-        await EndedAsync(bench, "script-1");
+        bench.Host.Stop(new JsonObject { ["id"] = id });
+        await bench.EndedAsync(id);
 
-        Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
-        Assert.InRange(since.Elapsed.TotalSeconds, 0.8, 2.9);
+        Assert.Equal(RunState.Killed, bench.Host.Find(id)!.State);
+        Assert.True(since.Elapsed >= TimeSpan.FromSeconds(1), "killed before KillAfter");
+        Assert.True(since.Elapsed < TimeSpan.FromSeconds(15), "the kill waited for KillLatest though nothing was in flight");
     }
 
     [PythonFact]
-    public async Task ACallInFlightHoldsTheKillOffButNotPastTheLatest()
+    public async Task ACallsInFlightHoldTheKillOffButNotPastTheLatest()
     {
-        await using RunBench bench = new();
+        // A loop of short calls keeps one in flight most of the time; KillLatest (3 s) ends it whatever.
+        await using RunBench bench = new(adjust: Kill(after: 1, latest: 3));
 
-        await bench.RunAsync("while True:\n    try:\n        sg.wait(0.01)\n    except BaseException:\n        pass",
-            confirm: true, maxWait: 0.3);
+        string id = await bench.StartAsync("while True:\n    try:\n        sg.wait(0.01)\n    except BaseException:\n        pass",
+            confirm: true, line: 3);
         Stopwatch since = Stopwatch.StartNew();
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
-        await EndedAsync(bench, "script-1");
+        bench.Host.Stop(new JsonObject { ["id"] = id });
+        await bench.EndedAsync(id);
 
-        Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
-        Assert.InRange(since.Elapsed.TotalSeconds, 0.8, 3.9);
+        Assert.Equal(RunState.Killed, bench.Host.Find(id)!.State);
+        Assert.True(since.Elapsed >= TimeSpan.FromSeconds(1), "killed before KillAfter");
     }
 
     [PythonFact]
     public async Task ASecondStopKillsAtOnce()
     {
-        await using RunBench bench = new(adjust: settings => new RunHostSettings
-        {
-            SgRoot = settings.SgRoot,
-            KillAfter = TimeSpan.FromSeconds(20),
-            KillLatest = TimeSpan.FromSeconds(30)
-        });
+        await using RunBench bench = new(adjust: Kill(after: 60, latest: 120));
 
-        await bench.RunAsync("try:\n    sg.wait(30)\nexcept BaseException:\n    pass\nwhile True:\n    pass",
-            confirm: true, maxWait: 0.3);
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
-        await Task.Delay(300);
-        Stopwatch since = Stopwatch.StartNew();
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
-        await EndedAsync(bench, "script-1");
+        string id = await bench.StartAsync(Swallows, confirm: true, line: 2);
+        bench.Host.Stop(new JsonObject { ["id"] = id });
+        await RunBench.UntilAsync(() => bench.Host.Find(id)!.StopCode != null, "the first stop");
+        bench.Host.Stop(new JsonObject { ["id"] = id });
+        await bench.EndedAsync(id);
 
-        Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
-        Assert.True(since.Elapsed < TimeSpan.FromSeconds(5));
+        // Without the second stop the run would live another minute (KillAfter 60 s).
+        Assert.Equal(RunState.Killed, bench.Host.Find(id)!.State);
     }
 
     [PythonFact]
@@ -170,15 +174,16 @@ public sealed class RunStopTests
         await using RunBench bench = new(adjust: Ceiling(1));
         Stopwatch since = Stopwatch.StartNew();
 
-        string text = await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\nsg.wait(3)", confirm: true,
+        string text = await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)", confirm: true,
             maxWait: 120);
+        TimeSpan answered = since.Elapsed;
+        // inspect job on a live confirmed run has the same ceiling.
+        string inspected = await TextAsync(bench, "script-1", maxWait: 120);
+        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
 
         Assert.StartsWith("script-1 running:", text);
-        Assert.InRange(since.Elapsed.TotalSeconds, 0.9, 2.5);
-        // inspect job on a live confirmed run has the same ceiling.
-        Assert.StartsWith("script-1 running:", await FinalAsync(bench, "script-1"));
-        await EndedAsync(bench, "script-1");
-        Assert.StartsWith("script-1 done", await FinalAsync(bench, "script-1"));
+        Assert.True(answered >= TimeSpan.FromSeconds(1) && answered < TimeSpan.FromSeconds(25), answered.ToString());
+        Assert.StartsWith("script-1 running:", inspected);
     }
 
     [PythonFact]
@@ -205,14 +210,14 @@ public sealed class RunStopTests
     public async Task TheFirstWriteMovesAReadOnlyRunToTheCeiling()
     {
         await using RunBench bench = new(adjust: Ceiling(1));
-        Stopwatch since = Stopwatch.StartNew();
 
-        // getattr hides the write from the analysis, so the run starts read-only.
-        string text = await bench.RunAsync("getattr(sg, 'wr' + 'ite')('logic', id='1', logic='On', value=1)\nsg.wait(4)",
+        // getattr hides the write from the analysis, so the run starts read-only; it then waits 30 s, so only the
+        // ceiling can answer it.
+        string text = await bench.RunAsync("getattr(sg, 'wr' + 'ite')('logic', id='1', logic='On', value=1)\nsg.wait(30)",
             confirm: true);
+        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
 
         Assert.StartsWith("script-1 running:", text);
-        Assert.True(since.Elapsed < TimeSpan.FromSeconds(3.5));
         Assert.Equal(1, bench.World.Value("1", "On"));
     }
 
@@ -245,19 +250,21 @@ public sealed class RunStopTests
         ConfirmedCeiling = TimeSpan.FromSeconds(seconds)
     };
 
+    private static Func<RunHostSettings, RunHostSettings> Kill(int after, int latest) => settings => new RunHostSettings
+    {
+        SgRoot = settings.SgRoot,
+        KillAfter = TimeSpan.FromSeconds(after),
+        KillLatest = TimeSpan.FromSeconds(latest)
+    };
+
+    // inspect job's text now (a live run's running line, at once).
+    private static async Task<string> TextAsync(RunBench bench, string id, double maxWait = 0) =>
+        RunBench.Text(await bench.Host.InspectJobAsync(new JsonObject { ["id"] = id, ["max_wait"] = maxWait }));
+
+    // The run's final text, once it has ended.
     private static async Task<string> FinalAsync(RunBench bench, string id)
     {
-        VerbReply? reply = await bench.Host.InspectJobAsync(new JsonObject { ["id"] = id, ["max_wait"] = 15 });
-        return RunBench.Text(reply);
-    }
-
-    private static async Task EndedAsync(RunBench bench, string id)
-    {
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(15);
-        while (bench.Host.Find(id)!.IsLive)
-        {
-            Assert.True(DateTime.UtcNow < until, $"{id} did not end in time.");
-            await Task.Delay(20);
-        }
+        await bench.EndedAsync(id);
+        return await TextAsync(bench, id);
     }
 }

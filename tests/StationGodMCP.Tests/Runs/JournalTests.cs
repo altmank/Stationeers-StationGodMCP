@@ -16,6 +16,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>The journal (hub.md, The journal): lines and their order, the lock, adoption, restores, retirement.</summary>
+[Collection(PythonCollection.Name)]
 public sealed class JournalTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "sg-journal-" + Guid.NewGuid().ToString("N"));
@@ -62,7 +63,7 @@ public sealed class JournalTests : IDisposable
         Journal journal = Journal.Open(_folder, "hub-00000000000000ab", mcp: true, () => "world-1");
         await using RunBench bench = new(adjust: settings => WithJournal(settings, journal));
 
-        await bench.RunAsync("with sg.hold('7', 'On', 1):\n    sg.wait(30)", confirm: true, maxWait: 0.5);
+        await bench.StartAsync("with sg.hold('7', 'On', 1):\n    sg.wait(30)", confirm: true, line: 2);
         bench.World.ChangeWorld("world-2");
         await EndedAsync(bench, "script-1");
         List<string> kinds = journal.Lines().Select(line => (string)Line(line)["t"]!).ToList();
