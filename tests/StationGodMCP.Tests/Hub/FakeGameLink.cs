@@ -19,9 +19,41 @@ internal sealed class FakeGameLink : IGameLink
 {
     public ConcurrentQueue<GameCall> Calls { get; } = new();
 
-    // The player's id is asked before a move to "player"; every other call answers {}.
-    public Func<GameCall, GameReply> Answer { get; set; } =
-        call => Ok(call.Method == "player_vitals" ? """{"reference_id":"77"}""" : "{}");
+    // The player's id is asked before a move to "player"; a logic write's dry run reports each write as the mod's
+    // does; every other call answers {}.
+    public Func<GameCall, GameReply> Answer { get; set; } = call => call.Method switch
+    {
+        "player_vitals" => Ok("""{"reference_id":"77"}"""),
+        "write_logic" or "write_logic_many" when call.Params()["dry_run"] is JsonValue dry && (bool)dry => LogicReport(call),
+        _ => Ok("{}")
+    };
+
+    /// <summary>write_logic(_many)'s dry run: each write with the value there now (0), nothing written.</summary>
+    public static GameReply LogicReport(GameCall call)
+    {
+        JsonObject args = call.Params();
+        JsonArray writes = args["writes"] as JsonArray ?? new JsonArray(args.DeepClone());
+        JsonArray rows = new();
+        foreach (JsonNode? write in writes)
+        {
+            rows.Add(new JsonObject
+            {
+                ["index"] = rows.Count,
+                ["ok"] = true,
+                ["reference_id"] = write!["reference_id"]?.DeepClone(),
+                ["logic_type"] = new JsonObject { ["name"] = write["logic_type"]?.DeepClone() },
+                ["requested_value"] = write["value"]?.DeepClone(),
+                ["previous_value"] = 0,
+                ["opens"] = false
+            });
+        }
+
+        JsonObject report = args["writes"] is JsonArray
+            ? new JsonObject { ["report_only"] = true, ["problems"] = new JsonArray(), ["warnings"] = new JsonArray(), ["results"] = rows }
+            : (JsonObject)rows[0]!.DeepClone();
+        report["report_only"] = true;
+        return Ok(report.ToJsonString());
+    }
 
     /// <summary>The jobs topic: the job's facts, or null (a timeout, or early after a reconnect); unset: no job waits.</summary>
     public Func<string, JsonElement?>? WaitJob { get; set; }
