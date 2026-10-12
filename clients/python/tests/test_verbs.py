@@ -1,4 +1,6 @@
 """Verb calls (params and line), reply dicts, the main list's paging, and the error mapping."""
+import copy
+import pickle
 import unittest
 
 from _support import HubCase, ok, refused
@@ -151,6 +153,32 @@ class ErrorTests(HubCase):
         with self.assertRaises(_PassEnd):
             sg.wait(1)
         self.assertFalse(issubclass(_PassEnd, Exception))
+
+
+class MainListUsesTests(HubCase):
+    def setUp(self):
+        super().setUp()
+        self.handler = lambda method, params: ok({"things": [1, 2], "cursor": "c", "main": "things"}) \
+            if method == "verb" else ok({"entries": [3]})
+
+    def test_adding_to_a_plain_list_copy_deepcopy_and_pickle_see_every_page(self):
+        self.assertEqual([0, 1, 2, 3], [0] + sg.find("thing")["things"])
+        self.assertEqual([1, 2, 3], copy.copy(sg.find("thing")["things"]))
+        self.assertEqual([1, 2, 3], copy.deepcopy(sg.find("thing")["things"]))
+        self.assertEqual([1, 2, 3], pickle.loads(pickle.dumps(sg.find("thing")["things"])))
+
+
+class NestedRowTests(HubCase):
+    def test_a_missing_key_at_any_depth_carries_that_dicts_keys(self):
+        self.handler = lambda method, params: ok({"device": {"logic": {"On": 1, "Power": 4}},
+                                                  "results": [{"slots": [{"index": 0, "logic": {}}]}]})
+        reply = sg.inspect("device", id="1")
+        with self.assertRaises(KeyError) as raised:
+            reply["device"]["logic"]["Onn"]
+        self.assertEqual(["On", "Power"], raised.exception.reply_keys)
+        with self.assertRaises(KeyError) as raised:
+            reply["results"][0]["slots"][0]["occupant"]
+        self.assertEqual(["index", "logic"], raised.exception.reply_keys)
 
 
 if __name__ == "__main__":

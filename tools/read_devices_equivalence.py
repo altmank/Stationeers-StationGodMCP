@@ -11,41 +11,35 @@ reagents, game_clock, read_logic_many, read_devices, thing_health.
 
     python tools/read_devices_equivalence.py --pipe StationGodMCP-Test
     python tools/read_devices_equivalence.py --ids 811234,811300 --exact
+    python tools/read_devices_equivalence.py --hub path/to/StationGodMCP.Server.exe --pipe StationGodMCP-Test
+
+It talks to the game through a child hub (sg.connect: StationGodMCP.Server --hub), which passes mod methods through
+on its own stream; --hub, else STATIONGODMCP_HUB, else StationGodMCP.Server on PATH.
 
 Exit code 0 when everything matched, 1 otherwise.
 """
 import argparse
-import itertools
 import json
 import math
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "clients", "python"))
-from stationgod.connection import PipeTarget, encode, open_connection  # noqa: E402
+from sg import _transport  # noqa: E402
 
 LIVE_ABS = 0.5           # default tolerance for live values: absolute ...
 LIVE_REL = 0.02          # ... or relative, whichever is larger
 
 
 class Pipe:
-    """One protocol-2 connection on the named pipe (hello and welcome through the Python library in clients/python);
-    each call's reply message ({ok, result} or {ok, error}) read back here, one call at a time."""
+    """The game through a child hub (sg's transport); each mod method's reply message ({ok, result} or
+    {ok, error}) as the hub passes it back, one call at a time."""
 
-    def __init__(self, name):
-        self.connection = open_connection(PipeTarget(name), client="read-devices-equivalence", connect_timeout=10.0)
-        self.ids = itertools.count(1)
+    def __init__(self, name, hub=None):
+        self.transport = _transport.connect(hub, "--pipe", name, client="read-devices-equivalence")
 
     def call(self, method, **params):
-        call_id = str(next(self.ids))
-        self.connection.stream.write(encode({"type": "call", "id": call_id, "method": method, "params": params}))
-        while True:
-            line = self.connection.lines.next()
-            if line is None:
-                raise RuntimeError(f"{method}: the game closed the connection without replying")
-            reply = json.loads(line)
-            if reply.get("type") == "reply" and reply.get("id") == call_id:
-                return reply
+        return self.transport.call(method, params)
 
 
 class Report:
@@ -237,6 +231,7 @@ def compare_health(pipe, report, network_id):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pipe", default="StationGodMCP", help="pipe name (default StationGodMCP)")
+    parser.add_argument("--hub", default=None, help="the hub program (default STATIONGODMCP_HUB, else on PATH)")
     parser.add_argument("--ids", default="", help="comma-separated device reference ids (default: list_devices)")
     parser.add_argument("--limit", type=int, default=20, help="devices from list_devices when --ids is not given")
     parser.add_argument("--max-logic", type=int, default=12, help="logic types per device")
@@ -245,7 +240,7 @@ def main():
     parser.add_argument("--rel", type=float, default=LIVE_REL)
     args = parser.parse_args()
 
-    pipe = Pipe(args.pipe)
+    pipe = Pipe(args.pipe, args.hub)
     report = Report(args.exact, args.abs, args.rel)
     ids = pick_devices(pipe, [i.strip() for i in args.ids.split(",") if i.strip()], args.limit)
     items = plan(pipe, ids, args.max_logic)

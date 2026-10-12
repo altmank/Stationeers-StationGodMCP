@@ -29,8 +29,12 @@ def connect(hub_path=None, *hub_args, client="sg-py"):
     """Starts a child hub and makes it the one sg calls go to; returns its transport (`.welcome`, `.close()`).
 
     The hub is hub_path, else the STATIONGODMCP_HUB environment variable, else StationGodMCP.Server on PATH; hub_args
-    are passed to it after --hub. The child hub ends when this program does."""
+    are passed to it after --hub. The child hub ends when this program does. A second sg.connect() closes the
+    first connection (and its child hub) once the new one is up."""
     transport = _transport.connect(hub_path, *hub_args, client=client)
+    old = _session._transport
+    if old is not None and old is not transport:
+        old.close()
     _session.use(transport)
     return transport
 

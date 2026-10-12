@@ -2,11 +2,13 @@
 
 [Back to the overview](README.md)
 
-Two official client libraries speak the protocol: one in Python for the dashboard, scripts and test tools, one in C#
-inside the sidecar. Both live in this repository. They own the things a caller should not have to get right on their
-own: connecting, sending several calls at once, reconnecting, resending only what is safe, walking
-pages, keeping subscriptions alive, and writing output files on the caller's machine. This page gives their
-interfaces, the exact rules for output files, and the steps that move each existing client over.
+Two official client libraries live in this repository: the C# client inside the sidecar, which speaks the protocol to
+the mod, and the Python package `sg`, which speaks the hub protocol to the sidecar in its hub role ([hub.md](hub.md))
+and is what run_script code and Python programs use. The C# client owns the things a caller should not have to get
+right on its own: connecting, sending several calls at once, reconnecting, resending only what is safe, walking pages,
+keeping subscriptions alive, and writing output files on the caller's machine. This page gives the interfaces, the
+exact rules for output files, and the steps that move each existing client over. The shared rules below were written
+for both direct libraries; `sg` leaves them to the hub.
 
 ## What every library does the same way
 
@@ -96,162 +98,100 @@ tests load the same folder.
 the owner has flagged as a recurring cost (the CheatEngineExpert workspace's standing order on heavy StationGod
 payloads). The sidecar therefore writes any reply larger than `--inline-limit-kb` (default 200) to a file as if
 `output_file: true` had been given, and adds `auto_output_file: true` to the pointer. `--inline-limit-kb 0` turns it
-off. The Python library has no such default: scripts want their data.
+off. `sg` never writes output files: it gets replies through the hub.
 
-## The Python library
+## The Python library: sg
+
+`sg` replaced the direct mod client `stationgod` (removed; no aliases). It never talks to the mod: it has one
+transport, the hub protocol ([hub.md](hub.md), *The hub protocol*) over a pair of byte streams, and the hub holds the
+game connection. A run_script run's worker and a program use the same package.
 
 ### Where it lives and how it is installed
 
-`clients/python/stationgod/` in this repository, standard library only, Python 3.10 or later. On the owner's machine
-it is installed into, and run by, Python 3.12 started as `py -3.12` (the default `py`); `python` on the PATH there is
-another tool's private environment and is not used. Every install and run command in this plan names `py -3.12`.
+`clients/python/sg/` in this repository, standard library only, Python 3.10 or later.
 
 ```powershell
-py -3.12 -m pip install -e <StationGodMCP repository>\clients\python
+py -3 -m pip install -e <StationGodMCP repository>\clients\python    # for programs that import sg
 ```
 
-Windows named pipes through `ctypes` with overlapped I/O (`CreateFileW` with `FILE_FLAG_OVERLAPPED`, `ReadFile` and
-`WriteFile` with an `OVERLAPPED` structure and an event, `GetOverlappedResult`); TCP through `socket`. Released as a zip
-with each GitHub release, like the sidecar archives.
+The hub does not need it installed: it starts each worker with the folder that holds `sg` on its command line
+(below).
 
 ```text
 clients/python/
-  pyproject.toml
-  stationgod/
-    __init__.py         connect(), Client, errors
-    _catalogue.json     copied from catalogue.json by build.ps1
-    catalogue.py        loading, effective class, paging data
-    pipe.py             overlapped named-pipe I/O
-    connection.py       pipe and TCP, framing, hello/auth, reader thread
-    client.py           calls, reconnect, resend rule
-    output.py           output files
-    subscriptions.py    subscriptions
-  tests/
-clients/fixtures/       shared with the C# tests
+  pyproject.toml          package sg
+  generate_catalogue.py   writes sg/_catalogue.py, sg/_verbs.py and sg/_verbs.pyi from catalogue/verbs
+  sg/
+    __init__.py           connect(), close(), the verbs and helpers, Error, Stopped
+    _transport.py         hello/welcome, calls matched by id, events; the child hub (Job Object on Windows)
+    _session.py           the current transport and run; params.line; error mapping
+    _replies.py           Reply, Row, MainList (paging with the hub's `more`)
+    _verbs.py, _verbs.pyi generated: one function per verb; IDE stubs, one overload per what
+    _helpers.py           wait, watch, hold, ref, help
+    _analysis.py          run_analysis and compiling the code as a function body
+    _failure.py           the failed-run text (SPEC note 22)
+    worker.py             the script worker
+  tests/                  unittest, a fake hub in tests/fakehub.py
 ```
 
 ### Interface
 
 ```python
-import stationgod
+import sg
 
-game = stationgod.connect()                                   # local pipe StationGodMCP
-game = stationgod.connect(pipe="StationGodMCP-Test")          # the test server
-game = stationgod.connect(pipe="StationGodMCP", client="dashboard")            # named in hello and mod_info
-game = stationgod.connect(host="10.8.0.2", port=8765, secret_env="MY_SECRET")  # TCP, secret from MY_SECRET
+sg.connect()                         # a child hub: StationGodMCP.Server --hub (path from the argument,
+                                     # STATIONGODMCP_HUB, or PATH); extra arguments go to the hub
+sg.connect(r"C:\...\StationGodMCP.Server.exe", "--pipe", "StationGodMCP-Test")
 
-game.welcome            # the welcome message as a dict (server.pipe_name, server.world, limits, ...)
+r = sg.find('thing', prefab='*Battery*', near='player', radius=30)
+for thing in r['things']:            # the main list: a single for walks page by page
+    print(thing['reference_id'])
+sg.write('logic', id='122643', logic='On', value=1)
+sg.undo(id='script-14')
+print(sg.help('find', 'thing'))      # the what's Python stub, from the hub
 
-# Any method, keyword arguments as the catalogue names them; fields, output_file, limit and max_bytes are shaping.
-health = game.call("thing_health", reference_ids=ids, fields=["reference_id", "damage_ratio", "is_broken"])
-pointer = game.call("find_things", kind="structure", output_file=True)
-
-# Every page of a method with x-paging, one entry at a time (not a snapshot; see the method's order).
-for thing in game.iterate("find_things", kind="structure", page_size=500):
+sg.wait(5)                                            # None; time.sleep is sg.wait inside a run
+rows, met = sg.watch([{'id': tank, 'logic': 'Pressure'}], lambda rows: rows[0]['value'] > 8000, 600)
+with sg.hold(['4612280'], 'On', value=1):             # restored on exit (normal, exception or stop)
     ...
-
-# Several calls at once from one thread.
-futures = [game.call_async("read_logic", reference_id=r, logic_type="On") for r in refs]
-values = [f.result() for f in futures]
-
-# Subscriptions.
-sub = game.subscribe(items=[{"reference_id": "811234", "logic": ["Temperature", "Pressure"]}],
-                     include=["clock"], interval_s=1)
-state = sub.state       # the last read_devices result received, with sub.seq and sub.frame
-sub.wait(timeout=5)     # block until the next update, True if one came
-sub.on_update(lambda state: ...)   # or a callback, on the library's event thread
-sub.close()
-
-game.on_world_changed(lambda world: ...)
-game.on_call = lambda method, ms, reply_bytes, elapsed_ms, queue_ms: ...   # metering hook for the dashboard
-game.close()
+sg.ref('r7')
+sg.close()
 ```
 
-Errors:
+- Each verb function sends `call` method `verb` with `{verb, what, args, line}`; options left as None are not sent;
+  `line` is the calling line of the run's code (None in a program).
+- A reply is `sg.Reply` (a dict). Iterating it raises TypeError naming the main list (`iterate r['things'] (the main
+  list)`). The main list is a `MainList`: while the reply has `cursor`, a single `for` pages with `more`; `len`, an
+  index, `in`, sorted, reversed, `+` or a second pass page in the rest first. Every dict in a reply is a `Row`, whose
+  KeyError carries the keys it has.
+- Errors: `sg.Error(code, message, fix, maybe_ran, call)`; `sg.Stopped` (a BaseException: the run was stopped, or the
+  write rule refused a call); a private pass-end exception for the end of a report pass.
+- Programs get the program face ([hub.md](hub.md), *Faces*): the stubs' options plus `confirm`.
+- A second `sg.connect()` closes the first connection. The child hub ends with the program: its stdin is closed at
+  exit, and on Windows it is in a Job Object with kill-on-close, made before the child starts.
+- Event handlers (`transport.on_event`) run on the reader thread and must not make sg calls.
 
-| Exception | When |
-| --- | --- |
-| `stationgod.GameError(code, message, data, see)` | The mod answered with an error; `see` is the `tool_info` node that explains the code (`{}` when none). Methods the MCP server answers itself (`tool_info`) are not in the table and get no stub. Subclasses for codes callers often branch on: `InvalidArgument`, `NotFound` (`thing_not_found`, `device_not_found`, ...), `SubscriptionRefused` (`subscription_limit`). |
-| `stationgod.Unreachable(message, maybe_ran)` | No answer: no pipe, the connection broke, or no reply in time. `maybe_ran` is true when the call was written and is not a read. |
-| `stationgod.TooOld(message)` | The server cannot do what was asked: a feature not in `welcome.features` (subscriptions), a protocol it does not speak (`unsupported_protocol`), or a method it does not have. |
+### The worker
 
-Threads. A `Client` is safe to use from several threads. One reader thread per connection matches replies to waiting
-calls and runs subscription callbacks; a callback that raises is logged and does not stop the reader.
+The hub pre-starts workers so one is ready when a run comes:
 
-Timeouts. A call waits for its `deadline_ms` (default 30 seconds, plus the method's `x-duration` at the arguments
-given) plus 5 seconds, then raises `Unreachable`, the same split today's sidecar makes between "no pipe" and "no reply
-in time" (`Program.cs:298-310`).
+```text
+python -I -c "<sg.worker.BOOT>" <folder that holds sg>        PYTHONHASHSEED=0
+```
 
-### Subscriptions in the library
+`sg.worker.BOOT` is `import sys; sys.path.insert(0, sys.argv[1]); import sg.worker; sg.worker.main()`. A worker serves
+one run and exits, so nothing a run does reaches the next. It moves the protocol to private copies of fds 0 and 1
+(fd 0 becomes the null device, fd 1 stderr), says hello, takes `run.code` from the welcome, sends `run_analysis`
+before any code runs, runs the code as a function body (print of a list of row dicts prints a table), and always sends
+`run_end` with state `done`, `stopped` (whenever the run saw a stop, even one the code swallowed), `pass_end` or
+`failed` (the note-22 text). It exits 2 s after the hub's stream ends. `run_analysis.writes` and `holds` are advisory;
+the hub applies the confirmed run's rules from a run's first write call.
 
-`subscribe` keeps the request. After a reconnect it subscribes again with the same request only if
-`welcome.server.world.id` is unchanged, and replaces `state` with the new first reading. If the world changed, or the
-mod ended the subscription with `world_changed`, it closes the subscription and raises the world-changed callback,
-because the caller's ids may be wrong. A `subscribe` refused with `subscription_limit` raises `SubscriptionRefused`; on
-a server without the `subscriptions` feature `subscribe` raises `TooOld`. In both cases the caller polls `read_devices` with the same items; the
-dashboard's runner already has that path.
+### Tests
 
-### As built in stage 7
-
-The library follows the owner's rule that it stays a thin client: connecting, negotiating, the resend
-rule, subscription bookkeeping and output files, plus what is generated from the catalogue. Everything else is the
-mod's. Where the build differs from the text above, or the protocol left a choice open, this records it.
-
-**What is generated, and what is not.**
-- `clients/python/generate_catalogue.py` writes `stationgod/_methods.py` from `catalogue.json`: the catalogue's hash,
-  a table per method (class, `x-class-when`, `x-effects`, `x-paging`, `x-duration`, declared and required argument
-  names) and one stub per method on the client (`game.thing_health(reference_ids=[...])`; a Python keyword gets a
-  trailing underscore, `move_gas(from_=...)`). `call(method, **params)` still works for any method. A test fails when
-  the module is stale, so whoever changes `catalogue.json` reruns the generator. This replaces `_catalogue.json`:
-  the package carries the table, not the whole file, and `build.ps1` does not need to copy anything.
-- Before sending on version 2 the client refuses, with `invalid_argument` and `data.checked_by: "client"`, an argument
-  name the method does not declare (naming the nearest, by the mod's own rule) and a required argument left out.
-  Types, ranges and patterns are left to the mod. Version 1 sends everything unchecked, as today.
-- The library never shapes a reply. It sends `fields`, `limit` and `max_bytes` as `shape` (on version 2 only when
-  `welcome.features` lists `shape`; on version 1 always) and returns what comes back. Against a mod that does not
-  shape, the reply comes back whole. This replaces "applies `fields` itself" above.
-- `limit` given as an object is `shape.limit`; given as an integer it is the method's own argument.
-- The class rules are evaluated only for the resend rule, never to refuse a call.
-
-**Negotiating.**
-- Over TCP the shared secret goes first, from the environment variable `secret_env` (default `STATIONGODMCP_SECRET`,
-  as the sidecar's); without it, or when the server refuses it, the library raises `Unauthorized`. After it TCP talks
-  as the pipe does.
-- `hello` always carries `client` (`name`: the given client name or `stationgod-py`; `version`; `library`
-  `stationgod-py/<version>`) and `features`.
-- Any first answer without a `type` key means an old mod, and the library speaks version 1 on the same connection.
-- A version-1 connection has one call in flight. Replies are matched by the echoed `id`; a version-1 reply with a null
-  id goes to the one call in flight.
-- `close()` sends `bye` on version 2.
-
-**Calls, timeouts and resending.**
-- `deadline_ms` is sent only when the caller gives it; the mod adds `x-duration` itself. The client waits its connect
-  timeout plus the deadline (30 s by default) plus `x-duration` (the argument given, else the method's `max_s`) plus
-  5 s from when the call was made, then raises `Unreachable` and sends `cancel` when the server lists it.
-- A written read is resent at most once; broken twice, it fails with `maybe_ran` false.
-- `maybe_ran` is true when the call was written and is not safe to resend, so a written `highlight` reports true.
-- In another world (a different `world.id` after reconnecting) nothing waiting is sent, written or not: those calls
-  raise `WorldChanged`, a subclass of `Unreachable`.
-- A broken connection is reopened by a caller's next call at once. The backoff (100 ms doubling to 5 s) paces only the
-  library's own reconnecting, which runs while calls wait to be resent or subscriptions are open.
-- When `welcome.catalogue.hash` (compared as the text `sha256:<lowercase hex>`) differs from the built-in one, the
-  client calls `catalogue` once per hash on the new connection and uses its table; if that fails it keeps the built-in
-  one. `on_call` is not called for the library's own calls (this fetch and the `world` subscription).
-
-**World changes and subscriptions.**
-- The world-changed callback fires once per new `world.id`: from a `world_changed` event (the connection event and
-  the `world` topic's event are the same name and are told apart by nothing else) or from the welcome after a
-  reconnect. It closes every open subscription with `end_reason` `world_changed`. A `subscription_ended` event closes
-  that one subscription and wakes its waiters, without firing the callback, which the `world_changed` event does.
-- A `game_state` event is read from its `state` key.
-- The subscribe reply is bound to its subscription on the reader thread before the caller wakes, so an `update` sent
-  straight after the reply is not lost.
-
-**Tests.** Standard library only: `py -3.12 -m unittest discover -s clients/python/tests` (pytest also runs them).
-The fake mod in `tests/fakemod.py` speaks both versions over loopback TCP and a real overlapped pipe. The live tests
-run when `STATIONGOD_LIVE_PIPE` names the test server's pipe and refuse the default one. The shared fixtures are
-`clients/fixtures/output_file/*.json` (the argument, the result as it came back, the expected file name or name
-pattern, pointer without its path and byte count, and file content; or the expected error). A pointer's `summary` limit counts the compact JSON text of each value.
+`py -3 -m unittest discover -s clients/python/tests` from the repository: the transport, verb calls, replies and
+paging, errors, the helpers, the worker launched as the hub launches it, and a test that fails when the generated files
+are stale against catalogue/verbs.
 
 ## The C# client and the sidecar
 
@@ -387,6 +327,9 @@ dashboard's own reads, then the test tools. Every step works against both an old
 deploy.
 
 ### The dashboard
+
+(Written for the old direct library `stationgod`, which `sg` replaced; the dashboard's move to the hub is not planned
+here yet.)
 
 The dashboard is a long-running Python process (`py -m stationscript`, StationeersScriptDashboard
 `stationscript/__main__.py:19-30`). Its cards, the files in `scripts/`, are reloaded when they change on disk
