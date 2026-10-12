@@ -33,6 +33,18 @@ internal interface ICallRunner<in TCall>
 }
 
 /// <summary>
+/// Work a started call goes on with over later frames (a walk's build, its call deferred meanwhile), run after the
+/// frame's calls in what is left of its request budget (FrameScheduler).
+/// </summary>
+internal interface ISliceLane
+{
+    bool HasWork { get; }
+
+    /// <summary>One slice of the work, until the clock reaches untilMs: at least one step, even past it.</summary>
+    void RunSlice(double untilMs);
+}
+
+/// <summary>
 /// The subscription lane's source of work: due subscription samples and sample_logic samples, oldest due first and
 /// round-robin across connections (scheduling.md, Subscriptions, Running late).
 /// </summary>

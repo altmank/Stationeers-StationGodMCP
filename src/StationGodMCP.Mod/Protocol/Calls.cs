@@ -25,7 +25,27 @@ internal abstract class QueuedCall
         Profile = profile;
     }
 
+    private int _cancelRequested;
+
     internal CallState State { get; } = new CallState();
+
+    /// <summary>
+    /// A cancel came after the call started: work it goes on with over later frames (DeferredCalls) stops and the call
+    /// is answered cancelled; a call that answers in the frame it starts in is not affected. Any thread.
+    /// </summary>
+    internal bool CancelRequested => Volatile.Read(ref _cancelRequested) != 0;
+
+    internal void RequestCancel() => Volatile.Write(ref _cancelRequested, 1);
+
+    private int _deferred;
+
+    /// <summary>
+    /// Started and going on with work over frames (DeferredCalls): a shutdown may answer it shutting_down, which no
+    /// call running in its frame may be. Any thread.
+    /// </summary>
+    internal bool IsDeferred => Volatile.Read(ref _deferred) != 0;
+
+    internal void MarkDeferred() => Volatile.Write(ref _deferred, 1);
 
     /// <summary>Stopwatch.GetTimestamp when it was received.</summary>
     internal long ReceivedAt { get; }
@@ -103,7 +123,8 @@ internal abstract class QueuedCall
 
 /// <summary>
 /// A call's answer from the main thread: the reply line and the known method it named, if any. Deferred when the call
-/// goes on over later frames (sample_logic): its runner answers it with QueuedCall.Finish once it ends.
+/// goes on over later frames: its runner answers it with QueuedCall.Finish once it ends (sample_logic), or Work goes
+/// on in the scheduler's slice lane until it answers (DeferredCalls: a walk's build).
 /// </summary>
 internal readonly struct CallOutcome
 {
@@ -111,6 +132,14 @@ internal readonly struct CallOutcome
     {
         Reply = reply;
         Method = method;
+        Work = null;
+    }
+
+    private CallOutcome(IDeferredWork work, string? method)
+    {
+        Reply = null!;
+        Method = method;
+        Work = work;
     }
 
     /// <summary>The call is still running: nothing to deliver now.</summary>
@@ -121,6 +150,26 @@ internal readonly struct CallOutcome
     internal string Reply { get; }
 
     internal string? Method { get; }
+
+    /// <summary>Work the call goes on with over later frames, the scheduler's to run; null otherwise.</summary>
+    internal IDeferredWork? Work { get; }
+
+    /// <summary>The call goes on with work over later frames, in the scheduler's slice lane, and answers when it ends.</summary>
+    internal static CallOutcome Continued(IDeferredWork work, string? method) =>
+        new CallOutcome(work ?? throw new ArgumentNullException(nameof(work)), method);
+}
+
+/// <summary>
+/// What a deferred call goes on with (a walk's build): a slice per frame on the main thread, under the call's
+/// context, until it is ready to answer. Dropping it is all a stop needs: it holds nothing outside itself.
+/// </summary>
+internal interface IDeferredWork
+{
+    /// <summary>Goes on until the clock reaches untilMs, at least one step; true once Finish may answer.</summary>
+    bool Step(double untilMs);
+
+    /// <summary>The call's reply message, once Step returned true.</summary>
+    string Finish();
 }
 
 /// <summary>Runs calls on the main thread (StationGodRequestDispatcher, through ApiHost).</summary>

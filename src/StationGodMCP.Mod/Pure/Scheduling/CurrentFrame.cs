@@ -39,4 +39,10 @@ internal static class CurrentFrame
     /// </summary>
     internal static bool BudgetReached(double nowMs) =>
         _running && !double.IsPositiveInfinity(_budgetMs) && nowMs - _startMs >= _budgetMs;
+
+    /// <summary>
+    /// When, on the scheduler's clock, the frame's request time reaches its budget; PositiveInfinity outside a frame
+    /// and when the budget is unlimited. Work sized to the frame (a walk's page, a walk's build) stops there.
+    /// </summary>
+    internal static double EndMs => _running ? _startMs + _budgetMs : double.PositiveInfinity;
 }

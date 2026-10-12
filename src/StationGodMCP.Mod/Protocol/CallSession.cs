@@ -161,7 +161,7 @@ internal sealed class CallSession : Session
     {
         foreach (ProtocolCall call in Waiting())
         {
-            if (call.State.TryDrop())
+            if (call.State.TryDrop() || (call.IsDeferred && call.State.TryFinish()))
             {
                 call.Deliver(call.ShuttingDownReply(), null);
             }
@@ -444,9 +444,18 @@ internal sealed class CallSession : Session
             _inFlight.TryGetValue(id, out call);
         }
 
-        if (call != null && call.Drop(call.CancelledReply()))
+        if (call == null)
+        {
+            return;
+        }
+
+        if (call.Drop(call.CancelledReply()))
         {
             _host.Withdraw(call);
+        }
+        else
+        {
+            call.RequestCancel();
         }
     }
 

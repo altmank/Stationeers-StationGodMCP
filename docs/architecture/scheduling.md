@@ -107,6 +107,9 @@ spent   = 0
    first light call always runs.
 3. Heavy lane: if spent < budget, take one call by the same rounds and run it; otherwise take one by the same
    rounds from the calls that have waited >= HeavyMaxWaitFrames frames, if any, and run it.
+3b. Slice lane: calls deferred with work over frames (a walk's first call building its ids, DeferredCalls) are
+   checked (cancel, deadline, stream end, world), then one of them in turn runs a slice until spent reaches budget;
+   with no budget left it waits, and takes a single step once it has waited HeavyMaxWaitFrames frames.
 4. Expired calls (deadline passed before start) are answered game_timeout as they are met, without cost.
 5. HeldTickJobs.Tick(), previews, highlights, flight recorder, as today.
 ```
