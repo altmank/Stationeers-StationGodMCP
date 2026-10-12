@@ -11,8 +11,6 @@ public sealed partial class VerbPipeline
 {
     private const int ReAskCalls = 3;
 
-    private static readonly string[] Spreads = ["network", "room", "near", "radius", "box"];
-
     private readonly object _reAskGate = new();
     private readonly List<PendingCut> _pendingCuts = [];
 
@@ -77,85 +75,167 @@ public sealed partial class VerbPipeline
             options[name] = value?.DeepClone();
         }
 
-        // whole alone on a reply that is not a live value is answered from the store.
+        // whole alone on a reply that is not a live value is answered from the store; all of it is shown now.
         if (onlyWhole && JsonNodes.IsTrue(call.Args["whole"]) && stored.Verb != "read" && stored.Whole is JsonObject whole)
         {
             JsonObject kept = (JsonObject)whole.DeepClone();
             kept["ref"] = stored.Id;
             kept["from_store"] = true;
+            stored.Shown = kept.DeepClone();
             return new RepeatOf.Answer(new VerbReply.Done(kept));
         }
 
-        // A report repeated with confirm: true acts on exactly the targets it listed.
-        if (stored.Report && JsonNodes.IsTrue(call.Args["confirm"]) && RefStore.IdsOf(stored, string.Empty) is { Count: > 0 } listed)
+        // A report repeated with confirm: true acts on what it listed: its options with refs as their ids, an expanded
+        // spread as its ids (paths and roles as they were), a write-N undo as that undo; a spread the handler selects is
+        // sent again, saying the selection may differ.
+        string? note = null;
+        if (stored.Report && JsonNodes.IsTrue(call.Args["confirm"]) && stored.Replay != null)
         {
-            JsonArray ids = [];
-            foreach (string id in listed)
+            options = (JsonObject)stored.Replay.DeepClone();
+            foreach ((string name, JsonNode? value) in call.Args)
             {
-                ids.Add(id);
+                if (name != "repeat")
+                {
+                    options[name] = value?.DeepClone();
+                }
             }
 
-            options["id"] = ids;
-            foreach (string spread in Spreads)
-            {
-                options.Remove(spread);
-            }
+            note = stored.ReplayNote;
         }
 
         options.Remove("repeat");
         return new RepeatOf.Call(new VerbCall(call.Verb, call.What ?? stored.What, options, call.Face, call.Stream, call.Line)
         {
-            Gate = call.Gate
+            Gate = call.Gate,
+            Note = note
         });
     }
 
-    // A ref as a target (id: "r7", "r7.things.2", or refs in a list) is the ids its reply showed.
-    private VerbReply.Failed? ResolveRefs(WhatEntry what, JsonObject args, Dictionary<string, string> refs,
-        out JsonObject resolved)
+    /// <summary>
+    /// Refs as targets are the ids their replies showed. id takes refs and ids mixed, several refs among them, each id
+    /// keeping its source (refs: one use per ref). A path that takes one id (to, source, within...) takes a ref that
+    /// shows exactly one; a ref inside list entries (writes[].id, moves[].to) is refused, naming id as the way.
+    /// </summary>
+    private VerbReply.Failed? ResolveRefs(WhatEntry what, JsonObject args, List<RefUse> refs, out JsonObject resolved)
     {
         resolved = args;
-        JsonNode? id = args["id"];
-        if (id == null || !what.Options.ContainsKey("id"))
+        List<OptionProblem> problems = [];
+        JsonObject? copy = null;
+        foreach ((string name, JsonNode? value) in args)
         {
-            return null;
-        }
-
-        bool anyRef = false;
-        foreach (JsonNode? entry in id is JsonArray list ? list : new JsonArray(id.DeepClone()))
-        {
-            anyRef |= RefStore.Parse(JsonNodes.Text(entry)) != null;
-        }
-
-        if (!anyRef)
-        {
-            return null;
-        }
-
-        JsonArray ids = [];
-        foreach (JsonNode? entry in id is JsonArray given ? given : new JsonArray(id.DeepClone()))
-        {
-            if (RefStore.Parse(JsonNodes.Text(entry)) is not { } parsed)
+            if (value == null || !what.Options.ContainsKey(name) || !HoldsRef(value))
             {
-                ids.Add(entry?.DeepClone());
                 continue;
             }
 
-            if (_refs.Get(parsed.Id) is not { } stored)
+            if (name != "id" && !IsTargetPath(what, name))
             {
-                return OptionProblem.Refusal(what.Label, [new OptionProblem("id",
-                    $"no ref '{parsed.Id}' (refs last until the world changes; a script's refs are its own)")]);
+                continue;
             }
 
-            refs["id"] = parsed.Id;
-            foreach (string shown in RefStore.IdsOf(stored, parsed.Path))
+            copy ??= (JsonObject)args.DeepClone();
+            JsonArray ids = [];
+            foreach (JsonNode? entry in value is JsonArray list ? list : new JsonArray(value.DeepClone()))
             {
-                ids.Add(shown);
+                if (RefStore.Parse(JsonNodes.Text(entry)) is not { } parsed)
+                {
+                    ids.Add(entry?.DeepClone());
+                    continue;
+                }
+
+                if (_refs.Get(parsed.Id) is not { } stored)
+                {
+                    problems.Add(new OptionProblem(name,
+                        $"no ref '{parsed.Id}' (refs last until the world changes; a script's refs are its own)"));
+                    continue;
+                }
+
+                List<string> shown = RefStore.IdsOf(stored, parsed.Path);
+                refs.Add(new RefUse(name, parsed.Id, shown));
+                foreach (string id in shown)
+                {
+                    ids.Add(id);
+                }
+            }
+
+            if (name == "id")
+            {
+                copy[name] = ids;
+            }
+            else if (ids.Count == 1)
+            {
+                copy[name] = ids[0]?.DeepClone();
+            }
+            else
+            {
+                problems.Add(new OptionProblem(name, $"takes one id; the ref shows {ids.Count}"));
             }
         }
 
-        resolved = (JsonObject)args.DeepClone();
-        resolved["id"] = ids;
+        foreach (string nested in NestedRefs(what, args))
+        {
+            problems.Add(new OptionProblem(nested, "a ref is not taken inside entries; give id: \"rN\" for its ids"));
+        }
+
+        if (problems.Count > 0)
+        {
+            return OptionProblem.Refusal(what.Label, problems);
+        }
+
+        resolved = copy ?? args;
         return null;
+    }
+
+    private static bool HoldsRef(JsonNode value)
+    {
+        foreach (JsonNode? entry in value is JsonArray list ? list : new JsonArray(value.DeepClone()))
+        {
+            if (RefStore.Parse(JsonNodes.Text(entry)) != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsTargetPath(WhatEntry what, string name)
+    {
+        foreach (TargetPath path in what.Write?.Targets ?? [])
+        {
+            if (path.Path == name && path.Role != "spread")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // The x-target paths inside list entries ("writes[].id") that hold a ref.
+    private static List<string> NestedRefs(WhatEntry what, JsonObject args)
+    {
+        List<string> found = [];
+        foreach (TargetPath path in what.Write?.Targets ?? [])
+        {
+            int brackets = path.Path.IndexOf("[].", StringComparison.Ordinal);
+            if (brackets < 0 || args[path.Path[..brackets]] is not JsonArray entries)
+            {
+                continue;
+            }
+
+            string key = path.Path[(brackets + 3)..];
+            foreach (JsonNode? entry in entries)
+            {
+                if (entry?[key] is { } value && HoldsRef(value))
+                {
+                    found.Add(path.Path);
+                    break;
+                }
+            }
+        }
+
+        return found;
     }
 
     /// <summary>
@@ -171,6 +251,20 @@ public sealed partial class VerbPipeline
         }
 
         bool report = JsonNodes.IsTrue(whole["report_only"]);
+        JsonObject? replay = whole[ReplayKey] as JsonObject;
+        string? replayNote = JsonNodes.Text(whole[ReplayNoteKey]);
+        whole.Remove(ReplayKey);
+        whole.Remove(ReplayNoteKey);
+        if (report && ReplyCap.Bytes(whole) > ReplyCap.ReportLimit)
+        {
+            // A report is never cut: one too large for the client says how large, and how to narrow it.
+            int count = whole["targets"] is JsonArray listed ? listed.Count : 0;
+            return new VerbReply.Failed("report_too_large",
+                $"The report lists {count} targets ({ReplyCap.Bytes(whole)} bytes), more than the client takes; " +
+                "narrow the selection, or set rows for fewer rows per list.",
+                data: new JsonObject { ["targets"] = count, ["bytes"] = ReplyCap.Bytes(whole) });
+        }
+
         bool asked = JsonNodes.IsTrue(options["whole"]) || options["output_file"] != null || options["list_limits"] != null;
         string? main = report ? "targets" : ReplyCap.MainListOf(whole, what.MainList);
         bool lists = main != null && whole[main] is JsonArray entries &&
@@ -202,7 +296,7 @@ public sealed partial class VerbPipeline
         }
 
         _refs.Keep(new StoredRef(id, call.Verb, what.Name == VerbCatalogue.WhatlessKey ? null : what.Name,
-            WithoutAsks(call.Args), whole, shown, main, report));
+            WithoutAsks(call.Args), whole, shown, main, report) { Replay = replay, ReplayNote = replayNote });
         return new VerbReply.Done(shown);
     }
 

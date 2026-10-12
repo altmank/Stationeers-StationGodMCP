@@ -73,6 +73,12 @@ A hub-protocol error is the mod's error object plus, when they apply, `fix` (a s
 one that ends a report pass carries `"pass_end": true`. `sg` raises `sg.Stopped` for the first, its private pass-end
 exception for the second, and `sg.Error(code, message, fix, maybe_ran)` for every other error.
 
+Session limits, beyond `protocol.md`'s: a line over the mod's `limits.max_request_bytes` is answered
+`request_too_large` (null id) and ends the session; a call that would be sent over it is refused unsent
+(`request_too_large`, `data {limit, bytes}`); a session holds at most 64 open streams (`too_many_streams`) and
+64 x `max_in_flight_per_stream` calls in flight (`too_many_in_flight`, scope `session`); a caller whose oldest queued
+line has waited 35 s is ended (`slow_client`); a mod method a session may not pass through answers `not_allowed`.
+
 ### Faces
 
 | Face | Who | Options | Replies | Writes |
@@ -88,13 +94,17 @@ and pages in the rest on `len`, an index, `sorted` or a second pass. The hub bac
 where the handler has one (`find_things`), and otherwise with `offset` pages.
 
 The program face is a reading: PLAN names programs as `sg` users but gives no write rule for them; they get the
-direct rule, since nothing reviews a program's run as a whole.
+direct rule, since nothing reviews a program's run as a whole. So a program's pass-through takes only read-class mod
+methods with no `x-effects` (plus `subscribe`, `unsubscribe`, `cursor_close`, `release`); every write goes through
+`verb`, where the write rule and the recording apply. A script worker's session takes no mod methods at all: only
+`verb`, `ref`, `more`, `wait` and `hold`, on its run's stream.
 
 ## Runs
 
 A run is one `run_script` call. Its worker is a pre-started Python process from the pool (`PYTHONHASHSEED=0`, in a
 Windows Job Object with kill-on-close so workers die with the hub), started as
-`python -I -c "<sg.worker.BOOT>" <dir holding sg>`. A worker serves one run and exits; the pool starts the next while
+`python -s -P -c "<sg.worker.BOOT>" <dir holding sg>` with every `PYTHON*` variable removed from its
+environment and `PYTHONHASHSEED=0` set (`-I` would ignore the seed); the worker refuses to run with hash randomisation on. A worker serves one run and exits; the pool starts the next while
 a run runs, so no state of one run reaches another. The hub refuses every call of a session after its `run_end`, and
 takes a run's end state from its own record (a stop it delivered is `stopped`, whatever the worker says).
 The worker sends `hello` and gets its run in the `welcome` of a hub-protocol session, with one extra key:

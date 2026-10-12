@@ -434,7 +434,8 @@
           {"path": "remove_ids", "role": "acts-on"},
           {"path": "join_to", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "root", "role": "acts-on"}
         ]
       },
       "brief": "a cable run or pieces"
@@ -658,7 +659,8 @@
           {"path": "remove_ids", "role": "acts-on"},
           {"path": "join_to", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "root", "role": "acts-on"}
         ]
       },
       "brief": "a pipe run or pieces"
@@ -880,7 +882,8 @@
           {"path": "remove_ids", "role": "acts-on"},
           {"path": "join_to", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "root", "role": "acts-on"}
         ]
       },
       "brief": "a chute run or pieces"

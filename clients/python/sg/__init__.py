@@ -30,7 +30,9 @@ def connect(hub_path=None, *hub_args, client="sg-py"):
 
     The hub is hub_path, else the STATIONGODMCP_HUB environment variable, else StationGodMCP.Server on PATH; hub_args
     are passed to it after --hub. The child hub ends when this program does. A second sg.connect() closes the
-    first connection (and its child hub) once the new one is up."""
+    first connection (and its child hub) once the new one is up. Inside a run it raises sg.Error: the run's
+    connection belongs to the hub."""
+    _refuse_inside_a_run("sg.connect")
     transport = _transport.connect(hub_path, *hub_args, client=client)
     old = _session._transport
     if old is not None and old is not transport:
@@ -40,8 +42,15 @@ def connect(hub_path=None, *hub_args, client="sg-py"):
 
 
 def close():
-    """Closes the connection sg.connect() opened (the child hub then ends)."""
+    """Closes the connection sg.connect() opened (the child hub then ends). Inside a run it raises sg.Error."""
+    _refuse_inside_a_run("sg.close")
     transport = _session._transport
     _session.use(None)
     if transport is not None:
         transport.close()
+
+
+def _refuse_inside_a_run(name):
+    if _session.current_run() is not None:
+        raise Error("invalid_argument", f"{name}() inside a run: a run's connection belongs to the hub",
+                    "leave the connection to the run; sg is already connected")

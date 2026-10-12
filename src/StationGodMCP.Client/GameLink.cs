@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace StationGodMCP.Client;
@@ -75,6 +76,21 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     }
 
     public GameCatalogue Catalogue => _catalogue;
+
+    /// <summary>The world as the last welcome or world_changed gave it ({id, save, epoch}); null before any.</summary>
+    public JsonElement? World
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _world;
+            }
+        }
+    }
+
+    /// <summary>limits.max_request_bytes of the open connection, else the protocol's default.</summary>
+    public int MaxRequestBytes => _connection?.MaxRequestBytes ?? GameConnection.DefaultMaxRequestBytes;
 
     public event Action<string?>? WorldChanged;
 
@@ -219,7 +235,19 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
         }
 
         string id = Interlocked.Increment(ref _nextId).ToString(CultureInfo.InvariantCulture);
-        PendingCall pending = new(id, null);
+        string line = Wire.LinkCall(connection.Features, id, call, parameters, world);
+        int bytes = Encoding.UTF8.GetByteCount(line);
+        if (bytes > connection.MaxRequestBytes)
+        {
+            // The mod closes the whole connection on a longer message, which would break every caller's calls.
+            _admission.Leave(call.Stream);
+            return new Attempt.Done(TooLarge(call.Method, bytes, connection.MaxRequestBytes));
+        }
+
+        Action<GameConnection, JsonElement>? onReply = call.OnReply is { } given
+            ? (_, message) => given(ReplyOf(message))
+            : null;
+        PendingCall pending = new(id, onReply);
         bool holdsSlot = true;
         connection.Pending[id] = pending;
         try
@@ -235,8 +263,7 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
                     $"{call.Method} ran out of time before it could be written; it was not sent.", maybeRan: false));
             }
 
-            Sending sent = await connection.SendAsync(Wire.LinkCall(connection.Features, id, call, parameters, world))
-                .ConfigureAwait(false);
+            Sending sent = await connection.SendAsync(line).ConfigureAwait(false);
             if (sent is not Sending.Written)
             {
                 // A write that failed part way may still have reached the game: only a safe call is sent again.
@@ -289,6 +316,12 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
         }
     }
 
+    private static GameReply TooLarge(string method, int bytes, int limit) => new GameReply.Refused("request_too_large",
+        $"{method} would be a {bytes}-byte message, over the game's limit of {limit} bytes (welcome " +
+        "limits.max_request_bytes); it was not sent. Send less per call.",
+        Json("{\"limit\":" + limit.ToString(CultureInfo.InvariantCulture) + ",\"bytes\":" +
+             bytes.ToString(CultureInfo.InvariantCulture) + "}"));
+
     // ---- protocol messages and methods ----------------------------------------------------------------------------
 
     /// <summary>
@@ -299,6 +332,18 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     {
         if (stream > 0 && await ConnectionAsync(CancellationToken.None).ConfigureAwait(false) is Connecting.Connected { Connection: var connection } &&
             connection.Features.Contains("streams"))
+        {
+            await connection.TrySendAsync(Wire.StreamEnd(stream)).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// stream_end on the open connection only, never reconnecting: a hub closing a session must not wait for a game
+    /// that is down. A stream left so is the token's, and ends when the resume window passes (or with session_end).
+    /// </summary>
+    public async Task EndStreamIfConnectedAsync(long stream)
+    {
+        if (stream > 0 && !Closed && _connection is { Alive: true } connection && connection.Features.Contains("streams"))
         {
             await connection.TrySendAsync(Wire.StreamEnd(stream)).ConfigureAwait(false);
         }
@@ -491,7 +536,11 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
         if (Wire.Child(message, "ok") is { ValueKind: JsonValueKind.True })
         {
             return new GameReply.Ok(Wire.Child(message, "result") ?? NoResult, Whole(message, "frame"),
-                Number(message, "elapsed_ms"), Wire.Child(message, "budget_hit") is { ValueKind: JsonValueKind.True });
+                Number(message, "elapsed_ms"), Wire.Child(message, "budget_hit") is { ValueKind: JsonValueKind.True })
+            {
+                Shaped = Wire.Child(message, "shaped") is { ValueKind: JsonValueKind.True },
+                QueueMs = Wire.Child(message, "queue_ms") is { ValueKind: JsonValueKind.Number } queue ? queue.GetDouble() : null
+            };
         }
 
         return Wire.Child(message, "error") is { ValueKind: JsonValueKind.Object } error
@@ -507,7 +556,10 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     };
 
     private static GameReply.Refused RefusedOf(JsonElement error) =>
-        new(Wire.Text(error, "code") ?? "internal_error", Wire.Text(error, "message") ?? "", Wire.Child(error, "data"));
+        new(Wire.Text(error, "code") ?? "internal_error", Wire.Text(error, "message") ?? "", Wire.Child(error, "data"))
+        {
+            MaybeRan = Wire.Child(error, "maybe_ran") is { ValueKind: JsonValueKind.True }
+        };
 
     private GameReply ClosedReply(string method) => new GameReply.Unreachable(
         $"{method} was not sent: the game link {(_disposed ? "is closed" : "has ended its session")}.", maybeRan: false);

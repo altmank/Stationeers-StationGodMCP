@@ -148,7 +148,8 @@ public sealed class HubSessionTests
         Assert.Single(link.CallsTo("thing_health"));
 
         await caller.EndAsync();
-        Assert.Equal(new[] { mapped, caller.Session.MainStream }, link.EndedStreams);
+        // The main stream carried no call, so the close has nothing to end.
+        Assert.Equal(new[] { mapped }, link.EndedStreams);
     }
 
     [Fact]

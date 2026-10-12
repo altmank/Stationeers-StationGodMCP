@@ -32,6 +32,14 @@ internal sealed class RunWorld : IHubLink
 
     public string? WorldId { get; private set; } = "world-1";
 
+    public JsonElement? World => FakeHubLink.Element("{\"id\":\"" + WorldId + "\",\"save\":\"fake\",\"epoch\":0}");
+
+    public int MaxRequestBytes => 4 * 1024 * 1024;
+
+    public GameCatalogue Catalogue => GameCatalogue.BuiltIn;
+
+    public Task EndStreamIfConnectedAsync(long stream) => EndStreamAsync(stream);
+
     public event Action<string?>? WorldChanged;
 
     public event Action<JsonElement>? EventReceived

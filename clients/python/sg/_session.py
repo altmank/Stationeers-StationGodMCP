@@ -14,7 +14,7 @@ SCRIPT_FILENAME = "<script>"
 class Run:
     """What sg needs to know about the run in progress: its id, the lines inside a while body (a wait there counts
     as a loop wait in a report run), and the stop (Stopped or _PassEnd) the hub delivered, if any. A delivered stop
-    decides the run's end state even when the code swallowed it."""
+    decides the run's end state even when the code swallowed it; an sg.Stopped the code raises itself is not one."""
 
     def __init__(self, run_id=None, while_lines=()):
         self.id = run_id
@@ -79,6 +79,14 @@ def in_loop():
     return any(frame.f_lineno in _run.while_lines for frame in _script_frames())
 
 
+def _replaces(recorded, delivered):
+    """Whether a stop the hub just delivered becomes the run's recorded stop: the first one, or a Stopped after a
+    pass end (a stop outranks the end of a report pass)."""
+    if not isinstance(delivered, (Stopped, _PassEnd)):
+        return False
+    return recorded is None or (isinstance(recorded, _PassEnd) and isinstance(delivered, Stopped))
+
+
 def request(method, params, call=None):
     """Sends one hub call with params.line added and returns its result; a refusal raises Error, Stopped or
     _PassEnd. `call` is what Error.call reports (the verb call as sent)."""
@@ -90,6 +98,6 @@ def request(method, params, call=None):
         return reply.get("result")
     exception = from_error(reply.get("error"), call=call if call is not None else {"method": method, **params},
                            line=line)
-    if isinstance(exception, (Stopped, _PassEnd)) and _run is not None and _run.stop is None:
+    if _run is not None and _replaces(_run.stop, exception):
         _run.stop = exception
     raise exception

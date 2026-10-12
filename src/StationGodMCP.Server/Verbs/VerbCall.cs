@@ -46,6 +46,9 @@ public sealed class VerbCall
     /// <summary>The gate for this call's writes (a run's route); null: the face's own (the direct write rule).</summary>
     public IWriteGate? Gate { get; init; }
 
+    /// <summary>A line the reply carries (a repeat that sent a spread again says its selection may differ).</summary>
+    internal string? Note { get; init; }
+
     /// <summary>The call was recorded where it arrived (the MCP adapter records refusals before the pipeline sees them).</summary>
     internal bool Recorded { get; init; }
 }

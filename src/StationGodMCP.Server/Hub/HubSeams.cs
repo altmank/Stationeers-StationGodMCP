@@ -145,5 +145,14 @@ public enum HubSessionEnd
     Bye,
 
     /// <summary>The caller broke the protocol; the session answered protocol_error (or unsupported_protocol).</summary>
-    ProtocolError
+    ProtocolError,
+
+    /// <summary>The caller sent a line over max_request_bytes; the session answered request_too_large.</summary>
+    RequestTooLarge,
+
+    /// <summary>The caller stopped reading: the oldest queued line waited past the slow-client bound.</summary>
+    SlowClient,
+
+    /// <summary>Writing to the caller failed.</summary>
+    OutputBroken
 }

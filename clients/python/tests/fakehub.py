@@ -18,6 +18,14 @@ if PACKAGE_ROOT not in sys.path:
     sys.path.insert(0, PACKAGE_ROOT)
 
 
+def worker_environment(**changes):
+    """The environment the hub gives a worker: this one without any PYTHON* variable, plus the seed and encoding."""
+    environment = {name: value for name, value in os.environ.items() if not name.upper().startswith("PYTHON")}
+    environment.update(PYTHONHASHSEED="0", PYTHONIOENCODING="utf-8")
+    environment.update(changes)
+    return environment
+
+
 def ok(result):
     return {"ok": True, "result": result}
 
@@ -65,15 +73,14 @@ class FakeHub:
     # ----- the real worker, as a child process -----
 
     @classmethod
-    def with_worker(cls, run, handler=None):
-        """Starts the real worker exactly as the hub does (python -I -c BOOT <sg folder>, PYTHONHASHSEED=0), in a
-        temporary working directory, against a fake hub that hands it run; returns (hub, process)."""
+    def with_worker(cls, run, handler=None, environment=None):
+        """Starts the real worker exactly as the hub does (python -s -P -c BOOT <sg folder>, every PYTHON* variable
+        removed, PYTHONHASHSEED=0 and PYTHONIOENCODING=utf-8 set), in a temporary working directory, against a fake
+        hub that hands it run; returns (hub, process)."""
         from sg.worker import BOOT
-        environment = dict(os.environ, PYTHONHASHSEED="0", PYTHONIOENCODING="utf-8")
-        environment.pop("PYTHONPATH", None)
-        process = subprocess.Popen([sys.executable, "-I", "-c", BOOT, PACKAGE_ROOT], stdin=subprocess.PIPE,
+        process = subprocess.Popen([sys.executable, "-s", "-P", "-c", BOOT, PACKAGE_ROOT], stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=tempfile.gettempdir(),
-                                   env=environment)
+                                   env=worker_environment() if environment is None else environment)
         hub = cls(process.stdout, process.stdin, handler, [run])
         return hub, process
 
