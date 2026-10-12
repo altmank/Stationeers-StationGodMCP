@@ -240,6 +240,13 @@ order, so other arguments are refused `invalid_argument` rather than ignored. A 
 - keeps the reply's keys: `offset` is the walk's entries passed before the page (returned or skipped), `total` the
   walk's length at its first call, `has_more` whether ids remain, `scanned` 0; `cursor_id` while more remain.
 
+Every page of a walk, the first one's included, is also sized by its cost: it stops once its main-thread time, with
+an estimate of serialising its entries (a moving average of the method's measured ms per entry), reaches the end of
+the frame's request budget, whatever `limit` asked; it always holds at least one thing, so a walk always moves. While
+more remain the reply adds `next`, the walk's entries passed after the page (where the next page starts), and a page
+the budget stopped short of `limit` notes `reason: "frame_budget"` in its `truncated` entry. A call without a cursor
+pages by `limit` as before.
+
 A cursor is freed when the page that takes its last ids is answered; by `{"type":"cursor_close","cursor_id":"k12"}`
 from the connection that owns it (no reply, like `cancel`; an unknown id or another connection's cursor does
 nothing); when its stream ends or its connection closes (with a resume token: when the token's window passes without
@@ -570,7 +577,8 @@ paged or capped it (`limit`, `offset`, `holders_limit`, `max_devices`, a report'
 or the writer cut it (`shape.limit`, the method's `x-default-limits`):
 `{"list": "things", "returned": 8, "total": 412, "more": "pass limit (max 500) or offset 8"}`. `list` is a top-level
 key or a path (`totals[].top_holders`, `dry_run.cells`); `total` is a real count, and `at_least: true` marks a lower
-bound where counting would cost what the cut saves (a search that stopped at its count). `truncated: []` means
+bound where counting would cost what the cut saves (a search that stopped at its count); `reason: "frame_budget"`
+marks a walk's page that stopped at the frame's time budget before it held `limit` entries (*Walks*). `truncated: []` means
 nothing was held back. The writer adds it after the reply's keys, so `fields` and `omit` never remove it, and the
 `output_file` pointer carries it whole. Handlers note their cuts through `Pure.Shaping.Truncations` (or, for a view
 that caps a list it carries, `ITruncatingView`); `tests/.../Budget/TruncationNoticeTests.cs` holds every cap to it.

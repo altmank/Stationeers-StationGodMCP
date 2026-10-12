@@ -97,14 +97,14 @@ internal sealed class WalkRequest
 
     /// <summary>
     /// A later page: up to limit things that still exist (live gives null for a gone one), in the walk's order, into
-    /// into. A cursor that is not the caller's to use is cursor_expired.
+    /// into, fewer when budget stops it (at least one). A cursor that is not the caller's to use is cursor_expired.
     /// </summary>
-    internal WalkStep Next<T>(int limit, Func<long, T?> live, List<T> into)
+    internal WalkStep Next<T>(int limit, Func<long, T?> live, List<T> into, PageBudget budget = default)
         where T : class
     {
         string cursorId = CursorId ?? throw new InvalidOperationException(Vocabulary.Text("Next is for a call with " +
             "{arg:cursor_id}."));
-        if (!_cursors.TryNext(CallContext.Current, cursorId, limit, live, into, out WalkStep step))
+        if (!_cursors.TryNext(CallContext.Current, cursorId, limit, live, into, out WalkStep step, budget))
         {
             throw Expired(cursorId, step.ExpiredPosition);
         }
@@ -113,17 +113,21 @@ internal sealed class WalkRequest
     }
 
     /// <summary>
-    /// The page's truncation note: with a cursor kept, the way on is that cursor_id; a first call without one notes as
+    /// The page's truncation note: with a cursor kept, the way on is that cursor_id, and cut gives the reason
+    /// frame_budget (the frame's budget stopped the page before limit); a first call without one notes as
     /// PageRequest.Note does; a walk's last page notes nothing.
     /// </summary>
-    internal void Note(string list, PageRequest page, int returned, int total, string? cursorId, string advice = "")
+    internal void Note(string list, PageRequest page, int returned, int total, string? cursorId, string advice = "",
+        bool cut = false)
     {
         if (cursorId != null)
         {
-            Pure.Shaping.Truncations.Note(list, returned, total,
-                Vocabulary.Text("pass {arg:cursor_id} ") + cursorId + Vocabulary.Text(" for the next page " +
+            string more = Vocabulary.Text("pass {arg:cursor_id} ") + cursorId + Vocabulary.Text(" for the next page " +
                     "({arg:limit} up to ") +
-                page.Maximum.ToString(CultureInfo.InvariantCulture) + ")");
+                page.Maximum.ToString(CultureInfo.InvariantCulture) + ")";
+            Pure.Shaping.Truncations.Note(list, returned, total,
+                cut ? more + "; this page stopped at the frame's time budget" : more,
+                reason: cut ? Pure.Shaping.Truncation.FrameBudget : null);
         }
         else if (!Continues)
         {

@@ -15,6 +15,7 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -30,7 +31,10 @@ namespace StationGodMCP.Api;
 /// With cursor the sorted list is walked (WalkRequest): a later page with cursor_id takes the next kept ids instead of
 /// scanning, skips things that no longer exist or are being destroyed and does not check the filter again (a thing
 /// that stopped matching is still walked, with its current values), and measures distances from where the player is
-/// now, as a first page does. Read only.
+/// now, as a first page does. A walk's page (the first one's included) stops when its main-thread time, with the
+/// serialising its entries will cost (EntryCost), reaches the frame's budget (PageBudget), whatever limit asked: it
+/// always holds one thing, and the reply's next and the note's reason frame_budget say where the walk goes on. Read
+/// only.
 /// </summary>
 internal static class FindThingsApi
 {
@@ -69,33 +73,42 @@ internal static class FindThingsApi
         Slice<ThingHit> slice = Slice<ThingHit>.Of(hits, page);
         List<FoundThingView> views = new List<FoundThingView>(slice.Items.Count);
         List<ColorSwatch> swatches = PaintApi.Swatches();
+        PageBudget budget = walk.Opens ? FrameBudget() : PageBudget.None;
         foreach (ThingHit hit in slice.Items)
         {
+            if (!budget.Allows(views.Count))
+            {
+                break;
+            }
+
             views.Add(ViewOf(hit.Thing, origin, swatches));
         }
 
-        string? cursorId = walk.Keep(hits, slice.Items.Count, static hit => hit.Thing.ReferenceId);
-        walk.Note("things", page, views.Count, hits.Count, cursorId, ListOrders.PagingAdvice(order, origin.IsPresent));
-        return new FindThingsView(Slice<FoundThingView>.Page(views, page, hits.Count), things.Count, origin.View,
-            cursorId);
+        bool cut = views.Count < slice.Items.Count;
+        string? cursorId = walk.Keep(hits, views.Count, static hit => hit.Thing.ReferenceId);
+        walk.Note("things", page, views.Count, hits.Count, cursorId, ListOrders.PagingAdvice(order, origin.IsPresent),
+            cut);
+        EntryCost.FindThings.Expect(views.Count);
+        return new FindThingsView(Slice<FoundThingView>.Page(views, page, hits.Count), things.Count, origin.View, cursorId, null, views.Count);
     }
 
-    // A walk's later page: the next kept ids that still name a thing, described as a first page describes them.
+    // A walk's page stops at the frame's budget, leaving room for serialising what it holds.
+    private static PageBudget FrameBudget() =>
+        PageBudget.OfFrame(StopwatchClock.Instance, EntryCost.FindThings.MsPerEntry);
+
+    // A walk's later page: the next kept ids that still name a thing, described as a first page describes them, each
+    // as it is taken, so the page's budget counts the describing.
     private static FindThingsView NextPage(WalkRequest walk, PageRequest page)
     {
-        List<Thing> things = new List<Thing>(page.Limit);
-        WalkStep step = walk.Next(page.Limit, static id => Live(id), things);
         PlayerOrigin origin = PlayerOrigin.Current();
-        List<FoundThingView> views = new List<FoundThingView>(things.Count);
         List<ColorSwatch> swatches = PaintApi.Swatches();
-        foreach (Thing thing in things)
-        {
-            views.Add(ViewOf(thing, origin, swatches));
-        }
-
-        walk.Note("things", page, views.Count, step.Total, step.CursorId);
+        List<FoundThingView> views = new List<FoundThingView>(page.Limit);
+        WalkStep step = walk.Next(page.Limit, id => Live(id) is Thing thing ? ViewOf(thing, origin, swatches) : null,
+            views, FrameBudget());
+        walk.Note("things", page, views.Count, step.Total, step.CursorId, cut: step.Cut);
+        EntryCost.FindThings.Expect(views.Count);
         return new FindThingsView(Slice<FoundThingView>.Walked(views, step.Offset, page.Limit, step.Total, step.HasMore),
-            0, origin.View, step.CursorId, step.Skipped);
+            0, origin.View, step.CursorId, step.Skipped, step.Next);
     }
 
     // The thing a walk's id still names, or null when it is gone or being destroyed.

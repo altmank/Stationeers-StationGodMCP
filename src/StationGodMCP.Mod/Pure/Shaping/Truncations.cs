@@ -10,17 +10,22 @@ namespace StationGodMCP.Pure.Shaping;
 /// <summary>
 /// One list a reply holds back entries of: its name (a top-level key, or a path such as totals[].top_holders for a
 /// list inside each entry), how many entries the reply carries, how many there are, and the argument that gets more.
-/// AtLeast: total is a lower bound, counting it exactly would cost what the cut saves.
+/// AtLeast: total is a lower bound, counting it exactly would cost what the cut saves. Reason: why a list holds fewer
+/// than its limit asked (FrameBudget), null when the limit cut it.
 /// </summary>
 internal sealed class Truncation
 {
-    internal Truncation(string list, int returned, int total, string more, bool atLeast = false)
+    /// <summary>A walk's page stopped at the frame's time budget before it held limit entries.</summary>
+    internal const string FrameBudget = "frame_budget";
+
+    internal Truncation(string list, int returned, int total, string more, bool atLeast = false, string? reason = null)
     {
         List = list;
         Returned = returned;
         Total = total;
         More = more;
         AtLeast = atLeast;
+        Reason = reason;
     }
 
     internal string List { get; }
@@ -33,10 +38,12 @@ internal sealed class Truncation
 
     internal bool AtLeast { get; }
 
+    internal string? Reason { get; }
+
     /// <summary>This handler's note with the writer's cut of the same list: the fewer returned, both ways to get more.</summary>
     internal Truncation With(Truncation cut) =>
         new Truncation(List, Math.Min(Returned, cut.Returned), Math.Max(Total, cut.Total),
-            More + "; " + cut.More, AtLeast);
+            More + "; " + cut.More, AtLeast, Reason);
 }
 
 /// <summary>
@@ -93,12 +100,16 @@ internal static class Truncations
         }
     }
 
-    /// <summary>A list cut short; more says how to get the rest. atLeast: total is a lower bound.</summary>
-    internal static void Note(string list, int returned, int total, string more, bool atLeast = false)
+    /// <summary>
+    /// A list cut short; more says how to get the rest. atLeast: total is a lower bound; reason: why it was cut short
+    /// of its limit (Truncation.FrameBudget), null for the limit.
+    /// </summary>
+    internal static void Note(string list, int returned, int total, string more, bool atLeast = false,
+        string? reason = null)
     {
         if (returned < total || atLeast)
         {
-            _notes?.Add(new Truncation(list, returned, total, more, atLeast));
+            _notes?.Add(new Truncation(list, returned, total, more, atLeast, reason));
         }
     }
 

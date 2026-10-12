@@ -76,7 +76,7 @@
         "subtopics": {
           "walk": {
             "summary": "cursor and cursor_id: every page of one search, once each, in order.",
-            "text": "find_things takes cursor true: when more pages follow, it keeps the rest of its sorted list and the reply gives cursor_id. Pass cursor_id (with limit, nothing else) for each next page: no new scan, the same order, things removed after the first call are skipped (skipped counts them), and the filters are not checked again, so a thing that stopped matching still comes, with its current values. Things built after it are not in the walk. On a later page offset is the walk's entries before it, total its length at the first call, and scanned 0. The last page frees the cursor; so do cursor_close, the end of the call's stream and a world change. A cursor that is gone answers cursor_expired."
+            "text": "find_things takes cursor true: when more pages follow, it keeps the rest of its sorted list and the reply gives cursor_id. Pass cursor_id (with limit, nothing else) for each next page: no new scan, the same order, things removed after the first call are skipped (skipped counts them), and the filters are not checked again, so a thing that stopped matching still comes, with its current values. Things built after it are not in the walk. On a later page offset is the walk's entries before it, total its length at the first call, and scanned 0. A page stops early when it would overrun the game's frame budget (truncated reason frame_budget, at least one thing); next gives where the walk goes on. The last page frees the cursor; so do cursor_close, the end of the call's stream and a world change. A cursor that is gone answers cursor_expired."
           }
         }
       },
@@ -3449,7 +3449,8 @@
           "scanned": {"type": "integer"},
           "local_player": {"type": ["object", "null"]},
           "cursor_id": {"type": "string"},
-          "skipped": {"type": "integer"}
+          "skipped": {"type": "integer"},
+          "next": {"type": "integer"}
         }
       },
       "x-views": ["FindThingsView"],

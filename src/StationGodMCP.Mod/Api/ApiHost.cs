@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
@@ -148,6 +149,7 @@ internal static class ApiHost
     {
         using Vocabulary.Scope vocabulary = Vocabulary.Enter(call.Rename);
         Stopwatch watch = Stopwatch.StartNew();
+        EntryCost.Begin();
         Answer answer = Run(call, watch);
         bool budgetHit = CurrentFrame.BudgetReached(StopwatchClock.Instance.NowMs);
         double queueMs = Math.Round(queueWaitMs, ElapsedDecimals);
@@ -166,6 +168,7 @@ internal static class ApiHost
         }
 
         double serializeMs = MillisecondsSince(serializeStarted);
+        EntryCost.Observed(serializeMs);
         MethodStats.Record(answer.Method, answer.Ok, answer.HandlerMs, serializeMs, queueWaitMs);
         return new HandledRequest(json, MethodStats.Counted(answer.Method), answer.Ok);
     }
