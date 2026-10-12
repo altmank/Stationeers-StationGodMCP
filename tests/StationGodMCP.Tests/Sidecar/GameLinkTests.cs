@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -66,9 +67,14 @@ public sealed class GameLinkTests
             Rename = rename, Shape = Json("""{"fields":["a"]}"""), DeadlineMs = 1500
         }, default);
         game.Features.Remove("rename");
+        game.Features.Remove("shape");
         game.DropAll();
         await Eventually(() => game.Connections == 2 && link.WorldId != null);
-        await link.CallAsync(new GameCall("game_clock", Json("{}")) { Rename = rename }, default);
+        await link.CallAsync(new GameCall("game_clock", Json("{}"))
+        {
+            Rename = rename, Shape = Json("""{"fields":["a"]}"""), DeadlineMs = 900
+        }, default);
+        await link.CallAsync(new GameCall("weather_forecast", Json("{}")), default);
 
         JsonElement first = Assert.Single(game.CallsTo("weather")).Message;
         Assert.Equal(rename.GetRawText(), first.GetProperty("rename").GetRawText());
@@ -76,7 +82,9 @@ public sealed class GameLinkTests
         Assert.Equal(1500, first.GetProperty("deadline_ms").GetInt32());
         JsonElement second = Assert.Single(game.CallsTo("game_clock")).Message;
         Assert.False(second.TryGetProperty("rename", out _));
-        Assert.False(second.TryGetProperty("deadline_ms", out _));
+        Assert.False(second.TryGetProperty("shape", out _));
+        Assert.Equal(900, second.GetProperty("deadline_ms").GetInt32());
+        Assert.False(Assert.Single(game.CallsTo("weather_forecast")).Message.TryGetProperty("deadline_ms", out _));
     }
 
     [Fact]
@@ -479,6 +487,399 @@ public sealed class GameLinkTests
         await link.ReleaseAsync(3);
         await Eventually(() => game.Received.Any(message => message.GetRawText() == """{"type":"release","stream":3}"""));
     }
+
+    // ---- review fixes ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task ACallMadeWhileDisconnectedIsNeverWrittenIntoTheNextWorld()
+    {
+        await using FakeGame game = HubGame();
+        game.WelcomeDelay = number => number == 2 ? TimeSpan.FromMilliseconds(600) : TimeSpan.Zero;
+        await using GameLink link = new(new ClientOptions(game.Target));
+        Assert.True(await link.ConnectAsync());
+
+        game.WorldId = "world-2";
+        game.DropAll();
+        await Eventually(() => link.WorldId == null);
+        GameReply reply = await link.CallAsync(new GameCall("write_logic", Json(WriteOn)), default);
+
+        GameReply.Refused refused = Assert.IsType<GameReply.Refused>(reply);
+        Assert.Equal("world_changed", refused.Code);
+        Assert.Equal("world-2", refused.Data!.Value.GetProperty("world").GetProperty("id").GetString());
+        Assert.Empty(game.CallsTo("write_logic"));
+    }
+
+    [Fact]
+    public async Task InTheMenuWritesAreRefusedAndReadsGo()
+    {
+        await using FakeGame game = HubGame();
+        game.WorldId = "";
+        await using GameLink link = new(new ClientOptions(game.Target));
+
+        GameReply write = await link.CallAsync(new GameCall("write_logic", Json(WriteOn)), default);
+        GameReply read = await link.CallAsync(new GameCall("read_logic", Json(ReadOn)), default);
+
+        Assert.Equal("world_changed", Assert.IsType<GameReply.Refused>(write).Code);
+        Assert.Empty(game.CallsTo("write_logic"));
+        Assert.IsType<GameReply.Ok>(read);
+        Assert.False(Assert.Single(game.CallsTo("read_logic")).Message.TryGetProperty("world", out _));
+    }
+
+    [Fact]
+    public async Task AReadBrokenTwiceIsNotSentAThirdTime()
+    {
+        await using FakeGame game = HubGame();
+        game.Answer = call =>
+        {
+            if (call.Method != "read_logic")
+            {
+                return Task.FromResult<string?>(call.Ok("{}"));
+            }
+
+            game.DropAll();
+            return Task.FromResult<string?>(null);
+        };
+        await using GameLink link = new(new ClientOptions(game.Target));
+
+        GameReply.Unreachable unreachable = Assert.IsType<GameReply.Unreachable>(
+            await link.CallAsync(new GameCall("read_logic", Json(ReadOn)), default));
+
+        Assert.False(unreachable.MaybeRan);
+        Assert.Equal(2, game.CallsTo("read_logic").Count());
+    }
+
+    [Fact]
+    public async Task ACallNotYetWrittenAtABreakGoesOnTheNextConnection()
+    {
+        await using FakeGame game = HubGame();
+        game.Features.Remove("subscriptions");
+        game.MaxInFlightPerConnection = 1;
+        TaskCompletionSource secondQueued = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        game.Answer = async call =>
+        {
+            if (call.Params.TryGetProperty("n", out JsonElement n) && n.GetInt32() == 1)
+            {
+                await secondQueued.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                game.DropAll();
+                return null;
+            }
+
+            return call.Ok("{}");
+        };
+        await using GameLink link = new(new ClientOptions(game.Target));
+        Assert.True(await link.ConnectAsync());
+
+        Task<GameReply> first = link.CallAsync(new GameCall("write_logic", Json("""{"reference_id":"1","logic_type":"On","value":1,"n":1}""")), default);
+        await Eventually(() => game.Calls.Count == 1);
+        Task<GameReply> second = link.CallAsync(new GameCall("write_logic", Json("""{"reference_id":"1","logic_type":"On","value":1,"n":2}""")), default);
+        secondQueued.SetResult();
+
+        Assert.True(Assert.IsType<GameReply.Unreachable>(await first).MaybeRan);
+        Assert.IsType<GameReply.Ok>(await second);
+        Assert.Equal(2, game.CallsTo("write_logic").Last().Connection);
+    }
+
+    [Fact]
+    public async Task ACallWithNoReplyInTimeIsCancelledAndKeepsItsSlotUntilTheLateReply()
+    {
+        await using FakeGame game = HubGame();
+        game.Features.Remove("subscriptions");
+        game.MaxInFlightPerStream = 1;
+        TaskCompletionSource late = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        game.Answer = async call =>
+        {
+            if (call.Params.TryGetProperty("n", out JsonElement n) && n.GetInt32() == 1)
+            {
+                await late.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            }
+
+            return call.Ok("{}");
+        };
+        await using GameLink link = new(new ClientOptions(game.Target) { ConnectTimeout = TimeSpan.FromMilliseconds(200) })
+        {
+            ReplyGrace = TimeSpan.Zero
+        };
+        Assert.True(await link.ConnectAsync());
+
+        GameReply timedOut = await link.CallAsync(new GameCall("write_logic",
+            Json("""{"reference_id":"1","logic_type":"On","value":1,"n":1}"""), 5) { DeadlineMs = 100 }, default);
+        Task<GameReply> next = link.CallAsync(new GameCall("weather", Json("{}"), 5), default);
+        await Task.Delay(200);
+
+        Assert.True(Assert.IsType<GameReply.Unreachable>(timedOut).MaybeRan);
+        Assert.Contains(game.Received, message => message.GetProperty("type").GetString() == "cancel");
+        Assert.Empty(game.CallsTo("weather"));
+        late.SetResult();
+        Assert.IsType<GameReply.Ok>(await next);
+    }
+
+    [Fact]
+    public async Task ACallThatWaitedPastItsTimeForASlotIsNotSent()
+    {
+        await using FakeGame game = HubGame();
+        game.Features.Remove("subscriptions");
+        game.MaxInFlightPerConnection = 1;
+        TaskCompletionSource open = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        game.Answer = async call =>
+        {
+            await open.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            return call.Ok("{}");
+        };
+        await using GameLink link = new(new ClientOptions(game.Target) { ConnectTimeout = TimeSpan.FromMilliseconds(200) })
+        {
+            ReplyGrace = TimeSpan.Zero
+        };
+        Assert.True(await link.ConnectAsync());
+
+        Task<GameReply> holder = link.CallAsync(new GameCall("weather", Json("{}"), 1), default);
+        await Eventually(() => game.Calls.Count == 1);
+        GameReply late = await link.CallAsync(new GameCall("write_logic", Json(WriteOn), 2) { DeadlineMs = 100 }, default);
+
+        Assert.False(Assert.IsType<GameReply.Unreachable>(late).MaybeRan);
+        open.SetResult();
+        await holder;
+        Assert.Empty(game.CallsTo("write_logic"));
+    }
+
+    [Fact]
+    public async Task TheReplyTimeCountsFromTheWrite()
+    {
+        await using FakeGame game = HubGame();
+        game.Features.Remove("subscriptions");
+        game.MaxInFlightPerConnection = 1;
+        game.Answer = async call =>
+        {
+            await Task.Delay(call.Method == "weather" ? 500 : 300);
+            return call.Ok("{}");
+        };
+        await using GameLink link = new(new ClientOptions(game.Target) { ConnectTimeout = TimeSpan.FromMilliseconds(200) })
+        {
+            ReplyGrace = TimeSpan.Zero
+        };
+        Assert.True(await link.ConnectAsync());
+
+        Task<GameReply> holder = link.CallAsync(new GameCall("weather", Json("{}"), 1), default);
+        await Eventually(() => game.Calls.Count == 1);
+        GameReply reply = await link.CallAsync(new GameCall("write_logic", Json(WriteOn), 2) { DeadlineMs = 400 }, default);
+
+        Assert.IsType<GameReply.Ok>(reply);
+        await holder;
+    }
+
+    [Fact]
+    public async Task NothingIsWrittenAfterSessionEnd()
+    {
+        await using FakeGame game = HubGame();
+        game.Features.Remove("subscriptions");
+        game.MaxInFlightPerConnection = 1;
+        TaskCompletionSource open = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        game.Answer = async call =>
+        {
+            await open.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            return call.Ok("{}");
+        };
+        await using GameLink link = new(new ClientOptions(game.Target));
+        Assert.True(await link.ConnectAsync());
+        Task<GameReply> running = link.CallAsync(new GameCall("weather", Json("{}"), 1), default);
+        await Eventually(() => game.Calls.Count == 1);
+        Task<GameReply> waiting = link.CallAsync(new GameCall("write_logic", Json(WriteOn), 2), default);
+
+        await link.SessionEndAsync();
+
+        Assert.False(Assert.IsType<GameReply.Unreachable>(await waiting).MaybeRan);
+        Assert.False(Assert.IsType<GameReply.Unreachable>(
+            await link.CallAsync(new GameCall("read_logic", Json(ReadOn)), default)).MaybeRan);
+        open.SetResult();
+        Assert.IsType<GameReply.Ok>(await running);
+        Assert.Single(game.Calls);
+        await Eventually(() => game.Received.Any(message => message.GetRawText() == """{"type":"session_end"}"""));
+    }
+
+    [Fact]
+    public async Task SessionEndIsNotHeldBehindAReconnectInProgress()
+    {
+        await using FakeGame game = HubGame();
+        game.WelcomeDelay = number => number == 2 ? TimeSpan.FromSeconds(5) : TimeSpan.Zero;
+        await using GameLink link = new(new ClientOptions(game.Target));
+        Assert.True(await link.ConnectAsync());
+
+        game.DropAll();
+        await Eventually(() => link.IsConnecting && game.Connections == 2);
+        Stopwatch clock = Stopwatch.StartNew();
+        await link.SessionEndAsync();
+
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(2), $"session_end took {clock.Elapsed}");
+        await Eventually(() => game.Received.Any(message => message.GetRawText() == """{"type":"session_end"}"""));
+    }
+
+    [Fact]
+    public async Task ByeIsSentOnCloseOnlyAfterSessionEnd()
+    {
+        await using FakeGame game = HubGame();
+        GameLink plain = new(new ClientOptions(game.Target));
+        Assert.True(await plain.ConnectAsync());
+        await plain.DisposeAsync();
+        await Eventually(() => game.OpenConnections == 0);
+        Assert.DoesNotContain(game.Received, message => message.GetProperty("type").GetString() == "bye");
+
+        GameLink ended = new(new ClientOptions(game.Target));
+        Assert.True(await ended.ConnectAsync());
+        await ended.SessionEndAsync();
+        await ended.DisposeAsync();
+        await Eventually(() => game.Received.Any(message => message.GetProperty("type").GetString() == "bye"));
+    }
+
+    [Fact]
+    public async Task CloseDuringAConnectClosesTheNewConnection()
+    {
+        await using FakeGame game = HubGame();
+        game.WelcomeDelay = _ => TimeSpan.FromMilliseconds(500);
+        GameLink link = new(new ClientOptions(game.Target));
+
+        Task<bool> connecting = link.ConnectAsync();
+        await Eventually(() => game.Connections == 1);
+        await link.DisposeAsync();
+
+        Assert.False(await connecting);
+        await Eventually(() => game.OpenConnections == 0);
+        Assert.Null(link.WorldId);
+    }
+
+    [Fact]
+    public async Task CloseFailsWaitingCallsAndJobWaitsAndLaterCallsAtOnce()
+    {
+        await using FakeGame game = HubGame();
+        game.Features.Remove("subscriptions");
+        game.MaxInFlightPerConnection = 1;
+        game.Answer = _ => Task.FromResult<string?>(null);
+        GameLink link = new(new ClientOptions(game.Target));
+        Assert.True(await link.ConnectAsync());
+        _ = link.CallAsync(new GameCall("weather", Json("{}"), 1), default);
+        await Eventually(() => game.Calls.Count == 1);
+        Task<GameReply> waiting = link.CallAsync(new GameCall("weather", Json("{}"), 2), default);
+        Task<JsonElement?> job = link.WaitJobAsync("run-9", TimeSpan.FromSeconds(30), default);
+
+        await link.DisposeAsync();
+
+        Assert.False(Assert.IsType<GameReply.Unreachable>(await waiting.WaitAsync(TimeSpan.FromSeconds(2))).MaybeRan);
+        Assert.Null(await job.WaitAsync(TimeSpan.FromSeconds(2)));
+        Task<GameReply> after = link.CallAsync(new GameCall("weather", Json("{}")), default);
+        Assert.IsType<GameReply.Unreachable>(await after.WaitAsync(TimeSpan.FromSeconds(1)));
+    }
+
+    [Fact]
+    public async Task AJobWaitAnswersNullWhenTheLinkReconnects()
+    {
+        await using FakeGame game = HubGame();
+        await using GameLink link = new(new ClientOptions(game.Target));
+        Assert.True(await link.ConnectAsync());
+
+        Task<JsonElement?> waiting = link.WaitJobAsync("run-44", TimeSpan.FromSeconds(30), default);
+        game.DropAll();
+
+        Assert.Null(await waiting.WaitAsync(TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public async Task TheLinkComesBackAfterBreaksRightAfterEachWelcome()
+    {
+        await using FakeGame game = HubGame();
+        game.DropAfterWelcome = number => number <= 5;
+        await using GameLink link = new(new ClientOptions(game.Target));
+
+        await link.ConnectAsync();
+
+        await Eventually(() => game.Connections >= 6 && link.WorldId != null);
+        Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("game_clock", Json("{}")), default));
+    }
+
+    [Fact]
+    public async Task ThrowingHandlersDoNotEndTheConnection()
+    {
+        await using FakeGame game = HubGame();
+        await using GameLink link = new(new ClientOptions(game.Target));
+        ConcurrentQueue<string?> worlds = new();
+        link.EventReceived += _ => throw new InvalidOperationException("handler");
+        link.WorldChanged += _ => throw new InvalidOperationException("handler");
+        link.WorldChanged += worlds.Enqueue;
+        Assert.True(await link.ConnectAsync());
+
+        await game.PushAsync("""{"type":"event","event":"update","subscription":"s4","seq":1,"result":{}}""");
+        await game.PushAsync("""{"type":"event","event":"world_changed","world":{"id":"world-2","save":"x","epoch":1}}""");
+        await Eventually(() => worlds.Contains("world-2"));
+
+        Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("game_clock", Json("{}")), default));
+        Assert.Equal(1, game.Connections);
+    }
+
+    [Fact]
+    public async Task WorldChangedAfterAReconnectIsRaisedOutsideTheConnectLock()
+    {
+        await using FakeGame game = HubGame();
+        await using GameLink link = new(new ClientOptions(game.Target));
+        ConcurrentQueue<bool> connecting = new();
+        link.WorldChanged += _ => connecting.Enqueue(link.IsConnecting);
+        Assert.True(await link.ConnectAsync());
+
+        game.WorldId = "world-2";
+        game.DropAll();
+
+        await Eventually(() => !connecting.IsEmpty);
+        Assert.Equal([false], connecting);
+    }
+
+    [Fact]
+    public async Task TopicsAndWorldChangeDoNotWaitForACatalogueFetchOrTheCallersToken()
+    {
+        await using FakeGame game = HubGame();
+        game.CatalogueHash = "sha256:" + new string('c', 64);
+        game.CatalogueDelay = TimeSpan.FromSeconds(3);
+        await using GameLink link = new(new ClientOptions(game.Target));
+        ConcurrentQueue<string?> worlds = new();
+        link.WorldChanged += worlds.Enqueue;
+        using CancellationTokenSource caller = new();
+
+        Stopwatch clock = Stopwatch.StartNew();
+        Assert.True(await link.ConnectAsync(caller.Token));
+        caller.Cancel();
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(2), $"connecting took {clock.Elapsed}");
+        await Eventually(() => Topics(game).Count == 2);
+
+        game.WorldId = "world-2";
+        game.DropAll();
+        await Eventually(() => worlds.Contains("world-2"));
+        await Eventually(() => Topics(game).Count == 4);
+    }
+
+    [Fact]
+    public async Task TheModsCatalogueIsTakenWhenItsHashDiffers()
+    {
+        await using FakeGame game = HubGame();
+        game.CatalogueHash = "sha256:" + new string('d', 64);
+        game.CatalogueJson = CatalogueWithout("weather");
+        await using GameLink link = new(new ClientOptions(game.Target));
+
+        Assert.True(await link.ConnectAsync());
+
+        await Eventually(() => link.Catalogue.Hash == game.CatalogueHash);
+        Assert.Null(link.Catalogue.Method("weather"));
+        Assert.Single(game.CallsTo("catalogue"));
+    }
+
+    [Fact]
+    public async Task HoldRestoreIsRefusedWithoutStreams()
+    {
+        await using FakeGame game = HubGame();
+        game.Features.Remove("streams");
+        await using GameLink link = new(new ClientOptions(game.Target));
+
+        GameReply reply = await link.HoldRestoreAsync(3, Json("""{"clear_all":true}"""), default);
+
+        Assert.Equal("not_supported", Assert.IsType<GameReply.Refused>(reply).Code);
+        Assert.Empty(game.CallsTo("hold_restore"));
+    }
+
+    private const string WriteOn = """{"reference_id":"1","logic_type":"On","value":1}""";
 
     private static FakeGame HubGame()
     {

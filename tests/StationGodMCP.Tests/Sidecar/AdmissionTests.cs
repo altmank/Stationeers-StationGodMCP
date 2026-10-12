@@ -102,6 +102,68 @@ public sealed class AdmissionTests
         Assert.Equal(2, admission.InFlight);
     }
 
+    // perStream 1, perConnection 3; X, Y, Z in flight on 6, 5, 7; B (5), C (7), W (6) wait; B and C give up; X leaves:
+    // W must go in, though the lanes of B and C drop out of turn during the same pump.
+    [Fact]
+    public async Task AWaiterBehindLanesWhoseWaitersAllGaveUpStillGoesIn()
+    {
+        Admission admission = new(perStream: 1, perConnection: 3);
+        Assert.True(await admission.EnterAsync(6, Long, default));
+        Assert.True(await admission.EnterAsync(5, Long, default));
+        Assert.True(await admission.EnterAsync(7, Long, default));
+        Task<bool> b = admission.EnterAsync(5, TimeSpan.FromMilliseconds(50), default).AsTask();
+        Task<bool> c = admission.EnterAsync(7, TimeSpan.FromMilliseconds(50), default).AsTask();
+        Task<bool> w = admission.EnterAsync(6, Long, default).AsTask();
+        Assert.False(await b);
+        Assert.False(await c);
+
+        admission.Leave(6);
+
+        Assert.True(await w.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(3, admission.InFlight);
+    }
+
+    [Fact]
+    public async Task AWaiterCancelledAsItIsAdmittedGivesItsSlotBack()
+    {
+        for (int round = 0; round < 50; round++)
+        {
+            Admission admission = new(perStream: 1, perConnection: 1);
+            Assert.True(await admission.EnterAsync(1, Long, default));
+            using CancellationTokenSource cancel = new();
+            ValueTask<bool> waiting = admission.EnterAsync(2, Long, cancel.Token);
+
+            admission.Leave(1);
+            cancel.Cancel();
+
+            bool admitted;
+            try
+            {
+                admitted = await waiting;
+            }
+            catch (OperationCanceledException)
+            {
+                admitted = false;
+            }
+
+            // Either it went in (and holds the slot) or it gave up (and gave the slot back): never a slot lost.
+            Assert.Equal(admitted ? 1 : 0, admission.InFlight);
+        }
+    }
+
+    [Fact]
+    public async Task CloseFailsWaitersAndLaterCalls()
+    {
+        Admission admission = new(perStream: 1, perConnection: 1);
+        Assert.True(await admission.EnterAsync(1, Long, default));
+        ValueTask<bool> waiting = admission.EnterAsync(2, Long, default);
+
+        admission.Close();
+
+        Assert.False(await waiting);
+        Assert.False(await admission.EnterAsync(3, Long, default));
+    }
+
     // Records the stream when admitted, then leaves at once so the next in turn goes in.
     private static async Task Admitted(Admission admission, long stream, List<long> order)
     {
