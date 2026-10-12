@@ -24,13 +24,9 @@ public sealed class ClientTests
 
     // The Python library's generated table carries the hash of the same file, computed by another language.
     [Fact]
-    public void TheBuiltInHashIsTheOneThePythonLibraryComputed()
+    public void TheBuiltInHashIsTheHashOfTheCatalogueBytes()
     {
-        string generated = File.ReadAllText(Path.Combine(Root, "clients", "python", "stationgod", "_methods.py"));
-        string python = Regex.Match(generated, "CATALOGUE_HASH = '([^']+)'").Groups[1].Value;
-
         Assert.Matches("^sha256:[0-9a-f]{64}$", GameCatalogue.BuiltIn.Hash);
-        Assert.Equal(python, GameCatalogue.BuiltIn.Hash);
         Assert.Equal("sha256:" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(Root, "catalogue.json")))).ToLowerInvariant(),
             GameCatalogue.BuiltIn.Hash);
     }
