@@ -72,6 +72,15 @@ internal sealed class FakeGame : IAsyncDisposable
 
     public int MaxInFlight { get; set; } = 16;
 
+    /// <summary>How long the catalogue method waits before it answers.</summary>
+    public TimeSpan CatalogueDelay { get; set; }
+
+    /// <summary>How long connection n (1-based) waits before its welcome; null or zero for none.</summary>
+    public Func<int, TimeSpan>? WelcomeDelay { get; set; }
+
+    /// <summary>True closes connection n (1-based) straight after its welcome.</summary>
+    public Func<int, bool>? DropAfterWelcome { get; set; }
+
     /// <summary>limits.max_in_flight_per_stream in the welcome; left out when null.</summary>
     public int? MaxInFlightPerStream { get; set; }
 
@@ -218,7 +227,11 @@ internal sealed class FakeGame : IAsyncDisposable
             return;
         }
 
-        peer.Welcomed = true;
+        if (WelcomeDelay?.Invoke(peer.Number) is { } delay && delay > TimeSpan.Zero)
+        {
+            await Task.Delay(delay, _stopping.Token);
+        }
+
         string features = string.Join(",", Features.Select(feature => $"\"{feature}\""));
         string limits = "\"max_in_flight\":" + MaxInFlight +
                         (MaxInFlightPerStream is { } perStream ? ",\"max_in_flight_per_stream\":" + perStream : "") +
@@ -228,6 +241,12 @@ internal sealed class FakeGame : IAsyncDisposable
             : "";
         await peer.WriteAsync(
             $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":92,"protocol_methods":3},"limits":{{{limits}}},"features":[{{features}}]{{resume}}}""");
+        peer.Welcomed = true;
+        if (DropAfterWelcome?.Invoke(peer.Number) == true)
+        {
+            return;
+        }
+
         while (await ReadAsync(peer) is { } message)
         {
             string? kind = message.TryGetProperty("type", out JsonElement value) ? value.GetString() : null;
@@ -239,6 +258,11 @@ internal sealed class FakeGame : IAsyncDisposable
             FakeCall call = CallOf(peer, message);
             _ = Task.Run(async () =>
             {
+                if (call.Method == "catalogue" && CatalogueDelay > TimeSpan.Zero)
+                {
+                    await Task.Delay(CatalogueDelay, _stopping.Token);
+                }
+
                 string? reply = call.Method == "catalogue"
                     ? call.Ok(CatalogueJson)
                     : await Answer(call);

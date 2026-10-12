@@ -96,6 +96,23 @@ internal sealed class GameConnection
         }
     }
 
+    /// <summary>Writes one message and says whether it can have reached the server; anything but Written closes it.</summary>
+    internal async Task<Sending> SendAsync(string line)
+    {
+        if (!Alive)
+        {
+            return Sending.NotWritten.Instance;
+        }
+
+        Sending sent = await _channel.TryWriteLineAsync(line, _closing.Token).ConfigureAwait(false);
+        if (sent is not Sending.Written)
+        {
+            Close();
+        }
+
+        return sent;
+    }
+
     /// <summary>
     /// Reads until the connection ends, handing every message to onMessage on this task; then closes it, ends every
     /// call still waiting with CallEnd.Broken and calls onClosed once.
@@ -169,6 +186,29 @@ internal sealed class PendingCall(string id, Action<GameConnection, JsonElement>
     }
 
     internal void End(CallEnd end) => _end.TrySetResult(end);
+}
+
+/// <summary>How writing one line ended: written whole, never started, or failed part way (it may have left).</summary>
+internal abstract class Sending
+{
+    private Sending()
+    {
+    }
+
+    internal sealed class Written : Sending
+    {
+        internal static readonly Written Instance = new();
+    }
+
+    internal sealed class NotWritten : Sending
+    {
+        internal static readonly NotWritten Instance = new();
+    }
+
+    internal sealed class Broken : Sending
+    {
+        internal static readonly Broken Instance = new();
+    }
 }
 
 /// <summary>How a written call ended on its connection: a reply, or the connection broke first.</summary>

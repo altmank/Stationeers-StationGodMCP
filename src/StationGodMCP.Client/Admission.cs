@@ -21,6 +21,7 @@ internal sealed class Admission
     private int _inFlight;
     private int _perStream;
     private int _perConnection;
+    private bool _closed;
 
     internal Admission(int perStream = 16, int perConnection = 256)
     {
@@ -51,15 +52,40 @@ internal sealed class Admission
         }
     }
 
+    /// <summary>Fails every waiting call and every later one: the link has ended its session or is closed.</summary>
+    internal void Close()
+    {
+        List<Waiter> failed = [];
+        lock (_gate)
+        {
+            _closed = true;
+            Drain(_zero, failed);
+            foreach (Lane lane in _lanes.Values)
+            {
+                Drain(lane, failed);
+            }
+        }
+
+        foreach (Waiter waiter in failed)
+        {
+            waiter.Fail();
+        }
+    }
+
     /// <summary>
-    /// True once the call holds a slot on its stream; false when the timeout passed first. Throws when cancelled.
-    /// Every true is paired with one Leave.
+    /// True once the call holds a slot on its stream; false when the timeout passed first or admission is closed.
+    /// Throws when cancelled. Every true is paired with one Leave.
     /// </summary>
     internal ValueTask<bool> EnterAsync(long stream, TimeSpan timeout, CancellationToken cancellation)
     {
         Waiter waiter;
         lock (_gate)
         {
+            if (_closed)
+            {
+                return new ValueTask<bool>(false);
+            }
+
             Lane lane = LaneOf(stream);
             if (lane.Waiting.Count == 0 && lane.InFlight < _perStream && _inFlight < _perConnection)
             {
@@ -97,8 +123,7 @@ internal sealed class Admission
     {
         try
         {
-            await waiter.Admitted.WaitAsync(timeout, cancellation).ConfigureAwait(false);
-            return true;
+            return await waiter.Admitted.WaitAsync(timeout, cancellation).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
@@ -122,7 +147,7 @@ internal sealed class Admission
         {
             if (waiter.Admitted.IsCompleted)
             {
-                return true;
+                return waiter.Admitted.Result;
             }
 
             waiter.Abandoned = true;
@@ -131,39 +156,44 @@ internal sealed class Admission
         }
     }
 
-    // Hands free slots out, one call per lane per step: stream 0 at the start of each round, then each lane that was in
-    // turn when the round began. Stops when a whole round admits nothing or the connection is full.
+    // Hands free slots out in sweeps until a sweep admits nothing or the connection is full. A sweep is as many steps
+    // as there are lanes in turn, plus one, counted when it starts. No lane joins while the lock is held, and a round
+    // restarts with stream 0 only after every lane left in it had its step, so a sweep reaches every lane however many
+    // it drops on the way (a lane whose waiters all gave up).
     private void Pump()
     {
-        int idle = 0;
-        while (_inFlight < _perConnection && idle <= _turns.Count + 1)
+        bool admitted = true;
+        while (admitted && _inFlight < _perConnection)
         {
-            if (_roundLeft == 0)
+            admitted = false;
+            int steps = _turns.Count + 1;
+            for (int step = 0; step < steps && _inFlight < _perConnection; step++)
             {
-                _roundLeft = _turns.Count;
-                _zeroDue = true;
+                admitted |= Step();
             }
-
-            Lane lane;
-            if (_zeroDue)
-            {
-                _zeroDue = false;
-                lane = _zero;
-            }
-            else
-            {
-                lane = _turns.Dequeue();
-                _roundLeft--;
-            }
-
-            bool admitted = TryAdmitOne(lane);
-            if (lane != _zero)
-            {
-                ReturnToTurns(lane);
-            }
-
-            idle = admitted ? 0 : idle + 1;
         }
+    }
+
+    // One lane's turn: stream 0 at the start of each round, then each lane that was in turn when the round began.
+    private bool Step()
+    {
+        if (_roundLeft == 0)
+        {
+            _roundLeft = _turns.Count;
+            _zeroDue = true;
+        }
+
+        if (_zeroDue)
+        {
+            _zeroDue = false;
+            return TryAdmitOne(_zero);
+        }
+
+        Lane lane = _turns.Dequeue();
+        _roundLeft--;
+        bool admitted = TryAdmitOne(lane);
+        ReturnToTurns(lane);
+        return admitted;
     }
 
     private bool TryAdmitOne(Lane lane)
@@ -229,6 +259,14 @@ internal sealed class Admission
         }
     }
 
+    private static void Drain(Lane lane, List<Waiter> failed)
+    {
+        while (lane.Waiting.Count > 0)
+        {
+            failed.Add(lane.Waiting.Dequeue());
+        }
+    }
+
     private sealed class Lane(long stream)
     {
         internal long Stream { get; } = stream;
@@ -242,12 +280,15 @@ internal sealed class Admission
 
     private sealed class Waiter
     {
-        private readonly TaskCompletionSource _admitted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _admitted = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        internal Task Admitted => _admitted.Task;
+        /// <summary>True when admitted, false when admission closed first.</summary>
+        internal Task<bool> Admitted => _admitted.Task;
 
         internal bool Abandoned { get; set; }
 
-        internal void Admit() => _admitted.TrySetResult();
+        internal void Admit() => _admitted.TrySetResult(true);
+
+        internal void Fail() => _admitted.TrySetResult(false);
     }
 }

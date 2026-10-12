@@ -69,6 +69,38 @@ internal sealed class LineChannel(Stream stream) : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Writes one message and its line feed, and says whether any of it can have left: NotWritten when the turn to
+    /// write never came (cancelled or closed while waiting for an earlier line), Broken when the write itself failed.
+    /// </summary>
+    internal async Task<Sending> TryWriteLineAsync(string json, CancellationToken cancellation)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(json + "\n");
+        try
+        {
+            await _writeLock.WaitAsync(cancellation).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return Sending.NotWritten.Instance;
+        }
+
+        try
+        {
+            await stream.WriteAsync(bytes, cancellation).ConfigureAwait(false);
+            await stream.FlushAsync(cancellation).ConfigureAwait(false);
+            return Sending.Written.Instance;
+        }
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException or OperationCanceledException)
+        {
+            return Sending.Broken.Instance;
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
     public ValueTask DisposeAsync() => stream.DisposeAsync();
 
     private void MakeRoom()

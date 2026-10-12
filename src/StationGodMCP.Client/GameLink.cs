@@ -6,19 +6,19 @@ namespace StationGodMCP.Client;
 
 /// <summary>
 /// The hub's one game connection (hub.md, Streams; protocol.md, Streams, A call's world, Resuming). Calls are tagged
-/// by stream and carry the world id they were made in; admission keeps the welcome's per-stream and per-connection
-/// limits, round robin by stream with stream 0 first. Every hello carries this link's resume token, and a broken
-/// connection is reopened with it at once, then with backoff from 100 ms doubling to 5 s.
+/// by stream and carry the world id the link had seen when they were made; admission keeps the welcome's per-stream
+/// and per-connection limits, round robin by stream with stream 0 first. Every hello carries this link's resume token,
+/// and a broken connection is reopened with it at once, then with backoff from 100 ms doubling to 5 s.
 ///
 /// The resend rule is StationGodClient's: a call never written goes on the next connection; a written call with no
 /// reply is sent again, once, only when it is read class with no x-effects, and otherwise answers Unreachable with
-/// MaybeRan; nothing is sent again into another world. Safe to use from several threads.
+/// MaybeRan; nothing is sent into a world other than the one the call was made in. After SessionEndAsync or
+/// DisposeAsync nothing more is written. Safe to use from several threads.
 /// </summary>
 public sealed class GameLink : IGameLink, IAsyncDisposable
 {
     private const int KeptJobs = 256;
     private static readonly TimeSpan DefaultDeadline = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan ReplyGrace = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan FirstBackoff = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan LongestBackoff = TimeSpan.FromSeconds(5);
     private static readonly JsonElement NoParameters = Json("{}");
@@ -29,19 +29,21 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
 
     private readonly ClientOptions _options;
     private readonly SemaphoreSlim _connectLock = new(1, 1);
+    private readonly CancellationTokenSource _lifetime = new();
     private readonly Admission _admission = new();
     private readonly JobBook _jobs = new(KeptJobs);
     private readonly Dictionary<string, GameCatalogue> _catalogues = new(StringComparer.Ordinal);
     private readonly object _gate = new();
     private volatile GameConnection? _connection;
     private volatile GameCatalogue _catalogue;
+    private volatile bool _disposed;
+    private volatile bool _ended;
     private string? _lastWorldId;
     private JsonElement? _world;
     private bool _welcomed;
     private long _nextId;
     private long _lastStream;
     private int _reconnecting;
-    private bool _disposed;
 
     public GameLink(ClientOptions options)
     {
@@ -78,9 +80,20 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
 
     /// <summary>
     /// Every event message but ping, after the link has handled it (world_changed and job_ended included), raised on
-    /// the reader: the subscription events the hub relays.
+    /// the reader: the subscription events the hub relays. A handler that throws is ignored.
     /// </summary>
     public event Action<JsonElement>? EventReceived;
+
+    /// <summary>The time added to each call's wait for its reply, after its deadline and x-duration.</summary>
+    internal TimeSpan ReplyGrace { get; init; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>How long SessionEndAsync may spend opening a connection when none is open.</summary>
+    internal TimeSpan SessionEndWait { get; init; } = TimeSpan.FromMilliseconds(300);
+
+    /// <summary>True while a connection is being opened under the connect lock.</summary>
+    internal bool IsConnecting => _connectLock.CurrentCount == 0;
+
+    private bool Closed => _disposed || _ended;
 
     public long NewStream() => Interlocked.Increment(ref _lastStream);
 
@@ -91,23 +104,38 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
     // ---- calls ----------------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// One call on its stream. It waits its connect timeout plus the deadline (30 s by default) plus x-duration plus
-    /// 5 s, then answers Unreachable and cancels the call when the server allows. Throws only when cancelled.
+    /// One call on its stream, in the world the link had seen when it was made. It must be written within its connect
+    /// timeout plus its reply time (the deadline, 30 s by default, plus x-duration plus the grace), else it answers
+    /// Unreachable unwritten; once written it waits its reply time from the write, then answers Unreachable and cancels
+    /// the call when the server allows. Throws only when cancelled.
     /// </summary>
     public async Task<GameReply> CallAsync(GameCall call, CancellationToken cancellation)
     {
         JsonElement parameters = call.Parameters.ValueKind == JsonValueKind.Object ? call.Parameters : NoParameters;
         TimeSpan reply = (call.DeadlineMs is { } given ? TimeSpan.FromMilliseconds(given) : DefaultDeadline) +
                          _catalogue.Duration(call.Method, parameters) + ReplyGrace;
-        DateTime expires = DateTime.UtcNow + _options.EffectiveConnectTimeout + reply;
+        DateTime sendBy = DateTime.UtcNow + _options.EffectiveConnectTimeout + reply;
+        bool worldKnown;
+        string? world;
+        lock (_gate)
+        {
+            // A link that has seen a welcome tags the call with that world even while disconnected, so a call made for
+            // one save is never written into the next.
+            worldKnown = _welcomed;
+            world = _lastWorldId;
+        }
+
         TimeSpan backoff = FirstBackoff;
-        string? world = null;
-        bool started = false;
         bool waiting = false;
         int resends = 0;
         while (true)
         {
-            if (waiting && DateTime.UtcNow >= expires)
+            if (Closed)
+            {
+                return ClosedReply(call.Method);
+            }
+
+            if (waiting && DateTime.UtcNow >= sendBy)
             {
                 return new GameReply.Unreachable(
                     $"{call.Method} could not be sent to {_options.Target.Description} again before its time ran out.", maybeRan: false);
@@ -117,9 +145,9 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
             if (connecting is Connecting.Failed failed)
             {
                 // A new call answers at once; one waiting to be sent again tries until its time runs out.
-                if (!waiting || DateTime.UtcNow + backoff >= expires)
+                if (Closed || !waiting || DateTime.UtcNow + backoff >= sendBy)
                 {
-                    return ReplyOf(failed.Outcome);
+                    return Closed ? ClosedReply(call.Method) : ReplyOf(failed.Outcome);
                 }
 
                 await Task.Delay(backoff, cancellation).ConfigureAwait(false);
@@ -129,18 +157,24 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
 
             GameConnection connection = ((Connecting.Connected)connecting).Connection;
             string? current = CurrentWorld();
-            if (!started)
+            if (!worldKnown)
             {
-                // The call means the world it was made in; it carries that id on every try.
                 world = current;
-                started = true;
+                worldKnown = true;
             }
-            else if (current != world)
+
+            if (current != world)
             {
                 return WorldMoved(call.Method);
             }
 
-            Attempt attempt = await AttemptAsync(connection, call, parameters, world, expires, cancellation).ConfigureAwait(false);
+            if (world == null && ChangesTheWorld(call.Method, parameters))
+            {
+                return NoWorld(call.Method);
+            }
+
+            Attempt attempt = await AttemptAsync(connection, call, parameters, world, sendBy, reply, cancellation)
+                .ConfigureAwait(false);
             bool safe = _catalogue.ResendSafe(call.Method, parameters);
             switch (attempt)
             {
@@ -170,36 +204,49 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
         }
     }
 
-    // One try on one connection: wait for a slot on the call's stream, write the call, wait for its end.
+    // One try on one connection: wait for a slot on the call's stream (until sendBy), write the call, wait its reply
+    // time from the write.
     private async Task<Attempt> AttemptAsync(GameConnection connection, GameCall call, JsonElement parameters,
-        string? world, DateTime expires, CancellationToken cancellation)
+        string? world, DateTime sendBy, TimeSpan reply, CancellationToken cancellation)
     {
-        if (!await _admission.EnterAsync(call.Stream, Remaining(expires), cancellation).ConfigureAwait(false))
+        if (!await _admission.EnterAsync(call.Stream, Remaining(sendBy), cancellation).ConfigureAwait(false))
         {
-            return new Attempt.Done(new GameReply.Unreachable(
-                $"{call.Method} waited for a free call slot on stream {call.Stream} until its time ran out.", maybeRan: false));
+            return new Attempt.Done(Closed
+                ? ClosedReply(call.Method)
+                : new GameReply.Unreachable(
+                    $"{call.Method} waited for a free call slot on stream {call.Stream} until its time ran out; it was not sent.",
+                    maybeRan: false));
         }
 
         string id = Interlocked.Increment(ref _nextId).ToString(CultureInfo.InvariantCulture);
         PendingCall pending = new(id, null);
+        bool holdsSlot = true;
+        connection.Pending[id] = pending;
         try
         {
-            connection.Pending[id] = pending;
-            if (!connection.Alive)
+            if (Closed)
             {
-                return Attempt.NotWritten.Instance;
+                return new Attempt.Done(ClosedReply(call.Method));
             }
 
-            if (!await connection.TrySendAsync(Wire.LinkCall(connection.Features, id, call, parameters, world)).ConfigureAwait(false))
+            if (DateTime.UtcNow >= sendBy)
+            {
+                return new Attempt.Done(new GameReply.Unreachable(
+                    $"{call.Method} ran out of time before it could be written; it was not sent.", maybeRan: false));
+            }
+
+            Sending sent = await connection.SendAsync(Wire.LinkCall(connection.Features, id, call, parameters, world))
+                .ConfigureAwait(false);
+            if (sent is not Sending.Written)
             {
                 // A write that failed part way may still have reached the game: only a safe call is sent again.
-                return Attempt.Broken.Instance;
+                return sent is Sending.NotWritten ? Attempt.NotWritten.Instance : Attempt.Broken.Instance;
             }
 
             CallEnd end;
             try
             {
-                end = await pending.Ended.WaitAsync(Remaining(expires), cancellation).ConfigureAwait(false);
+                end = await pending.Ended.WaitAsync(reply, cancellation).ConfigureAwait(false);
             }
             catch (Exception exception) when (exception is TimeoutException or OperationCanceledException)
             {
@@ -208,6 +255,9 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
                     await connection.TrySendAsync(Wire.Cancel(id)).ConfigureAwait(false);
                 }
 
+                // The mod may still run it: the slot stays taken until its late reply or the connection's close.
+                holdsSlot = false;
+                _ = HoldSlotUntilEndAsync(connection, pending, call.Stream);
                 cancellation.ThrowIfCancellationRequested();
                 return Attempt.TimedOut.Instance;
             }
@@ -218,8 +268,24 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
         }
         finally
         {
-            connection.Pending.TryRemove(id, out _);
-            _admission.Leave(call.Stream);
+            if (holdsSlot)
+            {
+                connection.Pending.TryRemove(id, out _);
+                _admission.Leave(call.Stream);
+            }
+        }
+    }
+
+    private async Task HoldSlotUntilEndAsync(GameConnection connection, PendingCall pending, long stream)
+    {
+        try
+        {
+            await pending.Ended.ConfigureAwait(false);
+        }
+        finally
+        {
+            connection.Pending.TryRemove(pending.Id, out _);
+            _admission.Leave(stream);
         }
     }
 
@@ -238,13 +304,58 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
         }
     }
 
-    /// <summary>session_end. Reconnecting first, with the token, reaches the state the mod holds for it.</summary>
+    /// <summary>
+    /// session_end: from now on nothing more is written (calls not yet written answer Unreachable unrun). Sent on the
+    /// open connection at once; with none open, one connection is tried for at most SessionEndWait, beside any
+    /// reconnect in progress, never behind it. When that fails too, the mod applies the held restores when the token's
+    /// resume window passes.
+    /// </summary>
     public async Task SessionEndAsync()
     {
-        if (await ConnectionAsync(CancellationToken.None).ConfigureAwait(false) is Connecting.Connected { Connection: var connection })
+        _ended = true;
+        _admission.Close();
+        if (_connection is { Alive: true } live &&
+            await live.SendAsync(Wire.SessionEnd()).ConfigureAwait(false) is Sending.Written)
         {
-            await connection.TrySendAsync(Wire.SessionEnd()).ConfigureAwait(false);
+            return;
         }
+
+        await SessionEndOnNewConnectionAsync().ConfigureAwait(false);
+    }
+
+    private async Task SessionEndOnNewConnectionAsync()
+    {
+        using CancellationTokenSource bound = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        bound.CancelAfter(SessionEndWait);
+        GameConnection connection;
+        try
+        {
+            if (await Handshake.OpenAsync(_options, Library.LinkFeatures, ResumeToken, bound.Token).ConfigureAwait(false)
+                is not Connecting.Connected connected)
+            {
+                return;
+            }
+
+            connection = connected.Connection;
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        await connection.TrySendAsync(Wire.SessionEnd()).ConfigureAwait(false);
+        lock (_gate)
+        {
+            if (!_disposed)
+            {
+                // Kept so DisposeAsync says bye on it; it reads, but no reconnect follows its close.
+                _connection = connection;
+                _ = Task.Run(() => connection.ReadAsync(OnMessage, OnClosed), CancellationToken.None);
+                return;
+            }
+        }
+
+        connection.Close();
     }
 
     /// <summary>
@@ -259,8 +370,22 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
         }
     }
 
-    public Task<GameReply> HoldRestoreAsync(long stream, JsonElement change, CancellationToken cancellation) =>
-        CallAsync(new GameCall("hold_restore", change, stream), cancellation);
+    /// <summary>
+    /// hold_restore on the stream. Refused not_supported, unsent, when the mod has no streams: it would act on stream
+    /// 0, which every run shares (a clear_all would clear them all).
+    /// </summary>
+    public async Task<GameReply> HoldRestoreAsync(long stream, JsonElement change, CancellationToken cancellation)
+    {
+        if (await ConnectionAsync(cancellation).ConfigureAwait(false) is Connecting.Connected { Connection: var connection } &&
+            !connection.Features.Contains("streams"))
+        {
+            return new GameReply.Refused("not_supported",
+                "This mod has no streams ('streams' not in welcome.features), so hold_restore would act on the stream " +
+                "every run shares; it was not sent.", null);
+        }
+
+        return await CallAsync(new GameCall("hold_restore", change, stream), cancellation).ConfigureAwait(false);
+    }
 
     /// <summary>stream_costs for the streams asked, in the order asked; empty when the game did not answer it.</summary>
     public async Task<StreamCost[]> StreamCostsAsync(IReadOnlyList<long> streams, CancellationToken cancellation)
@@ -269,22 +394,42 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
         return reply is GameReply.Ok ok ? StreamCostsOf(ok.Result) : [];
     }
 
+    /// <summary>
+    /// The job's job_ended facts, or null: the timeout passed, the link reconnected (events of the break are lost, so
+    /// poll the job's job_id), or the link closed.
+    /// </summary>
     public Task<JsonElement?> WaitJobAsync(string jobId, TimeSpan timeout, CancellationToken cancellation) =>
         _jobs.WaitAsync(jobId, timeout, cancellation);
 
+    /// <summary>
+    /// Closes the link. bye is sent only after SessionEndAsync: bye clears every held restore unwritten, so a link closed
+    /// without ending its session closes without it, and the mod applies the restores when the resume window passes.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         GameConnection? connection;
         lock (_gate)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             _disposed = true;
             connection = _connection;
             _connection = null;
         }
 
+        _lifetime.Cancel();
+        _admission.Close();
+        _jobs.Close();
         if (connection != null)
         {
-            await connection.TrySendAsync(Wire.Bye()).ConfigureAwait(false);
+            if (_ended)
+            {
+                await connection.TrySendAsync(Wire.Bye()).ConfigureAwait(false);
+            }
+
             connection.Close();
         }
     }
@@ -352,8 +497,19 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
     private static GameReply.Refused RefusedOf(JsonElement error) =>
         new(Wire.Text(error, "code") ?? "internal_error", Wire.Text(error, "message") ?? "", Wire.Child(error, "data"));
 
+    private GameReply ClosedReply(string method) => new GameReply.Unreachable(
+        $"{method} was not sent: the game link {(_disposed ? "is closed" : "has ended its session")}.", maybeRan: false);
+
     // The call was made in a world the game has left: refused here as the mod would refuse it, data naming the world now.
-    private GameReply WorldMoved(string method)
+    private GameReply WorldMoved(string method) => WorldRefusal(
+        $"The game is in another world than when {method} was made; it was not sent, because the reference ids it " +
+        "carries may name other things now.");
+
+    // No world runs (the menu, a load): a write or cheat would act in whatever world loads next.
+    private GameReply NoWorld(string method) => WorldRefusal(
+        $"No world is loaded, so {method} was not sent: it would act in whatever world loads next.");
+
+    private GameReply WorldRefusal(string message)
     {
         JsonElement? world;
         lock (_gate)
@@ -361,22 +517,31 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
             world = _world;
         }
 
-        JsonElement data = Json("{\"world\":" + (world?.GetRawText() ?? "null") + "}");
-        return new GameReply.Refused("world_changed",
-            $"The game is in another world than when {method} was made; it was not sent, because the reference ids it " +
-            "carries may name other things now.", data);
+        return new GameReply.Refused("world_changed", message, Json("{\"world\":" + (world?.GetRawText() ?? "null") + "}"));
     }
+
+    private bool ChangesTheWorld(string method, JsonElement parameters) =>
+        _catalogue.EffectiveClass(method, parameters) is "write" or "cheat";
 
     // ---- connecting -----------------------------------------------------------------------------------------------
 
+    // Opening and adopting run under the connect lock; what follows a new connection (WorldChanged, the topics, the
+    // catalogue) runs after it, on the link's lifetime, so a caller's cancellation cannot cut it short.
     private async Task<Connecting> ConnectionAsync(CancellationToken cancellation)
     {
+        if (Closed)
+        {
+            return ClosedConnecting();
+        }
+
         GameConnection? current = _connection;
         if (current is { Alive: true })
         {
             return new Connecting.Connected(current);
         }
 
+        Adoption? adopted = null;
+        Connecting connecting;
         await _connectLock.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
@@ -386,48 +551,77 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
                 return new Connecting.Connected(current);
             }
 
-            if (_disposed)
+            if (Closed)
             {
-                return new Connecting.Failed(new CallOutcome.NoAnswer("The game link is closed.", MaybeRan: false));
+                return ClosedConnecting();
             }
 
-            Connecting connecting = await Handshake.OpenAsync(_options, Library.LinkFeatures, ResumeToken, cancellation)
+            connecting = await Handshake.OpenAsync(_options, Library.LinkFeatures, ResumeToken, cancellation)
                 .ConfigureAwait(false);
             if (connecting is Connecting.Connected connected)
             {
-                await AdoptAsync(connected.Connection, cancellation).ConfigureAwait(false);
+                adopted = Adopt(connected.Connection);
+                if (adopted == null)
+                {
+                    return ClosedConnecting();
+                }
             }
-
-            return connecting;
         }
         finally
         {
             _connectLock.Release();
         }
+
+        if (adopted != null)
+        {
+            AfterAdopting(adopted);
+        }
+
+        return connecting;
     }
 
-    // Starts the reader, takes the welcome's limits, world and catalogue, and subscribes to the world and jobs topics
-    // unless the mod resumed this token, which keeps its subscriptions.
-    private async Task AdoptAsync(GameConnection connection, CancellationToken cancellation)
+    private Connecting ClosedConnecting() => new Connecting.Failed(new CallOutcome.NoAnswer(
+        _disposed ? "The game link is closed." : "The game link has ended its session.", MaybeRan: false));
+
+    // Publishes the connection and its world, unless the link closed while it was opening: then it is closed unused.
+    private Adoption? Adopt(GameConnection connection)
     {
-        _admission.SetLimits(connection.PerStreamLimit, connection.PerConnectionLimit);
         string? world = WorldIdOf(connection.World);
-        bool worldChanged;
+        Adoption adoption;
         lock (_gate)
         {
+            if (Closed)
+            {
+                connection.Close();
+                return null;
+            }
+
+            adoption = new Adoption(connection, world, worldChanged: _welcomed && world != _lastWorldId, reconnected: _welcomed);
             _connection = connection;
             Welcome = connection.Welcome;
-            worldChanged = _welcomed && world != _lastWorldId;
             _welcomed = true;
             _lastWorldId = world;
             _world = connection.World;
         }
 
+        _admission.SetLimits(connection.PerStreamLimit, connection.PerConnectionLimit);
         _ = Task.Run(() => connection.ReadAsync(OnMessage, OnClosed), CancellationToken.None);
-        await UseCatalogueAsync(connection, cancellation).ConfigureAwait(false);
-        if (worldChanged)
+        return adoption;
+    }
+
+    // WorldChanged, waking job waits after a break, the world and jobs topics unless the mod resumed this token (it
+    // keeps its subscriptions), then the catalogue: the topics never wait behind a catalogue fetch.
+    private void AfterAdopting(Adoption adoption)
+    {
+        GameConnection connection = adoption.Connection;
+        if (adoption.WorldChanged)
         {
-            WorldChanged?.Invoke(world);
+            RaiseWorldChanged(adoption.World);
+        }
+
+        if (adoption.Reconnected)
+        {
+            _jobs.WakeAll();
         }
 
         if (!connection.Resumed && connection.Features.Contains("subscriptions"))
@@ -435,10 +629,12 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
             _ = Task.Run(() => CallAsync(WorldTopic, CancellationToken.None), CancellationToken.None);
             _ = Task.Run(() => CallAsync(JobsTopic, CancellationToken.None), CancellationToken.None);
         }
+
+        _ = Task.Run(() => UseCatalogueAsync(connection), CancellationToken.None);
     }
 
     // The mod's catalogue when its hash differs from the one in use; the built-in one when the fetch fails.
-    private async Task UseCatalogueAsync(GameConnection connection, CancellationToken cancellation)
+    private async Task UseCatalogueAsync(GameConnection connection)
     {
         if (connection.CatalogueHash is not { } hash)
         {
@@ -454,16 +650,23 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
 
         if (known == null)
         {
-            DateTime expires = DateTime.UtcNow + DefaultDeadline + ReplyGrace;
-            Attempt attempt = await AttemptAsync(connection, CatalogueCall, NoParameters, null, expires, cancellation)
-                .ConfigureAwait(false);
-            if (attempt is Attempt.Done { Reply: GameReply.Ok { Result.ValueKind: JsonValueKind.Object } fetched })
+            try
             {
-                known = GameCatalogue.FromServer(fetched.Result, hash);
-                lock (_gate)
+                TimeSpan reply = DefaultDeadline + ReplyGrace;
+                Attempt attempt = await AttemptAsync(connection, CatalogueCall, NoParameters, null, DateTime.UtcNow + reply,
+                    reply, _lifetime.Token).ConfigureAwait(false);
+                if (attempt is Attempt.Done { Reply: GameReply.Ok { Result.ValueKind: JsonValueKind.Object } fetched })
                 {
-                    _catalogues[hash] = known;
+                    known = GameCatalogue.FromServer(fetched.Result, hash);
+                    lock (_gate)
+                    {
+                        _catalogues[hash] = known;
+                    }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // The link closed during the fetch.
             }
         }
 
@@ -472,51 +675,59 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
 
     private void OnClosed(GameConnection connection)
     {
-        bool reconnect;
         lock (_gate)
         {
             if (ReferenceEquals(_connection, connection))
             {
                 _connection = null;
             }
-
-            reconnect = !_disposed;
         }
 
-        if (reconnect && Interlocked.Exchange(ref _reconnecting, 1) == 0)
+        if (NeedsReconnect())
+        {
+            StartReconnecting();
+        }
+    }
+
+    private bool NeedsReconnect() => !Closed && _connection is not { Alive: true };
+
+    private void StartReconnecting()
+    {
+        if (Interlocked.CompareExchange(ref _reconnecting, 1, 0) == 0)
         {
             _ = Task.Run(ReconnectAsync);
         }
     }
 
-    // Reopens a broken connection at once, then with backoff from 100 ms doubling to 5 s, until it is open again.
+    // Reopens a broken connection at once, then with backoff from 100 ms doubling to 5 s, until it is open again. A
+    // break between the last check and the reset of the flag found the flag still set, so it is checked again after.
     private async Task ReconnectAsync()
     {
         TimeSpan backoff = FirstBackoff;
         try
         {
-            while (true)
+            while (NeedsReconnect())
             {
-                lock (_gate)
+                if (await ConnectionAsync(_lifetime.Token).ConfigureAwait(false) is Connecting.Connected)
                 {
-                    if (_disposed || _connection is { Alive: true })
-                    {
-                        return;
-                    }
+                    continue;
                 }
 
-                if (await ConnectionAsync(CancellationToken.None).ConfigureAwait(false) is Connecting.Connected)
-                {
-                    return;
-                }
-
-                await Task.Delay(backoff).ConfigureAwait(false);
+                await Task.Delay(backoff, _lifetime.Token).ConfigureAwait(false);
                 backoff = Min(backoff * 2, LongestBackoff);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // The link closed.
         }
         finally
         {
             Volatile.Write(ref _reconnecting, 0);
+            if (NeedsReconnect())
+            {
+                StartReconnecting();
+            }
         }
     }
 
@@ -563,7 +774,13 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
                 break;
         }
 
-        EventReceived?.Invoke(message);
+        if (EventReceived is { } handlers)
+        {
+            foreach (Delegate handler in handlers.GetInvocationList())
+            {
+                Guarded(() => ((Action<JsonElement>)handler)(message));
+            }
+        }
     }
 
     // Raised once per new world id, from this event or from a welcome after a reconnect.
@@ -586,7 +803,31 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
             _world = changed;
         }
 
-        WorldChanged?.Invoke(id);
+        RaiseWorldChanged(id);
+    }
+
+    private void RaiseWorldChanged(string? world)
+    {
+        if (WorldChanged is { } handlers)
+        {
+            foreach (Delegate handler in handlers.GetInvocationList())
+            {
+                Guarded(() => ((Action<string?>)handler)(world));
+            }
+        }
+    }
+
+    // A handler's fault is its own: it must not end the reader (and with it the connection) or the adoption.
+    private static void Guarded(Action raise)
+    {
+        try
+        {
+            raise();
+        }
+        catch (Exception)
+        {
+            // Ignored on purpose; see above.
+        }
     }
 
     private string? CurrentWorld()
@@ -616,9 +857,9 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
     private static double Number(JsonElement message, string key) =>
         Wire.Child(message, key) is { ValueKind: JsonValueKind.Number } value ? value.GetDouble() : 0;
 
-    private static TimeSpan Remaining(DateTime expires)
+    private static TimeSpan Remaining(DateTime until)
     {
-        TimeSpan left = expires - DateTime.UtcNow;
+        TimeSpan left = until - DateTime.UtcNow;
         return left > TimeSpan.Zero ? left : TimeSpan.Zero;
     }
 
@@ -628,6 +869,19 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
     {
         using JsonDocument document = JsonDocument.Parse(text);
         return document.RootElement.Clone();
+    }
+
+    /// <summary>A connection just published, and what it changed.</summary>
+    private sealed class Adoption(GameConnection connection, string? world, bool worldChanged, bool reconnected)
+    {
+        internal GameConnection Connection { get; } = connection;
+
+        internal string? World { get; } = world;
+
+        internal bool WorldChanged { get; } = worldChanged;
+
+        /// <summary>Not the link's first welcome: events may have been missed during the break.</summary>
+        internal bool Reconnected { get; } = reconnected;
     }
 
     /// <summary>How one try of a call on one connection ended.</summary>
@@ -642,7 +896,7 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
             internal GameReply Reply { get; } = reply;
         }
 
-        /// <summary>The connection was gone before the line was written: safe to send on the next one.</summary>
+        /// <summary>Nothing of the line left: safe to send on the next connection.</summary>
         internal sealed class NotWritten : Attempt
         {
             internal static readonly NotWritten Instance = new();
