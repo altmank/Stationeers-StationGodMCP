@@ -314,7 +314,7 @@ def report_every_class(ctx):
     field = ctx.oracle.logic(FIX["field"], "Open")
     code = ("sg.write('logic', id='%s', logic='Setting', value=7777)\n"
             "sg.write('label', id='%s', label='GATE TEST')\n"
-            "sg.build('pipe', at=[700, 202, 660], to=[702, 202, 660])\n"
+            "sg.build('pipe', grade='insulated_gas', waypoints=[[700, 202, 660], [702, 202, 660]])\n"
             "sg.remove('structure', id='%s')\n"
             "sg.move('item', id='%s', to='player')\n"
             "with sg.hold('%s', 'Open', 1, after=0):\n    pass" % (FIX["cap1"], FIX["cap2"], FIX["door_switch"],
