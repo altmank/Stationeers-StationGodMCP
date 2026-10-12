@@ -135,6 +135,13 @@ class HoldTests(HubCase):
             with sg.hold("1", "On", value=1):
                 pass
 
+    def test_a_dict_or_bytes_is_not_ids(self):
+        with self.assertRaises(TypeError):
+            sg.hold({"reference_id": "5"}, "On")
+        with self.assertRaises(TypeError):
+            sg.hold(b"5", "On")
+        self.assertEqual([], self.holds())
+
     def test_a_set_of_ids_is_a_list(self):
         with sg.hold({"5"}, "On"):
             pass

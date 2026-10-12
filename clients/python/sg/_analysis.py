@@ -4,8 +4,11 @@ is compiled as a function body.
 The code is parsed once. Its statements become the body of a function `__sg_run__` built in the syntax tree, not by
 indenting text, so every line number the run reports is the user's own line. A final bare expression becomes the
 function's return value; `return x` works as written. So that the body still behaves like a module:
-- every name it binds is declared `global` in the function, so a `def f(): global count` in the code works;
-- `from x import *` is moved to module level, ahead of the function (a function may not hold it);
+- every name it binds is declared `global` in the function, so a `def f(): global count` in the code works (a
+  `global` statement of the code's own becomes `pass`: it is a no-op at module level);
+- `from __future__ import ...` moves to the very top, ahead of the function;
+- `from x import *` becomes, in place, a call that copies the module's public names into the run's globals (a
+  function may not hold a star import), so it works inside `try` or `if` too;
 - a top-level annotation `x: int = 1` becomes `x = 1` (a global name cannot be annotated);
 - a top-level `yield` or `await` is refused as a syntax error.
 
@@ -13,7 +16,7 @@ function's return value; `return x` works as written. So that the body still beh
 not trust them for safety: a run moves to the confirmed run's rules at its first write call.
 """
 import ast
-import symtable
+import importlib
 
 from ._catalogue import WRITE_WHATS
 from ._session import SCRIPT_FILENAME
@@ -78,10 +81,12 @@ def _is_int(node):
 
 
 def while_lines(tree):
-    """The lines of every statement inside a while body, continuation lines included, sorted."""
+    """The lines of every while's test and of every statement inside its body, continuation lines included,
+    sorted."""
     lines = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.While):
+            lines.update(range(node.test.lineno, (node.test.end_lineno or node.test.lineno) + 1))
             for statement in node.body:
                 lines.update(range(statement.lineno, (statement.end_lineno or statement.lineno) + 1))
     return sorted(lines)
@@ -156,19 +161,18 @@ def as_function(tree):
     """The module's statements as the body of `def __sg_run__():` (see the module docstring), a final bare
     expression returned."""
     refuse_top_level_yield(tree.body)
-    hoisted = [statement for statement in tree.body if _is_star_import(statement)]
-    body = [_ModuleLevel().visit(statement) for statement in tree.body if not _is_star_import(statement)]
-    body = [statement for statement in body if statement is not None]
+    futures = [statement for statement in tree.body if _is_future_import(statement)]
+    body = [_ModuleLevel().visit(statement) for statement in tree.body if not _is_future_import(statement)]
     if body and isinstance(body[-1], ast.Expr):
         last = body[-1]
         body[-1] = ast.copy_location(ast.Return(value=last.value), last)
     if not body:
         body = [ast.Pass()]
     function = _function(body)
-    names = bound_names(ast.Module(body=hoisted + [function], type_ignores=[]))
+    names = bound_names(futures, function)
     if names:
         function.body.insert(0, ast.copy_location(ast.Global(names=names), body[0]))
-    module = ast.Module(body=hoisted + [function], type_ignores=[])
+    module = ast.Module(body=futures + [function], type_ignores=[])
     ast.fix_missing_locations(module)
     return module
 
@@ -184,21 +188,35 @@ def _function(body):
     return function
 
 
-def bound_names(module):
-    """The names the run function binds itself (its locals), read from the symbol table of the unparsed tree."""
-    module = ast.fix_missing_locations(module)
-    table = symtable.symtable(ast.unparse(module), SCRIPT_FILENAME, "exec")
-    function = next(child for child in table.get_children() if child.get_name() == RUN_FUNCTION)
-    return sorted(symbol.get_name() for symbol in function.get_symbols() if symbol.is_local())
+def bound_names(futures, function):
+    """The names the run function binds itself (its locals, captured ones included), read from its compiled code.
+    Compiling here also reports the code's own syntax errors at their true lines."""
+    module = ast.fix_missing_locations(ast.Module(body=futures + [function], type_ignores=[]))
+    code = compile(module, SCRIPT_FILENAME, "exec")
+    run = next(constant for constant in code.co_consts
+               if hasattr(constant, "co_name") and constant.co_name == RUN_FUNCTION)
+    return sorted(set(run.co_varnames) | set(run.co_cellvars))
 
 
-def _is_star_import(statement):
-    return isinstance(statement, ast.ImportFrom) and any(alias.name == "*" for alias in statement.names)
+def _is_future_import(statement):
+    return isinstance(statement, ast.ImportFrom) and statement.module == "__future__"
+
+
+def import_star(module_name, namespace):
+    """`from module_name import *` into namespace (the run's globals): the module's __all__, else its names that do
+    not start with an underscore."""
+    module = importlib.import_module(module_name)
+    names = getattr(module, "__all__", None)
+    if names is None:
+        names = [name for name in vars(module) if not name.startswith("_")]
+    for name in names:
+        namespace[name] = getattr(module, name)
 
 
 class _ModuleLevel(ast.NodeTransformer):
     """Rewrites what a module allows and a function does not, at the code's own level (not inside its defs):
-    `global` statements (no-ops at module level) are dropped and annotated assignments lose the annotation."""
+    `global` statements (no-ops at module level) become `pass`, star imports become import_star calls, and annotated
+    assignments lose the annotation."""
 
     def visit_FunctionDef(self, node):
         return node
@@ -206,7 +224,17 @@ class _ModuleLevel(ast.NodeTransformer):
     visit_AsyncFunctionDef = visit_ClassDef = visit_Lambda = visit_FunctionDef
 
     def visit_Global(self, node):
-        return None
+        return ast.copy_location(ast.Pass(), node)
+
+    def visit_ImportFrom(self, node):
+        if node.level or not any(alias.name == "*" for alias in node.names):
+            return node
+        call = ast.parse(f"__import__('sg._analysis', fromlist=['import_star']).import_star({node.module!r}, "
+                         "globals())", mode="eval").body
+        for child in ast.walk(call):
+            ast.copy_location(child, node)
+            child.end_lineno, child.end_col_offset = node.end_lineno, node.end_col_offset
+        return ast.copy_location(ast.Expr(value=call), node)
 
     def visit_AnnAssign(self, node):
         if node.value is None:
