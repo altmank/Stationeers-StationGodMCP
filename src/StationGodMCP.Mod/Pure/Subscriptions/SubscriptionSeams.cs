@@ -119,4 +119,7 @@ internal interface ISubscriptionEvents<TReading> where TReading : class
 
     /// <summary>For a world-topic subscription: the game state changed (Running, Paused, Loading, ...).</summary>
     void GameStateChanged(ConnectionId connection, SubscriptionId subscription, string state);
+
+    /// <summary>For a jobs-topic subscription: a held-tick job ended; job is the event's job object, one for all.</summary>
+    void JobEnded(ConnectionId connection, SubscriptionId subscription, long seq, long frame, object job);
 }

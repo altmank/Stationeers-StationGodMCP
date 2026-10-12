@@ -68,6 +68,9 @@ internal sealed class RecordingEvents : ISubscriptionEvents<FakeReading>
     internal List<(ConnectionId Connection, SubscriptionId Subscription, string State)> States { get; } =
         new List<(ConnectionId, SubscriptionId, string)>();
 
+    internal List<(ConnectionId Connection, SubscriptionId Subscription, long Seq, long Frame, object Job)> Jobs { get; } =
+        new List<(ConnectionId, SubscriptionId, long, long, object)>();
+
     public void Enqueue(UpdateSlot<FakeReading> slot) => Queue.Add(slot);
 
     void ISubscriptionEvents<FakeReading>.Ended(ConnectionId connection, SubscriptionId subscription, SubscriptionEnd end) =>
@@ -78,6 +81,9 @@ internal sealed class RecordingEvents : ISubscriptionEvents<FakeReading>
 
     public void GameStateChanged(ConnectionId connection, SubscriptionId subscription, string state) =>
         States.Add((connection, subscription, state));
+
+    public void JobEnded(ConnectionId connection, SubscriptionId subscription, long seq, long frame, object job) =>
+        Jobs.Add((connection, subscription, seq, frame, job));
 
     /// <summary>The writer: takes every queued slot in order, as a client reading its pipe would receive them.</summary>
     internal List<SubscriptionUpdate<FakeReading>> Drain()

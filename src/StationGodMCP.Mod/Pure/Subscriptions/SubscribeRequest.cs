@@ -27,7 +27,7 @@ internal sealed class DeviceSubscriptionQuery
 }
 
 /// <summary>
-/// subscribe's params, read: a devices subscription, the world topic, an invalid_argument, or a request well formed
+/// subscribe's params, read: a devices subscription, the world or jobs topic, an invalid_argument, or a request well formed
 /// but larger than one subscription may read (subscription_limit, so the client polls instead).
 /// </summary>
 internal abstract class SubscribeRequest
@@ -54,6 +54,15 @@ internal abstract class SubscribeRequest
         internal static readonly World Instance = new World();
 
         private World()
+        {
+        }
+    }
+
+    internal sealed class Jobs : SubscribeRequest
+    {
+        internal static readonly Jobs Instance = new Jobs();
+
+        private Jobs()
         {
         }
     }
@@ -98,25 +107,35 @@ internal abstract class SubscribeRequest
 
         JToken? topic = Present(given["topic"]);
         if (topic != null && (topic.Type != JTokenType.String ||
-                              !(Is(topic, "devices") || Is(topic, "world"))))
+                              !(Is(topic, "devices") || Is(topic, WorldTopic) || Is(topic, JobsTopic))))
         {
-            return new Invalid("Argument 'topic' must be \"devices\" or \"world\".");
+            return new Invalid("Argument 'topic' must be \"devices\", \"world\" or \"jobs\".");
         }
 
-        if (topic != null && Is(topic, "world"))
+        if (topic != null && Is(topic, WorldTopic))
         {
-            foreach (JProperty property in given.Properties())
+            return TopicAlone(given, WorldTopic, World.Instance);
+        }
+
+        return topic != null && Is(topic, JobsTopic) ? TopicAlone(given, JobsTopic, Jobs.Instance) : OfDevices(given);
+    }
+
+    private const string WorldTopic = "world";
+
+    private const string JobsTopic = "jobs";
+
+    // The world and jobs topics take topic alone.
+    private static SubscribeRequest TopicAlone(JObject given, string topic, SubscribeRequest request)
+    {
+        foreach (JProperty property in given.Properties())
+        {
+            if (property.Name != "topic" && Present(property.Value) != null)
             {
-                if (property.Name != "topic" && Present(property.Value) != null)
-                {
-                    return new Invalid($"The world topic takes no '{property.Name}'.");
-                }
+                return new Invalid($"The {topic} topic takes no '{property.Name}'.");
             }
-
-            return World.Instance;
         }
 
-        return OfDevices(given);
+        return request;
     }
 
     private static SubscribeRequest OfDevices(JObject given)
