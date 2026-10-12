@@ -9,19 +9,24 @@ using StationGodMCP.Pure.Lint;
 namespace StationGodMCP.Api.Shared.Game.Lint;
 
 /// <summary>
-/// The rule files a lint call uses: lint-rules.json in the mod's folder (the copy built into the DLL when that file is
-/// missing), and lint-rules.json in the loaded save's folder (saves\&lt;station&gt;\), which takes priority. Read again
-/// whenever either file's time or size changes; otherwise the compiled set is kept.
+/// The rule files a lint call uses: the mod's rules, the copy of lint-rules.json built into this DLL, and
+/// lint-rules.json in the loaded save's folder (saves\&lt;station&gt;\), which takes priority. The lint-rules.json in
+/// the mod's folder is a copy to read and is never loaded: the rules always match the code that runs them, even when
+/// the DLL sits next to another version's file (whose rules can lack a phase, such as "write", this code relies on).
+/// The save's file is read again whenever its time or size changes; otherwise the compiled set is kept.
 /// </summary>
 internal static class LintRuleFiles
 {
     internal const string FileName = "lint-rules.json";
+
+    /// <summary>The name the mod's rules go by in rule_source and in their errors.</summary>
+    internal const string BuiltInName = FileName + " (built in)";
+
     private const string Resource = "StationGodMCP.lint-rules.json";
 
     private static string? _key;
     private static LintRuleSet? _set;
-
-    internal static string ModFile => Path.Combine(ModDirectory, FileName);
+    private static string? _builtIn;
 
     /// <summary>The save's rule file path (it may not exist); null with no save loaded.</summary>
     internal static string? SaveFile
@@ -36,24 +41,11 @@ internal static class LintRuleFiles
         }
     }
 
-    // The folder the mod's DLL was loaded from (LaunchPad loads mods with Assembly.LoadFrom); a DLL loaded from bytes
-    // has no location, and then only the built-in rules apply.
-    private static string ModDirectory
-    {
-        get
-        {
-            string location = typeof(LintRuleFiles).Assembly.Location;
-            return string.IsNullOrEmpty(location)
-                ? Path.Combine(Directory.GetCurrentDirectory(), "no-mod-folder")
-                : Path.GetDirectoryName(location) ?? Directory.GetCurrentDirectory();
-        }
-    }
-
-    /// <summary>The effective rule set, compiled once per change of either file.</summary>
+    /// <summary>The effective rule set, compiled once per change of the save's file.</summary>
     internal static LintRuleSet Current()
     {
         string? save = SaveFile;
-        string key = Stamp(ModFile) + "|" + (save != null ? Stamp(save) : "-");
+        string key = save != null ? Stamp(save) : "-";
         if (_set != null && key == _key)
         {
             return _set;
@@ -71,8 +63,7 @@ internal static class LintRuleFiles
     private static LintRuleSet Load(LintRuleText mod, LintRuleText? save) =>
         LintRuleLoader.Load(LintGameLibrary.Library, mod, save);
 
-    private static LintRuleText ModText() =>
-        File.Exists(ModFile) ? Text(ModFile, LintRuleOrigin.Mod) : new LintRuleText(FileName + " (built in)", BuiltIn(), LintRuleOrigin.Mod);
+    private static LintRuleText ModText() => new LintRuleText(BuiltInName, _builtIn ??= BuiltIn(), LintRuleOrigin.Mod);
 
     private static LintRuleText Text(string path, LintRuleOrigin origin)
     {
