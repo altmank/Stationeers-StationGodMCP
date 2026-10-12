@@ -145,7 +145,7 @@
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: trade]",
         "x-list": "split",
-        "x-target": [{"path": "id", "role": "acts-on"}]
+        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "card", "role": "pays-from"}]
       }
     },
     "sell": {
@@ -215,7 +215,7 @@
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: trade]",
         "x-list": "split",
-        "x-target": [{"path": "id", "role": "acts-on"}]
+        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "card", "role": "pays-from"}]
       }
     }
   }

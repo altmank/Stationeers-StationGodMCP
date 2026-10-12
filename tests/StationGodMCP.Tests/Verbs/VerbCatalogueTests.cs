@@ -215,6 +215,60 @@ public sealed class VerbCatalogueTests
         Assert.Contains("{index, ok, reference_id, payload | error}", VerbStubs.IdListLine);
     }
 
+    /// <summary>
+    /// Write options reviewed as no target (C2b review, 08:45): they set values, place new things at positions, shape
+    /// the reply or run, lift guards, or name consent and routing (gateway, allow_bridge, assume_removed), never a thing
+    /// the write acts on, pays from or picks. Any other write option is an x-target path.
+    /// </summary>
+    private static readonly HashSet<string> NotTargets = new(StringComparer.Ordinal)
+    {
+        // run and reply shaping
+        "confirm", "queue", "max_wait", "include", "verbose", "rows", "action", "csv", "slow_frame_ms", "lines",
+        "interval_s", "capacity",
+        // guards, consent and routing
+        "allow", "acknowledge_gas_lost", "allow_bridge", "assume_removed", "gateway", "skip_unmatched", "free", "force",
+        "split_long", "join", "join_trunk", "as_player",
+        // values written
+        "logic", "value", "start", "values", "code", "code_file", "run", "genes", "unit", "color", "label", "ratio",
+        "joules", "quantity", "merge", "slot", "reagent", "at_most", "gases", "amount_mol", "delete", "joined", "command",
+        "items", "state", "surface", "element", "pixel", "event", "text", "safe_ground", "from_step",
+        // new things at positions (placement cells are not seen-checked)
+        "placements", "at", "rotation", "spread", "facing", "up", "face", "orient", "above_floor", "build_state", "grade",
+        "piece", "pieces", "branches", "extra_ends", "blueprint", "turn", "from_plan",
+        // per what: build's prefab is what it places; build runs' cells and waypoints are new cells; server stop's id is
+        // the hub's own run or job
+        "build structure.prefab", "build cable.cells", "build cable.waypoints", "build pipe.cells", "build pipe.waypoints",
+        "build chute.cells", "build chute.waypoints", "server stop.id"
+    };
+
+    [Fact]
+    public void EveryWriteOptionThatPicksATargetIsAnXTarget()
+    {
+        List<string> unreviewed = new();
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if (VerbCatalogue.WriteOf(source) is not { } write)
+            {
+                continue;
+            }
+
+            HashSet<string> paths = new(write["x-target"]!.AsArray().Select(target => ((string)target!["path"]!).Split('[', '.')[0]));
+            foreach ((string name, JsonObject _) in VerbCatalogue.OptionsOf(source))
+            {
+                bool perWhat = NotTargets.Contains(verb + " " + what + "." + name);
+                bool general = NotTargets.Contains(name) && !paths.Contains(name);
+                if (!paths.Contains(name) && !perWhat && !general)
+                {
+                    unreviewed.Add($"{verb} {what}.{name}");
+                }
+            }
+        }
+
+        Assert.True(unreviewed.Count == 0, "write options neither x-target nor reviewed as no target: " + string.Join(", ", unreviewed));
+        JsonObject chip = VerbCatalogue.WriteOf(VerbCatalogue.Verb("write")["whats"]!["chip"]!.AsObject())!;
+        Assert.Equal(6, chip["x-target"]!.AsArray().Count(target => ((string)target!["path"]!).StartsWith("pins.", StringComparison.Ordinal)));
+    }
+
     private static void Check(List<string> problems, string at, string key, JsonObject write, string[] allowed)
     {
         string? value = (string?)write[key];

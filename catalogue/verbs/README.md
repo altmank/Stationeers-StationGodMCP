@@ -47,6 +47,11 @@ Per write what (`write`):
   - `undo`'s `id` (job, bulk write or script run ids) is `acts-on`; scripts give it (`sg.undo(id=...)`).
   - build structure and build blueprint have no id targets: placement cells are not seen-checked.
   - `materials` is `pays-from` everywhere it appears.
+- Selection options (C2b review): remove cable/pipe/chute waypoints and cells are `spread`; swap into, tidy, spare
+  and riding are `spread` (they pick which pieces change); every `root` is `acts-on` (it decides what is cut off or
+  redundant); write chip `pins.d0`..`pins.d5`, move player's `to` and `to_player` are `acts-on`; trade's `card` is
+  `pays-from`. Not targets: gateway, allow_bridge and assume_removed (routing and consent), and build placements.
+  The test EveryWriteOptionThatPicksATargetIsAnXTarget holds the reviewed list.
 - `x-undo`: uplink and flight_log are `cannot` (SPEC-NOTES), over DESIGN 7.2's [undo].
 - move item (PLAN 2.0): typed ids act at once, slot and store moves alike (note 27); a ref or a filter reports until
   confirm, through the `mod` report path. An id list is one `moves` list, a slot per move (`auto` when left out).

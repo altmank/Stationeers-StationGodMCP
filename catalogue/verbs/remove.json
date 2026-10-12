@@ -293,7 +293,10 @@
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "waypoints", "role": "spread"},
+          {"path": "cells", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     },
@@ -441,7 +444,10 @@
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "waypoints", "role": "spread"},
+          {"path": "cells", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     },
@@ -587,7 +593,10 @@
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "waypoints", "role": "spread"},
+          {"path": "cells", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     }

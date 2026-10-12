@@ -138,7 +138,8 @@
           {"path": "materials", "role": "pays-from"},
           {"path": "refund_to", "role": "pays-from"},
           {"path": "room", "role": "spread"},
-          {"path": "prefab", "role": "spread"}
+          {"path": "prefab", "role": "spread"},
+          {"path": "into", "role": "spread"}
         ]
       }
     },
@@ -270,7 +271,8 @@
           {"path": "materials", "role": "pays-from"},
           {"path": "refund_to", "role": "pays-from"},
           {"path": "room", "role": "spread"},
-          {"path": "prefab", "role": "spread"}
+          {"path": "prefab", "role": "spread"},
+          {"path": "into", "role": "spread"}
         ]
       }
     },
@@ -503,7 +505,11 @@
           {"path": "refund_to", "role": "pays-from"},
           {"path": "network", "role": "spread"},
           {"path": "only", "role": "spread"},
-          {"path": "older_than", "role": "spread"}
+          {"path": "older_than", "role": "spread"},
+          {"path": "into", "role": "spread"},
+          {"path": "tidy", "role": "spread"},
+          {"path": "spare", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     },
@@ -743,7 +749,11 @@
           {"path": "refund_to", "role": "pays-from"},
           {"path": "network", "role": "spread"},
           {"path": "only", "role": "spread"},
-          {"path": "older_than", "role": "spread"}
+          {"path": "older_than", "role": "spread"},
+          {"path": "into", "role": "spread"},
+          {"path": "tidy", "role": "spread"},
+          {"path": "spare", "role": "spread"},
+          {"path": "root", "role": "acts-on"}
         ]
       }
     },
@@ -892,7 +902,9 @@
           {"path": "materials", "role": "pays-from"},
           {"path": "refund_to", "role": "pays-from"},
           {"path": "network", "role": "spread"},
-          {"path": "box", "role": "spread"}
+          {"path": "box", "role": "spread"},
+          {"path": "spare", "role": "spread"},
+          {"path": "riding", "role": "spread"}
         ]
       }
     }
