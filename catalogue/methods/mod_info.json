@@ -3,7 +3,7 @@
   "summary": "The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game. Read only.",
   "help": {
     "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 12 and reflection 10 by default; list_limits keeps more. include_counters true adds the counters of the mod's game-side work (the counters topic).",
-    "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], prefab_index, job_holds, print_log, lint_chip_programs, batch_console, profiling, ...}.",
+    "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], prefab_index, job_holds, print_log, lint_chip_programs, batch_console, frame_ms {frames, p50, p90, p99, over_8ms}, profiling, ...}.",
     "topics": {
       "methods": {
         "summary": "Per-method counts and times.",
@@ -23,7 +23,7 @@
       },
       "counters": {
         "summary": "Counters of the game-side work the mod does.",
-        "text": "Only with include_counters true. Counted from mod load, profiling on or off. prefab_index.arrived and left: things the game reported spawning and despawning. job_holds {under_100ms, under_1s, under_10s, under_60s, over_60s}: how long jobs held the game tick, one count per hold, each bucket from its lower edge (over_60s: 60 s or more). print_log {records, capacity}: print provenance records held, and the most kept before the oldest drop. lint_chip_programs: chip programs the lint cache holds parsed. batch_console {lines, lines_per_minute}: lines a dedicated server printed, and per minute over the last full minute; 0 on a game with a window."
+        "text": "Only with include_counters true. Counted from mod load, profiling on or off. prefab_index.arrived and left: things the game reported spawning and despawning. job_holds {under_100ms, under_1s, under_10s, under_60s, over_60s}: how long jobs held the game tick, one count per hold, each bucket from its lower edge (over_60s: 60 s or more). print_log {records, capacity}: print provenance records held, and the most kept before the oldest drop. lint_chip_programs: chip programs the lint cache holds parsed. batch_console {lines, lines_per_minute}: lines a dedicated server printed, and per minute over the last full minute; 0 on a game with a window. frame_ms {frames, p50, p90, p99, over_8ms}: StationGod's main-thread request ms per frame, over the frames that served a call or stopped at the budget (frames.busy_frames); pN is the upper edge of the fixed bucket holding that frame (edges 0.1 to 250 ms), or the longest frame when over 250 ms, and null with no frames; over_8ms counts frames over 8.0 ms."
       }
     },
     "shared": ["truncation"]
@@ -35,7 +35,7 @@
     "properties": {
       "include_counters": {
         "type": "boolean",
-        "description": "Default false; true adds the runtime counters of the mod's game-side work: job_holds, print_log, lint_chip_programs, batch_console, and prefab_index arrived and left."
+        "description": "Default false; true adds runtime counters of the mod's game-side work: job_holds, print_log, lint_chip_programs, batch_console, frame_ms, and prefab_index arrived and left."
       }
     },
     "additionalProperties": false

@@ -28,6 +28,7 @@ internal sealed class RuntimeView : ITruncatingView
         PrintLog = counters?.PrintLog;
         LintChipPrograms = counters?.LintChipPrograms;
         BatchConsole = counters?.BatchConsole;
+        FrameMs = counters != null ? new FrameHistogramView(frames.Histogram) : null;
         Connections = connections;
         Profiling = profiling;
         JobSettles = jobSettles ?? new JobSettlesView(0, 0, 0);
@@ -92,6 +93,10 @@ internal sealed class RuntimeView : ITruncatingView
 
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public BatchConsoleView? BatchConsole { get; }
+
+    /// <summary>The busy frames' request ms percentiles (FrameHistogram), only with include_counters.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public FrameHistogramView? FrameMs { get; }
 
     /// <summary>The profiler's summary while profiling is on; absent otherwise.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -462,4 +467,37 @@ internal sealed class BatchConsoleView
     public long Lines { get; }
 
     public double LinesPerMinute { get; }
+}
+
+/// <summary>
+/// StationGod's request ms per busy frame since the mod loaded (FrameHistogram): busy frames counted, p50, p90 and p99
+/// (each the upper edge of the bucket holding that percentile's frame, or the longest frame in the open bucket above
+/// 250 ms; null with no frames), and the frames over 8 ms.
+/// </summary>
+internal sealed class FrameHistogramView
+{
+    private const int Decimals = 2;
+
+    internal FrameHistogramView(FrameHistogramReading reading)
+    {
+        Frames = reading.Frames;
+        P50 = Rounded(reading.P50);
+        P90 = Rounded(reading.P90);
+        P99 = Rounded(reading.P99);
+        Over8Ms = reading.Over8Ms;
+    }
+
+    public long Frames { get; }
+
+    public double? P50 { get; }
+
+    public double? P90 { get; }
+
+    public double? P99 { get; }
+
+    /// <summary>Frames over 8.0 ms; a frame of exactly 8.0 ms does not count.</summary>
+    [Newtonsoft.Json.JsonProperty("over_8ms")]
+    public long Over8Ms { get; }
+
+    private static double? Rounded(double? ms) => ms.HasValue ? Math.Round(ms.Value, Decimals) : null;
 }

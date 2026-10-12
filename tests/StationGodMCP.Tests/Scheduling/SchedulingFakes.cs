@@ -43,6 +43,9 @@ internal sealed class FakeCall
 
     /// <summary>FrameScheduler.Frame when it was queued.</summary>
     internal long ArrivedAfterFrame { get; set; }
+
+    /// <summary>CurrentFrame.BudgetReached as it finished: what its reply's budget_hit would say.</summary>
+    internal bool BudgetHit { get; set; }
 }
 
 /// <summary>Runs a call by advancing the clock by its cost, and records what ran and what expired, in order.</summary>
@@ -68,6 +71,7 @@ internal sealed class FakeRunner : ICallRunner<FakeCall>
         call.StartedAtMs = _clock.NowMs;
         Ran.Add(call);
         _clock.Advance(call.CostMs);
+        call.BudgetHit = CurrentFrame.BudgetReached(_clock.NowMs);
     }
 
     public void Expire(FakeCall call) => Expired.Add(call);

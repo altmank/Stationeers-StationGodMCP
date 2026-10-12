@@ -243,9 +243,9 @@ internal static class ReplyShapes
         };
         shapes["mod_info"] = new[]
         {
-            // The game counters come with include_counters (about 270 bytes more).
+            // The game counters come with include_counters (about 365 bytes more).
             S<ModInfoView>().Absent("RuntimeView.JobHolds", "RuntimeView.PrintLog", "RuntimeView.LintChipPrograms",
-                    "RuntimeView.BatchConsole", "PrefabIndexView.Arrived", "PrefabIndexView.Left")
+                    "RuntimeView.BatchConsole", "RuntimeView.FrameMs", "PrefabIndexView.Arrived", "PrefabIndexView.Left")
                 .List("ModInfoView.Methods", W.Methods).List("ModInfoView.Reflection", W.ReflectedMembers)
                 .List("RuntimeView.Methods", D.RuntimeMethods).List("RuntimeView.CatalogueDrift", 0).List("RuntimeView.Connections", 2).List("ConnectionView.Methods", ConnectionView.MethodsShown)
                 .List("ProfilingSummaryView.Top", ProfilingSummaryView.TopShown)

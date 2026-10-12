@@ -218,7 +218,7 @@ public sealed class ShapingTests
     [Fact]
     public void OmitInTheEnvelopeAppliesToTheResultOnly()
     {
-        CallReplyView reply = CallReplyView.Of("r8", ShapingChecks.Parse("""{"id":"x","source":"long"}"""), true, 0.5, 0.25, 3);
+        CallReplyView reply = CallReplyView.Of("r8", ShapingChecks.Parse("""{"id":"x","source":"long"}"""), true, 0.5, 0.25, 3, false);
         ShapeRequest shape = ShapeRequest.Lenient(JObject.Parse("""{"omit":["source","id"]}"""))!;
 
         string text = ApiJson.WriteShaped(ApiJson.Fresh(), reply, shape, ShapingRoot.Envelope).Json;
@@ -437,7 +437,7 @@ public sealed class ShapingTests
     [Fact]
     public void TheEnvelopeIsLeftAloneAndMarkedShaped()
     {
-        CallReplyView reply = CallReplyView.Of("r7", ShapingChecks.Parse("""{"things":[{"a":1,"b":2}],"count":1}"""), true, 0.5, 0.25, 3);
+        CallReplyView reply = CallReplyView.Of("r7", ShapingChecks.Parse("""{"things":[{"a":1,"b":2}],"count":1}"""), true, 0.5, 0.25, 3, false);
 
         string text = ApiJson.WriteShaped(ApiJson.Fresh(), reply, ShapingChecks.Fields(new[] { "a" }), ShapingRoot.Envelope).Json;
 

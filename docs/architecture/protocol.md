@@ -62,7 +62,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `type` | When | Keys |
 | --- | --- | --- |
 | `welcome` | After `hello`. | See below. |
-| `reply` | Once per `call`. | `id`, `ok`, then `result` (when `ok`) or `error` (when not), `shaped` (true when the mod applied `shape`), `elapsed_ms` (main-thread time of the handler, as today, `src/StationGodMCP.Mod/Api/Views/HostViews.cs:10-50`), `queue_ms` (time from receipt to start), `frame` (the mod's frame counter when the handler ran). |
+| `reply` | Once per `call`. | `id`, `ok`, then `result` (when `ok`) or `error` (when not), `shaped` (true when the mod applied `shape`), `elapsed_ms` (main-thread time of the handler, as today, `src/StationGodMCP.Mod/Api/Views/HostViews.cs:10-50`), `queue_ms` (time from receipt to start), `frame` (the mod's frame counter when the handler ran), `budget_hit` (only when true: the frame's request budget was reached as the handler finished; see *Replies*). |
 | `event` | Any time after `welcome`. | `event` (name), then the event's keys; see *Subscriptions* and *Connection events*. |
 | `goodbye` | Before the server closes the connection on purpose. | `reason`: `shutting_down`, `world_unloaded`, `idle`, `slow_client`, `protocol_error`. |
 
@@ -183,6 +183,17 @@ answered normally. Cancelling an unknown id does nothing.
 `result` is the method's reply object as the catalogue describes it, after shaping. `elapsed_ms` and `frame` are absent
 when the call never reached a handler (`cancelled`, `game_timeout`, `too_many_in_flight`, `duplicate_id`, protocol
 errors), as `elapsed_ms` is today (`HostViews.cs:47-49`).
+
+`budget_hit` follows `frame` and is written only when true (`,"budget_hit":true`, 18 bytes; the usual reply gains
+none). It is true when, as this call's handler finished and before its reply was serialised, StationGod's request time
+in this frame had reached the frame's request budget (`[Performance] RequestBudgetMs`, at most 2 ms while a job holds
+the game tick): this call or earlier calls in the frame spent it, a heavy call's overrun included. The frame's time is
+counted from its start, subscription samples included. It is never true when the budget is unlimited (0), nor for a
+call answered outside the scheduler's frame. A call that finished before the budget was reached says nothing even if
+later calls in the same frame reached it, because its reply is built before the frame ends. A deferred call
+(`sample_logic`) takes the flag for the frame its reply is built in, not the one it started in. Replies for calls that
+never ran (`game_timeout`, `cancelled`, `too_many_in_flight`) never carry it. The per-frame `budget_stops` count in
+`mod_info` is unchanged.
 
 Inside the mod a call's reply is handed from the main thread to the connection's outbound queue when the handler and
 serialising finish; no thread waits for it, unlike today's listener, which blocks per request
