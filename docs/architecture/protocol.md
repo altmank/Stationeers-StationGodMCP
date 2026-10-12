@@ -57,6 +57,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `cancel` | Any time after `welcome`. | `id` of a call in flight. |
 | `stream_end` | Any time after `welcome`. | `stream` (integer 1 to 2^53, required). No reply; see *Streams*. |
 | `cursor_close` | Any time after `welcome`. | `cursor_id` (string, required). No reply; see *Walks*. |
+| `session_end` | Any time after `welcome`. | none. No reply: the client's session is ending abruptly, so the mod applies its held restores (see *Held restores*). |
 | `bye` | Optional, before closing. | none |
 
 ### Server to client
@@ -86,7 +87,7 @@ The `welcome` message:
     "world": {"id": "3b9e1a40c2d84f6e", "save": "Vulcan2_4", "epoch": 3},
     "game_state": "Running"
   },
-  "catalogue": {"hash": "sha256:4f2a...", "methods": 92, "protocol_methods": 5},
+  "catalogue": {"hash": "sha256:4f2a...", "methods": 92, "protocol_methods": 6},
   "limits": {
     "max_in_flight": 16,
     "max_in_flight_per_stream": 16,
@@ -112,6 +113,8 @@ The `welcome` message:
 - `resume`: only when `hello` carried `resume`: the token, whether state held for it was picked up (`resumed`), and
   how many seconds the state is held after a close (`window_s`, 0 when resuming is off, when `resumed` is always
   false). `features` lists `resume` when the window is above 0 (*Resuming*).
+- `restores`: only on a resume token, and only when there is something to say: what the mod's held restores did for
+  that token since its last `welcome`, `{applied: [...], skipped: [...], dropped: n}` (*Held restores*).
 - `server.instance_id`: random, new each time the mod loads.
 - `server.world.id`: random, new each time a world finishes loading. It is the world's identity for clients: two
   welcomes with the same `world.id` reached the same loaded world, across reconnects. A game restart or a save load
@@ -164,7 +167,8 @@ difference. A `stream` that is not an integer from 0 to 2^53 (a number without a
   are answered normally;
 - the stream's subscriptions end without an event, and its unfinished `sample_logic` calls are answered `cancelled`
   (the samples taken so far are dropped; the method only reads);
-- whatever the mod keeps per stream (walk cursors and the like) is dropped;
+- whatever the mod keeps per stream (walk cursors and the like) is dropped, and its held restores are cleared
+  unwritten (*Held restores*);
 - the stream is never used again on this connection, nor on a connection that resumes its token (*Resuming*): a later
   call on it is refused `stream_ended` (`data: {stream}`), and a later `stream_end` of it does nothing. A stream may
   be ended before any call used it.
@@ -316,10 +320,9 @@ serialising finish; no thread waits for it, unlike today's listener, which block
 
 ### Protocol methods
 
-Five methods belong to the protocol itself. They are listed in the catalogue's `protocol_methods` section and are
-called like any other method. `catalogue`, `subscribe`, `unsubscribe` and `stream_costs` are read class. `drop_job` is
-write class: it
-changes what will happen to the world, so on its connection it waits for every earlier call to be answered and later
+Six methods belong to the protocol itself. They are listed in the catalogue's `protocol_methods` section and are
+called like any other method. `catalogue`, `subscribe`, `unsubscribe` and `stream_costs` are read class. `drop_job` and
+`hold_restore` are write class: each changes what will happen to the world, so on its connection it waits for every earlier call to be answered and later
 calls wait for it (*Order on one stream*), a poll sent after it answers the drop, and a client never sends it again
 after a broken connection (*Reconnecting*).
 
@@ -330,6 +333,7 @@ after a broken connection (*Reconnecting*).
 | `unsubscribe` | `{subscription}` | `{subscription, ended: true}` |
 | `drop_job` | `{job_id}` | `{job_id, dropped: true}` |
 | `stream_costs` | `{streams?: [n, ...]}` | `{streams: [{stream, calls, main_thread_ms, over_budget_frames}]}` |
+| `hold_restore` | `{set?: [{reference_id, logic_type, value}], clear?: [{reference_id, logic_type}], clear_all?}` | `{restores: [{reference_id, logic_type, value}]}`; see *Held restores* |
 
 `drop_job` takes a building run that waits in the job queue (`wait: true`, answered `status: queued`) out of the queue
 before it starts; the jobs behind it move up by one, and nothing in the world changes. A later poll of its `job_id`
@@ -391,6 +395,7 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `internal_error` | A bug. The method may have partly run. As today. | none | no |
 | `subscription_limit` | A subscription would exceed a per-subscription, connection or global limit. | `{limit, requested, projected_ms_per_s}` | no; poll instead |
 | `unknown_subscription` | `unsubscribe` of an id this connection does not have. | none | no |
+| `too_many_restores` | A `hold_restore` change would pass 256 restores on the stream or 4,096 on the owner (the connection, or its resume token). Nothing changed. | `{limit, scope}`, `scope` `stream` or `owner` | after clearing some |
 
 ## Shaping
 
@@ -831,6 +836,21 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
   `Resume` forces each devices subscription's next sample and requeues its `UpdateSlot` (a new epoch, so an entry left
   in the old connection's queue writes nothing).
 
+### As built: held restores
+
+- `Protocol/HeldRestores.cs` is the store: per `CallContext`, the stream's restores by (reference id, logic type) and
+  in registration order, each with its world id and the stream's last written value, and the per-owner counts for the
+  bounds. It is an `ISessionEndStore` (an `IStreamStore` that also hears an owner's abrupt end) in `StreamStores.Main`,
+  so stream ends clear it and a world change drops it; `SessionEnded` applies. `Protocol/HoldRestoreCalls.cs` answers
+  `hold_restore`, routed by the dispatcher like `drop_job`.
+- `LogicOps.Write` tells the store each write's read-back value (`Wrote`: one field read while nothing is held, one
+  dictionary lookup per write while something is); restores write through `LogicOps.SetValue`, the same game write.
+  The game side sits behind `IRestoreDevices` (`Api/Shared/Game/RestoreDevices.cs`).
+- Abrupt ends reach the store through `ICallQueue.SessionEnded`, posted to the scheduler's inbox ahead of the owner's
+  stream ends: by `CallSession` on `session_end` and on a slow client without a token, by `ProtocolHost.Ended` for a
+  connection without a token that never sent `bye` (`Connection.SaidBye`), and by `ResumeHolds` when a window passes
+  (not on a world change or after a `bye`). `Connection.ResumeToken` keys the results kept for `welcome`.
+
 ## Reconnecting
 
 A connection can break at any time: the game closed, the save reloaded, the mod restarted. The rules a client follows
@@ -854,7 +874,8 @@ per-run state under the token rather than under the connection:
 - the streams it ended, so a stream id stays never-reused across the reconnect (`stream_ended`);
 - its walk cursors (*Walks*);
 - its subscriptions (*Subscriptions*);
-- its streams' cost counters (`stream_costs`, *Protocol methods*).
+- its streams' cost counters (`stream_costs`, *Protocol methods*);
+- its held restores (*Held restores*).
 
 When the connection closes for any reason but `bye` (the socket dropped, `slow_client`, a protocol error, the server
 stopping), that state is held for `[Server] ResumeWindowSeconds` (default 60; `welcome.resume.window_s`). A
@@ -871,7 +892,7 @@ to send again. A `sample_logic` run ends, unanswered, when its call's connection
 anyone; the client calls it again if it still wants it.
 
 The state ends, as a `stream_end` would end each of its streams, when the window passes without a resume (checked
-once per frame), at once on `bye` (a clean goodbye means the session is over, so nothing is kept for it), and at once
+once per frame; the token's held restores apply first, *Held restores*), at once on `bye` (a clean goodbye means the session is over, so nothing is kept for it), and at once
 on a world change, since its reference ids may name other things now; a connection that then sends the token gets
 `resumed: false` and starts empty. A token presented while another connection still holds it is taken over: the new
 connection resumes the state, and the old one is sent `goodbye {reason: "resumed_elsewhere"}` and closed. A broken
@@ -879,6 +900,57 @@ connection over a VPN can look open until the slow-client timeout, so a refusal 
 long. Without a token nothing changes: the connection's state ends with it. `[Server] ResumeWindowSeconds 0` turns
 resuming off: `welcome` does not list `resume`, a token is answered `resumed: false, window_s: 0`, and every
 connection keeps its state to itself.
+
+### Held restores
+
+A hub runs scripts that turn a device on and turn it back off when they finish (`with sg.hold(pump, 'On', 1,
+after=0)`). When its own client ends the session, it closes the hub's input and kills it about 0.4 s later, so the
+script's cleanup never runs. A held restore is that cleanup kept in the mod: a logic write the mod makes itself if the
+stream's session ends abruptly.
+
+`hold_restore` changes the calling stream's restores and answers the stream's list after the change, in registration
+order: `{restores: [{reference_id, logic_type, value}]}`, `logic_type` as `write_logic` gives it (`{id, name}`). Its
+params apply in this order: `clear_all` (true removes every restore of the stream), `clear` (each entry removes the
+restore for that device and logic type, if the stream has one), then `set` (each entry adds a restore, or takes the
+place of the stream's restore for the same device and logic type). Only logic writes can be held. A `set` entry must
+name a device in the world (no gateway scope) that both writes and reads the logic type, since the overwrite check
+below reads it; otherwise the whole call is refused with that device's error (`device_not_found`,
+`logic_not_writable`, `logic_not_readable`, `invalid_logic_type`) and nothing changes. A stream holds at most 256
+restores, and an owner (the connection, or its resume token) 4,096 over all its streams: a change past either is
+refused `too_many_restores` (`data: {limit, scope}`) whole.
+
+The mod applies a stream's restores, at the start of the next frame, on the main thread, through `write_logic`'s own
+game write, when its owner's session ends abruptly:
+
+- the owner sends `session_end` (a hub sends it when its input closes, within the 0.4 s): every stream of the owner
+  applies at once. The connection's calls that have not started are answered `cancelled` first, so none of them
+  writes after a restore; the connection and its streams stay open;
+- a resume token's window passes without a resume (*Resuming*);
+- a connection without a resume token closes without `bye`: the socket dropped, a slow client, a protocol error.
+  Without a token there is no window to wait for, so this applies at the close. With `[Server] ResumeWindowSeconds
+  0` every connection is in this case.
+
+Each restore is written only if both hold:
+
+- the world is the one it was registered in (`welcome.server.world.id`); otherwise it is dropped;
+- the device still holds the value this stream last wrote to that logic type: the value `write_logic` or
+  `write_logic_many` read back after the stream's last write to it, or, if the stream has not written it since it
+  first registered the restore, the value the device held then (setting the restore again changes the value to
+  write, not this one). A device that holds another value was changed by someone
+  else (the player, a chip, another stream of the same client), and its restore is skipped, so a pump the player
+  turned back on by hand stays on. A device that is gone, or refuses the write, is skipped too.
+
+A normal end writes nothing: `stream_end` clears the stream's restores, `bye` clears every restore of the connection
+(or of its token), and a hub clears a run's restores itself when the run ends. A world change drops every restore of
+every owner, counted as dropped. A resumed token keeps its restores, with the rest of its state.
+
+Results are counted in `mod_info`'s `include_counters` (`runtime.restores {applied, skipped, dropped}`) and, for an
+owner whose connection holds a resume token, kept for the next `welcome` on that token, once: `restores: {applied:
+[{stream, reference_id, logic_type, value}], skipped: [{..., reason, current}], dropped: n}`. `reason` is `changed`
+(with `current`, the device's value then) or the device's error code; `current` is absent when the device could not
+be read. Each list holds at most 32 entries, and `unlisted` (present only when above 0) counts the rest. Results for
+at most 64 tokens are kept; past that the oldest token's are forgotten. A connection without a token has no later
+`welcome` to carry them, so its results are counted only.
 
 ## Old clients
 

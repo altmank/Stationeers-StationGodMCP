@@ -236,7 +236,7 @@ internal sealed class PipeRig : IDisposable
     internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, bool mainThread = true,
         ProtocolSettings? settings = null, SubscriptionHub? subscriptions = null,
         Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null, StreamStores? stores = null,
-        int resumeWindowMs = 0, IMonotonicClock? resumeClock = null)
+        int resumeWindowMs = 0, IMonotonicClock? resumeClock = null, HeldRestores? restores = null)
     {
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
         Mod = new FakeMod(mainThread, _deadlines, stores: stores);
@@ -259,7 +259,7 @@ internal sealed class PipeRig : IDisposable
         Holds = new ResumeHolds(resumeWindowMs, Mod, resumeClock);
         Mod.Holds = Holds;
         Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs), Mod, _deadlines,
-            TestCatalogue.File.Value, subscriptions: subscriptions, holds: Holds);
+            TestCatalogue.File.Value, subscriptions: subscriptions, holds: Holds, restores: restores);
         _listener = new PipeListener(Name, Host);
         _listener.Connected += connection => _connected.Add(connection);
         _listener.Start();
@@ -392,6 +392,25 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         _calls.CloseCursor(owner, cursorId);
         CursorCloses.Enqueue((owner, cursorId));
         _added.Release();
+    }
+
+    /// <summary>Owners whose session ended abruptly, in order.</summary>
+    internal ConcurrentQueue<string> SessionEnds { get; } = new ConcurrentQueue<string>();
+
+    public void SessionEnded(string owner)
+    {
+        _calls.EndSession(owner);
+        SessionEnds.Enqueue(owner);
+        _added.Release();
+    }
+
+    /// <summary>Runs work on the fake main thread, between frames.</summary>
+    internal void OnMainThread(Action work)
+    {
+        lock (_frame)
+        {
+            work();
+        }
     }
 
     public void OwnerHeld(string owner)

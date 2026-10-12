@@ -1,0 +1,62 @@
+{
+  "name": "hold_restore",
+  "description": "Change the logic writes the mod makes for this stream if its session ends abruptly: on session_end, when a resume token's window passes without a resume, or when a connection without a token closes without bye. A stream holds one restore per device and logic type: set adds one, or takes the place of the one for that pair; clear removes one; clear_all removes every one. They apply in the order clear_all, clear, set, and the reply lists the stream's restores after the change. A restore is written only in the world of its registration and only while the device still holds the value this stream last wrote to that logic type (or, if it has not written it, the value at registration); otherwise it is skipped. stream_end and bye clear them unwritten; a world change drops them. The device must take and read the logic type. At most 256 per stream and 4,096 per connection (too_many_restores); a refused call changes nothing. Results come in the next welcome on the same resume token.",
+  "class": "write",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "set": {
+        "type": "array",
+        "maxItems": 256,
+        "items": {
+          "type": "object",
+          "properties": {
+            "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
+            "logic_type": {
+              "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+              "description": "A logic type name (On) or number."
+            },
+            "value": {"type": "number", "description": "The value to write back: a finite number."}
+          },
+          "required": ["reference_id", "logic_type", "value"],
+          "additionalProperties": false
+        },
+        "description": "Restores to add or replace, one per device and logic type."
+      },
+      "clear": {
+        "type": "array",
+        "maxItems": 256,
+        "items": {
+          "type": "object",
+          "properties": {
+            "reference_id": {"type": "string", "description": "The device's reference id."},
+            "logic_type": {
+              "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+              "description": "A logic type name (On) or number."
+            }
+          },
+          "required": ["reference_id", "logic_type"],
+          "additionalProperties": false
+        },
+        "description": "Restores to remove; one the stream does not hold is ignored."
+      },
+      "clear_all": {"type": "boolean", "description": "Remove every restore of the stream first; default false."}
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "restores": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {"reference_id": {"type": "string"}, "logic_type": {"type": "object"}, "value": {"type": "number"}}
+        }
+      }
+    }
+  },
+  "x-shaping": "none",
+  "x-mcp": "hidden"
+}

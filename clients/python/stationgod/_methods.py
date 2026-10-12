@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:23874893fe3ca300e55cb42b5238ed74393703272e7251c03418dcb785931ede'
+CATALOGUE_HASH = 'sha256:7d97f9251d274770af75002258cbe0d11aaf0c1af1aa85f7cfd67585924a1485'
 MOD_VERSION = '1.33.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -34,6 +34,15 @@ TABLE = {'catalogue': {'class': 'read',
               'required': ['job_id'],
               'shaping': 'none',
               'protocol': True},
+ 'hold_restore': {'class': 'write',
+                  'class_when': [],
+                  'effects': [],
+                  'paging': None,
+                  'duration': None,
+                  'params': ['set', 'clear', 'clear_all'],
+                  'required': [],
+                  'shaping': 'none',
+                  'protocol': True},
  'stream_costs': {'class': 'read',
                   'class_when': [],
                   'effects': [],

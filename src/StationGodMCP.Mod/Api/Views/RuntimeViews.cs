@@ -29,6 +29,7 @@ internal sealed class RuntimeView : ITruncatingView
         LintChipPrograms = counters?.LintChipPrograms;
         BatchConsole = counters?.BatchConsole;
         FrameMs = counters != null ? new FrameHistogramView(frames.Histogram) : null;
+        Restores = counters?.Restores;
         Connections = connections;
         Profiling = profiling;
         JobSettles = jobSettles ?? new JobSettlesView(0, 0, 0);
@@ -97,6 +98,10 @@ internal sealed class RuntimeView : ITruncatingView
     /// <summary>The busy frames' request ms percentiles (FrameHistogram), only with include_counters.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public FrameHistogramView? FrameMs { get; }
+
+    /// <summary>Held restores applied, skipped and dropped since load (RestoreCountsView), only with include_counters.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public RestoreCountsView? Restores { get; }
 
     /// <summary>The profiler's summary while profiling is on; absent otherwise.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -384,13 +389,14 @@ internal sealed class PrefabIndexView
 
 /// <summary>
 /// The counters mod_info's runtime lists beside prefab_index with include_counters: job tick holds, the print log, the
-/// lint chip-program cache and a dedicated server's console lines.
+/// lint chip-program cache, a dedicated server's console lines and held restores.
 /// </summary>
 internal sealed class GameCountersView
 {
     internal GameCountersView(JobHoldsView jobHolds, PrintLogView printLog, int lintChipPrograms,
-        BatchConsoleView batchConsole)
+        BatchConsoleView batchConsole, RestoreCountsView? restores = null)
     {
+        Restores = restores;
         JobHolds = jobHolds;
         PrintLog = printLog;
         LintChipPrograms = lintChipPrograms;
@@ -404,6 +410,28 @@ internal sealed class GameCountersView
     internal int LintChipPrograms { get; }
 
     internal BatchConsoleView BatchConsole { get; }
+
+    internal RestoreCountsView? Restores { get; }
+}
+
+/// <summary>
+/// Held restores since the mod loaded (protocol.md, Held restores): written at an owner's abrupt end, skipped (the
+/// device changed, gone or refusing the write), and dropped unwritten because their world was left.
+/// </summary>
+internal sealed class RestoreCountsView
+{
+    internal RestoreCountsView(long applied, long skipped, long dropped)
+    {
+        Applied = applied;
+        Skipped = skipped;
+        Dropped = dropped;
+    }
+
+    public long Applied { get; }
+
+    public long Skipped { get; }
+
+    public long Dropped { get; }
 }
 
 /// <summary>

@@ -945,6 +945,11 @@
     "origin": "tool",
     "see": {"topic": "networks"}
   },
+  "too_many_restores": {
+    "description": "The change would pass the held restores' bound (data.scope: stream, 256 per stream; owner, 4,096 per connection or resume token). Nothing is held from the call; clear some restores first.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "trade_failed": {"description": "The game refused the trade; the message says why.", "origin": "tool", "see": {"topic": "trading"}},
   "transfer_not_found": {
     "description": "No gas move with that id is waiting or kept. Start the move again if needed.",

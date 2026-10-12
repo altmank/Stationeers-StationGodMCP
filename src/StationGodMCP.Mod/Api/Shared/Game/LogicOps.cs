@@ -35,6 +35,21 @@ internal static class LogicOps
         double value = args.Double("value");
         LogicTypes.RequireWritable(device, type);
         double? previous = LogicTypes.CanRead(device, type) ? ValueOf(device, type) : null;
+        SetValue(device, type, value);
+        double? current = LogicTypes.CanRead(device, type) ? ValueOf(device, type) : null;
+        // The calling stream's last written value, for the overwrite check of a restore it holds (HeldRestores).
+        StationGodMod.Restores?.Wrote(CallContext.Current, device.ReferenceId, (ushort)type, current ?? value);
+        LogicRead requested = new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(type), value);
+        return new LogicWrite(requested, previous, current);
+    }
+
+    /// <summary>
+    /// The game write of write_logic and of a held restore: the device's own setter, as a chip's s instruction writes;
+    /// refused when the device does not expose the type as writable, write_failed when its setter throws.
+    /// </summary>
+    internal static void SetValue(ScopedTarget device, LogicType type, double value)
+    {
+        LogicTypes.RequireWritable(device, type);
         try
         {
             device.SetLogicValue(type, value);
@@ -44,10 +59,6 @@ internal static class LogicOps
             // ILogicable.SetLogicValue: a device's own setter can throw; the write fails with its message.
             throw ApiErrors.Refused("write_failed", exception.Message);
         }
-
-        double? current = LogicTypes.CanRead(device, type) ? ValueOf(device, type) : null;
-        LogicRead requested = new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(type), value);
-        return new LogicWrite(requested, previous, current);
     }
 
     internal static BatchResultView ReadMany(DeviceScope scope, List<Args?> items)

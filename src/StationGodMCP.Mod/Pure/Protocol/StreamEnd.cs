@@ -91,6 +91,16 @@ internal interface ICursorStore : IStreamStore
 }
 
 /// <summary>
+/// A per-stream store that also hears an owner's abrupt end (protocol.md, Held restores): session_end from a connection
+/// of that owner, a resume token's window that passed without a resume, or a connection without a token that closed
+/// without bye. Told on the main thread at the start of the frame after it, before the owner's streams end.
+/// </summary>
+internal interface ISessionEndStore : IStreamStore
+{
+    void SessionEnded(string owner);
+}
+
+/// <summary>
 /// The streams one owner has ended, which are never used again by it (protocol.md, Streams): a connection's, or a
 /// resume token's, handed to the connection that resumes it (protocol.md, Resuming). Kept as sorted,
 /// disjoint ranges of ended numbers: a hub numbers its runs upward and ends each when it finishes, so the ended numbers

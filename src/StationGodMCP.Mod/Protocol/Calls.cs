@@ -240,6 +240,12 @@ internal interface ICallQueue
     void CursorClosed(string owner, string cursorId);
 
     /// <summary>
+    /// The owner's session ended abruptly (session_end; a resume token's window that passed; a connection without a
+    /// token that closed without bye): at the next frame its held restores apply, before its streams end.
+    /// </summary>
+    void SessionEnded(string owner);
+
+    /// <summary>
     /// The connection ended: its waiting calls are dropped and its sample_logic runs end unanswered. Without a resume
     /// token what it had going on the main thread ends with it; a resume token's state is held or ended by ResumeHolds.
     /// </summary>

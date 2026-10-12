@@ -71,6 +71,12 @@ public sealed class StationGodMod : ModBehaviour
     /// </summary>
     internal static ResumeHolds? Holds { get; private set; }
 
+    /// <summary>
+    /// The streams' held restores (hold_restore) once the mod has loaded: applied at an owner's abrupt end, cleared at a
+    /// normal one, dropped on a world change (StreamStores.Main); write_logic tells it each stream's last written value.
+    /// </summary>
+    internal static HeldRestores? Restores { get; private set; }
+
     /// <summary>Every open connection on the pipe and over TCP.</summary>
     internal static System.Collections.Generic.IEnumerable<StationGodMCP.Protocol.Connection> AllConnections()
     {
@@ -121,6 +127,9 @@ public sealed class StationGodMod : ModBehaviour
             SubscriptionHub jobsHub = _subscriptions;
             HeldTickJobs.Ended = view => jobsHub.JobEnded(view, Time.frameCount);
             Holds = new ResumeHolds(_server.ResumeWindowSeconds * 1000, _dispatcher);
+            Restores = new HeldRestores(Api.Shared.Game.RestoreDevices.Instance, static () => WorldStores.WorldId);
+            StreamStores.Main.Register(Restores);
+            _dispatcher.Restores = Restores;
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
@@ -291,7 +300,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxPipeConnections, strictArguments: _server.StrictArguments), _dispatcher,
-                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions, holds: Holds);
+                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions, holds: Holds, restores: Restores);
             PipeListener listener = new PipeListener(Pipe.Value, host);
             listener.Start();
             _pipeListener = listener;
@@ -358,7 +367,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxTcpConnections, strictArguments: _server.StrictArguments),
-                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions, Holds);
+                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions, Holds, Restores);
             server = new TcpAcceptor(remote.BindAddress, remote.Port, _server.MaxTcpConnections, host);
             server.Start();
             _tcpListener = server;

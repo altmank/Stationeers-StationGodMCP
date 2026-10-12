@@ -12,7 +12,7 @@ namespace StationGodMCP.Protocol;
 
 /// <summary>
 /// The protocol on one connection: hello and welcome, then calls by id, several in flight, answered in any order and
-/// matched by id; cancel; stream_end; cursor_close; events. The first message must be hello; anything else is a protocol error that
+/// matched by id; cancel; stream_end; cursor_close; session_end; events. The first message must be hello; anything else is a protocol error that
 /// closes the connection. Lines are parsed and checked here, on the connection's reader thread; only the methods
 /// themselves run on the main thread.
 /// <para>
@@ -130,7 +130,11 @@ internal sealed class CallSession : Session
             case ClientMessage.CursorClose closed:
                 _host.CursorClosed(_connection.Owner, closed.CursorId);
                 break;
+            case ClientMessage.SessionEnd _:
+                EndSession();
+                break;
             case ClientMessage.Bye _:
+                _connection.Goodbye();
                 _host.Holds.Goodbye(_connection);
                 _connection.EndGracefully();
                 break;
@@ -177,6 +181,12 @@ internal sealed class CallSession : Session
             return;
         }
 
+        // The client never said bye and takes nothing: an abrupt end, so its held restores apply before its streams end.
+        if (!_connection.SaidBye)
+        {
+            _host.SessionEnded(_connection.Owner);
+        }
+
         EndStreams(StreamEnd.AllOf(_connection.Owner), false);
     }
 
@@ -208,12 +218,14 @@ internal sealed class CallSession : Session
         }
 
         WelcomeResumeView? resume = null;
+        RestoreReport? restores = null;
         if (hello.Resume != null)
         {
             bool resumed = false;
             if (_host.Holds.Enabled)
             {
                 _ended = _host.Holds.Claim(hello.Resume, _connection, out resumed);
+                restores = _host.Restores?.TakeReport(hello.Resume);
             }
 
             resume = new WelcomeResumeView(hello.Resume, resumed, _host.Holds.WindowSeconds);
@@ -226,7 +238,7 @@ internal sealed class CallSession : Session
                 file?.Catalogue.ProtocolMethodCount ?? 0),
             new WelcomeLimitsView(MaxInFlight, MaxInFlightPerConnection, MaxRequestBytes, _host.Settings.MaxReplyBytes,
                 _host.Subscriptions?.Limits),
-            FeaturesFor(_host.Subscriptions != null, _host.Holds.Enabled), resume);
+            FeaturesFor(_host.Subscriptions != null, _host.Holds.Enabled), resume, restores);
         _connection.Send(Wire.Line(welcome));
         _welcomed = true;
     }
@@ -435,6 +447,21 @@ internal sealed class CallSession : Session
         }
     }
 
+    // session_end: the connection's unstarted calls are answered cancelled and never run, so none of them writes after
+    // the held restores; then the owner's restores apply at the next frame. Its streams stay open.
+    private void EndSession()
+    {
+        foreach (ProtocolCall call in Waiting())
+        {
+            if (call.Drop(call.CancelledReply()))
+            {
+                _host.Withdraw(call);
+            }
+        }
+
+        _host.SessionEnded(_connection.Owner);
+    }
+
     // The one path for ended streams (stream_end, a slow client): their unstarted calls are dropped here, answered
     // cancelled when answer is set, and the end is posted for the main thread's next frame.
     private void EndStreams(StreamEnd end, bool answer)
@@ -512,14 +539,15 @@ internal static class ProtocolMethods
     internal static readonly string[] Names =
     {
         CallSession.CatalogueMethod, SubscriptionHub.SubscribeMethod, SubscriptionHub.UnsubscribeMethod,
-        JobDropCalls.DropJobMethod, StreamCostCalls.StreamCostsMethod
+        JobDropCalls.DropJobMethod, StreamCostCalls.StreamCostsMethod, HoldRestoreCalls.HoldRestoreMethod
     };
 
     /// <summary>
-    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, sample_logic, drop_job and
-    /// stream_costs.
+    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, sample_logic, drop_job, stream_costs
+    /// and hold_restore.
     /// </summary>
     internal static bool RunsOnMainThread(string? method) =>
         method != null && (SubscriptionHub.Handles(method) || method == SubscriptionHub.SampleLogicMethod ||
-                           JobDropCalls.Handles(method) || StreamCostCalls.Handles(method));
+                           JobDropCalls.Handles(method) || StreamCostCalls.Handles(method) ||
+                           HoldRestoreCalls.Handles(method));
 }

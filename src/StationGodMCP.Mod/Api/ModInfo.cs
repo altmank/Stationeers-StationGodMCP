@@ -55,7 +55,15 @@ internal static class ModInfoApi
         new GameCountersView(new JobHoldsView(HeldTickJobs.HoldCounts()),
             new PrintLogView(Prints.Log.Count, Prints.Log.Capacity), LintChipPrograms.ParsedCount,
             new BatchConsoleView(ConsoleBridge.BatchLineRate.Total,
-                ConsoleBridge.BatchLineRate.PerMinute(ProfileClock.System.Timestamp())));
+                ConsoleBridge.BatchLineRate.PerMinute(ProfileClock.System.Timestamp())), Restores());
+
+    private static RestoreCountsView Restores()
+    {
+        HeldRestores? restores = StationGodMod.Restores;
+        return restores == null
+            ? new RestoreCountsView(0, 0, 0)
+            : new RestoreCountsView(restores.Applied, restores.Skipped, restores.Dropped);
+    }
 
     private static List<ConnectionView>? Connections()
     {

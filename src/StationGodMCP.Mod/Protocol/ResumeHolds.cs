@@ -11,11 +11,12 @@ namespace StationGodMCP.Protocol;
 /// <summary>
 /// Resume tokens (protocol.md, Resuming). A connection whose hello carries resume: "token" keeps its per-stream state
 /// under the token's owner key (CallContext.Owner) instead of its client_id: the streams it ended, its walk cursors, its
-/// subscriptions and its stream cost counters. When the connection closes for any reason but bye, that state is held
-/// for the window: a connection that presents the token within it picks the state up, and one that presents a token
+/// subscriptions, its stream cost counters and its held restores. When the connection closes for any reason but bye,
+/// that state is held for the window: a connection that presents the token within it picks the state up, and one that presents a token
 /// another connection still holds takes it over (the old connection is told goodbye resumed_elsewhere and ended, since
 /// over a VPN a broken connection can look open for up to the slow-client timeout). A window that passes, a bye, or a
-/// world change ends the token's state as a stream_end ends each of its streams. Calls are never resumed: a closed
+/// world change ends the token's state as a stream_end ends each of its streams; a window that passes first ends the
+/// token's session (ICallQueue.SessionEnded), so its held restores apply. Calls are never resumed: a closed
 /// connection's unstarted calls are dropped unanswered and its sample_logic runs end unanswered.
 /// <para>
 /// Claim, Goodbye and Release run on connection threads; Tick and WorldChanged on the main thread. One lock covers the
@@ -99,7 +100,7 @@ internal sealed class ResumeHolds
             hold.Live = connection;
             hold.SaidBye = false;
             _byConnection[connection] = hold;
-            connection.ResumeAs(hold.Owner);
+            connection.ResumeAs(hold.Owner, token);
             if (resumed)
             {
                 _calls.OwnerResumed(hold.Owner, connection);
@@ -188,7 +189,7 @@ internal sealed class ResumeHolds
             }
 
             _nextExpiryMs = next;
-            EndHeld();
+            EndHeld(true);
         }
     }
 
@@ -209,17 +210,23 @@ internal sealed class ResumeHolds
             }
 
             _nextExpiryMs = double.PositiveInfinity;
-            EndHeld();
+            EndHeld(false);
         }
     }
 
-    // Under the lock: the held tokens in _ending end as a stream_end ends each of their streams.
-    private void EndHeld()
+    // Under the lock: the held tokens in _ending end as a stream_end ends each of their streams. A window that passed
+    // is an abrupt end of the token's session, so its held restores apply first; a world change has dropped them.
+    private void EndHeld(bool sessionEnded)
     {
         foreach (Hold hold in _ending)
         {
             _byToken.Remove(hold.Token);
             _held--;
+            if (sessionEnded)
+            {
+                _calls.SessionEnded(hold.Owner);
+            }
+
             _calls.StreamEnded(this, StreamEnd.AllOf(hold.Owner));
         }
 

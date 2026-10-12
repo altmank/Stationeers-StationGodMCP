@@ -9,8 +9,8 @@ using Newtonsoft.Json.Linq;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end, cursor_close or
-/// bye, or a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are
+/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end, cursor_close,
+/// session_end or bye, or a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are
 /// fixed; an unknown one is a protocol error, so a client cannot believe the server read something it ignored.
 /// </summary>
 internal abstract class ClientMessage
@@ -73,6 +73,7 @@ internal abstract class ClientMessage
             "cancel" => Cancel.From(message, line),
             "stream_end" => EndOfStream.From(message, line),
             "cursor_close" => CursorClose.From(message, line),
+            "session_end" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new SessionEnd(),
             "bye" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new Bye(),
             null => Refused.Protocol("A message needs a type.", line),
             _ => Refused.Protocol($"Unknown message type '{type}'.", line)
@@ -440,6 +441,15 @@ internal abstract class ClientMessage
                 ? new CursorClose((string)message["cursor_id"]!)
                 : Refused.Protocol("cursor_close needs cursor_id, a string.", line);
         }
+    }
+
+    /// <summary>
+    /// session_end: the client's session is ending abruptly (a hub whose own client closed its input and will kill it):
+    /// the owner's unstarted calls are cancelled and its held restores apply at the next frame (protocol.md, Held
+    /// restores). No reply; the connection stays open.
+    /// </summary>
+    internal sealed class SessionEnd : ClientMessage
+    {
     }
 
     /// <summary>bye: the client is closing.</summary>
