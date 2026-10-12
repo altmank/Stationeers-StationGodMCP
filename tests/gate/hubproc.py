@@ -16,8 +16,15 @@ DEFAULT_EXE = os.path.join(os.environ.get("LOCALAPPDATA", ""), "StationGodMCP", 
 class HubProcess:
     """One hub process serving MCP on stdio. tool() calls a verb and answers (text, is_error)."""
 
-    def __init__(self, pipe, exe=None, extra_args=(), journal_dir=None, record=None, env=None):
-        args = [exe or os.environ.get("STATIONGOD_HUB_EXE", DEFAULT_EXE), "--pipe", pipe]
+    def __init__(self, pipe, exe=None, extra_args=(), journal_dir=None, record=None, env=None, tcp=None):
+        """tcp=(port, secret) connects over TCP (through the suite's proxy) instead of the pipe."""
+        args = [exe or os.environ.get("STATIONGOD_HUB_EXE", DEFAULT_EXE)]
+        env = dict(env or {})
+        if tcp:
+            args += ["--host", "127.0.0.1", "--port", str(tcp[0])]
+            env["STATIONGODMCP_SECRET"] = tcp[1]
+        else:
+            args += ["--pipe", pipe]
         if journal_dir:
             args += ["--journal-dir", journal_dir]
         if record:

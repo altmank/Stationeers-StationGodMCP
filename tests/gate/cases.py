@@ -10,8 +10,14 @@ import tempfile
 import threading
 import time
 
+import subprocess
+
 from hubproc import HubProcess
 from oracle import Oracle
+from proxy import Proxy
+
+TCP_PORT, TCP_SECRET = 8881, "sg-gate-sgt1-only"     # sgt1's localhost TCP, enabled for the reconnect cases
+RESET = os.path.join("G:" + os.sep, "Programming", "Git", "StationeersWorkspace", "tools", "sg-scoreboard", "instance", "reset.ps1")
 
 FIX = {
     "field": "122643",            # vacuum room force field, logic Open
@@ -56,6 +62,21 @@ class Ctx:
         self.hubs.append(h)
         return h
 
+    def tcp_hub(self, *extra):
+        """A hub that reaches the mod through a proxy the case can sever."""
+        proxy = Proxy(TCP_PORT)
+        h = HubProcess(self.pipe, exe=self.exe, extra_args=extra, journal_dir=self.journal_dir,
+                       tcp=(proxy.port, TCP_SECRET))
+        self.hubs.append(h)
+        return h, proxy
+
+    def reload_world(self, instance="sgt1"):
+        """A world load: the instance restarts on its pristine save, so the world id changes."""
+        self.oracle.close()
+        subprocess.run(["powershell", "-NoProfile", "-File", RESET, instance], check=True, capture_output=True,
+                       timeout=600)
+        self.oracle = Oracle(self.pipe)
+
     def show(self, hub, ids):
         """Makes ids seen the honest way: a direct inspect the agent would have read."""
         for rid in ids:
@@ -91,6 +112,21 @@ def kill_during_job(ctx):
     h2 = ctx.hub()
     text, _ = h2.tool("inspect", {"what": "job"})
     return result("left" in text or "script-" in text, first_reply=text[:600])
+
+
+@case("kills", "a kill during a queued job and between calls")
+def kill_queued_and_between(ctx):
+    h = ctx.hub()
+    ctx.show(h, [FIX["cap1"]])
+    first, _ = h.run_script("sg.write('logic', id='%s', logic='Setting', value=1111)\nsg.wait(2)\n"
+                            "sg.write('logic', id='%s', logic='Setting', value=1212)\nsg.wait(60)"
+                            % (FIX["cap1"], FIX["cap1"]), confirm=True, max_wait=1)
+    time.sleep(0.5)       # between the two writes
+    h.kill()
+    between = ctx.oracle.logic(FIX["cap1"], "Setting")
+    h2 = ctx.hub()
+    listed, _ = h2.tool("inspect", {"what": "job"})
+    return result(between == 1111 and "1111" in listed or "script-" in listed, between=between, listed=listed[:500])
 
 
 @case("kills", "a stop runs the finally")
@@ -200,6 +236,42 @@ def stale_world(ctx):
         return result(True, note="mod refusal checked by the oracle's own reply log")
     finally:
         h.kill()
+
+
+@case("world", "a world load mid-run stops it and refuses its finally")
+def world_load_mid_run(ctx):
+    h = ctx.hub()
+    ctx.show(h, [FIX["cap1"]])
+    code = ("try:\n    while True:\n        sg.wait(1)\nfinally:\n"
+            "    sg.write('logic', id='%s', logic='Setting', value=4321)" % FIX["cap1"])
+    first, _ = h.run_script(code, confirm=True, max_wait=3)
+    rid = run_id(first)
+    old_world = ctx.oracle.world_id()
+    ctx.reload_world()
+    time.sleep(10)
+    final, _ = h.tool("inspect", {"what": "job", "id": rid, "max_wait": 30})
+    undo, _ = h.tool("undo", {"id": rid})
+    return result(ctx.oracle.world_id() != old_world and ctx.oracle.logic(FIX["cap1"], "Setting") != 4321
+                  and "world" in final and "undo_expired" in undo, final=final[:700], undo=undo[:300])
+
+
+@case("world", "a reconnect mid-watch, mid-job and mid-walk")
+def reconnect_mid_work(ctx):
+    h, proxy = ctx.tcp_hub()
+    ctx.show(h, [FIX["cap1"]])
+    watch, _ = h.run_script("rows, met = sg.watch([{'id': '%s', 'logic': 'Setting'}], lambda r: False, 12)\nmet"
+                            % FIX["cap1"], max_wait=2)
+    walk, _ = h.run_script("n = 0\nfor t in sg.find('thing', prefab='*Pipe*')['things']:\n    n += 1\n    "
+                           "if n % 200 == 0:\n        sg.wait(1)\nn", max_wait=2)
+    time.sleep(3)
+    proxy.sever()
+    time.sleep(1)
+    proxy.sever()
+    finals = [h.tool("inspect", {"what": "job", "id": run_id(t), "max_wait": 60})[0] for t in (watch, walk)]
+    direct, err = h.tool("read", {"what": "logic", "id": FIX["cap1"], "logic": "Setting"})
+    proxy.close()
+    return result(all(("done" in f) or ("unreachable" in f) for f in finals) and not err and proxy.connections >= 3,
+                  connections=proxy.connections, finals=[f[:400] for f in finals], direct=direct[:200])
 
 
 # ---- The write rule -----------------------------------------------------------------------------------------------
