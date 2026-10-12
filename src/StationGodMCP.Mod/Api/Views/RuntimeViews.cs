@@ -472,7 +472,8 @@ internal sealed class BatchConsoleView
 /// <summary>
 /// StationGod's request ms per busy frame since the mod loaded (FrameHistogram): busy frames counted, p50, p90 and p99
 /// (each the upper edge of the bucket holding that percentile's frame, or the longest frame in the open bucket above
-/// 250 ms; null with no frames), and the frames over 8 ms.
+/// 250 ms; null with no frames), the frames over 8 ms, and every bucket's count, shortest first (the edges are in the
+/// catalogue, not the reply).
 /// </summary>
 internal sealed class FrameHistogramView
 {
@@ -485,6 +486,7 @@ internal sealed class FrameHistogramView
         P90 = Rounded(reading.P90);
         P99 = Rounded(reading.P99);
         Over8Ms = reading.Over8Ms;
+        Buckets = reading.Buckets;
     }
 
     public long Frames { get; }
@@ -498,6 +500,9 @@ internal sealed class FrameHistogramView
     /// <summary>Frames over 8.0 ms; a frame of exactly 8.0 ms does not count.</summary>
     [Newtonsoft.Json.JsonProperty("over_8ms")]
     public long Over8Ms { get; }
+
+    /// <summary>Frames per bucket since load, shortest first, the open one last; subtract two reads for a window.</summary>
+    public long[] Buckets { get; }
 
     private static double? Rounded(double? ms) => ms.HasValue ? Math.Round(ms.Value, Decimals) : null;
 }
