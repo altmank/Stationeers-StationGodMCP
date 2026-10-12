@@ -281,8 +281,14 @@ public sealed class RunRecord
     /// <summary>After a stop or kill: per target, the value it holds now that differs from the one before the run.</summary>
     public List<LeftTarget> Left { get; } = [];
 
-    /// <summary>True once undo script-N acted on it: a second undo answers already_undone.</summary>
+    /// <summary>
+    /// True once undo has reverted every target it can (or found it cannot): a further undo answers already_undone. A
+    /// target an undo left (changed since the run, no overwrite) keeps the run undoable for it.
+    /// </summary>
     public bool Undone { get; internal set; }
+
+    /// <summary>The (id, logic) targets undo has dealt with: reverted, already back, or with no value to go back to.</summary>
+    internal HashSet<string> UndoneTargets { get; } = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Set when the hub let go of the run's write log to stay within its memory bound: what undo can no longer revert.

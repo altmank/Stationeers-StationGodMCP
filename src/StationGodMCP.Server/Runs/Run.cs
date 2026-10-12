@@ -42,6 +42,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private int _stops;
     private DateTime _stopAt;
     private bool _killed;
+    private bool _killing;
     private int _inFlight;
     private int? _line;
     private string? _lastWrite;
@@ -434,7 +435,8 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 : null;
             return said switch
             {
-                "done" => Record.Confirm ? RunState.Done : RunState.Report,
+                // REPORT is for a run that reported a write; one that only read is done.
+                "done" => Record.Confirm || Record.Reported.Count == 0 ? RunState.Done : RunState.Report,
                 "pass_end" => RunState.Report,
                 "stopped" => RunState.Stopped,
                 _ => RunState.Failed
@@ -606,6 +608,16 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 inFlight = _inFlight;
             }
 
+            // At KillAfter the run takes no new call; a call already in flight is waited for, never past KillLatest.
+            if (since >= _settings.KillAfter)
+            {
+                lock (Record.Sync)
+                {
+                    _killing = true;
+                    inFlight = _inFlight;
+                }
+            }
+
             if (since >= _settings.KillLatest || (since >= _settings.KillAfter && inFlight == 0))
             {
                 Kill();
@@ -688,7 +700,11 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
 
     public async Task<VerbReply> VerbAsync(VerbCall call, CancellationToken cancellation)
     {
-        Enter(call.Line);
+        if (!Enter(call.Line))
+        {
+            return Killing();
+        }
+
         try
         {
             if (TakeStop(call.Line) is { } stop)
@@ -799,10 +815,16 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         return null;
     }
 
-    private void Enter(int? line)
+    // False once the kill is due: from then on the run's calls are refused (Killing), so it cannot keep the kill off.
+    private bool Enter(int? line)
     {
         lock (Record.Sync)
         {
+            if (_killing)
+            {
+                return false;
+            }
+
             _inFlight++;
             Record.Calls++;
             if (line != null)
@@ -810,7 +832,12 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 _line = line;
             }
         }
+
+        return true;
     }
+
+    private static VerbReply.Failed Killing() =>
+        new("run_killed", "the run was stopped and its kill is due; nothing more is sent for it");
 
     private void Exit()
     {

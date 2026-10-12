@@ -18,7 +18,11 @@ internal sealed partial class Run
     /// </summary>
     public async Task<VerbReply> WaitAsync(PipelineRequest request, CancellationToken cancellation)
     {
-        Enter(request.Line);
+        if (!Enter(request.Line))
+        {
+            return Killing();
+        }
+
         try
         {
             if (TakeStop(request.Line) is { } stop)
@@ -87,7 +91,11 @@ internal sealed partial class Run
     /// <summary>{phase, ids, logic, value?, after?}: enter or exit a hold. Holds are logic writes only.</summary>
     public async Task<VerbReply> HoldAsync(PipelineRequest request, CancellationToken cancellation)
     {
-        Enter(request.Line);
+        if (!Enter(request.Line))
+        {
+            return Killing();
+        }
+
         try
         {
             if (TakeStop(request.Line) is { } stop)

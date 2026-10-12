@@ -40,6 +40,11 @@ public sealed partial class RunHost
         }
 
         (List<UndoStep> steps, List<string> notUndone) = Plan(record);
+        lock (record.Sync)
+        {
+            steps.RemoveAll(step => record.UndoneTargets.Contains(step.Key));
+        }
+
         bool overwrite = JsonNodes.Holds(options["allow"], "overwrite");
         if (_pipeline.DecideWrite(call) is not WriteDecision.Act)
         {
@@ -48,16 +53,29 @@ public sealed partial class RunHost
 
         JsonArray results = [];
         int reverted = 0;
+        int left = 0;
         foreach (UndoStep step in steps)
         {
-            JsonObject row = await RevertAsync(step, overwrite).ConfigureAwait(false);
+            (JsonObject row, bool dealt) = await RevertAsync(step, overwrite).ConfigureAwait(false);
             reverted += JsonNodes.IsTrue(row["ok"]) ? 1 : 0;
             results.Add(row);
+            lock (record.Sync)
+            {
+                if (dealt)
+                {
+                    record.UndoneTargets.Add(step.Key);
+                }
+                else
+                {
+                    left++;
+                }
+            }
         }
 
         lock (record.Sync)
         {
-            record.Undone = true;
+            // Targets left (changed since the run) keep the run undoable for them, with allow: ["overwrite"].
+            record.Undone = left == 0;
         }
 
         MarkSeen(record.Id);
@@ -201,8 +219,9 @@ public sealed partial class RunHost
         });
     }
 
-    // One target: read it now, judge it, and write its value from before the run when that is right.
-    private async Task<JsonObject> RevertAsync(UndoStep step, bool overwrite)
+    // One target: read it now, judge it, and write its value from before the run when that is right. Dealt: it needs
+    // no further undo (reverted, already back, or with no value to go back to).
+    private async Task<(JsonObject Row, bool Dealt)> RevertAsync(UndoStep step, bool overwrite)
     {
         List<JsonNode?> current = await CurrentAsync([step]).ConfigureAwait(false);
         JsonNode? now = current[0];
@@ -219,7 +238,7 @@ public sealed partial class RunHost
                 _ => $"changed since the run (it holds {Run.Shown(now)}, the run left {Run.Shown(step.Last)}); not " +
                      "written without allow: [\"overwrite\"]"
             };
-            return row;
+            return (row, verdict != Verdict.Changed);
         }
 
         VerbReply wrote = await _pipeline.CallAsync(new VerbCall("write", "logic", new JsonObject
@@ -235,7 +254,7 @@ public sealed partial class RunHost
         {
             row["ok"] = false;
             row["error"] = failed.ToJson();
-            return row;
+            return (row, false);
         }
 
         List<JsonObject> results = BulkWrites.Rows(((VerbReply.Done)wrote).Reply);
@@ -247,7 +266,7 @@ public sealed partial class RunHost
             row["error"] = error.DeepClone();
         }
 
-        return row;
+        return (row, JsonNodes.IsTrue(row["ok"]));
     }
 
     private enum Verdict
@@ -325,5 +344,7 @@ public sealed partial class RunHost
         internal JsonNode? Last { get; } = last;
 
         internal bool MaybeRan { get; } = maybeRan;
+
+        internal string Key => Id + "\n" + Logic;
     }
 }

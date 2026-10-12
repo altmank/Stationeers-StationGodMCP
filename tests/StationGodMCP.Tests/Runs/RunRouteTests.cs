@@ -32,6 +32,18 @@ public sealed class RunRouteTests
     }
 
     [PythonFact]
+    public async Task ARunWithoutConfirmThatOnlyReadsIsDoneNotReport()
+    {
+        await using RunBench bench = new();
+
+        string text = await bench.RunAsync("for i in range(3):\n    sg.read('logic', id='1', logic='On')\n    sg.wait(0.01)");
+
+        Assert.StartsWith("script-1 done\n", text);
+        Assert.DoesNotContain("limits:", text);
+        Assert.DoesNotContain("confirm: true", text);
+    }
+
+    [PythonFact]
     public async Task AConfirmedRunActsOnALiteralId()
     {
         await using RunBench bench = new();

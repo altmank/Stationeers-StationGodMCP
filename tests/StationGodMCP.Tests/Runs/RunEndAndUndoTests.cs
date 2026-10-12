@@ -129,6 +129,30 @@ public sealed class RunEndAndUndoTests : IDisposable
         Assert.Equal(0, world.Value("1", "On"));
     }
 
+    [PythonFact]
+    public async Task ATargetUndoLeftStaysUndoableWithOverwrite()
+    {
+        await using RunBench bench = new();
+        await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\nsg.write('logic', id='2', logic='On', value=1)",
+            confirm: true);
+        bench.World.Set("1", "On", 5);
+
+        JsonNode first = Done(await bench.Host.UndoAsync(new JsonObject { ["id"] = "script-1", ["confirm"] = true }));
+        JsonNode second = Done(await bench.Host.UndoAsync(new JsonObject
+        {
+            ["id"] = "script-1",
+            ["confirm"] = true,
+            ["allow"] = new JsonArray("overwrite")
+        }));
+        VerbReply.Failed third = Failed(await bench.Host.UndoAsync(new JsonObject { ["id"] = "script-1", ["confirm"] = true }));
+
+        Assert.Equal(new[] { "2", "1" }, first["results"]!.AsArray().Select(row => (string)row!["id"]!).OrderByDescending(id => id));
+        Assert.Equal("1", (string)Assert.Single(second["results"]!.AsArray())!["id"]!);
+        Assert.Equal(0, bench.World.Value("1", "On"));
+        Assert.Equal(0, bench.World.Value("2", "On"));
+        Assert.Equal("already_undone", third.Code);
+    }
+
     // ---- session end ----------------------------------------------------------------------------------------------------
 
     [PythonFact]
@@ -258,6 +282,30 @@ public sealed class RunEndAndUndoTests : IDisposable
 
         Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
         Assert.True(since.Elapsed >= TimeSpan.FromSeconds(3), "killed before KillLatest while a call was in flight");
+    }
+
+    [PythonFact]
+    public async Task ARunThatSwallowsItsStopAndKeepsCallingIsKilledAtKillAfterNotAtTheLatest()
+    {
+        // KillAfter 1 s, KillLatest 30 s: a loop of cleanup writes always has a call in flight, so before the fix only
+        // KillLatest ended it. From KillAfter its new calls are refused and the call in flight is the last.
+        await using RunBench bench = new(adjust: settings => new RunHostSettings
+        {
+            SgRoot = settings.SgRoot,
+            KillAfter = TimeSpan.FromSeconds(1),
+            KillLatest = TimeSpan.FromSeconds(30)
+        });
+
+        await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\nwhile True:\n    try:\n" +
+                             "        sg.write('logic', id='1', logic='On', value=1)\n        sg.wait(0.05)\n" +
+                             "    except BaseException:\n        pass", confirm: true, maxWait: 0);
+        await RunBench.UntilAsync(() => bench.World.Count("write_logic_many") >= 3, "the loop's writes");
+        Stopwatch since = Stopwatch.StartNew();
+        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.EndedAsync("script-1");
+
+        Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
+        Assert.True(since.Elapsed < TimeSpan.FromSeconds(20), $"the kill took {since.Elapsed.TotalSeconds} s");
     }
 
     private static JsonNode Done(VerbReply? reply) =>
