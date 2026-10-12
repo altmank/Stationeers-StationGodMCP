@@ -167,7 +167,10 @@ public sealed class StreamCostsTests
     [Fact]
     public async Task StreamCostsAnswersTheCallersStreamsWithTheirWholeCallTimeAndFramesPastTheFourMsBudget()
     {
-        using PipeRig rig = Loose();
+        // The main thread runs on a fake clock that only a call's hold moves: a held call spends exactly its 5 ms, past
+        // the 4 ms budget, and an unheld one none, however busy the machine is.
+        using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, strictArguments: false),
+            frameClock: new FakeClock());
         using V2Client client = await V2Client.Connect(rig);
         using V2Client other = await V2Client.Connect(rig);
         CallOn(client, "a", 3, new JObject { ["hold_ms"] = 5 });
@@ -181,7 +184,8 @@ public sealed class StreamCostsTests
         Assert.True((bool)reply["ok"]!, reply.ToString());
         Assert.Equal(new long[] { 3, 4 }, Streams(streams));
         Assert.Equal(2, (long)streams[0]["calls"]!);
-        Assert.True((double)streams[0]["main_thread_ms"]! >= 10.0, streams.ToString());
+        Assert.Equal(10.0, (double)streams[0]["main_thread_ms"]!);
+        Assert.Equal(0.0, (double)streams[1]["main_thread_ms"]!);
         Assert.Equal(2, (long)streams[0]["over_budget_frames"]!);
         Assert.Equal(1, (long)streams[1]["calls"]!);
         Assert.Equal(0, (long)streams[1]["over_budget_frames"]!);
