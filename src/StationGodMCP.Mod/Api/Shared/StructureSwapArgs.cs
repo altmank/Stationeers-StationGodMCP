@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -151,7 +152,7 @@ internal static class StructureSwapArgs
     {
         if (args.Has("job_id"))
         {
-            args.Reject("job_id", RunArguments);
+            args.Reject("{arg:job_id}", RunArguments);
             return new StructureSwapForm.Poll(args.String("job_id").Trim());
         }
 
@@ -159,13 +160,14 @@ internal static class StructureSwapArgs
         bool confirm = args.OptionalBool("confirm") ?? false;
         if (dryRun && confirm)
         {
-            throw ApiErrors.InvalidArgument("confirm: true needs dry_run: false; nothing was changed.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:confirm}: true needs {arg:dry_run}: false; nothing " +
+                "was changed."));
         }
 
         if (!dryRun && !confirm)
         {
             throw ApiErrors.Refused("confirm_required",
-                "A real run needs dry_run: false and confirm: true; nothing was changed.");
+                Vocabulary.Text("A real run needs {arg:dry_run}: false and {arg:confirm}: true; nothing was changed."));
         }
 
         StructureSwapArguments arguments = new StructureSwapArguments(Target(args, targetRequired), Scope(args),
@@ -181,11 +183,12 @@ internal static class StructureSwapArgs
         string? to = args.OptionalString("to")?.Trim();
         if (to != null && to.Length == 0)
         {
-            throw ApiErrors.InvalidArgument("Argument 'to' must be a prefab name.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:to}' must be a prefab name."));
         }
 
         return to == null && required
-            ? throw ApiErrors.InvalidArgument("Argument 'to' is required: the prefab name of the new piece.")
+            ? throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:to}' is required: the prefab name of " +
+                "the new piece."))
             : to;
     }
 
@@ -194,7 +197,8 @@ internal static class StructureSwapArgs
         bool pieces = args.Has("reference_ids");
         if (pieces == args.Has("room_id"))
         {
-            throw ApiErrors.InvalidArgument("Pass reference_ids or room_id (from rooms), exactly one of them.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:reference_ids} or {arg:room_id} (from " +
+                "{tool:rooms}), exactly one of them."));
         }
 
         if (pieces)
@@ -204,7 +208,8 @@ internal static class StructureSwapArgs
 
         return ThingId.TryRead(args.Optional("room_id"), out ThingId room)
             ? new StructureScope.Room(room.Value)
-            : throw ApiErrors.InvalidArgument("Argument 'room_id' must be a room id as rooms reports it.");
+            : throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:room_id}' must be a room id as " +
+                "{tool:rooms} reports it."));
     }
 
     private static List<string>? FromPrefabs(Args args)
@@ -221,7 +226,7 @@ internal static class StructureSwapArgs
             string? name = array[index].Type == JTokenType.String ? ((string?)array[index])?.Trim() : null;
             if (string.IsNullOrEmpty(name))
             {
-                throw ApiErrors.InvalidArgument($"from_prefabs[{index}] must be a prefab name.");
+                throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("from_prefabs")}[{index}] must be a prefab name.");
             }
 
             names.Add(name!);

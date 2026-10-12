@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -96,20 +97,23 @@ internal abstract class NetworkHandle
                 if (property.Name != "reference_id" && property.Name != "port")
                 {
                     throw ApiErrors.InvalidArgument(
-                        $"{name} takes reference_id and port only; '{property.Name}' is not one of them.");
+                        $"{name} takes {Vocabulary.Arg("reference_id")} and {Vocabulary.Arg("port")} only; " +
+                        $"'{property.Name}' is not one of them.");
                 }
             }
 
             if (!fields.Has("reference_id"))
             {
-                throw ApiErrors.InvalidArgument($"{name} needs reference_id (a device, with port, or a piece).");
+                throw ApiErrors.InvalidArgument($"{name} needs {Vocabulary.Arg("reference_id")} (a device, with " +
+                    $"{Vocabulary.Arg("port")}, or a piece).");
             }
 
             return new ByPort(fields.ThingId("reference_id"), fields.OptionalInt("port", 0, MaximumPort));
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{name} must be a network id, a piece or device reference id, or {{reference_id, port}}.");
+            $"{name} must be a network id, a piece or device reference id, or {{{Vocabulary.Arg("reference_id")}, " +
+            $"{Vocabulary.Arg("port")}}}.");
     }
 }
 

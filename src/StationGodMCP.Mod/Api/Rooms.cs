@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -97,8 +98,8 @@ internal static class RoomsApi
         }
 
         throw ApiErrors.Refused("room_not_found",
-            $"No closed room has room_id {roomId}; the rooms tool lists them (a room's id changes when it is " +
-            "worked out again).");
+            $"No closed room has {Vocabulary.Arg("room_id")} {roomId}; the {Vocabulary.Tool("rooms")} tool lists " +
+            "them (a room's id changes when it is worked out again).");
     }
 
     internal static string IdOf(Room room) => room.RoomId.ToString(CultureInfo.InvariantCulture);

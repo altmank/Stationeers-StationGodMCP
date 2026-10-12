@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -477,9 +478,9 @@ internal sealed class GasSide
             if (broken != null)
             {
                 throw ApiErrors.Refused("would_burst",
-                    $"'{name}' {verb} {predicted:0.#} kPa against a limit of " +
-                    $"{broken.LimitFor(predicted):0.#} kPa ({broken.Member}: {broken.MaxKpa:0.#} kPa across, " +
-                    $"{broken.OutsideKpa:0.#} kPa outside). Pass force to move it anyway.");
+                    $"'{name}' {verb} {predicted:0.#} kPa against a limit of {broken.LimitFor(predicted):0.#} kPa " +
+                    $"({broken.Member}: {broken.MaxKpa:0.#} kPa across, {broken.OutsideKpa:0.#} kPa outside). Pass " +
+                    $"{Vocabulary.Arg("force")} to move it anyway.");
             }
         }
     }
@@ -522,8 +523,8 @@ internal sealed class GasSide
         if (frozen > limit && frozen > GasSnapshot.Pool(Before).FrozenMol())
         {
             throw ApiErrors.Refused("would_burst",
-                $"'{name}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the " +
-                $"{limit:0.#} mol a network of {after.VolumeL:0} L tolerates. Pass force to move it anyway.");
+                $"'{name}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the {limit:0.#} mol " +
+                $"a network of {after.VolumeL:0} L tolerates. Pass {Vocabulary.Arg("force")} to move it anyway.");
         }
     }
 
@@ -642,8 +643,8 @@ internal sealed class GasPlan
         if (target != null && target.All.Members.Exists(member => source.All.Contains(member.Atmosphere)))
         {
             throw ApiErrors.Refused("same_joined_set",
-                "'to' is joined to 'from' (the game mixes them every tick), so the gas would flow straight back. " +
-                "Pass joined: false to move between them anyway.");
+                Vocabulary.Text("'{arg:to}' is joined to '{arg:from}' (the game mixes them every tick), so the gas " +
+                    "would flow straight back. Pass {arg:joined}: false to move between them anyway."));
         }
 
         List<MovedGasView> moved = new List<MovedGasView>();

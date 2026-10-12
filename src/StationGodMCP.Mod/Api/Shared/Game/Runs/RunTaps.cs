@@ -8,6 +8,7 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -61,10 +62,10 @@ internal static class RunTaps
             listed++;
             plan.Warnings.Add(new LayoutIssue(NotJoined,
                 $"The run end at {Metres(tip.Cell)} stops {Gap(miss)} {Describe(plan, miss.Piece)} without joining " +
-                $"it (the run's own open end there points {OpenStep(plan.Layout, tip.Cell)}). If the run should " +
-                "join that network, " +
-                $"add the tap ({TapText(miss)}; join_to with join_trunk: true adds it); if the networks are meant " +
-                "to stay apart, ignore this.", tip.Cell, miss.Piece));
+                $"it (the run's own open end there points {OpenStep(plan.Layout, tip.Cell)}). If the run should join " +
+                $"that network, add the tap ({TapText(miss)}; {Vocabulary.Arg("join_to")} with " +
+                $"{Vocabulary.Arg("join_trunk")}: true adds it); if the networks are meant to stay apart, ignore " +
+                "this.", tip.Cell, miss.Piece));
         }
     }
 
@@ -84,8 +85,8 @@ internal static class RunTaps
         if (!targets.JoinTo.HasValue)
         {
             plan.Problem("join_trunk_needs_target",
-                "join_trunk needs join_to: the network the tap should reach (a network id, or {reference_id, port} " +
-                "of a device on it).");
+                Vocabulary.Text("{arg:join_trunk} needs {arg:join_to}: the network the tap should reach (a network " +
+                    "id, or {{arg:reference_id}, {arg:port}} of a device on it)."));
             return plan;
         }
 
@@ -128,18 +129,19 @@ internal static class RunTaps
                 tapped.Tap = miss;
                 tapped.Warnings.RemoveAll(static warning => warning.Code == NotJoined);
                 tapped.Warnings.Add(new LayoutIssue(TapAdded,
-                    $"join_trunk: the run stopped {Gap(miss)} {Describe(plan, miss.Piece)}; the tap " +
-                    $"({TapText(miss)}) is added, so the run joins network {target}.", miss.From, miss.Piece));
+                    $"{Vocabulary.Arg("join_trunk")}: the run stopped {Gap(miss)} {Describe(plan, miss.Piece)}; the " +
+                    $"tap ({TapText(miss)}) is added, so the run joins network {target}.", miss.From, miss.Piece));
                 return tapped;
             }
         }
 
         plan.Warnings.Add(new LayoutIssue("no_tap",
             candidates.Count == 0
-                ? $"join_trunk: no run end is next to, or one cell short of, a piece of network {target}; route the " +
-                  "run to it (plan with to: {network_id}) instead."
-                : $"join_trunk: none of the {Math.Min(candidates.Count, MaximumTries)} taps tried towards network " +
-                  $"{target} plans ready; the run is left as given.", null, target));
+                ? $"{Vocabulary.Arg("join_trunk")}: no run end is next to, or one cell short of, a piece of network " +
+                    $"{target}; route the run to it (plan with {Vocabulary.Arg("to")}: " +
+                    $"{{{Vocabulary.Arg("network_id")}}}) instead."
+                : $"{Vocabulary.Arg("join_trunk")}: none of the {Math.Min(candidates.Count, MaximumTries)} taps " +
+                    $"tried towards network {target} plans ready; the run is left as given.", null, target));
         return plan;
     }
 
@@ -205,13 +207,14 @@ internal static class RunTaps
 
         string near = best != null
             ? $" The nearest: the run end at {Metres(best.From)} stops {Gap(best)} {Describe(plan, best.Piece)} " +
-              $"(tap: {TapText(best)}; join_trunk: true adds it)."
+                $"(tap: {TapText(best)}; {Vocabulary.Arg("join_trunk")}: true adds it)."
             : " No run end is within one free cell of it.";
         string along = cells.Count > 0
             ? $" Run cells next to it without joining: {string.Join(", ", cells)}."
             : string.Empty;
         plan.Warnings.Add(new LayoutIssue(NotJoined,
-            $"join_to: the run does not join network {target}; it would stay a network of its own or join another." +
+            $"{Vocabulary.Arg("join_to")}: the run does not join network {target}; it would stay a network of its " +
+            "own or join another." +
             near + along, best?.From, best?.Piece ?? target));
     }
 

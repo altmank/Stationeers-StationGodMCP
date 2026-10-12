@@ -13,6 +13,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -147,7 +148,8 @@ internal static class FeedPathsApi
         {
             throw ApiErrors.InvalidArgument(
                 $"{root.PrefabName} {root.ReferenceId} is on {networks.Count} {kind.Noun} networks " +
-                $"[{string.Join(", ", networks)}]; name one with network_id or port (connections lists them).");
+                $"[{string.Join(", ", networks)}]; name one with {Vocabulary.Arg("network_id")} or " +
+                $"{Vocabulary.Arg("port")} ({Vocabulary.Tool("connections")} lists them).");
         }
 
         return networks[0];

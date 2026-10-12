@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Views;
 
@@ -24,7 +25,8 @@ internal static class ThingLocations
         if (word != Any && System.Array.IndexOf(All, word) < 0)
         {
             throw ApiErrors.InvalidArgument(
-                $"Argument 'location' must be {Any}, {string.Join(", ", All)}; '{given}' is none of them.");
+                $"Argument '{Vocabulary.Arg("location")}' must be {Any}, {string.Join(", ", All)}; '{given}' is none " +
+                "of them.");
         }
 
         return word;

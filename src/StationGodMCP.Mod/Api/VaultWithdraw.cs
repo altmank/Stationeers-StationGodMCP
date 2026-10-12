@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -44,7 +45,7 @@ internal static class VaultWithdrawApi
         VaultStore store = target.Store();
         VaultStock stock = WithdrawStock.Find(store, args);
         double quantity = args.OptionalPositiveDouble("quantity") ??
-                          throw ApiErrors.InvalidArgument("Argument 'quantity' is required.");
+                          throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:quantity}' is required."));
         Item? prefab = stock.ItemPrefab;
         if (prefab == null)
         {
@@ -60,8 +61,9 @@ internal static class VaultWithdrawApi
         if (!plan.Fits)
         {
             throw ApiErrors.Refused("no_room",
-                $"{Names.Of(holder)} takes {VaultAmount.Of(plan.Placed)} of {quantity} {Names.Of(prefab)}; " +
-                "free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed.");
+                $"{Names.Of(holder)} takes {VaultAmount.Of(plan.Placed)} of {quantity} {Names.Of(prefab)}; free a " +
+                $"slot, name another holder, or pass {Vocabulary.Arg("allow_ground")}: true for the rest. Nothing " +
+                "was changed.");
         }
 
         VaultLedger ledger = new VaultLedger(store);
@@ -123,7 +125,8 @@ internal static class WithdrawStock
         int named = (prefabName != null ? 1 : 0) + (prefabHash.HasValue ? 1 : 0) + (reagent != null ? 1 : 0);
         if (named != 1)
         {
-            throw ApiErrors.InvalidArgument("Name what to take with exactly one of prefab_name, prefab_hash or reagent.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Name what to take with exactly one of " +
+                "{arg:prefab_name}, {arg:prefab_hash} or {arg:reagent}."));
         }
 
         List<VaultStock> lines = store.Lines();

@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -37,7 +38,8 @@ internal sealed class VaultTransferRequest
         ThingId to = args.ThingId("to_vault_id");
         if (from.Equals(to))
         {
-            throw ApiErrors.Refused("same_vault", "from_vault_id and to_vault_id name the same vault; nothing to move.");
+            throw ApiErrors.Refused("same_vault", Vocabulary.Text("{arg:from_vault_id} and {arg:to_vault_id} name " +
+                "the same vault; nothing to move."));
         }
 
         return new VaultTransferRequest(from, to, args.Has("items") ? AsksOf(args) : null, dryRun);
@@ -48,7 +50,8 @@ internal sealed class VaultTransferRequest
         List<Args?> items = args.Objects("items", MaximumItems);
         if (items.Count == 0)
         {
-            throw ApiErrors.InvalidArgument("Argument 'items' must name at least one thing; leave it out to move everything.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:items}' must name at least one thing; " +
+                "leave it out to move everything."));
         }
 
         List<TransferAsk> asks = new List<TransferAsk>(items.Count);
@@ -63,7 +66,9 @@ internal sealed class VaultTransferRequest
             if (named != 1)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"items[{index}]: name what to move with exactly one of prefab_name, prefab_hash or reagent.");
+                    $"{Vocabulary.Arg("items")}[{index}]: name what to move with exactly one of " +
+                    $"{Vocabulary.Arg("prefab_name")}, {Vocabulary.Arg("prefab_hash")} or " +
+                    $"{Vocabulary.Arg("reagent")}.");
             }
 
             asks.Add(new TransferAsk(string.IsNullOrEmpty(prefabName) ? null : prefabName, prefabHash,

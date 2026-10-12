@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure.Shaping;
 
@@ -41,7 +42,8 @@ internal sealed class Truncation
 /// <summary>
 /// The truncations a handler notes while it builds a reply, collected per call on the thread that runs it, and the
 /// wording of the ways to get more. ApiHost begins and takes them around each handler; the shaping writer adds its own
-/// cuts (limit, x-default-limits) and writes them all as the reply's truncated list.
+/// cuts (limit, x-default-limits) and writes them all as the reply's truncated list. The ways to get more name their
+/// arguments as the call's rename map says (Vocabulary).
 /// </summary>
 internal static class Truncations
 {
@@ -70,11 +72,15 @@ internal static class Truncations
         }
 
         string next = offset + returned < total
-            ? " or offset " + (offset + returned).ToString(CultureInfo.InvariantCulture)
+            ? " or " + Vocabulary.Arg("offset") + " " + (offset + returned).ToString(CultureInfo.InvariantCulture)
             : string.Empty;
-        string earlier = offset > 0 ? "; offset " + offset.ToString(CultureInfo.InvariantCulture) + " skipped the first entries" : string.Empty;
+        string earlier = offset > 0
+            ? "; " + Vocabulary.Arg("offset") + " " + offset.ToString(CultureInfo.InvariantCulture) +
+              " skipped the first entries"
+            : string.Empty;
         Note(list, returned, total,
-            "pass limit (max " + maximum.ToString(CultureInfo.InvariantCulture) + ")" + next + earlier + advice);
+            "pass " + Vocabulary.Arg("limit") + " (max " + maximum.ToString(CultureInfo.InvariantCulture) + ")" + next +
+            earlier + advice);
     }
 
     /// <summary>A list cut at a cap an argument sets: more by that argument, up to its maximum.</summary>
@@ -83,7 +89,7 @@ internal static class Truncations
         if (returned < total)
         {
             Note(list, returned, total,
-                "pass " + argument + " (max " + maximum.ToString(CultureInfo.InvariantCulture) + ")");
+                "pass " + Vocabulary.Arg(argument) + " (max " + maximum.ToString(CultureInfo.InvariantCulture) + ")");
         }
     }
 
@@ -98,7 +104,7 @@ internal static class Truncations
 
     /// <summary>How a list the writer cut is got whole: the shape's limit, the MCP sidecar's list_limits.</summary>
     internal static string WriterMore(string list, int total) =>
-        "pass list_limits {\"" + list + "\": " + total.ToString(CultureInfo.InvariantCulture) +
+        "pass " + Vocabulary.Arg("list_limits") + " {\"" + list + "\": " + total.ToString(CultureInfo.InvariantCulture) +
         "} (shape.limit on the pipe; max " + ShapeRequest.MaximumLimit.ToString(CultureInfo.InvariantCulture) + ")";
 
     /// <summary>The handler's notes and the writer's cuts, one entry per list, in the order noted then cut.</summary>

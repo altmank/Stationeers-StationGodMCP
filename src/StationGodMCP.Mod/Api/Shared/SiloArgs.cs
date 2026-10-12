@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -25,12 +26,14 @@ internal sealed class SiloPrefabChoice
         int? hash = args.OptionalInt("prefab_hash", int.MinValue, int.MaxValue);
         if ((name != null) == hash.HasValue)
         {
-            throw ApiErrors.InvalidArgument("Name what to take with exactly one of prefab_name and prefab_hash.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Name what to take with exactly one of {arg:prefab_name} " +
+                "and {arg:prefab_hash}."));
         }
 
         if (name != null && name.Trim().Length == 0)
         {
-            throw ApiErrors.InvalidArgument("Argument 'prefab_name' must name a prefab, not be empty.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:prefab_name}' must name a prefab, not be " +
+                "empty."));
         }
 
         return new SiloPrefabChoice(name?.Trim(), hash);
@@ -87,7 +90,8 @@ internal sealed class SiloWithdrawRequest
         ThingId silo = args.ThingId("silo_id");
         SiloPrefabChoice prefab = SiloPrefabChoice.Of(args);
         double quantity = args.OptionalPositiveDouble("quantity") ??
-                          throw ApiErrors.InvalidArgument("Argument 'quantity' is required: how many items to take.");
+                          throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:quantity}' is required: " +
+                              "how many items to take."));
         return new SiloWithdrawRequest(silo, prefab, quantity, args.OptionalThingId("to_id"), SlotOf(args),
             args.OptionalBool("allow_ground") ?? false, dryRun);
     }
@@ -100,7 +104,8 @@ internal sealed class SiloWithdrawRequest
         }
 
         return args.OptionalInt("to_slot", 0, int.MaxValue) ??
-               throw ApiErrors.InvalidArgument("Argument 'to_slot' must be a slot index, or \"auto\".");
+               throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:to_slot}' must be a slot index, or " +
+                   "\"auto\"."));
     }
 }
 
@@ -146,7 +151,7 @@ internal abstract class SiloDepositForm
 
         if (args.Has("reference_ids"))
         {
-            args.Reject("reference_ids", FilterArguments);
+            args.Reject("{arg:reference_ids}", FilterArguments);
             List<SiloDepositPick> picks = new List<SiloDepositPick>();
             foreach (ThingId id in args.ThingIds("reference_ids", MaximumItems))
             {
@@ -165,8 +170,9 @@ internal abstract class SiloDepositForm
         if (!narrowed)
         {
             throw ApiErrors.InvalidArgument(
-                "Name the things: items, reference_ids, or a filter (prefab_contains, name_contains, location, " +
-                "within_id, near_player_m).");
+                Vocabulary.Text("Name the things: {arg:items}, {arg:reference_ids}, or a filter " +
+                    "({arg:prefab_contains}, {arg:name_contains}, {arg:location}, {arg:within_id}, " +
+                    "{arg:near_player_m})."));
         }
 
         if (args.IsWord("location", "machine_stock") || args.IsWord("location", "silo"))
@@ -231,8 +237,11 @@ internal static class SiloEntriesPage
     internal static void Note(PageRequest page, int returned, int total)
     {
         int next = page.Offset + returned;
-        string more = "pass entries_limit (max " + Maximum.ToString(CultureInfo.InvariantCulture) + ")" +
-                      (next < total ? " or entries_offset " + next.ToString(CultureInfo.InvariantCulture) : string.Empty);
+        string more = Vocabulary.Text("pass {arg:entries_limit} (max ") +
+                      Maximum.ToString(CultureInfo.InvariantCulture) + ")" +
+                      (next < total
+                          ? Vocabulary.Text(" or {arg:entries_offset} ") + next.ToString(CultureInfo.InvariantCulture)
+                          : string.Empty);
         Pure.Shaping.Truncations.Note("silo.entries", returned, total, more);
     }
 }

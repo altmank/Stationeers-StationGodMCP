@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
+using StationGodMCP.Pure.Protocol;
 
 
 namespace StationGodMCP.Api.Shared.Game.Lint;
@@ -40,7 +41,8 @@ internal static class LintDryRun
             return new List<LintFinding>
             {
                 new LintFinding(CodePrefix + "unavailable", ConflictLevel.Warning, 0,
-                    $"The dry_run lint rules could not run: {error.GetType().Name}: {error.Message}", null, Vec3.Zero,
+                    $"The {Vocabulary.Arg("dry_run")} lint rules could not run: {error.GetType().Name}: " +
+                    $"{error.Message}", null, Vec3.Zero,
                     null, null, null)
             };
         }
@@ -110,7 +112,8 @@ internal static class LintDryRun
     /// <summary>A problem finding as the refusal it makes: the rule, and how the save's file allows it.</summary>
     internal static string Refusal(LintFinding finding) =>
         $"{finding.Message} Refused by lint rule {finding.Code} (level problem). To allow it, set its \"level\" to " +
-        $"\"warning\" or \"enabled\": false in the save's lint-rules.json (lint_rules lists the files).";
+        $"\"warning\" or \"enabled\": false in the save's lint-rules.json ({Vocabulary.Tool("lint_rules")} lists the " +
+        "files).";
 
     private static GridCell CellOf(Vec3 at) =>
         new GridCell((int)Math.Round(at.X * 2.0) * 5, (int)Math.Round(at.Y * 2.0) * 5, (int)Math.Round(at.Z * 2.0) * 5);

@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -38,13 +39,14 @@ internal static class UndoJobApi
         bool confirm = args.OptionalBool("confirm") ?? false;
         if (dryRun && confirm)
         {
-            throw ApiErrors.InvalidArgument("confirm: true needs dry_run: false; nothing was changed.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:confirm}: true needs {arg:dry_run}: false; nothing " +
+                "was changed."));
         }
 
         if (!dryRun && !confirm)
         {
             throw ApiErrors.Refused("confirm_required",
-                "A real run needs dry_run: false and confirm: true; nothing was changed.");
+                Vocabulary.Text("A real run needs {arg:dry_run}: false and {arg:confirm}: true; nothing was changed."));
         }
 
         long? fromId = args.OptionalThingId("from_id")?.Value;
@@ -278,16 +280,17 @@ internal static class UndoJobApi
             int count = removals.ByRun[index].Count;
             if (count > 0)
             {
-                notes.Add($"{count} piece(s) the job built are removed by {groups[index].Tool} itself (remove_ids), " +
-                          "in the job that builds the old pieces again: the network is never left cut between two " +
-                          "jobs, and that run's guards see it as it ends up.");
+                notes.Add($"{count} piece(s) the job built are removed by {Vocabulary.Tool(groups[index].Tool)} " +
+                    $"itself ({Vocabulary.Arg("remove_ids")}), in the job that builds the old pieces again: the " +
+                    "network is never left cut between two jobs, and that run's guards see it as it ends up.");
             }
         }
 
         if (source.RefundTo == RefundRoute.WherePieceStood && removals.InRuns > 0)
         {
-            notes.Add("refund_to ground: remove_structure puts each refund where its piece stood; the pieces a piece " +
-                      "run removes give theirs on the ground in front of the source, as that tool does.");
+            notes.Add(Vocabulary.Text("{arg:refund_to} ground: {tool:remove_structure} puts each refund where its " +
+                "piece stood; the pieces a piece run removes give theirs on the ground in front of the source, as " +
+                "that tool does."));
         }
 
         return notes;

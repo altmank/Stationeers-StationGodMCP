@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -68,7 +69,8 @@ internal static class RunApi
 
         List<ExtraEnd> extra = RunArgs.ExtraEnds(args);
         List<GridCell> run = RunArgs.Run(args, extra) ??
-                             throw ApiErrors.InvalidArgument("Pass waypoints, cells, piece or pieces.");
+                             throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:waypoints}, {arg:cells}, " +
+                                 "{arg:piece} or {arg:pieces}."));
         RunBuild build = new RunBuild(RunArgs.Shape(args, run), RunArgs.Grade(args, kind),
             args.Has("piece") || args.Has("pieces") ? JoinMode.None : RunArgs.Join(args), extra);
         RunRemoval removal = new RunRemoval(
@@ -99,8 +101,8 @@ internal static class RunApi
     /// </summary>
     internal static RunReportView PlanRemoval(Args args)
     {
-        args.Reject("plan_removal", "dry_run", "confirm", "job_id", "grade", "join", "extra_ends", "piece", "pieces",
-            "branches", "remove_ids", "assume_removed", "allow_split_long", "join_to", "join_trunk", "wait",
+        args.Reject("{tool:plan_removal}", "dry_run", "confirm", "job_id", "grade", "join", "extra_ends", "piece",
+            "pieces", "branches", "remove_ids", "assume_removed", "allow_split_long", "join_to", "join_trunk", "wait",
             VerboseArgument);
         RunKind kind = (args.OptionalString("kind") ?? "cable").Trim().ToLowerInvariant() switch
         {
@@ -121,7 +123,8 @@ internal static class RunApi
         if (forms != 1)
         {
             throw ApiErrors.InvalidArgument(
-                "Pass one of reference_ids, waypoints or cells (plan_removal also takes network_id).");
+                Vocabulary.Text("Pass one of {arg:reference_ids}, {arg:waypoints} or {arg:cells} " +
+                    "({tool:plan_removal} also takes {arg:network_id})."));
         }
 
         if (args.Has("network_id"))
@@ -151,8 +154,8 @@ internal static class RunApi
 
     private static object Status(Args args, params string[] others)
     {
-        args.Reject("job_id", others);
-        args.Reject("job_id", "dry_run", "confirm", "from_id", "refund", "refund_to", "limit", "include_links",
+        args.Reject("{arg:job_id}", others);
+        args.Reject("{arg:job_id}", "dry_run", "confirm", "from_id", "refund", "refund_to", "limit", "include_links",
             "include_notes", "include_network_devices", GasHoldVerdict.AcknowledgeArgument);
         object polled = HeldTickJobs.Status(args.String("job_id").Trim());
         return (args.OptionalBool(VerboseArgument) ?? false) ? polled : RunJobView.Brief(polled);
@@ -164,18 +167,19 @@ internal static class RunApi
         bool confirm = args.OptionalBool("confirm") ?? false;
         if (dryRun)
         {
-            args.Reject("a dry run (it is for a confirmed run or a job_id poll)", VerboseArgument);
+            args.Reject("a dry run (it is for a confirmed run or a {arg:job_id} poll)", VerboseArgument);
         }
 
         if (dryRun && confirm)
         {
-            throw ApiErrors.InvalidArgument("confirm: true needs dry_run: false; nothing was changed.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:confirm}: true needs {arg:dry_run}: false; nothing " +
+                "was changed."));
         }
 
         if (!dryRun && !confirm)
         {
             throw ApiErrors.Refused("confirm_required",
-                "A real run needs dry_run: false and confirm: true; nothing was changed.");
+                Vocabulary.Text("A real run needs {arg:dry_run}: false and {arg:confirm}: true; nothing was changed."));
         }
 
         RunPlan plan = RunPlanner.Plan(request);

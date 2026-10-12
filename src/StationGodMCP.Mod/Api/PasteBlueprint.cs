@@ -9,6 +9,7 @@ using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -63,10 +64,12 @@ internal static class PasteBlueprintApi
     {
         string path = PathOf(args.String("name"));
         Metres anchor = BuildArgs.PositionOf(
-            args.Optional("anchor") ?? throw ApiErrors.InvalidArgument("Argument 'anchor' is required."), "anchor");
+            args.Optional("anchor") ??
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:anchor}' is required.")), "anchor");
         int degrees = args.OptionalInt("rotation", 0, 270) ?? 0;
         PasteRotation rotation = PasteRotation.FromDegrees(degrees) ??
-                                 throw ApiErrors.InvalidArgument("Argument 'rotation' must be 0, 90, 180 or 270.");
+                                 throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:rotation}' must be " +
+                                     "0, 90, 180 or 270."));
 
         object data = Call(GameMembers.BlueprintLoad, new object?[] { path }) ??
                       throw ApiErrors.Refused(BlueprintFailedCode, $"BlueprintMod read nothing from '{path}'.");

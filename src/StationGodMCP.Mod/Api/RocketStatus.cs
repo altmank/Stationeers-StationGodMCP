@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
 using UnityEngine;
 
@@ -267,8 +268,9 @@ internal static class RocketStatusApi
             rocket.GetMaxExpectedThrust(), achievable, null, new CombustionView(CombustionRates.Current()));
         if (view.RecordedExceedsAchievable)
         {
-            notes.Add($"The landing check assumes {view.MaxExpectedN:0} N but the fuel now gives {view.AchievableFullN:0} N " +
-                      "at full throttle: a landing it passes can still crash. See rocket_forecast.");
+            notes.Add($"The landing check assumes {view.MaxExpectedN:0} N but the fuel now gives " +
+                $"{view.AchievableFullN:0} N at full throttle: a landing it passes can still crash. See " +
+                $"{Vocabulary.Tool("rocket_forecast")}.");
         }
 
         return view;
@@ -538,8 +540,8 @@ internal static class RocketStatusApi
     {
         for (int index = 0; index < parts.Unmodelled.Count; index++)
         {
-            notes.Add($"{Names.Of(parts.Unmodelled[index])} is a {parts.Unmodelled[index].GetType().Name}, none of the " +
-                      "game's six engine classes: rocket_forecast refuses it.");
+            notes.Add($"{Names.Of(parts.Unmodelled[index])} is a {parts.Unmodelled[index].GetType().Name}, none of " +
+                $"the game's six engine classes: {Vocabulary.Tool("rocket_forecast")} refuses it.");
         }
 
         for (int index = 0; index < parts.EngineReads.Count; index++)

@@ -5,6 +5,7 @@ using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Shared;
@@ -13,7 +14,8 @@ namespace StationGodMCP.Api.Shared;
 /// A request's parameters with typed getters. JSON null means absent everywhere. A value of the wrong type is
 /// invalid_argument, naming the argument; a getter never guesses. A request's own parameters know their method's
 /// declared names (the catalogue), and a name read that is not one of them counts in ArgumentDrift. Shape is the
-/// call's shape, which a handler asks before building a reply part it declares costly.
+/// call's shape, which a handler asks before building a reply part it declares costly. Every message names arguments
+/// as the call's rename map says (Vocabulary); reading a value never looks at the map.
 /// </summary>
 internal sealed class Args
 {
@@ -220,7 +222,7 @@ internal sealed class Args
 
     /// <summary>
     /// Refuses arguments that belong to another form of the tool. A name the method does not declare is skipped:
-    /// it was refused (invalid_argument) before the handler ran.
+    /// it was refused (invalid_argument) before the handler ran. form is a Vocabulary template ({arg:job_id}).
     /// </summary>
     internal void Reject(string form, params string[] names)
     {
@@ -228,14 +230,14 @@ internal sealed class Args
         {
             if (Declares(name) && Has(name))
             {
-                throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' does not go with {form}.");
+                throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' does not go with {Vocabulary.Text(form)}.");
             }
         }
     }
 
     /// <summary>
     /// Refuses every argument given but the allowed ones, for a form that takes only those (a walk's later page takes
-    /// cursor_id and limit). A name the method does not declare is skipped, as Reject skips it.
+    /// cursor_id and limit). A name the method does not declare is skipped, as Reject skips it; form is a template.
     /// </summary>
     internal void RejectAllBut(string form, params string[] allowed)
     {
@@ -244,7 +246,8 @@ internal sealed class Args
             if (property.Value.Type != JTokenType.Null && System.Array.IndexOf(allowed, property.Name) < 0 &&
                 Declares(property.Name))
             {
-                throw ApiErrors.InvalidArgument($"Argument '{Named(property.Name)}' does not go with {form}.");
+                throw ApiErrors.InvalidArgument(
+                    $"Argument '{Named(property.Name)}' does not go with {Vocabulary.Text(form)}.");
             }
         }
     }
@@ -279,8 +282,9 @@ internal sealed class Args
         return new Args(copy, _path, _declared, Shape);
     }
 
-    // The name as an error message gives it: with the nested object's path in front.
-    private string Named(string name) => _path.Length == 0 ? name : $"{_path}.{name}";
+    // The name as an error message gives it: with the nested object's path in front, both as the caller says them.
+    private string Named(string name) =>
+        _path.Length == 0 ? Vocabulary.Arg(name) : $"{Vocabulary.Path(_path)}.{Vocabulary.Arg(name)}";
 
     private JToken? Token(string name)
     {

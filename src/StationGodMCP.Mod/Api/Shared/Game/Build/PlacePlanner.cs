@@ -15,6 +15,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -257,7 +258,7 @@ internal static class PlacePlanner
         List<string> names = near.ConvertAll(broken =>
             $"{Names.Of(broken)} ({broken.PrefabName} {broken.ReferenceId})");
         return $" (broken there: {string.Join(", ", names)}; a broken structure still takes its place; remove it " +
-               "first with remove_structure allow_broken)";
+            $"first with {Vocabulary.Tool("remove_structure")} {Vocabulary.Arg("allow_broken")})";
     }
 
     /// <summary>
@@ -470,9 +471,9 @@ internal static class PlacePlanner
         }
 
         plan.Problem("cannot_place", string.Format(CultureInfo.InvariantCulture,
-            "above_floor_m: no floor below ({0:0.##}, {1:0.##}, {2:0.##}) within {3:0} m (no floor plate on a plane " +
-            "down to y {4:0}, and no frame under one); give at as a point instead.", given.X, given.Y, given.Z,
-            AtResolver.FloorSearchM,
+            Vocabulary.Format("{arg:above_floor_m}: no floor below ({0:0.##}, {1:0.##}, {2:0.##}) within {3:0} m " +
+                "(no floor plate on a plane down to y {4:0}, and no frame under one); give {arg:at} as a point " +
+                "instead."), given.X, given.Y, given.Z, AtResolver.FloorSearchM,
             AtResolver.FirstPlaneBelow(given) - AtResolver.FloorSearchM + 2.0), placement.Index);
         return false;
     }
@@ -580,7 +581,7 @@ internal static class PlacePlanner
 
         ModeFlipView? flip = best != null && best.ReversedFlow
             ? new ModeFlipView("Mode", 1, $"{prefab.PrefabName} moves gas the other way with Mode 1 (Left); the " +
-                                          "chosen turn meets the flow only so. Write it after building (write_logic).")
+                $"chosen turn meets the flow only so. Write it after building ({Vocabulary.Tool("write_logic")}).")
             : null;
         placement.Orient = new OrientResultView(best != null ? Orienter.ViewOf(best) : null, alternatives,
             ranked.Count, flip);
@@ -851,8 +852,9 @@ internal static class PlacePlanner
         int index = placement.Index;
         if (placement.Spec is RotationSpec.OnFace && prefab.PlacementType != PlacementSnap.Face)
         {
-            plan.Problem("invalid_rotation", $"{prefab.PrefabName} is not placed on a cell face; use facing or " +
-                                             "rotation instead of face.", index);
+            plan.Problem("invalid_rotation", $"{prefab.PrefabName} is not placed on a cell face; use " +
+                $"{Vocabulary.Arg("facing")} or {Vocabulary.Arg("rotation")} instead of " +
+                $"{Vocabulary.Arg("face")}.", index);
             return false;
         }
 
@@ -958,8 +960,8 @@ internal static class PlacePlanner
         {
             plan.Warn("network_piece",
                 $"{prefab.PrefabName} is a network piece; this places exactly it and the game joins whatever its " +
-                $"ends touch, with no would_bridge check. {tool} picks pieces by their connections and guards " +
-                "merges.", index);
+                $"ends touch, with no would_bridge check. {Vocabulary.Tool(tool)} picks pieces by their connections " +
+                "and guards merges.", index);
         }
     }
 
@@ -1120,7 +1122,8 @@ internal static class PlacePlanner
 
         if (human == null)
         {
-            plan.Problem("no_local_player", $"{player.Absence} Nothing to take materials from; pass from_id.");
+            plan.Problem("no_local_player", $"{player.Absence} Nothing to take materials from; pass " +
+                $"{Vocabulary.Arg("from_id")}.");
             return;
         }
 

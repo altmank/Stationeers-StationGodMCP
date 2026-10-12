@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Motherboards;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -43,7 +44,7 @@ internal static class LogicTypes
     {
         if (token == null)
         {
-            throw ApiErrors.InvalidArgument("Missing required argument 'logic_type'.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Missing required argument '{arg:logic_type}'."));
         }
 
         if (token.Type == JTokenType.Integer || token.Type == JTokenType.Float)

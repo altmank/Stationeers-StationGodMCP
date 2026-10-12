@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -102,7 +103,8 @@ internal sealed class PlaneView
         }
 
         string text = args.OptionalString("plane") ??
-                      throw ApiErrors.InvalidArgument("Pass plane (e.g. \"z=668\", an even metre) or looking: true.");
+                      throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:plane} (e.g. \"z=668\", an even " +
+                          "metre) or {arg:looking}: true."));
         FacePlane plane = ParsePlane(text);
         string? sideText = args.OptionalString("side");
         GridStep side;

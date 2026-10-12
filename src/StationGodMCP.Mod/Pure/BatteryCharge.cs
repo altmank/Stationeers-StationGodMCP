@@ -1,5 +1,7 @@
 #nullable enable
 
+using StationGodMCP.Pure.Protocol;
+
 namespace StationGodMCP.Pure;
 
 /// <summary>
@@ -29,7 +31,7 @@ internal abstract class ChargeGoal
         {
             if (ratio.Value < 0.0 || ratio.Value > 1.0)
             {
-                problem = "Argument 'ratio' must be from 0 to 1.";
+                problem = Vocabulary.Text("Argument '{arg:ratio}' must be from 0 to 1.");
                 return null;
             }
 
@@ -40,7 +42,7 @@ internal abstract class ChargeGoal
         {
             if (joules.Value < 0.0)
             {
-                problem = "Argument 'joules' must be 0 or more.";
+                problem = Vocabulary.Text("Argument '{arg:joules}' must be 0 or more.");
                 return null;
             }
 

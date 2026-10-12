@@ -2,6 +2,7 @@
 
 using System.Globalization;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -43,19 +44,22 @@ internal sealed class ProfilingRequest
             "off" => ProfilingAction.Off,
             "reset" => ProfilingAction.Reset,
             "report" => ProfilingAction.Report,
-            _ => throw ApiErrors.InvalidArgument("Argument 'action' must be on, off, reset or report.")
+            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:action}' must be on, off, reset or " +
+                "report."))
         };
         double? slowFrameMs = args.OptionalDouble("slow_frame_ms");
         bool? csv = args.OptionalBool("csv");
         if (action != ProfilingAction.On && (slowFrameMs.HasValue || csv.HasValue))
         {
-            throw ApiErrors.InvalidArgument("Arguments 'slow_frame_ms' and 'csv' go with action on only.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Arguments '{arg:slow_frame_ms}' and '{arg:csv}' go with " +
+                "{arg:action} on only."));
         }
 
         if (slowFrameMs.HasValue && !SlowFrameLimits.Allowed(slowFrameMs.Value))
         {
             throw ApiErrors.InvalidArgument(
-                $"Argument 'slow_frame_ms' must be from {Number(SlowFrameLimits.MinimumMs)} to {Number(SlowFrameLimits.MaximumMs)}.");
+                $"Argument '{Vocabulary.Arg("slow_frame_ms")}' must be from {Number(SlowFrameLimits.MinimumMs)} to " +
+                $"{Number(SlowFrameLimits.MaximumMs)}.");
         }
 
         return new ProfilingRequest(action, slowFrameMs, csv);

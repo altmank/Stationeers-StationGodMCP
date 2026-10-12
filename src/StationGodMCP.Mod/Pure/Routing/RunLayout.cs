@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -494,7 +495,7 @@ internal static class RunLayoutPlanner
     // end at all (a one-cell run that joins nothing) has no direction for one.
     // How to split a long straight: the family's own clean tool, when it has one.
     internal static string SplitHow(string? tool) =>
-        tool == null ? string.Empty : $" ({tool} with split_long_straights)";
+        tool == null ? string.Empty : $" ({Vocabulary.Tool(tool)} with split_long_straights)";
 
     private static void Finish(RunLayout layout, RunSurroundings around, LayoutCell entry, PipeContent? content)
     {
@@ -594,9 +595,10 @@ internal static class RunLayoutPlanner
             foreach (DevicePort port in around.PortsAt(entry.Cell, step))
             {
                 layout.Warnings.Add(new LayoutIssue(BlocksPort,
-                    $"Cell {entry.Cell} is where a piece joining port {port.Index} of device {port.DeviceId} " +
-                    $"stands; the piece placed there has no end towards it ({step.Name}), so nothing can join that " +
-                    "port afterwards. Route around it (plan_*_route reserve_ports), or join it (extra_ends).",
+                    $"Cell {entry.Cell} is where a piece joining port {port.Index} of device {port.DeviceId} stands; " +
+                    $"the piece placed there has no end towards it ({step.Name}), so nothing can join that port " +
+                    $"afterwards. Route around it (plan_*_route {Vocabulary.Arg("reserve_ports")}), or join it " +
+                    $"({Vocabulary.Arg("extra_ends")}).",
                     entry.Cell, port.DeviceId));
             }
         }

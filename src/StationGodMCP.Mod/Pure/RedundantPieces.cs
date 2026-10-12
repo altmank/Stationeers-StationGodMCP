@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -37,7 +38,7 @@ internal sealed class KeptPiece
             string devices = string.Join(", ", Devices);
             if (Reason == RedundantPieces.KeepIds)
             {
-                return "remove_redundant: it is in keep_ids, so it never goes.";
+                return Vocabulary.Text("remove_redundant: it is in {arg:keep_ids}, so it never goes.");
             }
 
             if (Reason == RedundantPieces.DevicePort)

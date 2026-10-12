@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -77,7 +78,8 @@ internal static class FindItemsApi
         return ItemGroupings.TryParse(given, out ItemGrouping grouping)
             ? grouping
             : throw ApiErrors.InvalidArgument(
-                $"Argument 'group_by' must be {ItemGroupings.Holder} or {ItemGroupings.Prefab}; '{given}' is neither.");
+                $"Argument '{Vocabulary.Arg("group_by")}' must be {ItemGroupings.Holder} or {ItemGroupings.Prefab}; " +
+                $"'{given}' is neither.");
     }
 
     // Only the page's entries become views.

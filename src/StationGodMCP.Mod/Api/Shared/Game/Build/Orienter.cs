@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -89,7 +90,8 @@ internal static class Orienter
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or {{reference_id}}.");
+            $"{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or " +
+            $"{{{Vocabulary.Arg("reference_id")}}}.");
     }
 
     private static MountIntent? MountOf(string? text)

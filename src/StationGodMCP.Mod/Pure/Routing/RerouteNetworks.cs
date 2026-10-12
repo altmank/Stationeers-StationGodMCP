@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Globalization;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -150,7 +151,8 @@ internal static class RerouteNetworks
         }
 
         return new RerouteNetworkChoice.Refused(AmbiguousPort,
-            $"{a.Name} and {b.Name} share {shared.Count} {noun} networks: {string.Join("; ", candidates)}. Name " +
-            "the port of a device end: between: [{reference_id, port}, ...].");
+            $"{a.Name} and {b.Name} share {shared.Count} {noun} networks: {string.Join("; ", candidates)}. Name the " +
+            $"{Vocabulary.Arg("port")} of a device end: {Vocabulary.Arg("between")}: " +
+            $"[{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}, ...].");
     }
 }

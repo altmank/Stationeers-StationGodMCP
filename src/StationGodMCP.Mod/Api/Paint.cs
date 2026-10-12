@@ -10,6 +10,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -49,7 +50,7 @@ internal static class PaintApi
             case PaintRequest.Orders orders:
                 return PaintAll(orders.List, swatches);
             default:
-                throw ApiErrors.InvalidArgument("Unknown paint form.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {tool:paint} form."));
         }
     }
 
@@ -82,7 +83,7 @@ internal static class PaintApi
         if (!ThingId.TryRead(order.Id, out ThingId id))
         {
             batch.Failed(new NotPaintedView(index, null, null, ApiErrors.InvalidArgument(
-                "Argument 'reference_id' must be a reference id as a decimal string.")));
+                Vocabulary.Text("Argument '{arg:reference_id}' must be a reference id as a decimal string."))));
             return;
         }
 
@@ -153,18 +154,21 @@ internal abstract class PaintRequest
         bool color = args.Has("color");
         if (ids && items)
         {
-            throw ApiErrors.InvalidArgument("Pass reference_ids with color, or items, not both.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:reference_ids} with {arg:color}, or " +
+                "{arg:items}, not both."));
         }
 
         if (items && color)
         {
             throw ApiErrors.InvalidArgument(
-                "Argument 'color' applies only to reference_ids; each item carries its own color.");
+                Vocabulary.Text("Argument '{arg:color}' applies only to {arg:reference_ids}; each item carries its " +
+                    "own color."));
         }
 
         if (ids != color)
         {
-            throw ApiErrors.InvalidArgument("Arguments 'reference_ids' and 'color' go together.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Arguments '{arg:reference_ids}' and '{arg:color}' go " +
+                "together."));
         }
 
         return ids ? SameColor(args) : items ? PerItem(args) : new ColorList();
@@ -189,7 +193,7 @@ internal abstract class PaintRequest
         for (int index = 0; index < items.Count; index++)
         {
             JObject item = items[index] as JObject
-                ?? throw ApiErrors.InvalidArgument($"Argument 'items[{index}]' must be an object.");
+                ?? throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg("items")}[{index}]' must be an object.");
             list.Add(new PaintOrder(item["reference_id"], item["color"]));
         }
 
@@ -235,10 +239,11 @@ internal static class PaintColor
         text = token != null && token.Type == JTokenType.String ? token.Value<string>() : null;
         if (token == null || token.Type == JTokenType.Null)
         {
-            return ApiErrors.InvalidArgument("Argument 'color' is required.");
+            return ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:color}' is required."));
         }
 
-        return text == null ? ApiErrors.InvalidArgument("Argument 'color' must be a string.") : null;
+        return text == null ? ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:color}' must be a " +
+            "string.")) : null;
     }
 
     internal static ApiException? Resolve(string given, Thing thing, List<ColorSwatch> swatches, out int index)

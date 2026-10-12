@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -69,7 +70,7 @@ internal static class SiloWithdrawApi
                 $"{Names.Of(holder)} has no room for all {request.Quantity} {Names.Of(template)} " +
                 $"({placement.Pooled.Unplaced + placement.Whole.Unplaced} left over; a thing stored with contents or " +
                 "a stored food takes an empty slot of its own). Free a slot, name another holder, or pass " +
-                "allow_ground: true for the rest. Nothing was changed.");
+                $"{Vocabulary.Arg("allow_ground")}: true for the rest. Nothing was changed.");
         }
 
         double before = SiloPicks.Total(entries, request.Prefab);
@@ -206,7 +207,8 @@ internal static class SiloPicks
         }
 
         return names.Count == 0 ? "nothing"
-            : string.Join(", ", names) + (more > 0 ? $" and {more} more kinds (container_contents lists them)" : string.Empty);
+            : string.Join(", ", names) + (more > 0 ? $" and {more} more kinds " +
+                $"({Vocabulary.Tool("container_contents")} lists them)" : string.Empty);
     }
 }
 
@@ -313,8 +315,8 @@ internal sealed class SiloWithdrawal : IWithdrawalSource
         {
             _loaded.Remove(entry.Index);
             throw ApiErrors.Refused("move_failed",
-                $"The game could not load entry {entry.Index} ({entry.PrefabName}) from its save data; it stays in the " +
-                "silo. Entries before it were taken (container_contents shows the silo).");
+                $"The game could not load entry {entry.Index} ({entry.PrefabName}) from its save data; it stays in " +
+                $"the silo. Entries before it were taken ({Vocabulary.Tool("container_contents")} shows the silo).");
         }
 
         if (slot != null && made.ParentSlot == slot)

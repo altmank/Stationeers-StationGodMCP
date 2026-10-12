@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Views;
@@ -480,7 +481,8 @@ internal sealed class StackWindowView : ITruncatingView
         if (Values.Count < Size)
         {
             Truncations.Note(path + "values", Values.Count, Size,
-                $"pass stack_start (now {StartAddress}) and stack_count (max {Size})");
+                $"pass {Vocabulary.Arg("stack_start")} (now {StartAddress}) and {Vocabulary.Arg("stack_count")} (max " +
+                $"{Size})");
         }
     }
 }

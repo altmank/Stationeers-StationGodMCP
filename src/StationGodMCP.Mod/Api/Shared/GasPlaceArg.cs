@@ -2,6 +2,7 @@
 
 using System;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -103,6 +104,7 @@ internal abstract class GasPlaceArg
 
     private static ApiException Invalid(string name) =>
         ApiErrors.InvalidArgument(
-            $"Argument '{name}' must be a reference id as a decimal string, \"planet\", {{\"room_id\": \"<id>\"}} " +
-            "(a room as the rooms tool reports it) or {\"room_of\": \"<reference id>\"} (the room that thing is in).");
+            $"Argument '{name}' must be a reference id as a decimal string, \"planet\", " +
+            $"{{\"{Vocabulary.Arg("room_id")}\": \"<id>\"}} (a room as the {Vocabulary.Tool("rooms")} tool reports " +
+            $"it) or {{\"{Vocabulary.Arg("room_of")}\": \"<reference id>\"}} (the room that thing is in).");
 }

@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.RemoteView;
 
 namespace StationGodMCP.Api;
@@ -59,7 +60,8 @@ internal static class ShowPreviewApi
             Args placeArgs = new Args(Strip(args));
             if (!(BuildArgs.ParsePlace(placeArgs) is BuildForm<PlaceArguments>.Run run))
             {
-                throw ApiErrors.InvalidArgument("show_preview takes placements, not a job_id.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("{tool:show_preview} takes {arg:placements}, not a " +
+                    "{arg:job_id}."));
             }
 
             PlacePlan plan = PlacePlanner.Plan(run.Arguments, lint: false);
@@ -85,7 +87,8 @@ internal static class ShowPreviewApi
         List<string> notes = new List<string>();
         if (boxes.Count == 0)
         {
-            notes.Add("Nothing to draw: pass placements (or prefab and at), cells or boxes.");
+            notes.Add(Vocabulary.Text("Nothing to draw: pass {arg:placements} (or {arg:prefab} and {arg:at}), " +
+                "{arg:cells} or {arg:boxes}."));
         }
 
         return new ShowPreviewView(boxes.Count, cleared, seconds, report, notes, screen.DrawnOn, player.Source);

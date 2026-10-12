@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Views;
 
@@ -79,31 +80,32 @@ internal sealed class GridSurveyView
 /// <summary>grid_survey's legend: how to read each cell, by cell_detail.</summary>
 internal static class SurveyLegends
 {
-    internal const string Occupancy =
-        "Each cell is a 2 m cell at its centre (odd metres). empty: true when it holds nothing. frame_id: its frame. " +
-        "faces: its faces +x, -x, +y, -y, +z, -z, each '.' nothing, 'w' wall, 'g' window, 'x' door (door over window " +
-        "over wall); left out when all are '.'. small: its 64 small cells " +
-        "(0.5 m) at -1, -0.5, 0 and +0.5 m from the centre along each axis, character index x + 4y + 16z: '.' empty, " +
-        "'c' cable, 'p' pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's " +
-        "empty cell; left out when all are '.'. cell_detail full adds room, frame build state, face structure ids and " +
-        "the support string.";
+    internal static string Occupancy =>
+        Vocabulary.Text("Each cell is a 2 m cell at its centre (odd metres). empty: true when it holds nothing. " +
+            "frame_id: its frame. faces: its faces +x, -x, +y, -y, +z, -z, each '.' nothing, 'w' wall, 'g' window, " +
+            "'x' door (door over window over wall); left out when all are '.'. small: its 64 small cells (0.5 m) at " +
+            "-1, -0.5, 0 and +0.5 m from the centre along each axis, character index x + 4y + 16z: '.' empty, 'c' " +
+            "cable, 'p' pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a " +
+            "rocket's empty cell; left out when all are '.'. {arg:cell_detail} full adds room, frame build state, " +
+            "face structure ids and the support string.");
 
-    internal const string Full =
-        "Each cell is a 2 m cell at its centre (odd metres). small: its 64 small-grid cells (0.5 m) at -1, -0.5, 0 " +
-        "and +0.5 m from the centre along each axis (index 0 to 3; index 0 lies on the cell's minimum face plane, " +
-        "shared with the neighbour), character index x + 4y + 16z. '.' empty, 'c' cable, 'p' pipe, 'b' cable and " +
-        "pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), 'r' a rocket's empty cell " +
-        "(its fuselage decides which kind of piece it takes). " +
-        "Frames and walls never block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable " +
-        "(and a cable a pipe) only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, " +
-        "chute or 'o'. support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell " +
-        "the small cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a " +
-        "frame's face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
-        "(plan_*_route style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
-        "configured band either side inside its rectangle: the planners never route there without " +
-        "allow_door_keepout; the floor slab under a threshold is not in it) and 'g' a window's face (routes pay " +
-        "extra, crosses_window). A door's face is no wall support. network_visibility counts each listed network's cells the " +
-        "same way (inside, frame_surface, wall, air) and lists the floating (air) ones.";
+    internal static string Full =>
+        Vocabulary.Text("Each cell is a 2 m cell at its centre (odd metres). small: its 64 small-grid cells (0.5 m) " +
+            "at -1, -0.5, 0 and +0.5 m from the centre along each axis (index 0 to 3; index 0 lies on the cell's " +
+            "minimum face plane, shared with the neighbour), character index x + 4y + 16z. '.' empty, 'c' cable, 'p' " +
+            "pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), " +
+            "'r' a rocket's empty cell (its fuselage decides which kind of piece it takes). Frames and walls never " +
+            "block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable (and a cable a pipe) " +
+            "only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, chute or 'o'. " +
+            "support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell the small " +
+            "cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a frame's " +
+            "face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
+            "(plan_*_route style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
+            "configured band either side inside its rectangle: the planners never route there without " +
+            "{arg:allow_door_keepout}; the floor slab under a threshold is not in it) and 'g' a window's face " +
+            "(routes pay extra, crosses_window). A door's face is no wall support. network_visibility counts each " +
+            "listed network's cells the same way (inside, frame_surface, wall, air) and lists the floating (air) " +
+            "ones.");
 }
 
 /// <summary>One network's listed pieces: their cells by visibility, where they float, and their removal refund.</summary>

@@ -17,6 +17,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using TraderUI;
 using Trading;
 
@@ -185,7 +186,8 @@ internal sealed class TradeItemRequest
         string? name = args.OptionalString("name");
         if (prefab == null && name == null)
         {
-            throw ApiErrors.InvalidArgument($"items[{index}] needs name, prefab_name or both.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("items")}[{index}] needs {Vocabulary.Arg("name")}, " +
+                $"{Vocabulary.Arg("prefab_name")} or both.");
         }
 
         int quantity = args.OptionalInt("quantity", 1, int.MaxValue)
@@ -335,8 +337,8 @@ internal static class TradeSession
         if (carried == null)
         {
             throw ApiErrors.Refused("no_credit_card", human != null
-                ? $"The player ({human.DisplayName}) carries no credit card; pass credit_card_id."
-                : $"{player.Absence} No player carries a credit card; pass credit_card_id.");
+                ? $"The player ({human.DisplayName}) carries no credit card; pass {Vocabulary.Arg("credit_card_id")}."
+                : $"{player.Absence} No player carries a credit card; pass {Vocabulary.Arg("credit_card_id")}.");
         }
 
         return carried!;
@@ -499,7 +501,8 @@ internal static class TradeLineRun
                 $"The trader does not {(side.IsBuying ? "sell" : "buy")} {Wanted(item)}."),
             _ => ApiErrors.Refused(
                 "ambiguous_item",
-                $"{matches.Count} of the trader's entries are {Wanted(item)}; give both name and prefab_name."),
+                $"{matches.Count} of the trader's entries are {Wanted(item)}; give both {Vocabulary.Arg("name")} and " +
+                $"{Vocabulary.Arg("prefab_name")}."),
         };
         return entry != null;
     }

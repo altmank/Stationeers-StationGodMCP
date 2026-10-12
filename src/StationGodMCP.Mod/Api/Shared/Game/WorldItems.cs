@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -310,7 +311,8 @@ internal sealed class ItemFilter
             location != MachineStock.Location && location != SiloStock.Location)
         {
             throw ApiErrors.InvalidArgument(
-                "Argument 'location' must be any, ground, player, stored, machine_stock or silo.");
+                Vocabulary.Text("Argument '{arg:location}' must be any, ground, player, stored, machine_stock or " +
+                    "silo."));
         }
 
         return new ItemFilter(prefab, args.OptionalString("name_contains"), location,

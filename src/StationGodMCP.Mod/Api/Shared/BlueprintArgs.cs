@@ -2,6 +2,7 @@
 
 using System;
 using System.IO;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -72,7 +73,8 @@ internal static class PasteGate
     /// <summary>Why a paste may not start now; null when it may.</summary>
     internal static string? Busy(bool placing, bool complete, bool cancelled, int created) =>
         placing && !complete && !cancelled
-            ? $"Another paste is still placing ({created} pieces created so far); nothing was started. Wait " +
-              "until paste_blueprint status says it is no longer active, then paste again."
+            ? $"Another paste is still placing ({created} pieces created so far); nothing was started. Wait until " +
+                $"{Vocabulary.Tool("paste_blueprint")} {Vocabulary.Arg("status")} says it is no longer active, then " +
+                "paste again."
             : null;
 }

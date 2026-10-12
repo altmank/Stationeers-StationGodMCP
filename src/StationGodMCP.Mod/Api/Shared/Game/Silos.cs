@@ -11,6 +11,7 @@ using Assets.Scripts.Serialization;
 using Objects.Items;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -141,8 +142,9 @@ internal static class Silos
                 if (root != null && root.ReferenceId == id.Value)
                 {
                     return ApiErrors.Refused(ApiErrors.ThingNotFoundCode,
-                        $"Nothing with reference id {id} is in the world: {Names.Of(silo)} ({silo.ReferenceId}) stores it " +
-                        $"as entry {index} ({root.PrefabName}). silo_withdraw takes it out.");
+                        $"Nothing with reference id {id} is in the world: {Names.Of(silo)} ({silo.ReferenceId}) " +
+                        $"stores it as entry {index} ({root.PrefabName}). {Vocabulary.Tool("silo_withdraw")} takes " +
+                        "it out.");
                 }
             }
         }

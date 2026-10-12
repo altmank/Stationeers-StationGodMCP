@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -29,7 +30,7 @@ internal static class UpgradeCablesApi
         {
             "heavy" => new CableUpgrade(Cable.Type.heavy),
             "super_heavy" => new CableUpgrade(Cable.Type.superHeavy),
-            _ => throw ApiErrors.InvalidArgument("Argument 'to' must be heavy or super_heavy.")
+            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:to}' must be heavy or super_heavy."))
         };
     }
 }
@@ -50,7 +51,7 @@ internal static class UpgradePipesApi
         {
             "insulated" => new PipeUpgrade(),
             "repair" => new PipeRepair(),
-            _ => throw ApiErrors.InvalidArgument("Argument 'to' must be insulated or repair.")
+            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:to}' must be insulated or repair."))
         };
     }
 }
@@ -86,7 +87,7 @@ internal static class CleanChutesApi
     {
         if (args.Has("job_id"))
         {
-            args.Reject("job_id", "keep_ids", "riding");
+            args.Reject("{arg:job_id}", "keep_ids", "riding");
         }
 
         HashSet<long> keep = new HashSet<long>();
@@ -107,7 +108,7 @@ internal static class CleanChutesApi
         {
             "skip" => RidingPolicy.Skip,
             "refuse" => RidingPolicy.Refuse,
-            _ => throw ApiErrors.InvalidArgument("Argument 'riding' must be skip or refuse.")
+            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:riding}' must be skip or refuse."))
         };
 }
 
@@ -142,7 +143,8 @@ internal static class CleanApi
             if (!loops && !redundant)
             {
                 throw ApiErrors.InvalidArgument(
-                    "keep_ids spares pieces from remove_loops and remove_redundant; ask for one of them too.");
+                    Vocabulary.Text("{arg:keep_ids} spares pieces from remove_loops and remove_redundant; ask for " +
+                        "one of them too."));
             }
 
             foreach (ThingId id in args.ThingIds("keep_ids", UpgradePlanner.MaximumPieces))
@@ -184,7 +186,7 @@ internal static class UpgradeApi
     {
         if (args.Has("job_id"))
         {
-            args.Reject("job_id", "network_id", "reference_ids", "min", "max", "to", "operations", "keep_ids",
+            args.Reject("{arg:job_id}", "network_id", "reference_ids", "min", "max", "to", "operations", "keep_ids",
                 "only_ids", "older_than_id", "root", "wait", "dry_run",
                 "confirm", "from_id", "skip_unmatched", "refund", "refund_to", "limit", "include_notes",
                 GasHoldVerdict.AcknowledgeArgument);
@@ -196,13 +198,14 @@ internal static class UpgradeApi
         bool confirm = args.OptionalBool("confirm") ?? false;
         if (dryRun && confirm)
         {
-            throw ApiErrors.InvalidArgument("confirm: true needs dry_run: false; nothing was changed.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:confirm}: true needs {arg:dry_run}: false; nothing " +
+                "was changed."));
         }
 
         if (!dryRun && !confirm)
         {
             throw ApiErrors.Refused("confirm_required",
-                "A real run needs dry_run: false and confirm: true; nothing was changed.");
+                Vocabulary.Text("A real run needs {arg:dry_run}: false and {arg:confirm}: true; nothing was changed."));
         }
 
         UpgradeRequest request = Parse(args, family, goal);
@@ -210,7 +213,7 @@ internal static class UpgradeApi
         string? acknowledge = GasHoldArgs.Acknowledgement(args);
         if (dryRun)
         {
-            args.Reject("a dry run (it is for a confirmed run or a job_id poll)", JobBrief.VerboseArgument);
+            args.Reject("a dry run (it is for a confirmed run or a {arg:job_id} poll)", JobBrief.VerboseArgument);
             GasHold.Preview(request.Family is PipeFamily, acknowledge);
             return UpgradeReports.Of(plan, UpgradeReports.DryRun, null);
         }
@@ -247,8 +250,9 @@ internal static class UpgradeApi
         if (forms != 1)
         {
             string choices = family is ChuteFamily
-                ? "network_id (from connections), reference_ids, or min and max (a box)"
-                : "network_id (from connections) or reference_ids";
+                ? Vocabulary.Text("{arg:network_id} (from {tool:connections}), {arg:reference_ids}, or {arg:min} and " +
+                    "{arg:max} (a box)")
+                : Vocabulary.Text("{arg:network_id} (from {tool:connections}) or {arg:reference_ids}");
             throw ApiErrors.InvalidArgument(forms == 0 ? $"Pass {choices}." : $"Pass one of {choices}, not several.");
         }
 
@@ -265,9 +269,11 @@ internal static class UpgradeApi
     internal static PieceSelection.Box BoxOf(Args args)
     {
         GridCell a = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("min") ??
-                                                       throw ApiErrors.InvalidArgument("Pass min too."), "min"));
+                                                       throw ApiErrors.InvalidArgument(
+                                                           Vocabulary.Text("Pass {arg:min} too.")), "min"));
         GridCell b = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("max") ??
-                                                       throw ApiErrors.InvalidArgument("Pass max too."), "max"));
+                                                       throw ApiErrors.InvalidArgument(
+                                                           Vocabulary.Text("Pass {arg:max} too.")), "max"));
         GridCell min = new GridCell(System.Math.Min(a.X, b.X), System.Math.Min(a.Y, b.Y), System.Math.Min(a.Z, b.Z));
         GridCell max = new GridCell(System.Math.Max(a.X, b.X), System.Math.Max(a.Y, b.Y), System.Math.Max(a.Z, b.Z));
         long cells = SmallCellCode.SmallCountIn(min, max);

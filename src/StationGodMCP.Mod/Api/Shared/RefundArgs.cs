@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -30,12 +31,14 @@ internal static class RefundArgs
             return route == null || !route.GivesBack
                 ? RefundRoute.Nothing
                 : throw ApiErrors.InvalidArgument(
-                    "refund false gives nothing back; leave out refund_to, or leave out refund to choose where it goes.");
+                    Vocabulary.Text("{arg:refund} false gives nothing back; leave out {arg:refund_to}, or leave out " +
+                        "{arg:refund} to choose where it goes."));
         }
 
         if (refund == true && route != null && !route.GivesBack)
         {
-            throw ApiErrors.InvalidArgument("refund true and refund_to none disagree; pass one of them.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:refund} true and {arg:refund_to} none disagree; " +
+                "pass one of them."));
         }
 
         return route ?? RefundRoute.Default;
@@ -53,19 +56,20 @@ internal static class RefundArgs
         {
             string text = token.Value<string>() ?? string.Empty;
             return RefundRoute.OfWord(text) ?? throw ApiErrors.InvalidArgument(
-                "refund_to must be source, ground, none, inventory, storage, a container's reference id, or a list " +
-                "of inventory, source, storage, ground and container ids.");
+                Vocabulary.Text("{arg:refund_to} must be source, ground, none, inventory, storage, a container's " +
+                    "reference id, or a list of inventory, source, storage, ground and container ids."));
         }
 
         if (token.Type == JTokenType.Integer)
         {
             return RefundRoute.OfWord(token.ToString(Formatting.None)) ??
-                   throw ApiErrors.InvalidArgument("refund_to as a number must be a container's reference id.");
+                   throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:refund_to} as a number must be a " +
+                       "container's reference id."));
         }
 
         if (token is not JArray array)
         {
-            throw ApiErrors.InvalidArgument("refund_to must be a string or a list of targets.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:refund_to} must be a string or a list of targets."));
         }
 
         List<string> words = new List<string>(array.Count);
@@ -82,7 +86,8 @@ internal static class RefundArgs
             }
             else
             {
-                throw ApiErrors.InvalidArgument($"refund_to[{index}] must be a target word or a container's reference id.");
+                throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("refund_to")}[{index}] must be a target word or a " +
+                    "container's reference id.");
             }
         }
 

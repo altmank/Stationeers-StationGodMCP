@@ -3,6 +3,7 @@
 using Newtonsoft.Json;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -84,7 +85,7 @@ internal sealed class ErrorView
         Code = code;
         Message = message;
         Data = data;
-        See = ErrorGuide.SeeOf(code);
+        See = Said(ErrorGuide.SeeOf(code));
     }
 
     public string Code { get; }
@@ -95,7 +96,15 @@ internal sealed class ErrorView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public object? Data { get; }
 
-    /// <summary>The tool_info node that explains the code; absent for a code the catalogue gives none.</summary>
+    /// <summary>
+    /// The tool_info node that explains the code; absent for a code the catalogue gives none. Its tool is named as the
+    /// call's rename map says (Vocabulary).
+    /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ErrorSee? See { get; }
+
+    private static ErrorSee? Said(ErrorSee? see) =>
+        see?.Tool == null || Vocabulary.Current == null
+            ? see
+            : new ErrorSee(Vocabulary.Tool(see.Tool), see.Topic, see.Subtopic);
 }

@@ -2,6 +2,7 @@
 
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -69,7 +70,8 @@ internal abstract class MoveDestination
 
         if (given != 1)
         {
-            throw ApiErrors.InvalidArgument("Pass exactly one destination: at [x, y, z], to_id or near_player.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass exactly one destination: {arg:at} [x, y, z], " +
+                "{arg:to_id} or {arg:near_player}."));
         }
 
         if (args.Has("at"))

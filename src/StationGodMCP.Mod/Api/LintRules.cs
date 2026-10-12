@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -75,10 +76,12 @@ internal static class LintRulesApi
                 view.AllPassed = view.Tests.TrueForAll(test => test.Passed);
                 break;
             case "explain":
-                view.Explained = Explain(args, set, id ?? throw ApiErrors.InvalidArgument("explain needs rule_id."));
+                view.Explained = Explain(args, set,
+                    id ?? throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:explain} needs {arg:rule_id}.")));
                 break;
             default:
-                throw ApiErrors.InvalidArgument("action is list, validate, fields, functions, test or explain.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:action} is list, validate, fields, functions, " +
+                    "test or explain."));
         }
 
         return view;
@@ -135,7 +138,8 @@ internal static class LintRulesApi
         Vec3? at = args.Has("at") ? Point(args) : (Vec3?)null;
         if (reference == null && at == null)
         {
-            throw ApiErrors.InvalidArgument("explain needs reference_id (a thing, network or room id) or at (a cell, [x, y, z]).");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:explain} needs {arg:reference_id} (a thing, " +
+                "network or room id) or {arg:at} (a cell, [x, y, z])."));
         }
 
         GameLintWorld world = GameLintWorld.Audit(Around(at ?? Where(reference!.Value)));
@@ -170,7 +174,7 @@ internal static class LintRulesApi
         }
 
         Pure.Shaping.Truncations.Note("explained", explained.Count, matched,
-            "name one subject: other_id for a pair, port for one port of a device");
+            Vocabulary.Text("name one subject: {arg:other_id} for a pair, {arg:port} for one port of a device"));
 
         if (explained.Count == 0)
         {

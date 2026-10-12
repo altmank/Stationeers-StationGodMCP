@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -150,7 +151,8 @@ internal sealed class PrefabIndex<T> where T : class
     {
         if (!match.IsActive)
         {
-            throw new ArgumentException("An index query needs a prefab, prefabs or prefab_contains.", nameof(match));
+            throw new ArgumentException(Vocabulary.Text("An index query needs a {arg:prefab}, {arg:prefabs} or " +
+                "{arg:prefab_contains}."), nameof(match));
         }
 
         // The seed copies the game's lists under their own locks, so it is read outside the gate: a hook never waits

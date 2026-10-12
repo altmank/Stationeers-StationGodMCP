@@ -15,6 +15,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -70,7 +71,7 @@ internal static class ThingHealthApi
             case HealthRequest.Scan scan:
                 return HealthScanner.Scan(scan, args.Shape.Wants("things", "networks"));
             default:
-                throw ApiErrors.InvalidArgument("Unknown thing_health form.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {tool:thing_health} form."));
         }
     }
 
@@ -119,7 +120,8 @@ internal static class ThingHealthApi
             if (!ThingId.TryRead(ids[index], out ThingId id))
             {
                 batch.Failed(
-                    index, ApiErrors.InvalidArgument("Argument 'reference_id' must be an Int64 encoded as a string."));
+                    index, ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:reference_id}' must be an Int64 " +
+                        "encoded as a string.")));
             }
             else if (!GameLookup.TryFindThing(id, out Thing thing))
             {
@@ -156,12 +158,13 @@ internal abstract class HealthRequest
         bool network = args.Has("network_id");
         if ((one ? 1 : 0) + (many ? 1 : 0) + (network ? 1 : 0) > 1)
         {
-            throw ApiErrors.InvalidArgument("Pass one of reference_id, reference_ids or network_id.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass one of {arg:reference_id}, {arg:reference_ids} or " +
+                "{arg:network_id}."));
         }
 
         if (network)
         {
-            args.Reject("network_id", "min_damage_ratio", "min_ratio", "structures_only", "broken_only",
+            args.Reject("{arg:network_id}", "min_damage_ratio", "min_ratio", "structures_only", "broken_only",
                 "near_player_m");
             return Network.From(args);
         }
@@ -225,7 +228,7 @@ internal abstract class HealthRequest
             string kind = (args.OptionalString("kind") ?? "pipe").Trim().ToLowerInvariant();
             if (kind != "pipe" && kind != "cable" && kind != "chute")
             {
-                throw ApiErrors.InvalidArgument("Argument 'kind' must be pipe, cable or chute.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:kind}' must be pipe, cable or chute."));
             }
 
             return new Network(args.Optional("network_id")!, kind, args.OptionalBool("damaged_only") ?? false,

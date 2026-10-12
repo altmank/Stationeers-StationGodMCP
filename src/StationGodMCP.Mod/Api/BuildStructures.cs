@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -44,7 +45,7 @@ internal static class PlaceStructureApi
                     "place_structure", Replaced(plan), args);
                 return run.Verbose ? started : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
             default:
-                throw ApiErrors.InvalidArgument("Pass job_id, or placements.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:job_id}, or {arg:placements}."));
         }
     }
 
@@ -103,7 +104,7 @@ internal static class RemoveStructureApi
                     "remove_structure", plan.Takedowns.ConvertAll(takedown => takedown.Piece), args);
                 return run.Verbose ? started : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
             default:
-                throw ApiErrors.InvalidArgument("Pass job_id, or reference_ids.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:job_id}, or {arg:reference_ids}."));
         }
     }
 }

@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure.Catalogue;
 
@@ -405,7 +406,7 @@ internal sealed class CatalogueMethod
             return new List<SchemaProblem>
             {
                 new SchemaProblem(path, repeated
-                    ? $"Argument '{path}' is given twice; name each key once."
+                    ? $"Argument '{Vocabulary.Path(path)}' is given twice; name each key once."
                     : $"The arguments are not JSON: {exception.Message}")
             };
         }

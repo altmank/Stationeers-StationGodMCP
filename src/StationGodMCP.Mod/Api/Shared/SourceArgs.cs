@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -39,7 +40,8 @@ internal static class SourceArgs
 
         return ids.Count > 0
             ? ids
-            : throw ApiErrors.InvalidArgument($"Argument '{Argument}' must name 1 to {MaximumSources} things.");
+            : throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(Argument)}' must name 1 to " +
+                $"{MaximumSources} things.");
     }
 
     /// <summary>The first id: the source of a one-thing role (refunds, undo records); null when absent.</summary>

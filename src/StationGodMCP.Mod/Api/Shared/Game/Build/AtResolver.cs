@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -107,7 +108,8 @@ internal static class AtResolver
             : ThingId.TryRead(reference, out ThingId read)
                 ? read
                 : throw ApiErrors.InvalidArgument(
-                    $"{name}.relative_to must be \"player\", \"crosshair\", a reference id or {{reference_id}}.");
+                    $"{name}.relative_to must be \"player\", \"crosshair\", a reference id or " +
+                    $"{{{Vocabulary.Arg("reference_id")}}}.");
         Thing thing = GameLookup.RequireThing(id);
         Frame3 thingFrame = FrameOf(spec, "target", thing, name, camera);
         Vec3 start = Bodies.V(thing.ThingTransformPosition);

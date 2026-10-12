@@ -13,6 +13,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api;
@@ -134,7 +135,7 @@ internal sealed class DepositRequest
 
         if (args.Has("reference_ids"))
         {
-            args.Reject("reference_ids", FilterArguments);
+            args.Reject("{arg:reference_ids}", FilterArguments);
             List<DepositEntry> entries = new List<DepositEntry>();
             foreach (ThingId id in args.ThingIds("reference_ids", VaultDepositApi.MaximumItems))
             {
@@ -172,8 +173,9 @@ internal sealed class DepositRequest
         if (!narrowed)
         {
             throw ApiErrors.InvalidArgument(
-                "Name the items: items, reference_ids, or a filter (prefab_contains, name_contains, location, " +
-                "within_id, near_player_m, kind).");
+                Vocabulary.Text("Name the items: {arg:items}, {arg:reference_ids}, or a filter " +
+                    "({arg:prefab_contains}, {arg:name_contains}, {arg:location}, {arg:within_id}, " +
+                    "{arg:near_player_m}, {arg:kind})."));
         }
 
         if (args.IsWord("location", "machine_stock"))
@@ -230,7 +232,8 @@ internal sealed class VaultMaterial
             "ingot" => new VaultMaterial(static item => item is Ingot),
             "ore" => new VaultMaterial(static item => item is Ore && !(item is Ice)),
             "ice" => new VaultMaterial(static item => item is Ice),
-            _ => throw ApiErrors.InvalidArgument("Argument 'kind' must be any, ingot, ore or ice.")
+            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:kind}' must be any, ingot, ore or " +
+                "ice."))
         };
 }
 

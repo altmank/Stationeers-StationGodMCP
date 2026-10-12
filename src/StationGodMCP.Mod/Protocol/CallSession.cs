@@ -44,11 +44,12 @@ internal sealed class CallSession : Session
     internal const string AnonymousClient = "anonymous";
 
     /// <summary>What welcome lists in features: what this server does beyond the basics.</summary>
-    internal static readonly string[] Features = { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors" };
+    internal static readonly string[] Features =
+        { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors", "rename" };
 
     /// <summary>The features with subscriptions, when the server has them.</summary>
     internal static readonly string[] FeaturesWithSubscriptions =
-        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors" };
+        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "rename" };
 
     private static readonly string[] FeaturesWithResume = WithResume(Features);
 
@@ -281,7 +282,13 @@ internal sealed class CallSession : Session
         bool namesChecked = false;
         if (_host.Settings.StrictArguments)
         {
-            if (!Checked(call, method, out shape))
+            bool passed;
+            using (Vocabulary.Enter(call.Rename))
+            {
+                passed = Checked(call, method, out shape);
+            }
+
+            if (!passed)
             {
                 return;
             }
@@ -298,7 +305,7 @@ internal sealed class CallSession : Session
             shape = ShapeRequest.WithDefaultLimits(shape, method.DefaultLimits);
         }
 
-        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, namesChecked);
+        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, namesChecked, call.Rename);
         CallProfile profile = method != null
             ? new CallProfile(method.Name, method.ClassAt(call.Params), method.CostAt(call.Params))
             : CallProfiles.Of(null, call.Method, call.Params);
@@ -372,7 +379,10 @@ internal sealed class CallSession : Session
         List<string> sentences = new List<string>(problems.Count);
         foreach (SchemaProblem problem in problems)
         {
-            found.Add(new Dictionary<string, string> { ["path"] = problem.Path, ["problem"] = problem.Problem });
+            found.Add(new Dictionary<string, string>
+            {
+                ["path"] = Vocabulary.Path(problem.Path), ["problem"] = problem.Problem
+            });
             sentences.Add(problem.Problem);
         }
 

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -309,7 +310,7 @@ internal static class SplitAnalysis
         string cut = detail.CutOff == null
             ? rootNamed
                 ? " The root named is not on it."
-                : " No root is on it (pass root to name one)."
+                : Vocabulary.Text(" No root is on it (pass {arg:root} to name one).")
             : detail.CutOff.Count == 0
                 ? " No device is cut off from the root."
                 : $" Cut off from the root: {string.Join(", ", detail.CutOff)}.";

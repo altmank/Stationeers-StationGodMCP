@@ -15,6 +15,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -89,8 +90,8 @@ internal static class SetBatteryChargeApi
         HeldStores.Collect(thing, MaximumDepth, held);
         if (held.Count > 0)
         {
-            return $"{name} stores no power itself; its slots hold {held.Count} battery cell(s) " +
-                   $"(first {held[0].Thing.ReferenceId}): set them with in_id {thing.ReferenceId}.";
+            return $"{name} stores no power itself; its slots hold {held.Count} battery cell(s) (first " +
+                $"{held[0].Thing.ReferenceId}): set them with {Vocabulary.Arg("in_id")} {thing.ReferenceId}.";
         }
 
         return thing is IBatteryPowered
@@ -117,7 +118,8 @@ internal static class SetBatteryChargeApi
                         (args.Has("in_id") ? 1 : 0);
             if (forms != 1)
             {
-                throw ApiErrors.InvalidArgument("Pass exactly one of reference_ids, rocket_id or in_id.");
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass exactly one of {arg:reference_ids}, " +
+                    "{arg:rocket_id} or {arg:in_id}."));
             }
 
             if (args.Has("reference_ids"))
@@ -179,7 +181,7 @@ internal static class SetBatteryChargeApi
                 if (!ThingId.TryRead(_ids[index], out ThingId read))
                 {
                     refusal = ApiErrors.InvalidArgument(
-                        $"reference_ids[{index}] must be a reference id as a decimal string.");
+                        $"{Vocabulary.Arg("reference_ids")}[{index}] must be a reference id as a decimal string.");
                     return false;
                 }
 
@@ -223,7 +225,8 @@ internal static class SetBatteryChargeApi
                 {
                     throw ApiErrors.Refused("too_many_batteries",
                         $"{foundIn.DisplayName} {foundIn.ReferenceId} holds {stores.Count} batteries, over the " +
-                        $"{MaximumTargets} one call sets; name them in reference_ids calls. Nothing was changed.");
+                        $"{MaximumTargets} one call sets; name them in {Vocabulary.Arg("reference_ids")} calls. " +
+                        "Nothing was changed.");
                 }
 
                 return new Found(foundIn, stores);

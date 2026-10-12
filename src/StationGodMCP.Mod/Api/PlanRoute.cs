@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
@@ -105,8 +106,9 @@ internal static class PlanRouteApi
             {
                 tree = second;
                 supportedSearched = false;
-                notes.Add("The style's air penalty gave up (search_limit) looking for a route over frames or along walls; " +
-                          "this route ignores it (as style free). Lower margin_m or bring the ends closer to try again.");
+                notes.Add(Vocabulary.Text("The style's air penalty gave up (search_limit) looking for a route over " +
+                    "frames or along walls; this route ignores it (as {arg:style} free). Lower {arg:margin_m} or " +
+                    "bring the ends closer to try again."));
             }
         }
 
@@ -127,9 +129,10 @@ internal static class PlanRouteApi
         {
             if (to != null && Shared(starts, to))
             {
-                notes.Add("would_loop: the start and the target are already on one network, so any route between " +
-                          "them closes a loop. To reach another port of a device already on the network, give both " +
-                          "ports in from (from: {reference_id, ports: [...]}) so they share one run.");
+                notes.Add(Vocabulary.Text("would_loop: the start and the target are already on one network, so any " +
+                    "route between them closes a loop. To reach another port of a device already on the network, " +
+                    "give both ports in {arg:from} ({arg:from}: {{arg:reference_id}, ports: [...]}) so they share " +
+                    "one run."));
             }
             else if (RunArgs.Join(args) == JoinMode.All)
             {
@@ -152,10 +155,11 @@ internal static class PlanRouteApi
             int maxLength = args.OptionalInt("max_length", 2, RunPath.MaximumCells) ?? DefaultMaxLength;
             notes.Add(supportedSearched
                 ? $"through_air: {visibility.Air} new cells float in air (on no frame and no wall plane); no route " +
-                  $"over frames or along walls of at most max_length ({maxLength}) cells exists inside the search " +
-                  "box. Raise margin_m to look wider, raise max_length when the way round is longer, or build a " +
-                  "frame under the gap."
-                : $"through_air: {visibility.Air} new cells float in air; this route was found with style free.");
+                    $"over frames or along walls of at most {Vocabulary.Arg("max_length")} ({maxLength}) cells " +
+                    $"exists inside the search box. Raise {Vocabulary.Arg("margin_m")} to look wider, raise " +
+                    $"{Vocabulary.Arg("max_length")} when the way round is longer, or build a frame under the gap."
+                : $"through_air: {visibility.Air} new cells float in air; this route was found with " +
+                    $"{Vocabulary.Arg("style")} free.");
         }
 
         RouteAssumedView? assumedView = AssumedView(assumed, tree, notes);
@@ -195,10 +199,12 @@ internal static class PlanRouteApi
             for (int index = 0; index < items.Count; index++)
             {
                 string name = $"reserve_ports[{index}]";
-                Args item = items[index] ?? throw ApiErrors.InvalidArgument($"{name} must be {{reference_id, port}}.");
+                Args item = items[index] ?? throw ApiErrors.InvalidArgument($"{name} must be " +
+                    $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
                 Thing thing = GameLookup.RequireThing(item.ThingId("reference_id"));
                 int port = item.OptionalInt("port", 0, 64) ??
-                           throw ApiErrors.InvalidArgument($"{name}.port is required (connections lists the ends).");
+                           throw ApiErrors.InvalidArgument($"{name}.{Vocabulary.Arg("port")} is required " +
+                               $"({Vocabulary.Tool("connections")} lists the ends).");
                 cells.Add(RouteEnds.JoiningCell(thing, port, name));
             }
         }
@@ -255,7 +261,8 @@ internal static class PlanRouteApi
         OpeningGuard guard = new OpeningGuard(facts.Opening, ends, allow,
             RouteLintRule.WindowsUnder(StationGodMCP.Api.Shared.Game.Lint.LintRuleFiles.Current()));
         notes.Add(allow
-            ? "allow_door_keepout: the route may pass through doorways (their face and the band either side)."
+            ? Vocabulary.Text("{arg:allow_door_keepout}: the route may pass through doorways (their face and the " +
+                "band either side).")
             : System.FormattableString.Invariant($"Doors: the route keeps out of every door's face and {facts.Band.Metres} m either side of it inside ") +
               "the door's rectangle (jambs, top edge and threshold; not inside the floor slab).");
         notes.Add(guard.Windows switch
@@ -294,19 +301,21 @@ internal static class PlanRouteApi
 
         if (args.Has("to") || args.Has("reroute"))
         {
-            throw ApiErrors.InvalidArgument("trunk replaces to and does not go with reroute: every start branches " +
-                                            "from the trunk, whose own ends join what they meet.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:trunk} replaces {arg:to} and does not go with " +
+                "{arg:reroute}: every start branches from the trunk, whose own ends join what they meet."));
         }
 
         if (!args.Has("from"))
         {
-            throw ApiErrors.InvalidArgument("trunk needs from: the drops (ports or cells) that branch from it.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:trunk} needs {arg:from}: the drops (ports or " +
+                "cells) that branch from it."));
         }
 
         Args fields = new Args(trunk);
         if (fields.Has("waypoints") == fields.Has("cells"))
         {
-            throw ApiErrors.InvalidArgument("trunk needs waypoints or cells (one of them).");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:trunk} needs {arg:waypoints} or {arg:cells} (one " +
+                "of them)."));
         }
 
         string? error;
@@ -353,10 +362,12 @@ internal static class PlanRouteApi
 
         List<long> inTheWay = RemovedInTheWay.Of(tree.Cells, cells);
         notes.Add(inTheWay.Count == 0
-            ? "assume_removed: the route takes none of the assumed pieces' cells, so it can also be built while " +
-              "they still stand (leave remove_ids out of place_arguments and remove them in a later job)."
-            : $"assume_removed: the route takes the cells of {inTheWay.Count} assumed piece(s) (in_the_way): they " +
-              "go in the same job (place_arguments.remove_ids) or before it.");
+            ? Vocabulary.Text("{arg:assume_removed}: the route takes none of the assumed pieces' cells, so it can " +
+                "also be built while they still stand (leave {arg:remove_ids} out of place_arguments and remove them " +
+                "in a later job).")
+            : $"{Vocabulary.Arg("assume_removed")}: the route takes the cells of {inTheWay.Count} assumed piece(s) " +
+                $"(in_the_way): they go in the same job (place_arguments.{Vocabulary.Arg("remove_ids")}) or before " +
+                "it.");
         return new RouteAssumedView(Ids(assumed.Pieces), Ids(assumed.Others), assumed.Missing,
             inTheWay.ConvertAll(id => new ThingId(id)));
     }
@@ -448,14 +459,16 @@ internal static class PlanRouteApi
 
         if (args.Has("from") || args.Has("to"))
         {
-            throw ApiErrors.InvalidArgument("reroute takes its ends from the old run; leave out from and to.");
+            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:reroute} takes its ends from the old run; leave " +
+                "out {arg:from} and {arg:to}."));
         }
 
         Args fields = new Args(reroute);
         if (fields.Has("reference_ids") == fields.Has("between"))
         {
             throw ApiErrors.InvalidArgument(
-                "reroute needs reference_ids (the old run's pieces) or between: [a, b] (ids, or {reference_id, port}).");
+                Vocabulary.Text("{arg:reroute} needs {arg:reference_ids} (the old run's pieces) or {arg:between}: " +
+                    "[a, b] (ids, or {{arg:reference_id}, {arg:port}})."));
         }
 
         if (fields.Has("reference_ids"))
@@ -508,7 +521,7 @@ internal static class PlanRouteApi
         {
             throw ApiErrors.InvalidArgument(
                 $"{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with " +
-                "{reference_id, port}, or a free cell.");
+                $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}, or a free cell.");
         }
     }
 
@@ -589,7 +602,7 @@ internal static class PlanRouteApi
         double margin = args.OptionalPositiveDouble("margin_m") ?? DefaultMarginM;
         if (margin > MaximumMarginM)
         {
-            throw ApiErrors.InvalidArgument($"margin_m is at most {MaximumMarginM}.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("margin_m")} is at most {MaximumMarginM}.");
         }
 
         int pad = (int)Math.Ceiling(margin * 10.0 / GridStep.CellSize) * GridStep.CellSize;
@@ -603,7 +616,8 @@ internal static class PlanRouteApi
             "any" => AxisOrder.Any,
             "vertical_first" => AxisOrder.VerticalFirst,
             "horizontal_first" => AxisOrder.HorizontalFirst,
-            _ => throw ApiErrors.InvalidArgument("axis_order must be any, vertical_first or horizontal_first.")
+            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:axis_order} must be any, vertical_first or " +
+                "horizontal_first."))
         };
         return new RouteRules((args.OptionalBool("min_bends") ?? false) ? MinimumBendsCost : BendCost, axisOrder,
             args.OptionalInt("max_length", 2, RunPath.MaximumCells) ?? DefaultMaxLength, min, max);
@@ -747,12 +761,12 @@ internal static class PlanRouteApi
         string prefix = tree.FailedAt != null ? $"{tree.FailedAt}: " : string.Empty;
         return prefix + tree.Failure switch
         {
-            "too_long" => "too_long: every way under the rules is longer than max_length.",
-            "search_limit" => $"search_limit: gave up after {tree.Expanded} cells; bring the ends closer or " +
-                              "lower margin_m.",
-            _ => "no_route: no way between the ends under the rules inside the search box (margin_m around the " +
-                 "ends); loosen a rule, raise margin_m, plan as if old pieces in the way were gone " +
-                 "(assume_removed), or check the ends with grid_survey."
+            "too_long" => Vocabulary.Text("too_long: every way under the rules is longer than {arg:max_length}."),
+            "search_limit" => $"search_limit: gave up after {tree.Expanded} cells; bring the ends closer or lower " +
+                $"{Vocabulary.Arg("margin_m")}.",
+            _ => Vocabulary.Text("no_route: no way between the ends under the rules inside the search box " +
+                "({arg:margin_m} around the ends); loosen a rule, raise {arg:margin_m}, plan as if old pieces in the " +
+                "way were gone ({arg:assume_removed}), or check the ends with {tool:grid_survey}.")
         };
     }
 
@@ -763,12 +777,14 @@ internal static class PlanRouteApi
             "The route never passes through a cell holding a piece of its kind (that would join it), a device or " +
             "chute, nor along the axis of a pipe (for cables) or cable (for pipes) in the same cell; frames and " +
             "walls never block it.",
-            "Waypoints are cell centres in metres; pass place_arguments to the place tool (add dry_run false and " +
-            "confirm true to build). The dry run is that tool's own, with the same guards."
+            Vocabulary.Text("Waypoints are cell centres in metres; pass place_arguments to the place tool (add " +
+                "{arg:dry_run} false and {arg:confirm} true to build). The dry run is that tool's own, with the same " +
+                "guards.")
         };
         if (rules.AvoidNetworks)
         {
-            notes.Add("avoid_networks: no cell beside a piece of another network than the ends' own.");
+            notes.Add(Vocabulary.Text("{arg:avoid_networks}: no cell beside a piece of another network than the " +
+                "ends' own."));
         }
 
         if (rules.Prefer == RoutePreference.Hidden)
@@ -781,7 +797,8 @@ internal static class PlanRouteApi
 
         if (assumed.Missing.Count > 0)
         {
-            notes.Add($"assume_removed: {assumed.Missing.Count} id(s) name nothing standing (already gone?): " +
+            notes.Add($"{Vocabulary.Arg("assume_removed")}: {assumed.Missing.Count} id(s) name nothing standing " +
+                "(already gone?): " +
                       string.Join(", ", assumed.Missing) + ".");
         }
 

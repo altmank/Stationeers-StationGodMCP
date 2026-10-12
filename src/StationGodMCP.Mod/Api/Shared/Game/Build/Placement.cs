@@ -9,6 +9,7 @@ using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
 using Objects.RoboticArm;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -87,8 +88,8 @@ internal sealed class BuildCatalogue
         };
         if (found == null)
         {
-            issue = $"No loaded prefab is {reference}; prefab names are as find_things and looking_at report them " +
-                    "(e.g. StructureWallLight).";
+            issue = $"No loaded prefab is {reference}; prefab names are as {Vocabulary.Tool("find_things")} and " +
+                $"{Vocabulary.Tool("looking_at")} report them (e.g. StructureWallLight).";
             return null;
         }
 

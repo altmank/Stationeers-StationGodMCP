@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Net;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.RemoteView;
 using TerrainSystem;
 using UnityEngine;
@@ -76,7 +77,8 @@ internal static class MovePlayerApi
             if (place == player)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"to_id {id} is {player.DisplayName} or something they carry, so it moves with them.");
+                    $"{Vocabulary.Arg("to_id")} {id} is {player.DisplayName} or something they carry, so it moves " +
+                    "with them.");
             }
 
             Box3 body = place is Human human
@@ -89,7 +91,8 @@ internal static class MovePlayerApi
         {
             if (other == player)
             {
-                throw ApiErrors.InvalidArgument($"near_player is {player.DisplayName}, the player being moved.");
+                throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("near_player")} is {player.DisplayName}, the " +
+                    "player being moved.");
             }
 
             Box3 body = Landing.PlayerAt(Bodies.V(other.ThingTransformPosition));

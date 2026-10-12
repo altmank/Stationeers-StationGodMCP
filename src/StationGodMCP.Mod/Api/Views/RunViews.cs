@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Views;
@@ -110,8 +111,8 @@ internal sealed class RunReportView : ITruncatingView
             if (network is RunChuteNetworkView chute && chute.Items != null && chute.Items.Count < chute.ItemsRiding)
             {
                 Truncations.Note(path + "networks_before[].items", chute.Items.Count, chute.ItemsRiding,
-                    "a network lists its first riding items only; grid_survey kinds [\"chute\"] gives each chute's " +
-                    "carries");
+                    Vocabulary.Text("a network lists its first riding items only; {tool:grid_survey} {arg:kinds} " +
+                        "[\"chute\"] gives each chute's carries"));
             }
         }
     }
@@ -977,7 +978,8 @@ internal sealed class RunJobView : ITruncatingView
         if (Log != null && Log.Placed == null && Log.PlacedCount > 0)
         {
             Truncations.Note(path + "log.placed", 0, Log.PlacedCount,
-                "poll with job_id and verbose: true (log.created_ids lists every id built)");
+                Vocabulary.Text("poll with {arg:job_id} and {arg:verbose}: true (log.created_ids lists every id " +
+                    "built)"));
         }
     }
 }

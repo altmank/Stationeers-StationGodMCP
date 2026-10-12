@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api;
 
@@ -48,8 +49,8 @@ internal static class SetIcPinsApi
         if (requested == null || requested.Count == 0)
         {
             throw ApiErrors.InvalidArgument(
-                "Argument 'pins' must be an object mapping at least one pin name (d0..d5) to a device reference ID " +
-                "string, or to null to clear that pin.");
+                Vocabulary.Text("Argument '{arg:pins}' must be an object mapping at least one pin name (d0..d5) to a " +
+                    "device reference ID string, or to null to clear that pin."));
         }
 
         PinCheck check = new PinCheck(scope, housing, allowOffNetwork);
@@ -156,9 +157,9 @@ internal sealed class PinCheck
         if (!_allowOffNetwork && network != null && !network.DataDeviceList.Contains(device))
         {
             throw ApiErrors.Refused("not_on_data_network",
-                $"Pin d{index}: device {id} ({Names.Of(device)}) is not on IC Housing {_housing.ReferenceId}'s " +
-                "data network, so the chip would not reach it through the pin. Connect it to the housing's data " +
-                "network, or pass allow_off_network to store it anyway.");
+                $"Pin d{index}: device {id} ({Names.Of(device)}) is not on IC Housing {_housing.ReferenceId}'s data " +
+                "network, so the chip would not reach it through the pin. Connect it to the housing's data network, " +
+                $"or pass {Vocabulary.Arg("allow_off_network")} to store it anyway.");
         }
 
         return device;

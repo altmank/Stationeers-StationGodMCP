@@ -17,6 +17,7 @@ using TerrainSystem;
 using Trading;
 using UnityEngine;
 
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api;
@@ -110,7 +111,8 @@ internal static class DeepMinerSpotsApi
         if (result.Spots.Count >= count)
         {
             Truncations.Note("spots", result.Spots.Count, result.Spots.Count,
-                $"pass count (max {MaximumCount}); the search stopped at count spots, so more may lie farther out",
+                $"pass {Vocabulary.Arg("count")} (max {MaximumCount}); the search stopped at count spots, so more " +
+                "may lie farther out",
                 atLeast: true);
         }
 

@@ -1,10 +1,12 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -13,7 +15,8 @@ namespace StationGodMCP.Api.Shared;
 /// sidecar holds an MCP client: an argument the method does not take is invalid_argument, naming the nearest one it
 /// does take and every one it takes, before the method runs. Without the check a misspelt filter (prefab for
 /// prefab_contains) was dropped and the call answered the whole world. Null is an omitted argument. Nested objects
-/// are left to each method. A method the catalogue does not list is not checked.
+/// are left to each method. A method the catalogue does not list is not checked. The refusal names arguments and the
+/// method as the call's rename map says (Vocabulary).
 /// </summary>
 internal sealed class DeclaredArguments
 {
@@ -72,14 +75,35 @@ internal sealed class DeclaredArguments
 
             string? nearest = NearestName.Of(property.Name, names.Sorted);
             problems.Append(nearest != null
-                ? $"Unknown argument '{property.Name}'; did you mean '{nearest}'? "
-                : $"Unknown argument '{property.Name}'. ");
+                ? $"Unknown argument '{Vocabulary.Arg(property.Name)}'; did you mean '{Vocabulary.Arg(nearest)}'? "
+                : $"Unknown argument '{Vocabulary.Arg(property.Name)}'. ");
         }
 
         if (problems != null)
         {
-            string list = names.Sorted.Count == 0 ? "none" : string.Join(", ", names.Sorted);
-            throw ApiErrors.InvalidArgument($"{problems}{method} takes: {list}. Nothing was run.");
+            string list = names.Sorted.Count == 0 ? "none" : Listed(names);
+            throw ApiErrors.InvalidArgument($"{problems}{Vocabulary.Tool(method)} takes: {list}. Nothing was run.");
         }
+    }
+
+    // The names as the caller says them, each phrase once (a map may say min and max both as box).
+    private static string Listed(ArgumentNames names)
+    {
+        if (Vocabulary.Current == null)
+        {
+            return string.Join(", ", names.Sorted);
+        }
+
+        List<string> said = new List<string>(names.Sorted.Count);
+        foreach (string name in names.Sorted)
+        {
+            string phrase = Vocabulary.Arg(name);
+            if (!said.Contains(phrase))
+            {
+                said.Add(phrase);
+            }
+        }
+
+        return string.Join(", ", said);
     }
 }

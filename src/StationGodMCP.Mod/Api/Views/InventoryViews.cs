@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Views;
@@ -420,7 +421,8 @@ internal sealed class ContainerContentsView : ITruncatingView
         if (hidden > 0)
         {
             Truncations.Note(path + "slots (nested past depth)", shown, shown + hidden,
-                "pass depth (max 6), or container_contents of the occupant", atLeast: true);
+                Vocabulary.Text("pass {arg:depth} (max 6), or {tool:container_contents} of the " +
+                    "occupant"), atLeast: true);
         }
     }
 

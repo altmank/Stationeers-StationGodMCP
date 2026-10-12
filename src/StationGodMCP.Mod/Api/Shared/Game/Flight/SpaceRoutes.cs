@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Serialization;
 using Objects.Rockets;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
 
@@ -86,7 +87,8 @@ internal static class RocketLocator
         }
 
         throw ApiErrors.Refused("ambiguous_rocket",
-            $"There are {rockets.Count} rockets: give rocket_id, one of {string.Join(", ", names)}.");
+            $"There are {rockets.Count} rockets: give {Vocabulary.Arg("rocket_id")}, one of " +
+            $"{string.Join(", ", names)}.");
     }
 }
 

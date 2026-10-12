@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -84,7 +85,8 @@ internal static class NetworkHandles
                 {
                     throw ApiErrors.Refused(missing.Code,
                         $"{entry}: {handle.Id} names no thing and no {family.NetworkKind} network. A piece's id " +
-                        "changes when an edit replaces it (a split, a junction); read it again (connections).");
+                        "changes when an edit replaces it (a split, a junction); read it again " +
+                        $"({Vocabulary.Tool("connections")}).");
                 }
             }
             else if (thing is SmallGrid piece && family.IsMember(piece))
@@ -102,7 +104,7 @@ internal static class NetworkHandles
                 throw ApiErrors.InvalidArgument(
                     $"{entry}: {Names.Of(device)} ({device.PrefabName}) has no two {family.NetworkKind} ports that " +
                     "could share a network, so it bridges nothing; name a network, a piece of one or " +
-                    "{reference_id, port}.");
+                    $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
             }
         }
 
@@ -142,8 +144,8 @@ internal static class NetworkHandles
 
             throw ApiErrors.Refused(networks.Count == 0 ? "no_network" : "ambiguous_port",
                 $"{name}: {device.PrefabName} {device.ReferenceId} is on {networks.Count} {family.NetworkKind} " +
-                $"networks [{string.Join(", ", networks)}]; name one with {{reference_id, port}} " +
-                $"(ports: {Ports(device, family)}).");
+                $"networks [{string.Join(", ", networks)}]; name one with {{{Vocabulary.Arg("reference_id")}, " +
+                $"{Vocabulary.Arg("port")}}} (ports: {Ports(device, family)}).");
         }
 
         throw ApiErrors.InvalidArgument(
