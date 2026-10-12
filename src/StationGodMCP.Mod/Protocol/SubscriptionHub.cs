@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Shaping;
@@ -19,8 +20,10 @@ namespace StationGodMCP.Protocol;
 /// calls run on the main thread, the engine's samples, and its events into each connection's outbound queue,
 /// where an update waits as its subscription's UpdateSlot and is written by the connection's writer thread; and
 /// sample_logic, whose call starts a LogicSampler run and is answered when the run's last sample is taken. The lane
-/// takes sample_logic samples first, then subscription samples, one at a time. Main thread only, apart from Closed,
-/// which a connection's reader thread calls as it ends.
+/// takes sample_logic samples first, then subscription samples, one at a time. Subscriptions and sample_logic runs
+/// belong to the stream of the call that made them: a stream's end (stream_end, a slow client, a closed connection)
+/// ends them at the start of the next frame. Main thread only, apart from Closed and StreamEnded, which a
+/// connection's reader or writer thread calls.
 /// </summary>
 internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, ISampleLogicEvents<BatchItemView>, ISampleLane
 {
@@ -34,7 +37,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     private readonly SubscriptionEngine<ReadDevicesView> _engine;
     private readonly Dictionary<ConnectionId, Connection> _connections = new Dictionary<ConnectionId, Connection>();
-    private readonly ConcurrentQueue<Connection> _closed = new ConcurrentQueue<Connection>();
+    private readonly ConcurrentQueue<Ending> _ended = new ConcurrentQueue<Ending>();
     private readonly OneSample _one = new OneSample();
     private readonly LogicSampler<BatchItemView> _sampler;
     private readonly Dictionary<SampleLogicRun<BatchItemView>, SampleLogicCall> _runs =
@@ -61,32 +64,38 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     internal static bool Handles(string method) => method == SubscribeMethod || method == UnsubscribeMethod;
 
     /// <summary>
-    /// The start of a frame: connections that ended since the last one drop their subscriptions and sample_logic runs
-    /// silently, and the frame's ticks (game time for subscriptions, real time for sample_logic) are what samples and
-    /// replies are stamped with.
+    /// The start of a frame: streams and connections that ended since the last one drop their subscriptions silently
+    /// and their sample_logic runs (a run of one ended stream answers its call cancelled; a closed connection's runs
+    /// answer nothing, there is no one to tell), and the frame's ticks (game time for subscriptions, real time for
+    /// sample_logic) are what samples and replies are stamped with.
     /// </summary>
     internal void BeginFrame(SamplingTick tick, RealTimeTick real)
     {
         _tick = tick;
         _real = real;
-        while (_closed.TryDequeue(out Connection connection))
+        while (_ended.TryDequeue(out Ending ending))
         {
-            ConnectionId id = new ConnectionId(connection.ClientId);
-            _engine.DropConnection(id);
-            _connections.Remove(id);
-            _sampler.CancelConnection(id);
-            List<SampleLogicRun<BatchItemView>> dropped = new List<SampleLogicRun<BatchItemView>>();
-            foreach (SampleLogicRun<BatchItemView> run in _runs.Keys)
+            ConnectionId id = new ConnectionId(ending.Connection.ClientId);
+            if (ending.End.IsWholeConnection)
             {
-                if (run.Connection.Equals(id))
+                _engine.DropConnection(id);
+                _connections.Remove(id);
+                _sampler.CancelConnection(id);
+                foreach (SampleLogicRun<BatchItemView> run in RunsOf(id, null))
                 {
-                    dropped.Add(run);
+                    _runs.Remove(run);
                 }
+
+                continue;
             }
 
-            foreach (SampleLogicRun<BatchItemView> run in dropped)
+            _engine.DropStream(id, ending.End.Stream);
+            foreach (SampleLogicRun<BatchItemView> run in RunsOf(id, ending.End.Stream))
             {
+                SampleLogicCall pending = _runs[run];
                 _runs.Remove(run);
+                _sampler.Cancel(run);
+                pending.Call.Finish(ProtocolCall.StreamEndedRunReply(pending.Id), SampleLogicMethod);
             }
         }
     }
@@ -96,8 +105,35 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     {
         if (source is Connection connection)
         {
-            _closed.Enqueue(connection);
+            _ended.Enqueue(new Ending(connection, StreamEnd.AllOf(connection.ClientId)));
         }
+    }
+
+    /// <summary>
+    /// Streams of a connection ended (any thread): their subscriptions end without an event and their sample_logic
+    /// runs end at the next frame.
+    /// </summary>
+    internal void StreamEnded(object source, StreamEnd end)
+    {
+        if (source is Connection connection && !end.IsWorld)
+        {
+            _ended.Enqueue(new Ending(connection, end));
+        }
+    }
+
+    // The runs of the connection, of one stream or (stream null) of all; a list, since the caller removes them.
+    private List<SampleLogicRun<BatchItemView>> RunsOf(ConnectionId connection, long? stream)
+    {
+        List<SampleLogicRun<BatchItemView>> found = new List<SampleLogicRun<BatchItemView>>();
+        foreach (SampleLogicRun<BatchItemView> run in _runs.Keys)
+        {
+            if (run.Connection.Equals(connection) && (stream == null || run.Stream == stream.Value))
+            {
+                found.Add(run);
+            }
+        }
+
+        return found;
     }
 
 
@@ -120,7 +156,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         try
         {
             result = request.Method == SubscribeMethod
-                ? Subscribe((Connection)call.Source!, request.Params)
+                ? Subscribe((Connection)call.Source!, request.Params, call.Context.Stream)
                 : Unsubscribe((Connection)call.Source!, request.Params);
         }
         catch (ApiException refused)
@@ -229,13 +265,13 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         return "{\"type\":\"event\"," + keys.Substring(1);
     }
 
-    private object Subscribe(Connection connection, JObject? parameters)
+    private object Subscribe(Connection connection, JObject? parameters, long stream)
     {
         ConnectionId id = new ConnectionId(connection.ClientId);
         SubscribeOutcome<ReadDevicesView> outcome = SubscribeRequest.Of(parameters) switch
         {
-            SubscribeRequest.Devices devices => _engine.Subscribe(id, devices.Query, devices.Interval, _tick),
-            SubscribeRequest.World _ => _engine.SubscribeWorld(id, _tick),
+            SubscribeRequest.Devices devices => _engine.Subscribe(id, devices.Query, devices.Interval, _tick, stream),
+            SubscribeRequest.World _ => _engine.SubscribeWorld(id, _tick, stream),
             SubscribeRequest.OverLimit over => new SubscribeOutcome<ReadDevicesView>.Refused(over.Refusal),
             SubscribeRequest.Invalid invalid => throw ApiErrors.InvalidArgument(invalid.Message),
             _ => throw ApiErrors.InvalidArgument("Unknown subscribe request.")
@@ -299,6 +335,8 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
         internal QueuedCall Call { get; }
 
+        internal string? Id => _id;
+
         /// <summary>
         /// The reply: the result shaped as the call asked, or the error. elapsed_ms is the run's whole real time, from
         /// its start to its last sample; budget_hit is for the frame this reply is built in, not the one the run began in.
@@ -312,6 +350,20 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
                 : ApiJson.WriteShaped(CallReplyView.Of(_id, result, _shape != null, elapsedMs, _queueMs, frame, budgetHit),
                     _shape ?? ShapeRequest.None).Json;
         }
+    }
+
+    /// <summary>A connection's streams that ended, waiting for the start of the next frame.</summary>
+    private readonly struct Ending
+    {
+        internal Ending(Connection connection, StreamEnd end)
+        {
+            Connection = connection;
+            End = end;
+        }
+
+        internal Connection Connection { get; }
+
+        internal StreamEnd End { get; }
     }
 
     /// <summary>The lane asks for one sample at a time: the first offer is taken, the next refused.</summary>

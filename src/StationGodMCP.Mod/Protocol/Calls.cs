@@ -43,9 +43,15 @@ internal abstract class QueuedCall
     internal virtual CallContext Context => CallContext.None;
 
     /// <summary>
+    /// The name its client gave in hello: connections that gave the same name share one place in the rounds
+    /// (scheduling.md, One frame, step by step); null makes its connection a client of its own.
+    /// </summary>
+    internal virtual string? ClientName => null;
+
+    /// <summary>
     /// Its method, effective class and cost at its arguments, worked out on the thread that received it. The class
-    /// decides its order on its connection (a write or cheat call starts only after every earlier call of its
-    /// connection is answered, and holds back every later one); the cost decides its lane.
+    /// decides its order on its stream (a write or cheat call starts only after every earlier call of its stream is
+    /// answered, and holds back every later one); the cost decides its lane.
     /// </summary>
     internal CallProfile Profile { get; }
 
@@ -59,7 +65,7 @@ internal abstract class QueuedCall
     internal abstract string TimeoutReply();
 
     /// <summary>A refusal of a call that did not run (too_many_in_flight), built on any thread.</summary>
-    internal abstract string RefusalReply(string code, string message);
+    internal abstract string RefusalReply(string code, string message, object? data = null);
 
     /// <summary>Hands an answer on. Called once, by whoever won the call's state.</summary>
     internal abstract void Deliver(string reply, string? method);
@@ -161,13 +167,16 @@ internal sealed class ProtocolCall : QueuedCall
     private readonly Action<ProtocolCall, string, string?> _deliver;
     private readonly object _source;
     private readonly CallContext _context;
+    private readonly string? _clientName;
 
     internal ProtocolCall(CallRequest request, CallProfile profile, int deadlineMilliseconds, object source,
-        CallContext context, Action<ProtocolCall, string, string?> deliver) : base(DeadlineAfter(deadlineMilliseconds), profile)
+        CallContext context, string? clientName, Action<ProtocolCall, string, string?> deliver)
+        : base(DeadlineAfter(deadlineMilliseconds), profile)
     {
         Request = request;
         _source = source;
         _context = context;
+        _clientName = clientName;
         _deliver = deliver;
     }
 
@@ -177,14 +186,21 @@ internal sealed class ProtocolCall : QueuedCall
 
     internal override CallContext Context => _context;
 
+    internal override string? ClientName => _clientName;
+
     internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunCall(this, queueWaitMs);
 
     internal override string TimeoutReply() => Wire.Refusal(Request.Id, TimeoutCode,
         "The call was not started before its deadline; it did not run.");
 
-    internal override string RefusalReply(string code, string message) => Wire.Refusal(Request.Id, code, message);
+    internal override string RefusalReply(string code, string message, object? data = null) =>
+        Wire.Refusal(Request.Id, code, message, data);
 
     internal string CancelledReply() => Wire.Refusal(Request.Id, CancelledCode, "Cancelled before it started; it did not run.");
+
+    /// <summary>A started sample_logic call whose stream ended before its run finished: its samples are dropped.</summary>
+    internal static string StreamEndedRunReply(string? id) => Wire.Refusal(id, CancelledCode,
+        "The stream ended before the run finished; its samples so far were dropped. Nothing in the world changed.");
 
     internal string ShuttingDownReply() => Wire.Refusal(Request.Id, ShuttingDownCode,
         "The mod is stopping or the world is unloading; the call was not started.");
@@ -199,6 +215,13 @@ internal interface ICallQueue
 
     /// <summary>A queued call was answered without running (cancelled): it stops holding a place.</summary>
     void Withdraw(QueuedCall call);
+
+    /// <summary>
+    /// Streams of the connection ended (stream_end, or a slow client's every stream): at the next frame their waiting
+    /// calls leave the scheduler, their subscriptions and sample_logic runs end, and the per-stream stores drop what
+    /// they keep for them. Whoever ended them has already answered their unstarted calls.
+    /// </summary>
+    void StreamEnded(object source, StreamEnd end);
 
     /// <summary>The connection ended: its waiting calls are dropped, and what it had going on the main thread ends.</summary>
     void Closed(object source);

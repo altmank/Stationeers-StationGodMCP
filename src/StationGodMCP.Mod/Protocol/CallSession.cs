@@ -12,27 +12,44 @@ namespace StationGodMCP.Protocol;
 
 /// <summary>
 /// The protocol on one connection: hello and welcome, then calls by id, several in flight, answered in any order and
-/// matched by id; cancel; events. The first message must be hello; anything else is a protocol error that closes the
-/// connection. Lines are parsed and checked here, on the connection's reader thread; only the methods themselves run
-/// on the main thread.
+/// matched by id; cancel; stream_end; events. The first message must be hello; anything else is a protocol error that
+/// closes the connection. Lines are parsed and checked here, on the connection's reader thread; only the methods
+/// themselves run on the main thread.
+/// <para>
+/// Streams (protocol.md, Streams): each call carries a stream, 0 unless it says otherwise. MaxInFlight calls may be in
+/// flight on one stream and MaxInFlightPerConnection on the connection, its streams together; ids stay unique per
+/// connection. stream_end answers the stream's unstarted calls cancelled here, marks the stream ended (a later call on
+/// it is refused stream_ended), and posts the end for the main thread, which drops the stream's waiting calls,
+/// subscriptions, sample_logic runs and per-stream stores at the next frame. A slow client goes the same way for every
+/// stream before it is closed.
+/// </para>
 /// </summary>
 internal sealed class CallSession : Session
 {
-    internal const int MaxInFlight = 16;
+    /// <summary>Calls in flight on one stream (welcome.limits max_in_flight and max_in_flight_per_stream).</summary>
+    internal const int MaxInFlight = SchedulerSettings.DefaultMaxInFlight;
+
+    /// <summary>Calls in flight on the connection, every stream together (max_in_flight_per_connection).</summary>
+    internal const int MaxInFlightPerConnection = SchedulerSettings.DefaultMaxInFlightPerConnection;
+
+    internal const string StreamEndedCode = "stream_ended";
     internal const int MaxRequestBytes = 4194304;
     internal const string CatalogueMethod = "catalogue";
     internal const string AnonymousClient = "anonymous";
 
     /// <summary>What welcome lists in features: what this server does beyond the basics.</summary>
-    internal static readonly string[] Features = { "shape", "shape.paths", "shape.omit", "cancel" };
+    internal static readonly string[] Features = { "shape", "shape.paths", "shape.omit", "cancel", "streams" };
 
     /// <summary>The features with subscriptions, when the server has them.</summary>
-    internal static readonly string[] FeaturesWithSubscriptions = { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel" };
+    internal static readonly string[] FeaturesWithSubscriptions =
+        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams" };
 
     private readonly Connection _connection;
     private readonly ProtocolHost _host;
     private readonly object _sync = new object();
     private readonly Dictionary<string, ProtocolCall> _inFlight = new Dictionary<string, ProtocolCall>(StringComparer.Ordinal);
+    private readonly Dictionary<long, int> _inFlightByStream = new Dictionary<long, int>();
+    private readonly EndedStreams _ended = new EndedStreams();
     private ClientMessage.Hello? _hello;
     private bool _welcomed;
 
@@ -96,6 +113,9 @@ internal sealed class CallSession : Session
             case ClientMessage.Cancel cancel:
                 Cancel(cancel.Id);
                 break;
+            case ClientMessage.EndOfStream ended:
+                EndStream(ended.Stream);
+                break;
             case ClientMessage.Bye _:
                 _connection.EndGracefully();
                 break;
@@ -124,13 +144,12 @@ internal sealed class CallSession : Session
         _connection.EndGracefully();
     }
 
-    internal override void OnSlowClient()
-    {
-        foreach (ProtocolCall call in Waiting())
-        {
-            call.State.TryDrop();
-        }
-    }
+    /// <summary>
+    /// One socket and one writer serve every stream, so a write that timed out cannot be pinned on one stream: every
+    /// stream of the connection ends as with stream_end (its unstarted calls dropped, unanswered since the client takes
+    /// nothing, and its subscriptions, sample_logic runs and per-stream stores ended), then the connection closes.
+    /// </summary>
+    internal override void OnSlowClient() => EndStreams(StreamEnd.AllOf(_connection.ClientId), false);
 
     internal override void OnWorldChanged(WorldFacts world)
     {
@@ -164,7 +183,8 @@ internal sealed class CallSession : Session
             new WelcomeServerView(ServerFacts.Current, _connection.Transport),
             new WelcomeCatalogueView(file?.Hash ?? string.Empty, file?.Catalogue.MethodCount ?? 0,
                 file?.Catalogue.ProtocolMethodCount ?? 0),
-            new WelcomeLimitsView(MaxInFlight, MaxRequestBytes, _host.Settings.MaxReplyBytes, _host.Subscriptions?.Limits),
+            new WelcomeLimitsView(MaxInFlight, MaxInFlightPerConnection, MaxRequestBytes, _host.Settings.MaxReplyBytes,
+                _host.Subscriptions?.Limits),
             _host.Subscriptions != null ? FeaturesWithSubscriptions : Features);
         _connection.Send(Wire.Line(welcome));
         _welcomed = true;
@@ -182,6 +202,14 @@ internal sealed class CallSession : Session
 
     private void Accept(ClientMessage.Call call)
     {
+        if (_ended.Contains(call.Stream))
+        {
+            _connection.Send(Wire.Refusal(call.Id, StreamEndedCode,
+                $"Stream {call.Stream} has ended on this connection; it is never used again. Nothing ran.",
+                new Dictionary<string, long> { ["stream"] = call.Stream }));
+            return;
+        }
+
         if (call.Method == CatalogueMethod)
         {
             AnswerCatalogue(call.Id);
@@ -218,14 +246,22 @@ internal sealed class CallSession : Session
         // A method that runs for a while (x-duration: sample_logic) gets that long added to its deadline.
         int deadlineMs = call.DeadlineMs + (method?.DurationMs(call.Params) ?? 0);
         ProtocolCall queued = new ProtocolCall(request, profile, deadlineMs, _connection,
-            new CallContext(_connection.ClientId, 0), Answered);
+            new CallContext(_connection.ClientId, call.Stream), _hello?.ClientName, Answered);
         lock (_sync)
         {
-            if (_inFlight.Count >= MaxInFlight)
+            _inFlightByStream.TryGetValue(call.Stream, out int onStream);
+            if (onStream >= MaxInFlight)
             {
-                _connection.Send(Wire.Refusal(call.Id, "too_many_in_flight",
-                    $"At most {MaxInFlight} calls may be in flight on a connection.",
-                    new Dictionary<string, int> { ["limit"] = MaxInFlight }));
+                _connection.Send(Wire.Refusal(call.Id, InFlightLimits.Code, InFlightLimits.StreamMessage(MaxInFlight),
+                    InFlightLimits.Data(MaxInFlight, InFlightLimits.StreamScope)));
+                return;
+            }
+
+            if (_inFlight.Count >= MaxInFlightPerConnection)
+            {
+                _connection.Send(Wire.Refusal(call.Id, InFlightLimits.Code,
+                    InFlightLimits.ConnectionMessage(MaxInFlightPerConnection),
+                    InFlightLimits.Data(MaxInFlightPerConnection, InFlightLimits.ConnectionScope)));
                 return;
             }
 
@@ -236,6 +272,7 @@ internal sealed class CallSession : Session
             }
 
             _inFlight.Add(call.Id, queued);
+            _inFlightByStream[call.Stream] = onStream + 1;
         }
 
         _host.Submit(queued);
@@ -312,11 +349,58 @@ internal sealed class CallSession : Session
         }
     }
 
+    // stream_end: a stream already ended ends again without a word, and one never used ends like any other; its
+    // unstarted calls are answered cancelled at once, and the rest waits for the main thread. Building jobs (queued or
+    // running), job snapshots and undo data are not the stream's: its end leaves them as they are.
+    private void EndStream(long stream)
+    {
+        if (_ended.End(stream))
+        {
+            EndStreams(StreamEnd.Of(_connection.ClientId, stream), true);
+        }
+    }
+
+    // The one path for ended streams (stream_end, a slow client): their unstarted calls are dropped here, answered
+    // cancelled when answer is set, and the end is posted for the main thread's next frame.
+    private void EndStreams(StreamEnd end, bool answer)
+    {
+        foreach (ProtocolCall call in Waiting())
+        {
+            if (!end.Covers(call.Context))
+            {
+                continue;
+            }
+
+            if (answer)
+            {
+                call.Drop(call.CancelledReply());
+            }
+            else
+            {
+                call.State.TryDrop();
+            }
+        }
+
+        _host.StreamEnded(_connection, end);
+    }
+
     private void Answered(ProtocolCall call, string reply, string? method)
     {
         lock (_sync)
         {
-            _inFlight.Remove(call.Request.Id);
+            if (_inFlight.Remove(call.Request.Id))
+            {
+                long stream = call.Context.Stream;
+                int left = _inFlightByStream[stream] - 1;
+                if (left == 0)
+                {
+                    _inFlightByStream.Remove(stream);
+                }
+                else
+                {
+                    _inFlightByStream[stream] = left;
+                }
+            }
         }
 
         _connection.Send(reply, method);

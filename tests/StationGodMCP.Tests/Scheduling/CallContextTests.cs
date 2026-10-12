@@ -204,7 +204,7 @@ public sealed class CallContextTests
 
         internal override string TimeoutReply() => "timeout";
 
-        internal override string RefusalReply(string code, string message) => "refused " + code;
+        internal override string RefusalReply(string code, string message, object? data = null) => "refused " + code;
 
         internal override void Deliver(string reply, string? method)
         {

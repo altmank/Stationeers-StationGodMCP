@@ -33,6 +33,9 @@ internal sealed class FakeCall
 
     internal bool Ordered { get; }
 
+    /// <summary>The stream it came on.</summary>
+    internal long Stream { get; set; }
+
     /// <summary>Its arrival position on its connection.</summary>
     internal int Position { get; set; }
 
@@ -138,9 +141,10 @@ internal sealed class SchedulerRig
     internal FrameScheduler<FakeCall> Scheduler { get; }
 
     internal static SchedulerSettings WithBudget(double requestBudgetMs, double subscriptionBudgetMs = 1.5,
-        int maxInFlight = SchedulerSettings.DefaultMaxInFlight) =>
+        int maxInFlight = SchedulerSettings.DefaultMaxInFlight,
+        int maxInFlightPerConnection = SchedulerSettings.DefaultMaxInFlightPerConnection) =>
         new SchedulerSettings(requestBudgetMs, subscriptionBudgetMs, SchedulerSettings.DefaultHeavyThresholdMs,
-            SchedulerSettings.DefaultHeavyMaxWaitFrames, maxInFlight);
+            SchedulerSettings.DefaultHeavyMaxWaitFrames, maxInFlight, maxInFlightPerConnection);
 
     internal static CallProfile Read(string method = "read_logic", CostClass cost = CostClass.Instant, int items = 1) =>
         new CallProfile(method, MethodClass.Read, new CallCost(cost, items));
@@ -163,6 +167,15 @@ internal sealed class SchedulerRig
     internal Admission Add(FrameScheduler<FakeCall>.Connection connection, string name, CallProfile profile,
         double costMs = 0.1, double deadlineMs = double.PositiveInfinity) =>
         Scheduler.Enqueue(connection, new FakeCall(name, costMs, ordered: profile.IsOrdered), profile, deadlineMs);
+
+    /// <summary>A call on one stream of the connection.</summary>
+    internal Admission AddOn(FrameScheduler<FakeCall>.Connection connection, long stream, string name,
+        CallProfile profile, double costMs = 0.1) =>
+        Scheduler.Enqueue(connection, stream, new FakeCall(name, costMs, ordered: profile.IsOrdered) { Stream = stream },
+            profile, double.PositiveInfinity);
+
+    internal Admission LightOn(FrameScheduler<FakeCall>.Connection connection, long stream, string name,
+        double costMs = 0.1) => AddOn(connection, stream, name, Read(), costMs);
 
     internal FrameOutcome Frame(bool jobHoldsTick = false, ISampleLane? samples = null)
     {

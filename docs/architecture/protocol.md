@@ -53,8 +53,9 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `type` | When | Keys |
 | --- | --- | --- |
 | `hello` | First message, once. | `protocol` (array of integers, the major versions the client speaks, required), `client` (object: `name` string 1-64 characters of letters, digits, `-`, `_`, `.`; `version` string; `library` string, optional), `features` (array of strings the client understands, optional). |
-| `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000). |
+| `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000), `stream` (integer 0 to 2^53, optional, default 0; see *Streams*). |
 | `cancel` | Any time after `welcome`. | `id` of a call in flight. |
+| `stream_end` | Any time after `welcome`. | `stream` (integer 1 to 2^53, required). No reply; see *Streams*. |
 | `bye` | Optional, before closing. | none |
 
 ### Server to client
@@ -87,6 +88,8 @@ The `welcome` message:
   "catalogue": {"hash": "sha256:4f2a...", "methods": 92, "protocol_methods": 4},
   "limits": {
     "max_in_flight": 16,
+    "max_in_flight_per_stream": 16,
+    "max_in_flight_per_connection": 256,
     "max_request_bytes": 4194304,
     "max_reply_bytes": 16777216,
     "max_subscriptions": 64,
@@ -94,13 +97,16 @@ The `welcome` message:
     "max_values_per_subscription": 1024,
     "min_subscription_interval_s": 0.5
   },
-  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel"]
+  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams"]
 }
 ```
 
 - `client_id`: the server's name for this connection, unique while the mod runs; `mod_info` lists connections by it,
   beside the name the client gave in `hello`.
-- `client`: always `anonymous`; the name from `hello` is shown in `mod_info`.
+- `client`: always `anonymous`; the name from `hello` is shown in `mod_info`, and connections that gave the same
+  name share one turn in the scheduler's rounds ([scheduling.md](scheduling.md), *One frame, step by step*).
+- `limits.max_in_flight` and `max_in_flight_per_stream`: calls in flight on one stream; a client that sends no
+  `stream` uses stream 0 only, so this is its whole limit. `max_in_flight_per_connection`: all streams together.
 - `server.instance_id`: random, new each time the mod loads.
 - `server.world.id`: random, new each time a world finishes loading. It is the world's identity for clients: two
   welcomes with the same `world.id` reached the same loaded world, across reconnects. A game restart or a save load
@@ -135,20 +141,51 @@ the catalogue, as `thing_health` kept `min_ratio` (CHANGELOG 1.x, *Arguments are
 
 ### Ids
 
-A call's `id` MUST NOT equal the id of another call of the same connection still in flight. A call that reuses one is
-answered at once with `duplicate_id` carrying that id; the earlier call is unaffected and the connection stays open.
+A call's `id` MUST NOT equal the id of another call of the same connection still in flight, whatever their streams. A
+call that reuses one is answered at once with `duplicate_id` carrying that id; the earlier call is unaffected and the
+connection stays open.
 
-### Order on one connection
+### Streams
 
-A version-2 connection may have up to `limits.max_in_flight` calls in flight. A call beyond that is answered at once
-with `too_many_in_flight` and never queued.
+A stream is an ordered line of calls inside one connection (feature `streams`). A hub that holds one connection for
+many callers gives each its own: 0 for direct calls, one stream per script run. A call names its stream with
+`stream`; absent, null or 0 is the connection's default stream 0, so a client that never sends `stream` sees no
+difference. A `stream` that is not an integer from 0 to 2^53 (a number without a fraction counts) is refused
+`invalid_argument` with the call's id, and nothing is queued.
 
-Replies may arrive in any order and are matched by `id`. The server keeps this order on a connection:
+`{"type":"stream_end","stream":N}` says the client is done with stream N. It has no reply, like `cancel`. Then:
+
+- the stream's calls that have not started are answered `cancelled` and never run; calls already running finish and
+  are answered normally;
+- the stream's subscriptions end without an event, and its unfinished `sample_logic` calls are answered `cancelled`
+  (the samples taken so far are dropped; the method only reads);
+- whatever the mod keeps per stream (walk cursors and the like) is dropped;
+- the stream is never used again on this connection: a later call on it is refused `stream_ended` (`data: {stream}`),
+  and a later `stream_end` of it does nothing. A stream may be ended before any call used it.
+
+The calls are answered at once, on the connection's own thread; the rest happens at the start of the next frame. A
+`stream_end` does not touch building jobs, queued or running, nor job snapshots or undo data: a run's job outlives its
+stream. Stream 0 never ends: `stream_end` of 0, or one without a `stream` from 1 to 2^53, is refused `invalid_argument`
+with a null id (the message has none), and the connection stays open; an unknown key in it is a `protocol_error`.
+
+A connection remembers the streams it ended as ranges of numbers, so a hub that numbers its runs upward costs a
+few ranges, one more for each stream still open below the highest ended one. At most 1,024 ranges are kept; past
+that the two lowest merge, and the streams in the gap between them count as ended too. Closing the connection, or a
+slow client (*Outbound queue and slow clients*), ends every stream of it; a world change clears what the mod keeps
+per stream on every connection.
+
+### Order on one stream
+
+A version-2 connection may have up to `limits.max_in_flight` calls in flight on each stream (16) and
+`limits.max_in_flight_per_connection` (256) on all its streams together. A call beyond either is answered at once
+with `too_many_in_flight`, whose `data` is `{limit, scope}` with `scope` `stream` or `connection`, and never queued.
+
+Replies may arrive in any order and are matched by `id`. The server keeps this order on each stream of a connection:
 
 - A call whose effective class is write or cheat (see *Method classes*) does not start until every earlier
-  call on the same connection has been answered.
-- No call starts until every earlier write or cheat call on the same connection has been answered.
-- Reads may overtake reads.
+  call on the same stream has been answered.
+- No call starts until every earlier write or cheat call on the same stream has been answered.
+- Reads may overtake reads, and calls on different streams never wait for each other.
 
 The order covers handlers and their replies, not work that continues after the reply. A building tool's real run
 answers with a `job_id` while its job goes on over later frames
@@ -205,7 +242,7 @@ serialising finish; no thread waits for it, unlike today's listener, which block
 Four methods belong to the protocol itself. They are listed in the catalogue's `protocol_methods` section and are
 called like any other method. `catalogue`, `subscribe` and `unsubscribe` are read class. `drop_job` is write class: it
 changes what will happen to the world, so on its connection it waits for every earlier call to be answered and later
-calls wait for it (*Order on one connection*), a poll sent after it answers the drop, and a client never sends it again
+calls wait for it (*Order on one stream*), a poll sent after it answers the drop, and a client never sends it again
 after a broken connection (*Reconnecting*).
 
 | Method | Params | Result |
@@ -246,14 +283,15 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `unsupported_protocol` | No common major version. | `{supported}` | no |
 | `unauthorized` | Over TCP, the shared secret is missing or wrong. The connection is closed. Same code as today's TCP refusal (`src/StationGodMCP.Mod/StationGodTcpServer.cs:187-192`). | none | no |
 | `method_not_found` | No such method. As today (`ApiHost.cs:159-161`). | `{nearest}` when one is close | no |
-| `invalid_argument` | The arguments break the catalogue (version 2) or a tool's own reading (both versions). Nothing ran. | `{problems: [{path, problem}]}` on version 2 | no |
+| `invalid_argument` | The arguments break the catalogue (version 2) or a tool's own reading (both versions), or a call's `stream` or a `stream_end` is malformed (a `stream_end` refusal has a null id). Nothing ran. | `{problems: [{path, problem}]}` on version 2; none for `stream` and `stream_end` | no |
 | `invalid_shape` | Version 2 only: `shape` is malformed (see *Shaping*). Nothing ran. | `{problems}` | no |
 | `duplicate_id` | The id is already in flight on this connection. Nothing ran. | none | no |
-| `too_many_in_flight` | More calls in flight than `limits.max_in_flight`. Nothing ran. | `{limit}` | yes |
+| `too_many_in_flight` | More calls in flight on the stream than `limits.max_in_flight`, or on the connection than `max_in_flight_per_connection`. Nothing ran. | `{limit, scope}`, `scope` `stream` or `connection` | yes |
+| `stream_ended` | The call's stream was ended with `stream_end`; streams are never reused. Nothing ran. | `{stream}` | on another stream |
 | `request_too_large` | A message longer than `limits.max_request_bytes`. The connection is closed. | `{limit}` | no |
 | `reply_too_large` | The reply would exceed `shape.max_bytes` or `limits.max_reply_bytes`. The method ran. | `{bytes, limit, counts}` | only if the method is read class |
 | `game_timeout` | The call was not started before its deadline. Nothing ran. As today. | none | yes |
-| `cancelled` | Cancelled before it started. Nothing ran. | none | yes |
+| `cancelled` | Cancelled before it started, by `cancel` or `stream_end`. Nothing ran. Also a `sample_logic` call whose stream ended before its run finished: its samples are dropped. | none | yes |
 | `shutting_down` | The mod is stopping or the world is unloading; the call was not started. | none | yes |
 | `game_changed` | A game member this method needs is missing in this game build. As today. | none | no |
 | `internal_error` | A bug. The method may have partly run. As today. | none | no |
@@ -449,6 +487,11 @@ are bounded by subscription merging (below): at most one queued update per subsc
 by the client (today's send timeout, `StationGodTcpServer.cs:27`); its calls not yet started are dropped and its
 subscriptions end.
 
+The connection has one socket and one writer for all its streams, so a write that timed out cannot be pinned on one
+stream. A slow client ends every stream of the connection the way `stream_end` ends one (unstarted calls dropped,
+here unanswered since the client takes nothing; subscriptions and `sample_logic` runs ended; per-stream stores
+cleared), then is closed.
+
 ## Subscriptions
 
 A subscription asks the mod to read a set of device values at an interval and push the read when it changed. The
@@ -499,7 +542,8 @@ Topics:
 
 - Per subscription: the bounds of one `read_devices` call (128 items, 1,024 values).
 - Per connection: `limits.max_subscriptions` (64) and `limits.max_subscription_values` (8,192 values across them,
-  counted as `read_devices` counts them). These are sized to hold every card of the dashboard on one connection.
+  counted as `read_devices` counts them). These are sized to hold every card of the dashboard on one connection, and
+  a connection's streams share them: they are not per stream.
 - Across all connections: the projected sampling cost must fit the subscription share of the frame budget
   ([scheduling.md](scheduling.md), *Subscriptions*).
 
@@ -508,7 +552,9 @@ with `read_devices` at the same interval instead; the libraries report the refus
 
 ### Ending
 
-A subscription ends when the client unsubscribes, when the connection closes, or when the mod ends it with an event:
+A subscription belongs to the stream of the `subscribe` call that made it. Any stream of the connection may
+unsubscribe it. It ends when the client unsubscribes, when its stream ends or the connection closes (both without an
+event), or when the mod ends it with an event:
 
 ```json
 {"type":"event","event":"subscription_ended","subscription":"s3","reason":"world_changed"}
@@ -527,7 +573,7 @@ is paused, and reporting the changes with elapsed real seconds (`src/StationGodM
 `:359-376`, `:448`). It is not a subscription: it has its own sampler in the mod, which takes each sample in the first
 frame at or after it is due and counts in the subscription lane's time ([scheduling.md](scheduling.md)). Its catalogue
 entry declares `x-duration` from `duration_seconds`, so the call's deadline and every client's wait for its reply add
-the duration.
+the duration. A `stream_end` of its call's stream answers an unfinished run `cancelled` (*Streams*).
 
 ### Connection events
 
@@ -601,6 +647,18 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
 - `Resync` is in the engine but has no message on the wire yet; `ApplyLimits` has no caller, since the limits are read
   once at load.
 
+### As built: streams
+
+- `ClientMessage` reads `stream` on a call and the `stream_end` message (`EndOfStream`); `CallSession` counts calls
+  in flight per stream and in all, keeps the ended streams (`Pure/Protocol/StreamEnd.cs`, `EndedStreams`) and refuses
+  calls on them, answers a `stream_end`'s unstarted calls and posts the end (`ICallQueue.StreamEnded`).
+- At the next frame `LaneScheduler` drops the stream's waiting calls (`FrameScheduler.EndStream`) and tells
+  `StreamStores`, the one place a per-stream store (`IStreamStore`, keyed by `CallContext`) hears of ended streams;
+  `SubscriptionHub` drops the stream's subscriptions (`SubscriptionEngine.DropStream`) and `sample_logic` runs. A
+  closed connection reaches the same places for every stream; `WorldStores` clears every stream store on a world
+  change.
+- `mod_info`'s connections keep one `in_flight` per connection, all streams together; the default reply gains nothing.
+
 ## Reconnecting
 
 A connection can break at any time: the game closed, the save reloaded, the mod restarted. The rules a client follows
@@ -627,7 +685,7 @@ that meets an older mod gets that mod's answer to `hello`, which is no `welcome`
 
 ```text
 -> {"type":"hello","protocol":[2],"client":{"name":"agents","version":"1.12.0","library":"stationgod-cs/1.12.0"}}
-<- {"type":"welcome","protocol":2,"client_id":"c9","client":"anonymous","server":{...},"catalogue":{...},"limits":{...},"features":["shape","shape.paths","shape.omit","subscriptions","cancel"]}
+<- {"type":"welcome","protocol":2,"client_id":"c9","client":"anonymous","server":{...},"catalogue":{...},"limits":{...},"features":["shape","shape.paths","shape.omit","subscriptions","cancel","streams"]}
 -> {"type":"call","id":"a1","method":"grid_survey","params":{"room_id":"r12"},"shape":{"fields":["devices.reference_id","devices.prefab_name"]}}
 -> {"type":"call","id":"a2","method":"game_clock","params":{}}
 <- {"type":"reply","id":"a2","ok":true,"shaped":false,"result":{"game_time_s":84211.5,"paused":false,"time_of_day_ratio":0.41,"days_past":12},"elapsed_ms":0.02,"queue_ms":9.8,"frame":81301}

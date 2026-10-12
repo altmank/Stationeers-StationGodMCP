@@ -15,7 +15,7 @@ internal enum Lane
 
 /// <summary>
 /// What the scheduler needs to know about one call: its method, its effective class at its arguments (which decides
-/// its order on its connection) and its catalogue cost at its arguments (which decides its lane).
+/// its order on its stream) and its catalogue cost at its arguments (which decides its lane).
 /// </summary>
 internal readonly struct CallProfile
 {
@@ -37,7 +37,7 @@ internal readonly struct CallProfile
     internal int Items { get; }
 
     /// <summary>
-    /// protocol.md, Order on one connection: a write or cheat call starts only once every earlier call on its
+    /// protocol.md, Order on one stream: a write or cheat call starts only once every earlier call on its
     /// connection is answered, and no later call starts before it is.
     /// </summary>
     internal bool IsOrdered => Class != MethodClass.Read;

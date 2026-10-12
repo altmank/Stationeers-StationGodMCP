@@ -65,7 +65,7 @@
     "see": {"tool": "move_gas", "topic": "refusals"}
   },
   "cancelled": {
-    "description": "Cancelled before it started: nothing ran. Send it again if you still want it.",
+    "description": "Cancelled before it started: nothing ran. A sample_logic run whose stream ended is answered cancelled too, its samples dropped. Send it again if you still want it.",
     "origin": "protocol",
     "caller_may_resend": "yes",
     "see": {"topic": "errors", "subtopic": "protocol"}
@@ -874,6 +874,11 @@
     "origin": "tool",
     "see": {"topic": "slots"}
   },
+  "stream_ended": {
+    "description": "stream_end has ended that stream, and a stream is never used again on its connection: nothing ran. Send the call on another stream.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "structure_broken": {
     "description": "The structure is in its broken build state; the game cannot build on it. Remove it and place a new one.",
     "origin": "tool",
@@ -925,7 +930,7 @@
     "see": {"tool": "set_battery_charge", "topic": "refusals"}
   },
   "too_many_in_flight": {
-    "description": "Too many calls are in flight on this connection. Nothing ran; wait for replies, then send again.",
+    "description": "Too many calls are in flight on this stream or connection (data.scope says which, data.limit gives the limit). Nothing ran; wait for replies, then send again.",
     "origin": "protocol",
     "caller_may_resend": "yes",
     "see": {"topic": "errors", "subtopic": "protocol"}

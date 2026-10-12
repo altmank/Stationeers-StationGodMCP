@@ -11,8 +11,8 @@ using StationGodMCP.Pure.Scheduling;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// The order in which the main thread runs queued calls. Add, Withdraw and Close run on any thread and only post to
-/// an inbox; RunFrame, on the main thread, takes the inbox in and runs one frame of calls, each to its answer (or, for
+/// The order in which the main thread runs queued calls. Add, Withdraw, EndStreams and Close run on any thread and only
+/// post to an inbox; RunFrame, on the main thread, takes the inbox in and runs one frame of calls, each to its answer (or, for
 /// a deferred call, to its start) before the next.
 /// </summary>
 internal interface ICallScheduler
@@ -22,6 +22,12 @@ internal interface ICallScheduler
     /// <summary>A call answered without running (cancelled) leaves its lane.</summary>
     void Withdraw(QueuedCall call);
 
+    /// <summary>
+    /// Streams of the connection ended: their waiting calls are dropped unrun (whoever ended them answered them), and
+    /// the per-stream stores hear of it.
+    /// </summary>
+    void EndStreams(object source, StreamEnd end);
+
     /// <summary>The connection ended: its waiting calls are dropped unrun and it takes no more.</summary>
     void Close(object source);
 
@@ -30,10 +36,12 @@ internal interface ICallScheduler
 }
 
 /// <summary>
-/// The lane scheduler (scheduling.md): listener threads post calls to a concurrent inbox; each frame the main thread
-/// sorts what arrived into FrameScheduler's lanes and runs the frame. A connection's place in the rounds is its
-/// Connection object; calls without one share one place. A call the scheduler refuses beyond
-/// max_in_flight is answered too_many_in_flight unrun.
+/// The lane scheduler (scheduling.md): listener threads post calls, cancels, ended streams and closed connections to a
+/// concurrent inbox; each frame the main thread takes the inbox in order into FrameScheduler and runs the frame. A
+/// connection is its Connection object (calls without one share one), opened under the client name its first call
+/// carries; each call waits on its context's stream. A call the scheduler refuses beyond the in-flight limits is
+/// answered too_many_in_flight unrun, with the limit and its scope. Ended streams and closed connections reach the
+/// per-stream stores here, at the start of the frame.
 /// </summary>
 internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 {
@@ -45,9 +53,12 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     private readonly FrameScheduler<QueuedCall> _scheduler;
     private ICallRunner? _runner;
 
-    internal LaneScheduler(SchedulerSettings settings)
+    private readonly StreamStores _stores;
+
+    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null)
     {
         Settings = settings;
+        _stores = stores ?? StreamStores.Main;
         _scheduler = new FrameScheduler<QueuedCall>(settings, this, StopwatchClock.Instance, new CostPredictor());
     }
 
@@ -56,6 +67,8 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     public void Add(QueuedCall call) => _inbox.Enqueue(new Posted(PostKind.Add, call, call.Source ?? NoSource));
 
     public void Withdraw(QueuedCall call) => _inbox.Enqueue(new Posted(PostKind.Withdraw, call, call.Source ?? NoSource));
+
+    public void EndStreams(object source, StreamEnd end) => _inbox.Enqueue(new Posted(PostKind.EndStreams, null, source, end));
 
     public void Close(object source) => _inbox.Enqueue(new Posted(PostKind.Close, null, source));
 
@@ -103,15 +116,23 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
                 case PostKind.Withdraw:
                     if (_connections.TryGetValue(posted.Source, out FrameScheduler<QueuedCall>.Connection? holder))
                     {
-                        _scheduler.Cancel(holder, posted.Call!);
+                        _scheduler.Cancel(holder, posted.Call!.Context.Stream, posted.Call);
                     }
 
+                    break;
+                case PostKind.EndStreams:
+                    EndStreamsNow(posted.Source, posted.End);
                     break;
                 case PostKind.Close:
                     if (_connections.TryGetValue(posted.Source, out FrameScheduler<QueuedCall>.Connection? closing))
                     {
                         _scheduler.Close(closing);
                         _connections.Remove(posted.Source);
+                    }
+
+                    if (posted.Source is Connection connection)
+                    {
+                        _stores.End(StreamEnd.AllOf(connection.ClientId));
                     }
 
                     break;
@@ -123,32 +144,67 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     {
         if (!_connections.TryGetValue(source, out FrameScheduler<QueuedCall>.Connection? connection))
         {
-            connection = _scheduler.Open();
+            connection = _scheduler.Open(call.ClientName);
             _connections.Add(source, connection);
         }
 
-        Admission admission = _scheduler.Enqueue(connection, call, call.Profile, ClockMs(call.DeadlineAt));
-        if (!admission.IsQueued && admission.Refusal == AdmissionRefusal.TooManyInFlight)
+        Admission admission = _scheduler.Enqueue(connection, call.Context.Stream, call, call.Profile,
+            ClockMs(call.DeadlineAt));
+        if (admission.IsQueued)
         {
-            call.Drop(call.RefusalReply("too_many_in_flight",
-                $"At most {Settings.MaxInFlight} calls may be in flight on a connection."));
+            return;
         }
+
+        if (admission.Refusal == AdmissionRefusal.TooManyInFlight)
+        {
+            call.Drop(call.RefusalReply(InFlightLimits.Code, InFlightLimits.StreamMessage(Settings.MaxInFlight),
+                InFlightLimits.Data(Settings.MaxInFlight, InFlightLimits.StreamScope)));
+        }
+        else if (admission.Refusal == AdmissionRefusal.TooManyInFlightOnConnection)
+        {
+            call.Drop(call.RefusalReply(InFlightLimits.Code,
+                InFlightLimits.ConnectionMessage(Settings.MaxInFlightPerConnection),
+                InFlightLimits.Data(Settings.MaxInFlightPerConnection, InFlightLimits.ConnectionScope)));
+        }
+    }
+
+    private void EndStreamsNow(object source, StreamEnd end)
+    {
+        if (_connections.TryGetValue(source, out FrameScheduler<QueuedCall>.Connection? connection))
+        {
+            if (end.IsWholeConnection)
+            {
+                List<FrameScheduler<QueuedCall>.StreamQueue> live = connection.Live;
+                while (live.Count > 0)
+                {
+                    _scheduler.EndStream(connection, live[live.Count - 1].Id);
+                }
+            }
+            else
+            {
+                _scheduler.EndStream(connection, end.Stream);
+            }
+        }
+
+        _stores.End(end);
     }
 
     private enum PostKind
     {
         Add,
         Withdraw,
+        EndStreams,
         Close
     }
 
     private readonly struct Posted
     {
-        internal Posted(PostKind kind, QueuedCall? call, object source)
+        internal Posted(PostKind kind, QueuedCall? call, object source, StreamEnd end = default)
         {
             Kind = kind;
             Call = call;
             Source = source;
+            End = end;
         }
 
         internal PostKind Kind { get; }
@@ -156,7 +212,28 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         internal QueuedCall? Call { get; }
 
         internal object Source { get; }
+
+        internal StreamEnd End { get; }
     }
+}
+
+/// <summary>
+/// too_many_in_flight's words and data, the same from the reader thread's check and the scheduler's: the limit passed
+/// and whether it was the stream's or the connection's (protocol.md, Order on one stream).
+/// </summary>
+internal static class InFlightLimits
+{
+    internal const string Code = "too_many_in_flight";
+    internal const string StreamScope = "stream";
+    internal const string ConnectionScope = "connection";
+
+    internal static string StreamMessage(int limit) => $"At most {limit} calls may be in flight on one stream.";
+
+    internal static string ConnectionMessage(int limit) =>
+        $"At most {limit} calls may be in flight on a connection, all its streams together.";
+
+    internal static Dictionary<string, object> Data(int limit, string scope) =>
+        new Dictionary<string, object> { ["limit"] = limit, ["scope"] = scope };
 }
 
 /// <summary>

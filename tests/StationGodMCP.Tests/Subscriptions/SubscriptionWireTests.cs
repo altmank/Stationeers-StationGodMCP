@@ -215,6 +215,49 @@ public sealed class SubscriptionWireTests
     }
 
     [Fact]
+    public async Task EndingAStreamEndsItsSubscriptionsWithoutAnEventAndLeavesTheOthers()
+    {
+        SubscriptionHub hub = Hub();
+        using PipeRig rig = Rig(hub);
+        using V2Client client = await V2Client.Connect(rig);
+        string onStream = (string)Call(rig, client, "1", "subscribe", DeviceParams(), stream: 4)["result"]!["subscription"]!;
+        string direct = (string)Call(rig, client, "2", "subscribe", DeviceParams())["result"]!["subscription"]!;
+        Assert.Equal(2, hub.CountOf(ClientId(client)));
+
+        client.Send("""{"type":"stream_end","stream":4}""");
+        Stopwatch waited = Stopwatch.StartNew();
+        while (hub.CountOf(ClientId(client)) != 1 && waited.ElapsedMilliseconds < 5000)
+        {
+            Frame(rig, atS: 0.5);
+            await Task.Delay(10);
+        }
+
+        Assert.Equal(1, hub.CountOf(ClientId(client)));
+        _reader.Value = 0;
+        Frame(rig, atS: 2.0);
+        JObject update = client.Next();
+        Assert.Equal(direct, (string?)update["subscription"]);
+        Assert.Null(client.NextOrNull(200));
+
+        JObject gone = Call(rig, client, "3", "unsubscribe", new JObject { ["subscription"] = onStream });
+        Assert.Equal("unknown_subscription", (string?)gone["error"]!["code"]);
+    }
+
+    [Fact]
+    public async Task AnyStreamOfTheConnectionMayUnsubscribeAndTheLimitsAreTheConnections()
+    {
+        using PipeRig rig = Rig(new SubscriptionHub(_reader, NoLogic.Instance, new SubscriptionLimits(1, 8192, 1.5)));
+        using V2Client client = await V2Client.Connect(rig);
+        string subscription = (string)Call(rig, client, "1", "subscribe", DeviceParams(), stream: 2)["result"]!["subscription"]!;
+
+        JObject over = Call(rig, client, "2", "subscribe", DeviceParams(), stream: 3);
+        JObject ended = Call(rig, client, "3", "unsubscribe", new JObject { ["subscription"] = subscription }, stream: 3);
+
+        Assert.Equal("subscription_limit", (string?)over["error"]!["code"]);
+        Assert.True((bool)ended["ok"]!, ended.ToString());
+    }
+
+    [Fact]
     public async Task UpdatesWaitInTheOutboundQueueAsTheNewestReadingWithoutASeqGap()
     {
         using PipeRig rig = Rig();
@@ -258,10 +301,12 @@ public sealed class SubscriptionWireTests
     private static string ClientId(V2Client client) => (string)client.Welcome["client_id"]!;
 
     // Sends the call, then runs frames until its reply comes.
-    private JObject Call(PipeRig rig, V2Client client, string id, string method, JObject parameters)
+    private JObject Call(PipeRig rig, V2Client client, string id, string method, JObject parameters, long stream = 0)
     {
-        client.Send(new JObject { ["type"] = "call", ["id"] = id, ["method"] = method, ["params"] = parameters }
-            .ToString(Formatting.None));
+        client.Send(new JObject
+        {
+            ["type"] = "call", ["id"] = id, ["method"] = method, ["params"] = parameters, ["stream"] = stream
+        }.ToString(Formatting.None));
         Stopwatch watch = Stopwatch.StartNew();
         while (watch.ElapsedMilliseconds < 5000)
         {
