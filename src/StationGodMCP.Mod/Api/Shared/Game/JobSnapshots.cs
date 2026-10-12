@@ -18,7 +18,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class JobSnapshots
 {
-    private const int KeptJobs = 32;
+    internal const int KeptJobs = 32;
 
     private static readonly Dictionary<string, RecordedJob> ByJob = new Dictionary<string, RecordedJob>();
 

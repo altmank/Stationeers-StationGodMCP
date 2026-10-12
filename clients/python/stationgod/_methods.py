@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:5026cb4bb8b7818d178fa68fa180b446518bc0a0297e6fcce2298409863f305a'
+CATALOGUE_HASH = 'sha256:d72fc1dff39b3c42343469397f8e7f7e883b15e693242b815fc589f24be0569e'
 MOD_VERSION = '1.33.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -1524,7 +1524,11 @@ TABLE = {'catalogue': {'class': 'read',
                          'allow_bridge',
                          'from_id',
                          'refund_to',
-                         'acknowledge_gas_lost'],
+                         'acknowledge_gas_lost',
+                         'created_ids',
+                         'removed',
+                         'changed',
+                         'placed'],
               'required': ['job_id'],
               'shaping': 'lists',
               'protocol': False},
@@ -2328,12 +2332,12 @@ class Methods:
         """
         return self.call('trader_sell', **{'reference_id': reference_id, 'credit_card_id': credit_card_id, 'items': items, 'dry_run': dry_run}, **options)
 
-    def undo_job(self, *, job_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, allow_bridge: list | None = None, from_id: str | None = None, refund_to: str | int | list | None = None, acknowledge_gas_lost: str | None = None, **options) -> dict:
+    def undo_job(self, *, job_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, allow_bridge: list | None = None, from_id: str | None = None, refund_to: str | int | list | None = None, acknowledge_gas_lost: str | None = None, created_ids: list | None = None, removed: list | None = None, changed: list | None = None, placed: list | None = None, **options) -> dict:
         """Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure; the last 16): remove what it built, build back what it removed.
 
-        Class: write (other classes at some arguments). Arguments: job_id (required), dry_run, confirm, allow_bridge, from_id, refund_to, acknowledge_gas_lost.
+        Class: write (other classes at some arguments). Arguments: job_id (required), dry_run, confirm, allow_bridge, from_id, refund_to, acknowledge_gas_lost, created_ids, removed, changed, placed.
         """
-        return self.call('undo_job', **{'job_id': job_id, 'dry_run': dry_run, 'confirm': confirm, 'allow_bridge': allow_bridge, 'from_id': from_id, 'refund_to': refund_to, 'acknowledge_gas_lost': acknowledge_gas_lost}, **options)
+        return self.call('undo_job', **{'job_id': job_id, 'dry_run': dry_run, 'confirm': confirm, 'allow_bridge': allow_bridge, 'from_id': from_id, 'refund_to': refund_to, 'acknowledge_gas_lost': acknowledge_gas_lost, 'created_ids': created_ids, 'removed': removed, 'changed': changed, 'placed': placed}, **options)
 
     def upgrade_cables(self, *, include_notes: bool | None = None, network_id: str | dict | None = None, wait: bool | None = None, reference_ids: list | None = None, to: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | list | None = None, skip_unmatched: bool | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, **options) -> dict:
         """Swap cable pieces for heavy (default) or super heavy cable in place, piece for piece, as the coil's merge builds them; a whole network or chosen pieces.

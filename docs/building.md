@@ -301,6 +301,14 @@ record is gone); removing what a `free: true` placement built gives nothing back
 or real run says so in `plan.diverged` and lists the undo's own jobs in `plan.undone_by` (undo those, the last first,
 to have the job back); an earlier undo whose jobs were all refused does not count, and `plan.notes` mentions it.
 
+The mod keeps the last 16 jobs to end, across every client; an older job answers `job_not_found`. To undo one, pass
+the lists its `job_ended` event (the `jobs` subscription topic) or its final reply carries: `created_ids`, `removed`
+(ids, or things with a `reference_id`), `changed` (`{old_reference_id, new_reference_id, target_prefab_name}`) and
+`placed` (`{reference_id, prefab_name}`). They are used only when the job is past those 16, and only while its
+snapshots are kept (the last 32 jobs; the snapshots also give its tool and source): the job is then planned as
+finished from those lists, and `plan.notes` says so. Past the snapshots too it stays `job_not_found`. While the job is
+among the 16 the lists are ignored: its own final reply is the job as it ended, and a caller's copy may be partial.
+
 ## Removing pieces
 
 `remove_cables`, `remove_pipes` and `remove_chutes` take `reference_ids`, or the pieces in the cells of `waypoints` or

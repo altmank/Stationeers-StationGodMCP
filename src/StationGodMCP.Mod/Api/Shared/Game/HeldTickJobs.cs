@@ -35,7 +35,10 @@ namespace StationGodMCP.Api.Shared.Game;
 internal static class HeldTickJobs
 {
     private const float TickWaitSeconds = 15f;
-    private const int KeptJobs = 16;
+    /// <summary>Finished jobs kept for polls and undo_job, across every client.</summary>
+    internal const int KeptJobs = 16;
+
+    internal const string JobNotFoundCode = "job_not_found";
     internal const int MaximumWaiting = 8;
 
     private static readonly Dictionary<string, object> Finished = new Dictionary<string, object>();
@@ -180,7 +183,7 @@ internal static class HeldTickJobs
 
         return Finished.TryGetValue(id, out object view)
             ? view
-            : throw ApiErrors.Refused("job_not_found", $"No job {id} is running, queued or among the last {KeptJobs}.");
+            : throw ApiErrors.Refused(JobNotFoundCode, $"No job {id} is running, queued or among the last {KeptJobs}.");
     }
 
     /// <summary>
