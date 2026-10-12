@@ -72,10 +72,21 @@ class Ctx:
 
     def reload_world(self, instance="sgt1"):
         """A world load: the instance restarts on its pristine save, so the world id changes."""
-        self.oracle.close()
-        subprocess.run(["powershell", "-NoProfile", "-File", RESET, instance], check=True, capture_output=True,
-                       timeout=600)
-        self.oracle = Oracle(self.pipe)
+        try:
+            self.oracle.close()
+        except OSError:
+            pass
+        done = subprocess.run(["powershell", "-NoProfile", "-File", RESET, instance], capture_output=True, text=True,
+                              timeout=600)
+        if done.returncode != 0:
+            raise RuntimeError("reset failed: %s %s" % (done.stdout[-500:], done.stderr[-500:]))
+        for _ in range(30):
+            try:
+                self.oracle = Oracle(self.pipe)
+                return
+            except OSError:
+                time.sleep(2)
+        raise RuntimeError("the instance did not come back after the reset")
 
     def show(self, hub, ids):
         """Makes ids seen the honest way: a direct inspect the agent would have read."""
@@ -86,7 +97,10 @@ class Ctx:
         for h in self.hubs:
             if h.alive():
                 h.kill()
-        self.oracle.close()
+        try:
+            self.oracle.close()
+        except OSError:
+            pass
 
 
 def result(ok, **evidence):

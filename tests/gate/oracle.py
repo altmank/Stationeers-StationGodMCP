@@ -67,5 +67,7 @@ class Oracle:
     def close(self):
         try:
             self.conn.send({"type": "bye"})
+        except OSError:
+            pass
         finally:
             self.conn.close()
