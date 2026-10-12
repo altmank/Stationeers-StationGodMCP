@@ -353,7 +353,15 @@
         "x-undo": "mixed",
         "x-undo-mark": "source [cannot undo: chip source]; pins [undo]; run [cannot undo: run control]",
         "x-list": "one",
-        "x-target": [{"path": "id", "role": "acts-on"}]
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "pins.d0", "role": "acts-on"},
+          {"path": "pins.d1", "role": "acts-on"},
+          {"path": "pins.d2", "role": "acts-on"},
+          {"path": "pins.d3", "role": "acts-on"},
+          {"path": "pins.d4", "role": "acts-on"},
+          {"path": "pins.d5", "role": "acts-on"}
+        ]
       },
       "brief": "chip source, pins, run state"
     },

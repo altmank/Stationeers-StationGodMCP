@@ -672,7 +672,11 @@
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: player move]",
         "x-list": "one",
-        "x-target": [{"path": "player", "role": "acts-on"}]
+        "x-target": [
+          {"path": "player", "role": "acts-on"},
+          {"path": "to", "role": "acts-on"},
+          {"path": "to_player", "role": "acts-on"}
+        ]
       },
       "brief": "a player to a point, thing or player"
     }
