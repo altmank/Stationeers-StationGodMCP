@@ -108,9 +108,12 @@ internal sealed class RunWorld : IHubLink
 
     public Task<GameReply> CallAsync(GameCall call, CancellationToken cancellation)
     {
+        JsonObject args = JsonNode.Parse(call.Parameters.GetRawText())!.AsObject();
+        bool report = args["dry_run"] is JsonValue dry && dry.GetValueKind() == JsonValueKind.True;
         lock (_gate)
         {
-            _log.Add(call.Method);
+            // A dry run is logged apart: it reports and changes nothing.
+            _log.Add(report ? "report:" + call.Method : call.Method);
         }
 
         if (Override?.Invoke(call) is { } given)
@@ -118,13 +121,12 @@ internal sealed class RunWorld : IHubLink
             return Task.FromResult(given);
         }
 
-        JsonObject args = JsonNode.Parse(call.Parameters.GetRawText())!.AsObject();
         return Task.FromResult(call.Method switch
         {
             "thing_health" => Names(args),
             "read_logic_many" => Reads(args),
-            "write_logic_many" => Writes(args["writes"]!.AsArray()),
-            "write_logic" => Writes(new JsonArray(args.DeepClone())),
+            "write_logic_many" => Writes(args["writes"]!.AsArray(), report),
+            "write_logic" => Writes(new JsonArray(args.DeepClone()), report),
             "find_things" => FakeGameLink.Ok("""{"things":[{"reference_id":"999","display_name":"Pump"}],"count":1,"total":1}"""),
             _ => FakeGameLink.Ok("{}")
         });
@@ -162,7 +164,7 @@ internal sealed class RunWorld : IHubLink
         return FakeGameLink.Ok(new JsonObject { ["results"] = rows }.ToJsonString());
     }
 
-    private GameReply Writes(JsonArray writes)
+    private GameReply Writes(JsonArray writes, bool report)
     {
         JsonArray rows = new();
         int index = 0;
@@ -172,7 +174,11 @@ internal sealed class RunWorld : IHubLink
             string logic = Text(write["logic_type"] ?? write["logic"]);
             double value = (double)write["value"]!.AsValue().GetValue<double>();
             double before = Value(id, logic);
-            Set(id, logic, value);
+            if (!report)
+            {
+                Set(id, logic, value);
+            }
+
             rows.Add(new JsonObject
             {
                 ["index"] = index++,
@@ -187,6 +193,7 @@ internal sealed class RunWorld : IHubLink
 
         return FakeGameLink.Ok(new JsonObject
         {
+            ["report_only"] = report,
             ["results"] = rows,
             ["count"] = rows.Count,
             ["success_count"] = rows.Count,

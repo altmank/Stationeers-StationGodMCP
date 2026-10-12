@@ -10,8 +10,14 @@ import tempfile
 import threading
 import time
 
+import subprocess
+
 from hubproc import HubProcess
 from oracle import Oracle
+from proxy import Proxy
+
+TCP_PORT, TCP_SECRET = 8881, "sg-gate-sgt1-only"     # sgt1's localhost TCP, enabled for the reconnect cases
+RESET = os.path.join("G:" + os.sep, "Programming", "Git", "StationeersWorkspace", "tools", "sg-scoreboard", "instance", "reset.ps1")
 
 FIX = {
     "field": "122643",            # vacuum room force field, logic Open
@@ -20,7 +26,16 @@ FIX = {
     "doors": [str(i) for i in range(4936423, 4936430)],
     "door_switch": "4945550",
     "door_chip": "4945551",
+    "vent": "213177",             # Furnace Waste Vent, outdoors, logic On (off on the save)
+    "vent_net": "325097",         # its pipe network
+    "o2_source": "4291358",       # smelter oxidiser hold, ~10 mol oxygen
 }
+
+
+def plant_oxygen(ctx, mol=2):
+    """Puts oxidiser on the outdoor vent's network (a cheat on the test copy)."""
+    return ctx.oracle.call("move_gas", **{"from": FIX["o2_source"], "to": FIX["vent_net"], "gases": ["Oxygen"],
+                                          "amount_mol": mol, "dry_run": False})
 
 CASES = []
 
@@ -46,6 +61,21 @@ class Ctx:
         h = HubProcess(self.pipe, exe=self.exe, extra_args=extra, journal_dir=journal_dir or self.journal_dir)
         self.hubs.append(h)
         return h
+
+    def tcp_hub(self, *extra):
+        """A hub that reaches the mod through a proxy the case can sever."""
+        proxy = Proxy(TCP_PORT)
+        h = HubProcess(self.pipe, exe=self.exe, extra_args=extra, journal_dir=self.journal_dir,
+                       tcp=(proxy.port, TCP_SECRET))
+        self.hubs.append(h)
+        return h, proxy
+
+    def reload_world(self, instance="sgt1"):
+        """A world load: the instance restarts on its pristine save, so the world id changes."""
+        self.oracle.close()
+        subprocess.run(["powershell", "-NoProfile", "-File", RESET, instance], check=True, capture_output=True,
+                       timeout=600)
+        self.oracle = Oracle(self.pipe)
 
     def show(self, hub, ids):
         """Makes ids seen the honest way: a direct inspect the agent would have read."""
@@ -84,6 +114,21 @@ def kill_during_job(ctx):
     return result("left" in text or "script-" in text, first_reply=text[:600])
 
 
+@case("kills", "a kill during a queued job and between calls")
+def kill_queued_and_between(ctx):
+    h = ctx.hub()
+    ctx.show(h, [FIX["cap1"]])
+    first, _ = h.run_script("sg.write('logic', id='%s', logic='Setting', value=1111)\nsg.wait(2)\n"
+                            "sg.write('logic', id='%s', logic='Setting', value=1212)\nsg.wait(60)"
+                            % (FIX["cap1"], FIX["cap1"]), confirm=True, max_wait=1)
+    time.sleep(0.5)       # between the two writes
+    h.kill()
+    between = ctx.oracle.logic(FIX["cap1"], "Setting")
+    h2 = ctx.hub()
+    listed, _ = h2.tool("inspect", {"what": "job"})
+    return result(between == 1111 and "1111" in listed or "script-" in listed, between=between, listed=listed[:500])
+
+
 @case("kills", "a stop runs the finally")
 def stop_with_finally(ctx):
     h = ctx.hub()
@@ -120,7 +165,7 @@ def swallowed_refusal(ctx):
     ctx.oracle.set_logic(FIX["cap1"], "Setting", 1000)
     ctx.oracle.set_logic(FIX["cap2"], "Setting", 1000)
     ctx.show(h, [FIX["cap1"]])
-    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['results'] "
+    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['devices'] "
             "if t['reference_id'] != '%s']\n"
             "for handler in ('exc', 'bare'):\n"
             "    try:\n        sg.write('logic', id=ids, logic='Setting', value=3000)\n"
@@ -193,6 +238,42 @@ def stale_world(ctx):
         h.kill()
 
 
+@case("world", "a world load mid-run stops it and refuses its finally")
+def world_load_mid_run(ctx):
+    h = ctx.hub()
+    ctx.show(h, [FIX["cap1"]])
+    code = ("try:\n    while True:\n        sg.wait(1)\nfinally:\n"
+            "    sg.write('logic', id='%s', logic='Setting', value=4321)" % FIX["cap1"])
+    first, _ = h.run_script(code, confirm=True, max_wait=3)
+    rid = run_id(first)
+    old_world = ctx.oracle.world_id()
+    ctx.reload_world()
+    time.sleep(10)
+    final, _ = h.tool("inspect", {"what": "job", "id": rid, "max_wait": 30})
+    undo, _ = h.tool("undo", {"id": rid})
+    return result(ctx.oracle.world_id() != old_world and ctx.oracle.logic(FIX["cap1"], "Setting") != 4321
+                  and "world" in final and "undo_expired" in undo, final=final[:700], undo=undo[:300])
+
+
+@case("world", "a reconnect mid-watch, mid-job and mid-walk")
+def reconnect_mid_work(ctx):
+    h, proxy = ctx.tcp_hub()
+    ctx.show(h, [FIX["cap1"]])
+    watch, _ = h.run_script("rows, met = sg.watch([{'id': '%s', 'logic': 'Setting'}], lambda r: False, 12)\nmet"
+                            % FIX["cap1"], max_wait=2)
+    walk, _ = h.run_script("n = 0\nfor t in sg.find('thing', prefab='*Pipe*')['things']:\n    n += 1\n    "
+                           "if n % 200 == 0:\n        sg.wait(1)\nn", max_wait=2)
+    time.sleep(3)
+    proxy.sever()
+    time.sleep(1)
+    proxy.sever()
+    finals = [h.tool("inspect", {"what": "job", "id": run_id(t), "max_wait": 60})[0] for t in (watch, walk)]
+    direct, err = h.tool("read", {"what": "logic", "id": FIX["cap1"], "logic": "Setting"})
+    proxy.close()
+    return result(all(("done" in f) or ("unreachable" in f) for f in finals) and not err and proxy.connections >= 3,
+                  connections=proxy.connections, finals=[f[:400] for f in finals], direct=direct[:200])
+
+
 # ---- The write rule -----------------------------------------------------------------------------------------------
 
 @case("write-rule", "an unseen target stops the run with rows; sending it again with confirm acts on them")
@@ -200,7 +281,7 @@ def unseen_then_confirm(ctx):
     h = ctx.hub()
     ctx.oracle.set_logic(FIX["cap1"], "Setting", 1000)
     ctx.oracle.set_logic(FIX["cap2"], "Setting", 1000)
-    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['results']][:2]\n"
+    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['devices']][:2]\n"
             "sg.write('logic', id=ids, logic='Setting', value=1500)")
     first, _ = h.run_script(code, confirm=True, max_wait=20)
     untouched = ctx.oracle.logic(FIX["cap1"], "Setting") == 1000
@@ -305,7 +386,7 @@ def report_every_class(ctx):
     field = ctx.oracle.logic(FIX["field"], "Open")
     code = ("sg.write('logic', id='%s', logic='Setting', value=7777)\n"
             "sg.write('label', id='%s', label='GATE TEST')\n"
-            "sg.build('pipe', at=[700, 202, 660], to=[702, 202, 660])\n"
+            "sg.build('pipe', grade='insulated_gas', waypoints=[[700, 202, 660], [702, 202, 660]])\n"
             "sg.remove('structure', id='%s')\n"
             "sg.move('item', id='%s', to='player')\n"
             "with sg.hold('%s', 'Open', 1, after=0):\n    pass" % (FIX["cap1"], FIX["cap2"], FIX["door_switch"],
@@ -368,6 +449,54 @@ def driven_by(ctx):
     ctx.show(h, FIX["doors"][:1])
     text, _ = h.run_script("sg.write('logic', id='%s', logic='Open', value=0)" % FIX["doors"][0], max_wait=30)
     return result("driven_by" in text or FIX["door_chip"] in text, reply=text[:600])
+
+
+@case("world-rules", "an oxidiser vent opening is refused")
+def oxidiser_vent_refused(ctx):
+    h = ctx.hub()
+    ctx.oracle.set_logic(FIX["vent"], "On", 0)
+    plant_oxygen(ctx)
+    time.sleep(2)
+    direct, err = h.tool("write", {"what": "logic", "id": FIX["vent"], "logic": "On", "value": 1})
+    script, _ = h.run_script("sg.write('logic', id='%s', logic='On', value=1)" % FIX["vent"], confirm=True, max_wait=30)
+    return result("lint" in direct and "lint" in script and ctx.oracle.logic(FIX["vent"], "On") == 0,
+                  direct=direct[:500], script=script[:600])
+
+
+@case("world-rules", "a relief loop whose network gains oxygen is refused at its next opening")
+def relief_loop(ctx):
+    h = ctx.hub()
+    ctx.oracle.set_logic(FIX["vent"], "On", 0)
+    code = ("for i in range(6):\n    sg.write('logic', id='%s', logic='On', value=1)\n    sg.wait(1)\n"
+            "    sg.write('logic', id='%s', logic='On', value=0)\n    sg.wait(1)" % (FIX["vent"], FIX["vent"]))
+    first, _ = h.run_script(code, confirm=True, max_wait=2)
+    rid = run_id(first)
+    time.sleep(2.5)
+    plant_oxygen(ctx)
+    final, _ = h.tool("inspect", {"what": "job", "id": rid, "max_wait": 30})
+    return result("lint" in final and ctx.oracle.logic(FIX["vent"], "On") == 0, final=final[:900])
+
+
+@case("world-rules", "a held vent closed while oxidiser enters is not reopened at session_end")
+def held_vent_not_reopened(ctx):
+    h = ctx.hub()
+    ctx.oracle.set_logic(FIX["vent"], "On", 1)
+    ctx.show(h, [FIX["vent"]])
+    h.run_script("with sg.hold('%s', 'On', 0, after=1):\n    sg.wait(120)" % FIX["vent"], confirm=True, max_wait=3)
+    closed = ctx.oracle.logic(FIX["vent"], "On")
+    plant_oxygen(ctx)
+    time.sleep(2)
+    h.end_session_like_claude()
+    time.sleep(1.5)
+    return result(closed == 0 and ctx.oracle.logic(FIX["vent"], "On") == 0, closed=closed,
+                  after=ctx.oracle.logic(FIX["vent"], "On"))
+
+
+@case("world-rules", "materials_from_player warns")
+def materials_from_player(ctx):
+    h = ctx.hub()
+    text, _ = h.tool("build", {"what": "pipe", "grade": "insulated_gas", "waypoints": [[700, 202, 660], [702, 202, 660]], "materials": "player"})
+    return result("materials_from_player" in text, reply=text[:700])
 
 
 # ---- Load ---------------------------------------------------------------------------------------------------------

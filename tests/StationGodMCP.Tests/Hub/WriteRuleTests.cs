@@ -76,9 +76,11 @@ public sealed class WriteRuleTests
         game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1,"confirm":false}""").Done();
         game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1}""").Done();
 
-        // Report class hub: the report sends no write and reads the current value; the second call acts.
-        Same("""{"reference_id":"1","logic_type":"On","value":1,"dry_run":false}""", game.Single("write_logic").Params());
-        Same("""{"reads":[{"reference_id":"1","logic_type":"On"}]}""", game.Single("read_logic_many").Params());
+        // The report is the mod's dry run (the world's rules are in it); the second call acts.
+        List<GameCall> writes = game.CallsTo("write_logic").ToList();
+        Same("""{"reference_id":"1","logic_type":"On","value":1,"dry_run":true}""", writes[0].Params());
+        Same("""{"reference_id":"1","logic_type":"On","value":1,"dry_run":false}""", writes[1].Params());
+        Assert.Empty(game.CallsTo("read_logic_many"));
     }
 
     [Fact]
@@ -134,12 +136,12 @@ public sealed class WriteRuleTests
     }
 
     [Fact]
-    public void AHubClassReportReadsCurrentValuesAndSendsNoWrite()
+    public void AWriteLogicReportIsTheModsDryRunWithTheHubsNames()
     {
         FakeGameLink game = new();
         game.Answer = call => call.Method switch
         {
-            "read_logic_many" => FakeGameLink.Ok("""{"results":[{"index":0,"ok":true,"reference_id":"1","value":0},{"index":1,"ok":true,"reference_id":"2","value":1}]}"""),
+            "write_logic_many" => FakeGameLink.Ok("""{"report_only":true,"problems":[],"warnings":[],"results":[{"index":0,"ok":true,"reference_id":"1","logic_type":{"id":28,"name":"On"},"requested_value":1,"previous_value":0,"opens":false},{"index":1,"ok":true,"reference_id":"2","logic_type":{"id":28,"name":"On"},"requested_value":1,"previous_value":1,"opens":false}]}"""),
             "thing_health" => FakeGameLink.Ok("""{"results":[{"reference_id":"1","display_name":"Pump A"},{"reference_id":"2","display_name":"Pump B"}]}"""),
             _ => FakeGameLink.Ok("{}")
         };
@@ -147,7 +149,7 @@ public sealed class WriteRuleTests
         JsonNode? report = game.Pipeline().Call("write", "logic", """{"id":["1","2"],"logic":"On","value":1,"confirm":false}""")
             .Done();
 
-        Assert.Empty(game.CallsTo("write_logic_many"));
+        Assert.True((bool)game.Single("write_logic_many").Params()["dry_run"]!);
         // Each row its own mark: On holds a setting.
         Assert.Equal("[1, Pump A, 0 -> 1] [undo]",
             (string)report!["targets"]![0]!["text"]!);
@@ -288,7 +290,7 @@ public sealed class WriteRuleTests
         Assert.Equal(1, (int)refused!["error_count"]!);
         Assert.Equal("cleanup", (string)refused["results"]![0]!["error"]!["code"]!);
         Assert.True((bool)report!["report_only"]!);
-        Assert.Empty(game.CallsTo("write_logic_many"));
+        Assert.All(game.CallsTo("write_logic_many"), call => Assert.True((bool)call.Params()["dry_run"]!));
     }
 
     [Fact]

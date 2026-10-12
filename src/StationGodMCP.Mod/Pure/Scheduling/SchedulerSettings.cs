@@ -63,7 +63,7 @@ internal sealed class SchedulerSettings
     /// <summary>[Performance] HeavyThresholdMs: a call predicted above it goes to the heavy lane.</summary>
     internal double HeavyThresholdMs { get; }
 
-    /// <summary>[Performance] HeavyMaxWaitFrames: a heavy call passed over this many frames runs even over budget.</summary>
+    /// <summary>[Performance] HeavyMaxWaitFrames: a heavy call passed over this many frames may run over budget.</summary>
     internal int HeavyMaxWaitFrames { get; }
 
     /// <summary>Calls one stream of a connection may have waiting in the scheduler.</summary>

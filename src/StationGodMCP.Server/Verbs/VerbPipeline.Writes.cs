@@ -236,7 +236,16 @@ public sealed partial class VerbPipeline
 
         JsonObject report;
         JsonArray rows;
-        switch (what.Write!.Report)
+
+        // A hub-class write whose handler has its own report (write logic: dry_run with the lint and driven_by) reports
+        // from it: the world's rules are in no hub read.
+        string reportClass = what.Write!.Report;
+        if (reportClass == "hub" && HandlerReports(what, options, ids))
+        {
+            reportClass = "dry_run";
+        }
+
+        switch (reportClass)
         {
             case "hub":
                 report = new JsonObject();
@@ -260,7 +269,10 @@ public sealed partial class VerbPipeline
                 report = done.Reply is JsonObject handlerReport
                     ? handlerReport
                     : new JsonObject { ["reply"] = done.Reply?.DeepClone() };
-                rows = await TargetRowsAsync(call, what, options, targets, cancellation).ConfigureAwait(false);
+                rows = what.Key == "write.logic"
+                    ? await LogicReportRowsAsync(call, what, options, report, cancellation).ConfigureAwait(false)
+                    : await TargetRowsAsync(call, what, options, targets, cancellation).ConfigureAwait(false);
+                WorldRules(rows, report);
                 break;
             }
         }
@@ -287,6 +299,189 @@ public sealed partial class VerbPipeline
         }
 
         return new VerbReply.Done(report);
+    }
+
+    // Every handler call the write becomes has a dry_run of its own.
+    private bool HandlerReports(WhatEntry what, JsonObject options, JsonArray? ids)
+    {
+        JsonObject first = (JsonObject)options.DeepClone();
+        if (ids != null && what.ListForm == "split")
+        {
+            first["id"] = ids.Count > 0 ? ids[0]?.DeepClone() : null;
+        }
+
+        if (_map.Translate(what, first) is not Translation.Calls calls)
+        {
+            return false;
+        }
+
+        foreach (HandlerCall handlerCall in calls.List)
+        {
+            if (_schemas.Arg(handlerCall.Handler, "dry_run") == null)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// write logic's rows from the mod's dry run: one per write, the value there now (previous_value) and the one it
+    /// would write, whether it opens the device, and its driven_by; the hub read adds only the names.
+    /// </summary>
+    private async Task<JsonArray> LogicReportRowsAsync(VerbCall call, WhatEntry what, JsonObject options, JsonObject report,
+        CancellationToken cancellation)
+    {
+        List<JsonObject> items = report["results"] is JsonArray ? BulkWrites.Rows(report) : [report];
+        List<string> ids = [];
+        foreach (JsonObject item in items)
+        {
+            if (JsonNodes.Text(item["reference_id"]) is { } id)
+            {
+                ids.Add(id);
+            }
+        }
+
+        Dictionary<string, (string? Display, string? Custom)> names =
+            await NamesAsync(what, ids, call.Stream, cancellation).ConfigureAwait(false);
+        JsonArray rows = [];
+        foreach (JsonObject item in items)
+        {
+            string? id = JsonNodes.Text(item["reference_id"]);
+            JsonNode? logic = item["logic_type"]?["name"] ?? item["logic_type"];
+            JsonObject row = Row(id, null, id == null ? null : NameOf(names, id), item["previous_value"],
+                item["requested_value"] ?? options["value"], RowMark(what, options, logic));
+            row["logic"] = logic?.DeepClone();
+            if (item["index"] is { } index)
+            {
+                row["index"] = index.DeepClone();
+            }
+
+            if (JsonNodes.IsTrue(item["opens"]))
+            {
+                row["opens"] = true;
+            }
+
+            if (item["driven_by"] is JsonArray drivers)
+            {
+                row["driven_by"] = drivers.DeepClone();
+            }
+
+            if (item["error"] is JsonObject refused)
+            {
+                Add(row, "problems", refused);
+            }
+
+            rows.Add(row);
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// The world's rules on each report row (PLAN: every face, every report): the handler report's warnings and
+    /// problems (lint, materials_from_player...) go to the row their index or reference_id names, or to every row when
+    /// they name none; a row a controller drives says driven_by; guards the call lifted are PASSED. The row's text
+    /// ends with them, so a run's WARNINGS and PASSED groups see them too.
+    /// </summary>
+    private static void WorldRules(JsonArray rows, JsonObject report)
+    {
+        foreach (string list in new[] { "warnings", "problems" })
+        {
+            foreach (JsonNode? issue in report[list] as JsonArray ?? [])
+            {
+                if (issue is not JsonObject entry)
+                {
+                    continue;
+                }
+
+                List<JsonObject> named = RowsNamed(rows, entry);
+                foreach (JsonObject row in named)
+                {
+                    Add(row, list, entry);
+                }
+            }
+        }
+
+        JsonArray? passed = report["passed"] as JsonArray;
+        foreach (JsonNode? node in rows)
+        {
+            if (node is not JsonObject row)
+            {
+                continue;
+            }
+
+            if (passed is { Count: > 0 })
+            {
+                row["passed"] = passed.DeepClone();
+            }
+
+            StringBuilder text = new(JsonNodes.Text(row["text"]) ?? string.Empty);
+            if (row["driven_by"] is JsonArray drivers)
+            {
+                text.Append(" WARNING driven_by");
+                foreach (JsonNode? driver in drivers)
+                {
+                    text.Append(' ').Append(JsonNodes.Text(driver?["reference_id"]) ?? "?");
+                }
+            }
+
+            foreach (string list in new[] { "problems", "warnings" })
+            {
+                foreach (JsonNode? issue in row[list] as JsonArray ?? [])
+                {
+                    text.Append(list == "problems" ? " PROBLEM " : " WARNING ").Append(JsonNodes.Text(issue?["code"]) ?? "?");
+                }
+            }
+
+            if (passed is { Count: > 0 })
+            {
+                text.Append(" PASSED");
+                foreach (JsonNode? code in passed)
+                {
+                    text.Append(' ').Append(JsonNodes.Text(code) ?? JsonNodes.Text(code?["code"]) ?? "?");
+                }
+            }
+
+            row["text"] = text.ToString();
+        }
+    }
+
+    // The rows an issue names: by reference_id, else by index (a write's place in the call), else every row.
+    private static List<JsonObject> RowsNamed(JsonArray rows, JsonObject issue)
+    {
+        List<JsonObject> named = [];
+        string? id = JsonNodes.Text(issue["reference_id"]);
+        double? index = JsonNodes.Number(issue["index"]);
+        for (int at = 0; at < rows.Count; at++)
+        {
+            if (rows[at] is not JsonObject row)
+            {
+                continue;
+            }
+
+            bool byId = id != null && JsonNodes.Text(row["id"]) == id;
+            bool byIndex = id == null && index != null &&
+                           (JsonNodes.Number(row["index"]) is { } rowIndex ? rowIndex == index : at == (int)index);
+            if (byId || byIndex || (id == null && index == null))
+            {
+                named.Add(row);
+            }
+        }
+
+        return named;
+    }
+
+    private static void Add(JsonObject row, string list, JsonObject issue)
+    {
+        if (row[list] is not JsonArray entries)
+        {
+            entries = [];
+            row[list] = entries;
+        }
+
+        entries.Add(issue.DeepClone());
     }
 
     /// <summary>

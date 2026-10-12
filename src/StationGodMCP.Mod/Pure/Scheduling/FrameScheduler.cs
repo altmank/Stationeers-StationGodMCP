@@ -11,8 +11,8 @@ namespace StationGodMCP.Pure.Scheduling;
 /// <list type="number">
 /// <item>the subscription lane takes due samples until it has spent its share (the first always runs);</item>
 /// <item>the light lane takes calls in rounds until the frame has spent its budget (the first always runs);</item>
-/// <item>the heavy lane runs at most one call: by the same rounds while the frame is under budget, or, whatever the
-/// frame has spent, the oldest one once it has been passed over in HeavyMaxWaitFrames frames.</item>
+/// <item>the heavy lane runs at most one call by the same rounds: any call while the frame is under budget, and over
+/// budget only one that has waited HeavyMaxWaitFrames frames.</item>
 /// </list>
 /// Rounds have two levels: each client (the connections opened with the same client key, or one connection opened
 /// without one) has one turn per round, and within a client its streams, a stream being one (connection, stream
@@ -274,42 +274,14 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     private int RunHeavy(double startMs, double budgetMs, out bool budgetStopped)
     {
         budgetStopped = false;
-        StreamQueue? owner = null;
-        Waiting? oldest = null;
-        Client? nextClient;
-        for (Client? client = _heavy.First; client != null; client = nextClient)
-        {
-            // Eligible answers expired calls, which may unlink the stream or the client being looked at.
-            nextClient = _heavy.After(client);
-            Ring<StreamQueue> streams = client.Streams(Lane.Heavy);
-            StreamQueue? nextQueue;
-            for (StreamQueue? queue = streams.First; queue != null; queue = nextQueue)
-            {
-                nextQueue = streams.After(queue);
-                int index = Eligible(queue, Lane.Heavy);
-                if (index >= 0 && (oldest == null || queue.Calls[index].Arrival < oldest.Arrival))
-                {
-                    owner = queue;
-                    oldest = queue.Calls[index];
-                }
-            }
-        }
-
-        if (owner == null || oldest == null)
-        {
-            return 0;
-        }
-
-        if (Frame - oldest.ArrivedAfterFrame - 1 >= _settings.HeavyMaxWaitFrames)
-        {
-            RemoveAt(owner, owner.Calls.IndexOf(oldest));
-            Run(oldest);
-            return 1;
-        }
-
         if (_clock.NowMs - startMs >= budgetMs)
         {
-            budgetStopped = true;
+            if (RunWaitedHeavy(out bool anyEligible))
+            {
+                return 1;
+            }
+
+            budgetStopped = anyEligible;
             return 0;
         }
 
@@ -331,6 +303,49 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// A frame over budget: the heavy lane's rounds, counting only calls that have waited HeavyMaxWaitFrames. The first
+    /// client in turn order with such a call runs one from its first stream in turn order that has one; that stream and
+    /// that client go to the back of their rounds, the clients passed over keep their places. anyEligible tells whether
+    /// any heavy call could have started, waited or not.
+    /// </summary>
+    private bool RunWaitedHeavy(out bool anyEligible)
+    {
+        anyEligible = false;
+        Client? nextClient;
+        for (Client? client = _heavy.First; client != null; client = nextClient)
+        {
+            // Eligible answers expired calls, which may unlink the stream or the client being looked at.
+            nextClient = _heavy.After(client);
+            Ring<StreamQueue> streams = client.Streams(Lane.Heavy);
+            StreamQueue? nextQueue;
+            for (StreamQueue? queue = streams.First; queue != null; queue = nextQueue)
+            {
+                nextQueue = streams.After(queue);
+                int index = Eligible(queue, Lane.Heavy);
+                if (index < 0)
+                {
+                    continue;
+                }
+
+                anyEligible = true;
+                Waiting waiting = queue.Calls[index];
+                if (Frame - waiting.ArrivedAfterFrame - 1 < _settings.HeavyMaxWaitFrames)
+                {
+                    continue;
+                }
+
+                RemoveAt(queue, index);
+                streams.MoveToBackIfLinked(queue);
+                _heavy.MoveToBackIfLinked(client);
+                Run(waiting);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

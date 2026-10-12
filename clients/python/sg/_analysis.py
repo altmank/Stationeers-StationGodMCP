@@ -17,6 +17,7 @@ not trust them for safety: a run moves to the confirmed run's rules at its first
 """
 import ast
 import importlib
+import math
 
 from ._catalogue import WRITE_WHATS
 from ._session import SCRIPT_FILENAME
@@ -59,13 +60,15 @@ def analyse(source):
 
 
 def literals(tree):
-    """Every int and str constant, in source order, without repeats; f-string pieces are str constants in the
-    tree and count too. bools are not ints here. A negative int literal (-5) adds -5 as well as 5."""
+    """Every int, float and str constant, in source order, without repeats; f-string pieces are str constants in
+    the tree and count too. Floats are there for selectors written with them (box=[[1.5, 2.0, 3.5], ...]); each stays a
+    JSON number, so the hub compares by value (2.0 equals 2). bools, NaN and the infinities are left out. A negative
+    number literal (-5, -1.5) adds the negative as well as the positive."""
     constants = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub) and _is_int(node.operand):
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub) and _is_number(node.operand):
             constants.append((node.lineno, node.col_offset, -node.operand.value))
-        elif isinstance(node, ast.Constant) and (_is_int(node) or isinstance(node.value, str)):
+        elif isinstance(node, ast.Constant) and (_is_number(node) or isinstance(node.value, str)):
             constants.append((getattr(node, "lineno", 0), getattr(node, "col_offset", 0), node.value))
     found, seen = [], set()
     for _, _, value in sorted(constants, key=lambda entry: (entry[0], entry[1])):
@@ -76,8 +79,13 @@ def literals(tree):
     return found
 
 
-def _is_int(node):
-    return isinstance(node, ast.Constant) and isinstance(node.value, int) and not isinstance(node.value, bool)
+def _is_number(node):
+    """An int or finite float constant (not a bool)."""
+    if not isinstance(node, ast.Constant) or isinstance(node.value, bool):
+        return False
+    if isinstance(node.value, int):
+        return True
+    return isinstance(node.value, float) and math.isfinite(node.value)
 
 
 def while_lines(tree):

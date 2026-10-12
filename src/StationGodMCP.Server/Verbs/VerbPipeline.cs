@@ -83,7 +83,7 @@ public sealed partial class VerbPipeline
                 NoteReAsk(call);
             }
 
-            return await RunAsync(call, cancellation).ConfigureAwait(false);
+            return Said(await RunAsync(call, cancellation).ConfigureAwait(false));
         }
         finally
         {
@@ -632,17 +632,39 @@ public sealed partial class VerbPipeline
     internal static VerbReply.Failed Failure(GameReply reply) => Failure(reply, null, null);
 
     /// <summary>
+    /// A reply's texts in verb names: the mod renames its own messages, but not those of protocol methods, and a name
+    /// can slip through elsewhere; every message, fix, warning and note leaving the pipeline is said in verb names.
+    /// </summary>
+    internal static VerbReply Said(VerbReply reply)
+    {
+        switch (reply)
+        {
+            case VerbReply.Done done:
+                VerbNames.Default.SayAll(done.Reply);
+                return done;
+            case VerbReply.Failed failed:
+                return Said(failed);
+            default:
+                return reply;
+        }
+    }
+
+    private static VerbReply.Failed Said(VerbReply.Failed failed) =>
+        new(failed.Code, VerbNames.Default.Say(failed.Message), failed.Fix == null ? null : VerbNames.Default.Say(failed.Fix),
+            VerbNames.Default.SayAll(failed.Data?.DeepClone()), failed.MaybeRan, failed.Stopped, failed.PassEnd);
+
+    /// <summary>
     /// A refused or unreachable reply as a failure. The mod words its refusals in the caller's names (the rename
     /// envelope); the link's own unreachable text names the method it sent, so that is said as the what.
     /// </summary>
-    internal static VerbReply.Failed Failure(GameReply reply, HandlerCall? sent, WhatEntry? what) => reply switch
+    internal static VerbReply.Failed Failure(GameReply reply, HandlerCall? sent, WhatEntry? what) => Said(reply switch
     {
         GameReply.Refused refused => new VerbReply.Failed(refused.Code, refused.Message,
             data: refused.Data is { } data ? JsonNodes.FromElement(data) : null),
         GameReply.Unreachable unreachable => new VerbReply.Failed(VerbFailure.GameUnavailable,
             Unnamed(unreachable.Message, sent, what), maybeRan: unreachable.MaybeRan),
         _ => throw new InvalidOperationException("Only a refused or unreachable reply is a failure.")
-    };
+    });
 
     private static string Unnamed(string message, HandlerCall? sent, WhatEntry? what) =>
         sent == null ? message : message.Replace(sent.Handler, what?.Label ?? "the call", StringComparison.Ordinal);
