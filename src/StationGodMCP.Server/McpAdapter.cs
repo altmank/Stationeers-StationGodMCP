@@ -33,7 +33,7 @@ internal sealed class McpAdapter : IAsyncDisposable
     private readonly VerbPipeline _pipeline;
 
     internal McpAdapter(SidecarOptions options)
-        : this(options, new ClientGameLink(new StationGodClient(options.Client)), owned: true)
+        : this(options, new GameLink(options.Client), owned: true)
     {
     }
 
