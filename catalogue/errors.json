@@ -125,6 +125,11 @@
     "origin": "tool",
     "see": {"topic": "trading"}
   },
+  "dropped": {
+    "description": "drop_job took the queued run out of the queue before it started, so nothing ran. A poll of its job_id answers this error.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "queue"}
+  },
   "duplicate_id": {
     "description": "That request id is already in flight on this connection. Nothing ran; use a new id.",
     "origin": "protocol",
@@ -291,6 +296,11 @@
     "description": "No job with that id is running, queued or kept. Job ids are kept for the last jobs only; start the run again if needed.",
     "origin": "tool",
     "see": {"topic": "jobs", "subtopic": "polling"}
+  },
+  "job_not_waiting": {
+    "description": "The job has started or ended, so it is not in the queue and cannot be dropped. Poll it with job_id to follow it.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "queue"}
   },
   "joined_too_large": {
     "description": "Too many atmospheres are joined to the one named. Pass joined: false to move gas from the named one only.",

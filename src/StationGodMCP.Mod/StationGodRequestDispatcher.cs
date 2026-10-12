@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
@@ -73,16 +74,16 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     private const string UnknownMethod = "unknown";
 
+    private static readonly JobDropCalls Drops = new JobDropCalls(HeldTickJobs.DropWaiting);
+
     // A method name the frame's call list, the slow-frame log and a connection's counts may show: one the mod answers,
     // else "unknown".
     private static string KnownMethod(string? method) =>
-        method != null && (SubscriptionHub.Handles(method) || method == SubscriptionHub.SampleLogicMethod)
-            ? method
-            : MethodStats.Counted(method) ?? UnknownMethod;
+        ProtocolMethods.RunsOnMainThread(method) ? method! : MethodStats.Counted(method) ?? UnknownMethod;
 
     /// <summary>
     /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
-    /// and main-thread ms per known method; subscribe, unsubscribe and sample_logic count as answered).
+    /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic and drop_job count as answered).
     /// </summary>
     public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
@@ -99,6 +100,11 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             if (Subscriptions != null && call.Request.Method == SubscriptionHub.SampleLogicMethod)
             {
                 return Subscriptions.StartSampleLogic(call, queueWaitMs);
+            }
+
+            if (JobDropCalls.Handles(call.Request.Method))
+            {
+                return new CallOutcome(Drops.Run(call, queueWaitMs, UnityEngine.Time.frameCount), call.Request.Method);
             }
 
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);

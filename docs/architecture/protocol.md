@@ -84,7 +84,7 @@ The `welcome` message:
     "world": {"id": "3b9e1a40c2d84f6e", "save": "Vulcan2_4", "epoch": 3},
     "game_state": "Running"
   },
-  "catalogue": {"hash": "sha256:4f2a...", "methods": 92, "protocol_methods": 3},
+  "catalogue": {"hash": "sha256:4f2a...", "methods": 92, "protocol_methods": 4},
   "limits": {
     "max_in_flight": 16,
     "max_request_bytes": 4194304,
@@ -171,7 +171,8 @@ example `sample_logic`) gets its declared duration, at the arguments given, adde
 timeout adds it too.
 
 `cancel` drops a call that has not started; its reply is `cancelled`. A call that has started cannot be stopped and is
-answered normally. Cancelling an unknown id does nothing.
+answered normally. Cancelling an unknown id does nothing. A building run queued with `wait: true` has been answered
+already, so `cancel` cannot reach it; `drop_job` takes it out of the job queue before it starts (*Protocol methods*).
 
 ### Replies
 
@@ -201,14 +202,24 @@ serialising finish; no thread waits for it, unlike today's listener, which block
 
 ### Protocol methods
 
-Three methods belong to the protocol itself. They are listed in the catalogue's `protocol_methods` section, are read
-class, and are called like any other method.
+Four methods belong to the protocol itself. They are listed in the catalogue's `protocol_methods` section and are
+called like any other method. `catalogue`, `subscribe` and `unsubscribe` are read class. `drop_job` is write class: it
+changes what will happen to the world, so on its connection it waits for every earlier call to be answered and later
+calls wait for it (*Order on one connection*), a poll sent after it answers the drop, and a client never sends it again
+after a broken connection (*Reconnecting*).
 
 | Method | Params | Result |
 | --- | --- | --- |
 | `catalogue` | `{}` | The full catalogue ([catalogue.md](catalogue.md)). |
 | `subscribe` | See *Subscriptions*. | `{subscription, interval_s, values, frame, result}` |
 | `unsubscribe` | `{subscription}` | `{subscription, ended: true}` |
+| `drop_job` | `{job_id}` | `{job_id, dropped: true}` |
+
+`drop_job` takes a building run that waits in the job queue (`wait: true`, answered `status: queued`) out of the queue
+before it starts; the jobs behind it move up by one, and nothing in the world changes. A later poll of its `job_id`
+answers `status: refused` with error `dropped`. A job that has started or ended is refused `job_not_waiting`, an id
+that is not running, queued or kept `job_not_found` (`src/StationGodMCP.Mod/Api/Shared/Game/HeldTickJobs.cs`,
+`DropWaiting`). Any connection may drop any queued job.
 
 ## Errors
 
