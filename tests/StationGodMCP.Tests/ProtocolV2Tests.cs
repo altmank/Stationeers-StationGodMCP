@@ -167,7 +167,7 @@ public sealed class ProtocolV2Tests
         rig.Mod.RunPending();
         Assert.True((bool)client.Next()["ok"]!);
         client.Send(Call("d", "game_clock"));
-        Thread.Sleep(100);
+        rig.Mod.WaitSubmitted(2);
         rig.Mod.RunPending();
         Assert.True((bool)client.Next()["ok"]!);
     }
@@ -307,7 +307,7 @@ public sealed class ProtocolV2Tests
         using V2Client client = await V2Client.Connect(rig);
         client.Send(Call("w", "write_logic", new JObject { ["reference_id"] = "1", ["logic_type"] = "Setting", ["value"] = 7 }));
         client.Send(Call("r", "read_logic", new JObject { ["reference_id"] = "1", ["logic_type"] = "Setting" }));
-        Thread.Sleep(100);
+        rig.Mod.WaitSubmitted(2);
 
         rig.Mod.RunPending();
         client.Next();
@@ -334,29 +334,46 @@ public sealed class ProtocolV2Tests
         Assert.Equal(0, rig.Mod.Ran);
         Assert.Null(client.NextOrNull(300));
 
-        client.Send(Call("c2", "game_clock", new JObject { ["hold_ms"] = 400 }));
-        Thread.Sleep(100);
+        // c2 is held running until a call sent after its cancel reaches the queue: the cancel has been read by then.
+        int submitted = rig.Mod.Submitted;
+        using ManualResetEventSlim started = new ManualResetEventSlim(false);
+        rig.Mod.CallHook = (_, _) =>
+        {
+            started.Set();
+            rig.Mod.WaitSubmitted(submitted + 2);
+            return null;
+        };
+        client.Send(Call("c2", "game_clock"));
+        rig.Mod.WaitSubmitted(submitted + 1);
         Task running = Task.Run(() => rig.Mod.RunPending());
-        Thread.Sleep(100);
+        Assert.True(started.Wait(30000));
         client.Send("""{"type":"cancel","id":"c2"}""");
+        client.Send(Call("after", "game_clock"));
         await running;
         JObject answered = client.Next();
+        Assert.Equal("c2", (string?)answered["id"]);
         Assert.True((bool)answered["ok"]!);
+        Assert.Equal("after", (string?)client.Next()["id"]);
         Assert.Null(client.NextOrNull(300));
     }
 
     [Fact]
     public async Task ACallNotStartedByItsDeadlineIsGameTimeout()
     {
-        using PipeRig rig = new PipeRig(mainThread: false);
+        Scheduling.FakeClock clock = new Scheduling.FakeClock();
+        using PipeRig rig = new PipeRig(mainThread: false, deadlineClock: clock);
         using V2Client client = await V2Client.Connect(rig);
-        Stopwatch watch = Stopwatch.StartNew();
         client.Send("""{"type":"call","id":"t","method":"game_clock","deadline_ms":200}""");
+        rig.Mod.WaitSubmitted(1);
 
+        clock.Advance(199);
+        rig.Deadlines.CheckNow();
+        Assert.Null(client.NextOrNull(100));
+        clock.Advance(1);
+        rig.Deadlines.CheckNow();
         JObject reply = client.Next();
 
         Assert.Equal("game_timeout", (string?)reply["error"]!["code"]);
-        Assert.InRange(watch.ElapsedMilliseconds, 150, 2000);
         rig.Mod.RunPending();
         Assert.Equal(0, rig.Mod.Ran);
     }
@@ -482,7 +499,7 @@ public sealed class ProtocolV2Tests
         using PipeRig rig = new PipeRig(mainThread: false);
         using V2Client client = await V2Client.Connect(rig);
         client.Send(Call("s", "game_clock"));
-        Thread.Sleep(100);
+        rig.Mod.WaitSubmitted(1);
 
         rig.Host.CloseAll("shutting_down", 2000);
 

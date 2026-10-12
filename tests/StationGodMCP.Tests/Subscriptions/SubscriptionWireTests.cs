@@ -300,26 +300,26 @@ public sealed class SubscriptionWireTests
 
     private static string ClientId(V2Client client) => (string)client.Welcome["client_id"]!;
 
-    // Sends the call, then runs frames until its reply comes.
+    // Sends the call, runs the one frame that answers it once it has reached the queue, and reads its reply: no
+    // frame more than a fast machine runs, so no sample more.
     private JObject Call(PipeRig rig, V2Client client, string id, string method, JObject parameters, long stream = 0)
     {
+        int submitted = rig.Mod.Submitted;
         client.Send(new JObject
         {
             ["type"] = "call", ["id"] = id, ["method"] = method, ["params"] = parameters, ["stream"] = stream
         }.ToString(Formatting.None));
-        Stopwatch watch = Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 5000)
+        rig.Mod.WaitSubmitted(submitted + 1);
+        _frame++;
+        rig.Mod.RunFrame();
+        while (true)
         {
-            _frame++;
-            rig.Mod.RunFrame();
-            JObject? message = client.NextOrNull(20);
-            if (message != null && (string?)message["type"] == "reply" && (string?)message["id"] == id)
+            JObject message = client.Next(30000);
+            if ((string?)message["type"] == "reply" && (string?)message["id"] == id)
             {
                 return message;
             }
         }
-
-        throw new TimeoutException($"no reply to {method}");
     }
 
     /// <summary>No sample_logic in these tests.</summary>

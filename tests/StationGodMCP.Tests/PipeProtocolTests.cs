@@ -423,6 +423,17 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     /// Waits until count calls in all have reached the queue, so the next frame takes them in: the reader has read
     /// every line up to the count-th call. Throws after 30 s, which only a hang takes.
     /// </summary>
+    internal int Submitted
+    {
+        get
+        {
+            lock (_submittedChanged)
+            {
+                return _submitted;
+            }
+        }
+    }
+
     internal void WaitSubmitted(int count)
     {
         lock (_submittedChanged)
