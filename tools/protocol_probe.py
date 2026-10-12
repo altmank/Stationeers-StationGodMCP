@@ -25,8 +25,8 @@ import threading
 import time
 import queue
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "clients", "python"))
-from stationgod import pipe  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+from modwire import pipe  # noqa: E402
 
 
 class Probe:
