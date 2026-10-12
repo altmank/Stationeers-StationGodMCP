@@ -38,12 +38,12 @@ internal sealed class McpAdapter : IAsyncDisposable
     }
 
     /// <summary>A sidecar over a game link of the caller's (tests use a fake one); owned links are closed with it.</summary>
-    internal McpAdapter(SidecarOptions options, IGameLink link, bool owned = false)
+    internal McpAdapter(SidecarOptions options, IGameLink link, bool owned = false, IShownText? shown = null)
     {
         _options = options;
         _owned = owned ? link as IAsyncDisposable : null;
         _recorder = options.RecordPath is { } path ? new CallRecorder(path) : null;
-        _pipeline = new VerbPipeline(link, recorder: _recorder);
+        _pipeline = new VerbPipeline(link, recorder: _recorder, shown: shown);
     }
 
     internal VerbPipeline Pipeline => _pipeline;

@@ -18,6 +18,7 @@ internal sealed class CallRecorder : IDisposable
     private readonly MemoryStream _line = new();
     private readonly Utf8JsonWriter _writer;
     private bool _failed;
+    private bool _closed;
 
     internal CallRecorder(string path)
     {
@@ -38,7 +39,11 @@ internal sealed class CallRecorder : IDisposable
     {
         lock (_gate)
         {
-            Begin(timeMs);
+            if (!Begin(timeMs))
+            {
+                return;
+            }
+
             _writer.WriteString("face", FaceName(face));
             _writer.WriteNumber("stream", stream);
             _writer.WriteNumber("in_flight", inFlight);
@@ -68,7 +73,11 @@ internal sealed class CallRecorder : IDisposable
     {
         lock (_gate)
         {
-            Begin(timeMs);
+            if (!Begin(timeMs))
+            {
+                return;
+            }
+
             _writer.WriteStartObject("cut");
             _writer.WriteString("ref", reference);
             _writer.WriteString("verb", verb);
@@ -85,7 +94,11 @@ internal sealed class CallRecorder : IDisposable
     {
         lock (_gate)
         {
-            Begin(timeMs);
+            if (!Begin(timeMs))
+            {
+                return;
+            }
+
             _writer.WriteStartObject("re_ask");
             _writer.WriteString("ref", reference);
             _writer.WriteNumber("calls_after", callsAfter);
@@ -95,12 +108,19 @@ internal sealed class CallRecorder : IDisposable
         }
     }
 
-    private void Begin(long timeMs)
+    // False once the recording is closed: a late call is not recorded, and not failed.
+    private bool Begin(long timeMs)
     {
+        if (_closed)
+        {
+            return false;
+        }
+
         _line.SetLength(0);
         _writer.Reset(_line);
         _writer.WriteStartObject();
         _writer.WriteNumber("t_ms", timeMs);
+        return true;
     }
 
     // A recording that cannot be written never fails the call: it is said once on stderr.
@@ -135,6 +155,7 @@ internal sealed class CallRecorder : IDisposable
     {
         lock (_gate)
         {
+            _closed = true;
             _writer.Dispose();
             _file.Dispose();
         }
