@@ -247,13 +247,14 @@ public sealed class C5ReviewTests : IDisposable
 
         RunWorld world = new();
         await using RunHost host = new(world, new VerbPipeline(world), new SeenSet(), new RunHostSettings());
-        Stopwatch since = Stopwatch.StartNew();
+        // Each connect waits until all four have begun: read one after another, none would get past the first.
+        BarrierLinks links = new(4);
 
-        host.StartAdoption(_folder, null, _ => new SlowTokenLink(TimeSpan.FromSeconds(3)));
-        await host.NoticesAsync("read", "logic", null);
+        host.StartAdoption(_folder, null, _ => links.Next());
+        List<string> first = await host.NoticesAsync("read", "logic", null);
 
-        // One after another the four would take 12 s; together, about 3.
-        Assert.True(since.Elapsed < TimeSpan.FromSeconds(9), since.Elapsed.ToString());
+        Assert.Equal(4, first.Count);
+        Assert.All(first, line => Assert.DoesNotContain("unknown", line));
     }
 
     [Fact]
@@ -311,7 +312,13 @@ public sealed class C5ReviewTests : IDisposable
     [PythonFact]
     public async Task AKeptStreamIsCountedAndWrittenBackAtTheNextRunsEnd()
     {
-        await using RunBench bench = new();
+        // The run spins in Python, so only the kill (1 s after the stop) ends it.
+        await using RunBench bench = new(adjust: settings => new RunHostSettings
+        {
+            SgRoot = settings.SgRoot,
+            KillAfter = TimeSpan.FromSeconds(1),
+            KillLatest = TimeSpan.FromSeconds(3)
+        });
         bench.World.RefusesWrite = (id, _, value) => id == "7" && value == 0;
         await bench.RunAsync("with sg.hold('7', 'On', 1):\n    while True:\n        pass", confirm: true, maxWait: 0);
         await RunBench.UntilAsync(() => bench.World.Value("7", "On") == 1, "the hold's write");
@@ -389,14 +396,32 @@ public sealed class C5ReviewTests : IDisposable
         }
     }
 
-    /// <summary>A token link whose connect takes a while (and gives up when the bound passes).</summary>
-    private sealed class SlowTokenLink(TimeSpan delay) : ITokenLink
+    /// <summary>Token links whose connects go on only once the given number of them have begun.</summary>
+    private sealed class BarrierLinks(int count)
+    {
+        private readonly TaskCompletionSource _all = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _begun;
+
+        public ITokenLink Next() => new BarrierTokenLink(this);
+
+        public async Task ArriveAsync(CancellationToken cancellation)
+        {
+            if (Interlocked.Increment(ref _begun) >= count)
+            {
+                _all.TrySetResult();
+            }
+
+            await _all.Task.WaitAsync(cancellation);
+        }
+    }
+
+    private sealed class BarrierTokenLink(BarrierLinks links) : ITokenLink
     {
         public JsonElement? Welcome { get; private set; }
 
         public async Task<bool> ConnectAsync(CancellationToken cancellation)
         {
-            await Task.Delay(delay, cancellation);
+            await links.ArriveAsync(cancellation);
             Welcome = FakeHubLink.Element("""{"type":"welcome","resume":{"resumed":false},"restores":{"applied":[],"skipped":[],"dropped":0}}""");
             return true;
         }

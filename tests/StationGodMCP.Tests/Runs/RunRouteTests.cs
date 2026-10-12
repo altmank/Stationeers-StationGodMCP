@@ -182,14 +182,13 @@ public sealed class RunRouteTests
     public async Task AWatchInAReportRunAfterAWriteReturnsAtOnce()
     {
         await using RunBench bench = new();
-        DateTime started = DateTime.UtcNow;
 
+        // until never holds, so only the hub's instant answer makes the watch report met (a timeout reports not met).
         string text = await bench.RunAsync(
             "sg.write('logic', id='1', logic='On', value=1)\n" +
-            "rows, met = sg.watch([{'id': '1', 'logic': 'On'}], lambda rows: False, 30)\nprint('met', met)");
+            "rows, met = sg.watch([{'id': '1', 'logic': 'On'}], lambda rows: False, 300)\nprint('met', met)");
 
         Assert.Contains("met True", text);
-        Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10));
     }
 
     [PythonFact]

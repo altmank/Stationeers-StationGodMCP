@@ -32,6 +32,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private readonly CancellationTokenSource _stopSignal = new();
     private readonly TaskCompletionSource _ended = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _readOnly;
+    private bool _analysed;
     private bool _wrote;
     private int _countedWaits;
     private bool _passEnded;
@@ -71,8 +72,9 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     internal Task Ended => _ended.Task;
 
     /// <summary>
-    /// True when the run's reply waits at most the confirmed ceiling: a confirmed run, unless it is read-only and has
-    /// made no write or hold call yet (the analysis is advisory; the first write call decides).
+    /// True when the run's reply waits at most the confirmed ceiling: a confirmed run whose analysis says it writes, or
+    /// that has made a write or hold call (the analysis is advisory; the first write call decides). Until the analysis
+    /// comes a run is not taken to write: a slow worker start must not answer a read-only run at the ceiling.
     /// </summary>
     internal bool Ceilinged
     {
@@ -80,7 +82,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         {
             lock (Record.Sync)
             {
-                return Record.Confirm && (!_readOnly || _wrote);
+                return Record.Confirm && ((_analysed && !_readOnly) || _wrote);
             }
         }
     }
@@ -831,6 +833,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
             bool writes = message.TryGetProperty("writes", out JsonElement w) && w.ValueKind == JsonValueKind.True;
             bool holds = message.TryGetProperty("holds", out JsonElement h) && h.ValueKind == JsonValueKind.True;
             _readOnly = !writes && !holds;
+            _analysed = true;
         }
 
         return Task.CompletedTask;

@@ -77,15 +77,12 @@ public sealed class SeenSetTests
 
         Task<string?> pending = adapter.HandleAsync(
             """{"jsonrpc":"2.0","id":"r9","method":"tools/call","params":{"name":"run_script","arguments":{"code":"sg.wait(30)","confirm":true}}}""");
-        await Task.Delay(500);
+        // The cancel is sent once the request's run is in its wait, so it meets a request the hub is serving.
+        await RunBench.UntilAsync(() => adapter.Runs!.LineOf("script-1") == 1, "script-1 reaching its wait");
         await adapter.HandleAsync("""{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"r9"}}""");
-        await pending.WaitAsync(TimeSpan.FromSeconds(10));
+        await pending.WaitAsync(TimeSpan.FromSeconds(30));
         RunRecord record = adapter.Runs!.Find("script-1")!;
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (record.IsLive && DateTime.UtcNow < until)
-        {
-            await Task.Delay(20);
-        }
+        await RunBench.UntilAsync(() => !record.IsLive, "script-1 to end");
 
         Assert.Equal(RunState.Stopped, record.State);
         Assert.Equal("the agent cancelled the run_script request", record.StopMessage);

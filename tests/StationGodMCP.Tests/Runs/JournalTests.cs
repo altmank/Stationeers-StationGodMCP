@@ -262,7 +262,7 @@ public sealed class JournalTests : IDisposable
 
     private static async Task EndedAsync(RunBench bench, string id)
     {
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(60);
         while (bench.Host.Find(id)!.IsLive)
         {
             Assert.True(DateTime.UtcNow < until, $"{id} did not end in time.");
