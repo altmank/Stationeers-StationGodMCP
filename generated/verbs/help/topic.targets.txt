@@ -1,0 +1,8 @@
+Every verb names what it acts on the same way.
+- id: one id, a list of ids, or a ref, where a what takes them (its help says; a what that takes one id says "One id"). A ref is the ids an earlier reply showed you: "r3" (its main list: the page, or the shown entries of a cut reply), "r3.members", "r4.rockets.parts" (a path through lists), "r9.spots.2" (one entry). For more than was shown, repeat the call with a larger limit. Any thing id may be "looking_at" (the thing the crosshair is on); "player" where a what says so. A rocket id may be its name ('Tanker').
+- A list of ids where one is expected answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>. A typed list past the handler's maximum is refused, naming it.
+- near + radius: around [x, y, z], "player", "looking_at" or a thing's id (its position), radius in metres. Each what says what near left out means; radius without near, or near "player" without radius, is refused.
+- box: two corners [[x, y, z], [x, y, z]]. room: a room id. network: a network id, a piece or device on it, or {id, port}.
+- prefab: a whole name, a hash (an integer, or a string of digits), or parts with *, each part matched in any order ('*Battery*', '*Tank*Insulated*'); or a list, any of which matches. A name or pattern that matches nothing answers prefab_not_found with the 3 nearest.
+- name: part of the shown name or label, any case (a * in it is ignored). Players are named with player and to_player.
+Lengths are metres and times seconds; other units are in the option's name.

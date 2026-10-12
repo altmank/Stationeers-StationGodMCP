@@ -1,0 +1,8 @@
+Show the player where things, a network or far points are, tinted and labelled.
+Options:
+- targets (list): Up to 64, each one of {id (one or a list), network, at} with color, label, pulse.
+- seconds (number, default 60): How long.
+- keep (boolean, default false): Keep what earlier calls drew.
+- clear (boolean): Only remove what is drawn.
+Reply: targets [{index, kind, color, label, pulse, network_id, things, missing, truncated, at, distance_m, bearing_deg, compass, rise_m}], cleared, seconds, renderer, notes, drawn_on, view {source, age_s}
+Example: show {what: "highlight", targets: [{id: "1199811", label: "this one"}]}

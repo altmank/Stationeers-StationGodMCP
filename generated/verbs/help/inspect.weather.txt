@@ -1,0 +1,4 @@
+The storm schedule, weather events and season.
+No options.
+Reply: world_has_weather, state, current {id, name, running, starts_in_s, length_s}, days_past, days_since_last, cooldown_days, world_start_delay_days, can_schedule_now, schedulable_in_days, events [{id, name, cooldown_days_min, cooldown_days_max, start_delay_s_min, start_delay_s_max, duration_s_min, duration_s_max, temperature_offset_day_k, temperature_offset_night_k, solar_ratio, active_in_orbit}], season {true_anomaly_deg, year_length_days, solar_energy_percent, day_of_year}
+Example: inspect {what: "weather"}

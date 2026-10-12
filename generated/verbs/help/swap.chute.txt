@@ -1,0 +1,20 @@
+Remove chute pieces no item can pass to a consumer; junctions left with one way become straights.
+Reports first; confirm: true does it.
+Options:
+- network (string or object): A network: its id, a piece or device on it, or {id, port}.
+- id (string or array): Target: an id, a list of ids, a ref ("r3": the ids that reply showed; "r3.rockets.parts"), or "looking_at" (the thing the crosshair is on); "player" where the what says.
+- box (list): Every chute piece in the box (at most a 32 m cube).
+- spare (list): Pieces never removed or replaced.
+- riding (skip | refuse, default skip): A piece holding an item: skip it, or refuse the run.
+- materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- skip_unmatched (boolean, default false): Leave pieces that cannot change as they are instead of refusing.
+- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn.
+- include (list of notes): Parts to add to the reply.
+- rows (integer, default 5): Pieces listed per list.
+- verbose (boolean, default false): The long form of the reply.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- queue (boolean, default true): Wait in line behind a running job (up to 8) instead of answering busy.
+- max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (JobQueued) a JobQueued (help {topic: "types", subtopic: "JobQueued"}) | (UpgradeReport) tool, target, status, job_id, ready, problems [{code, message, reference_id}], pieces_total, to_swap, kept, unmatched, pieces [{reference_id, prefab_name, position, rotation_deg, target_prefab_name, target_rotation_deg, rotation_kept, cost, network_id, operation, ends, connected_ends, replacement_count, round, why, merged_reference_ids, refund_count}], pieces_listed, by_prefab, kept_pieces [{reference_id, prefab_name, reason, message}], unmatched_pieces [{reference_id, prefab_name, reason, message}], dead_ends, dead_end_pieces [{reference_id, prefab_name, position, reason, ends, connected_ends, stopped_by}], loops [{index, pieces, cut, spared, unbroken}], redundant {candidates, removed, root, kept_count, kept_by_reason, kept}, riding_count, riding [{reference_id, carries, held}], from {reference_id, prefab_name, display_name}, coils [{prefab_name, display_name, needed, available, stacks, paid_by}], refund_enabled, refund [{prefab_name, quantity}], refund_plan, networks, devices [{reference_id, prefab_name, display_name, links, mounted, network_ids}], connectivity {links_before, links_after_predicted, model_matches_game, added, lost, model_differences, mounted}, notes | (JobBusy) a JobBusy (help {topic: "types", subtopic: "JobBusy"}) | (UpgradeJob) a UpgradeJob (help {topic: "types", subtopic: "UpgradeJob"}) | (JobDropped) a JobDropped (help {topic: "types", subtopic: "JobDropped"})
+Example: swap {what: "chute", network: "6100100"}

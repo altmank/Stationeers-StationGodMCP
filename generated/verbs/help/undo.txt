@@ -1,0 +1,17 @@
+A job id (place-12, run-4, remove-3...), a bulk write (write-N), a script run (script-14: the whole run), or "paste".
+Reports first; confirm: true does it.
+Options:
+- id (string or array, required): The job, the bulk write (write-N), the script run (script-14), or "paste"; a list is undone newest first, in one report.
+- allow_bridge (list): Passed to every piece run.
+- materials (string): The one holder every call pays from and refunds to. Default the job's own recorded source, else the player; never filled in by the verb layer.
+- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removals' refunds go. Default nothing after a free placement, else each tool's own list.
+- acknowledge_gas_lost (string): The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
+- allow (list of overwrite): Bulk writes: overwrite: write a previous value back even where it drifted since.
+- from_step (integer): Bulk writes: go on from this step after a refused one.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
+A bulk write undo lists every step with its mark: build and removal jobs [undo] (undo of each, newest first); swap jobs [cannot undo: change job]; logic writes of held settings, memory, label, paint, pins, uplink and genes [undo] (previous values written back); action and pulse logic types [cannot undo: action]; battery [undo: restores the value, not what happened since]; item slot moves [undo] unless merged; chip source, run controls, screen presses, gas moves, player moves, trades, console commands and store moves [cannot undo].
+A script run (script-14) is reverted whole, newest first, each target restored to its value before the run; jobs still in flight at a stop are included once they settle, and groups that cannot be undone are named [cannot undo]. Each target is compared with the run's last written value: where it changed since (the user, a chip, another run), the target is reported and not written unless allow: ["overwrite"]. Undo of a running run is refused: stop it first (server {what: "stop", id}). Past the memory bound undo answers undo_expired, naming what it can no longer revert.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: job_id, tool, status, plan {remove, restore, diverged, notes, ready}, remove_arguments, place_arguments, removal, placement, piece_runs [{tool, arguments, reply}], resolved_networks, gas_hold
+Example: undo {id: "place-41", confirm: true}

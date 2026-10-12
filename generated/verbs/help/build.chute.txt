@@ -1,0 +1,32 @@
+A chute run or pieces from Kit (Chute), source to sink, with flow guards.
+Reports first; confirm: true does it.
+Options:
+- grade (chute, default chute): The chute kit (one grade).
+- waypoints (list): Points joined by straight axis lines.
+- cells (list): Every cell, each next to the one before.
+- piece (object): One piece {at, ends}.
+- pieces (list): Separate pieces, each {at, ends}.
+- branches (list): Side runs, each {waypoints or cells, attach}.
+- extra_ends (list): Extra ends on run cells, each {at, toward}.
+- join (ends | none | all, default ends): What the run joins.
+- allow (list of door_keepout | split): Guards to lift, by name.
+- split_long (boolean, default true): Split a long straight the run joins or crosses; false refuses.
+- remove_ids (list): Pieces of the run's kind removed in the same job first.
+- assume_removed (list): Things checked as if gone; a real run needs them gone.
+- allow_bridge (list): Networks and devices whose joining is meant.
+- root (string, default every supplier): The device would_split measures cut-off against.
+- join_to (string or object): The network the run must end on.
+- join_trunk (boolean, default false): With join_to: add the missing tap.
+- materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn.
+- include (list of links | notes | network_devices): Parts to add to the reply.
+- rows (integer, default 5): Cells listed; 0 for none.
+- verbose (boolean, default false): The long form of the reply.
+- from_plan (string): A ref of a plan route or plan spot reply ("r9"; one spot: "r9.spots.2", default the first): build its build_arguments; options given here are added.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- queue (boolean, default true): Wait in line behind a running job (up to 8) instead of answering busy.
+- max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
+A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
+Every build reply has placed: [ids] at the top: the new ids ([] in any report).
+Reply: (JobQueued) a JobQueued (help {topic: "types", subtopic: "JobQueued"}) | (RunJob) a RunJob (help {topic: "types", subtopic: "RunJob"}) | (RunReport) tool, status, job_id, grade, ready, problems [{code, message, reference_id, at}], warnings [{code, message, reference_id, at}], cells_total, placed, changed, kept, removed_count, air_cells, cells [{at, action, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end, flow}], removals [{reference_id, prefab_name, at, network_id, refund, assumed}], materials {from, needed, refund_enabled, refund, refund_plan}, networks_before, networks_after [{index, networks_before, new_pieces, device_count, port_count, devices, guard}], would_bridge [{kind, networks, device, ports, allowed}], would_split [{network_id, parts, cut_ports, allowed, components, root, cut_off}], links {count_before, count_after, added, lost, added_count, lost_count, model_matches_game, model_differences}, notes | (BuildJob) a BuildJob (help {topic: "types", subtopic: "BuildJob"}) | (JobBusy) a JobBusy (help {topic: "types", subtopic: "JobBusy"}) | (JobDropped) a JobDropped (help {topic: "types", subtopic: "JobDropped"})
+Example: build {what: "chute", waypoints: [[10, 2, 4], [10, 2, 9]], confirm: true}

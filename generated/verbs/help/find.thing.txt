@@ -1,0 +1,20 @@
+Any object: structures, devices, tanks, loose items, players, animals.
+Options:
+- name (string): Part of the shown or game name, any case.
+- prefab (string or integer or array): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+- category (any | item | dynamic | structure | entity | other, default any): Only this kind of thing.
+- labelled (boolean, default false): Only things with a Labeller name.
+- runtime_type (string): Only things of this game class or one built on it ('Device', 'Pipe').
+- broken (boolean): true: only broken things; false: only whole ones.
+- has_atmosphere (boolean): true: only things holding gas or liquid; false: only without.
+- made_by (string): Only items the print log has from this maker (id, or part of its name).
+- made_since (number): Only items made at or after this game time (s); negative: that many seconds back.
+- location (any | ground | player | stored | built | world, default any): ground, player, stored, built or world (players, animals).
+- near (string or array): Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
+- radius (number): Metres around near; at most 1000 around a point, no limit around "player".
+- box (list): Two corners [[x, y, z], [x, y, z]].
+- limit (integer, default 8): Entries per page.
+- offset (integer, default 0): Entries to skip.
+- order (nearest | id, default nearest): nearest (default) or id (stable pages).
+Reply: things [{made, reference_id, prefab_name, display_name, custom_name, game_name, kind, runtime_type, labelable, location, carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition, rotation, rocket_state, color, build_state}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}
+Example: find {what: "thing", prefab: "*Battery*", near: "player", radius: 30}

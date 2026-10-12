@@ -1,0 +1,14 @@
+A circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory.
+Options:
+- id (string or array, required): The circuit holder, worn holder, Lua board or the chip.
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+- parts (list of status | source | selectors, default [status]): Parts: status, source, selectors.
+- start (integer, default 0): status: first stack address.
+- count (integer, default 64): status: stack values; 0 for none.
+- log (integer, default 5): status: last Lua log lines; 0 for none.
+- targets (list): selectors: devices to evaluate; default those on the holder's data network.
+One part answers that part's reply as it is; several answer {status, source, selectors}.
+A source is often longer than the reply cap: add whole: true to read it all.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (IcNoChip) gateway_id, reference_id, pins [{index, reference_id, prefab_name, display_name, label, reachable}], holder {reference_id, prefab_name, display_name} | (IcStatus) gateway_id, reference_id, source, line_number, compilation_error, error_line, error_type, error_code, compile_error_line, compile_error_type, housing {kind, on, powered, operable}, pins [{index, reference_id, prefab_name, display_name, label, reachable}], runtime {execution, registers, register_count, stack_pointer_register, stack_pointer, return_address_register, return_address, stack, aliases, defines, jump_tags}, language, holder {reference_id, prefab_name, display_name}, chip {reference_id, prefab_name, display_name}, source_length, lua {compiling, has_runtime, init_complete, library, source_version, last_error, log, unavailable} | (IcSource) gateway_id, reference_id, source, line_number, language, holder {reference_id, prefab_name, display_name}, chip {reference_id, prefab_name, display_name}, source_length, lua {compiling, has_runtime, init_complete, library, source_version, last_error, log, unavailable} | (IcSelectors) gateway_id, reference_id, db {reference_id, prefab_name, prefab_hash, display_name, runtime_type, slot_count, is_gateway, worn_by, worn_slot}, pins [{selector, connected, target}], aliases [{name, target, index}], stable_selectors [{reference_id, display_name, prefab_name, prefab_hash, name_hash, reachable, collision_count, ic10_example}], stable_selector_count, batch_device_count
+Example: inspect {what: "chip", id: "4820585", parts: ["status", "source"]}

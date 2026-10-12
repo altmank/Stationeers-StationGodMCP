@@ -1,0 +1,16 @@
+Move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- source (string or object): A thing id, "looking_at", "planet" (with delete), or a room {room} or {room_of}.
+- to (string or object): A thing id, "looking_at" or a room; left out with delete.
+- delete (boolean, default false): Destroy the gas instead of moving it.
+- gases (list): Gas names as inspect atmosphere gives them; left out, every gas and liquid.
+- amount_mol (number): Moles of each gas, capped at what is there; left out, all.
+- allow (list of burst): burst: move past a burst rating.
+- joined (boolean, default true): Treat atmospheres the game mixes every tick as one.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
+Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job).
+Reply: transfer_id, status, predicted, joined, from {members, total, joined_by, room}, to {members, total, joined_by, room}, deleted, moved, error {code, message, data, see}, before, amount_mol, ticks, note
+Example: move {what: "gas", source: "2005300", gases: ["Hydrogen"], delete: true}

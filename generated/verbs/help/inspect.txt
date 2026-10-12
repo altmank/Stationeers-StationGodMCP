@@ -1,0 +1,25 @@
+Describe one thing, or a few by id, in detail. Read only.
+
+whats:
+- device: a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details
+- prefab: a buildable prefab before it stands anywhere: placement kind, turns, cells, ports
+- slots: a device's slots: occupants, what each takes, slot logic values
+- contents: any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player)
+- health: damage state of things, or of every piece of a network, worst first
+- connections: one pipe, cable, chute or device: its ends and what each joins
+- atmosphere: the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks
+- reagents: the reagents a furnace, centrifuge, mixer or microwave holds
+- genes: the genes of plants, seeds and produce
+- chip: a circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory
+- screen: what a ScriptedScreens screen shows: surfaces and one surface's elements
+- rocket: every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight
+- vault: what each Ingot Vault stores, and every Remote Vault's link
+- looking_at: what the player's crosshair is on, and where a longer look ray lands
+- player: the player's hunger and thirst: nutrition, hydration, drain, time left
+- planet: the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps
+- weather: the storm schedule, weather events and season
+- job: one build, removal, swap or gas move by its id (place-41), or a script run (script-14): running, queued or finished. With no id: runs with notices pending (stopped or killed with something left, writes not done, or done and not yet seen)
+- controllers: controllers: what can write or override a device: IC chips (through their pins, and batch writers reaching it over its data network), logic writer and memory structures, Lua screen scripts, and writers the hub knows (the dashboard's hub, other runs). A write or report on a driven device carries driven_by naming the controller
+
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "inspect", what} gives a what's options, reply keys and an example.

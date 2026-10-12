@@ -1,0 +1,9 @@
+Draw on the player's screen only, for a while: a build preview, or highlights through walls. Nothing in the world changes.
+
+whats:
+- preview: wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes
+- highlight: show the player where things, a network or far points are, tinted and labelled
+
+Every what here takes: clear, keep, seconds.
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "show", what} gives a what's options, reply keys and an example.

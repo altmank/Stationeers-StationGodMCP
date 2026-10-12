@@ -1,0 +1,10 @@
+Start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log.
+Options:
+- action (start | stop | clear, required): start, stop or clear the recorder.
+- id (string): A rocket's id, name, network or any part; left out when there is one rocket.
+- interval_s (number, default 1): start: game seconds between samples.
+- capacity (integer, default 3600): start: samples kept.
+- csv (boolean, default false): start: also write a CSV next to the save.
+One id only: a list is refused, naming run_script (this write cannot be undone).
+Reply: (FlightLog) rocket_id, rocket_name, recording, interval_s, csv_path, capacity, held, recorded, from_t, to_t, fuel_used_mol, lowest_altitude_m, fastest_descent_ms, peak_thrust_n, lowest_confidence, lowest_battery_j, last {t, state, node, target, progress, altitude_m, velocity_ms, acceleration_ms2, mass_kg, fuel_mol, fuel_k, fuel_kpa, throttle, thrust_n, max_recorded_thrust_n, confidence, battery_j, cargo_slots, burn_time_s, rule}, events [{t, what}], events_dropped, rows [{t, state, node, target, progress, altitude_m, velocity_ms, acceleration_ms2, mass_kg, fuel_mol, fuel_k, fuel_kpa, throttle, thrust_n, max_recorded_thrust_n, confidence, battery_j, cargo_slots, burn_time_s, rule}], offset, every, has_more | (FlightLogCleared) cleared | (FlightLogList) logs [{rocket_id, rocket_name, recording, interval_s, csv_path, capacity, held, recorded, from_t, to_t, fuel_used_mol, lowest_altitude_m, fastest_descent_ms, peak_thrust_n, lowest_confidence, lowest_battery_j, last, events, events_dropped, rows, offset, every, has_more}], count
+Example: write {what: "flight_log", action: "start", id: "Tanker"}

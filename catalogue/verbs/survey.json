@@ -1,0 +1,395 @@
+{
+  "verb": "survey",
+  "description": "Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths. Read only.",
+  "read_only": true,
+  "tool": {
+    "options": {
+      "box": "area: Two corners; at most 20000 2 m cells. network: Box form: the pieces in it (alone: open ends in it).",
+      "sections": "Only these parts. Default all.",
+      "network": "area: Only pieces on these networks. network, feeds: A network: its id, a piece or device on it, or {id, port}.",
+      "prefab": "area: Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them. network: Only members whose prefab holds this part.",
+      "cell_detail": "occupancy: cells {at, empty, frame_id, faces, small}; full: cells {at, room_id, frame, walls, small, support} in place of those. Default occupancy.",
+      "at": "The map's centre.",
+      "half_width": "Half-width of the map in metres. Default 4.",
+      "free_rects": "{w, h, one_section, require_wall, limit}: where a w x h rectangle fits.",
+      "near": "Centre: [x, y, z], \"player\", \"looking_at\" or a thing's id (its position); with radius.",
+      "id": "The root device (an APC output, a generator). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out."
+    }
+  },
+  "whats": {
+    "area": {
+      "summary": "the 2 m cells of a box or room: what occupies each, the pieces, devices, ports and networks",
+      "options": {
+        "box": {"use": "box", "description": "Two corners; at most 20000 2 m cells."},
+        "room": {"use": "room"},
+        "sections": {
+          "schema": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["cells", "pieces", "devices", "networks", "network_visibility", "doors"]}
+          },
+          "description": "Only these parts.",
+          "default": "all",
+          "x-script": "Only these parts. (default all)"
+        },
+        "networks": {
+          "schema": {"type": "boolean"},
+          "description": "Include the networks of the pieces.",
+          "default": "true",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["refund", "piece_cells"]}},
+          "description": "refund: each piece's removal refund; piece_cells: every small cell of a long piece."
+        },
+        "network": {
+          "use": "network",
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 64},
+          "description": "Only pieces on these networks."
+        },
+        "kind": {
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["cable", "pipe", "chute"]}, "maxItems": 3},
+          "description": "Only pieces of these kinds.",
+          "x-script": "same"
+        },
+        "prefab": {"use": "prefab"},
+        "cell_detail": {
+          "schema": {"type": "string", "enum": ["occupancy", "full"]},
+          "description": "occupancy: cells {at, empty, frame_id, faces, small}; full: cells {at, room_id, frame, walls, small, support} in place of those.",
+          "default": "occupancy",
+          "x-script": "same"
+        },
+        "occupied_only": {
+          "schema": {"type": "boolean"},
+          "description": "Only cells holding something.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 125},
+          "description": "2 m cells per page.",
+          "default": "8",
+          "x-script": "The first n in order (2 m cells); left out, every one."
+        },
+        "offset": {"use": "offset"}
+      },
+      "text": [
+        "A big area is many pages (125 cells at most each), and output_file writes one page. For a whole area, page with offset (has_more) or use a smaller box per call."
+      ],
+      "x-script-text": ["A big area is many pages (125 cells each); iterating r['cells'] walks them all."],
+      "example": {"room": "17", "sections": ["pieces", "devices"]},
+      "handlers": [
+        {
+          "name": "grid_survey",
+          "args": [
+            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
+            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
+            {"arg": "room_id", "option": "room", "change": "renamed"},
+            {"arg": "include_networks", "option": "networks", "change": "renamed"},
+            {"arg": "include_refund", "option": "include", "change": "merged", "note": "include: [\"refund\"]"},
+            {"arg": "sections", "option": "sections", "change": "kept"},
+            {"arg": "network_ids", "option": "network", "change": "renamed"},
+            {"arg": "kinds", "option": "kind", "change": "renamed"},
+            {"arg": "prefab", "option": "prefab", "change": "kept"},
+            {"arg": "prefabs", "option": "prefab", "change": "merged", "note": "prefab takes a list"},
+            {
+              "arg": "prefab_contains",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a part is written with *: '*Battery*' (see MAP-30)"
+            },
+            {"arg": "cell_detail", "option": "cell_detail", "change": "kept"},
+            {"arg": "occupied_only", "option": "occupied_only", "change": "kept"},
+            {
+              "arg": "include_piece_cells",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"piece_cells\"]"
+            },
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "offset", "option": "offset", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "cells",
+        "variants": [
+          {
+            "keys": {
+              "legend": "str | None",
+              "cells": "list[{at: Vec3, room_id: str | None, frame: {reference_id: str, prefab_name: str | None, build_state: int, build_states: int, blocks_air: bool, blocks_gravity: bool} | None, walls: list[{face: str, reference_id: str, prefab_name: str | None, blocks_air: bool, kind: str}], small: str | None, support: str | None} | {at: Vec3, empty: bool | None, frame_id: str | None, faces: str | None, small: str | None}] | None",
+              "count": "int",
+              "offset": "int",
+              "limit": "int",
+              "total": "int",
+              "has_more": "bool",
+              "pieces": "list[{reference_id: str, kind: str, prefab_name: str | None, at: Vec3, cell_count: int | None, cell_box: {min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size: {x: float, y: float, z: float}} | None, cells: list[Vec3] | None, ends: list[str], network_id: str | None, grade: str | None, flow: {in: list[str], out: list[str]} | None, carries: Thing | None, refund: list[{prefab_name: str | None, quantity: int}] | None}] | None",
+              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, at: Vec3, rotation: {facing: str | None, up: str | None, euler: Vec3} | None, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}], umbilical: {role: str, open: bool, partner: Thing | None, partner_distance: int, search: {found: str | None, partner_distance: int, how: str, stops: list[{column: int, step: int, reason: str}] | None}} | None}] | None",
+              "networks": "list[Any] | None",
+              "network_visibility": "list[{network_id: str | None, kind: str, pieces: int, cells: {inside: int, frame_surface: int, wall: int, air: int}, air_at: list[Vec3] | None, refund: list[{prefab_name: str | None, quantity: int}] | None}] | None",
+              "doors": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, faces: list[Vec3], plane: str, band_m: float, port_cells: list[Vec3]}] | None"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      }
+    },
+    "wall": {
+      "summary": "a text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits",
+      "options": {
+        "plane": {
+          "schema": {"type": "string"},
+          "description": "A face plane, \"x=716\": an axis and an even metre.",
+          "x-script": "same"
+        },
+        "side": {
+          "schema": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+          "description": "The side you view from.",
+          "x-script": "same"
+        },
+        "looking": {
+          "schema": {"type": "boolean"},
+          "description": "Map the face your look ray hits instead of plane.",
+          "x-script": "same"
+        },
+        "at": {"schema": {"type": "array"}, "description": "The map's centre.", "x-script": "same"},
+        "half_width": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 16},
+          "description": "Half-width of the map in metres.",
+          "default": "4",
+          "x-script": "same"
+        },
+        "free_rects": {
+          "schema": {"type": "object"},
+          "description": "{w, h, one_section, require_wall, limit}: where a w x h rectangle fits.",
+          "x-script": "same"
+        }
+      },
+      "example": {"plane": "x=716", "side": "-x", "at": [716, 202, 668]},
+      "handlers": [
+        {
+          "name": "wall_map",
+          "args": [
+            {"arg": "plane", "option": "plane", "change": "kept"},
+            {"arg": "side", "option": "side", "change": "kept"},
+            {"arg": "looking", "option": "looking", "change": "kept"},
+            {"arg": "around", "option": "at", "change": "renamed"},
+            {"arg": "radius_m", "option": "half_width", "change": "renamed"},
+            {"arg": "free_rects", "option": "free_rects", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "things",
+        "variants": [
+          {
+            "keys": {
+              "plane": "str",
+              "side": "str",
+              "right": "str",
+              "up": "str",
+              "rows": "list[str]",
+              "top_left": "{x: float, y: float, z: float}",
+              "sections": "list[{face: {x: float, y: float, z: float}, look: str, reference_id: str | None, prefab_name: str | None}]",
+              "things": "list[{key: str, reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3}]",
+              "free_rects": "list[{row: int, column: int, centre: {x: float, y: float, z: float}, cells_wide: int, cells_high: int}] | None",
+              "legend": "str",
+              "view": "{source: str, age_s: float} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      }
+    },
+    "network": {
+      "summary": "a cable, pipe or chute network's members (or the pieces in a box), with filters or a summary",
+      "options": {
+        "network": {"use": "network"},
+        "box": {"use": "box", "description": "Box form: the pieces in it (alone: open ends in it)."},
+        "kind": {
+          "schema": {"type": "string", "enum": ["pipe", "cable", "chute"]},
+          "description": "Box form: only this kind. With network, left out, it is read from the network.",
+          "x-script": "same"
+        },
+        "prefab": {"use": "prefab", "description": "Only members whose prefab holds this part."},
+        "summarize": {
+          "schema": {"type": "boolean"},
+          "description": "Counts by prefab and colour, devices and open ends instead of members.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "open_ends": {
+          "schema": {"type": "boolean"},
+          "description": "Only members with an end nothing is attached at.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "near": {"use": "near"},
+        "radius": {"use": "radius", "schema": {"type": "number", "minimum": 0, "maximum": 1000}},
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 1000},
+          "description": "Members per page.",
+          "default": "30; box 25; summarize 10",
+          "x-script": "The first n in order (members); left out, every one."
+        },
+        "offset": {"use": "offset"}
+      },
+      "example": {"network": "3768865", "kind": "cable", "summarize": true},
+      "handlers": [
+        {
+          "name": "connections",
+          "note": "reference_id form is inspect connections (now takes a list); network and box forms are survey network",
+          "args": [
+            {
+              "arg": "network_id",
+              "option": "network",
+              "change": "moved",
+              "note": "network form is survey what: network"
+            },
+            {"arg": "kind", "option": "kind", "change": "moved", "note": " (see MAP-03)"},
+            {"arg": "prefab_contains", "option": "prefab", "change": "moved", "note": "a part with *"},
+            {"arg": "summarize", "option": "summarize", "change": "moved", "note": " (see MAP-27)"},
+            {"arg": "open_ends_only", "option": "open_ends", "change": "moved", "note": "renamed"},
+            {"arg": "min", "option": "box", "change": "moved", "note": "box form"},
+            {"arg": "max", "option": "box", "change": "moved", "note": "box form"},
+            {"arg": "near", "option": "near", "change": "moved"},
+            {"arg": "radius_m", "option": "radius", "change": "moved"},
+            {"arg": "limit", "option": "limit", "change": "moved"},
+            {"arg": "offset", "option": "offset", "change": "moved"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "members",
+        "variants": [
+          {
+            "label": "Connections",
+            "view": "Connections",
+            "keys": {
+              "thing": "Thing",
+              "position": "Vec3",
+              "rotation": "{facing: str | None, up: str | None, euler: Vec3} | None",
+              "own_network": "{kind: str, id: str} | None",
+              "color": "Color | None",
+              "ends": "list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, network: {kind: str, id: str} | None, connected: list[Thing]}]",
+              "count": "int"
+            }
+          },
+          {
+            "label": "NetworkMembers",
+            "view": "NetworkMembers",
+            "keys": {
+              "network": "{kind: str, id: str}",
+              "summary": "Any | None",
+              "warning": "str | None",
+              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "count": "int",
+              "structure_count": "int",
+              "device_count": "int",
+              "offset": "int",
+              "limit": "int",
+              "total": "int",
+              "has_more": "bool"
+            }
+          },
+          {
+            "label": "NetworkOverview",
+            "view": "NetworkOverview",
+            "keys": {
+              "network": "{kind: str, id: str}",
+              "summary": "Any | None",
+              "warning": "str | None",
+              "broken_neighbour_count": "int",
+              "broken_neighbours": "list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} | None, touches: str}] | None",
+              "structure_count": "int",
+              "device_count": "int",
+              "by_prefab": "list[{prefab_name: str, display_name: str | None, member: str, count: int, colors: dict[str, int] | None}]",
+              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "open_ends": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "open_end_count": "int"
+            }
+          },
+          {
+            "label": "AreaOpenEnds",
+            "view": "AreaOpenEnds",
+            "keys": {
+              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "count": "int",
+              "offset": "int",
+              "limit": "int",
+              "total": "int",
+              "has_more": "bool"
+            }
+          }
+        ],
+        "types": ["Color", "Thing", "Vec3"]
+      }
+    },
+    "feeds": {
+      "summary": "how a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices",
+      "options": {
+        "id": {"use": "id", "description": "The root device (an APC output, a generator).", "required": true},
+        "network": {"use": "network"},
+        "port": {
+          "schema": {"type": "integer", "minimum": 0, "maximum": 64},
+          "description": "Or the root's port whose network to trace.",
+          "x-script": "same"
+        },
+        "kind": {
+          "schema": {"type": "string", "enum": ["cable", "pipe", "chute"]},
+          "description": "The network's kind when root is a device on several.",
+          "default": "cable",
+          "x-script": "same"
+        }
+      },
+      "example": {"id": "720259"},
+      "handlers": [
+        {
+          "name": "feed_paths",
+          "args": [
+            {"arg": "root", "option": "id", "change": "renamed"},
+            {"arg": "network_id", "option": "network", "change": "renamed"},
+            {"arg": "port", "option": "port", "change": "kept"},
+            {"arg": "kind", "option": "kind", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "devices",
+        "variants": [
+          {
+            "keys": {
+              "root": "Thing",
+              "network_id": "str",
+              "kind": "str",
+              "root_room_id": "str | None",
+              "daisy_chains": "int",
+              "multiple_feeds": "int",
+              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, room_id: str | None, pieces: int, rooms: list[str], through: list[str]}]",
+              "rooms": "list[{room_id: str, devices: int, entries: list[str], entry_at: list[Vec3]}]",
+              "unreached": "list[Thing]"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "x-list": "split"
+    }
+  }
+}

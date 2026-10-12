@@ -1,0 +1,10 @@
+Rename things as the hand Labeller does; empty name gives back the game's name.
+Options:
+- id (string or array): One id; a list or a ref names each '<label> 1', '<label> 2' in id order.
+- label (string): The new name; empty gives back the game's name.
+- labels (list): Several renames, each {id, label}, in order.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry).
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (Labelled) index, ok, reference_id, prefab_name, written, sent_to_host, previous {display_name, custom_name}, current {display_name, custom_name} | (BatchResult) results [{index, ok, error}], count, success_count, error_count
+Example: write {what: "label", id: "1199811", label: "O2 Tank 1"}

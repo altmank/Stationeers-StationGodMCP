@@ -1,0 +1,11 @@
+Damaged and broken things in the world, worst first.
+Options:
+- min_damage (number, default 0): Only damage ratio above this (0.25 yellow, 0.75 red).
+- broken_only (boolean, default false): Only things in the game's broken state.
+- structures_only (boolean, default false): Leave items out.
+- near (string or array): "player" only.
+- radius (number): Metres around near.
+- limit (integer, default 8): Entries per page.
+- offset (integer, default 0): Entries to skip.
+Reply: (Health) reference_id, prefab_name, display_name, custom_name, build_state {current, last, complete, next}, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage {brute, burn, oxygen, hydration, starvation, toxic, radiation, decay, stun}, is_broken, broken_build_state, being_destroyed, pipe_burst, damage_record, position {x, y, z}, distance_m, networks [{kind, id}] | (BatchResult) results [{index, ok, error}], count, success_count, error_count | (HealthNetwork) network_id, kind, pieces, damaged_only, warning, broken_neighbour_count, broken_neighbours [{reference_id, prefab_name, position, pipe_burst, network, touches}], things [{reference_id, prefab_name, display_name, custom_name, build_state, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage, is_broken, broken_build_state, being_destroyed, pipe_burst, damage_record, position, distance_m, networks}], count, total, offset, limit, has_more | (HealthScan) things [{reference_id, prefab_name, display_name, custom_name, build_state, condition, kind, type, damage_state, damage_state_class, max_damage, total_damage, damage_ratio, health_percent, band, damage, is_broken, broken_build_state, being_destroyed, pipe_burst, damage_record, position, distance_m, networks}], count, total, structures, broken, scanned, min_damage_ratio, offset, limit, has_more, local_player {reference_id, display_name, position}
+Example: find {what: "damaged", min_damage: 0.25, structures_only: true}

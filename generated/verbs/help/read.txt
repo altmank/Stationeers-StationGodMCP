@@ -1,0 +1,13 @@
+Read live values: logic, memory, a snapshot, samples over time, the clock, flight logs. Read only.
+logic reads one value, many, or slots, atmosphere and reagents with them, all in one frame.
+
+whats:
+- logic: logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame
+- snapshot: every readable logic value of matching devices, in one frame
+- memory: up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status)
+- sample: watch up to 32 logic values for up to 30 s: first readings and every change with its time
+- clock: game time, paused, time of day, days past
+- flight_log: a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)
+
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "read", what} gives a what's options, reply keys and an example.

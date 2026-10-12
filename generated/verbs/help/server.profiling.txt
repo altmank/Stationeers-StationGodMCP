@@ -1,0 +1,7 @@
+Profile StationGod's main-thread cost: on, off, reset, report.
+Options:
+- action (on | off | reset | report, required): on, off, reset, or report the scopes so far.
+- slow_frame_ms (number, default 8): on: frames over this are logged.
+- csv (boolean): on: true starts the rolling CSV, false stops it.
+Reply: enabled, since_s, slow_frame_ms, csv_path, csv {path, writing, rows, dropped, error}, failure, timed_methods, untimed_methods, frames {recorded, window, stationgod_ms, heap_delta_bytes, heap_deltas_dropped, slow}, scopes [{name, kind, total_ms, self_ms, count, mean_ms, p95_frame_ms, max_frame_ms}], worst_frame {frame, ms, heap_delta_bytes, scopes, scopes_not_listed, calls, calls_not_listed}, calls [{method, calls, errors, queue_wait_ms, execute_ms, serialize_ms, reply_bytes}], tick_holds {count, total_ms, max_ms, recent}
+Example: server {what: "profiling", action: "report"}

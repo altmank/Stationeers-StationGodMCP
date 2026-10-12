@@ -1,0 +1,42 @@
+RunJob = {job_id: str, tool: str, status: str, preflight: {tool: str, status: str, job_id: str | None, grade: str | None, ready: bool, problems:
+    list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}], warnings: list[{code: str, message: str, reference_id: str | None, at:
+    Vec3 | None}], cells_total: int, placed: int, changed: int, kept: int, removed_count: int, air_cells: int | None, cells: list[{at: Vec3, action:
+    str, prefab_name: str | None, rotation_deg: Vec3 | None, shape: str, ends: list[str], cost: int, refund: int, existing: {reference_id: str,
+    prefab_name: str, ends: list[str], network_id: str | None} | None, joins: list[{toward: str, kind: str, thing: Thing | None, port: int | None}],
+    open_end: str | None, flow: {in: list[str], out: list[str]} | None}], removals: list[{reference_id: str, prefab_name: str | None, at: Vec3,
+    network_id: str | None, refund: list[{prefab_name: str | None, quantity: int}], assumed: bool | None}], materials: {from: Thing | None, needed:
+    list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str
+    | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], refund_enabled:
+    bool, refund: list[{prefab_name: str | None, quantity: int}], refund_plan: RefundPlan | None}, networks_before: list[Any], networks_after:
+    list[{index: int, networks_before: list[str], new_pieces: int, device_count: int, port_count: int, devices: list[{device: Thing, port: int,
+    bridging: bool, network_before: str | None}] | None, guard: Any | None}], would_bridge: list[{kind: str, networks: list[{network_id: str, devices:
+    list[Thing]}], device: Thing | None, ports: list[int], allowed: bool}], would_split: list[{network_id: str | None, parts: list[int], cut_ports:
+    list[{device: Thing, port: int, bridging: bool, network_before: str | None}], allowed: bool, components: list[{index: int, devices: list[{device:
+    Thing, port: int, bridging: bool, network_before: str | None}], holds_root: bool}], root: list[Thing], cut_off: list[Thing] | None}], links:
+    {count_before: int, count_after: int, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None,
+    lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, added_count: int, lost_count: int,
+    model_matches_game: bool, model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}]} | None,
+    notes: list[str] | None} | None, preflight_summary: {placed: int | None, changed: int | None, removed: int | None, warnings: list[str]} | None,
+    final_check: {tool: str, status: str, job_id: str | None, grade: str | None, ready: bool, problems: list[{code: str, message: str, reference_id:
+    str | None, at: Vec3 | None}], warnings: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}], cells_total: int, placed:
+    int, changed: int, kept: int, removed_count: int, air_cells: int | None, cells: list[{at: Vec3, action: str, prefab_name: str | None,
+    rotation_deg: Vec3 | None, shape: str, ends: list[str], cost: int, refund: int, existing: {reference_id: str, prefab_name: str, ends: list[str],
+    network_id: str | None} | None, joins: list[{toward: str, kind: str, thing: Thing | None, port: int | None}], open_end: str | None, flow: {in:
+    list[str], out: list[str]} | None}], removals: list[{reference_id: str, prefab_name: str | None, at: Vec3, network_id: str | None, refund:
+    list[{prefab_name: str | None, quantity: int}], assumed: bool | None}], materials: {from: Thing | None, needed: list[{prefab_name: str | None,
+    display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int |
+    None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], refund_enabled: bool, refund:
+    list[{prefab_name: str | None, quantity: int}], refund_plan: RefundPlan | None}, networks_before: list[Any], networks_after: list[{index: int,
+    networks_before: list[str], new_pieces: int, device_count: int, port_count: int, devices: list[{device: Thing, port: int, bridging: bool,
+    network_before: str | None}] | None, guard: Any | None}], would_bridge: list[{kind: str, networks: list[{network_id: str, devices: list[Thing]}],
+    device: Thing | None, ports: list[int], allowed: bool}], would_split: list[{network_id: str | None, parts: list[int], cut_ports: list[{device:
+    Thing, port: int, bridging: bool, network_before: str | None}], allowed: bool, components: list[{index: int, devices: list[{device: Thing, port:
+    int, bridging: bool, network_before: str | None}], holds_root: bool}], root: list[Thing], cut_off: list[Thing] | None}], links: {count_before:
+    int, count_after: int, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, lost:
+    list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, added_count: int, lost_count: int,
+    model_matches_game: bool, model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}]} | None,
+    notes: list[str] | None} | None, log: {removed: list[str], changed: list[{old_reference_id: str, new_reference_id: str, prefab_name: str | None,
+    target_prefab_name: str | None}], used: list[{prefab_name: str | None, quantity: int}], refunded: list[{reference_id: str, prefab_name: str |
+    None, quantity: int, where: str, target: str | None, target_id: str | None, target_name: str | None}], created_ids: list[str], created_by_part:
+    list[{part: str, ids: list[str]}], stopped_at: Error | None, refund_error: Error | None} | None, verification: {ok: bool, problems: list[{code:
+    str, message: str, reference_id: str | None, at: Vec3 | None}], networks_now: list[str]} | None, gas_check: GasCheck | None, error: Error | None}

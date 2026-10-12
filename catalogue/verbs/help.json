@@ -1,0 +1,61 @@
+{
+  "verb": "help",
+  "description": "StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic.",
+  "read_only": true,
+  "tool": {"options": {"lang": "python: the stub for sg calls in a script; leave it out for a direct call."}},
+  "whats": {
+    "-": {
+      "summary": "StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic",
+      "options": {
+        "verb": {"schema": {"type": "string"}, "description": "A verb: its whats and shared options.", "x-script": "drop"},
+        "lang": {
+          "schema": {"type": "string", "enum": ["python"]},
+          "description": "python: the stub for sg calls in a script; leave it out for a direct call.",
+          "x-script": "drop"
+        },
+        "what": {
+          "schema": {"type": "string"},
+          "description": "With verb: that what's options, reply keys and an example.",
+          "x-script": "drop"
+        },
+        "topic": {
+          "schema": {"type": "string"},
+          "description": "A topic (targets, paging, writes, shaping, refs, errors, positions, turns, refunds, jobs, networks...).",
+          "x-script": "drop"
+        },
+        "subtopic": {
+          "schema": {"type": "string"},
+          "description": "A subtopic of topic; types takes one type name (BuildJob).",
+          "x-script": "drop"
+        }
+      },
+      "example": {"verb": "find"},
+      "handlers": [
+        {
+          "name": "tool_info",
+          "args": [
+            {"arg": "tool", "option": "verb", "change": "renamed"},
+            {"arg": "topic", "option": "topic", "change": "kept"},
+            {"arg": "subtopic", "option": "subtopic", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "tool": "str | None",
+              "topic": "str | None",
+              "subtopic": "str | None",
+              "text": "str",
+              "reply_keys": "str | None",
+              "topics": "list[str] | None",
+              "shared_topics": "list[str] | None",
+              "subtopics": "list[str] | None"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

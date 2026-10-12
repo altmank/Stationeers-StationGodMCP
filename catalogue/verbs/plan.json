@@ -1,0 +1,850 @@
+{
+  "verb": "plan",
+  "description": "Work out how, changing nothing: routes, removal prices, free spots, rocket flights, mining yields, aim angles. Read only.",
+  "read_only": true,
+  "tool": {"options": {}},
+  "whats": {
+    "route": {
+      "summary": "a cable, pipe or chute route between ends, ports or networks, dry-run as the build would; answers build_arguments",
+      "options": {
+        "kind": {
+          "schema": {"type": "string", "enum": ["cable", "pipe", "chute"]},
+          "description": "The run's kind.",
+          "required": true,
+          "x-script": "same"
+        },
+        "start": {
+          "schema": {"type": ["object", "array"]},
+          "description": "(route) {at}, {id} of a piece, {id, port} of a device, or a list.",
+          "x-script": "same"
+        },
+        "end": {"schema": {"type": "object"}, "description": "(route) As start, one, or {network}.", "x-script": "same"},
+        "reroute": {
+          "schema": {"type": "object"},
+          "description": "{id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.",
+          "x-script": "same"
+        },
+        "trunk": {
+          "schema": {"type": "object"},
+          "description": "Bus mode instead of end: {waypoints} or {cells} every start branches from.",
+          "x-script": "same"
+        },
+        "grade": {
+          "schema": {
+            "type": "string",
+            "enum": ["normal", "heavy", "super_heavy", "gas", "liquid", "insulated_gas", "insulated_liquid", "chute"]
+          },
+          "description": "cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.",
+          "x-script": "same"
+        },
+        "style": {
+          "schema": {"type": "string", "enum": ["supported", "frame_edges", "walls", "hidden", "inside_frames", "free"]},
+          "description": "What the route keeps to.",
+          "default": "supported",
+          "x-script": "same"
+        },
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}},
+          "description": "door_keepout: may enter a door keep-out; split: removals may split networks."
+        },
+        "split_long": {
+          "schema": {"type": "boolean"},
+          "description": "Split long straights the route meets.",
+          "default": "true",
+          "x-script": "same"
+        },
+        "avoid": {
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["room_interior", "walkways"]}},
+          "description": "Extra cost for room interiors or walkways.",
+          "x-script": "same"
+        },
+        "avoid_networks": {
+          "schema": {"type": ["boolean", "array"]},
+          "description": "true, or networks: keep beside no other network.",
+          "x-script": "True, or networks: keep beside no other network."
+        },
+        "min_bends": {"schema": {"type": "boolean"}, "description": "Turns cost much more.", "default": "false", "x-script": "same"},
+        "axis_order": {
+          "schema": {"type": "string", "enum": ["any", "vertical_first", "horizontal_first"]},
+          "description": "Which way the route turns first.",
+          "default": "any",
+          "x-script": "same"
+        },
+        "max_length": {
+          "schema": {"type": "integer", "minimum": 2, "maximum": 1024},
+          "description": "Most cells.",
+          "default": "400",
+          "x-script": "same"
+        },
+        "margin": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 32},
+          "description": "Search box margin around the ends.",
+          "default": "6",
+          "x-script": "same"
+        },
+        "join": {
+          "schema": {"type": "string", "enum": ["ends", "none", "all"]},
+          "description": "What the run joins.",
+          "default": "ends",
+          "x-script": "same"
+        },
+        "allow_bridge": {
+          "schema": {"type": "array", "items": {}, "maxItems": 64},
+          "description": "Networks and devices whose joining is meant.",
+          "x-script": "same"
+        },
+        "root": {
+          "schema": {"type": "string"},
+          "description": "The device would_split measures cut-off against.",
+          "default": "every supplier",
+          "x-script": "The device would_split measures cut-off against. (default every supplier)"
+        },
+        "join_to": {
+          "schema": {"type": ["string", "object"]},
+          "description": "The network the route must end on.",
+          "default": "end's network",
+          "x-script": "The network the route must end on. (default end's network)"
+        },
+        "join_trunk": {
+          "schema": {"type": "boolean"},
+          "description": "Add a missing tap to join_to.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "reserve_cells": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "Cells kept free for another run.",
+          "x-script": "same"
+        },
+        "reserve_ports": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "{id, port} ports whose joining cell stays free.",
+          "x-script": "same"
+        },
+        "assume_removed": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "description": "Things planned as if gone; the kind's pieces are removed in the same job.",
+          "x-script": "same"
+        },
+        "materials": {"use": "materials"},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["links", "notes", "network_devices"]}},
+          "description": "links: every added and lost link; notes: fixed text; network_devices: each network's devices."
+        },
+        "summarize": {
+          "schema": {"type": "boolean"},
+          "description": "The dry run in short instead of whole.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 1024},
+          "description": "Cells the dry run lists; 0 for none.",
+          "default": "5"
+        }
+      },
+      "example": {"kind": "pipe", "grade": "gas", "start": {"id": "720259", "port": 1}, "end": {"network": "5012345"}},
+      "handlers": [
+        {
+          "name": "plan_cable_route",
+          "when": "cable",
+          "note": "kind: \"cable\"",
+          "args": [
+            {"arg": "from", "option": "start", "change": "renamed"},
+            {"arg": "to", "option": "end", "change": "renamed"},
+            {"arg": "reroute", "option": "reroute", "change": "kept"},
+            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
+            {"arg": "reserve_cells", "option": "reserve_cells", "change": "kept"},
+            {"arg": "reserve_ports", "option": "reserve_ports", "change": "kept"},
+            {"arg": "grade", "option": "grade", "change": "kept"},
+            {"arg": "style", "option": "style", "change": "kept"},
+            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
+            {"arg": "trunk", "option": "trunk", "change": "kept"},
+            {"arg": "avoid_room_interior", "option": "avoid", "change": "merged", "note": "avoid: [\"room_interior\"]"},
+            {"arg": "avoid_walkways", "option": "avoid", "change": "merged", "note": "avoid: [\"walkways\"]"},
+            {"arg": "avoid_networks", "option": "avoid_networks", "change": "kept"},
+            {"arg": "min_bends", "option": "min_bends", "change": "kept"},
+            {"arg": "axis_order", "option": "axis_order", "change": "kept"},
+            {"arg": "max_length", "option": "max_length", "change": "kept"},
+            {"arg": "margin_m", "option": "margin", "change": "renamed"},
+            {"arg": "join", "option": "join", "change": "kept"},
+            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {"arg": "join_to", "option": "join_to", "change": "kept"},
+            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
+            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
+            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {
+              "arg": "include_network_devices",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"network_devices\"]"
+            },
+            {"arg": "summary", "option": "summarize", "change": "renamed"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "plan_pipe_route",
+          "when": "pipe",
+          "note": "kind: \"pipe\"",
+          "args": [
+            {"arg": "from", "option": "start", "change": "renamed"},
+            {"arg": "to", "option": "end", "change": "renamed"},
+            {"arg": "reroute", "option": "reroute", "change": "kept"},
+            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
+            {"arg": "reserve_cells", "option": "reserve_cells", "change": "kept"},
+            {"arg": "reserve_ports", "option": "reserve_ports", "change": "kept"},
+            {"arg": "grade", "option": "grade", "change": "kept"},
+            {"arg": "style", "option": "style", "change": "kept"},
+            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
+            {"arg": "trunk", "option": "trunk", "change": "kept"},
+            {"arg": "avoid_room_interior", "option": "avoid", "change": "merged", "note": "avoid: [\"room_interior\"]"},
+            {"arg": "avoid_walkways", "option": "avoid", "change": "merged", "note": "avoid: [\"walkways\"]"},
+            {"arg": "avoid_networks", "option": "avoid_networks", "change": "kept"},
+            {"arg": "min_bends", "option": "min_bends", "change": "kept"},
+            {"arg": "axis_order", "option": "axis_order", "change": "kept"},
+            {"arg": "max_length", "option": "max_length", "change": "kept"},
+            {"arg": "margin_m", "option": "margin", "change": "renamed"},
+            {"arg": "join", "option": "join", "change": "kept"},
+            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {"arg": "join_to", "option": "join_to", "change": "kept"},
+            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
+            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
+            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {
+              "arg": "include_network_devices",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"network_devices\"]"
+            },
+            {"arg": "summary", "option": "summarize", "change": "renamed"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "plan_chute_route",
+          "when": "chute",
+          "note": "kind: \"chute\"",
+          "args": [
+            {"arg": "from", "option": "start", "change": "renamed"},
+            {"arg": "to", "option": "end", "change": "renamed"},
+            {"arg": "reroute", "option": "reroute", "change": "kept"},
+            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
+            {"arg": "reserve_cells", "option": "reserve_cells", "change": "kept"},
+            {"arg": "reserve_ports", "option": "reserve_ports", "change": "kept"},
+            {"arg": "grade", "option": "grade", "change": "kept"},
+            {"arg": "style", "option": "style", "change": "kept"},
+            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
+            {"arg": "trunk", "option": "trunk", "change": "kept"},
+            {"arg": "avoid_room_interior", "option": "avoid", "change": "merged", "note": "avoid: [\"room_interior\"]"},
+            {"arg": "avoid_walkways", "option": "avoid", "change": "merged", "note": "avoid: [\"walkways\"]"},
+            {"arg": "avoid_networks", "option": "avoid_networks", "change": "kept"},
+            {"arg": "min_bends", "option": "min_bends", "change": "kept"},
+            {"arg": "axis_order", "option": "axis_order", "change": "kept"},
+            {"arg": "max_length", "option": "max_length", "change": "kept"},
+            {"arg": "margin_m", "option": "margin", "change": "renamed"},
+            {"arg": "join", "option": "join", "change": "kept"},
+            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {"arg": "join_to", "option": "join_to", "change": "kept"},
+            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
+            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
+            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {
+              "arg": "include_network_devices",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"network_devices\"]"
+            },
+            {"arg": "summary", "option": "summarize", "change": "renamed"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "tool": "str",
+              "found": "bool",
+              "route": "{waypoints: list[Vec3], length: int, bends: int, cost: float, expanded: int, removes: list[str], air_cells: int, air: list[Vec3] | None, branches: list[{waypoints: list[Vec3], length: int, attach: Vec3}] | None, extra_ends: int | None, visibility: {inside: int, frame_surface: int, wall: int, air: int} | None, assumed_removed: {pieces: list[str], others: list[str], missing: list[str], in_the_way: list[str]} | None, removal_refund: list[{prefab_name: str | None, quantity: int}] | None} | None",
+              "failure": "str | None",
+              "place_arguments": "Any | None",
+              "dry_run": "{tool: str, status: str, job_id: str | None, grade: str | None, ready: bool, problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}], warnings: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}], cells_total: int, placed: int, changed: int, kept: int, removed_count: int, air_cells: int | None, cells: list[{at: Vec3, action: str, prefab_name: str | None, rotation_deg: Vec3 | None, shape: str, ends: list[str], cost: int, refund: int, existing: {reference_id: str, prefab_name: str, ends: list[str], network_id: str | None} | None, joins: list[{toward: str, kind: str, thing: Thing | None, port: int | None}], open_end: str | None, flow: {in: list[str], out: list[str]} | None}], removals: list[{reference_id: str, prefab_name: str | None, at: Vec3, network_id: str | None, refund: list[{prefab_name: str | None, quantity: int}], assumed: bool | None}], materials: {from: Thing | None, needed: list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], refund_enabled: bool, refund: list[{prefab_name: str | None, quantity: int}], refund_plan: RefundPlan | None}, networks_before: list[Any], networks_after: list[{index: int, networks_before: list[str], new_pieces: int, device_count: int, port_count: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}] | None, guard: Any | None}], would_bridge: list[{kind: str, networks: list[{network_id: str, devices: list[Thing]}], device: Thing | None, ports: list[int], allowed: bool}], would_split: list[{network_id: str | None, parts: list[int], cut_ports: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], allowed: bool, components: list[{index: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], holds_root: bool}], root: list[Thing], cut_off: list[Thing] | None}], links: {count_before: int, count_after: int, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, added_count: int, lost_count: int, model_matches_game: bool, model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}]} | None, notes: list[str] | None} | None",
+              "dry_run_summary": "{status: str, ready: bool, problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}], warnings: list[str], cells_total: int, placed: int, changed: int, kept: int, removed_count: int, air_cells: int | None, would_bridge: int, would_split: int, needed: list[{prefab_name: str | None, needed: int, available: int}]} | None",
+              "notes": "list[str]"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "brief": "cable, pipe or chute route"
+    },
+    "removal": {
+      "summary": "price a removal of cable, pipe or chute pieces without doing it, ever: ids, cells or a whole network",
+      "options": {
+        "kind": {
+          "schema": {"type": "string", "enum": ["cable", "pipe", "chute"]},
+          "description": "The pieces' kind.",
+          "default": "cable",
+          "x-script": "same"
+        },
+        "id": {"use": "id", "description": "Pieces to price."},
+        "waypoints": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "The pieces along these lines.",
+          "x-script": "same"
+        },
+        "cells": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "The piece in each cell.",
+          "x-script": "same"
+        },
+        "network": {"use": "network", "description": "Every piece of this network, up to 1024."},
+        "root": {
+          "schema": {"type": "string"},
+          "description": "For would_split's cut-off; default every supplier.",
+          "x-script": "same"
+        },
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["split"]}},
+          "description": "split: report would_split as allowed."
+        },
+        "materials": {"use": "materials"},
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["links", "notes", "network_devices"]}}
+        },
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 1024},
+          "description": "Pieces listed; 0 for none.",
+          "default": "5"
+        }
+      },
+      "example": {"kind": "cable", "network": "3768865"},
+      "handlers": [
+        {
+          "name": "plan_removal",
+          "args": [
+            {"arg": "kind", "option": "kind", "change": "kept"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "waypoints", "option": "waypoints", "change": "kept"},
+            {"arg": "cells", "option": "cells", "change": "kept"},
+            {"arg": "network_id", "option": "network", "change": "renamed"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {
+              "arg": "include_network_devices",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"network_devices\"]"
+            },
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "removals",
+        "variants": [
+          {
+            "keys": {
+              "tool": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "grade": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
+              "warnings": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
+              "cells_total": "int",
+              "placed": "int",
+              "changed": "int",
+              "kept": "int",
+              "removed_count": "int",
+              "air_cells": "int | None",
+              "cells": "list[{at: Vec3, action: str, prefab_name: str | None, rotation_deg: Vec3 | None, shape: str, ends: list[str], cost: int, refund: int, existing: {reference_id: str, prefab_name: str, ends: list[str], network_id: str | None} | None, joins: list[{toward: str, kind: str, thing: Thing | None, port: int | None}], open_end: str | None, flow: {in: list[str], out: list[str]} | None}]",
+              "removals": "list[{reference_id: str, prefab_name: str | None, at: Vec3, network_id: str | None, refund: list[{prefab_name: str | None, quantity: int}], assumed: bool | None}]",
+              "materials": "{from: Thing | None, needed: list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], refund_enabled: bool, refund: list[{prefab_name: str | None, quantity: int}], refund_plan: RefundPlan | None}",
+              "networks_before": "list[Any]",
+              "networks_after": "list[{index: int, networks_before: list[str], new_pieces: int, device_count: int, port_count: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}] | None, guard: Any | None}]",
+              "would_bridge": "list[{kind: str, networks: list[{network_id: str, devices: list[Thing]}], device: Thing | None, ports: list[int], allowed: bool}]",
+              "would_split": "list[{network_id: str | None, parts: list[int], cut_ports: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], allowed: bool, components: list[{index: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], holds_root: bool}], root: list[Thing], cut_off: list[Thing] | None}]",
+              "links": "{count_before: int, count_after: int, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, added_count: int, lost_count: int, model_matches_game: bool, model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}]} | None",
+              "notes": "list[str] | None"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "x-list": "native",
+      "brief": "removal price"
+    },
+    "spot": {
+      "summary": "free places to put one prefab you are about to build, near a point, on a face plane or a room's walls, checked by the game's cursor; answers build_arguments",
+      "options": {
+        "prefab": {
+          "use": "prefab",
+          "schema": {"type": ["string", "integer"]},
+          "description": "Whole prefab name or hash.",
+          "required": true
+        },
+        "near": {
+          "use": "near",
+          "description": "[x, y, z], \"player\", \"looking_at\" (the crosshair) or an id.",
+          "default": "looking_at"
+        },
+        "plane": {"schema": {"type": "string"}, "description": "A face plane, \"z=668\".", "x-script": "same"},
+        "side": {
+          "schema": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+          "description": "The side you view the plane from.",
+          "x-script": "same"
+        },
+        "looking": {"schema": {"type": "boolean"}, "description": "Search the face your look ray hits.", "x-script": "same"},
+        "around": {
+          "schema": {"type": "array"},
+          "description": "A point near the plane, to pick the side in a room.",
+          "x-script": "same"
+        },
+        "room": {"use": "room", "description": "Search this room's walls."},
+        "facing": {
+          "schema": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+          "description": "Try every spot with this facing.",
+          "x-script": "same"
+        },
+        "radius": {
+          "use": "radius",
+          "schema": {"type": "number", "minimum": 0, "maximum": 12},
+          "description": "Search radius.",
+          "default": "4"
+        },
+        "require": {
+          "schema": {"type": "object"},
+          "description": "{one_section, min_bottom_above_floor_m, ports_reachable, avoid_doors, front_clear_m, no_visual_overlap}.",
+          "x-script": "same"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 20},
+          "description": "Spots returned.",
+          "default": "5",
+          "x-script": "The first n in order (spots returned); left out, every one."
+        },
+        "max_checks": {
+          "schema": {"type": "integer", "minimum": 1, "maximum": 200},
+          "description": "Spots checked with the cursor.",
+          "default": "40",
+          "x-script": "same"
+        }
+      },
+      "example": {"prefab": "StructureWallLight", "looking": true},
+      "handlers": [
+        {
+          "name": "find_spot",
+          "args": [
+            {"arg": "prefab", "option": "prefab", "change": "kept"},
+            {"arg": "near", "option": "near", "change": "kept"},
+            {"arg": "plane", "option": "plane", "change": "kept"},
+            {"arg": "side", "option": "side", "change": "kept"},
+            {"arg": "looking", "option": "looking", "change": "kept"},
+            {"arg": "around", "option": "around", "change": "kept"},
+            {"arg": "room_id", "option": "room", "change": "renamed"},
+            {"arg": "facing", "option": "facing", "change": "kept"},
+            {"arg": "radius_m", "option": "radius", "change": "renamed"},
+            {"arg": "require", "option": "require", "change": "kept"},
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "max_checks", "option": "max_checks", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "spots",
+        "variants": [
+          {
+            "keys": {
+              "prefab_name": "str | None",
+              "planes": "list[str]",
+              "spots": "list[{position: {x: float, y: float, z: float}, orientation: {facing: str | None, up: str | None, euler: Vec3}, distance_m: float, penalty: int, plane: str, conflicts: list[{code: str, level: str, message: str, reference_id: str | None}], place_arguments: Any}]",
+              "tried": "int",
+              "filtered": "int",
+              "checked": "int",
+              "rejected": "int",
+              "reasons": "list[{reason: str, count: int}]",
+              "view": "{source: str, age_s: float} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "brief": "free spots for a prefab"
+    },
+    "flight": {
+      "summary": "fly a copy of a rocket to a node or pad, tick by tick: launch, hops, re-entry, landing, fuel, power and the verdict; the landing check",
+      "options": {
+        "id": {"use": "id", "description": "A rocket's id, name, network or any part; left out when there is one rocket."},
+        "node": {
+          "schema": {"type": "string"},
+          "description": "Destination node: name, map code, id, or 'pad'; default the rocket's target, else its pad.",
+          "x-script": "same"
+        },
+        "profile": {
+          "schema": {"type": "string", "enum": ["Low", "Medium", "High", "Max"]},
+          "description": "Re-entry profile; default the rocket's.",
+          "x-script": "same"
+        },
+        "park_s": {"schema": {"type": "number", "minimum": 0}, "description": "Seconds at the destination.", "x-script": "same"},
+        "mine": {"schema": {"type": "boolean"}, "description": "Mine while parked.", "default": "false", "x-script": "same"},
+        "fill_holds": {
+          "schema": {"type": "boolean"},
+          "description": "Every cargo slot filled by the end of the stop.",
+          "x-script": "same"
+        },
+        "add_cargo_slots": {
+          "schema": {"type": "integer", "minimum": 0},
+          "description": "Cargo slots filled during the stop.",
+          "x-script": "same"
+        },
+        "park_load_w": {
+          "schema": {"type": "number", "minimum": 0},
+          "description": "Power draw per tick while parked.",
+          "default": "what auto shut-off leaves on, plus mining gear with mine",
+          "x-script": "Power draw per tick while parked. (default what auto shut-off leaves on, plus mining gear with mine)"
+        },
+        "then_return": {
+          "schema": {"type": "boolean"},
+          "description": "After the stop, fly back and land.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "return_to": {
+          "schema": {"type": "string"},
+          "description": "The mount to land on after the stop; default this rocket's pad.",
+          "x-script": "same"
+        },
+        "deploy_payload": {
+          "schema": {"type": "boolean"},
+          "description": "At a Deploy node the payloads leave.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "transfer_mol": {
+          "schema": {"type": "number"},
+          "description": "Fuel received at the stop (negative: given).",
+          "x-script": "same"
+        },
+        "transfer_with": {
+          "schema": {"type": "string"},
+          "description": "Another rocket at the stop whose umbilicals equalise with this one.",
+          "x-script": "same"
+        },
+        "transfer_battery_j": {
+          "schema": {"type": "number"},
+          "description": "Battery charge received at the stop (negative: given).",
+          "x-script": "same"
+        },
+        "what_if": {
+          "schema": {"type": "object"},
+          "description": "Replace measured values: {fuel_mol, fuel_temperature_k, fuel_mix {gas: fraction}, thrust_scale 0-10, throttle 0-100, cargo_slots, add_cargo_kg, payload_kg, battery_j, battery_percent, extra_load_w}.",
+          "x-script": "same"
+        },
+        "min_confidence": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 1},
+          "description": "Confidence floor for the verdict.",
+          "default": "0.25",
+          "x-script": "same"
+        },
+        "limits": {
+          "schema": {"type": "boolean"},
+          "description": "Landing limits, profiles and least fuel.",
+          "default": "true",
+          "x-script": "same"
+        },
+        "column_check": {
+          "schema": {"type": "boolean"},
+          "description": "Scan the landing column above the pad.",
+          "default": "true",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["explain"]}},
+          "description": "explain: the model's fixed rules."
+        }
+      },
+      "example": {"id": "4067059", "node": "pad"},
+      "handlers": [
+        {
+          "name": "rocket_forecast",
+          "args": [
+            {"arg": "rocket_id", "option": "id", "change": "renamed"},
+            {"arg": "to", "option": "node", "change": "renamed"},
+            {"arg": "profile", "option": "profile", "change": "kept"},
+            {"arg": "park_s", "option": "park_s", "change": "kept"},
+            {"arg": "mine", "option": "mine", "change": "kept"},
+            {"arg": "fill_holds", "option": "fill_holds", "change": "kept"},
+            {"arg": "add_cargo_slots", "option": "add_cargo_slots", "change": "kept"},
+            {"arg": "park_load_w", "option": "park_load_w", "change": "kept"},
+            {"arg": "then_return", "option": "then_return", "change": "kept"},
+            {"arg": "return_to", "option": "return_to", "change": "kept"},
+            {"arg": "deploy_payload", "option": "deploy_payload", "change": "kept"},
+            {"arg": "transfer_mol", "option": "transfer_mol", "change": "kept"},
+            {"arg": "transfer_with", "option": "transfer_with", "change": "kept"},
+            {"arg": "transfer_battery_j", "option": "transfer_battery_j", "change": "kept"},
+            {"arg": "fuel_mol", "option": "what_if", "change": "merged", "note": "what_if: {fuel_mol}"},
+            {
+              "arg": "fuel_temperature_k",
+              "option": "what_if",
+              "change": "merged",
+              "note": "what_if: {fuel_temperature_k}"
+            },
+            {"arg": "fuel_mix", "option": "what_if", "change": "merged", "note": "what_if: {fuel_mix}"},
+            {"arg": "thrust_scale", "option": "what_if", "change": "merged", "note": "what_if: {thrust_scale}"},
+            {"arg": "throttle", "option": "what_if", "change": "merged", "note": "what_if: {throttle}"},
+            {"arg": "cargo_slots", "option": "what_if", "change": "merged", "note": "what_if: {cargo_slots}"},
+            {"arg": "add_cargo_kg", "option": "what_if", "change": "merged", "note": "what_if: {add_cargo_kg}"},
+            {"arg": "payload_kg", "option": "what_if", "change": "merged", "note": "what_if: {payload_kg}"},
+            {"arg": "battery_j", "option": "what_if", "change": "merged", "note": "what_if: {battery_j}"},
+            {"arg": "battery_percent", "option": "what_if", "change": "merged", "note": "what_if: {battery_percent}"},
+            {"arg": "extra_load_w", "option": "what_if", "change": "merged", "note": "what_if: {extra_load_w}"},
+            {"arg": "min_confidence", "option": "min_confidence", "change": "kept"},
+            {"arg": "limits", "option": "limits", "change": "kept"},
+            {"arg": "explain", "option": "include", "change": "merged", "note": "include: [\"explain\"]"},
+            {"arg": "column_check", "option": "column_check", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "legs",
+        "variants": [
+          {
+            "keys": {
+              "rocket_id": "str",
+              "rocket_name": "str",
+              "start_state": "str",
+              "destination": "{reference_id: str, name: str, code: str, code_value: int, type: str, charted: bool} | None",
+              "route": "list[{from: str, to: str, to_code: str, distance: float, done: float | None, charted: bool}]",
+              "uncharted": "list[str] | None",
+              "assumptions": "list[str]",
+              "legs": "list[{kind: str, from: str, to: str, distance: float | None, outcome: str, detail: str, seconds: float, burn_seconds: float, delta_v: float, fuel_start_mol: float, fuel_used_mol: float, fuel_left_mol: float, fuel_kpa_end: float, mass_start_kg: float, mass_end_kg: float, battery_start_j: float, battery_end_j: float, peak_thrust_n: float, max_recorded_thrust_n: float, landing: {confidence: float | None, confidence_band: str | None, min_required_thrust_n: float | None, max_expected_thrust_n: float, start_altitude_m: float, start_mass_kg: float, lowest_stop_altitude_m: float | None, touchdown_speed_ms: float, seconds: float, last_rule: str, power_lost: bool, fuel_ran_out: bool} | None}]",
+              "succeeded": "bool",
+              "verdict": "str",
+              "fuel_now_mol": "float",
+              "least_fuel_mol": "float | None",
+              "landing_limits": "{max_landing_mass_kg: float | None, max_fuel_plus_cargo_kg: float | None, min_fuel_mol: float | None, max_fuel_mol: float | None, survivable_thrust_drop_pct: float | None, confidence_floor: float, confident_mass_kg: float | None} | None",
+              "profiles": "list[{profile: str, altitude_m: float, outcome: str, fuel_used_mol: float, confidence: float | None, seconds: float | None, touchdown_speed_ms: float | None, survivable_thrust_drop_pct: float | None}] | None",
+              "column": "{clear: bool, from_y: float, to_y: float, blockers: list[{reference_id: str | None, what: str, y: float, swept_by: str}], more: int} | None",
+              "combustion": "{rate: float, source: str, note: str | None} | None",
+              "mining": "{site: str, kind: str, collectable: bool, units_per_hour: float, units_in_stop: float, slots_in_stop: int, problems: list[str] | None} | None"
+            }
+          }
+        ]
+      },
+      "x-list": "split",
+      "brief": "rocket flight and landing check"
+    },
+    "mining": {
+      "summary": "what a rocket can collect per site, by the game's formulas: yield per cycle and hour, what stops it",
+      "options": {
+        "id": {"use": "id", "description": "A rocket's id or name; left out when there is one."},
+        "node": {
+          "schema": {"type": "string"},
+          "description": "A node: its deposit and sites; left out, every charted node with a deposit.",
+          "x-script": "same"
+        },
+        "collectable_only": {
+          "schema": {"type": "boolean"},
+          "description": "Only sites this loadout collects at.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["explain"]}},
+          "description": "explain: how Mine mode and the yield work."
+        }
+      },
+      "example": {"collectable_only": true},
+      "handlers": [
+        {
+          "name": "rocket_mining_options",
+          "args": [
+            {"arg": "rocket_id", "option": "id", "change": "renamed"},
+            {"arg": "to", "option": "node", "change": "renamed"},
+            {"arg": "collectable_only", "option": "collectable_only", "change": "kept"},
+            {"arg": "explain", "option": "include", "change": "merged", "note": "include: [\"explain\"]"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "sites",
+        "variants": [
+          {
+            "keys": {
+              "rocket_id": "str",
+              "rocket_name": "str",
+              "loadout": "{miners: list[{reference_id: str, name: str, on: bool, head: {name: str, speed: float, ice_yield: float, ore_yield: float, health: float, power_factor: float, durability: float, max_durability: float, expected_cycles_left: float, mines: str} | None, power_w: float, ore_speed: float, ice_speed: float, hold_on_board: bool}], collectors: list[{reference_id: str, name: str, on: bool, has_pipe_network: bool}], scanners: list[{reference_id: str, name: str, on: bool, head_kind: str, head: str | None, points: int, cycle_s: float, does: str}], cargo: {holds: int, slots: int, filled: int, free: int}, gas_tank_litres: float, liquid_tank_litres: float, collects: list[str]}",
+              "collectable": "list[str]",
+              "not_collectable": "list[str]",
+              "sites": "list[{node: {reference_id: str, name: str, code: str, code_value: int, type: str, charted: bool}, parent: str | None, kind: str, density: float, richness: float, size: float, survey_percent: float, depleted: bool, cycle_time_s: float, base_units_per_cycle: int, stack_size: int, materials: list[{kind: str, prefab: str, weight: float, per_unit: dict[str, float] | None}], machines: list[{machine: str, collects: str, collected: bool, units_per_cycle: int, cycle_s: float | None, units_per_hour: float, slots_per_hour: float | None, cycles_to_deplete: float | None, total_units_left: float | None, head_cycles_left: float | None, problems: list[str] | None}], collectable: bool, units_per_hour: float, problems: list[str] | None}]",
+              "count": "int",
+              "notes": "list[str]"
+            }
+          }
+        ]
+      },
+      "x-list": "split",
+      "brief": "rocket mining yield"
+    },
+    "aim": {
+      "summary": "horizontal and Vertical that point a solar panel at the sun, or a satellite dish at a trader contact",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "The solar panel or the satellite dish; a list answers one entry each.",
+          "required": true
+        },
+        "contact": {"schema": {"type": "string"}, "description": "Dish only: the trader contact.", "x-script": "same"}
+      },
+      "text": [
+        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.",
+        "Write the answer with write logic (Horizontal, Vertical)."
+      ],
+      "x-script-text": [
+        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.",
+        "Write the answer with write logic (Horizontal, Vertical)."
+      ],
+      "example": {"id": "3300111"},
+      "handlers": [
+        {
+          "name": "solar_aim",
+          "when": "solar panel",
+          "args": [{"arg": "reference_id", "option": "id", "change": "renamed"}]
+        },
+        {
+          "name": "dish_aim",
+          "when": "dish",
+          "args": [
+            {"arg": "dish_id", "option": "id", "change": "renamed"},
+            {
+              "arg": "contact_id",
+              "option": "contact",
+              "change": "default-changed",
+              "note": "renamed to the shared name contact; required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            }
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "label": "SolarFixed",
+            "view": "SolarFixed",
+            "keys": {
+              "reference_id": "str",
+              "prefab_name": "str | None",
+              "can_turn": "bool",
+              "operable": "bool",
+              "sun": "{x: float, y: float, z: float, above_horizon: bool, eclipse: bool}",
+              "current": "{horizontal: float, vertical: float, ratio: float}"
+            }
+          },
+          {
+            "label": "SolarTurn",
+            "view": "SolarTurn",
+            "keys": {
+              "reference_id": "str",
+              "prefab_name": "str | None",
+              "can_turn": "bool",
+              "operable": "bool",
+              "sun": "{x: float, y: float, z: float, above_horizon: bool, eclipse: bool}",
+              "current": "{horizontal: float, vertical: float, ratio: float}",
+              "horizontal": "float",
+              "vertical": "float",
+              "off_sun_deg": "float",
+              "alignment_ratio": "float"
+            }
+          },
+          {
+            "label": "DishAim",
+            "view": "DishAim",
+            "keys": {
+              "dish_id": "str",
+              "contact_id": "str",
+              "finished": "bool",
+              "powered": "bool",
+              "on": "bool",
+              "can_rotate": "bool",
+              "horizontal": "float",
+              "vertical": "float",
+              "error_deg": "float",
+              "pointing": "list[float]",
+              "target": "list[float]",
+              "current": "{horizontal: float, vertical: float, forward: list[float], error_deg: float | None}",
+              "stale_pose_deg": "float",
+              "samples": "int"
+            }
+          }
+        ]
+      },
+      "x-list": "split",
+      "brief": "solar panel or dish angles"
+    }
+  }
+}

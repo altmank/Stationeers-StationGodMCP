@@ -1,0 +1,13 @@
+Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. Reports first; confirm: true does it.
+A report carries report_only: true and lists every target with its current and new value.
+
+whats:
+- wall: replace walls and windows with another wall or window prefab without opening a face
+- frame: replace frames with another frame prefab, or finish unfinished frames, without opening a cell
+- cable: upgrade cable in place (into heavy or super_heavy) or tidy a network (tidy: remove dead ends, loops...)
+- pipe: upgrade pipe in place (into insulated, or repair burst pieces) or tidy a network, keeping its contents
+- chute: remove chute pieces no item can pass to a consumer; junctions left with one way become straights
+
+Every what here takes: confirm, id, include, materials, max_wait, queue, refund_to, rows, skip_unmatched, verbose.
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "swap", what} gives a what's options, reply keys and an example.

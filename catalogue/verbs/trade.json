@@ -1,0 +1,222 @@
+{
+  "verb": "trade",
+  "description": "Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. buy and sell report until confirm: true.",
+  "read_only": false,
+  "tool": {
+    "options": {
+      "id": "inventory: One contact; left out, every contact. buy, sell: The trader contact. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "card": "inventory: The card whose holder's goods count; default the player's. buy: The credit card; default the one the player carries. sell:",
+      "items": "buy: Up to 32 lines {name or prefab, quantity}, in order. sell: Up to 32 lines {name or prefab, quantity}.",
+      "confirm": "true acts; left out, it reports.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out."
+    }
+  },
+  "whats": {
+    "contacts": {
+      "summary": "every trader contact in the sky and every satellite dish with where it points",
+      "options": {},
+      "text": ["No options."],
+      "example": {},
+      "handlers": [
+        {
+          "name": "trader_contacts",
+          "args": [
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "contacts",
+        "variants": [
+          {
+            "keys": {
+              "game_time_s": "float",
+              "contacts": "list[{reference_id: str, trader: str | None, display_name: str | None, shuttle: str, pad_size_tiles: list[int], direction: list[float], elevation_deg: float, min_power_to_resolve_w: float, min_power_to_contact_w: float, contacted: bool, time_left_s: float | None}]",
+              "dishes": "list[{reference_id: str, display_name: str | None, prefab_name: str | None, forward: list[float], transform_up: list[float] | None, horizontal: float, vertical: float, finished: bool, powered: bool, on: bool, can_rotate: bool, min_power_w: int, max_power_w: int, field_of_view_deg: float}]"
+            }
+          }
+        ]
+      }
+    },
+    "inventory": {
+      "summary": "what each contact buys and sells: prices, stock, conditions, and what you hold that meets them",
+      "options": {
+        "id": {"use": "id", "description": "One contact; left out, every contact."},
+        "card": {
+          "schema": {"type": "string"},
+          "description": "The card whose holder's goods count; default the player's.",
+          "x-script": "same"
+        }
+      },
+      "example": {"id": "7"},
+      "handlers": [
+        {
+          "name": "trader_inventory",
+          "args": [
+            {"arg": "contact_id", "option": "id", "change": "renamed"},
+            {"arg": "credit_card_id", "option": "card", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "contacts",
+        "variants": [
+          {
+            "keys": {
+              "contacts": "list[{reference_id: str, trader: str | None, display_name: str | None, shuttle: str, pad_size_tiles: list[int], contacted: bool, buys: list[{name: str | None, prefab_name: str | None, credits_each: float, wanted: int, gas: bool, conditions: list[str | None], have: int, sellable: int | None}], sells: list[{name: str | None, prefab_name: str | None, credits_each: float, stock: int, gas: bool, details: str | None}]}]"
+            }
+          }
+        ]
+      },
+      "x-list": "split"
+    },
+    "buy": {
+      "summary": "buy from the landed trader as the trade window's Buy does",
+      "options": {
+        "id": {"use": "id", "description": "The trader contact.", "required": true},
+        "card": {
+          "schema": {"type": "string"},
+          "description": "The credit card; default the one the player carries.",
+          "x-script": "same"
+        },
+        "items": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 32},
+          "description": "Up to 32 lines {name or prefab, quantity}, in order.",
+          "required": true,
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "example": {"id": "7", "items": [{"prefab": "ItemIronIngot", "quantity": 50}], "confirm": true},
+      "handlers": [
+        {
+          "name": "trader_buy",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "credit_card_id", "option": "card", "change": "renamed"},
+            {"arg": "items", "option": "items", "change": "kept"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "default-changed",
+              "note": "acted by default (dry_run false); now reports until confirm: true (DESIGN 9.1-9.3)",
+              "default": ["false (acts)", "false (report only)"]
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "delivered",
+        "variants": [
+          {
+            "keys": {
+              "reference_id": "str",
+              "name": "str | None",
+              "dry_run": "bool",
+              "credit_card_id": "str",
+              "credits_before": "float",
+              "credits_after": "float",
+              "results": "list[{index: int, ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int, ok: bool, name: str | None, prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None, stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int",
+              "delivered": "list[{reference_id: str, slot: int, item: Thing, quantity: float}]",
+              "gas_atmosphere_id": "str | None"
+            }
+          }
+        ],
+        "types": ["Error", "Thing"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: trade]",
+        "x-list": "split",
+        "x-target": [{"path": "id", "role": "acts-on"}]
+      }
+    },
+    "sell": {
+      "summary": "sell to the landed trader as the trade window's Sell does",
+      "options": {
+        "id": {"use": "id", "description": "The trader contact.", "required": true},
+        "card": {
+          "schema": {"type": "string"},
+          "description": "The credit card paid into; default the one the player carries.",
+          "x-script": "same"
+        },
+        "items": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 32},
+          "description": "Up to 32 lines {name or prefab, quantity}.",
+          "required": true,
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "example": {"id": "7", "items": [{"prefab": "ItemGoldIngot", "quantity": 20}]},
+      "handlers": [
+        {
+          "name": "trader_sell",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "credit_card_id", "option": "card", "change": "renamed"},
+            {"arg": "items", "option": "items", "change": "kept"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "default-changed",
+              "note": "acted by default (dry_run false); now reports until confirm: true (DESIGN 9.1-9.3)",
+              "default": ["false (acts)", "false (report only)"]
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "delivered",
+        "variants": [
+          {
+            "keys": {
+              "reference_id": "str",
+              "name": "str | None",
+              "dry_run": "bool",
+              "credit_card_id": "str",
+              "credits_before": "float",
+              "credits_after": "float",
+              "results": "list[{index: int, ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int, ok: bool, name: str | None, prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None, stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int",
+              "delivered": "list[{reference_id: str, slot: int, item: Thing, quantity: float}]",
+              "gas_atmosphere_id": "str | None"
+            }
+          }
+        ],
+        "types": ["Error", "Thing"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: trade]",
+        "x-list": "split",
+        "x-target": [{"path": "id", "role": "acts-on"}]
+      }
+    }
+  }
+}

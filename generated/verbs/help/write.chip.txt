@@ -1,0 +1,14 @@
+A circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart.
+Options:
+- id (string, required): One id, or "looking_at" (the thing the crosshair is on).
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+- code (string): The complete program: IC10, or Lua for a Lua chip.
+- code_file (string): A file path on the MCP server's machine whose text is sent as code.
+- pins (object): {d0..d5: device id or null}; pins left out keep their device.
+- allow (list of off_network): off_network: a pin device not on the housing's data network.
+- run (pause | step | resume | restart): pause, step, resume (IC10) or restart (Lua).
+- include (list of code): code: echo the program as stored.
+Given together, they apply in this order: code, pins, run. The reply is {code, pins, run} with the parts given; the first failure stops the rest, named in not_run.
+One id only: a list is refused, naming run_script (this write cannot be undone).
+Reply: (source) gateway_id, reference_id, source, line_number, compilation_error, error_line, error_type, error_code, compile_error_line, compile_error_type, language, holder {reference_id, prefab_name, display_name}, chip {reference_id, prefab_name, display_name}, source_length, lua {compiling, has_runtime, init_complete, library, source_version, last_error, log, unavailable}, warnings [{code, message}] | (pins) gateway_id, reference_id, has_data_network, changes [{index, previous_reference_id, reference_id, changed}], pins [{index, reference_id, prefab_name, display_name, label, reachable}] | (run) gateway_id, reference_id, action, paused, previous_line, line_number, compilation_error, error_line, error_type, error_code, compile_error_line, compile_error_type, language, holder {reference_id, prefab_name, display_name}, chip {reference_id, prefab_name, display_name}, lua {compiling, has_runtime, init_complete, library, source_version, last_error, log, unavailable}
+Example: write {what: "chip", id: "4820585", code_file: "C:/work/ctl.ic10"}

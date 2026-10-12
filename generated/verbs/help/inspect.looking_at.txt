@@ -1,0 +1,6 @@
+What the player's crosshair is on, and where a longer look ray lands.
+Options:
+- distance (number, default 10): How far the look ray is cast.
+- include (list of player | interactable | view | hit | body | all): Parts to add.
+Reply: player {reference_id, display_name, position}, target {reference_id, prefab_name, display_name, custom_name, kind, runtime_type, position, distance_m, is_device, has_atmosphere, parent, rotation, body, facing_me}, interactable {action, display_name, contextual_name, state, slot}, view {eye, forward, right, up, yaw_deg, pitch_deg, axes, ambiguous, third_person, seated, source, age_s}, hit {point, distance_m, face, thing, normal, face_plane, cell_2m, small_cell, support, local_on_target}
+Example: inspect {what: "looking_at"}

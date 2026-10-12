@@ -1,0 +1,9 @@
+A device's slots: occupants, what each takes, slot logic values.
+Options:
+- id (string or array, required): Target: an id, a list of ids, a ref ("r3": the ids that reply showed; "r3.rockets.parts"), or "looking_at" (the thing the crosshair is on); "player" where the what says.
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+- slot (integer): One slot index; left out, every slot.
+id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: gateway_id, reference_id, device {reference_id, prefab_name, prefab_hash, display_name, runtime_type, slot_count, is_gateway, worn_by, worn_slot}, slots [{index, underlying_slot_index, display_name, string_key, slot_class, empty, interactable, locked, swappable, hides_occupant, specific_prefab_hashes, occupant, logic_values, logic_value_count}], count, slot_count
+Example: inspect {what: "slots", id: "1199811"}

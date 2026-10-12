@@ -1,0 +1,20 @@
+List things in the world or an area, filtered, nearest first. Read only.
+Pages: limit, offset, has_more; order nearest (default) or id.
+
+whats:
+- thing: any object: structures, devices, tanks, loose items, players, animals
+- item: stackable items and kits with quantity and holders, anywhere: ground, carried, stored, machine stock, silos; a kit such as Kit (Battery Large) is an item to find and move, a built structure is not; group_by sums them
+- device: devices with logic, in the world or on one gateway's data networks
+- container: outermost holders with at least one item: lockers, crates, machines, a backpack on the floor
+- frame: outer frames (a face on outside air), with exposed faces and airtightness
+- pad: landing pads for traders and rockets (not power or teleport pads), by the game's checks: size, runway, which ships fit
+- water: canisters, tanks, devices and pipe networks holding water or steam, largest first
+- ore: deep miner spots: the ore profile at a point, and the nearest spots holding given ores
+- food: every food and drink: nutrition, hydration, decay, totals
+- plant: plants in trays, planters and stations: stage, health, problems, time to harvest
+- room: closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in
+- gateway: the device scopes: 'world' and each StationGod Gateway with its status
+- damaged: damaged and broken things in the world, worst first
+
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "find", what} gives a what's options, reply keys and an example.

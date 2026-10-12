@@ -1,0 +1,186 @@
+{
+  "verb": "show",
+  "description": "Draw on the player's screen only, for a while: a build preview, or highlights through walls. Nothing in the world changes.",
+  "read_only": true,
+  "tool": {
+    "options": {
+      "placements": "As build structure's placements.",
+      "prefab": "Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.",
+      "boxes": "{min, max, color} boxes.",
+      "targets": "Up to 64, each one of {id (one or a list), network, at} with color, label, pulse.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out."
+    }
+  },
+  "whats": {
+    "preview": {
+      "summary": "wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes",
+      "options": {
+        "placements": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "As build structure's placements.",
+          "x-script": "same"
+        },
+        "prefab": {"use": "prefab", "schema": {"type": ["string", "integer"]}},
+        "at": {
+          "schema": {"type": ["array", "object", "string"]},
+          "description": "A point, \"looking_at\", or a relative or look-face form (help positions).",
+          "x-script": "same"
+        },
+        "rotation": {
+          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "description": "[x, y, z] degrees, multiples of 90.",
+          "x-script": "same"
+        },
+        "facing": {
+          "schema": {"type": "string"},
+          "description": "Where the front points (as build structure).",
+          "x-script": "same"
+        },
+        "up": {"schema": {"type": "string"}, "description": "Where the top points (as build structure).", "x-script": "same"},
+        "face": {
+          "schema": {"type": "string"},
+          "description": "Face-placed pieces: the cell face it sits on.",
+          "x-script": "same"
+        },
+        "orient": {
+          "schema": {"type": "object"},
+          "description": "{mount, upright, controls_toward, ports, flow}: choose the turn by intent.",
+          "x-script": "same"
+        },
+        "above_floor": {
+          "schema": {"type": "number"},
+          "description": "Bottom this many metres above the floor below at.",
+          "x-script": "same"
+        },
+        "build_state": {
+          "schema": {"type": ["string", "integer"]},
+          "description": "finished (default), first, or a state index.",
+          "x-script": "same"
+        },
+        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout"]}}},
+        "cells": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 512},
+          "description": "Yellow 0.5 m cubes at these points.",
+          "x-script": "same"
+        },
+        "boxes": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "{min, max, color} boxes.",
+          "x-script": "same"
+        },
+        "seconds": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 300},
+          "description": "How long to show.",
+          "default": "30",
+          "x-script": "same"
+        },
+        "keep": {
+          "schema": {"type": "boolean"},
+          "description": "Keep what earlier calls drew.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "clear": {"schema": {"type": "boolean"}, "description": "Only remove what is drawn.", "x-script": "same"},
+        "xray": {
+          "schema": {"type": "boolean"},
+          "description": "Draw through walls and terrain.",
+          "default": "false",
+          "x-script": "same"
+        }
+      },
+      "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x"},
+      "handlers": [
+        {
+          "name": "show_preview",
+          "args": [
+            {"arg": "placements", "option": "placements", "change": "kept"},
+            {"arg": "prefab", "option": "prefab", "change": "kept"},
+            {"arg": "at", "option": "at", "change": "kept"},
+            {"arg": "rotation", "option": "rotation", "change": "kept"},
+            {"arg": "facing", "option": "facing", "change": "kept"},
+            {"arg": "up", "option": "up", "change": "kept"},
+            {"arg": "face", "option": "face", "change": "kept"},
+            {"arg": "orient", "option": "orient", "change": "kept"},
+            {"arg": "above_floor_m", "option": "above_floor", "change": "renamed"},
+            {"arg": "build_state", "option": "build_state", "change": "kept"},
+            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
+            {"arg": "cells", "option": "cells", "change": "kept"},
+            {"arg": "boxes", "option": "boxes", "change": "kept"},
+            {"arg": "seconds", "option": "seconds", "change": "kept"},
+            {"arg": "keep", "option": "keep", "change": "kept"},
+            {"arg": "clear", "option": "clear", "change": "kept"},
+            {"arg": "xray", "option": "xray", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "shown": "int",
+              "cleared": "int",
+              "seconds": "float",
+              "dry_run": "{tool: str, status: str, job_id: str | None, ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, prefab_hash: int | None, display_name: str | None, placement: str | None, position: Vec3 | None, orientation: {facing: str | None, up: str | None, euler: Vec3} | None, face: str | None, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, build_state: int | None, build_states: int | None, label: str | None, color: {index: int | None, name: str | None} | None, cost: list[{prefab_name: str | None, quantity: int}], layout: {footprint: {small_cells: {count: int, cells: list[{x: float, y: float, z: float}] | None}, large_cells: list[Vec3] | None, body: {origin: {x: float, y: float, z: float}, render_box: {min: PointView, max: PointView, size: PointView}, centre_offset: {x: float, y: float, z: float}, grid_box: {min: PointView, max: PointView, size: PointView} | None, grid_cells: int}, mount: {plane: str, outward: str, axes: list[str], min: list[float], max: list[float]} | None}, sections: {walls: list[{face: {x: float, y: float, z: float}, reference_id: str | None, prefab_name: str | None, kind: str}], count: int, crosses_seam: bool} | None, conflicts: list[{code: str, level: str, message: str, reference_id: str | None}], port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}] | None} | None, orient: {chosen: {facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool} | None, alternatives: list[{facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool}], tried: int, mode_flip: {logic_type: str, value: int, reason: str} | None} | None, resolved: {at: {x: float, y: float, z: float}, at_how: str, facing: str | None, facing_how: str | None, view: {source: str, age_s: float} | None} | None}], materials: list[{prefab_name: str | None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], from: Thing | None, free: bool, notes: list[str] | None} | None",
+              "notes": "list[str]",
+              "drawn_on": "str | None",
+              "view": "{source: str, age_s: float} | None"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      }
+    },
+    "highlight": {
+      "summary": "show the player where things, a network or far points are, tinted and labelled",
+      "options": {
+        "targets": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "Up to 64, each one of {id (one or a list), network, at} with color, label, pulse.",
+          "x-script": "same"
+        },
+        "seconds": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 600},
+          "description": "How long.",
+          "default": "60",
+          "x-script": "same"
+        },
+        "keep": {
+          "schema": {"type": "boolean"},
+          "description": "Keep what earlier calls drew.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "clear": {"schema": {"type": "boolean"}, "description": "Only remove what is drawn.", "x-script": "same"}
+      },
+      "example": {"targets": [{"id": "1199811", "label": "this one"}]},
+      "handlers": [
+        {
+          "name": "highlight",
+          "args": [
+            {"arg": "targets", "option": "targets", "change": "kept"},
+            {"arg": "seconds", "option": "seconds", "change": "kept"},
+            {"arg": "keep", "option": "keep", "change": "kept"},
+            {"arg": "clear", "option": "clear", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "targets": "list[{index: int, kind: str, color: str, label: str | None, pulse: bool, network_id: str | None, things: int | None, missing: list[str] | None, truncated: bool | None, at: Vec3 | None, distance_m: float | None, bearing_deg: float | None, compass: str | None, rise_m: float | None}]",
+              "cleared": "int",
+              "seconds": "float",
+              "renderer": "str",
+              "notes": "list[str]",
+              "drawn_on": "str | None",
+              "view": "{source: str, age_s: float} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      }
+    }
+  }
+}

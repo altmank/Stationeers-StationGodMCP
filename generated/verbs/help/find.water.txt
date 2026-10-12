@@ -1,0 +1,5 @@
+Canisters, tanks, devices and pipe networks holding water or steam, largest first.
+Options:
+- min_mol (number, default 1): Skip sources holding less water, polluted water and steam together.
+Reply: sources [{kind, owner, atmosphere_id, volume_l, pressure_kpa, temperature_k, water}], count, totals {liquid_mol, liquid_l, hydration, polluted_mol, polluted_l, steam_mol, steam_if_condensed_l}, min_mol, local_player {reference_id, display_name, position}
+Example: find {what: "water", min_mol: 50}

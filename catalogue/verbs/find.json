@@ -1,0 +1,863 @@
+{
+  "verb": "find",
+  "description": "List things in the world or an area, filtered, nearest first. Read only.",
+  "text": ["Pages: limit, offset, has_more; order nearest (default) or id."],
+  "read_only": true,
+  "tool": {"options": {"prefab": "Whole name, hash, or parts with * ('*Tank*Insulated*'); or a list."}},
+  "whats": {
+    "thing": {
+      "summary": "any object: structures, devices, tanks, loose items, players, animals",
+      "options": {
+        "name": {"use": "name", "description": "Part of the shown or game name, any case."},
+        "prefab": {"use": "prefab"},
+        "category": {
+          "schema": {"type": "string", "enum": ["any", "item", "dynamic", "structure", "entity", "other"]},
+          "description": "Only this kind of thing.",
+          "default": "any",
+          "x-script": "same"
+        },
+        "labelled": {
+          "schema": {"type": "boolean"},
+          "description": "Only things with a Labeller name.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "runtime_type": {
+          "schema": {"type": "string"},
+          "description": "Only things of this game class or one built on it ('Device', 'Pipe').",
+          "x-script": "same"
+        },
+        "broken": {
+          "schema": {"type": "boolean"},
+          "description": "true: only broken things; false: only whole ones.",
+          "x-script": "True: only broken things; False: only whole ones."
+        },
+        "has_atmosphere": {
+          "schema": {"type": "boolean"},
+          "description": "true: only things holding gas or liquid; false: only without.",
+          "x-script": "True: only things holding gas or liquid; False: only without."
+        },
+        "made_by": {
+          "schema": {"type": "string"},
+          "description": "Only items the print log has from this maker (id, or part of its name).",
+          "x-script": "same"
+        },
+        "made_since": {
+          "schema": {"type": "number"},
+          "description": "Only items made at or after this game time (s); negative: that many seconds back.",
+          "x-script": "same"
+        },
+        "location": {
+          "schema": {"type": "string", "enum": ["any", "ground", "player", "stored", "built", "world"]},
+          "description": "ground, player, stored, built or world (players, animals).",
+          "default": "any",
+          "x-script": "same"
+        },
+        "near": {"use": "near"},
+        "radius": {
+          "use": "radius",
+          "schema": {"type": "number", "minimum": 0},
+          "description": "Metres around near; at most 1000 around a point, no limit around \"player\"."
+        },
+        "box": {"use": "box"},
+        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
+        "offset": {"use": "offset"},
+        "order": {"use": "order"}
+      },
+      "example": {"prefab": "*Battery*", "near": "player", "radius": 30},
+      "handlers": [
+        {
+          "name": "find_things",
+          "args": [
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {"arg": "prefab", "option": "prefab", "change": "kept"},
+            {"arg": "prefabs", "option": "prefab", "change": "merged", "note": "prefab takes a list"},
+            {
+              "arg": "prefab_contains",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a part is written with *: '*Battery*' (see MAP-30)"
+            },
+            {"arg": "kind", "option": "category", "change": "renamed"},
+            {"arg": "labelled_only", "option": "labelled", "change": "renamed"},
+            {"arg": "runtime_type", "option": "runtime_type", "change": "kept"},
+            {"arg": "broken", "option": "broken", "change": "kept"},
+            {"arg": "has_atmosphere", "option": "has_atmosphere", "change": "kept"},
+            {"arg": "made_by", "option": "made_by", "change": "kept"},
+            {"arg": "made_since", "option": "made_since", "change": "kept"},
+            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
+            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
+            {"arg": "near", "option": "near", "change": "kept"},
+            {"arg": "radius_m", "option": "radius", "change": "renamed"},
+            {
+              "arg": "near_player_m",
+              "option": "near+radius",
+              "change": "merged",
+              "note": "near: \"player\" with radius (see MAP-30)"
+            },
+            {"arg": "location", "option": "location", "change": "kept"},
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "offset", "option": "offset", "change": "kept"},
+            {"arg": "order", "option": "order", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "things",
+        "variants": [
+          {
+            "keys": {
+              "things": "list[{made: {maker_id: str | None, maker_prefab: str | None, maker_name: str | None, game_time_s: float, quantity: int, split_from: str | None} | None, reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, game_name: str, kind: str, runtime_type: str, labelable: bool, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, is_device: bool, has_atmosphere: bool, is_broken: bool, condition: str, rotation: {facing: str | None, up: str | None, euler: Vec3} | None, rocket_state: str | None, color: Color | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None}]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool",
+              "scanned": "int",
+              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
+            }
+          }
+        ],
+        "types": ["Color", "Vec3"]
+      },
+      "brief": "any object: structures, devices, items, players"
+    },
+    "item": {
+      "summary": "stackable items and kits with quantity and holders, anywhere: ground, carried, stored, machine stock, silos; a kit such as Kit (Battery Large) is an item to find and move, a built structure is not; group_by sums them",
+      "options": {
+        "name": {"use": "name"},
+        "prefab": {"use": "prefab"},
+        "location": {
+          "schema": {"type": "string", "enum": ["any", "ground", "player", "stored", "machine_stock", "silo"]},
+          "description": "Where the item is.",
+          "default": "any",
+          "x-script": "same"
+        },
+        "within": {
+          "schema": {"type": "string"},
+          "description": "Only items inside this holder at any depth (and its machine stock or silo store).",
+          "x-script": "same"
+        },
+        "near": {"use": "near"},
+        "radius": {
+          "use": "radius",
+          "schema": {"type": "number", "minimum": 0},
+          "description": "Metres around near; at most 1000 around a point, no limit around \"player\"."
+        },
+        "box": {"use": "box"},
+        "group_by": {
+          "schema": {"type": "string", "enum": ["holder", "prefab", "place"]},
+          "description": "holder: sum per holder and prefab; prefab: sum per prefab; place: per prefab split into ground, carried, stored, machine stock and silo, with top holders.",
+          "x-script": "same"
+        },
+        "holders": {
+          "schema": {"type": "integer", "minimum": 0, "maximum": 100},
+          "description": "group_by place: holders listed per prefab, most first.",
+          "default": "1",
+          "x-script": "same"
+        },
+        "exclude_in_use": {
+          "schema": {"type": "boolean"},
+          "description": "Leave out parts a device is using (chips in holders, a running filter's filters).",
+          "default": "false",
+          "x-script": "same"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 500},
+          "description": "Items (or groups) per page.",
+          "default": "10; group_by place 12",
+          "x-script": "The first n in order (items (or groups)); left out, every one."
+        },
+        "offset": {"use": "offset"},
+        "order": {"use": "order"}
+      },
+      "text": ["group_by place takes no offset, order or exclude_in_use (the totals are not paged)."],
+      "x-script-text": ["group_by place takes no order or exclude_in_use (the totals are not paged)."],
+      "example": {"prefab": "ItemIronIngot", "group_by": "place"},
+      "handlers": [
+        {
+          "name": "find_items",
+          "when": "list or group_by holder/prefab",
+          "args": [
+            {"arg": "prefab", "option": "prefab", "change": "kept"},
+            {"arg": "prefabs", "option": "prefab", "change": "merged", "note": "prefab takes a list"},
+            {
+              "arg": "prefab_contains",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a part is written with *: '*Battery*' (see MAP-30)"
+            },
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {"arg": "location", "option": "location", "change": "kept"},
+            {"arg": "within_id", "option": "within", "change": "renamed"},
+            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
+            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
+            {"arg": "near", "option": "near", "change": "kept"},
+            {"arg": "radius_m", "option": "radius", "change": "renamed"},
+            {
+              "arg": "near_player_m",
+              "option": "near+radius",
+              "change": "merged",
+              "note": "near: \"player\" with radius (see MAP-30)"
+            },
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "offset", "option": "offset", "change": "kept"},
+            {"arg": "order", "option": "order", "change": "renamed"},
+            {"arg": "group_by", "option": "group_by", "change": "kept"},
+            {"arg": "exclude_in_use", "option": "exclude_in_use", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "item_totals",
+          "when": "group_by place",
+          "note": "item_totals is find what: item, group_by: \"place\"",
+          "args": [
+            {"arg": "prefab", "option": "prefab", "change": "kept"},
+            {"arg": "prefabs", "option": "prefab", "change": "merged", "note": "prefab takes a list"},
+            {
+              "arg": "prefab_contains",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a part is written with *: '*Battery*' (see MAP-30)"
+            },
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {"arg": "location", "option": "location", "change": "kept"},
+            {"arg": "within_id", "option": "within", "change": "renamed"},
+            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
+            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
+            {"arg": "near", "option": "near", "change": "kept"},
+            {"arg": "radius_m", "option": "radius", "change": "renamed"},
+            {
+              "arg": "near_player_m",
+              "option": "near+radius",
+              "change": "merged",
+              "note": "near: \"player\" with radius (see MAP-30)"
+            },
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "holders_limit", "option": "holders", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "items",
+        "variants": [
+          {
+            "label": "list or group_by holder/prefab",
+            "view": "FindItems",
+            "keys": {
+              "items": "list[{prefab_name: str | None, display_name: str | None, reagent: str | None, quantity: float, entries: int, location: str, holder: Thing | None, position: Vec3 | None, distance_m: float | None} | {reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None} | {prefab_name: str | None, display_name: str | None, reagent: str | None, quantity: float, entries: int, holders: int} | {prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, silo: {entry: int, inside: str | None}} | {prefab_name: str | None, display_name: str | None, quantity: float, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, machine_stock: {reagent: str, reagent_name: str | None, kind: str}}]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool",
+              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None",
+              "in_use_left_out": "int | None"
+            }
+          },
+          {
+            "label": "group_by place",
+            "view": "ItemTotals",
+            "keys": {
+              "totals": "list[{prefab_name: str | None, display_name: str | None, items: int, quantity: float, on_ground: float, carried: float, stored: float, machine_stock: float, silo: float, reagent: str | None, top_holders: list[{reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, kind: str, position: Vec3}] | None}]",
+              "prefab_count": "int",
+              "item_count": "int",
+              "machine_stock_entries": "int",
+              "silo_entries": "int"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "brief": "stackable items and kits anywhere; group_by sums"
+    },
+    "device": {
+      "summary": "devices with logic, in the world or on one gateway's data networks",
+      "options": {
+        "gateway": {"use": "gateway"},
+        "prefab": {"use": "prefab"},
+        "name": {"use": "name"},
+        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 4096}, "default": "25"},
+        "offset": {"use": "offset"}
+      },
+      "text": [
+        "Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way)."
+      ],
+      "example": {"prefab": "*GasSensor*"},
+      "handlers": [
+        {
+          "name": "list_devices",
+          "args": [
+            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
+            {
+              "arg": "prefab_hash",
+              "option": "prefab",
+              "change": "merged",
+              "note": "prefab takes a name, a hash or a part"
+            },
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "devices",
+        "variants": [
+          {
+            "keys": {
+              "gateway_id": "str",
+              "devices": "list[{reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}]",
+              "count": "int"
+            }
+          }
+        ]
+      },
+      "brief": "devices with logic"
+    },
+    "container": {
+      "summary": "outermost holders with at least one item: lockers, crates, machines, a backpack on the floor",
+      "options": {
+        "prefab": {"use": "prefab"},
+        "name": {"use": "name"},
+        "near": {"use": "near", "description": "\"player\" only."},
+        "radius": {"use": "radius"},
+        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "12"},
+        "offset": {"use": "offset"},
+        "order": {"use": "order"}
+      },
+      "example": {"prefab": "*Locker*", "near": "player", "radius": 15},
+      "handlers": [
+        {
+          "name": "list_containers",
+          "args": [
+            {
+              "arg": "prefab_contains",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a part is written with *: '*Battery*'"
+            },
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {
+              "arg": "near_player_m",
+              "option": "near+radius",
+              "change": "merged",
+              "note": "near: \"player\" with radius"
+            },
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "offset", "option": "offset", "change": "kept"},
+            {"arg": "order", "option": "order", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "containers",
+        "variants": [
+          {
+            "keys": {
+              "containers": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_count: int, used_slot_count: int, item_count: int, items: list[{prefab_name: str, quantity: float}], position: Vec3, distance_m: float | None}]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool",
+              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "brief": "holders with items"
+    },
+    "frame": {
+      "summary": "outer frames (a face on outside air), with exposed faces and airtightness",
+      "options": {
+        "near": {"use": "near", "description": "\"player\" only."},
+        "radius": {"use": "radius"},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["inner"]}},
+          "description": "inner: list inner frames too."
+        },
+        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 1000}, "default": "20"},
+        "offset": {"use": "offset"},
+        "order": {"use": "order"}
+      },
+      "example": {"near": "player", "radius": 20},
+      "handlers": [
+        {
+          "name": "outer_frames",
+          "args": [
+            {
+              "arg": "near_player_m",
+              "option": "near+radius",
+              "change": "merged",
+              "note": "near: \"player\" with radius"
+            },
+            {"arg": "include_inner", "option": "include", "change": "merged", "note": "include: [\"inner\"]"},
+            {"arg": "limit", "option": "limit", "change": "kept"},
+            {"arg": "offset", "option": "offset", "change": "kept"},
+            {"arg": "order", "option": "order", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "frames",
+        "variants": [
+          {
+            "keys": {
+              "frames": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, distance_m: float | None, exposed_faces: list[str], exposed_face_count: int, blocks_air: bool, build_state: int, color: {index: int | None, name: str | None}}]",
+              "count": "int",
+              "total_frames": "int",
+              "total_outer": "int",
+              "offset": "int",
+              "limit": "int",
+              "total": "int",
+              "has_more": "bool",
+              "include_inner": "bool",
+              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "brief": "outer frames"
+    },
+    "pad": {
+      "summary": "landing pads for traders and rockets (not power or teleport pads), by the game's checks: size, runway, which ships fit",
+      "options": {},
+      "text": ["No options."],
+      "example": {},
+      "handlers": [
+        {
+          "name": "landing_pads",
+          "args": [
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "pads",
+        "variants": [
+          {
+            "keys": {
+              "pads": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, forward: str, is_network_center: bool, piece_count: int, extent: {x_tiles: int, z_tiles: int} | None, largest_square_tiles: int, runway_ok: bool | None, fits_by_ship: list[{shuttle_type: str, pad_size_tiles: list[int], runway_tiles: int, needs_threshold: bool, fits: bool}], contacts: list[{reference_id: str, name: str | None, shuttle_type: str, pad_size_tiles: list[int], fits: bool, can_land: bool, reason: str}]}]",
+              "count": "int"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "brief": "landing pads"
+    },
+    "water": {
+      "summary": "canisters, tanks, devices and pipe networks holding water or steam, largest first",
+      "options": {
+        "min_mol": {
+          "schema": {"type": "number"},
+          "description": "Skip sources holding less water, polluted water and steam together.",
+          "default": "1",
+          "x-script": "same"
+        }
+      },
+      "example": {"min_mol": 50},
+      "handlers": [
+        {
+          "name": "water_sources",
+          "args": [
+            {"arg": "min_mol", "option": "min_mol", "change": "kept"},
+            {
+              "arg": "min_moles",
+              "option": "",
+              "change": "dropped",
+              "note": "old name of min_mol, still read today; min_mol stays"
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "sources",
+        "variants": [
+          {
+            "keys": {
+              "sources": "list[{kind: str, owner: Any, atmosphere_id: str, volume_l: float, pressure_kpa: float, temperature_k: float, water: {liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l: float}}]",
+              "count": "int",
+              "totals": "{liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l: float}",
+              "min_mol": "float",
+              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "brief": "water and steam sources"
+    },
+    "ore": {
+      "summary": "deep miner spots: the ore profile at a point, and the nearest spots holding given ores",
+      "options": {
+        "near": {
+          "use": "near",
+          "schema": {"type": "array"},
+          "description": "The point to report and search from; default the player's position."
+        },
+        "ores": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
+          "description": "Reagents a spot must all hold ([\"Cobalt\"]).",
+          "x-script": "same"
+        },
+        "radius": {
+          "use": "radius",
+          "schema": {"type": "number", "minimum": 1, "maximum": 3000},
+          "description": "Search radius.",
+          "default": "500"
+        },
+        "separation": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 3000},
+          "description": "Least distance between two spots.",
+          "default": "100",
+          "x-script": "same"
+        },
+        "step": {
+          "schema": {"type": "number", "minimum": 0.5, "maximum": 500},
+          "description": "Sample spacing; default the finest within the budget.",
+          "x-script": "same"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {"type": "integer", "minimum": 1, "maximum": 20},
+          "description": "Spots returned, nearest first.",
+          "default": "5",
+          "x-script": "The first n in order (spots returned, nearest first); left out, every one."
+        }
+      },
+      "example": {"ores": ["Cobalt"]},
+      "handlers": [
+        {
+          "name": "deep_miner_spots",
+          "args": [
+            {"arg": "at", "option": "near", "change": "renamed"},
+            {"arg": "ores", "option": "ores", "change": "kept"},
+            {"arg": "radius_m", "option": "radius", "change": "renamed"},
+            {"arg": "count", "option": "limit", "change": "renamed"},
+            {"arg": "min_separation_m", "option": "separation", "change": "renamed"},
+            {"arg": "step_m", "option": "step", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "spots",
+        "variants": [
+          {
+            "keys": {
+              "at": "{position: Vec3, regions: list[{set: str, region: str, name: str | None}], profile_id: str | None}",
+              "profiles": "list[{id: str, reagents: list[{reagent: str, grams: float}], quantity: list[int], time_s: list[int], regions: list[str]}]",
+              "search": "{ores: list[str], profiles: list[str], radius_m: float, step_m: float, min_separation_m: float, samples: int, matched: int, searched_radius_m: float, truncated: bool} | None",
+              "spots": "list[{at: Vec3, distance_m: float, bearing_deg: float, compass: str, profile_id: str, regions: list[{set: str, region: str, name: str | None}], terrain: {ground_y: float | None, cell_volume_l: float | None, terrain_ok: bool | None, note: str}}] | None",
+              "beacons": "list[{at: list[float], label: str}] | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "brief": "deep miner ore spots"
+    },
+    "food": {
+      "summary": "every food and drink: nutrition, hydration, decay, totals",
+      "options": {},
+      "text": ["No options."],
+      "example": {},
+      "handlers": [
+        {
+          "name": "consumables",
+          "args": [
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "food",
+        "variants": [
+          {
+            "keys": {
+              "food": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, nutrition_each: float, nutrition: float, food_quality: str, decay_time_left_s: int | None, in_package: str | None, package_name: str | None}]",
+              "drinks": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, liquid_l: float, hydration: float, in_package: str | None, package_name: str | None}]",
+              "packages": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, runtime_type: str, contents: list[{prefab_name: str, display_name: str | None, items: int, quantity: float}], nutrition: float, liquid_l: float, hydration: float}]",
+              "not_counted": "list[{prefab_name: str, display_name: str | None, reason: str, items: int, quantity: float}]",
+              "totals": "{nutrition: float, nutrition_in_packages: float, liquid_l: float, liquid_in_packages_l: float, hydration: float, hydration_in_packages: float, food_items: int, drink_items: int}",
+              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      },
+      "brief": "food and drink"
+    },
+    "plant": {
+      "summary": "plants in trays, planters and stations: stage, health, problems, time to harvest",
+      "options": {
+        "id": {"use": "id", "description": "One plant, in full."},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["unplanted"]}},
+          "description": "unplanted: crops and seeds not planted."
+        },
+        "verbose": {"use": "verbose"}
+      },
+      "example": {},
+      "handlers": [
+        {
+          "name": "plants",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "include_unplanted", "option": "include", "change": "merged", "note": "include: [\"unplanted\"]"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "plants",
+        "variants": [
+          {
+            "keys": {
+              "game_time_s": "float",
+              "day_length_s": "int",
+              "debug_fast_growth": "bool",
+              "plants": "list[Any]",
+              "count": "int"
+            }
+          }
+        ]
+      },
+      "x-list": "split",
+      "brief": "plants: stage, health, harvest"
+    },
+    "room": {
+      "summary": "closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in",
+      "options": {
+        "id": {"use": "id", "description": "A thing: only the room it is in."},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["cells", "devices"]}},
+          "description": "cells: every cell centre; devices: the devices in each room."
+        }
+      },
+      "example": {"id": "4820585"},
+      "handlers": [
+        {
+          "name": "rooms",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "include_cells", "option": "include", "change": "merged", "note": "include: [\"cells\"]"},
+            {"arg": "include_devices", "option": "include", "change": "merged", "note": "include: [\"devices\"]"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "rooms",
+        "variants": [
+          {
+            "keys": {
+              "rooms": "list[{room_id: str, room_type: str, cell_count: int, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float, heat_capacity_j_per_k: float, thermal_energy_j: float, gases: list[{gas: str, amount_mol: float, ratio: float}], bounds: {min: Vec3, max: Vec3}, contains_local_player: bool, devices: list[Thing] | None, cells: list[Vec3] | None}]",
+              "local_player_room_id": "str | None"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "x-list": "split",
+      "brief": "closed rooms: pressure, gases"
+    },
+    "gateway": {
+      "summary": "the device scopes: 'world' and each StationGod Gateway with its status",
+      "options": {},
+      "text": ["No options."],
+      "example": {},
+      "handlers": [{"name": "list_gateways", "args": []}],
+      "reply": {
+        "list": "gateways",
+        "variants": [
+          {
+            "keys": {
+              "gateways": "list[{gateway_id: str, display_name: str | None, prefab_name: str | None, available: bool, status: str, data_network_count: int, visible_device_count: int, worn_item_count: int}]",
+              "count": "int"
+            }
+          }
+        ]
+      },
+      "brief": "device scopes (gateways)"
+    },
+    "damaged": {
+      "summary": "damaged and broken things in the world, worst first",
+      "options": {
+        "min_damage": {
+          "schema": {"type": "number", "minimum": 0},
+          "description": "Only damage ratio above this (0.25 yellow, 0.75 red).",
+          "default": "0",
+          "x-script": "same"
+        },
+        "broken_only": {
+          "schema": {"type": "boolean"},
+          "description": "Only things in the game's broken state.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "structures_only": {"schema": {"type": "boolean"}, "description": "Leave items out.", "default": "false", "x-script": "same"},
+        "near": {"use": "near", "description": "\"player\" only."},
+        "radius": {"use": "radius"},
+        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
+        "offset": {"use": "offset"}
+      },
+      "example": {"min_damage": 0.25, "structures_only": true},
+      "handlers": [
+        {
+          "name": "thing_health",
+          "note": "id/ids/network forms are inspect health; the world scan (no id, no network) is find what: damaged",
+          "args": [
+            {
+              "arg": "min_damage_ratio",
+              "option": "min_damage",
+              "change": "moved",
+              "note": "the world scan is find what: damaged"
+            },
+            {"arg": "structures_only", "option": "structures_only", "change": "moved", "note": "scan form"},
+            {
+              "arg": "broken_only",
+              "option": "broken_only",
+              "change": "moved",
+              "note": "scan form; name kept: find thing's broken is three-way, this is a switch (see MAP-05)"
+            },
+            {"arg": "near_player_m", "option": "near+radius", "change": "moved", "note": "scan form"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "things",
+        "variants": [
+          {
+            "label": "Health",
+            "view": "Health",
+            "keys": {
+              "reference_id": "str",
+              "prefab_name": "str | None",
+              "display_name": "str | None",
+              "custom_name": "str | None",
+              "build_state": "{current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None",
+              "condition": "str",
+              "kind": "str",
+              "type": "str",
+              "damage_state": "str",
+              "damage_state_class": "str | None",
+              "max_damage": "float | None",
+              "total_damage": "float | None",
+              "damage_ratio": "float | None",
+              "health_percent": "int | None",
+              "band": "str | None",
+              "damage": "{brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None",
+              "is_broken": "bool",
+              "broken_build_state": "bool | None",
+              "being_destroyed": "bool",
+              "pipe_burst": "str | None",
+              "damage_record": "list[str] | None",
+              "position": "Vec3",
+              "distance_m": "float | None",
+              "networks": "list[{kind: str, id: str}] | None"
+            }
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          },
+          {
+            "label": "HealthNetwork",
+            "view": "HealthNetwork",
+            "keys": {
+              "network_id": "str",
+              "kind": "str",
+              "pieces": "int",
+              "damaged_only": "bool",
+              "warning": "str | None",
+              "broken_neighbour_count": "int",
+              "broken_neighbours": "list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} | None, touches: str}] | None",
+              "things": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str, kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio: float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed: bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id: str}] | None}]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool"
+            }
+          },
+          {
+            "label": "HealthScan",
+            "view": "HealthScan",
+            "keys": {
+              "things": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str, kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio: float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed: bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id: str}] | None}]",
+              "count": "int",
+              "total": "int",
+              "structures": "int",
+              "broken": "int",
+              "scanned": "int",
+              "min_damage_ratio": "float",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool",
+              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
+            }
+          }
+        ],
+        "types": ["Error", "Vec3"]
+      },
+      "brief": "damaged and broken things"
+    }
+  }
+}

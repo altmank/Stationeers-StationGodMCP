@@ -1,0 +1,654 @@
+{
+  "verb": "move",
+  "description": "Move items, gas and players. Reports first; confirm: true moves. gas and player are cheats: ask the user.",
+  "text": ["Items go into or out of an Ingot Vault or SDB Silo store when to or source is one."],
+  "read_only": false,
+  "tool": {
+    "options": {
+      "to": "item: the holder that gets them (a vault or silo makes a store move). gas: a thing or room.",
+      "source": "item: a vault or silo. gas: a thing, room or planet."
+    }
+  },
+  "whats": {
+    "item": {
+      "summary": "items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store",
+      "options": {
+        "id": {"use": "id", "description": "The item(s); for a vault or silo deposit, whole things by id."},
+        "quantity": {
+          "schema": {"type": "number", "minimum": 0},
+          "description": "Slot move: how many off the stack, default the whole item. Out of a vault: grams of ingot or a count of ore or ice; out of a silo: an item count; required for both.",
+          "x-script": "same"
+        },
+        "to": {
+          "schema": {"type": "string"},
+          "description": "The holder that gets them: a container, belt, suit, \"player\", a vault or a silo.",
+          "x-script": "same"
+        },
+        "slot": {
+          "schema": {"type": ["integer", "string"]},
+          "description": "A slot index of to, or \"auto\" (the default). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.",
+          "default": "auto",
+          "x-script": "same"
+        },
+        "merge": {
+          "schema": {"type": "boolean"},
+          "description": "Join a matching stack in the slot.",
+          "default": "true",
+          "x-script": "same"
+        },
+        "force": {
+          "schema": {"type": "boolean"},
+          "description": "Into an empty slot by index even when hidden. Cheat.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["in_use", "ground"]}},
+          "description": "in_use: take a part its device is using; ground: what does not fit goes on the ground."
+        },
+        "moves": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "Up to 64 moves in order, each {id, quantity, to, slot, merge, allow}.",
+          "x-script": "same"
+        },
+        "source": {"schema": {"type": "string"}, "description": "A vault or silo to take from.", "x-script": "same"},
+        "prefab": {"use": "prefab", "description": "Into a store: filter; out of a store: the item to take (whole name or hash)."},
+        "reagent": {
+          "schema": {"type": "string"},
+          "description": "Out of a vault: the stored reagent (Iron, Steel).",
+          "x-script": "same"
+        },
+        "items": {
+          "schema": {"type": ["array", "string"], "items": {"type": "object"}, "maxItems": 256},
+          "description": "Store moves: lines {id, quantity} (deposit) or {prefab, reagent, quantity} (vault to vault: grams of ingot, a count of ore or ice; \"all\" moves every line; required vault to vault, where a top-level prefab and quantity become one line).",
+          "x-script": "same"
+        },
+        "name": {"use": "name"},
+        "location": {
+          "schema": {"type": "string", "enum": ["any", "ground", "player", "stored"]},
+          "description": "Into a store: filter.",
+          "default": "any",
+          "x-script": "same"
+        },
+        "within": {
+          "schema": {"type": "string"},
+          "description": "Into a store: only things inside this holder.",
+          "x-script": "same"
+        },
+        "near": {"use": "near", "description": "\"player\" only."},
+        "radius": {"use": "radius"},
+        "category": {
+          "schema": {"type": "string", "enum": ["any", "ingot", "ore", "ice"]},
+          "description": "Into a vault: filter.",
+          "default": "any",
+          "x-script": "same"
+        },
+        "at_most": {
+          "schema": {"type": "integer", "minimum": 1, "maximum": 1000},
+          "description": "Into a store: move at most this many things, nearest first.",
+          "default": "vault 256, silo 64",
+          "x-script": "Into a store: move at most this many things, nearest first. (default vault 256, silo 64)"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "text": [
+        "Which handler runs: with slot or moves, a slot move. Otherwise a vault or silo as to or source makes a store move; everything else is a slot move. The reply's first key route names it: slot, into_vault, out_of_vault, vault_to_vault, into_silo or out_of_silo.",
+        "Filters (prefab parts, name, location, within, near, category) work for moves into a store; slot moves take ids.",
+        "Out of a vault: move {what: \"item\", source: \"4191359\", prefab: \"ItemIronIngot\", quantity: 500, to: \"player\", confirm: true}.",
+        "Into a silo by filter: move {what: \"item\", to: \"5200100\", prefab: \"*Ore*\", location: \"player\"}."
+      ],
+      "x-script-text": [
+        "Which handler runs: with slot or moves, a slot move. Otherwise a vault or silo as to or source makes a store move; everything else is a slot move. The reply's first key route names it: slot, into_vault, out_of_vault, vault_to_vault, into_silo or out_of_silo.",
+        "Filters (prefab parts, name, location, within, near, category) work for moves into a store; slot moves take ids.",
+        "Out of a vault: sg.move('item', source='4191359', prefab='ItemIronIngot', quantity=500, to='player').",
+        "Into a silo by filter: sg.move('item', to='5200100', prefab='*Ore*', location='player')."
+      ],
+      "example": {"id": "3311223", "to": "player", "confirm": true},
+      "handlers": [
+        {
+          "name": "move_item",
+          "when": "slot move",
+          "args": [
+            {
+              "arg": "reference_id",
+              "option": "id",
+              "change": "default-changed",
+              "note": "renamed to the shared name id; required before, optional now: the what takes another form for it",
+              "default": ["required (except with moves)", "absent"]
+            },
+            {"arg": "quantity", "option": "quantity", "change": "kept"},
+            {
+              "arg": "to_id",
+              "option": "to",
+              "change": "default-changed",
+              "note": "renamed to the shared name to (see MAP-07, MAP-28); required before, optional now: the what takes another form for it",
+              "default": ["required (except with moves)", "absent"]
+            },
+            {
+              "arg": "to_slot",
+              "option": "slot",
+              "change": "default-changed",
+              "note": "required today; spec slot defaults to auto (see MAP-20, MAP-28)",
+              "default": ["required: an index or \"auto\"", "auto"]
+            },
+            {"arg": "merge", "option": "merge", "change": "kept"},
+            {"arg": "force", "option": "force", "change": "kept"},
+            {"arg": "allow_in_use", "option": "allow", "change": "merged", "note": "allow: [\"in_use\"]"},
+            {"arg": "moves", "option": "moves", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "vault_deposit",
+          "when": "into a vault",
+          "note": "to is a vault",
+          "args": [
+            {
+              "arg": "vault_id",
+              "option": "to",
+              "change": "default-changed",
+              "note": "the vault is the destination (see MAP-07); required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {"arg": "items", "option": "items", "change": "kept"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {
+              "arg": "prefab_contains",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a part is written with *: '*Battery*' (see MAP-13)"
+            },
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {
+              "arg": "location",
+              "option": "location",
+              "change": "default-changed",
+              "note": "absent searched every location; move item states any",
+              "default": ["absent", "any"]
+            },
+            {"arg": "within_id", "option": "within", "change": "renamed"},
+            {
+              "arg": "near_player_m",
+              "option": "near+radius",
+              "change": "merged",
+              "note": "near: \"player\" with radius"
+            },
+            {"arg": "kind", "option": "category", "change": "renamed"},
+            {"arg": "limit", "option": "at_most", "change": "renamed"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "vault_withdraw",
+          "when": "out of a vault",
+          "note": "source is a vault",
+          "args": [
+            {
+              "arg": "vault_id",
+              "option": "source",
+              "change": "default-changed",
+              "note": "the vault is the source (see MAP-08); required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {"arg": "prefab_name", "option": "prefab", "change": "merged", "note": "folded into prefab (see MAP-13)"},
+            {"arg": "prefab_hash", "option": "prefab", "change": "merged", "note": "folded into prefab (see MAP-13)"},
+            {"arg": "reagent", "option": "reagent", "change": "kept"},
+            {
+              "arg": "quantity",
+              "option": "quantity",
+              "change": "default-changed",
+              "note": "required today; spec says default all (see MAP-19)",
+              "default": ["required", "all (spec: default all)"]
+            },
+            {"arg": "to_id", "option": "to", "change": "renamed"},
+            {"arg": "to_slot", "option": "slot", "change": "renamed"},
+            {"arg": "allow_ground", "option": "allow", "change": "merged", "note": "allow: [\"ground\"]"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "vault_transfer",
+          "when": "vault to vault",
+          "note": "source and to are vaults",
+          "args": [
+            {
+              "arg": "from_vault_id",
+              "option": "source",
+              "change": "default-changed",
+              "note": "renamed to the shared name source (see MAP-08); required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {
+              "arg": "to_vault_id",
+              "option": "to",
+              "change": "default-changed",
+              "note": "renamed to the shared name to (see MAP-07); required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {
+              "arg": "items",
+              "option": "items",
+              "change": "default-changed",
+              "note": "{prefab, reagent, quantity}; prefab_name and prefab_hash fold into prefab; everything when left out; now required vault to vault, \"all\" moves every line (LANG-2-08) (see MAP-13)",
+              "default": ["everything", "absent"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "silo_deposit",
+          "when": "into a silo",
+          "note": "to is a silo",
+          "args": [
+            {
+              "arg": "silo_id",
+              "option": "to",
+              "change": "default-changed",
+              "note": "renamed to the shared name to (see MAP-07); required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {"arg": "items", "option": "items", "change": "kept"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {
+              "arg": "prefab_contains",
+              "option": "prefab",
+              "change": "merged",
+              "note": "a part is written with *: '*Battery*' (see MAP-13)"
+            },
+            {"arg": "name_contains", "option": "name", "change": "renamed"},
+            {
+              "arg": "location",
+              "option": "location",
+              "change": "default-changed",
+              "note": "absent searched every location; move item states any",
+              "default": ["absent", "any"]
+            },
+            {"arg": "within_id", "option": "within", "change": "renamed"},
+            {
+              "arg": "near_player_m",
+              "option": "near+radius",
+              "change": "merged",
+              "note": "near: \"player\" with radius"
+            },
+            {"arg": "limit", "option": "at_most", "change": "renamed"},
+            {"arg": "allow_in_use", "option": "allow", "change": "merged", "note": "allow: [\"in_use\"]"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "silo_withdraw",
+          "when": "out of a silo",
+          "note": "source is a silo",
+          "args": [
+            {
+              "arg": "silo_id",
+              "option": "source",
+              "change": "default-changed",
+              "note": "renamed to the shared name source (see MAP-08); required before, optional now: the what takes another form for it",
+              "default": ["required", "absent"]
+            },
+            {"arg": "prefab_name", "option": "prefab", "change": "merged", "note": "folded into prefab (see MAP-13)"},
+            {"arg": "prefab_hash", "option": "prefab", "change": "merged", "note": "folded into prefab (see MAP-13)"},
+            {
+              "arg": "quantity",
+              "option": "quantity",
+              "change": "default-changed",
+              "note": "required today; spec says default all (see MAP-19)",
+              "default": ["required", "all (spec: default all)"]
+            },
+            {"arg": "to_id", "option": "to", "change": "renamed"},
+            {"arg": "to_slot", "option": "slot", "change": "renamed"},
+            {"arg": "allow_ground", "option": "allow", "change": "merged", "note": "allow: [\"ground\"]"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "results",
+        "variants": [
+          {
+            "label": "ItemMoved",
+            "view": "ItemMoved",
+            "keys": {
+              "index": "int",
+              "ok": "bool",
+              "reference_id": "str",
+              "from": "{id: str, slot: int} | None",
+              "to": "{id: str, slot: int}",
+              "quantity_moved": "int",
+              "merged_into": "str | None",
+              "destination_reference_id": "str",
+              "warning": "str | None"
+            }
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          },
+          {
+            "label": "VaultDeposit",
+            "view": "VaultDeposit",
+            "keys": {
+              "dry_run": "bool",
+              "vault": "Thing",
+              "via": "Thing | None",
+              "matched": "int | None",
+              "skipped": "int",
+              "truncated": "bool",
+              "items": "{results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, kind: str, from: {id: str, slot: int} | None, quantity: float, left_in_source: float} | {index: int, ok: bool, reference_id: str | None, prefab_name: str | None, error: Error} | {index: int, ok: bool, asked: str, error: Error} | {index: int, ok: bool, kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, requested: float | None, quantity: float, partial: bool, from: {before: float, after: float}, to: {before: float, after: float}} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count: int}",
+              "stock": "list[{kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, before: float, change: float, after: float}]"
+            }
+          },
+          {
+            "label": "VaultWithdraw",
+            "view": "VaultWithdraw",
+            "keys": {
+              "dry_run": "bool",
+              "vault": "Thing",
+              "via": "Thing | None",
+              "to": "Thing",
+              "quantity": "float",
+              "placed": "list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]",
+              "stock": "list[{kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, before: float, change: float, after: float}]"
+            }
+          },
+          {
+            "label": "VaultTransfer",
+            "view": "VaultTransfer",
+            "keys": {
+              "dry_run": "bool",
+              "from_vault": "Thing",
+              "from_via": "Thing | None",
+              "to_vault": "Thing",
+              "to_via": "Thing | None",
+              "items": "{results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, kind: str, from: {id: str, slot: int} | None, quantity: float, left_in_source: float} | {index: int, ok: bool, reference_id: str | None, prefab_name: str | None, error: Error} | {index: int, ok: bool, asked: str, error: Error} | {index: int, ok: bool, kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, requested: float | None, quantity: float, partial: bool, from: {before: float, after: float}, to: {before: float, after: float}} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count: int}",
+              "partial_count": "int"
+            }
+          },
+          {
+            "label": "SiloDeposit",
+            "view": "SiloDeposit",
+            "keys": {
+              "dry_run": "bool",
+              "silo": "Thing",
+              "on_off": "bool",
+              "powered": "bool",
+              "matched": "int | None",
+              "skipped": "int",
+              "truncated": "bool",
+              "items": "{results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, from: {id: str, slot: int} | None, quantity: float, left_in_source: float, children: int, entry: int} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count: int}",
+              "count": "{before: int, after: int}"
+            }
+          },
+          {
+            "label": "SiloWithdraw",
+            "view": "SiloWithdraw",
+            "keys": {
+              "dry_run": "bool",
+              "silo": "Thing",
+              "on_off": "bool",
+              "powered": "bool",
+              "to": "Thing",
+              "quantity": "float",
+              "taken": "list[{index: int, quantity: float, left: float, whole: bool, children: int}]",
+              "placed": "list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]",
+              "stock": "{prefab_name: str | None, display_name: str | None, before: float, change: float, after: float}",
+              "count": "{before: int, after: int}"
+            }
+          }
+        ],
+        "types": ["Error", "Thing"]
+      },
+      "write": {
+        "report": "mod",
+        "route": "confirm",
+        "cheat": "force: true",
+        "x-undo": "mixed",
+        "x-undo-mark": "slot move [undo], [cannot undo: merged into <id>] when it merged or split; store move or force [cannot undo: store move]",
+        "x-list": "native",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "to", "role": "acts-on"},
+          {"path": "source", "role": "pays-from"},
+          {"path": "within", "role": "acts-on"},
+          {"path": "moves[].id", "role": "acts-on"},
+          {"path": "moves[].to", "role": "acts-on"},
+          {"path": "items[].id", "role": "acts-on"}
+        ]
+      },
+      "brief": "items and kits into a slot, the player, or a vault or silo"
+    },
+    "gas": {
+      "summary": "move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump",
+      "options": {
+        "source": {
+          "schema": {"type": ["string", "object"]},
+          "description": "A thing id, \"looking_at\", \"planet\" (with delete), or a room {room} or {room_of}.",
+          "x-script": "same"
+        },
+        "to": {
+          "schema": {"type": ["string", "object"]},
+          "description": "A thing id, \"looking_at\" or a room; left out with delete.",
+          "x-script": "same"
+        },
+        "delete": {
+          "schema": {"type": "boolean"},
+          "description": "Destroy the gas instead of moving it.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "gases": {
+          "schema": {"type": "array", "items": {"type": "string"}},
+          "description": "Gas names as inspect atmosphere gives them; left out, every gas and liquid.",
+          "x-script": "same"
+        },
+        "amount_mol": {
+          "schema": {"type": "number"},
+          "description": "Moles of each gas, capped at what is there; left out, all.",
+          "x-script": "same"
+        },
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["burst"]}},
+          "description": "burst: move past a burst rating."
+        },
+        "joined": {
+          "schema": {"type": "boolean"},
+          "description": "Treat atmospheres the game mixes every tick as one.",
+          "default": "true",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "text": [
+        "Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job)."
+      ],
+      "example": {"source": "2005300", "gases": ["Hydrogen"], "delete": true},
+      "handlers": [
+        {
+          "name": "move_gas",
+          "args": [
+            {"arg": "from", "option": "source", "change": "renamed"},
+            {"arg": "to", "option": "to", "change": "kept"},
+            {"arg": "delete", "option": "delete", "change": "kept"},
+            {"arg": "gases", "option": "gases", "change": "kept"},
+            {"arg": "amount_mol", "option": "amount_mol", "change": "kept"},
+            {"arg": "force", "option": "allow", "change": "merged", "note": "allow: [\"burst\"] (see MAP-12)"},
+            {"arg": "joined", "option": "joined", "change": "kept"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "default-changed",
+              "note": "acted by default (dry_run false); now reports until confirm: true (DESIGN 9.1-9.3)",
+              "default": ["false (acts)", "false (report only)"]
+            },
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "transfer_id": "str | None",
+              "status": "str",
+              "predicted": "bool",
+              "joined": "bool",
+              "from": "{members: list[{owner: {kind: str, reference_id: str, prefab_name: str | None, display_name: str | None}, atmosphere_id: str, before: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}}], total: {before: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after_boiling: bool | None}, joined_by: list[{reference_id: str, prefab_name: str | None, display_name: str | None}], room: str | None} | None",
+              "to": "{members: list[{owner: {kind: str, reference_id: str, prefab_name: str | None, display_name: str | None}, atmosphere_id: str, before: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}}], total: {before: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after_boiling: bool | None}, joined_by: list[{reference_id: str, prefab_name: str | None, display_name: str | None}], room: str | None} | None",
+              "deleted": "bool",
+              "moved": "float | None",
+              "error": "Error | None",
+              "before": "Any | None",
+              "amount_mol": "float | None",
+              "ticks": "int | None",
+              "note": "str | None"
+            }
+          }
+        ],
+        "types": ["Error"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: gas move]",
+        "x-list": "one",
+        "x-target": [{"path": "source", "role": "pays-from"}, {"path": "to", "role": "acts-on"}]
+      },
+      "brief": "gas between atmospheres, or delete it"
+    },
+    "player": {
+      "summary": "move a player anywhere at once: to a point, beside a thing or another player",
+      "options": {
+        "player": {
+          "schema": {"type": "string"},
+          "description": "The player to move, by name; default the player.",
+          "x-script": "same"
+        },
+        "at": {"schema": {"type": "array"}, "description": "Destination point.", "x-script": "same"},
+        "to": {"schema": {"type": "string"}, "description": "Destination: beside this thing (an id).", "x-script": "same"},
+        "to_player": {"schema": {"type": "string"}, "description": "Destination: beside this player (a name).", "x-script": "same"},
+        "safe_ground": {
+          "schema": {"type": "boolean"},
+          "description": "Drop the point onto the highest safe surface, 4 m above it.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "example": {"to_player": "xceled", "confirm": true},
+      "handlers": [
+        {
+          "name": "move_player",
+          "args": [
+            {"arg": "player", "option": "player", "change": "kept"},
+            {"arg": "at", "option": "at", "change": "kept"},
+            {"arg": "to_id", "option": "to", "change": "renamed"},
+            {"arg": "near_player", "option": "to_player", "change": "renamed"},
+            {"arg": "safe_ground", "option": "safe_ground", "change": "kept"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "default-changed",
+              "note": "acted by default (dry_run false); now reports until confirm: true (DESIGN 9.1-9.3)",
+              "default": ["false (acts)", "false (report only)"]
+            }
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "dry_run": "bool",
+              "player": "Thing",
+              "moved_by": "str",
+              "before": "{position: Vec3, room_id: str | None, room_type: str | None, outside: bool | None}",
+              "after": "{position: Vec3, room_id: str | None, room_type: str | None, outside: bool | None}",
+              "destination": "{form: str, next_to: Thing | None, safe_ground: bool | None}",
+              "distance_m": "float",
+              "note": "str | None"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: player move]",
+        "x-list": "one",
+        "x-target": [{"path": "player", "role": "acts-on"}]
+      },
+      "brief": "a player to a point, thing or player"
+    }
+  }
+}

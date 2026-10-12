@@ -1,0 +1,10 @@
+Run any console command and answer what it printed: spawn, delete, teleport, storms, settings.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- command (string, required): The whole command line.
+- lines (integer, default 100): Most lines returned (the oldest kept).
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+Read-only commands (help, rocket print) also need confirm: true; the game does not mark which commands change nothing.
+Reply: command, command_key, scope, help_text, arguments, run_simulation, console_available, completes_asynchronously, output_complete, output_line_count, truncated, concurrent_log_lines, output [{time, level, text}], note
+Example: server {what: "command", command: "help", confirm: true}

@@ -1,0 +1,10 @@
+A rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log).
+Options:
+- action (read | list, default read): read: a page of a recording's rows; list: the recordings.
+- id (string or array): A rocket's id, name, network or any part; left out when there is one rocket.
+- every (integer, default 1): read: every n-th row.
+- limit (integer, default 12): read: rows.
+- offset (integer, default 0): Entries to skip.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (FlightLog) rocket_id, rocket_name, recording, interval_s, csv_path, capacity, held, recorded, from_t, to_t, fuel_used_mol, lowest_altitude_m, fastest_descent_ms, peak_thrust_n, lowest_confidence, lowest_battery_j, last {t, state, node, target, progress, altitude_m, velocity_ms, acceleration_ms2, mass_kg, fuel_mol, fuel_k, fuel_kpa, throttle, thrust_n, max_recorded_thrust_n, confidence, battery_j, cargo_slots, burn_time_s, rule}, events [{t, what}], events_dropped, rows [{t, state, node, target, progress, altitude_m, velocity_ms, acceleration_ms2, mass_kg, fuel_mol, fuel_k, fuel_kpa, throttle, thrust_n, max_recorded_thrust_n, confidence, battery_j, cargo_slots, burn_time_s, rule}], offset, every, has_more | (FlightLogCleared) cleared | (FlightLogList) logs [{rocket_id, rocket_name, recording, interval_s, csv_path, capacity, held, recorded, from_t, to_t, fuel_used_mol, lowest_altitude_m, fastest_descent_ms, peak_thrust_n, lowest_confidence, lowest_battery_j, last, events, events_dropped, rows, offset, every, has_more}], count
+Example: read {what: "flight_log", limit: 20}

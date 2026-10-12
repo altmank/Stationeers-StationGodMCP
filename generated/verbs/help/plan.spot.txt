@@ -1,0 +1,16 @@
+Free places to put one prefab you are about to build, near a point, on a face plane or a room's walls, checked by the game's cursor; answers build_arguments.
+Options:
+- prefab (string or integer, required): Whole prefab name or hash.
+- near (string or array, default looking_at): [x, y, z], "player", "looking_at" (the crosshair) or an id.
+- plane (string): A face plane, "z=668".
+- side (+x | -x | +y | -y | +z | -z): The side you view the plane from.
+- looking (boolean): Search the face your look ray hits.
+- around (list): A point near the plane, to pick the side in a room.
+- room (string): Search this room's walls.
+- facing (+x | -x | +y | -y | +z | -z): Try every spot with this facing.
+- radius (number, default 4): Search radius.
+- require (object): {one_section, min_bottom_above_floor_m, ports_reachable, avoid_doors, front_clear_m, no_visual_overlap}.
+- limit (integer, default 5): Spots returned.
+- max_checks (integer, default 40): Spots checked with the cursor.
+Reply: prefab_name, planes, spots [{position, orientation, distance_m, penalty, plane, conflicts, place_arguments}], tried, filtered, checked, rejected, reasons [{reason, count}], view {source, age_s}
+Example: plan {what: "spot", prefab: "StructureWallLight", looking: true}

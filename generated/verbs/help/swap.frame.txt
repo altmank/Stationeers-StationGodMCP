@@ -1,0 +1,19 @@
+Replace frames with another frame prefab, or finish unfinished frames, without opening a cell.
+Reports first; confirm: true does it.
+Options:
+- id (string or array): Target: an id, a list of ids, a ref ("r3": the ids that reply showed; "r3.rockets.parts"), or "looking_at" (the thing the crosshair is on); "player" where the what says.
+- room (string): Every frame around this room.
+- into (string): The new frame prefab; default each frame's own (finishes it).
+- prefab (string or integer or array): Only pieces of these prefabs.
+- materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- skip_unmatched (boolean, default false): Leave pieces that cannot change as they are instead of refusing.
+- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn.
+- include (list of notes): Parts to add to the reply.
+- rows (integer, default 5): Pieces listed per list.
+- verbose (boolean, default false): The long form of the reply.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- queue (boolean, default true): Wait in line behind a running job (up to 8) instead of answering busy.
+- max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (JobQueued) a JobQueued (help {topic: "types", subtopic: "JobQueued"}) | (StructureSwapReport) tool, target, status, job_id, ready, problems [{code, message, reference_id}], pieces_total, to_swap, kept, unmatched, pieces [{reference_id, prefab_name, position, rotation_deg, build_state, target_prefab_name, target_build_state, blocks_air_before, blocks_air_after, blocks_gravity_before, blocks_gravity_after, air_change, seals, stressed, faces, room_ids, materials}], pieces_listed, by_prefab [{prefab_name, target_prefab_name, count}], kept_pieces [{reference_id, prefab_name, reason, message}], unmatched_pieces [{reference_id, prefab_name, reason, message}], from {reference_id, prefab_name, display_name}, materials [{prefab_name, display_name, cost, refund, charge, give_back, available, paid_by, stacks}], refund_enabled, refund_plan, rooms [{room_id, cell_count, total_mol, energy_j}], notes | (JobBusy) a JobBusy (help {topic: "types", subtopic: "JobBusy"}) | (SwapJob) a SwapJob (help {topic: "types", subtopic: "SwapJob"}) | (JobDropped) a JobDropped (help {topic: "types", subtopic: "JobDropped"})
+Example: swap {what: "frame", room: "17"}

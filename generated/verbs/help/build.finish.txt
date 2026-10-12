@@ -1,0 +1,13 @@
+Build a placed structure on to a later build state, paying each state's materials.
+Reports first; confirm: true does it.
+Cheat when free: true.
+Options:
+- id (string or array, required): One structure, a list or a ref: one job per id, in order.
+- state (integer): The build state to reach; default the next.
+- materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- free (boolean, default false): Creative worlds: no materials. Cheat.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Every build reply has placed: [ids] at the top: the new ids ([] in any report).
+Reply: dry_run, thing {reference_id, prefab_name, display_name}, from_state, to_state, last_state, cost [{prefab_name, display_name, quantity, available, paid_by}], tools [{prefab_name, display_name, quantity, tool}], ready, problems, build_state {current, last, complete, next}
+Example: build {what: "finish", id: "1199811", state: 2, confirm: true}

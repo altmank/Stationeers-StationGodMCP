@@ -1,0 +1,11 @@
+Outermost holders with at least one item: lockers, crates, machines, a backpack on the floor.
+Options:
+- prefab (string or integer or array): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+- name (string): Part of the shown name or label, any case.
+- near (string or array): "player" only.
+- radius (number): Metres around near.
+- limit (integer, default 12): Entries per page.
+- offset (integer, default 0): Entries to skip.
+- order (nearest | id, default nearest): nearest (default) or id (stable pages).
+Reply: containers [{reference_id, prefab_name, display_name, slot_count, used_slot_count, item_count, items, position, distance_m}], count, total, offset, limit, has_more, local_player {reference_id, display_name, position}
+Example: find {what: "container", prefab: "*Locker*", near: "player", radius: 15}

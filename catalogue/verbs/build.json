@@ -1,0 +1,1061 @@
+{
+  "verb": "build",
+  "description": "Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done.",
+  "text": ["A build that pays from the player's inventory warns materials_from_player."],
+  "read_only": false,
+  "tool": {
+    "options": {
+      "from_plan": "A plan route or spot reply's ref ('r9'): build its build_arguments.",
+      "grade": "cable: default heavy; pipe: required; chute: chute."
+    }
+  },
+  "whats": {
+    "structure": {
+      "summary": "any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job",
+      "options": {
+        "placements": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color}, built in order in one job; or one at the top level.",
+          "x-script": "same"
+        },
+        "prefab": {"use": "prefab", "schema": {"type": ["string", "integer"]}, "description": "Prefab name or hash."},
+        "at": {
+          "schema": {"type": ["array", "object", "string"]},
+          "description": "A point, \"looking_at\", or a relative or look-face form (help positions).",
+          "x-script": "same"
+        },
+        "rotation": {
+          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "description": "[x, y, z] degrees, multiples of 90.",
+          "x-script": "same"
+        },
+        "spread": {
+          "schema": {"type": ["object", "array"]},
+          "description": "{from, to, step} or a list: this prefab every step metres along each line; reports first.",
+          "x-script": "same"
+        },
+        "facing": {
+          "schema": {
+            "type": "string",
+            "enum": ["+x", "-x", "+y", "-y", "+z", "-z", "toward_player", "away_from_player", "out_of_face", "into_room"]
+          },
+          "description": "Where the front points.",
+          "x-script": "same"
+        },
+        "up": {
+          "schema": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+          "description": "Where the top points.",
+          "default": "+y (+z when facing is vertical)",
+          "x-script": "up (+x | -x | +y | -y | +z | -z, default +y (+z when facing is vertical)): Where the top points."
+        },
+        "face": {
+          "schema": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+          "description": "Face-placed pieces (walls): the cell face it sits on.",
+          "x-script": "same"
+        },
+        "orient": {
+          "schema": {"type": "object"},
+          "description": "{mount, upright, controls_toward, ports, flow}: choose the turn by intent.",
+          "x-script": "same"
+        },
+        "above_floor": {
+          "schema": {"type": "number", "minimum": 0, "maximum": 20},
+          "description": "Bottom this many metres above the floor below at.",
+          "x-script": "same"
+        },
+        "build_state": {
+          "schema": {"type": ["string", "integer"]},
+          "description": "finished (default), first, or a state index.",
+          "x-script": "same"
+        },
+        "label": {"schema": {"type": "string"}, "description": "A name, as the Labeller writes it.", "x-script": "same"},
+        "color": {"schema": {"type": ["string", "integer"]}, "description": "A colour name or index.", "x-script": "same"},
+        "materials": {"use": "materials"},
+        "free": {
+          "schema": {"type": "boolean"},
+          "description": "Creative worlds: no materials. Cheat.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "lint", "pad"]}},
+          "description": "door_keepout: a keep-out cell is a warning; lint: lint problems are warnings (listed in lint_passed); pad: building in a landing pad's approach."
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["notes", "footprint_cells"]}},
+          "description": "footprint_cells: each footprint's cells."
+        },
+        "verbose": {
+          "use": "verbose",
+          "description": "Dry run: layouts a refused report leaves out; real run: the whole preflight."
+        },
+        "acknowledge_gas_lost": {"use": "acknowledge_gas_lost"},
+        "from_plan": {
+          "use": "from_plan",
+          "x-script": "A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p)."
+        },
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "text": [
+        "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
+      ],
+      "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x", "confirm": true},
+      "handlers": [
+        {
+          "name": "place_structure",
+          "args": [
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {"arg": "placements", "option": "placements", "change": "kept"},
+            {"arg": "prefab", "option": "prefab", "change": "kept"},
+            {"arg": "at", "option": "at", "change": "kept"},
+            {"arg": "rotation", "option": "rotation", "change": "kept"},
+            {"arg": "facing", "option": "facing", "change": "kept"},
+            {
+              "arg": "up",
+              "option": "up",
+              "change": "default-changed",
+              "note": "spec states +y only; today +z when facing is vertical (see MAP-22)",
+              "default": ["+y, or +z when facing is vertical (left to the orientation)", "+y (+z when facing is vertical)"]
+            },
+            {"arg": "face", "option": "face", "change": "kept"},
+            {"arg": "orient", "option": "orient", "change": "kept"},
+            {"arg": "above_floor_m", "option": "above_floor", "change": "renamed"},
+            {"arg": "build_state", "option": "build_state", "change": "kept"},
+            {"arg": "label", "option": "label", "change": "kept"},
+            {"arg": "color", "option": "color", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {
+              "arg": "include_footprint_cells",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"footprint_cells\"]"
+            },
+            {"arg": "free", "option": "free", "change": "kept"},
+            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "placements",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {"label": "BuildJob", "view": "BuildJob", "job_view": "BuildJob"},
+          {
+            "label": "PlaceReport",
+            "view": "PlaceReport",
+            "keys": {
+              "tool": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
+              "warnings": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
+              "placements": "list[{index: int, prefab_name: str | None, prefab_hash: int | None, display_name: str | None, placement: str | None, position: Vec3 | None, orientation: {facing: str | None, up: str | None, euler: Vec3} | None, face: str | None, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, build_state: int | None, build_states: int | None, label: str | None, color: {index: int | None, name: str | None} | None, cost: list[{prefab_name: str | None, quantity: int}], layout: {footprint: {small_cells: {count: int, cells: list[{x: float, y: float, z: float}] | None}, large_cells: list[Vec3] | None, body: {origin: {x: float, y: float, z: float}, render_box: {min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size: {x: float, y: float, z: float}}, centre_offset: {x: float, y: float, z: float}, grid_box: {min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size: {x: float, y: float, z: float}} | None, grid_cells: int}, mount: {plane: str, outward: str, axes: list[str], min: list[float], max: list[float]} | None}, sections: {walls: list[{face: {x: float, y: float, z: float}, reference_id: str | None, prefab_name: str | None, kind: str}], count: int, crosses_seam: bool} | None, conflicts: list[{code: str, level: str, message: str, reference_id: str | None}], port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}] | None} | None, orient: {chosen: {facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool} | None, alternatives: list[{facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool}], tried: int, mode_flip: {logic_type: str, value: int, reason: str} | None} | None, resolved: {at: {x: float, y: float, z: float}, at_how: str, facing: str | None, facing_how: str | None, view: {source: str, age_s: float} | None} | None}]",
+              "materials": "list[{prefab_name: str | None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}]",
+              "from": "Thing | None",
+              "free": "bool",
+              "notes": "list[str] | None"
+            }
+          },
+          {
+            "label": "RemoveReport",
+            "view": "RemoveReport",
+            "keys": {
+              "tool": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
+              "warnings": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
+              "removals": "list[{index: int, reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, build_state: int, kind: str, refund: list[{prefab_name: str | None, quantity: int}]}]",
+              "refund": "list[{prefab_name: str | None, quantity: int}]",
+              "refund_to": "Any",
+              "refund_plan": "RefundPlan | None",
+              "from": "Thing | None",
+              "will_burst": "list[{network_id: str, networks_left: int, volume_left_l: float, pressure_now_kpa: float, pressure_after_kpa: float, rating_kpa: float, pipes: list[{reference_id: str, prefab_name: str, rating_kpa: float, where: str, pressure_there_kpa: float}], where: list[str], holds_mol: float, released_mol: float, gases: list[{gas: str, amount_mol: float}]}]",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "RunJob", "view": "RunJob", "job_view": "RunJob"},
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "cheat": "free: true",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo]",
+        "x-list": "one",
+        "x-target": [{"path": "materials", "role": "pays-from"}]
+      },
+      "brief": "any structure a kit builds, by prefab, at a point"
+    },
+    "cable": {
+      "summary": "a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload",
+      "options": {
+        "grade": {
+          "schema": {"type": "string", "enum": ["normal", "heavy", "super_heavy"]},
+          "description": "The cable's grade.",
+          "default": "heavy",
+          "x-script": "same"
+        },
+        "waypoints": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "Points joined by straight axis lines.",
+          "x-script": "same"
+        },
+        "cells": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "Every cell, each next to the one before.",
+          "x-script": "same"
+        },
+        "piece": {"schema": {"type": "object"}, "description": "One piece {at, ends}.", "x-script": "same"},
+        "pieces": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
+          "description": "Separate pieces, each {at, ends}.",
+          "x-script": "same"
+        },
+        "branches": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 16},
+          "description": "Side runs, each {waypoints or cells, attach}.",
+          "x-script": "same"
+        },
+        "extra_ends": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "Extra ends on run cells, each {at, toward}.",
+          "x-script": "same"
+        },
+        "join": {
+          "schema": {"type": "string", "enum": ["ends", "none", "all"]},
+          "description": "What the run joins.",
+          "default": "ends",
+          "x-script": "same"
+        },
+        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}}},
+        "split_long": {
+          "schema": {"type": "boolean"},
+          "description": "Split a long straight the run joins or crosses; false refuses.",
+          "default": "true",
+          "x-script": "Split a long straight the run joins or crosses; False refuses."
+        },
+        "remove_ids": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "description": "Pieces of the run's kind removed in the same job first.",
+          "x-script": "same"
+        },
+        "assume_removed": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "description": "Things checked as if gone; a real run needs them gone.",
+          "x-script": "same"
+        },
+        "allow_bridge": {
+          "schema": {"type": "array", "items": {}, "maxItems": 64},
+          "description": "Networks and devices whose joining is meant.",
+          "x-script": "same"
+        },
+        "root": {
+          "schema": {"type": "string"},
+          "description": "The device would_split measures cut-off against.",
+          "default": "every supplier",
+          "x-script": "The device would_split measures cut-off against. (default every supplier)"
+        },
+        "join_to": {
+          "schema": {"type": ["string", "object"]},
+          "description": "The network the run must end on.",
+          "x-script": "same"
+        },
+        "join_trunk": {
+          "schema": {"type": "boolean"},
+          "description": "With join_to: add the missing tap.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "materials": {"use": "materials"},
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["links", "notes", "network_devices"]}}
+        },
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 1024},
+          "description": "Cells listed; 0 for none.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "from_plan": {
+          "use": "from_plan",
+          "x-script": "A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p)."
+        },
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "text": [
+        "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
+      ],
+      "example": {"waypoints": [[700, 202, 660], [700, 202, 668]], "confirm": true},
+      "handlers": [
+        {
+          "name": "place_cables",
+          "args": [
+            {"arg": "waypoints", "option": "waypoints", "change": "kept"},
+            {"arg": "cells", "option": "cells", "change": "kept"},
+            {"arg": "piece", "option": "piece", "change": "kept"},
+            {"arg": "pieces", "option": "pieces", "change": "kept"},
+            {"arg": "grade", "option": "grade", "change": "kept"},
+            {"arg": "join", "option": "join", "change": "kept"},
+            {"arg": "branches", "option": "branches", "change": "kept"},
+            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
+            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
+            {"arg": "extra_ends", "option": "extra_ends", "change": "kept"},
+            {"arg": "remove_ids", "option": "remove_ids", "change": "kept"},
+            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
+            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {"arg": "join_to", "option": "join_to", "change": "kept"},
+            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {
+              "arg": "include_network_devices",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"network_devices\"]"
+            },
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "cells",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {"label": "RunJob", "view": "RunJob", "job_view": "RunJob"},
+          {
+            "label": "RunReport",
+            "view": "RunReport",
+            "keys": {
+              "tool": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "grade": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
+              "warnings": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
+              "cells_total": "int",
+              "placed": "int",
+              "changed": "int",
+              "kept": "int",
+              "removed_count": "int",
+              "air_cells": "int | None",
+              "cells": "list[{at: Vec3, action: str, prefab_name: str | None, rotation_deg: Vec3 | None, shape: str, ends: list[str], cost: int, refund: int, existing: {reference_id: str, prefab_name: str, ends: list[str], network_id: str | None} | None, joins: list[{toward: str, kind: str, thing: Thing | None, port: int | None}], open_end: str | None, flow: {in: list[str], out: list[str]} | None}]",
+              "removals": "list[{reference_id: str, prefab_name: str | None, at: Vec3, network_id: str | None, refund: list[{prefab_name: str | None, quantity: int}], assumed: bool | None}]",
+              "materials": "{from: Thing | None, needed: list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], refund_enabled: bool, refund: list[{prefab_name: str | None, quantity: int}], refund_plan: RefundPlan | None}",
+              "networks_before": "list[Any]",
+              "networks_after": "list[{index: int, networks_before: list[str], new_pieces: int, device_count: int, port_count: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}] | None, guard: Any | None}]",
+              "would_bridge": "list[{kind: str, networks: list[{network_id: str, devices: list[Thing]}], device: Thing | None, ports: list[int], allowed: bool}]",
+              "would_split": "list[{network_id: str | None, parts: list[int], cut_ports: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], allowed: bool, components: list[{index: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], holds_root: bool}], root: list[Thing], cut_off: list[Thing] | None}]",
+              "links": "{count_before: int, count_after: int, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, added_count: int, lost_count: int, model_matches_game: bool, model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}]} | None",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "BuildJob", "view": "BuildJob", "job_view": "BuildJob"},
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo]",
+        "x-list": "one",
+        "x-target": [
+          {"path": "remove_ids", "role": "acts-on"},
+          {"path": "join_to", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      },
+      "brief": "a cable run or pieces"
+    },
+    "pipe": {
+      "summary": "a pipe run or pieces from the grade's kit, with the pipe guards and a gas check",
+      "options": {
+        "grade": {
+          "schema": {"type": "string", "enum": ["gas", "liquid", "insulated_gas", "insulated_liquid"]},
+          "description": "Required except when repeating.",
+          "required": true,
+          "x-script": "same"
+        },
+        "waypoints": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "Points joined by straight axis lines.",
+          "x-script": "same"
+        },
+        "cells": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "Every cell, each next to the one before.",
+          "x-script": "same"
+        },
+        "piece": {"schema": {"type": "object"}, "description": "One piece {at, ends}.", "x-script": "same"},
+        "pieces": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
+          "description": "Separate pieces, each {at, ends}.",
+          "x-script": "same"
+        },
+        "branches": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 16},
+          "description": "Side runs, each {waypoints or cells, attach}.",
+          "x-script": "same"
+        },
+        "extra_ends": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "Extra ends on run cells, each {at, toward}.",
+          "x-script": "same"
+        },
+        "join": {
+          "schema": {"type": "string", "enum": ["ends", "none", "all"]},
+          "description": "What the run joins.",
+          "default": "ends",
+          "x-script": "same"
+        },
+        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}}},
+        "split_long": {
+          "schema": {"type": "boolean"},
+          "description": "Split a long straight the run joins or crosses; false refuses.",
+          "default": "true",
+          "x-script": "Split a long straight the run joins or crosses; False refuses."
+        },
+        "remove_ids": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "description": "Pieces of the run's kind removed in the same job first.",
+          "x-script": "same"
+        },
+        "assume_removed": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "description": "Things checked as if gone; a real run needs them gone.",
+          "x-script": "same"
+        },
+        "allow_bridge": {
+          "schema": {"type": "array", "items": {}, "maxItems": 64},
+          "description": "Networks and devices whose joining is meant.",
+          "x-script": "same"
+        },
+        "root": {
+          "schema": {"type": "string"},
+          "description": "The device would_split measures cut-off against.",
+          "default": "every supplier",
+          "x-script": "The device would_split measures cut-off against. (default every supplier)"
+        },
+        "join_to": {
+          "schema": {"type": ["string", "object"]},
+          "description": "The network the run must end on.",
+          "x-script": "same"
+        },
+        "join_trunk": {
+          "schema": {"type": "boolean"},
+          "description": "With join_to: add the missing tap.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "materials": {"use": "materials"},
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["links", "notes", "network_devices"]}}
+        },
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 1024},
+          "description": "Cells listed; 0 for none.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "from_plan": {
+          "use": "from_plan",
+          "x-script": "A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p)."
+        },
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"},
+        "acknowledge_gas_lost": {"use": "acknowledge_gas_lost"}
+      },
+      "text": [
+        "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
+      ],
+      "example": {"grade": "insulated_gas", "cells": [[1, 2, 3], [1.5, 2, 3]]},
+      "handlers": [
+        {
+          "name": "place_pipes",
+          "args": [
+            {"arg": "waypoints", "option": "waypoints", "change": "kept"},
+            {"arg": "cells", "option": "cells", "change": "kept"},
+            {"arg": "piece", "option": "piece", "change": "kept"},
+            {"arg": "pieces", "option": "pieces", "change": "kept"},
+            {"arg": "grade", "option": "grade", "change": "kept"},
+            {"arg": "join", "option": "join", "change": "kept"},
+            {"arg": "branches", "option": "branches", "change": "kept"},
+            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
+            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
+            {"arg": "extra_ends", "option": "extra_ends", "change": "kept"},
+            {"arg": "remove_ids", "option": "remove_ids", "change": "kept"},
+            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
+            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {"arg": "join_to", "option": "join_to", "change": "kept"},
+            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {
+              "arg": "include_network_devices",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"network_devices\"]"
+            },
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "cells",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {"label": "RunJob", "view": "RunJob", "job_view": "RunJob"},
+          {
+            "label": "RunReport",
+            "view": "RunReport",
+            "keys": {
+              "tool": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "grade": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
+              "warnings": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
+              "cells_total": "int",
+              "placed": "int",
+              "changed": "int",
+              "kept": "int",
+              "removed_count": "int",
+              "air_cells": "int | None",
+              "cells": "list[{at: Vec3, action: str, prefab_name: str | None, rotation_deg: Vec3 | None, shape: str, ends: list[str], cost: int, refund: int, existing: {reference_id: str, prefab_name: str, ends: list[str], network_id: str | None} | None, joins: list[{toward: str, kind: str, thing: Thing | None, port: int | None}], open_end: str | None, flow: {in: list[str], out: list[str]} | None}]",
+              "removals": "list[{reference_id: str, prefab_name: str | None, at: Vec3, network_id: str | None, refund: list[{prefab_name: str | None, quantity: int}], assumed: bool | None}]",
+              "materials": "{from: Thing | None, needed: list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], refund_enabled: bool, refund: list[{prefab_name: str | None, quantity: int}], refund_plan: RefundPlan | None}",
+              "networks_before": "list[Any]",
+              "networks_after": "list[{index: int, networks_before: list[str], new_pieces: int, device_count: int, port_count: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}] | None, guard: Any | None}]",
+              "would_bridge": "list[{kind: str, networks: list[{network_id: str, devices: list[Thing]}], device: Thing | None, ports: list[int], allowed: bool}]",
+              "would_split": "list[{network_id: str | None, parts: list[int], cut_ports: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], allowed: bool, components: list[{index: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], holds_root: bool}], root: list[Thing], cut_off: list[Thing] | None}]",
+              "links": "{count_before: int, count_after: int, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, added_count: int, lost_count: int, model_matches_game: bool, model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}]} | None",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "BuildJob", "view": "BuildJob", "job_view": "BuildJob"},
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo]",
+        "x-list": "one",
+        "x-target": [
+          {"path": "remove_ids", "role": "acts-on"},
+          {"path": "join_to", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      },
+      "brief": "a pipe run or pieces"
+    },
+    "chute": {
+      "summary": "a chute run or pieces from Kit (Chute), source to sink, with flow guards",
+      "options": {
+        "grade": {
+          "schema": {"type": "string", "enum": ["chute"]},
+          "description": "The chute kit (one grade).",
+          "default": "chute",
+          "x-script": "same"
+        },
+        "waypoints": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "Points joined by straight axis lines.",
+          "x-script": "same"
+        },
+        "cells": {
+          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "description": "Every cell, each next to the one before.",
+          "x-script": "same"
+        },
+        "piece": {"schema": {"type": "object"}, "description": "One piece {at, ends}.", "x-script": "same"},
+        "pieces": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
+          "description": "Separate pieces, each {at, ends}.",
+          "x-script": "same"
+        },
+        "branches": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 16},
+          "description": "Side runs, each {waypoints or cells, attach}.",
+          "x-script": "same"
+        },
+        "extra_ends": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "Extra ends on run cells, each {at, toward}.",
+          "x-script": "same"
+        },
+        "join": {
+          "schema": {"type": "string", "enum": ["ends", "none", "all"]},
+          "description": "What the run joins.",
+          "default": "ends",
+          "x-script": "same"
+        },
+        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}}},
+        "split_long": {
+          "schema": {"type": "boolean"},
+          "description": "Split a long straight the run joins or crosses; false refuses.",
+          "default": "true",
+          "x-script": "Split a long straight the run joins or crosses; False refuses."
+        },
+        "remove_ids": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "description": "Pieces of the run's kind removed in the same job first.",
+          "x-script": "same"
+        },
+        "assume_removed": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "description": "Things checked as if gone; a real run needs them gone.",
+          "x-script": "same"
+        },
+        "allow_bridge": {
+          "schema": {"type": "array", "items": {}, "maxItems": 64},
+          "description": "Networks and devices whose joining is meant.",
+          "x-script": "same"
+        },
+        "root": {
+          "schema": {"type": "string"},
+          "description": "The device would_split measures cut-off against.",
+          "default": "every supplier",
+          "x-script": "The device would_split measures cut-off against. (default every supplier)"
+        },
+        "join_to": {
+          "schema": {"type": ["string", "object"]},
+          "description": "The network the run must end on.",
+          "x-script": "same"
+        },
+        "join_trunk": {
+          "schema": {"type": "boolean"},
+          "description": "With join_to: add the missing tap.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "materials": {"use": "materials"},
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["links", "notes", "network_devices"]}}
+        },
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 1024},
+          "description": "Cells listed; 0 for none.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "from_plan": {
+          "use": "from_plan",
+          "x-script": "A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p)."
+        },
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "text": [
+        "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
+      ],
+      "example": {"waypoints": [[10, 2, 4], [10, 2, 9]], "confirm": true},
+      "handlers": [
+        {
+          "name": "place_chutes",
+          "args": [
+            {"arg": "waypoints", "option": "waypoints", "change": "kept"},
+            {"arg": "cells", "option": "cells", "change": "kept"},
+            {"arg": "piece", "option": "piece", "change": "kept"},
+            {"arg": "pieces", "option": "pieces", "change": "kept"},
+            {"arg": "grade", "option": "grade", "change": "kept"},
+            {"arg": "join", "option": "join", "change": "kept"},
+            {"arg": "branches", "option": "branches", "change": "kept"},
+            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
+            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
+            {"arg": "extra_ends", "option": "extra_ends", "change": "kept"},
+            {"arg": "remove_ids", "option": "remove_ids", "change": "kept"},
+            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
+            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {"arg": "join_to", "option": "join_to", "change": "kept"},
+            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {
+              "arg": "include_network_devices",
+              "option": "include",
+              "change": "merged",
+              "note": "include: [\"network_devices\"]"
+            },
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "cells",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {"label": "RunJob", "view": "RunJob", "job_view": "RunJob"},
+          {
+            "label": "RunReport",
+            "view": "RunReport",
+            "keys": {
+              "tool": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "grade": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
+              "warnings": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
+              "cells_total": "int",
+              "placed": "int",
+              "changed": "int",
+              "kept": "int",
+              "removed_count": "int",
+              "air_cells": "int | None",
+              "cells": "list[{at: Vec3, action: str, prefab_name: str | None, rotation_deg: Vec3 | None, shape: str, ends: list[str], cost: int, refund: int, existing: {reference_id: str, prefab_name: str, ends: list[str], network_id: str | None} | None, joins: list[{toward: str, kind: str, thing: Thing | None, port: int | None}], open_end: str | None, flow: {in: list[str], out: list[str]} | None}]",
+              "removals": "list[{reference_id: str, prefab_name: str | None, at: Vec3, network_id: str | None, refund: list[{prefab_name: str | None, quantity: int}], assumed: bool | None}]",
+              "materials": "{from: Thing | None, needed: list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], refund_enabled: bool, refund: list[{prefab_name: str | None, quantity: int}], refund_plan: RefundPlan | None}",
+              "networks_before": "list[Any]",
+              "networks_after": "list[{index: int, networks_before: list[str], new_pieces: int, device_count: int, port_count: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}] | None, guard: Any | None}]",
+              "would_bridge": "list[{kind: str, networks: list[{network_id: str, devices: list[Thing]}], device: Thing | None, ports: list[int], allowed: bool}]",
+              "would_split": "list[{network_id: str | None, parts: list[int], cut_ports: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], allowed: bool, components: list[{index: int, devices: list[{device: Thing, port: int, bridging: bool, network_before: str | None}], holds_root: bool}], root: list[Thing], cut_off: list[Thing] | None}]",
+              "links": "{count_before: int, count_after: int, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, added_count: int, lost_count: int, model_matches_game: bool, model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}]} | None",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "BuildJob", "view": "BuildJob", "job_view": "BuildJob"},
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo]",
+        "x-list": "one",
+        "x-target": [
+          {"path": "remove_ids", "role": "acts-on"},
+          {"path": "join_to", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      },
+      "brief": "a chute run or pieces"
+    },
+    "blueprint": {
+      "summary": "paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks",
+      "options": {
+        "blueprint": {
+          "schema": {"type": "string"},
+          "description": "A blueprint in BlueprintMod's folder (.blueprint optional) or an absolute path.",
+          "required": true,
+          "x-script": "same"
+        },
+        "at": {
+          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "description": "World position of the blueprint's anchor.",
+          "required": true,
+          "x-script": "same"
+        },
+        "turn": {
+          "schema": {"type": "integer", "enum": [0, 90, 180, 270]},
+          "description": "Degrees added to the copy angle.",
+          "default": "0",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "text": ["Progress: inspect {what: \"job\", id: \"paste\"}; take it back: undo {id: \"paste\"}."],
+      "x-script-text": ["Progress: sg.inspect('job', id='paste'); take it back: sg.undo(id='paste')."],
+      "example": {"blueprint": "airlock", "at": [700, 202, 660], "confirm": true},
+      "handlers": [
+        {
+          "name": "paste_blueprint",
+          "args": [
+            {
+              "arg": "name",
+              "option": "blueprint",
+              "change": "default-changed",
+              "note": "name is a filter elsewhere (see MAP-09); optional before, required now in this what",
+              "default": ["absent", "required"]
+            },
+            {
+              "arg": "anchor",
+              "option": "at",
+              "change": "default-changed",
+              "note": "renamed to the shared name at; optional before, required now in this what",
+              "default": ["absent", "required"]
+            },
+            {"arg": "rotation", "option": "turn", "change": "renamed"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "label": "BlueprintPasteStatus",
+            "view": "BlueprintPasteStatus",
+            "keys": {
+              "known": "bool",
+              "active": "bool",
+              "complete": "bool | None",
+              "cancelled": "bool | None",
+              "created": "int | None",
+              "failed": "int | None",
+              "skipped": "int | None",
+              "pasted": "int | None",
+              "standing": "int | None",
+              "fingerprint": "str | None",
+              "file": "str | None",
+              "entries": "int | None",
+              "other_active": "bool"
+            }
+          },
+          {"label": "BlueprintUndo", "view": "BlueprintUndo", "keys": {"message": "str"}},
+          {
+            "label": "BlueprintPasteStarted",
+            "view": "BlueprintPasteStarted",
+            "keys": {
+              "file": "str",
+              "entries": "int",
+              "anchor": "list[float]",
+              "rotation": "int",
+              "copy_y_angle": "float",
+              "expected_duration_s": "float"
+            }
+          }
+        ]
+      },
+      "write": {
+        "report": "mod",
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "mixed",
+        "x-undo-mark": "[undo] the newest paste only",
+        "x-list": "one",
+        "x-target": []
+      },
+      "brief": "paste a blueprint"
+    },
+    "finish": {
+      "summary": "build a placed structure on to a later build state, paying each state's materials",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "One structure, a list or a ref: one job per id, in order.",
+          "required": true,
+          "x-script": "One structure or a list: one job per id, in order."
+        },
+        "state": {
+          "schema": {"type": "integer", "minimum": 0, "maximum": 64},
+          "description": "The build state to reach; default the next.",
+          "x-script": "same"
+        },
+        "materials": {"use": "materials"},
+        "free": {
+          "schema": {"type": "boolean"},
+          "description": "Creative worlds: no materials. Cheat.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "example": {"id": "1199811", "state": 2, "confirm": true},
+      "handlers": [
+        {
+          "name": "advance_build_state",
+          "args": [
+            {"arg": "reference_id", "option": "id", "change": "renamed"},
+            {"arg": "to_state", "option": "state", "change": "renamed"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "free", "option": "free", "change": "kept"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "dry_run": "bool",
+              "thing": "Thing",
+              "from_state": "int",
+              "to_state": "int",
+              "last_state": "int",
+              "cost": "list[{prefab_name: str, display_name: str, quantity: int, available: int | None, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}]",
+              "tools": "list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}]",
+              "ready": "bool",
+              "problems": "list[str]",
+              "build_state": "{current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "cheat": "free: true",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: change job]",
+        "x-list": "split",
+        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "materials", "role": "pays-from"}]
+      },
+      "brief": "a placed structure on to a later build state"
+    }
+  },
+  "reply_top": {"placed": "list[str]"}
+}

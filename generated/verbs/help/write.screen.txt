@@ -1,0 +1,13 @@
+Touch a control on a ScriptedScreens screen, as a player's touch does.
+Options:
+- id (string, required): One id, or "looking_at" (the thing the crosshair is on).
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+- surface (string): The surface; default the main screen's.
+- element (string): The element to touch (inspect screen lists them).
+- pixel (list): Or a point [x, y] in pixels from the top left.
+- event (click | change | toggle, default click): The touch: click, change (a slider or field) or toggle.
+- text (string): With change: the new value as text.
+- as_player (string): The name the handler receives; default the player's.
+One id only: a list is refused, naming run_script (this write cannot be undone).
+Reply: holder {reference_id, prefab_name, display_name}, surface, element {id, type, box, shown, touch, props, style}, event, value, player, accepted
+Example: write {what: "screen", id: "4860097", element: "start"}

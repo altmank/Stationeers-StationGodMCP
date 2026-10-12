@@ -1,0 +1,137 @@
+{
+  "verb": "undo",
+  "description": "Undo a finished build or removal job, a bulk write (write-N), a script run (script-14: the whole run, newest first), or the newest blueprint paste. Reports first; confirm: true undoes.",
+  "read_only": false,
+  "tool": {
+    "options": {
+      "id": "The job, the bulk write (write-N), the script run (script-14), or \"paste\"; a list is undone newest first, in one report.",
+      "allow_bridge": "Passed to every piece run.",
+      "materials": "The one holder every call pays from and refunds to. Default the job's own recorded source, else the player; never filled in by the verb layer.",
+      "confirm": "true acts; left out, it reports.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out."
+    }
+  },
+  "whats": {
+    "-": {
+      "summary": "a job id (place-12, run-4, remove-3...), a bulk write (write-N), a script run (script-14: the whole run), or \"paste\"",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "The job, the bulk write (write-N), the script run (script-14), or \"paste\"; a list is undone newest first, in one report.",
+          "required": true,
+          "x-script": "drop"
+        },
+        "allow_bridge": {
+          "schema": {"type": "array", "items": {}, "maxItems": 64},
+          "description": "Passed to every piece run.",
+          "x-script": "drop"
+        },
+        "materials": {
+          "use": "materials",
+          "schema": {"type": "string"},
+          "description": "The one holder every call pays from and refunds to. Default the job's own recorded source, else the player; never filled in by the verb layer.",
+          "x-script": "drop"
+        },
+        "refund_to": {
+          "use": "refund_to",
+          "description": "Where removals' refunds go. Default nothing after a free placement, else each tool's own list.",
+          "x-script": "drop"
+        },
+        "acknowledge_gas_lost": {"use": "acknowledge_gas_lost", "x-script": "drop"},
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["overwrite"]}},
+          "description": "Bulk writes: overwrite: write a previous value back even where it drifted since.",
+          "x-script": "drop"
+        },
+        "from_step": {
+          "schema": {"type": "integer", "minimum": 1},
+          "description": "Bulk writes: go on from this step after a refused one.",
+          "x-script": "drop"
+        },
+        "confirm": {"use": "confirm"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "text": [
+        "A bulk write undo lists every step with its mark: build and removal jobs [undo] (undo of each, newest first); swap jobs [cannot undo: change job]; logic writes of held settings, memory, label, paint, pins, uplink and genes [undo] (previous values written back); action and pulse logic types [cannot undo: action]; battery [undo: restores the value, not what happened since]; item slot moves [undo] unless merged; chip source, run controls, screen presses, gas moves, player moves, trades, console commands and store moves [cannot undo].",
+        "A script run (script-14) is reverted whole, newest first, each target restored to its value before the run; jobs still in flight at a stop are included once they settle, and groups that cannot be undone are named [cannot undo]. Each target is compared with the run's last written value: where it changed since (the user, a chip, another run), the target is reported and not written unless allow: [\"overwrite\"]. Undo of a running run is refused: stop it first (server {what: \"stop\", id}). Past the memory bound undo answers undo_expired, naming what it can no longer revert."
+      ],
+      "example": {"id": "place-41", "confirm": true},
+      "handlers": [
+        {
+          "name": "undo_job",
+          "when": "a job id",
+          "args": [
+            {"arg": "job_id", "option": "id", "change": "renamed"},
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
+            {
+              "arg": "from_id",
+              "option": "materials",
+              "change": "default-changed",
+              "note": "the job's own source today; spec Appendix A says player (see MAP-04, MAP-21)",
+              "default": ["the job's own, else the player", "player (Appendix A; the description says the job's own)"]
+            },
+            {
+              "arg": "refund_to",
+              "option": "refund_to",
+              "change": "default-changed",
+              "note": "none after a free placement, else each tool's chain today; spec states the chain (see MAP-21)",
+              "default": ["none when the job placed free, else each tool's default chain", "[inventory, source, storage, ground]"]
+            },
+            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {"name": "hub:undo_write", "when": "a bulk write (write-N) or a script run (script-N)", "args": []},
+        {
+          "name": "paste_blueprint",
+          "when": "\"paste\": the newest blueprint paste (undo: true)",
+          "args": [{"arg": "undo", "option": "id", "change": "moved", "note": "undo {id: \"paste\"} (see MAP-23)"}]
+        }
+      ],
+      "reply": {
+        "list": "piece_runs",
+        "variants": [
+          {
+            "keys": {
+              "job_id": "str",
+              "tool": "str",
+              "status": "str",
+              "plan": "{remove: list[Any], restore: list[Any], diverged: list[Any], notes: list[str], ready: bool}",
+              "remove_arguments": "dict | None",
+              "place_arguments": "dict | None",
+              "removal": "dict | None",
+              "placement": "dict | None",
+              "piece_runs": "list[{tool: str, arguments: dict, reply: dict}]",
+              "resolved_networks": "list | None",
+              "gas_hold": "dict | None"
+            }
+          }
+        ]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo]",
+        "x-list": "split",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      }
+    }
+  }
+}

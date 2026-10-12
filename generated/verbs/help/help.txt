@@ -1,0 +1,9 @@
+StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic.
+Options:
+- verb (string): A verb: its whats and shared options.
+- lang (python): python: the stub for sg calls in a script; leave it out for a direct call.
+- what (string): With verb: that what's options, reply keys and an example.
+- topic (string): A topic (targets, paging, writes, shaping, refs, errors, positions, turns, refunds, jobs, networks...).
+- subtopic (string): A subtopic of topic; types takes one type name (BuildJob).
+Reply: tool, topic, subtopic, text, reply_keys, topics, shared_topics, subtopics
+Example: help {verb: "find"}

@@ -1,0 +1,6 @@
+A buildable prefab before it stands anywhere: placement kind, turns, cells, ports.
+Options:
+- prefab (string or integer, required): Whole prefab name or hash.
+- include (list of small_cells): small_cells: each cell's offset.
+Reply: prefab_name, prefab_hash, display_name, build_states, runtime_type, placement, grid_size_m, small_grid, rotation_axes, allowed_rotations [{facing, up, euler}], small_cell_count, small_cells [{x, y, z}], render_box {min, max, size}, grid_box {min, max, size}, ports [{index, type, role, flow, at, outward}], visual_up {local, lying_allowed, source, verified}, reversible_flow {logic_type, value, reason}, has_cursor, controls {local, votes, considered, source, fallback}, engine {name, max_thrust_n, max_exhaust_velocity_ms, specific_impulse_s, max_fuel_flow_rate, efficiency, efficiency_percent, mass_kg, chamber_volume_l, feed, inputs, max_moles_per_tick, litres_per_tick, max_pressure_per_tick_kpa, flow_rate_min_l, flow_rate_max_l}
+Example: inspect {what: "prefab", prefab: "StructureWallLight"}

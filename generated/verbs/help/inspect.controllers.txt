@@ -1,0 +1,6 @@
+Controllers: what can write or override a device: IC chips (through their pins, and batch writers reaching it over its data network), logic writer and memory structures, Lua screen scripts, and writers the hub knows (the dashboard's hub, other runs). A write or report on a driven device carries driven_by naming the controller.
+Options:
+- id (string or array, required): The device(s).
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: reference_id, display_name, controllers [{reference_id, display_name, kind, how, logic_types, line, on}], count
+Example: inspect {what: "controllers", id: "4936423"}

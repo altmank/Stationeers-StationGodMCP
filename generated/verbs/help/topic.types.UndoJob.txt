@@ -1,0 +1,3 @@
+UndoJob = {job_id: str, tool: str, status: str, plan: {remove: list[str], restore: list[str], diverged: list[str], notes: list[str], ready: bool,
+    undone_by: list[str] | None}, remove_arguments: Any | None, place_arguments: Any | None, removal: Any | None, placement: Any | None, piece_runs:
+    list[{tool: str, arguments: Any, reply: Any | None}]}

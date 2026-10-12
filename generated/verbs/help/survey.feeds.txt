@@ -1,0 +1,9 @@
+How a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices.
+Options:
+- id (string or array, required): The root device (an APC output, a generator).
+- network (string or object): A network: its id, a piece or device on it, or {id, port}.
+- port (integer): Or the root's port whose network to trace.
+- kind (cable | pipe | chute, default cable): The network's kind when root is a device on several.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: root {reference_id, prefab_name, display_name}, network_id, kind, root_room_id, daisy_chains, multiple_feeds, devices [{reference_id, prefab_name, display_name, room_id, pieces, rooms, through}], rooms [{room_id, devices, entries, entry_at}], unreached [{reference_id, prefab_name, display_name}]
+Example: survey {what: "feeds", id: "720259"}

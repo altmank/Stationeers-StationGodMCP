@@ -1,0 +1,12 @@
+StationGod and the game server: mod version, health and costs, profiling, the in-game console. command is a cheat.
+A report carries report_only: true and lists every target with its current and new value.
+
+whats:
+- info: the running mod: version, per-method calls and times, game members, its cost to the game
+- profiling: profile StationGod's main-thread cost: on, off, reset, report
+- console: the latest in-game console lines, oldest first
+- command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings (cheat)
+- stop: stop a script run or a job; with no id, every live run of this session. A script run gets sg.Stopped (a BaseException) once, at its next sg call (at once inside sg.wait or sg.watch), so its finally blocks run: after it, reads and writes act, while waits and watches raise at once. The worker is killed 5 s after the stop (longer while an sg call is in flight, never past 30 s), or on a second stop. A running job is allowed to settle
+
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "server", what} gives a what's options, reply keys and an example.

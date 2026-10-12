@@ -1,0 +1,11 @@
+Up to 512 values into a device's memory from start, as a chip's put does.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- id (string, required): One id, or "looking_at" (the thing the crosshair is on).
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+- start (integer, required): First address.
+- values (list, required): Values written from start.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+Reply: gateway_id, reference_id, start_address, requested_values, previous_values, current_values, count, stack_size
+Example: write {what: "memory", id: "4820585", start: 10, values: [1, 0, 2], confirm: true}

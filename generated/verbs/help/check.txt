@@ -1,0 +1,11 @@
+Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk. Read only.
+
+whats:
+- layout: lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more
+- rules: the lint rule set: list, validate a file, fields, functions, run examples, explain a finding
+- replaceable: could a player place each thing again exactly where it stands, every neighbour present
+- ignition: whether carried items, or a tank or network by id, would catch fire in the air around them
+
+Every what here takes: id.
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "check", what} gives a what's options, reply keys and an example.

@@ -1,0 +1,8 @@
+Point a Logic Rocket Uplink at a Logic Rocket Downlink.
+Options:
+- id (string, required): The uplink.
+- downlink (string, required): The downlink to follow.
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+One id only: a list is refused, naming run_script (this write cannot be undone).
+Reply: uplink {reference_id, prefab_name, display_name}, previous_downlink {reference_id, prefab_name, display_name, rocket}, link {downlink, connected, choices}
+Example: write {what: "uplink", id: "5100200", downlink: "5100377"}

@@ -1,0 +1,12 @@
+Lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more.
+Options:
+- room (string): A room id.
+- box (list): Two corners; at most 4000 2 m cells.
+- codes (list): Only findings of these codes.
+- exclude_codes (list): Leave these codes out.
+- id (string or array): Narrows: only findings on these things (up to 256); room or box is still needed.
+- since (string): Only findings on this id and higher ids (what was made after it).
+- limit (integer, default 25): Findings returned.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: region, cells, pieces, devices, structures, doors, counts, findings [{code, level, message, reference_id, other_id, at, subject, rule_id}], total, filtered_out, has_more, rule_source {mod_file, save_file, rules, from_save, disabled, errors}, elapsed_ms
+Example: check {what: "layout", room: "17"}

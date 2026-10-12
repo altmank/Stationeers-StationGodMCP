@@ -1,0 +1,893 @@
+{
+  "verb": "swap",
+  "description": "Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. Reports first; confirm: true does it.",
+  "read_only": false,
+  "tool": {
+    "options": {
+      "id": "frame, pipe, chute: An id, a list, a ref ('r3'), or \"looking_at\". cable: Pieces (up to 4096). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "materials": "Holder(s) that pay, in order; ids or \"player\".",
+      "confirm": "true acts; left out, it reports.",
+      "into": "wall: The new wall prefab. frame: The new frame prefab; default each frame's own (finishes it). cable: Upgrade to this grade (heavy was today's default). One of into or tidy is required. pipe: insulated (today's default), or repair: burst pieces become new. One of into or tidy is required.",
+      "prefab": "wall: Only pieces of these prefabs; the others are kept. frame: Only pieces of these prefabs.",
+      "network": "A network: its id, a piece or device on it, or {id, port}.",
+      "tidy": "cable: Tidy operations, alone or together; true is [simplify_junctions], today's default. pipe: Tidy operations; true is [simplify_junctions], today's default.",
+      "box": "Every chute piece in the box (at most a 32 m cube).",
+      "riding": "A piece holding an item: skip it, or refuse the run. Default skip.",
+      "fields": "Keys to keep.",
+      "omit": "Key paths to leave out."
+    }
+  },
+  "whats": {
+    "wall": {
+      "summary": "replace walls and windows with another wall or window prefab without opening a face",
+      "options": {
+        "id": {"use": "id", "description": "The walls (up to 4096); or room."},
+        "room": {"use": "room", "description": "Every wall around this room."},
+        "into": {"schema": {"type": "string"}, "description": "The new wall prefab.", "required": true, "x-script": "same"},
+        "prefab": {"use": "prefab", "description": "Only pieces of these prefabs; the others are kept."},
+        "materials": {"use": "materials"},
+        "skip_unmatched": {
+          "schema": {"type": "boolean"},
+          "description": "Leave pieces that cannot change as they are instead of refusing.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 4096},
+          "description": "Pieces listed per list.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "example": {"room": "17", "into": "StructureCompositeWall"},
+      "handlers": [
+        {
+          "name": "replace_walls",
+          "args": [
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "room_id", "option": "room", "change": "renamed"},
+            {"arg": "to", "option": "into", "change": "renamed"},
+            {"arg": "from_prefabs", "option": "prefab", "change": "renamed"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "pieces",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {
+            "label": "StructureSwapReport",
+            "view": "StructureSwapReport",
+            "keys": {
+              "tool": "str",
+              "target": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None}]",
+              "pieces_total": "int",
+              "to_swap": "int",
+              "kept": "int",
+              "unmatched": "int",
+              "pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, target_prefab_name: str | None, target_build_state: int, blocks_air_before: bool, blocks_air_after: bool, blocks_gravity_before: bool, blocks_gravity_after: bool, air_change: str, seals: bool, stressed: bool, faces: list[{position: Vec3, cells: list[Vec3], pressure_kpa_a: float, pressure_kpa_b: float, difference_kpa: float, max_pressure_delta_kpa_before: float, max_pressure_delta_kpa_after: float, verdict: str}] | None, room_ids: list[str], materials: list[{prefab_name: str | None, cost: int, refund: int, net: int}]}]",
+              "pieces_listed": "int",
+              "by_prefab": "list[{prefab_name: str | None, target_prefab_name: str | None, count: int}]",
+              "kept_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "unmatched_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "from": "Thing | None",
+              "materials": "list[{prefab_name: str | None, display_name: str | None, cost: int, refund: int, charge: int, give_back: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}]}]",
+              "refund_enabled": "bool",
+              "refund_plan": "RefundPlan | None",
+              "rooms": "list[{room_id: str, cell_count: int, total_mol: float, energy_j: float}]",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "SwapJob", "view": "SwapJob", "job_view": "SwapJob"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: change job]",
+        "x-list": "native",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "room", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      }
+    },
+    "frame": {
+      "summary": "replace frames with another frame prefab, or finish unfinished frames, without opening a cell",
+      "options": {
+        "id": {
+          "use": "id",
+          "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
+          "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
+        },
+        "room": {"use": "room", "description": "Every frame around this room."},
+        "into": {
+          "schema": {"type": "string"},
+          "description": "The new frame prefab; default each frame's own (finishes it).",
+          "x-script": "same"
+        },
+        "prefab": {"use": "prefab", "description": "Only pieces of these prefabs."},
+        "materials": {"use": "materials"},
+        "skip_unmatched": {
+          "schema": {"type": "boolean"},
+          "description": "Leave pieces that cannot change as they are instead of refusing.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 4096},
+          "description": "Pieces listed per list.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "example": {"room": "17"},
+      "handlers": [
+        {
+          "name": "replace_frames",
+          "args": [
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "room_id", "option": "room", "change": "renamed"},
+            {"arg": "to", "option": "into", "change": "renamed"},
+            {"arg": "from_prefabs", "option": "prefab", "change": "renamed"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "pieces",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {
+            "label": "StructureSwapReport",
+            "view": "StructureSwapReport",
+            "keys": {
+              "tool": "str",
+              "target": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None}]",
+              "pieces_total": "int",
+              "to_swap": "int",
+              "kept": "int",
+              "unmatched": "int",
+              "pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, target_prefab_name: str | None, target_build_state: int, blocks_air_before: bool, blocks_air_after: bool, blocks_gravity_before: bool, blocks_gravity_after: bool, air_change: str, seals: bool, stressed: bool, faces: list[{position: Vec3, cells: list[Vec3], pressure_kpa_a: float, pressure_kpa_b: float, difference_kpa: float, max_pressure_delta_kpa_before: float, max_pressure_delta_kpa_after: float, verdict: str}] | None, room_ids: list[str], materials: list[{prefab_name: str | None, cost: int, refund: int, net: int}]}]",
+              "pieces_listed": "int",
+              "by_prefab": "list[{prefab_name: str | None, target_prefab_name: str | None, count: int}]",
+              "kept_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "unmatched_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "from": "Thing | None",
+              "materials": "list[{prefab_name: str | None, display_name: str | None, cost: int, refund: int, charge: int, give_back: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}]}]",
+              "refund_enabled": "bool",
+              "refund_plan": "RefundPlan | None",
+              "rooms": "list[{room_id: str, cell_count: int, total_mol: float, energy_j: float}]",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "SwapJob", "view": "SwapJob", "job_view": "SwapJob"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: change job]",
+        "x-list": "native",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "room", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      }
+    },
+    "cable": {
+      "summary": "upgrade cable in place (into heavy or super_heavy) or tidy a network (tidy: remove dead ends, loops...)",
+      "options": {
+        "network": {"use": "network"},
+        "id": {"use": "id", "description": "Pieces (up to 4096)."},
+        "into": {
+          "schema": {"type": "string", "enum": ["heavy", "super_heavy"]},
+          "description": "Upgrade to this grade (heavy was today's default). One of into or tidy is required.",
+          "x-script": "same"
+        },
+        "tidy": {
+          "schema": {
+            "type": ["array", "boolean"],
+            "items": {
+              "type": "string",
+              "enum": [
+                "remove_dead_ends",
+                "remove_loops",
+                "remove_redundant",
+                "split_long_straights",
+                "merge_straights",
+                "simplify_junctions"
+              ]
+            },
+            "maxItems": 6
+          },
+          "description": "Tidy operations, alone or together; true is [simplify_junctions], today's default.",
+          "x-script": "Tidy operations, alone or together; True is [simplify_junctions], today's default."
+        },
+        "spare": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
+          "description": "tidy: pieces never removed, loops spared.",
+          "x-script": "same"
+        },
+        "only": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
+          "description": "remove_redundant: the only pieces that may go.",
+          "x-script": "same"
+        },
+        "older_than": {
+          "schema": {"type": "string"},
+          "description": "remove_redundant: only pieces with a lower id may go.",
+          "x-script": "same"
+        },
+        "root": {
+          "schema": {"type": "string"},
+          "description": "remove_redundant: the device the network is fed from.",
+          "default": "every supplier",
+          "x-script": "remove_redundant: the device the network is fed from. (default every supplier)"
+        },
+        "materials": {"use": "materials"},
+        "skip_unmatched": {
+          "schema": {"type": "boolean"},
+          "description": "Leave pieces that cannot change as they are instead of refusing.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 4096},
+          "description": "Pieces listed per list.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "text": ["Give into (upgrade) or tidy, not both."],
+      "example": {"network": "3768865", "into": "super_heavy"},
+      "handlers": [
+        {
+          "name": "upgrade_cables",
+          "when": "into",
+          "args": [
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {"arg": "network_id", "option": "network", "change": "renamed"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {
+              "arg": "to",
+              "option": "into",
+              "change": "default-changed",
+              "note": "default heavy gone: into or tidy is required; the option name stays, a value is renamed; default heavy is not in spec: with neither into nor tidy the handler is not chosen (see MAP-18)",
+              "default": ["heavy", "absent (no default; into or tidy picks the handler)"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "clean_cables",
+          "when": "tidy",
+          "args": [
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {"arg": "network_id", "option": "network", "change": "renamed"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "keep_ids", "option": "spare", "change": "renamed"},
+            {"arg": "only_ids", "option": "only", "change": "renamed"},
+            {"arg": "older_than_id", "option": "older_than", "change": "renamed"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {
+              "arg": "operations",
+              "option": "tidy",
+              "change": "default-changed",
+              "note": "tidy: true is today's default [simplify_junctions]; into or tidy is required; the option name stays, a value is renamed; default [simplify_junctions] is not in spec, though the MAP reason says it is kept (see MAP-18)",
+              "default": ["[\"simplify_junctions\"]", "absent (no default; into or tidy picks the handler)"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "pieces",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {
+            "label": "UpgradeReport",
+            "view": "UpgradeReport",
+            "keys": {
+              "tool": "str",
+              "target": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None}]",
+              "pieces_total": "int",
+              "to_swap": "int",
+              "kept": "int",
+              "unmatched": "int",
+              "pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, target_prefab_name: str | None, target_rotation_deg: Vec3, rotation_kept: bool, cost: int, network_id: str | None, operation: str | None, ends: list[str] | None, connected_ends: list[str] | None, replacement_count: int | None, round: int | None, why: str | None, merged_reference_ids: list[str] | None, refund_count: int | None}]",
+              "pieces_listed": "int",
+              "by_prefab": "list[Any]",
+              "kept_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "unmatched_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "dead_ends": "int | None",
+              "dead_end_pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, reason: str, ends: list[str], connected_ends: list[str], stopped_by: str | None}] | None",
+              "loops": "list[{index: int, pieces: list[{reference_id: str, prefab_name: str | None, position: Vec3, cut: bool}], cut: list[str], spared: bool, unbroken: str | None}] | None",
+              "redundant": "{candidates: int, removed: list[str], root: list[Thing], kept_count: int, kept_by_reason: dict[str, int], kept: list[{reference_id: str, prefab_name: str | None, position: Vec3, reason: str, devices: list[Thing], pieces_cut_off: int}]} | None",
+              "riding_count": "int | None",
+              "riding": "list[{reference_id: str, carries: Thing, held: str}] | None",
+              "from": "Thing | None",
+              "coils": "list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}]",
+              "refund_enabled": "bool",
+              "refund": "list[{prefab_name: str | None, quantity: int}]",
+              "refund_plan": "RefundPlan | None",
+              "networks": "list[Any]",
+              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, links: int, mounted: bool, network_ids: list[str]}]",
+              "connectivity": "{links_before: int, links_after_predicted: int, model_matches_game: bool, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], mounted: list[{device_id: str, piece_id: str, attached_before: bool, attached_after: bool | None}]} | None",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "UpgradeJob", "view": "UpgradeJob", "job_view": "UpgradeJob"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: change job]",
+        "x-list": "native",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "network", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      }
+    },
+    "pipe": {
+      "summary": "upgrade pipe in place (into insulated, or repair burst pieces) or tidy a network, keeping its contents",
+      "options": {
+        "network": {"use": "network"},
+        "id": {
+          "use": "id",
+          "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
+          "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
+        },
+        "into": {
+          "schema": {"type": "string", "enum": ["insulated", "repair"]},
+          "description": "insulated (today's default), or repair: burst pieces become new. One of into or tidy is required.",
+          "x-script": "same"
+        },
+        "tidy": {
+          "schema": {
+            "type": ["array", "boolean"],
+            "items": {
+              "type": "string",
+              "enum": [
+                "remove_dead_ends",
+                "remove_loops",
+                "remove_redundant",
+                "split_long_straights",
+                "merge_straights",
+                "simplify_junctions"
+              ]
+            },
+            "maxItems": 6
+          },
+          "description": "Tidy operations; true is [simplify_junctions], today's default.",
+          "x-script": "Tidy operations; True is [simplify_junctions], today's default."
+        },
+        "spare": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
+          "description": "tidy: pieces never removed, loops spared.",
+          "x-script": "same"
+        },
+        "only": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
+          "description": "remove_redundant: the only pieces that may go.",
+          "x-script": "same"
+        },
+        "older_than": {
+          "schema": {"type": "string"},
+          "description": "remove_redundant: only pieces with a lower id may go.",
+          "x-script": "same"
+        },
+        "root": {
+          "schema": {"type": "string"},
+          "description": "remove_redundant: the device the network is fed from.",
+          "default": "every supplier",
+          "x-script": "remove_redundant: the device the network is fed from. (default every supplier)"
+        },
+        "acknowledge_gas_lost": {"use": "acknowledge_gas_lost"},
+        "materials": {"use": "materials"},
+        "skip_unmatched": {
+          "schema": {"type": "boolean"},
+          "description": "Leave pieces that cannot change as they are instead of refusing.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 4096},
+          "description": "Pieces listed per list.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "text": ["Give into (upgrade) or tidy, not both."],
+      "example": {"network": "5012345", "into": "insulated"},
+      "handlers": [
+        {
+          "name": "upgrade_pipes",
+          "when": "into",
+          "args": [
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {"arg": "network_id", "option": "network", "change": "renamed"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {
+              "arg": "to",
+              "option": "into",
+              "change": "default-changed",
+              "note": "default insulated gone: into or tidy is required; the option name stays, a value is renamed; default insulated is not in spec: with neither into nor tidy the handler is not chosen (see MAP-18)",
+              "default": ["insulated", "absent (no default; into or tidy picks the handler)"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        },
+        {
+          "name": "clean_pipes",
+          "when": "tidy",
+          "args": [
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {"arg": "network_id", "option": "network", "change": "renamed"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "keep_ids", "option": "spare", "change": "renamed"},
+            {"arg": "only_ids", "option": "only", "change": "renamed"},
+            {"arg": "older_than_id", "option": "older_than", "change": "renamed"},
+            {"arg": "root", "option": "root", "change": "kept"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {
+              "arg": "operations",
+              "option": "tidy",
+              "change": "default-changed",
+              "note": "tidy: true is today's default [simplify_junctions]; into or tidy is required; the option name stays, a value is renamed; default [simplify_junctions] is not in spec, though the MAP reason says it is kept (see MAP-18)",
+              "default": ["[\"simplify_junctions\"]", "absent (no default; into or tidy picks the handler)"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "pieces",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {
+            "label": "UpgradeReport",
+            "view": "UpgradeReport",
+            "keys": {
+              "tool": "str",
+              "target": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None}]",
+              "pieces_total": "int",
+              "to_swap": "int",
+              "kept": "int",
+              "unmatched": "int",
+              "pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, target_prefab_name: str | None, target_rotation_deg: Vec3, rotation_kept: bool, cost: int, network_id: str | None, operation: str | None, ends: list[str] | None, connected_ends: list[str] | None, replacement_count: int | None, round: int | None, why: str | None, merged_reference_ids: list[str] | None, refund_count: int | None}]",
+              "pieces_listed": "int",
+              "by_prefab": "list[Any]",
+              "kept_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "unmatched_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "dead_ends": "int | None",
+              "dead_end_pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, reason: str, ends: list[str], connected_ends: list[str], stopped_by: str | None}] | None",
+              "loops": "list[{index: int, pieces: list[{reference_id: str, prefab_name: str | None, position: Vec3, cut: bool}], cut: list[str], spared: bool, unbroken: str | None}] | None",
+              "redundant": "{candidates: int, removed: list[str], root: list[Thing], kept_count: int, kept_by_reason: dict[str, int], kept: list[{reference_id: str, prefab_name: str | None, position: Vec3, reason: str, devices: list[Thing], pieces_cut_off: int}]} | None",
+              "riding_count": "int | None",
+              "riding": "list[{reference_id: str, carries: Thing, held: str}] | None",
+              "from": "Thing | None",
+              "coils": "list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}]",
+              "refund_enabled": "bool",
+              "refund": "list[{prefab_name: str | None, quantity: int}]",
+              "refund_plan": "RefundPlan | None",
+              "networks": "list[Any]",
+              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, links: int, mounted: bool, network_ids: list[str]}]",
+              "connectivity": "{links_before: int, links_after_predicted: int, model_matches_game: bool, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], mounted: list[{device_id: str, piece_id: str, attached_before: bool, attached_after: bool | None}]} | None",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "UpgradeJob", "view": "UpgradeJob", "job_view": "UpgradeJob"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: change job]",
+        "x-list": "native",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "network", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      }
+    },
+    "chute": {
+      "summary": "remove chute pieces no item can pass to a consumer; junctions left with one way become straights",
+      "options": {
+        "network": {"use": "network"},
+        "id": {
+          "use": "id",
+          "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
+          "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
+        },
+        "box": {"use": "box", "description": "Every chute piece in the box (at most a 32 m cube)."},
+        "spare": {
+          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
+          "description": "Pieces never removed or replaced.",
+          "x-script": "same"
+        },
+        "riding": {
+          "schema": {"type": "string", "enum": ["skip", "refuse"]},
+          "description": "A piece holding an item: skip it, or refuse the run.",
+          "default": "skip",
+          "x-script": "same"
+        },
+        "materials": {"use": "materials"},
+        "skip_unmatched": {
+          "schema": {"type": "boolean"},
+          "description": "Leave pieces that cannot change as they are instead of refusing.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 4096},
+          "description": "Pieces listed per list.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "example": {"network": "6100100"},
+      "handlers": [
+        {
+          "name": "clean_chutes",
+          "args": [
+            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
+            {"arg": "network_id", "option": "network", "change": "renamed"},
+            {"arg": "reference_ids", "option": "id", "change": "renamed"},
+            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
+            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
+            {"arg": "keep_ids", "option": "spare", "change": "renamed"},
+            {"arg": "riding", "option": "riding", "change": "kept"},
+            {
+              "arg": "wait",
+              "option": "queue",
+              "change": "default-changed",
+              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
+              "default": ["false", "true"]
+            },
+            {
+              "arg": "dry_run",
+              "option": "confirm",
+              "change": "merged",
+              "note": "dry_run and confirm become one confirm (false or left out: report only)"
+            },
+            {"arg": "confirm", "option": "confirm", "change": "kept"},
+            {"arg": "from_id", "option": "materials", "change": "renamed"},
+            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
+            {
+              "arg": "refund",
+              "option": "refund_to",
+              "change": "merged",
+              "note": "refund: false is refund_to: \"none\" (same meaning today)"
+            },
+            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
+            {"arg": "limit", "option": "rows", "change": "renamed"},
+            {"arg": "verbose", "option": "verbose", "change": "kept"},
+            {"arg": "fields", "option": "fields", "change": "kept"},
+            {"arg": "omit", "option": "omit", "change": "kept"},
+            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
+            {"arg": "output_file", "option": "output_file", "change": "kept"}
+          ]
+        }
+      ],
+      "reply": {
+        "list": "pieces",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {
+            "label": "UpgradeReport",
+            "view": "UpgradeReport",
+            "keys": {
+              "tool": "str",
+              "target": "str",
+              "status": "str",
+              "job_id": "str | None",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None}]",
+              "pieces_total": "int",
+              "to_swap": "int",
+              "kept": "int",
+              "unmatched": "int",
+              "pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, target_prefab_name: str | None, target_rotation_deg: Vec3, rotation_kept: bool, cost: int, network_id: str | None, operation: str | None, ends: list[str] | None, connected_ends: list[str] | None, replacement_count: int | None, round: int | None, why: str | None, merged_reference_ids: list[str] | None, refund_count: int | None}]",
+              "pieces_listed": "int",
+              "by_prefab": "list[Any]",
+              "kept_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "unmatched_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "dead_ends": "int | None",
+              "dead_end_pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, reason: str, ends: list[str], connected_ends: list[str], stopped_by: str | None}] | None",
+              "loops": "list[{index: int, pieces: list[{reference_id: str, prefab_name: str | None, position: Vec3, cut: bool}], cut: list[str], spared: bool, unbroken: str | None}] | None",
+              "redundant": "{candidates: int, removed: list[str], root: list[Thing], kept_count: int, kept_by_reason: dict[str, int], kept: list[{reference_id: str, prefab_name: str | None, position: Vec3, reason: str, devices: list[Thing], pieces_cut_off: int}]} | None",
+              "riding_count": "int | None",
+              "riding": "list[{reference_id: str, carries: Thing, held: str}] | None",
+              "from": "Thing | None",
+              "coils": "list[{prefab_name: str | None, display_name: str | None, needed: int, available: int, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}], paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}]",
+              "refund_enabled": "bool",
+              "refund": "list[{prefab_name: str | None, quantity: int}]",
+              "refund_plan": "RefundPlan | None",
+              "networks": "list[Any]",
+              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, links: int, mounted: bool, network_ids: list[str]}]",
+              "connectivity": "{links_before: int, links_after_predicted: int, model_matches_game: bool, added: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], lost: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}], mounted: list[{device_id: str, piece_id: str, attached_before: bool, attached_after: bool | None}]} | None",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "UpgradeJob", "view": "UpgradeJob", "job_view": "UpgradeJob"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "report": "dry_run",
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: change job]",
+        "x-list": "native",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "network", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"}
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,2 @@
+JobQueued = {job_id: str, tool: str, position: int, running_job_id: str | None, preflight: Any | None, preflight_summary: {placed: int | None,
+    changed: int | None, removed: int | None, warnings: list[str]} | None}

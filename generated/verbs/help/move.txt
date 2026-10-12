@@ -1,0 +1,12 @@
+Move items, gas and players. Reports first; confirm: true moves. gas and player are cheats: ask the user.
+Items go into or out of an Ingot Vault or SDB Silo store when to or source is one.
+A report carries report_only: true and lists every target with its current and new value.
+
+whats:
+- item: items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store
+- gas: move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump (cheat)
+- player: move a player anywhere at once: to a point, beside a thing or another player (cheat)
+
+Every what here takes: confirm, to.
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "move", what} gives a what's options, reply keys and an example.
