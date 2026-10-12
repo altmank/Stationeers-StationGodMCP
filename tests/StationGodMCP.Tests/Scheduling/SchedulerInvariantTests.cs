@@ -2,7 +2,9 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using Xunit;
 using Connection = StationGodMCP.Pure.Scheduling.FrameScheduler<StationGodMCP.Tests.Scheduling.FakeCall>.Connection;
@@ -260,6 +262,52 @@ public sealed class SchedulerInvariantTests
         Assert.Equal(0, allocated);
     }
 
+    [Fact]
+    public void ALaneSchedulerFrameCountingEachCallsStreamCostAllocatesNothingOnceWarm()
+    {
+        FakeClock clock = new FakeClock();
+        LaneScheduler scheduler = new LaneScheduler(SchedulerRig.WithBudget(4.0), new StreamStores(), clock);
+        object[] sources = { new object(), new object(), new object() };
+        string[] owners = { "c1", "r7", "c9" };
+        const int Cycles = 60;
+        const int PerCycle = 12;
+        TimedCall[] calls = new TimedCall[Cycles * PerCycle];
+        for (int index = 0; index < calls.Length; index++)
+        {
+            int connection = index % sources.Length;
+            calls[index] = new TimedCall(clock, new CallContext(owners[connection], index / sources.Length % 4), 0.2, 0.15,
+                sources[connection]);
+        }
+
+        int next = 0;
+        void Cycle()
+        {
+            for (int call = 0; call < PerCycle; call++)
+            {
+                scheduler.Add(calls[next++]);
+            }
+
+            scheduler.RunFrame(false, null, NoCalls.Instance);
+            scheduler.RunFrame(false, null, NoCalls.Instance);
+        }
+
+        for (int warm = 0; warm < Cycles / 2; warm++)
+        {
+            Cycle();
+        }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int measured = 0; measured < Cycles / 2; measured++)
+        {
+            Cycle();
+        }
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(0, allocated);
+        Assert.Equal(12, scheduler.Costs.Count);
+    }
+
     /// <summary>A call on one stream, picked as Arrive picks; null when the scheduler refused it (a limit).</summary>
     private static FakeCall? ArriveOn(SchedulerRig rig, Random random, Connection connection, int index, long stream,
         int position)
@@ -365,5 +413,12 @@ public sealed class SchedulerInvariantTests
 
             answered.Add((call.Connection, call.Position));
         }
+    }
+
+    private sealed class NoCalls : ICallRunner
+    {
+        internal static readonly NoCalls Instance = new NoCalls();
+
+        public CallOutcome RunCall(ProtocolCall call, double queueWaitMs) => throw new InvalidOperationException();
     }
 }

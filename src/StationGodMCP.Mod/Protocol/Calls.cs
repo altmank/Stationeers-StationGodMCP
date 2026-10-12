@@ -217,20 +217,37 @@ internal interface ICallQueue
     void Withdraw(QueuedCall call);
 
     /// <summary>
-    /// Streams of the connection ended (stream_end, or a slow client's every stream): at the next frame their waiting
-    /// calls leave the scheduler, their subscriptions and sample_logic runs end, and the per-stream stores drop what
-    /// they keep for them. Whoever ended them has already answered their unstarted calls.
+    /// Streams of an owner ended (stream_end; every stream of a slow client, of a closed connection's resume token
+    /// after a bye, or of a token whose resume window passed): at the next frame the source connection's waiting calls
+    /// on them leave the scheduler, their subscriptions and sample_logic runs end, and the per-stream stores drop what
+    /// they keep for them. Whoever ended them has already answered their unstarted calls. The source is the connection,
+    /// or any other object when none is left (a passed window).
     /// </summary>
     void StreamEnded(object source, StreamEnd end);
 
     /// <summary>
-    /// cursor_close from the connection of that client_id: at the next frame, before its calls run, the cursor stores
-    /// free the cursor if that connection owns it.
+    /// cursor_close from a connection of that owner: at the next frame, before its calls run, the cursor stores free
+    /// the cursor if that owner holds it.
     /// </summary>
-    void CursorClosed(string connectionId, string cursorId);
+    void CursorClosed(string owner, string cursorId);
 
-    /// <summary>The connection ended: its waiting calls are dropped, and what it had going on the main thread ends.</summary>
+    /// <summary>
+    /// The connection ended: its waiting calls are dropped and its sample_logic runs end unanswered. Without a resume
+    /// token what it had going on the main thread ends with it; a resume token's state is held or ended by ResumeHolds.
+    /// </summary>
     void Closed(object source);
+
+    /// <summary>
+    /// A resume token's connection closed and its state is held for the resume window: at the next frame its
+    /// subscriptions stop sampling until a connection resumes the token.
+    /// </summary>
+    void OwnerHeld(string owner);
+
+    /// <summary>
+    /// A connection (source) presented a held or live resume token: at the next frame the owner's subscriptions send
+    /// their events to it and each devices subscription's next sample is sent whole.
+    /// </summary>
+    void OwnerResumed(string owner, object source);
 }
 
 /// <summary>

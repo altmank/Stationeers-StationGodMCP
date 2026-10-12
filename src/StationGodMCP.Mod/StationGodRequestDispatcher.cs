@@ -27,11 +27,13 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 {
     private readonly ICallScheduler _requests;
     private readonly DeadlineWatch _deadlines;
+    private readonly StreamCostCalls _costs;
 
     internal StationGodRequestDispatcher(DeadlineWatch deadlines, ICallScheduler scheduler)
     {
         _deadlines = deadlines;
         _requests = scheduler;
+        _costs = new StreamCostCalls(scheduler.Costs);
     }
 
     /// <summary>The per-frame counters mod_info reports.</summary>
@@ -56,13 +58,17 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         Subscriptions?.StreamEnded(source, end);
     }
 
-    public void CursorClosed(string connectionId, string cursorId) => _requests.CloseCursor(connectionId, cursorId);
+    public void CursorClosed(string owner, string cursorId) => _requests.CloseCursor(owner, cursorId);
 
     public void Closed(object source)
     {
         _requests.Close(source);
         Subscriptions?.Closed(source);
     }
+
+    public void OwnerHeld(string owner) => Subscriptions?.Held(owner);
+
+    public void OwnerResumed(string owner, object source) => Subscriptions?.Resumed(owner, source);
 
     /// <summary>One frame of the scheduler, on the main thread; its outcome goes to mod_info's counters.</summary>
     internal void RunFrame(bool jobHoldsTick, ISampleLane? samples)
@@ -92,7 +98,8 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     /// <summary>
     /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
-    /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic and drop_job count as answered).
+    /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic, drop_job and stream_costs count as
+    /// answered). The lane scheduler times the same span for the call's stream (stream_costs).
     /// </summary>
     public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
@@ -114,6 +121,11 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             if (JobDropCalls.Handles(call.Request.Method))
             {
                 return new CallOutcome(Drops.Run(call, queueWaitMs, UnityEngine.Time.frameCount), call.Request.Method);
+            }
+
+            if (StreamCostCalls.Handles(call.Request.Method))
+            {
+                return new CallOutcome(_costs.Run(call, queueWaitMs, UnityEngine.Time.frameCount), call.Request.Method);
             }
 
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);

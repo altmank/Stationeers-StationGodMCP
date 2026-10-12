@@ -23,19 +23,23 @@ internal interface ICallScheduler
     void Withdraw(QueuedCall call);
 
     /// <summary>
-    /// Streams of the connection ended: their waiting calls are dropped unrun (whoever ended them answered them), and
-    /// the per-stream stores hear of it.
+    /// Streams of an owner ended: the waiting calls of the source connection on them are dropped unrun (whoever ended
+    /// them answered them), and the per-stream stores hear of it. A source that is no connection (a resume window that
+    /// passed) reaches the stores only.
     /// </summary>
     void EndStreams(object source, StreamEnd end);
 
     /// <summary>cursor_close: the cursor stores hear it at the start of the next frame, before that frame's calls.</summary>
-    void CloseCursor(string connectionId, string cursorId);
+    void CloseCursor(string owner, string cursorId);
 
     /// <summary>The connection ended: its waiting calls are dropped unrun and it takes no more.</summary>
     void Close(object source);
 
     /// <summary>One frame: the subscription lane's samples, then light calls, then at most one heavy call.</summary>
     FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner);
+
+    /// <summary>What each (owner, stream) has cost the main thread (stream_costs); main thread only.</summary>
+    StreamCosts Costs { get; }
 }
 
 /// <summary>
@@ -45,6 +49,11 @@ internal interface ICallScheduler
 /// carries; each call waits on its context's stream. A call the scheduler refuses beyond the in-flight limits is
 /// answered too_many_in_flight unrun, with the limit and its scope. Ended streams and closed connections reach the
 /// per-stream stores here, at the start of the frame.
+/// <para>
+/// Each call it runs is timed on the scheduler's clock from its start to its serialised reply (the span the
+/// dispatcher's RunCall covers) and counted for its context in Costs, with whether the frame's request budget had been
+/// reached by then; stream ends reach Costs with the stores.
+/// </para>
 /// </summary>
 internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 {
@@ -57,15 +66,19 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     private ICallRunner? _runner;
 
     private readonly StreamStores _stores;
+    private readonly IMonotonicClock _clock;
 
-    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null)
+    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null, IMonotonicClock? clock = null)
     {
         Settings = settings;
         _stores = stores ?? StreamStores.Main;
-        _scheduler = new FrameScheduler<QueuedCall>(settings, this, StopwatchClock.Instance, new CostPredictor());
+        _clock = clock ?? StopwatchClock.Instance;
+        _scheduler = new FrameScheduler<QueuedCall>(settings, this, _clock, new CostPredictor());
     }
 
     internal SchedulerSettings Settings { get; }
+
+    public StreamCosts Costs { get; } = new StreamCosts();
 
     public void Add(QueuedCall call) => _inbox.Enqueue(new Posted(PostKind.Add, call, call.Source ?? NoSource));
 
@@ -75,8 +88,8 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
     public void Close(object source) => _inbox.Enqueue(new Posted(PostKind.Close, null, source));
 
-    public void CloseCursor(string connectionId, string cursorId) =>
-        _inbox.Enqueue(new Posted(PostKind.CloseCursor, null, NoSource, default, connectionId, cursorId));
+    public void CloseCursor(string owner, string cursorId) =>
+        _inbox.Enqueue(new Posted(PostKind.CloseCursor, null, NoSource, default, owner, cursorId));
 
     public FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner)
     {
@@ -93,12 +106,15 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
             return;
         }
 
+        double began = _clock.NowMs;
         CallOutcome outcome;
         using (CallContext.Enter(call.Context))
         {
             outcome = call.Run(_runner!, QueuedCall.MillisecondsSince(call.ReceivedAt));
         }
 
+        double ended = _clock.NowMs;
+        Costs.Record(call.Context, ended - began, CurrentFrame.BudgetReached(ended), _scheduler.Frame);
         if (!outcome.IsDeferred)
         {
             call.Finish(outcome.Reply, outcome.Method);
@@ -130,7 +146,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
                     EndStreamsNow(posted.Source, posted.End);
                     break;
                 case PostKind.CloseCursor:
-                    _stores.CloseCursor(posted.ConnectionId!, posted.CursorId!);
+                    _stores.CloseCursor(posted.Owner!, posted.CursorId!);
                     break;
                 case PostKind.Close:
                     if (_connections.TryGetValue(posted.Source, out FrameScheduler<QueuedCall>.Connection? closing))
@@ -141,7 +157,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
                     if (posted.Source is Connection connection)
                     {
-                        _stores.End(StreamEnd.AllOf(connection.ClientId));
+                        StreamEnd closed = StreamEnd.AllOf(connection.ClientId);
+                        _stores.End(closed);
+                        Costs.Ended(closed);
                     }
 
                     break;
@@ -196,6 +214,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         }
 
         _stores.End(end);
+        Costs.Ended(end);
     }
 
     private enum PostKind
@@ -210,13 +229,13 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     private readonly struct Posted
     {
         internal Posted(PostKind kind, QueuedCall? call, object source, StreamEnd end = default,
-            string? connectionId = null, string? cursorId = null)
+            string? owner = null, string? cursorId = null)
         {
             Kind = kind;
             Call = call;
             Source = source;
             End = end;
-            ConnectionId = connectionId;
+            Owner = owner;
             CursorId = cursorId;
         }
 
@@ -228,8 +247,8 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
         internal StreamEnd End { get; }
 
-        /// <summary>cursor_close: the connection's client_id and the cursor id.</summary>
-        internal string? ConnectionId { get; }
+        /// <summary>cursor_close: the connection's owner (CallContext.Owner) and the cursor id.</summary>
+        internal string? Owner { get; }
 
         internal string? CursorId { get; }
     }

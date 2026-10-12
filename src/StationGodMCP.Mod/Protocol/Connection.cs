@@ -90,6 +90,8 @@ internal sealed class Connection
     private Thread? _writer;
     private volatile bool _stopping;
     private volatile bool _ending;
+    private volatile bool _superseded;
+    private volatile string? _owner;
     private volatile Session? _session;
     private long _served;
     private long _bytesSent;
@@ -109,6 +111,15 @@ internal sealed class Connection
 
     /// <summary>The server's name for this connection, unique while the mod runs.</summary>
     internal string ClientId { get; }
+
+    /// <summary>
+    /// The owner of its calls' per-stream state (CallContext.Owner): its resume token's owner key once hello claimed one
+    /// (ResumeHolds), else its client_id.
+    /// </summary>
+    internal string Owner => _owner ?? ClientId;
+
+    /// <summary>Whether its state belongs to a resume token rather than to the connection.</summary>
+    internal bool IsResumable => _owner != null;
 
     internal string Transport => _transport.Kind;
 
@@ -161,6 +172,20 @@ internal sealed class Connection
 
     /// <summary>Counts one call answered.</summary>
     internal void Served() => Interlocked.Increment(ref _served);
+
+    /// <summary>hello claimed a resume token: the connection's state belongs to the token's owner key from now on.</summary>
+    internal void ResumeAs(string owner) => _owner = owner;
+
+    /// <summary>
+    /// Another connection took over its resume token: it reads no more lines, is told why, and ends once that is written
+    /// (the writer's end wakes a reader waiting on a connection that has gone quiet).
+    /// </summary>
+    internal void Supersede(string reason)
+    {
+        _superseded = true;
+        Send(Wire.Line(new GoodbyeView(reason)));
+        EndGracefully();
+    }
 
     /// <summary>Ends the connection now: pending reads and writes are woken, and the reader frees it.</summary>
     internal void Close()
@@ -237,6 +262,11 @@ internal sealed class Connection
             bool fits = framer.Feed(buffer, read, lines);
             foreach (string line in lines)
             {
+                if (_superseded)
+                {
+                    return;
+                }
+
                 if (_session == null)
                 {
                     if (string.IsNullOrWhiteSpace(line))

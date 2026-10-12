@@ -17,6 +17,8 @@ internal abstract class ClientMessage
 {
     internal const int MaximumIdLength = 64;
     internal const int MaximumClientNameLength = 64;
+    internal const int MinimumResumeTokenLength = 16;
+    internal const int MaximumResumeTokenLength = 128;
     internal const int MinimumDeadlineMs = 100;
     internal const int MaximumDeadlineMs = 600000;
     internal const int DefaultDeadlineMs = 30000;
@@ -127,6 +129,26 @@ internal abstract class ClientMessage
         }
     }
 
+    /// <summary>Whether text is a resume token: 16 to 128 letters, digits, '-' or '_'.</summary>
+    internal static bool IsResumeToken(string? text)
+    {
+        if (text == null || text.Length < MinimumResumeTokenLength || text.Length > MaximumResumeTokenLength)
+        {
+            return false;
+        }
+
+        foreach (char character in text)
+        {
+            bool allowed = character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '-' or '_';
+            if (!allowed)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private static bool IsClientName(string name)
     {
         if (name.Length == 0 || name.Length > MaximumClientNameLength)
@@ -146,11 +168,13 @@ internal abstract class ClientMessage
         return true;
     }
 
-    /// <summary>hello: the protocols the client speaks, who it is, and what it understands.</summary>
+    /// <summary>hello: the protocols the client speaks, who it is, what it understands, and its resume token if any.</summary>
     internal sealed class Hello : ClientMessage
     {
-        private Hello(List<int> protocols, string clientName, string? clientVersion, string? library, List<string> features)
+        private Hello(List<int> protocols, string clientName, string? clientVersion, string? library, List<string> features,
+            string? resume)
         {
+            Resume = resume;
             Protocols = protocols;
             ClientName = clientName;
             ClientVersion = clientVersion;
@@ -168,9 +192,15 @@ internal abstract class ClientMessage
 
         internal List<string> Features { get; }
 
+        /// <summary>
+        /// The client's resume token (protocol.md, Resuming): 16 to 128 letters, digits, '-' or '_', chosen by the
+        /// client; null when not given.
+        /// </summary>
+        internal string? Resume { get; }
+
         internal static ClientMessage From(JObject message, string line)
         {
-            Refused? unknown = OnlyKeys(message, line, "type", "protocol", "client", "features");
+            Refused? unknown = OnlyKeys(message, line, "type", "protocol", "client", "features", "resume");
             if (unknown != null)
             {
                 return unknown;
@@ -220,7 +250,15 @@ internal abstract class ClientMessage
                 return Refused.Protocol("hello.features must be an array of strings.", line);
             }
 
-            return new Hello(protocols, name, Text(client["version"]), Text(client["library"]), features);
+            JToken? resume = message["resume"];
+            string? token = resume?.Type == JTokenType.String ? (string)resume! : null;
+            if (resume != null && resume.Type != JTokenType.Null && !IsResumeToken(token))
+            {
+                return Refused.Protocol(
+                    "hello.resume must be 16 to 128 letters, digits, '-' or '_', a token the client chose.", line);
+            }
+
+            return new Hello(protocols, name, Text(client["version"]), Text(client["library"]), features, token);
         }
 
         private static string? Text(JToken? token) => token?.Type == JTokenType.String ? (string)token! : null;

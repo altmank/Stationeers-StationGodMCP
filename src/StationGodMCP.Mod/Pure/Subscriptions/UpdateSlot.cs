@@ -36,13 +36,15 @@ internal readonly struct SubscriptionUpdate<TReading> where TReading : class
 /// and the caller enqueues the slot; when one is waiting, the newer reading replaces its reading, frame, game time and
 /// lateness and keeps its seq. The writer thread takes the update when it reaches the slot in the queue, which frees
 /// the slot for the next seq. A slow client therefore sees fewer, fresher updates and never a seq gap. Closed when the
-/// subscription ends: a waiting update is then dropped.
+/// subscription ends: a waiting update is then dropped. Requeued when the subscription resumes on another connection:
+/// the queue entry made before (its epoch) then writes nothing, and the next offer goes into the new queue.
 /// </summary>
 internal sealed class UpdateSlot<TReading> where TReading : class
 {
     private readonly object _gate = new object();
     private bool _waiting;
     private bool _closed;
+    private int _epoch;
     private long _seq;
     private TReading? _reading;
     private long _frame;
@@ -67,6 +69,18 @@ internal sealed class UpdateSlot<TReading> where TReading : class
             lock (_gate)
             {
                 return _seq;
+            }
+        }
+    }
+
+    /// <summary>Main thread: which queue entry may take the slot's update; read when the entry is made.</summary>
+    internal int Epoch
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _epoch;
             }
         }
     }
@@ -100,11 +114,17 @@ internal sealed class UpdateSlot<TReading> where TReading : class
     }
 
     /// <summary>Writer thread, when the slot reaches the front of the queue. False when nothing is to be written.</summary>
-    internal bool TryTake(out SubscriptionUpdate<TReading> update)
+    internal bool TryTake(out SubscriptionUpdate<TReading> update) => TryTake(Epoch, out update);
+
+    /// <summary>
+    /// Writer thread: the update for the queue entry made at epoch. False when nothing is to be written, or the slot
+    /// was requeued since the entry was made.
+    /// </summary>
+    internal bool TryTake(int epoch, out SubscriptionUpdate<TReading> update)
     {
         lock (_gate)
         {
-            if (!_waiting || _closed || _reading == null)
+            if (!_waiting || _closed || _reading == null || epoch != _epoch)
             {
                 update = default;
                 return false;
@@ -113,6 +133,24 @@ internal sealed class UpdateSlot<TReading> where TReading : class
             update = new SubscriptionUpdate<TReading>(Subscription, _seq, _reading, _frame, _gameTimeS, _lateMs);
             _waiting = false;
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Main thread: the queue the waiting update sat in is gone (its connection closed and the subscription resumes on
+    /// another). The update counts as never sent: the next offer takes its seq again and is queued anew, and the old
+    /// entry writes nothing.
+    /// </summary>
+    internal void Requeue()
+    {
+        lock (_gate)
+        {
+            _epoch++;
+            if (_waiting)
+            {
+                _waiting = false;
+                _seq--;
+            }
         }
     }
 

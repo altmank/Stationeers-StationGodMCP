@@ -10,7 +10,7 @@ namespace StationGodMCP.Pure.Paging;
 /// <summary>
 /// The walk cursors (protocol.md, Walks): a paged find called with cursor true whose first page leaves more keeps the
 /// reference ids of the rest of its list, in the handler's own order (nearest stays nearest), under a cursor id for its
-/// caller's (connection, stream). Later pages come from those ids, not from a new scan, so a walk sees each thing that
+/// caller's (owner, stream) (CallContext: the connection, or its resume token). Later pages come from those ids, not from a new scan, so a walk sees each thing that
 /// matched at the first call at most once, in order; things built later are not in it.
 /// <para>
 /// A later page checks existence only: an id whose thing is gone (or going) is skipped and counted, and the page goes
@@ -18,11 +18,12 @@ namespace StationGodMCP.Pure.Paging;
 /// thing that stopped matching is still walked, with its current values.
 /// </para>
 /// <para>
-/// A cursor is freed when its walk reaches the end (the page that takes the last ids), by cursor_close from its own
-/// connection, when its stream or connection ends, on a world change, and by the bounds: at most MaximumIds ids (8 bytes
+/// A cursor is freed when its walk reaches the end (the page that takes the last ids), by cursor_close from a
+/// connection of its owner, when its stream ends or its owner's state ends (a closed connection without a resume token,
+/// or a resume window that passed), on a world change, and by the bounds: at most MaximumIds ids (8 bytes
 /// each, 8 MB for the default) and MaximumCursors cursors held in all, the least recently used evicted first, so a walk
 /// still being paged outlives the short walks a loop opens and drops. Using a freed, evicted or unknown cursor, or one
-/// another (connection, stream) owns, is cursor_expired; the last ExpiredKept freed cursors remember how many things
+/// another (owner, stream) holds, is cursor_expired; the last ExpiredKept freed cursors remember how many things
 /// their walk had returned, which the error gives as position (null when not remembered, and for another owner's
 /// cursor, so a stream learns nothing of another's walks).
 /// </para>
@@ -168,12 +169,12 @@ internal sealed class WalkCursors : ICursorStore
         return true;
     }
 
-    /// <summary>cursor_close: frees the cursor when the connection owns it; anything else does nothing.</summary>
-    public void Close(string connectionId, string cursorId)
+    /// <summary>cursor_close: frees the cursor when the owner holds it; anything else does nothing.</summary>
+    public void Close(string owner, string cursorId)
     {
         long number = NumberOf(cursorId);
         if (number > 0 && _open.TryGetValue(number, out Cursor? cursor) && cursor != null &&
-            string.Equals(cursor.Owner.ConnectionId, connectionId, StringComparison.Ordinal))
+            string.Equals(cursor.Owner.Owner, owner, StringComparison.Ordinal))
         {
             Free(cursor);
         }

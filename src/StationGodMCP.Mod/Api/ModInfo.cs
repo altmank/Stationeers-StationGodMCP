@@ -70,7 +70,7 @@ internal static class ModInfoApi
             Session? session = connection.Session;
             views.Add(new ConnectionView(connection.ClientId, session?.Client, session?.Label, connection.Transport,
                 session?.Protocol, session?.InFlight ?? 0, connection.ServedCount, connection.BytesSent,
-                connection.Calls, StationGodMod.Hub?.CountOf(connection.ClientId) ?? 0));
+                connection.Calls, StationGodMod.Hub?.CountOf(connection.Owner) ?? 0));
         }
 
         views.Sort(static (left, right) => string.CompareOrdinal(left.ClientId, right.ClientId));

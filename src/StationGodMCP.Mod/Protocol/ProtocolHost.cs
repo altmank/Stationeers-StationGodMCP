@@ -57,7 +57,7 @@ internal sealed class ProtocolSettings
 
 /// <summary>
 /// What every connection shares: the settings, the queue to the main thread, the deadline watch, the catalogue, the
-/// session for a new connection, and the list of open connections.
+/// resume tokens, the session for a new connection, and the list of open connections.
 /// </summary>
 internal sealed class ProtocolHost
 {
@@ -65,15 +65,22 @@ internal sealed class ProtocolHost
     private readonly ConcurrentDictionary<Connection, byte> _open = new ConcurrentDictionary<Connection, byte>();
 
     internal ProtocolHost(ProtocolSettings settings, ICallQueue calls, DeadlineWatch deadlines, CatalogueFile? catalogue,
-        string? legacySecret = null, SubscriptionHub? subscriptions = null)
+        string? legacySecret = null, SubscriptionHub? subscriptions = null, ResumeHolds? holds = null)
     {
         Subscriptions = subscriptions;
+        Holds = holds ?? new ResumeHolds(0, calls);
         Settings = settings;
         _calls = calls;
         Deadlines = deadlines;
         Catalogue = catalogue;
         LegacySecret = string.IsNullOrEmpty(legacySecret) ? null : legacySecret;
     }
+
+    /// <summary>
+    /// The resume tokens ([Server] ResumeWindowSeconds; welcome lists the resume feature when on), shared by the pipe's
+    /// and TCP's hosts so a token resumes over either. Off unless given.
+    /// </summary>
+    internal ResumeHolds Holds { get; }
 
     /// <summary>Subscriptions and their events (welcome lists the subscriptions feature); null when off.</summary>
     internal SubscriptionHub? Subscriptions { get; }
@@ -99,6 +106,7 @@ internal sealed class ProtocolHost
     internal void Ended(Connection connection)
     {
         _open.TryRemove(connection, out _);
+        Holds.Release(connection);
         _calls.Closed(connection);
         ConnectionEnded?.Invoke(connection);
     }
@@ -113,11 +121,11 @@ internal sealed class ProtocolHost
     /// <summary>A queued call answered without running (cancelled) stops holding its place.</summary>
     internal void Withdraw(QueuedCall call) => _calls.Withdraw(call);
 
-    /// <summary>Streams of the connection ended (stream_end, a slow client): the main thread ends what they had going.</summary>
+    /// <summary>Streams of an owner ended (stream_end, a slow client): the main thread ends what they had going.</summary>
     internal void StreamEnded(Connection connection, StreamEnd end) => _calls.StreamEnded(connection, end);
 
-    /// <summary>cursor_close from the connection of that client_id: the main thread frees the cursor if it owns it.</summary>
-    internal void CursorClosed(string connectionId, string cursorId) => _calls.CursorClosed(connectionId, cursorId);
+    /// <summary>cursor_close from a connection of that owner: the main thread frees the cursor if the owner holds it.</summary>
+    internal void CursorClosed(string owner, string cursorId) => _calls.CursorClosed(owner, cursorId);
 
     /// <summary>A new connection's session: over TCP the shared secret comes first; then the protocol, hello first.</summary>
     internal Session SessionFor(Connection connection) =>

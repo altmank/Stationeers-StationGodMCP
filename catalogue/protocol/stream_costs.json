@@ -1,0 +1,38 @@
+{
+  "name": "stream_costs",
+  "description": "Read what this connection's own streams have cost the game's main thread so far: per stream, the calls run, their whole main-thread milliseconds from start to written reply (serialising included, unlike elapsed_ms), and the frames in which one of its calls finished with the frame's request budget reached (counted once per frame). Without streams every stream with counts is listed in stream order; with streams each one asked is listed, 0 for none. A stream's counts end with the stream, so read them before stream_end. Another connection's streams are never shown.",
+  "class": "read",
+  "cost": "instant",
+  "params": {
+    "type": "object",
+    "properties": {
+      "streams": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 256,
+        "items": {"type": "integer", "minimum": 0, "maximum": 9007199254740992},
+        "description": "The streams to read, such as [3, 4]; all streams with counts when absent."
+      }
+    },
+    "additionalProperties": false
+  },
+  "reply": {
+    "type": "object",
+    "properties": {
+      "streams": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "stream": {"type": "integer"},
+            "calls": {"type": "integer"},
+            "main_thread_ms": {"type": "number"},
+            "over_budget_frames": {"type": "integer"}
+          }
+        }
+      }
+    }
+  },
+  "x-shaping": "none",
+  "x-mcp": "hidden"
+}

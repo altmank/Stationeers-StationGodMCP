@@ -6,8 +6,9 @@ using System.Collections.Generic;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// What ended (protocol.md, Streams): one stream of a connection (stream_end), every stream of a connection (it
-/// closed, or was too slow to take its replies), or every stream of every connection (a world change). The default
+/// What ended (protocol.md, Streams): one stream of an owner (stream_end), every stream of an owner (its connection
+/// closed or was too slow to take its replies, or a resume token's window passed), or every stream of every owner (a
+/// world change). The owner is CallContext's: a connection's client_id, or a resume token's owner key. The default
 /// value covers nothing.
 /// </summary>
 internal readonly struct StreamEnd
@@ -17,18 +18,18 @@ internal readonly struct StreamEnd
 
     private readonly Scope _scope;
 
-    private StreamEnd(Scope scope, string? connectionId, long stream)
+    private StreamEnd(Scope scope, string? owner, long stream)
     {
         _scope = scope;
-        ConnectionId = connectionId;
+        Owner = owner;
         Stream = stream;
     }
 
-    /// <summary>Every stream of every connection: a world change.</summary>
+    /// <summary>Every stream of every owner: a world change.</summary>
     internal static StreamEnd World => new StreamEnd(Scope.World, null, 0);
 
-    /// <summary>The connection's client_id; null for a world change.</summary>
-    internal string? ConnectionId { get; }
+    /// <summary>The owner whose streams ended; null for a world change.</summary>
+    internal string? Owner { get; }
 
     /// <summary>The stream that ended; meaningful only for one stream's end.</summary>
     internal long Stream { get; }
@@ -37,28 +38,27 @@ internal readonly struct StreamEnd
 
     internal bool IsWholeConnection => _scope == Scope.Connection;
 
-    /// <summary>One stream of the connection.</summary>
-    internal static StreamEnd Of(string connectionId, long stream) =>
-        new StreamEnd(Scope.Stream, Named(connectionId), stream);
+    /// <summary>One stream of the owner.</summary>
+    internal static StreamEnd Of(string owner, long stream) => new StreamEnd(Scope.Stream, Named(owner), stream);
 
-    /// <summary>Every stream of the connection.</summary>
-    internal static StreamEnd AllOf(string connectionId) => new StreamEnd(Scope.Connection, Named(connectionId), 0);
+    /// <summary>Every stream of the owner.</summary>
+    internal static StreamEnd AllOf(string owner) => new StreamEnd(Scope.Connection, Named(owner), 0);
 
     /// <summary>Whether what a store keeps under this context ends with this end.</summary>
-    internal bool Covers(CallContext context) => !context.IsNone && Covers(context.ConnectionId!, context.Stream);
+    internal bool Covers(CallContext context) => !context.IsNone && Covers(context.Owner!, context.Stream);
 
-    internal bool Covers(string connectionId, long stream) => _scope switch
+    internal bool Covers(string owner, long stream) => _scope switch
     {
         Scope.World => true,
-        Scope.Connection => string.Equals(ConnectionId, connectionId, StringComparison.Ordinal),
-        Scope.Stream => Stream == stream && string.Equals(ConnectionId, connectionId, StringComparison.Ordinal),
+        Scope.Connection => string.Equals(Owner, owner, StringComparison.Ordinal),
+        Scope.Stream => Stream == stream && string.Equals(Owner, owner, StringComparison.Ordinal),
         _ => false
     };
 
-    private static string Named(string connectionId) =>
-        string.IsNullOrEmpty(connectionId)
-            ? throw new ArgumentException("A stream's end names its connection.", nameof(connectionId))
-            : connectionId;
+    private static string Named(string owner) =>
+        string.IsNullOrEmpty(owner)
+            ? throw new ArgumentException("A stream's end names its owner.", nameof(owner))
+            : owner;
 
     private enum Scope : byte
     {
@@ -81,21 +81,23 @@ internal interface IStreamStore
 }
 
 /// <summary>
-/// A per-stream store of walk cursors, which also hears cursor_close (protocol.md, Walks): the connection that sent it
-/// and the cursor id, told on the main thread at the start of the frame after it arrived. A cursor the connection does
-/// not own, or an unknown id, is left alone.
+/// A per-stream store of walk cursors, which also hears cursor_close (protocol.md, Walks): the owner of the connection
+/// that sent it (CallContext.Owner) and the cursor id, told on the main thread at the start of the frame after it
+/// arrived. A cursor the owner does not hold, or an unknown id, is left alone.
 /// </summary>
 internal interface ICursorStore : IStreamStore
 {
-    void Close(string connectionId, string cursorId);
+    void Close(string owner, string cursorId);
 }
 
 /// <summary>
-/// The streams one connection has ended, which are never used again on it (protocol.md, Streams). Kept as sorted,
+/// The streams one owner has ended, which are never used again by it (protocol.md, Streams): a connection's, or a
+/// resume token's, handed to the connection that resumes it (protocol.md, Resuming). Kept as sorted,
 /// disjoint ranges of ended numbers: a hub numbers its runs upward and ends each when it finishes, so the ended numbers
 /// merge into a few ranges, one more for each stream still open below the highest ended one. At most MaximumRanges
 /// ranges (16 bytes each): past that the two lowest merge, so the streams in the lowest gap count as ended too. Used
-/// by the connection's reader thread only.
+/// by connection reader threads under a lock on the instance, since a resumed token's set passes from one connection
+/// to the next while the old one may still be reading.
 /// </summary>
 internal sealed class EndedStreams
 {
