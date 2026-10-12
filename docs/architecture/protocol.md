@@ -56,6 +56,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000), `stream` (integer 0 to 2^53, optional, default 0; see *Streams*), `rename` (object, optional; see *Rename*), `world` (string 1-64 characters, a world id from `welcome` or `world_changed`, optional; see *A call's world*). |
 | `cancel` | Any time after `welcome`. | `id` of a call in flight. |
 | `stream_end` | Any time after `welcome`. | `stream` (integer 1 to 2^53, required). No reply; see *Streams*. |
+| `release` | Any time after `welcome`. | `stream` (integer 0 to 2^53, required). No reply: the stream's job pins go; see *Job pins*. |
 | `cursor_close` | Any time after `welcome`. | `cursor_id` (string, required). No reply; see *Walks*. |
 | `session_end` | Any time after `welcome`. | none. No reply: the client's session is ending abruptly, so the mod applies its held restores (see *Held restores*); every call the session sends after it is refused `session_ended`. |
 | `bye` | Optional, before closing. | none |
@@ -99,7 +100,8 @@ The `welcome` message:
     "max_values_per_subscription": 1024,
     "min_subscription_interval_s": 0.5
   },
-  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "resume", "rename"],
+  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "resume", "rename",
+               "release"],
   "resume": {"token": "hub-7f3a9c2e41d84b6a", "resumed": false, "window_s": 60}
 }
 ```
@@ -174,8 +176,8 @@ difference. A `stream` that is not an integer from 0 to 2^53 (a number without a
   be ended before any call used it.
 
 The calls are answered at once, on the connection's own thread; the rest happens at the start of the next frame. A
-`stream_end` does not touch building jobs, queued or running, nor job snapshots or undo data: a run's job outlives its
-stream. Stream 0 never ends: `stream_end` of 0, or one without a `stream` from 1 to 2^53, is refused `invalid_argument`
+`stream_end` does not touch building jobs, queued or running, nor job snapshots, final statuses, their pins or undo
+data: a run's job, and its undo, outlive its stream (*Job pins*). Stream 0 never ends: `stream_end` of 0, or one without a `stream` from 1 to 2^53, is refused `invalid_argument`
 with a null id (the message has none), and the connection stays open; an unknown key in it is a `protocol_error`.
 
 A connection remembers the streams it ended as ranges of numbers, so a hub that numbers its runs upward costs a
@@ -184,6 +186,38 @@ that the two lowest merge, and the streams in the gap between them count as ende
 slow client (*Outbound queue and slow clients*), ends every stream of it, unless its `hello` carried a resume token:
 then its streams are the token's, held for the resume window and ended when it passes (*Resuming*). A world change
 clears what the mod keeps per stream on every connection.
+
+### Job pins
+
+The mod keeps two things per building job for polls and `undo_job` (feature `release`): its snapshots (how what it
+removes stood, its tool and source), taken when it starts, and its final status (the reply its polls answer), taken
+when it ends. Each is kept in a store bounded by memory, not by count: 32 MB for snapshots and 4 MB for final
+statuses, each entry's bytes estimated as it is stored (snapshots from the things they hold, their labels and piece
+cells; final statuses at two bytes a character of the reply as polls write it). Past its budget a store evicts its
+oldest job first, passing over pinned jobs; when the pinned jobs alone pass the budget, the oldest pinned one goes too,
+so memory always wins. A store's four newest jobs are never evicted, so one huge job cannot push out the job just
+before it.
+
+A job is pinned to the owner and stream of the call that started or queued it (stream 0 too), and its snapshot and
+final status are pinned and released together. Pins go:
+
+- on `{"type":"release","stream":N}`: the pins of stream N of the sender's owner go at the start of the next frame.
+  It has no reply, like `stream_end`, and works on a stream already ended, which is its main use: a hub sends it when
+  its reference to a run's jobs expires, or under its own memory bound. A `release` of a stream with no pins does
+  nothing. A `release` without a `stream` from 0 to 2^53 is refused `invalid_argument` with a null id and the
+  connection stays open; an unknown key in it is a `protocol_error`;
+- at the owner's end: a connection without a resume token that closes, a resume token's window that passes, a `bye`
+  on a token, and `session_end`. Nothing of that owner can come back for them then. A resume token's pins survive a
+  break and its resume;
+- on a world change, with everything the stores keep.
+
+`stream_end` keeps them. `undo_job` of a job whose snapshots were evicted answers `undo_expired`, naming the job
+(`data: {job_id}`); so does one of a job whose final status was evicted with no snapshots to plan from, and one whose
+final status was evicted while its snapshots are kept, which says to pass its `created_ids`, `removed`, `changed` and
+`placed`.
+Each store remembers the last 1,024 jobs it evicted; an id evicted before those, or one the mod never had, is
+`job_not_found`. `mod_info` with `include_counters` gives each store's `bytes`, `budget_bytes`, `entries` and
+`pinned`, and the pins in all (`runtime.job_stores`).
 
 ### Walks
 
@@ -418,12 +452,13 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `unsupported_protocol` | No common major version. | `{supported}` | no |
 | `unauthorized` | Over TCP, the shared secret is missing or wrong. The connection is closed. Same code as today's TCP refusal (`src/StationGodMCP.Mod/StationGodTcpServer.cs:187-192`). | none | no |
 | `method_not_found` | No such method. As today (`ApiHost.cs:159-161`). | `{nearest}` when one is close | no |
-| `invalid_argument` | The arguments break the catalogue (version 2) or a tool's own reading (both versions), or a call's `stream` or a `stream_end` is malformed (a `stream_end` refusal has a null id). Nothing ran. | `{problems: [{path, problem}]}` on version 2; none for `stream` and `stream_end` | no |
+| `invalid_argument` | The arguments break the catalogue (version 2) or a tool's own reading (both versions), or a call's `stream`, a `stream_end` or a `release` is malformed (a `stream_end` or `release` refusal has a null id). Nothing ran. | `{problems: [{path, problem}]}` on version 2; none for `stream`, `stream_end` and `release` | no |
 | `invalid_shape` | Version 2 only: `shape` is malformed (see *Shaping*). Nothing ran. | `{problems}` | no |
 | `duplicate_id` | The id is already in flight on this connection. Nothing ran. | none | no |
 | `too_many_in_flight` | More calls in flight on the stream than `limits.max_in_flight`, or on the connection than `max_in_flight_per_connection`. Nothing ran. | `{limit, scope}`, `scope` `stream` or `connection` | yes |
 | `stream_ended` | The call's stream was ended with `stream_end`; streams are never reused. Nothing ran. | `{stream}` | on another stream |
 | `session_ended` | The session sent `session_end`; nothing it sends after that runs (*Held restores*). Nothing ran. Also the poll of a queued job dropped at its session's abrupt end. | `{stream}` | in a new session |
+| `undo_expired` | `undo_job` of a job whose snapshots, or whose final status with nothing left to plan from, the mod evicted under the memory bound for kept jobs (*Job pins*). Nothing ran. | `{job_id}` | with the job's facts when the message asks for them |
 | `cursor_expired` | A walk's later page names a cursor that is gone: its walk ended, `cursor_close`, its stream's or connection's end, a world change, the memory bound, or another connection or stream owns it (see *Walks*). Nothing ran. | `{cursor_id, position}`, `position` null when unknown | no; start the walk again |
 | `request_too_large` | A message longer than `limits.max_request_bytes`. The connection is closed. | `{limit}` | no |
 | `reply_too_large` | The reply would exceed `shape.max_bytes` or `limits.max_reply_bytes`. The method ran. | `{bytes, limit, counts}` | only if the method is read class |
@@ -682,8 +717,9 @@ Topics:
   `status`, `error` (`{code, message}`, when the job has one), and, each only when it holds something, the lists
   `undo_job` plans from: `created_ids` (every id built, new and changed pieces), `removed` (ids removed outright),
   `changed` (a run's swapped pieces, old for new) and `placed` (new things with their prefab). These are the lists
-  `undo_job` takes in its request for a job past the last 16 the mod keeps. The reports (preflight, final check,
-  verification, materials) are left out: poll the job with `job_id` for them while it is among the last 16. A 500-piece
+  `undo_job` takes in its request for a job whose final status the mod no longer keeps (*Job pins*). The reports
+  (preflight, final check, verification, materials) are left out: poll the job with `job_id` for them while its final
+  status is kept. A 500-piece
   run's `job` is about 44 KB, most of it `placed`.
 - `seq` is 1 for the subscription's first event and one more for each after it. Job events are never merged or
   dropped: each is a line of its own in the connection's outbound queue, and jobs end one at a time. A client too
@@ -850,6 +886,18 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
 - `ClientMessage.CursorClose` parses `cursor_close`; `CallSession` posts it (`ICallQueue.CursorClosed`), and
   `LaneScheduler` hands it to `StreamStores.CloseCursor` when it takes its inbox in.
 
+### As built: job pins
+
+- `Pure/Jobs/KeptJobs.cs` holds the two stores (`KeptJobStore`, an insertion-ordered list and a dictionary per store,
+  with a ring of the last evicted ids) and one `JobPins` over both; `KeptJobSizes` is the size estimate. It is an
+  `IPinStore` and an `ISessionEndStore`, registered in `StreamStores.Main`. A pin is forgotten once its job has left
+  both stores, so the pins are bounded by what the stores hold plus the running and queued jobs.
+- `HeldTickJobs.Start` pins each job id it mints to `CallContext.Current`, and `Remember` stores each final view at
+  `ApiJson.Length` (a counting writer, so the text is never built); `JobSnapshots.Record` stores each snapshot.
+  `undo_job` reads both stores' eviction records through `UndoFactsSource.Choose`.
+- `ClientMessage.Release` parses `release`; `CallSession` posts it (`ICallQueue.PinsReleased`), and `LaneScheduler`
+  hands it to `StreamStores.ReleasePins` when it takes its inbox in, like `cursor_close`.
+
 ### As built: stream costs
 
 - `Pure/Scheduling/StreamCosts.cs` keeps the counters by `CallContext`: an entry made at a stream's first call, then a
@@ -939,7 +987,8 @@ per-run state under the token rather than under the connection:
 - its walk cursors (*Walks*);
 - its subscriptions (*Subscriptions*);
 - its streams' cost counters (`stream_costs`, *Protocol methods*);
-- its held restores (*Held restores*).
+- its held restores (*Held restores*);
+- its job pins (*Job pins*).
 
 When the connection closes for any reason but `bye` (the socket dropped, `slow_client`, a protocol error, the server
 stopping), that state is held for `[Server] ResumeWindowSeconds` (default 60; `welcome.resume.window_s`). A

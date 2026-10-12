@@ -18,12 +18,17 @@ internal static class JobDrops
     internal const string DroppedCode = "dropped";
     internal const string NotWaitingCode = "job_not_waiting";
     internal const string SessionEndedCode = "session_ended";
+    internal const string NotFoundCode = "job_not_found";
+
+    /// <summary>job_not_found: the id is not running, not queued, and no final status is kept for it.</summary>
+    internal static ApiException NotFound(string id) =>
+        ApiErrors.Refused(NotFoundCode, $"No job {id} is running, queued or among the ended jobs kept.");
 
     /// <summary>
     /// Takes the waiting job out of the line and returns what would have started it; throws the refusal otherwise.
     /// runningId is the job that holds the slot (null for none), ended whether the id is among the finished jobs kept.
     /// </summary>
-    internal static T Take<T>(JobLine<T> waiting, string id, string? runningId, bool ended, int kept)
+    internal static T Take<T>(JobLine<T> waiting, string id, string? runningId, bool ended)
     {
         if (waiting.Remove(id, out T start))
         {
@@ -44,7 +49,7 @@ internal static class JobDrops
                 "result.");
         }
 
-        throw ApiErrors.Refused("job_not_found", $"No job {id} is running, queued or among the last {kept}.");
+        throw NotFound(id);
     }
 
     /// <summary>

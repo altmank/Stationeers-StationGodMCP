@@ -278,8 +278,8 @@ inside frames where possible, `plan_cable_route`:
 
 ## Undoing a job (1.4.3+)
 
-`undo_job {job_id}` undoes a finished `place_*`, `remove_*`, `place_structure` or `remove_structure` job among the
-last 16: it removes everything the job built and builds again everything it removed, as it stood when the job started
+`undo_job {job_id}` undoes a finished `place_*`, `remove_*`, `place_structure` or `remove_structure` job the mod
+still keeps: it removes everything the job built and builds again everything it removed, as it stood when the job started
 (the mod takes a snapshot of each removed thing then). Cable, pipe and chute pieces come
 back through `place_cables`, `place_pipes` and `place_chutes` (their `pieces` form, each piece with the ends it had),
 so `would_bridge`, `would_split` and the burst and gas guards apply; everything else comes back through
@@ -301,13 +301,23 @@ record is gone); removing what a `free: true` placement built gives nothing back
 or real run says so in `plan.diverged` and lists the undo's own jobs in `plan.undone_by` (undo those, the last first,
 to have the job back); an earlier undo whose jobs were all refused does not count, and `plan.notes` mentions it.
 
-The mod keeps the last 16 jobs to end, across every client; an older job answers `job_not_found`. To undo one, pass
-the lists its `job_ended` event (the `jobs` subscription topic) or its final reply carries: `created_ids`, `removed`
-(ids, or things with a `reference_id`), `changed` (`{old_reference_id, new_reference_id, target_prefab_name}`) and
-`placed` (`{reference_id, prefab_name}`). They are used only when the job is past those 16, and only while its
-snapshots are kept (the last 32 jobs; the snapshots also give its tool and source): the job is then planned as
-finished from those lists, and `plan.notes` says so. Past the snapshots too it stays `job_not_found`. While the job is
-among the 16 the lists are ignored: its own final reply is the job as it ended, and a caller's copy may be partial.
+The mod keeps each job's snapshots (32 MB in all) and each ended job's final reply (4 MB in all), across every
+client, bounded by memory rather than by count: past a budget the oldest job goes first. A job is pinned to the
+connection and stream of the call that started it, and pinned jobs are passed over until the stream is released (a
+hub's `release`, sent when its reference to the run expires), its connection or session ends (a resume token's pins
+outlast a reconnect), or the pinned jobs alone pass the budget; ending the stream (`stream_end`) keeps them. So a
+script run's jobs can still be undone after any number of other jobs. A store's four newest jobs always stay
+([protocol.md](architecture/protocol.md), *Job pins*).
+
+When a job's final reply is no longer kept, pass the lists its `job_ended` event (the `jobs` subscription topic) or
+its final reply carries: `created_ids`, `removed` (ids, or things with a `reference_id`), `changed`
+(`{old_reference_id, new_reference_id, target_prefab_name}`) and `placed` (`{reference_id, prefab_name}`). They are
+used only while its snapshots are kept (they also give its tool and source): the job is then planned as finished from
+those lists, and `plan.notes` says so. A job whose snapshots were evicted answers `undo_expired` with `data.job_id`;
+so does one whose final reply was evicted when no lists are passed, its message saying to pass them while its
+snapshots last. Each store remembers the last 1,024 jobs it evicted: an id evicted before those, or one the mod never
+had, answers `job_not_found`. While the final reply is kept the lists are ignored: it is the job as it ended, and a
+caller's copy may be partial.
 
 ## Removing pieces
 

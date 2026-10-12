@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:f81391d4fd3db6e4c82d6a5b5412cd1165ac5469513e1c6a8aa985eeae42c85b'
+CATALOGUE_HASH = 'sha256:464c1c772edac05e26707080295762991667d93d4c79ac226c08d4da541295d3'
 MOD_VERSION = '1.33.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -2364,7 +2364,7 @@ class Methods:
         return self.call('trader_sell', **{'reference_id': reference_id, 'credit_card_id': credit_card_id, 'items': items, 'dry_run': dry_run}, **options)
 
     def undo_job(self, *, job_id: str | None = None, dry_run: bool | None = None, confirm: bool | None = None, allow_bridge: list | None = None, from_id: str | None = None, refund_to: str | int | list | None = None, acknowledge_gas_lost: str | None = None, created_ids: list | None = None, removed: list | None = None, changed: list | None = None, placed: list | None = None, **options) -> dict:
-        """Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure; the last 16): remove what it built, build back what it removed.
+        """Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure): remove what it built, build back what it removed.
 
         Class: write (other classes at some arguments). Arguments: job_id (required), dry_run, confirm, allow_bridge, from_id, refund_to, acknowledge_gas_lost, created_ids, removed, changed, placed.
         """

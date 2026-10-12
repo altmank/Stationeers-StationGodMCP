@@ -12,7 +12,7 @@ namespace StationGodMCP.Protocol;
 
 /// <summary>
 /// The protocol on one connection: hello and welcome, then calls by id, several in flight, answered in any order and
-/// matched by id; cancel; stream_end; cursor_close; session_end; events. The first message must be hello; anything else is a protocol error that
+/// matched by id; cancel; stream_end; release; cursor_close; session_end; events. The first message must be hello; anything else is a protocol error that
 /// closes the connection. Lines are parsed and checked here, on the connection's reader thread; only the methods
 /// themselves run on the main thread.
 /// <para>
@@ -50,11 +50,11 @@ internal sealed class CallSession : Session
 
     /// <summary>What welcome lists in features: what this server does beyond the basics.</summary>
     internal static readonly string[] Features =
-        { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors", "rename" };
+        { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors", "rename", "release" };
 
     /// <summary>The features with subscriptions, when the server has them.</summary>
     internal static readonly string[] FeaturesWithSubscriptions =
-        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "rename" };
+        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "rename", "release" };
 
     private static readonly string[] FeaturesWithResume = WithResume(Features);
 
@@ -131,6 +131,9 @@ internal sealed class CallSession : Session
                 break;
             case ClientMessage.EndOfStream ended:
                 EndStream(ended.Stream);
+                break;
+            case ClientMessage.Release release:
+                _host.PinsReleased(_connection.Owner, release.Stream);
                 break;
             case ClientMessage.CursorClose closed:
                 _host.CursorClosed(_connection.Owner, closed.CursorId);

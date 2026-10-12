@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Profiling;
 using UnityEngine.Profiling;
@@ -55,7 +56,8 @@ internal static class ModInfoApi
         new GameCountersView(new JobHoldsView(HeldTickJobs.HoldCounts()),
             new PrintLogView(Prints.Log.Count, Prints.Log.Capacity), LintChipPrograms.ParsedCount,
             new BatchConsoleView(ConsoleBridge.BatchLineRate.Total,
-                ConsoleBridge.BatchLineRate.PerMinute(ProfileClock.System.Timestamp())), Restores());
+                ConsoleBridge.BatchLineRate.PerMinute(ProfileClock.System.Timestamp())), Restores(),
+            JobStoresView.Of(KeptJobs.Main));
 
     private static RestoreCountsView Restores()
     {

@@ -971,6 +971,11 @@
     "origin": "protocol",
     "see": {"topic": "errors", "subtopic": "protocol"}
   },
+  "undo_expired": {
+    "description": "The mod had that job, but evicted what undoing it needs under its memory bound for kept jobs: its stream's pins are released, or pinned jobs alone pass the bound. data.job_id names it. When the message asks for them, pass the four lists its job_ended event carries; otherwise it cannot be undone.",
+    "origin": "tool",
+    "see": {"tool": "undo_job", "topic": "facts"}
+  },
   "unit_out_of_range": {
     "description": "The gene set index is out of range; the message gives how many sets the plant has.",
     "origin": "tool",

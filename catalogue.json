@@ -1397,6 +1397,11 @@
       "origin": "protocol",
       "see": {"topic": "errors", "subtopic": "protocol"}
     },
+    "undo_expired": {
+      "description": "The mod had that job, but evicted what undoing it needs under its memory bound for kept jobs: its stream's pins are released, or pinned jobs alone pass the bound. data.job_id names it. When the message asks for them, pass the four lists its job_ended event carries; otherwise it cannot be undone.",
+      "origin": "tool",
+      "see": {"tool": "undo_job", "topic": "facts"}
+    },
     "unit_out_of_range": {
       "description": "The gene set index is out of range; the message gives how many sets the plant has.",
       "origin": "tool",
@@ -4397,7 +4402,7 @@
       "description": "The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game. Read only.\nMore: tool_info {tool: \"mod_info\"}",
       "help": {
         "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 12 and reflection 10 by default; list_limits keeps more. include_counters true adds the counters of the mod's game-side work (the counters topic).",
-        "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], prefab_index, job_holds, print_log, lint_chip_programs, batch_console, frame_ms {frames, p50, p90, p99, over_8ms, buckets}, restores {applied, skipped, dropped}, profiling, ...}.",
+        "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], prefab_index, job_holds, print_log, lint_chip_programs, batch_console, frame_ms {frames, p50, p90, p99, over_8ms, buckets}, restores {applied, skipped, dropped}, job_stores, profiling, ...}.",
         "topics": {
           "methods": {
             "summary": "Per-method counts and times.",
@@ -4418,6 +4423,10 @@
           "counters": {
             "summary": "Counters of the game-side work the mod does.",
             "text": "Only with include_counters true. Counted from mod load, profiling on or off. prefab_index.arrived and left: things the game reported spawning and despawning. job_holds {under_100ms, under_1s, under_10s, under_60s, over_60s}: how long jobs held the game tick, one count per hold, each bucket from its lower edge (over_60s: 60 s or more). print_log {records, capacity}: print provenance records held, and the most kept before the oldest drop. lint_chip_programs: chip programs the lint cache holds parsed. batch_console {lines, lines_per_minute}: lines a dedicated server printed, and per minute over the last full minute; 0 on a game with a window. frame_ms {frames, p50, p90, p99, over_8ms, buckets}: StationGod's main-thread request ms per frame, over the frames that served a call or stopped at the budget (frames.busy_frames), in 20 fixed buckets with upper edges 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 25, 33, 50, 100 and 250 ms, each edge in the bucket it ends, the last bucket open above 250 ms. pN is the upper edge of the bucket holding that frame, or the longest frame when it is the open one, and null with no frames; over_8ms counts frames over 8.0 ms. buckets: each bucket's frame count, shortest first; subtract two reads for a window's counts. restores {applied, skipped, dropped}: held restores written at an abrupt session end, skipped (the device holds another value, is gone, refuses, or lint holds it), and dropped (their world is gone)."
+          },
+          "job_stores": {
+            "summary": "Kept jobs' memory.",
+            "text": "Only with include_counters true. job_stores {snapshots, final_statuses, pins}: what the mod keeps of building jobs for polls and undo_job. Each store gives {bytes, budget_bytes, entries, pinned}: bytes estimated as each entry is stored, the store's budget, the jobs held, and those pinned to the stream that started them. pins: the jobs pinned in all, running and queued ones included. Past its budget a store evicts its oldest unpinned job first."
           }
         },
         "shared": ["truncation"]
@@ -4429,7 +4438,7 @@
         "properties": {
           "include_counters": {
             "type": "boolean",
-            "description": "Default false; true adds runtime counters of the mod's game-side work: job_holds, print_log, lint_chip_programs, batch_console, frame_ms, restores, and prefab_index arrived and left."
+            "description": "Default false; true adds runtime counters of the mod's game-side work: job_holds, print_log, lint_chip_programs, batch_console, frame_ms, restores, job_stores, and prefab_index arrived and left."
           }
         },
         "additionalProperties": false
@@ -10005,7 +10014,7 @@
     },
     {
       "name": "undo_job",
-      "description": "Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure; the last 16): remove what it built, build back what it removed. Dry run by default; confirm to undo.\nMore: tool_info {tool: \"undo_job\"}",
+      "description": "Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure): remove what it built, build back what it removed. Dry run by default; confirm to undo.\nMore: tool_info {tool: \"undo_job\"}",
       "help": {
         "text": "The inverse, from a snapshot taken when the job started (position, turn, build state, label). Pieces come back through place_cables, place_pipes and place_chutes (the pieces form, one run per tool and grade; a long straight as singles), so every guard applies; everything else through place_structure. paste_blueprint has its own undo. Host only.",
         "keys": "job_id, tool, status, plan {remove, restore, diverged, notes, ready, ...}, remove_arguments, place_arguments, removal, placement, piece_runs [{tool, arguments, reply}], resolved_networks, gas_hold.",
@@ -10019,8 +10028,8 @@
             "text": "Refused, status refused with plan.diverged naming why: something it built is gone or is another prefab; something it removed has no snapshot, stood off the grid's axes, or is a piece no coil or kit lays; the job had not finished; or an earlier undo of it ran (plan.undone_by lists those jobs: undo them, the last first, to have it back)."
           },
           "facts": {
-            "summary": "Undo a job past the last 16.",
-            "text": "The last 16 jobs to end, across every client, are kept with their final reply. For an older one pass the four lists its job_ended event (subscribe, topic jobs) or its final reply carries (created_ids, removed, placed and the swapped pieces): undo_job plans from them, and plan.notes says so. They count only while the job's snapshots are kept (the last 32 jobs); past that the job is job_not_found. While the job is among the 16 they are ignored and its own final reply is used."
+            "summary": "Undo a job whose final reply the mod has evicted.",
+            "text": "Jobs' snapshots and final replies are kept within a memory bound, across every client, oldest evicted first. A job is pinned to the stream that started it and outlasts unpinned jobs until the stream is released (the hub's release) or its session ends. When the final reply is gone, pass the four lists its job_ended event (subscribe, topic jobs) or its final reply carries (created_ids, removed, placed and the swapped pieces): undo_job plans from them, and plan.notes says so. They count only while the job's snapshots are kept; once those are evicted the job is undo_expired (data.job_id), and an id never seen is job_not_found. While the final reply is kept they are ignored and it is used."
           },
           "runs": {
             "summary": "The dry run and the real run.",
@@ -10085,7 +10094,7 @@
             "type": "array",
             "maxItems": 4096,
             "items": {"type": "string"},
-            "description": "For a job past the last 16: every id it built, as its job_ended event gives them (topic facts)."
+            "description": "For a job whose final reply is gone: every id it built, as its job_ended event gives them (topic facts)."
           },
           "removed": {
             "type": "array",
@@ -10101,7 +10110,7 @@
               ],
               "description": "An id, or a thing with its reference_id."
             },
-            "description": "For a job past the last 16: every id it removed, as its job_ended event gives them (topic facts)."
+            "description": "For a job whose final reply is gone: every id it removed, as its job_ended event gives them (topic facts)."
           },
           "changed": {
             "type": "array",
@@ -10115,7 +10124,7 @@
               },
               "required": ["old_reference_id", "new_reference_id"]
             },
-            "description": "For a job past the last 16: the pieces a run swapped, old for new, as its job_ended event gives them (topic facts)."
+            "description": "For a job whose final reply is gone: the pieces a run swapped, old for new, as its job_ended event gives them (topic facts)."
           },
           "placed": {
             "type": "array",
@@ -10128,7 +10137,7 @@
               },
               "required": ["reference_id"]
             },
-            "description": "For a job past the last 16: the things it built with their prefab, as its job_ended event gives them (topic facts)."
+            "description": "For a job whose final reply is gone: the things it built with their prefab, as its job_ended event gives them (topic facts)."
           }
         },
         "required": ["job_id"],
