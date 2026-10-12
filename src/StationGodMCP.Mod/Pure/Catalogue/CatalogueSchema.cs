@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure.Catalogue;
 
@@ -196,18 +197,18 @@ internal sealed class SchemaNode
         JsonTypes actual = TypeOf(value);
         if (_types != JsonTypes.Any && (_types & actual) == 0)
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must be {Words(_types)}."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must be {Words(_types)}."));
             return;
         }
 
         if (_enum != null && !Listed(_enum, value))
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must be one of: {Join(_enum)}."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must be one of: {Join(_enum)}."));
         }
 
         if (_const != null && !SameValue(_const, value))
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must be {_const.ToString(Formatting.None)}."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must be {_const.ToString(Formatting.None)}."));
         }
 
         switch (value)
@@ -261,8 +262,8 @@ internal sealed class SchemaNode
             {
                 string? nearest = NearestName.Of(name, _propertyNames);
                 problems.Add(new SchemaProblem(Join(path, name), nearest != null
-                    ? $"Unknown argument '{Join(path, name)}'; did you mean '{Join(path, nearest)}'?"
-                    : $"Unknown argument '{Join(path, name)}'."));
+                    ? $"Unknown argument '{Said(Join(path, name))}'; did you mean '{Said(Join(path, nearest))}'?"
+                    : $"Unknown argument '{Said(Join(path, name))}'."));
             }
         }
 
@@ -271,14 +272,14 @@ internal sealed class SchemaNode
             JToken? value = obj[name];
             if (value == null || value.Type == JTokenType.Null)
             {
-                problems.Add(new SchemaProblem(Join(path, name), $"Argument '{Join(path, name)}' is required."));
+                problems.Add(new SchemaProblem(Join(path, name), $"Argument '{Said(Join(path, name))}' is required."));
             }
         }
 
         if (_minProperties.HasValue && given < _minProperties.Value ||
             _maxProperties.HasValue && given > _maxProperties.Value)
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must have {Range(_minProperties, _maxProperties)} keys."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must have {Range(_minProperties, _maxProperties)} keys."));
         }
     }
 
@@ -286,7 +287,7 @@ internal sealed class SchemaNode
     {
         if (_minItems.HasValue && array.Count < _minItems.Value || _maxItems.HasValue && array.Count > _maxItems.Value)
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must be an array of {Range(_minItems, _maxItems)} entries."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must be an array of {Range(_minItems, _maxItems)} entries."));
         }
 
         if (_items == null)
@@ -304,12 +305,12 @@ internal sealed class SchemaNode
     {
         if (_minLength.HasValue && text.Length < _minLength.Value || _maxLength.HasValue && text.Length > _maxLength.Value)
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must be {Range(_minLength, _maxLength)} characters long."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must be {Range(_minLength, _maxLength)} characters long."));
         }
 
         if (_pattern != null && !_pattern.IsMatch(text))
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must match {_pattern}."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must match {_pattern}."));
         }
     }
 
@@ -319,7 +320,7 @@ internal sealed class SchemaNode
             _exclusiveMinimum.HasValue && number <= _exclusiveMinimum.Value ||
             _exclusiveMaximum.HasValue && number >= _exclusiveMaximum.Value)
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must be {Bounds()}."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must be {Bounds()}."));
         }
     }
 
@@ -353,7 +354,7 @@ internal sealed class SchemaNode
 
         if (passed > 1)
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' matches more than one of its forms."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' matches more than one of its forms."));
         }
         else if (fitting != null)
         {
@@ -361,9 +362,12 @@ internal sealed class SchemaNode
         }
         else
         {
-            problems.Add(new SchemaProblem(path, $"Argument '{path}' must be {Words(offered)}."));
+            problems.Add(new SchemaProblem(path, $"Argument '{Said(path)}' must be {Words(offered)}."));
         }
     }
+
+    // A path as a problem prints it: its names as the call's rename map says them (Vocabulary).
+    private static string Said(string path) => Vocabulary.Path(path);
 
     // ---- compile helpers ----
 

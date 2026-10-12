@@ -127,16 +127,18 @@ internal interface ICallRunner
     CallOutcome RunCall(ProtocolCall call, double queueWaitMs);
 }
 
-/// <summary>A call as the main thread runs it: id, method, params and shape, already read.</summary>
+/// <summary>A call as the main thread runs it: id, method, params, shape and rename map, already read.</summary>
 internal sealed class CallRequest
 {
-    internal CallRequest(string id, string method, JObject? parameters, ShapeRequest? shape, bool argumentNamesChecked)
+    internal CallRequest(string id, string method, JObject? parameters, ShapeRequest? shape, bool argumentNamesChecked,
+        RenameMap? rename = null)
     {
         Id = id;
         Method = method;
         Params = parameters;
         Shape = shape;
         ArgumentNamesChecked = argumentNamesChecked;
+        Rename = rename;
     }
 
     internal string Id { get; }
@@ -152,6 +154,12 @@ internal sealed class CallRequest
     /// (StrictArguments, a catalogued method whose params are closed), so the main thread need not look again.
     /// </summary>
     internal bool ArgumentNamesChecked { get; }
+
+    /// <summary>
+    /// How the caller says argument and tool names (protocol.md, rename): Vocabulary.Current while the call runs and
+    /// its reply is written; null when it sent none. Params are in handler names either way.
+    /// </summary>
+    internal RenameMap? Rename { get; }
 }
 
 /// <summary>

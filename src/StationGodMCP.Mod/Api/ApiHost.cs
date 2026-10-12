@@ -13,6 +13,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Shaping;
@@ -138,13 +139,14 @@ internal static class ApiHost
 
     /// <summary>
     /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame, budget_hit when the
-    /// frame's request budget was reached as the handler finished). Top-level argument
-    /// names are checked here unless the connection's reader thread already refused unknown ones (StrictArguments: the
-    /// full check); the result is shaped by the call's shape, and a reply larger than max_reply_bytes (or the shape's
+    /// frame's request budget was reached as the handler finished), its messages naming arguments and tools as the
+    /// call's rename map says (Vocabulary). Top-level argument names are checked here unless the connection's reader
+    /// thread already refused unknown ones (StrictArguments: the full check); the result is shaped by the call's shape, and a reply larger than max_reply_bytes (or the shape's
     /// max_bytes) is answered reply_too_large.
     /// </summary>
     internal static HandledRequest HandleCall(CallRequest call, double queueWaitMs, long frame)
     {
+        using Vocabulary.Scope vocabulary = Vocabulary.Enter(call.Rename);
         Stopwatch watch = Stopwatch.StartNew();
         Answer answer = Run(call, watch);
         bool budgetHit = CurrentFrame.BudgetReached(StopwatchClock.Instance.NowMs);
@@ -212,8 +214,8 @@ internal static class ApiHost
             if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
             {
                 throw ApiErrors.Refused("method_not_found", method != null && declared.RunsInSidecar(method)
-                    ? $"{method} is answered by the MCP server (the sidecar) from the catalogue, not by the game; call it through MCP, or read the catalogue's help."
-                    : $"Unknown StationGodMCP method '{method}'.");
+                    ? $"{Vocabulary.Tool(method)} is answered by the MCP server (the sidecar) from the catalogue, not by the game; call it through MCP, or read the catalogue's help."
+                    : $"Unknown StationGodMCP method '{Vocabulary.Tool(method ?? string.Empty)}'.");
             }
 
             declared.Check(call);

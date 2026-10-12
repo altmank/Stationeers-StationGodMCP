@@ -226,10 +226,11 @@ internal abstract class ClientMessage
         private static string? Text(JToken? token) => token?.Type == JTokenType.String ? (string)token! : null;
     }
 
-    /// <summary>call: one method call, by id, with its params, shape, deadline and stream.</summary>
+    /// <summary>call: one method call, by id, with its params, shape, deadline, stream and rename map.</summary>
     internal sealed class Call : ClientMessage
     {
-        private Call(string id, string method, JObject? parameters, JToken? shape, int deadlineMs, long stream)
+        private Call(string id, string method, JObject? parameters, JToken? shape, int deadlineMs, long stream,
+            RenameMap? rename)
         {
             Id = id;
             Method = method;
@@ -237,6 +238,7 @@ internal abstract class ClientMessage
             Shape = shape;
             DeadlineMs = deadlineMs;
             Stream = stream;
+            Rename = rename;
         }
 
         internal string Id { get; }
@@ -254,9 +256,16 @@ internal abstract class ClientMessage
         /// <summary>The stream it belongs to; 0, the connection's default stream, when absent.</summary>
         internal long Stream { get; }
 
+        /// <summary>
+        /// How its caller says argument and tool names in the messages it gets back (RenameMap); null when it sent
+        /// none.
+        /// </summary>
+        internal RenameMap? Rename { get; }
+
         internal static ClientMessage From(JObject message, string line)
         {
-            Refused? unknown = OnlyKeys(message, line, "type", "id", "method", "params", "shape", "deadline_ms", "stream");
+            Refused? unknown = OnlyKeys(message, line, "type", "id", "method", "params", "shape", "deadline_ms",
+                "stream", "rename");
             if (unknown != null)
             {
                 return unknown;
@@ -309,8 +318,15 @@ internal abstract class ClientMessage
                 stream = read.Value;
             }
 
+            RenameMap? rename = RenameMap.Read(message["rename"], out string? renameProblem);
+            if (renameProblem != null)
+            {
+                return new Refused("invalid_argument", renameProblem, id, false, null);
+            }
+
             JToken? shape = message["shape"];
-            return new Call(id, method, parameters, shape?.Type == JTokenType.Null ? null : shape, deadlineMs, stream);
+            return new Call(id, method, parameters, shape?.Type == JTokenType.Null ? null : shape, deadlineMs, stream,
+                rename);
         }
     }
 
