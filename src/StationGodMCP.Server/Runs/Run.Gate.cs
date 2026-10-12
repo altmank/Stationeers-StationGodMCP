@@ -402,7 +402,7 @@ internal sealed partial class Run
             foreach ((string id, string logic, JsonNode? next) in LogicPairs(call.Args, targets))
             {
                 WrittenTarget target = new(id, logic, next);
-                if (context.KnownBefore != null && context.KnownBefore.TryGetValue(id, out JsonNode? before))
+                if (context.KnownBefore != null && context.KnownBefore.TryGetValue(Key(id, logic), out JsonNode? before))
                 {
                     target.Before = before?.DeepClone();
                 }

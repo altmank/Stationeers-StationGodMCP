@@ -40,12 +40,39 @@ internal sealed class AdoptedJournal : IDisposable
     private readonly Dictionary<string, List<(string Id, string Logic, JsonNode? After)>> _holds =
         new(StringComparer.Ordinal);
 
-    private AdoptedJournal(string path, FileStream file, string pid)
+    private AdoptedJournal(string path, FileStream file, string pid, string prefix)
     {
         FilePath = path;
         _file = file;
         Pid = pid;
+        _prefix = prefix;
     }
+
+    // What its runs' ids start with after "script-": the pid, or pid-<start ms, short> when two journals share a pid.
+    private readonly string _prefix;
+
+    /// <summary>The game the old hub served (pipe or host:port), from its hub line; null when it did not say.</summary>
+    internal string? Target { get; private set; }
+
+    /// <summary>True when the journal held restores (hold lines not cleared): its outcomes matter for retiring.</summary>
+    internal bool HasHolds
+    {
+        get
+        {
+            foreach (List<(string Id, string Logic, JsonNode? After)> holds in _holds.Values)
+            {
+                if (holds.Count > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>Lines that could not be read (torn by an abrupt end): skipped, and counted here.</summary>
+    internal int TornLines { get; private set; }
 
     internal string FilePath { get; }
 
@@ -61,8 +88,12 @@ internal sealed class AdoptedJournal : IDisposable
 
     internal bool Retired { get; private set; }
 
-    /// <summary>Every journal in the folder but this hub's own whose lock can be taken and that is not retired.</summary>
-    internal static List<AdoptedJournal> TakeAll(string directory, string? own)
+    /// <summary>
+    /// Every journal in the folder but this hub's own whose lock can be taken, that is not retired, and that served the
+    /// same game (when both say). Two journals of the same pid (a pid reused) name their runs script-&lt;pid&gt;-&lt;start
+    /// ms, last 5 digits&gt;.N so their ids never collide.
+    /// </summary>
+    internal static List<AdoptedJournal> TakeAll(string directory, string? own, string? target = null, TextWriter? log = null)
     {
         List<AdoptedJournal> taken = [];
         if (!Directory.Exists(directory))
@@ -70,6 +101,8 @@ internal sealed class AdoptedJournal : IDisposable
             return taken;
         }
 
+        List<string> paths = [];
+        Dictionary<string, int> pids = new(StringComparer.Ordinal);
         foreach (string path in Directory.GetFiles(directory, "*.jsonl"))
         {
             if (own != null && string.Equals(Path.GetFullPath(path), Path.GetFullPath(own), StringComparison.OrdinalIgnoreCase))
@@ -77,16 +110,39 @@ internal sealed class AdoptedJournal : IDisposable
                 continue;
             }
 
-            if (TryTake(path) is { } journal)
+            paths.Add(path);
+            string pid = PidOf(Path.GetFileNameWithoutExtension(path));
+            pids[pid] = pids.TryGetValue(pid, out int count) ? count + 1 : 1;
+        }
+
+        foreach (string path in paths)
+        {
+            bool shared = pids[PidOf(Path.GetFileNameWithoutExtension(path))] > 1;
+            if (TryTake(path, shared, log) is not { } journal)
             {
-                taken.Add(journal);
+                continue;
             }
+
+            if (target != null && journal.Target != null && journal.Target != target)
+            {
+                // Another game's journal: its runs and restores belong to a hub of that game.
+                journal.Dispose();
+                continue;
+            }
+
+            taken.Add(journal);
         }
 
         return taken;
     }
 
-    internal static AdoptedJournal? TryTake(string path)
+    private static string PidOf(string name)
+    {
+        int dash = name.IndexOf('-');
+        return dash > 0 ? name[..dash] : name;
+    }
+
+    internal static AdoptedJournal? TryTake(string path, bool longIds = false, TextWriter? log = null)
     {
         FileStream file;
         try
@@ -100,9 +156,22 @@ internal sealed class AdoptedJournal : IDisposable
         }
 
         string name = Path.GetFileNameWithoutExtension(path);
-        int dash = name.IndexOf('-');
-        AdoptedJournal journal = new(path, file, dash > 0 ? name[..dash] : name);
-        journal.Read();
+        string pid = PidOf(name);
+        string started = name.Length > pid.Length + 1 ? name[(pid.Length + 1)..] : "";
+        string prefix = longIds ? pid + "-" + (started.Length > 5 ? started[^5..] : started) : pid;
+        AdoptedJournal journal = new(path, file, pid, prefix);
+        try
+        {
+            journal.Read();
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // One unreadable journal is skipped, and its handle let go; the others are adopted.
+            (log ?? Console.Error).WriteLine($"[StationGodMCP] the journal {path} could not be read: {exception.Message}");
+            journal.Dispose();
+            return null;
+        }
+
         if (journal.Retired)
         {
             journal.Dispose();
@@ -126,6 +195,7 @@ internal sealed class AdoptedJournal : IDisposable
         }
 
         ITokenLink link = links(Token);
+        bool closed = false;
         try
         {
             if (!await link.ConnectAsync(cancellation).ConfigureAwait(false))
@@ -136,9 +206,11 @@ internal sealed class AdoptedJournal : IDisposable
             if (Resumed(link.Welcome))
             {
                 await link.SessionEndAsync().ConfigureAwait(false);
+                closed = true;
                 await link.CloseAsync(bye: false).ConfigureAwait(false);
                 await Task.Delay(reconnect, cancellation).ConfigureAwait(false);
                 link = links(Token);
+                closed = false;
                 if (!await link.ConnectAsync(cancellation).ConfigureAwait(false))
                 {
                     return false;
@@ -154,13 +226,21 @@ internal sealed class AdoptedJournal : IDisposable
             line["dropped"] = restores?["dropped"]?.DeepClone() ?? 0;
             Append(line);
             TakeRestores(line);
+            closed = true;
             await link.CloseAsync(bye: true).ConfigureAwait(false);
             return true;
         }
         catch (OperationCanceledException)
         {
-            await link.CloseAsync(bye: false).ConfigureAwait(false);
             return false;
+        }
+        finally
+        {
+            // Every way out closes the link: without bye, so nothing of the old token is cleared unread.
+            if (!closed)
+            {
+                await link.CloseAsync(bye: false).ConfigureAwait(false);
+            }
         }
     }
 
@@ -186,7 +266,20 @@ internal sealed class AdoptedJournal : IDisposable
     {
         try
         {
-            _file.Write(Encoding.UTF8.GetBytes(line.ToJsonString(Journal.LineOptions) + "\n"));
+            // A torn last line gets its newline first, so this line starts a line of its own.
+            string text = line.ToJsonString(Journal.LineOptions) + "\n";
+            if (_file.Length > 0)
+            {
+                _file.Position = _file.Length - 1;
+                bool newline = _file.ReadByte() == '\n';
+                _file.Position = _file.Length;
+                if (!newline)
+                {
+                    text = "\n" + text;
+                }
+            }
+
+            _file.Write(Encoding.UTF8.GetBytes(text));
             _file.Flush();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ObjectDisposedException)
@@ -215,6 +308,7 @@ internal sealed class AdoptedJournal : IDisposable
             catch (JsonException)
             {
                 // A line torn by an abrupt end: the lines before it stand.
+                TornLines++;
                 continue;
             }
 
@@ -245,6 +339,7 @@ internal sealed class AdoptedJournal : IDisposable
         {
             case "hub":
                 Token = JsonNodes.Text(entry["token"]);
+                Target = JsonNodes.Text(entry["target"]);
                 break;
             case "run" when JsonNodes.Text(entry["run"]) is { } id:
                 RunRecord adopted = new(AdoptedId(id), JsonNodes.Text(entry["first_line"]) ?? "", JsonNodes.IsTrue(entry["confirm"]), 0,
@@ -270,6 +365,14 @@ internal sealed class AdoptedJournal : IDisposable
 
                 holds.Add((holdId, logic, entry["after"]?.DeepClone()));
                 break;
+            case "hold_cleared" when run != null && JsonNodes.Text(entry["id"]) is { } clearedId &&
+                                     JsonNodes.Text(entry["logic"]) is { } clearedLogic:
+                if (_holds.TryGetValue(run.Id, out var held))
+                {
+                    held.RemoveAll(hold => hold.Id == clearedId && hold.Logic == clearedLogic);
+                }
+
+                break;
             case "end" when run != null:
                 ended.Add(run.Id);
                 run.State = StateOf(JsonNodes.Text(entry["state"]));
@@ -292,7 +395,7 @@ internal sealed class AdoptedJournal : IDisposable
     }
 
     private string AdoptedId(string id) =>
-        id.StartsWith("script-", StringComparison.Ordinal) ? "script-" + Pid + "." + id["script-".Length..] : id;
+        id.StartsWith("script-", StringComparison.Ordinal) ? "script-" + _prefix + "." + id["script-".Length..] : id;
 
     // A call line: the write as sent, acted until its done line says otherwise (a call with no done line may have run).
     private static WriteEntry Call(JsonObject entry, RunRecord run)
@@ -337,9 +440,10 @@ internal sealed class AdoptedJournal : IDisposable
         foreach (JsonNode? after in entry["after"] as JsonArray ?? [])
         {
             string? id = JsonNodes.Text(after?["id"]);
+            string? field = JsonNodes.Text(after?["logic"]) ?? JsonNodes.Text(after?["field"]);
             foreach (WrittenTarget target in write.Targets)
             {
-                if (target.Id == id && !target.Acted)
+                if (target.Id == id && target.Field == field && !target.Acted)
                 {
                     target.Acted = true;
                     target.After = after!["value"]?.DeepClone();

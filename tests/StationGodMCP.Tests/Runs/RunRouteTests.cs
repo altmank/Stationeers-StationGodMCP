@@ -9,6 +9,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>Report and confirmed runs with the real worker: what acts, what is reported, what stops a run.</summary>
+[Collection(PythonCollection.Name)]
 public sealed class RunRouteTests
 {
     private const string WriteOne = "sg.write('logic', id='122643', logic='Open', value=1)";
@@ -28,6 +29,18 @@ public sealed class RunRouteTests
         Assert.Contains("[122643, Device 122643, 0 -> 1]", text);
         Assert.Equal(0, bench.World.Count("write_logic_many") + bench.World.Count("write_logic"));
         Assert.Equal(0, bench.World.Value("122643", "Open"));
+    }
+
+    [PythonFact]
+    public async Task ARunWithoutConfirmThatOnlyReadsIsDoneNotReport()
+    {
+        await using RunBench bench = new();
+
+        string text = await bench.RunAsync("for i in range(3):\n    sg.read('logic', id='1', logic='On')\n    sg.wait(0.01)");
+
+        Assert.StartsWith("script-1 done\n", text);
+        Assert.DoesNotContain("limits:", text);
+        Assert.DoesNotContain("confirm: true", text);
     }
 
     [PythonFact]

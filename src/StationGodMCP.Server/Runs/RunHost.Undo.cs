@@ -6,7 +6,9 @@ namespace StationGodMCP.Server;
 /// undo script-N (and script-&lt;pid&gt;.N from an adopted journal): the run's logic writes reverted newest first, each
 /// (id, logic) back to its value before the run. Each target is read first: one that changed since the run is
 /// reported and left unless allow: ["overwrite"]. Writes that are not logic writes are named, not reverted. Like
-/// every undo on the direct face it reports until confirm: true (the pipeline's gate decides).
+/// every undo on the direct face it reports until confirm: true (the pipeline's gate decides). Every call of an undo
+/// goes on a stream of its own, pinned to the run's world: a save loaded mid-undo refuses the rest unsent, and the
+/// undo answers undo_expired. While a write of the run may still reach the game (unsettled), undo waits for it.
 /// </summary>
 public sealed partial class RunHost
 {
@@ -39,25 +41,80 @@ public sealed partial class RunHost
             return why;
         }
 
+        lock (record.Sync)
+        {
+            if (record.UndoRunning)
+            {
+                return new VerbReply.Failed("undo_running", $"an undo of {record.Id} is going now; send it again when it ends.");
+            }
+
+            record.UndoRunning = true;
+        }
+
+        long stream = _link.NewStream();
+        _pipeline.PinWorld(stream, record.World);
+        try
+        {
+            return await UndoOnAsync(record, call, options, stream).ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (record.Sync)
+            {
+                record.UndoRunning = false;
+            }
+
+            _pipeline.EndStream(stream);
+            await _link.EndStreamAsync(stream).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<VerbReply> UndoOnAsync(RunRecord record, VerbCall call, JsonObject options, long stream)
+    {
         (List<UndoStep> steps, List<string> notUndone) = Plan(record);
+        lock (record.Sync)
+        {
+            steps.RemoveAll(step => record.UndoneTargets.Contains(step.Key));
+        }
+
         bool overwrite = JsonNodes.Holds(options["allow"], "overwrite");
+        UndoWorld world = new();
         if (_pipeline.DecideWrite(call) is not WriteDecision.Act)
         {
-            return await UndoReportAsync(record, steps, notUndone, overwrite).ConfigureAwait(false);
+            VerbReply report = await UndoReportAsync(record, steps, notUndone, overwrite, stream, world).ConfigureAwait(false);
+            return world.Gone ? WorldChangedDuringUndo(record) : report;
         }
 
         JsonArray results = [];
         int reverted = 0;
+        int left = 0;
         foreach (UndoStep step in steps)
         {
-            JsonObject row = await RevertAsync(step, overwrite).ConfigureAwait(false);
+            (JsonObject row, bool dealt) = await RevertAsync(step, overwrite, stream, world).ConfigureAwait(false);
+            if (world.Gone)
+            {
+                return WorldChangedDuringUndo(record);
+            }
+
             reverted += JsonNodes.IsTrue(row["ok"]) ? 1 : 0;
             results.Add(row);
+            lock (record.Sync)
+            {
+                if (dealt)
+                {
+                    record.UndoneTargets.Add(step.Key);
+                }
+                else
+                {
+                    left++;
+                }
+            }
         }
 
         lock (record.Sync)
         {
-            record.Undone = true;
+            // Targets left (changed since the run) keep the run undoable for them, with allow: ["overwrite"].
+            record.Undone = left == 0;
         }
 
         MarkSeen(record.Id);
@@ -71,6 +128,10 @@ public sealed partial class RunHost
         });
     }
 
+    private static VerbReply.Failed WorldChangedDuringUndo(RunRecord record) =>
+        new("undo_expired", $"world changed: another world was loaded during the undo of {record.Id}; what was not " +
+                            "reverted by then was not sent, because its ids may name other things now.");
+
     private VerbReply.Failed? Unrevertable(RunRecord record)
     {
         if (record.IsLive)
@@ -79,11 +140,23 @@ public sealed partial class RunHost
                 $"stop it first: server {{what: \"stop\", id: \"{record.Id}\"}}");
         }
 
+        if (!record.Adopted && _pipeline.Unsettled(record.Stream))
+        {
+            return new VerbReply.Failed("run_unsettled",
+                $"a write may still land: try again when {record.Id} settles (a write it sent has not been answered).");
+        }
+
         lock (record.Sync)
         {
             if (record.Undone)
             {
                 return new VerbReply.Failed("already_undone", $"{record.Id} was undone already.");
+            }
+
+            if (record.World == null)
+            {
+                return new VerbReply.Failed("undo_expired",
+                    $"{record.Id}'s world is not known, so its ids cannot be trusted to name the same things now.");
             }
 
             if (record.World != _link.WorldId)
@@ -104,6 +177,7 @@ public sealed partial class RunHost
     }
 
     // Newest first: each logic target once, at its newest write, back to its value before the run's first write to it.
+    // A newest write that may or may not have run also accepts the value before it (the last one known to have landed).
     private static (List<UndoStep> Steps, List<string> NotUndone) Plan(RunRecord record)
     {
         List<UndoStep> steps = [];
@@ -133,8 +207,10 @@ public sealed partial class RunHost
                         continue;
                     }
 
-                    steps.Add(new UndoStep(written.Id, written.Field, BeforeRun(record, written.Id, written.Field),
-                        (written.After ?? written.New)?.DeepClone(), write.MaybeRan));
+                    JsonNode? before = BeforeRun(record, written.Id, written.Field);
+                    JsonNode? alternative = write.MaybeRan ? LandedBefore(record, index, written.Id, written.Field) ?? before : null;
+                    steps.Add(new UndoStep(written.Id, written.Field, before, (written.After ?? written.New)?.DeepClone(),
+                        alternative?.DeepClone()));
                 }
             }
         }
@@ -164,10 +240,33 @@ public sealed partial class RunHost
         return null;
     }
 
-    private async Task<VerbReply> UndoReportAsync(RunRecord record, List<UndoStep> steps, List<string> notUndone,
-        bool overwrite)
+    // Under the record's lock: the value the newest write before index known to have landed left on the target.
+    private static JsonNode? LandedBefore(RunRecord record, int index, string id, string logic)
     {
-        List<JsonNode?> current = await CurrentAsync(steps).ConfigureAwait(false);
+        for (int earlier = index - 1; earlier >= 0; earlier--)
+        {
+            WriteEntry write = record.Writes[earlier];
+            if (!write.Acted || write.MaybeRan || write.What != "logic")
+            {
+                continue;
+            }
+
+            foreach (WrittenTarget target in write.Targets)
+            {
+                if (target.Acted && target.Id == id && target.Field == logic)
+                {
+                    return (target.After ?? target.New)?.DeepClone();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<VerbReply> UndoReportAsync(RunRecord record, List<UndoStep> steps, List<string> notUndone,
+        bool overwrite, long stream, UndoWorld world)
+    {
+        List<JsonNode?> current = await CurrentAsync(steps, stream, world).ConfigureAwait(false);
         JsonArray rows = [];
         for (int index = 0; index < steps.Count; index++)
         {
@@ -201,14 +300,15 @@ public sealed partial class RunHost
         });
     }
 
-    // One target: read it now, judge it, and write its value from before the run when that is right.
-    private async Task<JsonObject> RevertAsync(UndoStep step, bool overwrite)
+    // One target: read it now, judge it, and write its value from before the run when that is right. Dealt: it needs
+    // no further undo (reverted, already back, or with no value to go back to).
+    private async Task<(JsonObject Row, bool Dealt)> RevertAsync(UndoStep step, bool overwrite, long stream, UndoWorld world)
     {
-        List<JsonNode?> current = await CurrentAsync([step]).ConfigureAwait(false);
+        List<JsonNode?> current = await CurrentAsync([step], stream, world).ConfigureAwait(false);
         JsonNode? now = current[0];
         JsonObject row = new() { ["id"] = step.Id, ["logic"] = step.Logic, ["value"] = step.Before?.DeepClone() };
         Verdict verdict = Judge(step, now, overwrite);
-        if (verdict != Verdict.Write)
+        if (world.Gone || verdict != Verdict.Write)
         {
             row["ok"] = verdict == Verdict.Nothing;
             row["now"] = now?.DeepClone();
@@ -219,7 +319,7 @@ public sealed partial class RunHost
                 _ => $"changed since the run (it holds {Run.Shown(now)}, the run left {Run.Shown(step.Last)}); not " +
                      "written without allow: [\"overwrite\"]"
             };
-            return row;
+            return (row, verdict != Verdict.Changed && !world.Gone);
         }
 
         VerbReply wrote = await _pipeline.CallAsync(new VerbCall("write", "logic", new JsonObject
@@ -230,12 +330,13 @@ public sealed partial class RunHost
                 ["logic"] = step.Logic,
                 ["value"] = step.Before?.DeepClone()
             })
-        }, Face.Script) { Gate = PassThroughGate.Instance }, CancellationToken.None).ConfigureAwait(false);
+        }, Face.Script, stream) { Gate = PassThroughGate.Instance }, CancellationToken.None).ConfigureAwait(false);
         if (wrote is VerbReply.Failed failed)
         {
+            world.Gone |= failed.Code == "world_changed";
             row["ok"] = false;
             row["error"] = failed.ToJson();
-            return row;
+            return (row, false);
         }
 
         List<JsonObject> results = BulkWrites.Rows(((VerbReply.Done)wrote).Reply);
@@ -247,7 +348,7 @@ public sealed partial class RunHost
             row["error"] = error.DeepClone();
         }
 
-        return row;
+        return (row, JsonNodes.IsTrue(row["ok"]));
     }
 
     private enum Verdict
@@ -258,7 +359,8 @@ public sealed partial class RunHost
         Unknown
     }
 
-    // A maybe-ran write is settled by what the target holds: its before value means it never landed.
+    // A maybe-ran write is settled by what the target holds: its before value means it never landed; the value it
+    // wrote, or the last one known to have landed, is the run's and is put back.
     private static Verdict Judge(UndoStep step, JsonNode? now, bool overwrite)
     {
         if (step.Before == null)
@@ -271,11 +373,12 @@ public sealed partial class RunHost
             return Verdict.Nothing;
         }
 
-        return Run.SameValue(now, step.Last) || overwrite ? Verdict.Write : Verdict.Changed;
+        bool runs = Run.SameValue(now, step.Last) || (step.Alternative != null && Run.SameValue(now, step.Alternative));
+        return runs || overwrite ? Verdict.Write : Verdict.Changed;
     }
 
-    // What each target holds now, in order (null where the read failed).
-    private async Task<List<JsonNode?>> CurrentAsync(List<UndoStep> steps)
+    // What each target holds now, in order (null where the read failed); a world change marks the undo gone.
+    private async Task<List<JsonNode?>> CurrentAsync(List<UndoStep> steps, long stream, UndoWorld world)
     {
         List<JsonNode?> values = [];
         if (steps.Count == 0)
@@ -290,7 +393,12 @@ public sealed partial class RunHost
         }
 
         VerbReply read = await _pipeline.CallAsync(new VerbCall("read", "logic", new JsonObject { ["reads"] = reads },
-            Face.Script), CancellationToken.None).ConfigureAwait(false);
+            Face.Script, stream), CancellationToken.None).ConfigureAwait(false);
+        if (read is VerbReply.Failed { Code: "world_changed" })
+        {
+            world.Gone = true;
+        }
+
         List<JsonObject> rows = read is VerbReply.Done done ? BulkWrites.Rows(done.Reply) : [];
         for (int index = 0; index < steps.Count; index++)
         {
@@ -313,8 +421,17 @@ public sealed partial class RunHost
         return list;
     }
 
-    /// <summary>One target to revert: its id and logic type, its value before the run, the value the run left.</summary>
-    private sealed class UndoStep(string id, string logic, JsonNode? before, JsonNode? last, bool maybeRan)
+    /// <summary>Set when the undo's world went away under it (a call answered world_changed).</summary>
+    private sealed class UndoWorld
+    {
+        internal bool Gone { get; set; }
+    }
+
+    /// <summary>
+    /// One target to revert: its id and logic type, its value before the run, the value the run left, and for a write
+    /// that may or may not have landed the value before it.
+    /// </summary>
+    private sealed class UndoStep(string id, string logic, JsonNode? before, JsonNode? last, JsonNode? alternative)
     {
         internal string Id { get; } = id;
 
@@ -324,6 +441,8 @@ public sealed partial class RunHost
 
         internal JsonNode? Last { get; } = last;
 
-        internal bool MaybeRan { get; } = maybeRan;
+        internal JsonNode? Alternative { get; } = alternative;
+
+        internal string Key => Id + "\n" + Logic;
     }
 }

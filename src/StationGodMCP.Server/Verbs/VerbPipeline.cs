@@ -38,6 +38,7 @@ public sealed partial class VerbPipeline
     private readonly HubCursors _cursors = new();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly Dictionary<long, string> _worlds = new();
+    private readonly Dictionary<long, Dictionary<object, DateTime>> _unsettled = new();
     private int _inFlight;
 
     /// <summary>
@@ -841,12 +842,71 @@ public sealed partial class VerbPipeline
     private static JsonElement? Given(JsonObject options, string name) =>
         options[name] is { } value ? JsonNodes.ToElement(value) : null;
 
-    private Task<GameReply> SendAsync(HandlerCall handlerCall, long stream, JsonElement? shape,
-        CancellationToken cancellation) =>
-        _link.CallAsync(new GameCall(handlerCall.Handler, JsonNodes.ToElement(handlerCall.Args), stream)
+    // Every call is unsettled until the mod's reply comes (OnReply, even a late one after the caller gave up) or the
+    // link answers it itself; a call the caller cancelled stays unsettled until its late reply, or until it is old
+    // enough that none will come.
+    private async Task<GameReply> SendAsync(HandlerCall handlerCall, long stream, JsonElement? shape,
+        CancellationToken cancellation)
+    {
+        object token = new();
+        lock (_worlds)
+        {
+            if (!_unsettled.TryGetValue(stream, out Dictionary<object, DateTime>? calls))
+            {
+                calls = new Dictionary<object, DateTime>(ReferenceEqualityComparer.Instance);
+                _unsettled[stream] = calls;
+            }
+
+            calls[token] = DateTime.UtcNow;
+        }
+
+        void Settle()
+        {
+            lock (_worlds)
+            {
+                if (_unsettled.TryGetValue(stream, out Dictionary<object, DateTime>? calls))
+                {
+                    calls.Remove(token);
+                }
+            }
+        }
+
+        GameReply reply = await _link.CallAsync(new GameCall(handlerCall.Handler, JsonNodes.ToElement(handlerCall.Args), stream)
         {
             World = WorldOf(stream),
             Shape = shape,
-            Rename = handlerCall.Rename
-        }, cancellation);
+            Rename = handlerCall.Rename,
+            OnReply = _ => Settle()
+        }, cancellation).ConfigureAwait(false);
+        Settle();
+        return reply;
+    }
+
+    /// <summary>
+    /// True while a call on the stream may still reach the game: sent, not answered, and younger than SettleBound (a
+    /// cancelled call keeps its slot at the link until its late reply).
+    /// </summary>
+    internal bool Unsettled(long stream)
+    {
+        lock (_worlds)
+        {
+            if (!_unsettled.TryGetValue(stream, out Dictionary<object, DateTime>? calls))
+            {
+                return false;
+            }
+
+            foreach (DateTime sent in calls.Values)
+            {
+                if (DateTime.UtcNow - sent < SettleBound)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>How long a call's late reply is waited for before it is taken as never coming.</summary>
+    internal TimeSpan SettleBound { get; init; } = TimeSpan.FromMinutes(2);
 }

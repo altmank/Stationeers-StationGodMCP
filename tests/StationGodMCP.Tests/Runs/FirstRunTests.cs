@@ -15,6 +15,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>The whole MCP server as it starts: run_script as its very first tool call.</summary>
+[Collection(PythonCollection.Name)]
 public sealed class FirstRunTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "sg-first-run-" + Guid.NewGuid().ToString("N"));

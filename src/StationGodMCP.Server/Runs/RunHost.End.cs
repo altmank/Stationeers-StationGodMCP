@@ -18,12 +18,12 @@ public sealed partial class RunHost
         DateTime started = DateTime.UtcNow;
         lock (_gate)
         {
-            if (_phase != SessionPhase.Open)
+            if (Phase != SessionPhase.Open)
             {
                 return;
             }
 
-            _phase = SessionPhase.Cleanup;
+            Volatile.Write(ref _phase, (int)SessionPhase.Cleanup);
         }
 
         List<Run> live = LiveRuns();
@@ -47,7 +47,7 @@ public sealed partial class RunHost
 
         lock (_gate)
         {
-            _phase = SessionPhase.Ended;
+            Volatile.Write(ref _phase, (int)SessionPhase.Ended);
         }
 
         await _link.SessionEndAsync().ConfigureAwait(false);

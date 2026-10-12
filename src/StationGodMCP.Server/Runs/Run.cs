@@ -42,6 +42,8 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private int _stops;
     private DateTime _stopAt;
     private bool _killed;
+    private bool _killing;
+    private bool _keptStream;
     private int _inFlight;
     private int? _line;
     private string? _lastWrite;
@@ -259,12 +261,12 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 {
                     if (normal)
                     {
-                        await _link.HoldRestoreAsync(Record.Stream,
+                        GameReply cleared = await _link.HoldRestoreAsync(Record.Stream,
                             JsonNodes.ToElement(new JsonObject { ["clear_all"] = true }), Record.World,
                             CancellationToken.None).ConfigureAwait(false);
-                        lock (Record.Sync)
+                        if (cleared is GameReply.Ok)
                         {
-                            _holds.Clear();
+                            ClearedHolds(null);
                         }
                     }
                     else
@@ -295,6 +297,13 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
             if (world || !HasHolds())
             {
                 await _link.EndStreamAsync(Record.Stream).ConfigureAwait(false);
+            }
+            else
+            {
+                lock (Record.Sync)
+                {
+                    _keptStream = true;
+                }
             }
 
             ReleaseWhenSettled();
@@ -359,6 +368,72 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
             {
                 await ClearHoldsAsync(restored, JsonValue.Create(logic), CancellationToken.None).ConfigureAwait(false);
             }
+        }
+    }
+
+    /// <summary>True while the run's stream is kept open for held restores that could not be written back.</summary>
+    internal bool KeptStream
+    {
+        get
+        {
+            lock (Record.Sync)
+            {
+                return _keptStream;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tries a kept stream's write-back again (at a later run's end): the held values are written as CLEANUP and
+    /// cleared, and once none is left the stream ends. Not after a world change or session_end.
+    /// </summary>
+    internal async Task RetryKeptAsync()
+    {
+        lock (Record.Sync)
+        {
+            if (!_keptStream || _stopWorld)
+            {
+                return;
+            }
+        }
+
+        if (_host.Phase == SessionPhase.Ended || _link.WorldId != Record.World)
+        {
+            return;
+        }
+
+        await RestoreHoldsAsync().ConfigureAwait(false);
+        if (!HasHolds())
+        {
+            lock (Record.Sync)
+            {
+                _keptStream = false;
+            }
+
+            await _link.EndStreamAsync(Record.Stream).ConfigureAwait(false);
+        }
+    }
+
+    // Holds whose registration the mod cleared (all of them when ids is null): forgotten here and in the journal.
+    private void ClearedHolds(List<string>? ids, string? logic = null)
+    {
+        List<(string Id, string Logic, JsonNode? After)> gone = [];
+        lock (Record.Sync)
+        {
+            foreach ((string Id, string Logic, JsonNode? After) hold in _holds)
+            {
+                if (ids == null || (hold.Logic == logic && ids.Contains(hold.Id)))
+                {
+                    gone.Add(hold);
+                }
+            }
+
+            _holds.RemoveAll(hold => ids == null || (hold.Logic == logic && ids.Contains(hold.Id)));
+        }
+
+        foreach ((string id, string held, JsonNode? _) in gone)
+        {
+            _journal.HoldCleared(Record, id, held);
         }
     }
 
@@ -434,7 +509,8 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 : null;
             return said switch
             {
-                "done" => Record.Confirm ? RunState.Done : RunState.Report,
+                // REPORT is for a run that reported a write; one that only read is done.
+                "done" => Record.Confirm || Record.Reported.Count == 0 ? RunState.Done : RunState.Report,
                 "pass_end" => RunState.Report,
                 "stopped" => RunState.Stopped,
                 _ => RunState.Failed
@@ -606,6 +682,16 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 inFlight = _inFlight;
             }
 
+            // At KillAfter the run takes no new call; a call already in flight is waited for, never past KillLatest.
+            if (since >= _settings.KillAfter)
+            {
+                lock (Record.Sync)
+                {
+                    _killing = true;
+                    inFlight = _inFlight;
+                }
+            }
+
             if (since >= _settings.KillLatest || (since >= _settings.KillAfter && inFlight == 0))
             {
                 Kill();
@@ -688,7 +774,11 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
 
     public async Task<VerbReply> VerbAsync(VerbCall call, CancellationToken cancellation)
     {
-        Enter(call.Line);
+        if (!Enter(call.Line))
+        {
+            return Killing();
+        }
+
         try
         {
             if (TakeStop(call.Line) is { } stop)
@@ -799,10 +889,16 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         return null;
     }
 
-    private void Enter(int? line)
+    // False once the kill is due: from then on the run's calls are refused (Killing), so it cannot keep the kill off.
+    private bool Enter(int? line)
     {
         lock (Record.Sync)
         {
+            if (_killing)
+            {
+                return false;
+            }
+
             _inFlight++;
             Record.Calls++;
             if (line != null)
@@ -810,7 +906,12 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 _line = line;
             }
         }
+
+        return true;
     }
+
+    private static VerbReply.Failed Killing() =>
+        new("run_killed", "the run was stopped and its kill is due; nothing more is sent for it");
 
     private void Exit()
     {
@@ -824,7 +925,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private async Task<VerbReply> SendAsync(string verb, string? what, JsonObject args, RunCallContext context,
         CancellationToken cancellation)
     {
-        if (verb == "write" && what == "logic" && Record.Confirm && context.KnownBefore == null && _journal.WantsBefore &&
+        if (verb == "write" && what == "logic" && Record.Confirm && context.KnownBefore == null &&
             !StopRequested)
         {
             context = await WithBeforeAsync(args, context, cancellation).ConfigureAwait(false);
@@ -858,8 +959,9 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         return reply;
     }
 
-    // A confirmed logic write is journalled with the values before it (write-ahead: if the hub dies after sending, undo
-    // still knows them), so they are read first; ids that are refs or not plain are left to the reply's previous_value.
+    // A confirmed logic write knows its targets' values before it ahead of sending: the journal's call line carries them
+    // (write-ahead: a hub that dies after sending still leaves them), and a write that may or may not have run (cut off,
+    // its reply never read) can still be undone. Ids that are refs are left to the reply's previous_value.
     private async Task<RunCallContext> WithBeforeAsync(JsonObject args, RunCallContext context, CancellationToken cancellation)
     {
         JsonArray reads = [];
@@ -868,21 +970,22 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         {
             foreach (JsonNode? entry in writes)
             {
-                if (IdText(entry?["id"]) is { } id && entry!["logic"] is { } logic && RefStore.Parse(id) == null)
+                if (IdText(entry?["id"]) is { } id && entry!["logic"] is { } logic && LogicName(logic) is { } name &&
+                    RefStore.Parse(id) == null)
                 {
                     reads.Add(new JsonObject { ["id"] = id, ["logic"] = logic.DeepClone() });
-                    ids.Add(id);
+                    ids.Add(Key(id, name));
                 }
             }
         }
-        else if (args["logic"] is { } logic)
+        else if (args["logic"] is { } logic && LogicName(logic) is { } name)
         {
             foreach (JsonNode? id in args["id"] is JsonArray list ? list : new JsonArray(args["id"]?.DeepClone()))
             {
                 if (IdText(id) is { } text && RefStore.Parse(text) == null)
                 {
                     reads.Add(new JsonObject { ["id"] = text, ["logic"] = logic.DeepClone() });
-                    ids.Add(text);
+                    ids.Add(Key(text, name));
                 }
             }
         }

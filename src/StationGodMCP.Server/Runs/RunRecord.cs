@@ -130,6 +130,9 @@ public interface IRunJournal
 
     void Held(RunRecord run, string id, string logic, JsonNode? after);
 
+    /// <summary>A hold's registration is gone (cleared, restored, or never made): the next hub need not report it.</summary>
+    void HoldCleared(RunRecord run, string id, string logic);
+
     void Ended(RunRecord run);
 
     void WorldChanged(string? world, List<string> holdsDropped);
@@ -187,6 +190,10 @@ public sealed class NoRunJournal : IRunJournal
     }
 
     public void Held(RunRecord run, string id, string logic, JsonNode? after)
+    {
+    }
+
+    public void HoldCleared(RunRecord run, string id, string logic)
     {
     }
 
@@ -281,8 +288,17 @@ public sealed class RunRecord
     /// <summary>After a stop or kill: per target, the value it holds now that differs from the one before the run.</summary>
     public List<LeftTarget> Left { get; } = [];
 
-    /// <summary>True once undo script-N acted on it: a second undo answers already_undone.</summary>
+    /// <summary>
+    /// True once undo has reverted every target it can (or found it cannot): a further undo answers already_undone. A
+    /// target an undo left (changed since the run, no overwrite) keeps the run undoable for it.
+    /// </summary>
     public bool Undone { get; internal set; }
+
+    /// <summary>True while an undo of the run is going: a second one at the same time answers undo_running.</summary>
+    internal bool UndoRunning { get; set; }
+
+    /// <summary>The (id, logic) targets undo has dealt with: reverted, already back, or with no value to go back to.</summary>
+    internal HashSet<string> UndoneTargets { get; } = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Set when the hub let go of the run's write log to stay within its memory bound: what undo can no longer revert.

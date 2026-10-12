@@ -16,6 +16,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>The journal (hub.md, The journal): lines and their order, the lock, adoption, restores, retirement.</summary>
+[Collection(PythonCollection.Name)]
 public sealed class JournalTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "sg-journal-" + Guid.NewGuid().ToString("N"));
@@ -62,7 +63,7 @@ public sealed class JournalTests : IDisposable
         Journal journal = Journal.Open(_folder, "hub-00000000000000ab", mcp: true, () => "world-1");
         await using RunBench bench = new(adjust: settings => WithJournal(settings, journal));
 
-        await bench.RunAsync("with sg.hold('7', 'On', 1):\n    sg.wait(30)", confirm: true, maxWait: 0.5);
+        await bench.StartAsync("with sg.hold('7', 'On', 1):\n    sg.wait(30)", confirm: true, line: 2);
         bench.World.ChangeWorld("world-2");
         await EndedAsync(bench, "script-1");
         List<string> kinds = journal.Lines().Select(line => (string)Line(line)["t"]!).ToList();
@@ -180,18 +181,21 @@ public sealed class JournalTests : IDisposable
     }
 
     [Fact]
-    public async Task AdoptedJournalsRetireAfterTheFirstReplyAndRetiredOnesAreNotTakenAgain()
+    public async Task AdoptedJournalsRetireAfterTheFirstReplyUnlessTheirRestoresAreUnknown()
     {
-        string path = OldJournal("4245-1000", "hub-4444444444444444", end: true);
+        string withoutHolds = OldJournal("4245-1000", "hub-4444444444444444", end: true, holds: false);
+        string withHolds = OldJournal("4246-1000", "hub-4444444444444445", end: true);
         RunWorld world = new();
         RunHost host = new(world, new VerbPipeline(world), new SeenSet(), new RunHostSettings());
         host.StartAdoption(_folder, null, _ => new FakeTokenLink(reachable: false));
         await host.NoticesAsync("read", "logic", null);
 
-        // Still held by this hub: read the lines once it lets go of it.
         await host.DisposeAsync();
 
-        Assert.False(File.Exists(path));
+        // No holds: nothing unknown, so it retires and goes. Holds whose outcome could not be read: kept for the next hub.
+        Assert.False(File.Exists(withoutHolds));
+        Assert.True(File.Exists(withHolds));
+        Assert.DoesNotContain("\"retired\"", File.ReadAllText(withHolds));
     }
 
     [PythonFact]
@@ -229,7 +233,7 @@ public sealed class JournalTests : IDisposable
     };
 
     // An earlier hub's journal: script-3 wrote 1 On 0 -> 1 and held 7 On (after 0); ended stopped, or not ended at all.
-    private string OldJournal(string name, string token, bool end)
+    private string OldJournal(string name, string token, bool end, bool holds = true)
     {
         Directory.CreateDirectory(_folder);
         string path = Path.Combine(_folder, name + ".jsonl");
@@ -237,7 +241,9 @@ public sealed class JournalTests : IDisposable
         [
             $$"""{"t":"hub","hub":"{{name}}","token":"{{token}}","world":"world-1","mcp":true}""",
             """{"t":"run","run":"script-3","first_line":"ff = '1'","confirm":true,"world":"world-1"}""",
-            """{"t":"hold","run":"script-3","id":"7","logic":"On","after":0}""",
+            holds
+                ? """{"t":"hold","run":"script-3","id":"7","logic":"On","after":0}"""
+                : """{"t":"hold_cleared","run":"script-3","id":"7","logic":"On"}""",
             """{"t":"call","n":1,"run":"script-3","verb":"write","what":"logic","targets":[{"id":"7","logic":"On","before":0,"new":1}],"undo":"mixed","world":"world-1"}""",
             """{"t":"done","n":1,"ok":true,"after":[{"id":"7","logic":"On","value":1,"before":0}]}""",
             """{"t":"call","n":2,"run":"script-3","verb":"write","what":"logic","targets":[{"id":"1","logic":"On","before":0,"new":1}],"undo":"mixed","world":"world-1"}""",
