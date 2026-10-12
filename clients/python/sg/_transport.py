@@ -25,6 +25,7 @@ PROTOCOL = [2]
 FEATURES = ["pipeline"]
 HUB_ENVIRONMENT_VARIABLE = "STATIONGODMCP_HUB"
 HUB_PROGRAM = "StationGodMCP.Server"
+HELLO_TIMEOUT_S = 10.0
 
 
 def encode(message):
@@ -43,7 +44,9 @@ class _Pending:
 class Transport:
     """One hub-protocol connection. `hello()` opens a session; `call()` sends a call and waits for its reply."""
 
-    def __init__(self, reader, writer, client="sg-py", process=None):
+    def __init__(self, reader, writer, client="sg-py", process=None, on_end_of_stream=None):
+        """on_end_of_stream: called (on the reader thread) once the hub's stream ends or breaks."""
+        self._on_end_of_stream = on_end_of_stream
         self._reader = reader
         self._writer = writer
         self._client = client
@@ -103,7 +106,11 @@ class Transport:
             self._pending[call_id] = pending
         try:
             self._write({"type": "call", "id": call_id, "method": method, "params": params or {}})
-        except OSError:
+        except TypeError:  # params JSON cannot carry: the caller's mistake, not the connection's
+            with self._state_lock:
+                self._pending.pop(call_id, None)
+            raise
+        except Exception:  # noqa: BLE001 - a closed or broken writer (OSError, ValueError): nothing was sent
             with self._state_lock:
                 self._pending.pop(call_id, None)
             raise self._closed_error(maybe_ran=False) from None
@@ -113,11 +120,16 @@ class Transport:
         return pending.reply
 
     def send(self, message):
-        """Writes a message that has no reply (run_analysis, run_end, stream_end)."""
-        self._write(message)
+        """Writes a message that has no reply (run_analysis, run_end, stream_end). A closed writer raises sg.Error."""
+        try:
+            self._write(message)
+        except (OSError, ValueError):
+            raise self._closed_error(maybe_ran=False) from None
 
     def on_event(self, handler):
-        """Calls handler(event) on the reader thread for every `event` message (subscriptions, ping)."""
+        """Calls handler(event) for every `event` message (subscriptions, ping). It runs on the reader thread, so it
+        must be quick and must not make sg calls itself (their replies come through that same thread): hand the event
+        to another thread (a queue.Queue) for anything more."""
         self._event_handlers.append(handler)
 
     # ----- closing -----
@@ -172,6 +184,8 @@ class Transport:
             pass  # the stream broke or was closed under us: the same as end of stream
         finally:
             self._finish("the hub closed the connection")
+            if self._on_end_of_stream is not None:
+                self._on_end_of_stream()
             try:
                 self._reader.close()
             except OSError:
@@ -244,12 +258,19 @@ def connect(hub_path=None, *hub_args, client="sg-py"):
     job = _kill_with_this_process(process)
     transport = Transport(process.stdout, process.stdin, client=client, process=process)
     transport._job = job
-    atexit.register(transport.close)
-    welcome = transport.hello()
+    try:
+        welcome = transport.hello(timeout=HELLO_TIMEOUT_S)
+    except BaseException:
+        process.kill()
+        transport.close()
+        raise
     if welcome is None:
         code = process.poll()
+        process.kill()
+        transport.close()
         raise Error("unreachable", f"the hub exited before its welcome (exit code {code})",
                     "run the hub by hand with --hub to see why")
+    atexit.register(transport.close)
     return transport
 
 

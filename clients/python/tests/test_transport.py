@@ -1,6 +1,7 @@
 """The transport: hello and welcome, calls matched to replies by id, concurrency, events, end of stream, the child
 hub's command line."""
 import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -9,6 +10,7 @@ import unittest
 from unittest import mock
 
 from _support import FakeHub, ok
+from fakehub import PACKAGE_ROOT
 import sg
 from sg import _transport
 from sg._transport import Transport
@@ -159,6 +161,149 @@ class ConnectTests(unittest.TestCase):
                 self.assertIsNotNone(transport._job)
         finally:
             sg.close()
+
+
+class TransportMisuseTests(unittest.TestCase):
+    def connect(self):
+        hub, reader, writer = FakeHub.over_pipes(None)
+        transport = Transport(reader, writer, client="sg-test")
+        transport.hello(timeout=5)
+        self.addCleanup(hub.close)
+        return hub, transport, writer
+
+    def test_params_json_cannot_carry_raise_type_error_and_leave_nothing_pending(self):
+        _, transport, _ = self.connect()
+        with self.assertRaises(TypeError):
+            transport.call("verb", {"bad": {1, 2}})
+        self.assertEqual({}, transport._pending)
+        self.assertTrue(transport.call("verb", {})["ok"])
+        transport.close()
+
+    def test_a_closed_writer_raises_sg_error(self):
+        _, transport, writer = self.connect()
+        writer.close()
+        with self.assertRaises(sg.Error):
+            transport.call("verb", {})
+        with self.assertRaises(sg.Error):
+            transport.send({"type": "run_end"})
+        self.assertEqual({}, transport._pending)
+
+
+SILENT_HUB = r"""
+import sys, time
+sys.stdin.buffer.readline()
+time.sleep(60)
+"""
+
+
+def hub_program(folder, source):
+    """A command that runs source with this Python (a .cmd on Windows, a shell script elsewhere)."""
+    script = os.path.join(folder, "child_hub.py")
+    with open(script, "w", encoding="utf-8") as file:
+        file.write(source)
+    if sys.platform == "win32":
+        program = os.path.join(folder, "hub.cmd")
+        with open(program, "w", encoding="utf-8") as file:
+            file.write(f'@"{sys.executable}" "{script}" %*\n')
+    else:
+        program = os.path.join(folder, "hub")
+        with open(program, "w", encoding="utf-8") as file:
+            file.write(f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n')
+        os.chmod(program, 0o755)
+    return program
+
+
+class ConnectLifecycleTests(unittest.TestCase):
+    def test_a_hub_that_never_welcomes_times_out_and_is_killed(self):
+        program = hub_program(tempfile.mkdtemp(), SILENT_HUB)
+        started = []
+        real_popen = _transport.subprocess.Popen
+
+        def popen(*args, **kwargs):
+            started.append(real_popen(*args, **kwargs))
+            return started[-1]
+
+        with mock.patch.object(_transport, "HELLO_TIMEOUT_S", 0.5), \
+                mock.patch.object(_transport.subprocess, "Popen", popen):
+            with self.assertRaises(sg.Error) as raised:
+                sg.connect(program)
+        self.assertEqual("hub_timeout", raised.exception.code)
+        self.assertIsNotNone(started[0].wait(10))
+
+    def test_a_second_connect_closes_the_first(self):
+        program = hub_program(tempfile.mkdtemp(), CHILD_HUB)
+        first = sg.connect(program, "--pipe", "Test")
+        try:
+            second = sg.connect(program, "--pipe", "Test")
+            self.assertTrue(first._writer.closed)
+            self.assertIsNot(first, second)
+            self.assertEqual("7", sg.find("thing")["things"][0]["reference_id"])
+        finally:
+            sg.close()
+
+
+PARENT = r"""
+import sys, time
+sys.path.insert(0, sys.argv[1])
+import sg
+sg.connect(sys.argv[2])
+print("connected", flush=True)
+time.sleep(60)
+"""
+
+STUBBORN_HUB = r"""
+import json, os, sys, time
+sys.stdin.buffer.readline()
+with open(sys.argv[-1] if False else os.environ["SG_TEST_PID_FILE"], "w") as file:
+    file.write(str(os.getpid()))
+sys.stdout.buffer.write((json.dumps({"type": "welcome", "protocol": 2, "features": ["pipeline"]}) + "\n").encode())
+sys.stdout.buffer.flush()
+time.sleep(120)   # never reads stdin again: only the Job Object can end it
+"""
+
+
+def windows_process_alive(pid):
+    import ctypes
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.restype = ctypes.c_void_p
+    handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return False
+    try:
+        code = ctypes.c_ulong()
+        kernel32.GetExitCodeProcess(ctypes.c_void_p(handle), ctypes.byref(code))
+        return code.value == 259  # STILL_ACTIVE
+    finally:
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
+
+
+@unittest.skipUnless(sys.platform == "win32", "the Job Object is Windows only")
+class ChildHubDiesWithParentTests(unittest.TestCase):
+    def test_killing_the_program_kills_its_child_hub(self):
+        folder = tempfile.mkdtemp()
+        program = hub_program(folder, STUBBORN_HUB)
+        parent_script = os.path.join(folder, "parent.py")
+        with open(parent_script, "w", encoding="utf-8") as file:
+            file.write(PARENT)
+        pid_file = os.path.join(folder, "hub.pid")
+        environment = dict(os.environ, SG_TEST_PID_FILE=pid_file)
+        parent = subprocess.Popen([sys.executable, parent_script, PACKAGE_ROOT, program], stdout=subprocess.PIPE,
+                                  env=environment)
+        try:
+            self.assertEqual(b"connected", parent.stdout.readline().strip())
+            with open(pid_file, encoding="utf-8") as file:
+                hub_pid = int(file.read())
+            self.assertTrue(windows_process_alive(hub_pid))
+            parent.kill()
+            parent.wait(10)
+            deadline = time.monotonic() + 10
+            while windows_process_alive(hub_pid) and time.monotonic() < deadline:
+                time.sleep(0.1)
+            self.assertFalse(windows_process_alive(hub_pid), "the child hub outlived its program")
+        finally:
+            if parent.poll() is None:
+                parent.kill()
+            parent.stdout.close()
 
 
 if __name__ == "__main__":

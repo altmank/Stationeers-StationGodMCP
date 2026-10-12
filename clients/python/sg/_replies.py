@@ -8,8 +8,8 @@ has more entries than the first page it adds `cursor`; then a single `for` walks
 method, and anything that needs the whole list first (len, an index, `in`, sorted, reversed, a second pass) pages in
 the rest. The pages fetched are kept, so after the first full walk it is a plain list.
 
-Row dicts in the main list are `Row`s: a missing key raises KeyError carrying the keys the row has, so a failed run can
-say which key was meant (note 22).
+Every dict in a reply, at any depth, is a `Row`: a missing key raises KeyError carrying the keys that dict has, so a
+failed run can say which key was meant (note 22).
 """
 from . import _session
 
@@ -110,6 +110,19 @@ class MainList(list):
         self._page_in_all()
         return list(self) + list(other)
 
+    def __radd__(self, other):
+        self._page_in_all()
+        return list(other) + list(self)
+
+    def __copy__(self):
+        self._page_in_all()
+        return list(self)
+
+    def __reduce_ex__(self, protocol):
+        """copy.deepcopy and pickle see the whole list, as a plain list."""
+        self._page_in_all()
+        return (list, (list(list.__iter__(self)),))
+
     def __mul__(self, count):
         self._page_in_all()
         return list(self) * count
@@ -169,7 +182,12 @@ class MainList(list):
 
 
 def _row(value):
-    return Row(value) if isinstance(value, dict) and not isinstance(value, Row) else value
+    """value with every dict in it, at any depth, a Row (so a missing key names the keys there are)."""
+    if isinstance(value, dict):
+        return Row((key, _row(item)) for key, item in dict.items(value))
+    if isinstance(value, list) and not isinstance(value, MainList):
+        return [_row(item) for item in value]
+    return value
 
 
 def wrap(result, main=None):
@@ -177,12 +195,12 @@ def wrap(result, main=None):
     MainList of Rows. Anything that is not a dict is returned as it is."""
     if not isinstance(result, dict):
         return result
-    reply = Reply(result)
+    reply = Reply((key, _row(item)) for key, item in result.items())
     key = result.get("main") if isinstance(result.get("main"), str) else main
     if key is None or not isinstance(result.get(key), list):
         key = "results" if isinstance(result.get("results"), list) else key
     if key is not None and isinstance(result.get(key), list):
-        dict.__setitem__(reply, key, MainList((_row(entry) for entry in result[key]), result.get("cursor")))
+        dict.__setitem__(reply, key, MainList(dict.__getitem__(reply, key), result.get("cursor")))
         reply._main = key
     return reply
 

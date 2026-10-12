@@ -16,12 +16,18 @@ class WaitTests(HubCase):
         waits = [(params["s"], params["in_loop"], params["line"]) for params in self.params("wait")]
         self.assertEqual([(1.0, False, 1), (3.0, True, 5), (3.0, True, 5), (4.0, False, 7)], waits)
 
-    def test_a_wait_after_a_stop_returns_without_raising(self):
+    def test_a_wait_in_a_finally_after_a_stop_is_sent_returns_none_and_the_stop_goes_on(self):
         answers = iter([refused("stopped", "stopped", stopped=True), ok({}), ok({})])
         self.handler = lambda method, params: next(answers)
+        source = "log = []\ntry:\n    sg.wait(1)\nfinally:\n    log.append(sg.wait(2))\n    sg.find('thing')\n"
         with self.assertRaises(sg.Stopped):
-            sg.wait(1)
-        self.assertIsNone(sg.wait(1))  # the hub answers {} at once after the stop
+            self.run_code(source)
+        self.assertEqual([1.0, 2.0], [params["s"] for params in self.params("wait")])
+        self.assertEqual(1, len(self.params("verb")))  # sg goes on calling after a stop; it does not refuse itself
+
+    def test_a_wait_in_a_function_a_while_loop_calls_is_in_loop(self):
+        self.run_code("def step():\n    sg.wait(1)\nn = 0\nwhile n < 1:\n    n += 1\n    step()\nstep()")
+        self.assertEqual([(2, True), (2, False)], [(p["line"], p["in_loop"]) for p in self.params("wait")])
 
 
 class WatchTests(HubCase):
@@ -69,7 +75,6 @@ class WatchTests(HubCase):
         self.assertEqual(5.0, self.params("wait")[0]["s"])
 
     def test_after_a_stop_watch_reads_once_and_returns(self):
-        self.handler = lambda method, params: ok({"results": [{"value": 1.0}]})
         source = ("try:\n    sg.wait(1)\nexcept BaseException:\n    pass\n"
                   "rows, met = sg.watch([{'id': '5', 'logic': 'On'}], lambda rows: False, 600)\nmet")
         answers = iter([refused("stopped", "stopped", stopped=True)])
@@ -121,6 +126,19 @@ class HoldTests(HubCase):
             with sg.hold("122643", "On", value=1):
                 sg.wait(5)
         self.assertEqual(["enter", "exit"], [hold[0] for hold in self.holds()])
+
+    def test_a_refused_re_sent_exit_still_raises_the_stop(self):
+        answers = iter([ok({"after": [0]}), refused("stopped", "stopped", stopped=True),
+                        refused("world_changed", "no cleanup after a world change")])
+        self.handler = lambda method, params: next(answers)
+        with self.assertRaises(sg.Stopped):
+            with sg.hold("1", "On", value=1):
+                pass
+
+    def test_a_set_of_ids_is_a_list(self):
+        with sg.hold({"5"}, "On"):
+            pass
+        self.assertEqual(["5"], self.holds()[0][1])
 
     def test_a_stop_delivered_on_the_exit_sends_the_exit_again(self):
         self.stop_on = {"exit"}

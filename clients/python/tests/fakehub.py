@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -64,13 +65,16 @@ class FakeHub:
     # ----- the real worker, as a child process -----
 
     @classmethod
-    def with_worker(cls, runs, handler=None):
-        """Starts `python -m sg.worker` against a fake hub that hands it runs; returns (hub, process)."""
-        environment = dict(os.environ, PYTHONHASHSEED="0", PYTHONPATH=PACKAGE_ROOT, PYTHONIOENCODING="utf-8")
-        process = subprocess.Popen([sys.executable, "-m", "sg.worker"], stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=PACKAGE_ROOT,
+    def with_worker(cls, run, handler=None):
+        """Starts the real worker exactly as the hub does (python -I -c BOOT <sg folder>, PYTHONHASHSEED=0), in a
+        temporary working directory, against a fake hub that hands it run; returns (hub, process)."""
+        from sg.worker import BOOT
+        environment = dict(os.environ, PYTHONHASHSEED="0", PYTHONIOENCODING="utf-8")
+        environment.pop("PYTHONPATH", None)
+        process = subprocess.Popen([sys.executable, "-I", "-c", BOOT, PACKAGE_ROOT], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=tempfile.gettempdir(),
                                    env=environment)
-        hub = cls(process.stdout, process.stdin, handler, runs)
+        hub = cls(process.stdout, process.stdin, handler, [run])
         return hub, process
 
     # ----- what the tests read -----
