@@ -26,6 +26,7 @@ internal sealed class RunWorld : IHubLink
     private readonly object _gate = new();
     private readonly Dictionary<string, double> _logic = new(StringComparer.Ordinal);
     private readonly List<string> _log = new();
+    private readonly CancellationTokenSource _sessionEnd = new();
     private long _lastStream;
 
     public JsonElement? Welcome { get; set; } = FakeHubLink.Element(FakeHubLink.ModWelcome);
@@ -128,6 +129,11 @@ internal sealed class RunWorld : IHubLink
             _log.Add(report ? "report:" + call.Method : call.Method);
         }
 
+        if (_sessionEnd.IsCancellationRequested)
+        {
+            return FakeGameLink.Refused("session_ended", "the session ended");
+        }
+
         // As GameLink does: a call made for a world the link has left is refused unsent.
         if (call.World != null && call.World != WorldId)
         {
@@ -141,7 +147,15 @@ internal sealed class RunWorld : IHubLink
 
         if (CallDelay?.Invoke(call) is { } delay && delay > TimeSpan.Zero)
         {
-            await Task.Delay(delay, cancellation);
+            using CancellationTokenSource either = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _sessionEnd.Token);
+            try
+            {
+                await Task.Delay(delay, either.Token);
+            }
+            catch (OperationCanceledException) when (_sessionEnd.IsCancellationRequested && !cancellation.IsCancellationRequested)
+            {
+                return FakeGameLink.Refused("cancelled", "session_end cancelled the call before it ran");
+            }
         }
 
         if (Override?.Invoke(call) is { } given)
@@ -262,7 +276,24 @@ internal sealed class RunWorld : IHubLink
         return Task.CompletedTask;
     }
 
-    public Task SessionEndAsync() => Task.CompletedTask;
+    /// <summary>When session_end came (null: not yet).</summary>
+    public DateTime? SessionEndedAt { get; private set; }
+
+    /// <summary>
+    /// session_end, as the mod takes it: calls still waiting are answered cancelled, and from now on every call is
+    /// refused session_ended unrun.
+    /// </summary>
+    public Task SessionEndAsync()
+    {
+        lock (_gate)
+        {
+            SessionEndedAt ??= DateTime.UtcNow;
+            _log.Add("session_end");
+        }
+
+        _sessionEnd.Cancel();
+        return Task.CompletedTask;
+    }
 
     public Task<GameReply> HoldRestoreAsync(long stream, JsonElement change, string? world, CancellationToken cancellation)
     {

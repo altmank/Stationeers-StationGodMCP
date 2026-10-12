@@ -24,7 +24,13 @@
   request, or a world change) stops a run once; its `finally` may still put back what it wrote and its held
   restores, and the worker is killed 5 s later. Confirmed runs answer within `--confirmed-ceiling-s` (30 s), then
   `script-N running`; `inspect job` follows. Replies end with the writes by outcome and a cost line; a run that left
-  something is a notice on every reply until inspected. Undo of runs is not in this release yet.
+  something is a notice on every reply until inspected.
+- **The journal, undo of runs, and the session end.** Each hub writes a journal (`--journal-dir`) ahead of every write
+  of a run; the next hub serving an MCP client adopts what an earlier one left (`script-<pid>.N`), reads what its held
+  restores did, and reports it on its first reply. `undo {id: "script-N"}` puts a run's logic writes back to their
+  values before the run, newest first, reporting until `confirm: true`; a target changed since is left unless
+  `allow: ["overwrite"]`. When the client closes stdin the hub stops every run, lets their cleanup writes and held
+  restores go for 0.3 s, then ends the session so the mod applies what is still held.
 
 - **Frame cost measurement.** `mod_info` `include_counters` adds `runtime.frame_ms`: StationGod's request time per
   busy frame as fixed buckets, reported as `p50`, `p90`, `p99` and `over_8ms` (the default reply is unchanged).

@@ -17,7 +17,8 @@ public sealed class Journal : IRunJournal, IDisposable
 {
     internal static readonly JsonSerializerOptions LineOptions = new()
     {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver()
     };
 
     private static readonly byte[] NewLine = "\n"u8.ToArray();
@@ -346,7 +347,18 @@ public sealed class Journal : IRunJournal, IDisposable
     // One line, written and flushed to the operating system before the caller goes on (so it outlives the hub's process).
     private void Append(JsonObject line)
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(line.ToJsonString(LineOptions));
+        byte[] bytes;
+        try
+        {
+            bytes = Encoding.UTF8.GetBytes(line.ToJsonString(LineOptions));
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException)
+        {
+            // A journal fault must never stop the hub: it turns off and says so.
+            TurnOff("a line could not be written as JSON: " + exception.Message);
+            return;
+        }
+
         lock (_gate)
         {
             if (_offReason != null || _file == null)
