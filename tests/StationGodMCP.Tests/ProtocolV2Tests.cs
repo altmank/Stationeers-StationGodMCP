@@ -570,7 +570,7 @@ public sealed class ProtocolV2Tests
 
         internal TestCall(object source, string name, bool isWrite, List<string>? ran = null,
             CostClass cost = CostClass.Instant)
-            : base(DeadlineAfter(60000), new CallProfile(name, isWrite ? MethodClass.Write : MethodClass.Read,
+            : base(DeadlineAfterMs(60000), new CallProfile(name, isWrite ? MethodClass.Write : MethodClass.Read,
                 new CallCost(cost, 1)))
         {
             _source = source;

@@ -93,12 +93,11 @@ public sealed class PipeProtocolTests
         Connection connection = rig.WaitConnected();
         Thread.Sleep(100);
 
-        Stopwatch watch = Stopwatch.StartNew();
+        // The server's read waits for a hello that never comes: a write held behind it would never arrive.
         connection.Send("""{"pushed":true}""");
         string line = await ReadLineAsync(client);
 
         Assert.Equal("""{"pushed":true}""", line);
-        Assert.True(watch.ElapsedMilliseconds < 100, $"{watch.ElapsedMilliseconds} ms");
     }
 
     [Fact]
@@ -111,13 +110,14 @@ public sealed class PipeProtocolTests
         await Task.Delay(100);
         Assert.False(pendingRead.IsCompleted);
 
-        Stopwatch watch = Stopwatch.StartNew();
+        // The pending read can end only with the welcome, which the hello brings: a write held behind it would hang.
         byte[] hello = Encoding.UTF8.GetBytes(Hello + "\n");
-        await client.WriteAsync(hello, 0, hello.Length);
+        Task write = client.WriteAsync(hello, 0, hello.Length);
+        Assert.Same(pendingRead, await Task.WhenAny(pendingRead, Task.Delay(30000)));
+        await write;
         int read = await pendingRead;
 
         Assert.StartsWith("""{"type":"welcome",""", Encoding.UTF8.GetString(buffer, 0, read));
-        Assert.True(watch.ElapsedMilliseconds < 100, $"{watch.ElapsedMilliseconds} ms");
     }
 
     [Fact]
@@ -141,29 +141,55 @@ public sealed class PipeProtocolTests
         using PipeRig rig = new PipeRig(maxConnections: 1, firstLineMs: 300);
         using NamedPipeClientStream client = await rig.ConnectAsync();
         byte[] blank = Encoding.UTF8.GetBytes("\n\r\n  \n");
-        await client.WriteAsync(blank, 0, blank.Length);
         byte[] buffer = new byte[16];
+        Task<int> read = client.ReadAsync(buffer, 0, buffer.Length);
 
-        Stopwatch watch = Stopwatch.StartNew();
-        Assert.Equal(0, await client.ReadAsync(buffer, 0, buffer.Length));
-        Assert.InRange(watch.ElapsedMilliseconds, 100, 3000);
+        // Blank lines keep coming until the connection closes: were each one a first line, it never would.
+        while (!read.IsCompleted)
+        {
+            try
+            {
+                await client.WriteAsync(blank, 0, blank.Length);
+            }
+            catch (IOException)
+            {
+                break;
+            }
+
+            await Task.WhenAny(read, Task.Delay(20));
+        }
+
+        Assert.Same(read, await Task.WhenAny(read, Task.Delay(30000)));
+        Assert.Equal(0, await read);
     }
 
     [Fact]
     public async Task ACallStartedJustBeforeItsDeadlineIsAnsweredWithItsResultOnly()
     {
-        using PipeRig rig = new PipeRig(mainThread: false);
+        Scheduling.FakeClock clock = new Scheduling.FakeClock();
+        using PipeRig rig = new PipeRig(mainThread: false, frameClock: clock, deadlineClock: clock);
         using V2Client client = await V2Client.Connect(rig);
         client.Send("""{"type":"call","id":"late","method":"game_clock","params":{},"deadline_ms":400}""");
-        await Task.Delay(300);
+        rig.Mod.WaitSubmitted(1);
+        clock.Advance(300);
+        rig.Deadlines.CheckNow();
 
-        rig.Mod.RunPending(holdMs: 400);
+        // It starts at 300 ms and runs to 700 ms; the deadline watch looks at it at 700 ms, past its deadline.
+        rig.Mod.CallHook = (_, _) =>
+        {
+            clock.Advance(400);
+            rig.Deadlines.CheckNow();
+            return null;
+        };
+        rig.Mod.RunPending();
         JObject reply = client.Next();
 
         Assert.Equal("late", (string?)reply["id"]);
         Assert.True((bool)reply["ok"]!);
+        rig.Deadlines.CheckNow();
         Assert.Null(client.NextOrNull(500));
         Assert.Equal(1, rig.Mod.Ran);
+        Assert.Equal(0, rig.Deadlines.TimedOut);
     }
 
     [Fact]
@@ -228,11 +254,12 @@ public sealed class PipeProtocolTests
 
 /// <summary>
 /// A pipe listener with a fake mod behind it, on a pipe name of its own; frameClock, when given, is the fake main
-/// thread's clock, and the time a call holds passes on it instead of the wall clock's.
+/// thread's clock, and the time a call holds passes on it instead of the wall clock's; deadlineClock, when given, is
+/// the clock call deadlines are set and checked on.
 /// </summary>
 internal sealed class PipeRig : IDisposable
 {
-    private readonly DeadlineWatch _deadlines = new DeadlineWatch();
+    private readonly DeadlineWatch _deadlines;
     private readonly PipeListener _listener;
     private readonly BlockingCollection<Connection> _connected = new BlockingCollection<Connection>();
 
@@ -240,8 +267,10 @@ internal sealed class PipeRig : IDisposable
         ProtocolSettings? settings = null, SubscriptionHub? subscriptions = null,
         Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null, StreamStores? stores = null,
         int resumeWindowMs = 0, IMonotonicClock? resumeClock = null, HeldRestores? restores = null,
-        Func<WorldFacts>? world = null, Scheduling.FakeClock? frameClock = null)
+        Func<WorldFacts>? world = null, Scheduling.FakeClock? frameClock = null,
+        Scheduling.FakeClock? deadlineClock = null)
     {
+        _deadlines = new DeadlineWatch(deadlineClock);
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
         Mod = new FakeMod(mainThread, _deadlines, stores: stores, clock: frameClock, world: world);
         if (subscriptions != null)
@@ -274,6 +303,8 @@ internal sealed class PipeRig : IDisposable
     internal FakeMod Mod { get; }
 
     internal ProtocolHost Host { get; }
+
+    internal DeadlineWatch Deadlines => _deadlines;
 
     /// <summary>The resume tokens; off unless the rig was given a window.</summary>
     internal ResumeHolds Holds { get; }
@@ -311,6 +342,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     private readonly object _frame = new object();
     private volatile bool _stopped;
     private int _ran;
+    private int _submitted;
     private int _holdMs;
 
     internal FakeMod(bool mainThread, DeadlineWatch deadlines, SchedulerSettings? settings = null,
@@ -376,7 +408,33 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         _deadlines.Watch(call);
         _calls.Add(call);
+        lock (_submittedChanged)
+        {
+            _submitted++;
+            Monitor.PulseAll(_submittedChanged);
+        }
+
         _added.Release();
+    }
+
+    private readonly object _submittedChanged = new object();
+
+    /// <summary>
+    /// Waits until count calls in all have reached the queue, so the next frame takes them in: the reader has read
+    /// every line up to the count-th call. Throws after 30 s, which only a hang takes.
+    /// </summary>
+    internal void WaitSubmitted(int count)
+    {
+        lock (_submittedChanged)
+        {
+            while (_submitted < count)
+            {
+                if (!Monitor.Wait(_submittedChanged, 30000))
+                {
+                    throw new TimeoutException($"{_submitted} of {count} calls reached the queue");
+                }
+            }
+        }
     }
 
     public void Withdraw(QueuedCall call) => _calls.Withdraw(call);

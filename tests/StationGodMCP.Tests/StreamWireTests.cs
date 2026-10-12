@@ -410,7 +410,7 @@ public sealed class StreamWireTests
 
         internal StreamCall(object source, string client, long stream, string name, List<string> ran,
             MethodClass methodClass = MethodClass.Read, CostClass cost = CostClass.Instant)
-            : base(DeadlineAfter(60000), new CallProfile(name, methodClass, new CallCost(cost, 1)))
+            : base(DeadlineAfterMs(60000), new CallProfile(name, methodClass, new CallCost(cost, 1)))
         {
             _source = source;
             _client = client;

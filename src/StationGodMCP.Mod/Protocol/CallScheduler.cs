@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
@@ -194,9 +193,6 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
                   "may name other things. Nothing ran.",
             new Dictionary<string, WorldFacts> { ["world"] = world });
 
-    /// <summary>Stopwatch.GetTimestamp as StopwatchClock milliseconds.</summary>
-    internal static double ClockMs(long timestamp) => timestamp * 1000.0 / Stopwatch.Frequency;
-
     private void TakeInbox()
     {
         while (_inbox.TryDequeue(out Posted posted))
@@ -256,7 +252,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         }
 
         Admission admission = _scheduler.Enqueue(connection, call.Context.Stream, call, call.Profile,
-            ClockMs(call.DeadlineAt));
+            call.DeadlineAtMs);
         if (admission.IsQueued)
         {
             return;

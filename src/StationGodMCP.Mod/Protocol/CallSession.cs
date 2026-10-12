@@ -343,7 +343,7 @@ internal sealed class CallSession : Session
             : CallProfiles.Of(null, call.Method, call.Params);
         // A method that runs for a while (x-duration: sample_logic) gets that long added to its deadline.
         int deadlineMs = call.DeadlineMs + (method?.DurationMs(call.Params) ?? 0);
-        ProtocolCall queued = new ProtocolCall(request, profile, deadlineMs, _connection,
+        ProtocolCall queued = new ProtocolCall(request, profile, _host.Deadlines.Clock.NowMs + deadlineMs, _connection,
             new CallContext(_connection.Owner, call.Stream), _hello?.ClientName, Answered);
         lock (_sync)
         {
