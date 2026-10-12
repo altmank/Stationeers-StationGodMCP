@@ -110,6 +110,23 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
+    public async Task ACallRunsInTheContextOfItsConnectionAndStreamZero()
+    {
+        using PipeRig rig = Loose();
+        CallContext seen = CallContext.None;
+        rig.Mod.CallHook = (call, _) =>
+        {
+            seen = CallContext.Current;
+            return null;
+        };
+        using V2Client client = await V2Client.Connect(rig);
+
+        client.Call("a1", "game_clock", new JObject());
+
+        Assert.Equal(new CallContext((string)client.Welcome["client_id"]!, 0), seen);
+    }
+
+    [Fact]
     public async Task SixteenCallsMayBeInFlightAndTheSeventeenthIsRefusedAtOnce()
     {
         using PipeRig rig = new PipeRig(mainThread: false);
@@ -575,7 +592,7 @@ public sealed class ProtocolV2Tests
 
         internal override string TimeoutReply() => "timeout";
 
-        internal override string RefusalReply(string code, string message) => "refused " + code;
+        internal override string RefusalReply(string code, string message, object? data = null) => "refused " + code;
 
         internal override void Deliver(string reply, string? method) => Answer = reply;
     }

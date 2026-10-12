@@ -5,8 +5,8 @@
 Everything StationGod does with the game's objects happens on the game's main thread, between frames, because the
 game's objects may be touched only there. Every millisecond spent there is a millisecond the frame is late. This page
 says how that time is shared between clients today, what requests are known to cost, and how version 2 shares it:
-by lanes with their own share of each frame, taking requests from each connection in turn, with a separate share for
-subscriptions.
+by lanes with their own share of each frame, taking requests from each client in turn and, within a client, from each
+of its streams in turn, with a separate share for subscriptions.
 
 ## How it works today
 
@@ -102,11 +102,11 @@ spent   = 0
 
 1. Subscriptions: take due samples (subscriptions and sample_logic) in round-robin order across connections; read
    each; stop when spent >= subMax, except that the first due sample always runs.
-2. Light lane: take calls in round-robin order across connections (one call per connection per round, skipping a
-   connection whose next call must wait for an earlier write); run each; stop when spent >= budget, except that the
+2. Light lane: take calls in rounds (one call per client per round, from its streams in turn, skipping a stream
+   whose next call must wait for an earlier write on it); run each; stop when spent >= budget, except that the
    first light call always runs.
 3. Heavy lane: if the lane has a call and (spent < budget or its oldest call has waited >= HeavyMaxWaitFrames
-   frames), take one call, round-robin across connections, and run it.
+   frames), take one call, by the same rounds (or the oldest, once it has waited), and run it.
 4. Expired calls (deadline passed before start) are answered game_timeout as they are met, without cost.
 5. HeldTickJobs.Tick(), previews, highlights, flight recorder, as today.
 ```
@@ -117,13 +117,20 @@ While a job holds the tick the budget is 2 ms, so subscriptions get at most 1 ms
 Why this order. Subscriptions and light calls are what keeps the dashboard's cards live; they are cheap and they come
 first, so a heavy call arriving in the same frame waits until they are done. A heavy call cannot be split, so the lane
 runs at most one per frame and only when the frame has room; the waiting bound guarantees it still runs within about
-10 frames when the light lane is always busy. Round-robin per connection means an agent with sixteen calls in flight
-gets one turn per round like a dashboard with one.
+10 frames when the light lane is always busy. Rounds by client mean an agent with sixteen calls in flight gets one
+turn per round like a dashboard with one.
 
-The per-connection ordering rule from [protocol.md](protocol.md) (*Order on one connection*) is enforced here: a
-connection's call that must wait for an earlier write on the same connection is skipped in its round, not run out of
-order. A write in the heavy lane therefore holds back that connection's later light calls, which is what the client
-asked for by sending them in that order.
+Rounds have two levels. First by client: the connections that gave the same name in `hello` share one place in the
+round, and a connection without a name is a client of its own. Then, within a client, its streams take its turns in
+round robin, a stream being one (connection, stream). A hub that holds one connection for a session's direct calls
+and every script run is one client beside the dashboard: its runs share its turn instead of each taking one. That is
+scheduling weight, not a cap. A client whose streams are all held back by earlier writes loses its turn; one with any
+stream that may start does not.
+
+The ordering rule from [protocol.md](protocol.md) (*Order on one stream*) is enforced here: a stream's call that must
+wait for an earlier write on the same stream is skipped in its round, not run out of order. A write in the heavy lane
+therefore holds back that stream's later light calls, which is what the client asked for by sending them in that
+order; the connection's other streams go on.
 
 What the owner sees. A frame with nothing heavy costs at most about the budget, as today. A frame with a heavy call
 costs the budget plus that call, as today for a frame that met one, but such frames are never back to back while light
@@ -178,8 +185,8 @@ All under `[Performance]` in the mod's config, read at load, as `RequestBudgetMs
 | `HeavyThresholdMs` | 1.0 | A call predicted above this goes to the heavy lane. |
 | `HeavyMaxWaitFrames` | 10 | A heavy call waiting this many frames runs even when the frame is over budget. |
 
-`[Server] MaxPipeConnections` (32), `MaxTcpConnections` (8) and the per-connection `max_in_flight` (16) are in
-[protocol.md](protocol.md).
+`[Server] MaxPipeConnections` (32), `MaxTcpConnections` (8), `max_in_flight` (16 per stream) and
+`max_in_flight_per_connection` (256) are in [protocol.md](protocol.md).
 
 ## What mod_info adds
 
@@ -199,9 +206,13 @@ tests:
 
 - the first light call of a frame always runs, and light calls stop at the budget;
 - at most one heavy call per frame, and a heavy call that has waited `HeavyMaxWaitFrames` runs even over budget;
-- round-robin: with connection A holding 16 light calls and B holding 1, B's call runs in the first round;
-- order on one connection: a read sent after a write on the same connection never starts before the write is answered,
-  and reads on one connection may pass each other;
+- round-robin: with connection A holding 16 light calls and B holding 1, B's call runs in the first round; a client
+  with two busy connections gets one turn per round like a client with one; within a client its streams alternate;
+  the heavy lane takes the same turns;
+- order on one stream: a read sent after a write on the same stream never starts before the write is answered, reads
+  on one stream may pass each other, and a write on one stream holds back nothing on another stream of the
+  connection;
+- in flight: the 17th waiting call on a stream and the 257th on a connection are refused;
 - an expired call is answered `game_timeout`, not run and not charged;
 - per-item prediction: a `read_devices` of 5 items is light and one of 128 items with a high per-item average is heavy;
   a cheap world scan stays heavy;
@@ -237,18 +248,27 @@ Where the text above leaves a choice open:
 - A method with no history is light; its first call is what the prediction learns from. The average per item is the
   total time of the last 32 calls over their total items, kept per method and per cost class, so `thing_health` by
   ids and by one id do not share a history. A call with an empty item list counts as one item.
-- Turns: a connection joins the back of a lane's round when its first call in that lane arrives, goes to the back
-  after its turn while it still has calls there, and leaves when it has none. Connections with one call each are
-  therefore served first come, first served, at any budget.
+- Turns: a client joins the back of a lane's round when its first call in that lane arrives, goes to the back after
+  its turn while it still has calls there, and leaves as soon as it has none; a stream does the same in its client's
+  round of that lane. Clients with one call each are therefore served first come, first served, at any budget. In
+  its turn a client tries its streams in their order, each going to the back of its round once tried, and runs the
+  first call that may start.
+- `FrameScheduler.Open(client)` takes the client key as an opaque object compared with `Equals` (the mod passes the
+  `hello` name; null is a client of its own); `Enqueue`, `Cancel` and `EndStream` take the stream number. A round is
+  a doubly linked list through its nodes (`Ring`), so a node joins, leaves from anywhere and goes to the back without
+  allocating, and an emptied stream or client leaves its rounds at once. Stream nodes (`StreamQueue`) and client
+  nodes are reused once empty, so neither a new stream nor a frame allocates once as many have been open at once
+  before.
 - The heavy lane runs the oldest call that may start once it has been passed over in `HeavyMaxWaitFrames` frames,
-  and otherwise takes turns across connections while the frame is under budget. One heavy call a frame means a burst
+  and otherwise takes turns, by client then stream, while the frame is under budget. One heavy call a frame means a burst
   of heavy calls under always-busy light work runs one a frame from the bound on: a call waits at most
   `HeavyMaxWaitFrames` frames plus one for each older heavy call still waiting.
 - At most 64 light calls a frame, as today's 64 requests, so an unlimited budget still bounds a frame.
 - An expired call is answered when a lane's search meets it; one queued behind a waiting write is met once the write
   has run.
-- The scheduler refuses a connection's call beyond `max_in_flight` waiting, as a second guard behind the transport's
-  own check.
+- The scheduler refuses a call beyond `max_in_flight` waiting on its stream (`TooManyInFlight`) or
+  `max_in_flight_per_connection` on its connection (`TooManyInFlightOnConnection`), as a second guard behind the
+  transport's own check.
 - The order of samples (oldest due first, round-robin across connections) belongs to the `ISampleLane`; the
   scheduler gives the lane its share and the first-sample rule.
 
@@ -260,20 +280,30 @@ subscription admission. The wiring and the binding are below; subscription admis
 
 - `Protocol/CallScheduler.cs`: `ICallScheduler` is the dispatcher's hook (`Add`, `Withdraw`, `Close` from any thread,
   `RunFrame` on the main thread), and `LaneScheduler` implements it over `FrameScheduler<QueuedCall>`. Connections post
-  calls, cancels and their own end to a `ConcurrentQueue`; each `RunFrame` first takes that inbox into the scheduler
-  (`Enqueue`, `Cancel`, `Close`), then runs the frame. A connection's place in the rounds is keyed by its `Connection`;
-  the synchronous pipe's calls, which had none, shared one place (the synchronous pipe is gone since stage 15).
+  calls, cancels, ended streams and their own end to a `ConcurrentQueue`; each `RunFrame` first takes that inbox into
+  the scheduler (`Enqueue`, `Cancel`, `EndStream`, `Close`), then runs the frame. A connection is keyed by its
+  `Connection` and opened under the `hello` name its first call carries (`QueuedCall.ClientName`); each call waits on
+  its context's stream. An ended stream and a closed connection reach `StreamStores` here
+  ([protocol.md](protocol.md), *As built: streams*).
 - Each call's `CallProfile` is made on the thread that received it (`CallSession.Accept` from the catalogue entry it
   already looked up). A method the catalogue does not know is an instant read. (Until stage 15 a version-1 line was
   always ordered like a write, through `CallProfiles.OfLine`; both are gone.)
-- The reader thread's own `max_in_flight` check (16) stays first; the scheduler's is the second guard and answers
-  `too_many_in_flight` unrun.
+- The reader thread's own in-flight checks (16 per stream, 256 per connection) stay first; the scheduler's are the
+  second guard and answer `too_many_in_flight` unrun, with the same `{limit, scope}`.
 - `StationGodMod.Update` calls `RunFrame(HeldTickJobs.HoldsTick, subscriptionHub)` where `ProcessPendingRequests` was;
   `DispatchStats` gets each `FrameOutcome` (served, milliseconds, budget stop, expired calls).
 - A runner may leave a call running (`CallOutcome.Deferred`) and answer it later with `QueuedCall.Finish`;
   `sample_logic` does.
+- The call context (`Pure/Protocol/CallContext.cs`): `LaneScheduler` enters each call's `CallContext` (the
+  connection's `client_id` and the call's stream) around its run, so `CallContext.Current` tells a store which stream
+  it works for without a handler argument; it is `None` outside a call. A building job keeps the context of the call
+  that started or queued it and `HeldTickJobs` enters it around each step (a queued job's creation included); a
+  `sample_logic` run enters its call's context around each sample. A readonly struct: a call's context allocates
+  nothing and compares by value. `Current` is thread-static, so a reader thread or a test beside another never sees
+  a context that is not its own; the cost is one thread-local lookup per access, three per call.
 - `[Performance] SubscriptionBudgetMs`, `HeavyThresholdMs` and `HeavyMaxWaitFrames` are bound at load with
-  `RequestBudgetMs` into `SchedulerSettings`; `max_in_flight` is `CallSession.MaxInFlight`.
+  `RequestBudgetMs` into `SchedulerSettings`; `max_in_flight` is `CallSession.MaxInFlight` (per stream) and the
+  connection's total `CallSession.MaxInFlightPerConnection`.
 - `mod_info.runtime.lanes` and `runtime.subscriptions` are not built: the owner's rule is that no stage adds measuring
   or recording systems. `runtime.frames` keeps its counters, now fed from the scheduler.
 - `RoundRobinScheduler` and `CallOrder` are gone; the order rule lives in `FrameScheduler`.

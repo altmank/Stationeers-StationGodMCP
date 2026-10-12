@@ -5,8 +5,17 @@ namespace StationGodMCP.Pure.Scheduling;
 /// <summary>Why the scheduler refused a call; nothing ran.</summary>
 internal enum AdmissionRefusal
 {
-    /// <summary>The connection already has SchedulerSettings.MaxInFlight calls waiting: answer too_many_in_flight.</summary>
+    /// <summary>
+    /// The call's stream already has SchedulerSettings.MaxInFlight calls waiting: answer too_many_in_flight, scope
+    /// stream.
+    /// </summary>
     TooManyInFlight,
+
+    /// <summary>
+    /// The connection already has SchedulerSettings.MaxInFlightPerConnection calls waiting across its streams: answer
+    /// too_many_in_flight, scope connection.
+    /// </summary>
+    TooManyInFlightOnConnection,
 
     /// <summary>The connection was closed: there is no one to answer.</summary>
     ConnectionClosed

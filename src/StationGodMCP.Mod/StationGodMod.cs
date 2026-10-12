@@ -611,7 +611,8 @@ internal static class PerformanceSettings
                 $"Ignoring invalid [Performance] HeavyMaxWaitFrames {wait.Value}; using {SchedulerSettings.DefaultHeavyMaxWaitFrames}.");
         }
 
-        Scheduler = new SchedulerSettings(RequestBudgetMs, subscriptions, heavy, frames, Protocol.CallSession.MaxInFlight);
+        Scheduler = new SchedulerSettings(RequestBudgetMs, subscriptions, heavy, frames, Protocol.CallSession.MaxInFlight,
+            Protocol.CallSession.MaxInFlightPerConnection);
         Profiling = configuration.Bind(Section, "Profiling", false,
             "Start the runtime profiler when the mod loads (what the profiling method's action on does, with " +
             $"slow_frame_ms {SlowFrameLimits.DefaultMs} and no CSV). It times StationGod's main-thread work per frame, " +

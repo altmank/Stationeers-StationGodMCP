@@ -165,10 +165,11 @@ internal sealed class WelcomeCatalogueView
 
 internal sealed class WelcomeLimitsView
 {
-    internal WelcomeLimitsView(int maxInFlight, int maxRequestBytes, int maxReplyBytes,
+    internal WelcomeLimitsView(int maxInFlight, int maxInFlightPerConnection, int maxRequestBytes, int maxReplyBytes,
         StationGodMCP.Pure.Subscriptions.SubscriptionLimits? subscriptions = null)
     {
         MaxInFlight = maxInFlight;
+        MaxInFlightPerConnection = maxInFlightPerConnection;
         MaxRequestBytes = maxRequestBytes;
         MaxReplyBytes = maxReplyBytes;
         MaxSubscriptions = subscriptions?.MaxSubscriptions;
@@ -179,7 +180,14 @@ internal sealed class WelcomeLimitsView
             : null;
     }
 
+    /// <summary>Calls in flight on one stream; a client that uses no streams has only stream 0.</summary>
     public int MaxInFlight { get; }
+
+    /// <summary>The same limit under the name that says it is per stream.</summary>
+    public int MaxInFlightPerStream => MaxInFlight;
+
+    /// <summary>Calls in flight on the connection, all its streams together.</summary>
+    public int MaxInFlightPerConnection { get; }
 
     public int MaxRequestBytes { get; }
 

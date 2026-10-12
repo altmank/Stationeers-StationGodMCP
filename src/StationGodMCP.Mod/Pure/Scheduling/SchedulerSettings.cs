@@ -16,8 +16,11 @@ internal sealed class SchedulerSettings
 
     internal const int DefaultHeavyMaxWaitFrames = 10;
 
-    /// <summary>protocol.md, limits.max_in_flight.</summary>
+    /// <summary>protocol.md, limits.max_in_flight and max_in_flight_per_stream: calls waiting on one stream.</summary>
     internal const int DefaultMaxInFlight = 16;
+
+    /// <summary>protocol.md, limits.max_in_flight_per_connection: calls waiting across a connection's streams.</summary>
+    internal const int DefaultMaxInFlightPerConnection = 256;
 
     /// <summary>At most this many light calls per frame, so an unlimited budget still bounds a frame.</summary>
     internal const int MaxLightCallsPerFrame = 64;
@@ -29,7 +32,7 @@ internal sealed class SchedulerSettings
     private readonly FrameShares _jobHeld;
 
     internal SchedulerSettings(double requestBudgetMs, double subscriptionBudgetMs, double heavyThresholdMs,
-        int heavyMaxWaitFrames, int maxInFlight)
+        int heavyMaxWaitFrames, int maxInFlight, int maxInFlightPerConnection = DefaultMaxInFlightPerConnection)
     {
         RequestBudgetMs = NonNegative(requestBudgetMs, nameof(requestBudgetMs));
         SubscriptionBudgetMs = NonNegative(subscriptionBudgetMs, nameof(subscriptionBudgetMs));
@@ -40,6 +43,10 @@ internal sealed class SchedulerSettings
         MaxInFlight = maxInFlight >= 1
             ? maxInFlight
             : throw new ArgumentOutOfRangeException(nameof(maxInFlight), maxInFlight, "Must be 1 or more.");
+        MaxInFlightPerConnection = maxInFlightPerConnection >= 1
+            ? maxInFlightPerConnection
+            : throw new ArgumentOutOfRangeException(nameof(maxInFlightPerConnection), maxInFlightPerConnection,
+                "Must be 1 or more.");
         _free = FrameShares.For(requestBudgetMs, subscriptionBudgetMs, false);
         _jobHeld = FrameShares.For(requestBudgetMs, subscriptionBudgetMs, true);
     }
@@ -59,8 +66,11 @@ internal sealed class SchedulerSettings
     /// <summary>[Performance] HeavyMaxWaitFrames: a heavy call passed over this many frames runs even over budget.</summary>
     internal int HeavyMaxWaitFrames { get; }
 
-    /// <summary>Calls one connection may have waiting in the scheduler.</summary>
+    /// <summary>Calls one stream of a connection may have waiting in the scheduler.</summary>
     internal int MaxInFlight { get; }
+
+    /// <summary>Calls one connection may have waiting in the scheduler, all its streams together.</summary>
+    internal int MaxInFlightPerConnection { get; }
 
     /// <summary>
     /// The projected sampling load every subscription together may reach: half the subscription lane's share outside

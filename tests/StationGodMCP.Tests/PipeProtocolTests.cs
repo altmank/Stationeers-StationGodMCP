@@ -250,6 +250,7 @@ internal sealed class PipeRig : IDisposable
                     ? subscriptions.StartSampleLogic(call, queueMs)
                     : null;
             Mod.ClosedHook = subscriptions.Closed;
+            Mod.StreamEndedHook = subscriptions.StreamEnded;
         }
 
         Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs), Mod, _deadlines,
@@ -337,6 +338,13 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     /// <summary>Called (on the connection's reader thread) when a connection ends.</summary>
     internal Action<object>? ClosedHook { get; set; }
 
+    /// <summary>Streams ended (stream_end, a slow client), in order, with their connection.</summary>
+    internal ConcurrentQueue<(object Source, StationGodMCP.Pure.Protocol.StreamEnd End)> StreamEnds { get; } =
+        new ConcurrentQueue<(object Source, StationGodMCP.Pure.Protocol.StreamEnd End)>();
+
+    /// <summary>Called (on the thread that ended them) when streams end.</summary>
+    internal Action<object, StationGodMCP.Pure.Protocol.StreamEnd>? StreamEndedHook { get; set; }
+
     public void Submit(QueuedCall call)
     {
         _deadlines.Watch(call);
@@ -345,6 +353,14 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     }
 
     public void Withdraw(QueuedCall call) => _calls.Withdraw(call);
+
+    public void StreamEnded(object source, StationGodMCP.Pure.Protocol.StreamEnd end)
+    {
+        _calls.EndStreams(source, end);
+        StreamEndedHook?.Invoke(source, end);
+        StreamEnds.Enqueue((source, end));
+        _added.Release();
+    }
 
     public void Closed(object source)
     {

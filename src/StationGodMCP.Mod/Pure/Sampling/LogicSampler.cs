@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Subscriptions;
 
 namespace StationGodMCP.Pure.Sampling;
@@ -150,9 +151,11 @@ internal sealed class SampleLogicRun<TItem> where TItem : class
     private DateTimeOffset _startedAtUtc;
     private int _sampleCount;
 
-    internal SampleLogicRun(ConnectionId connection, SampleLogicArguments arguments, double startedS)
+    internal SampleLogicRun(ConnectionId connection, SampleLogicArguments arguments, double startedS, long stream = 0)
     {
         Connection = connection;
+        Stream = stream;
+        Context = new CallContext(connection.Value, stream);
         Arguments = arguments;
         _gatewayId = arguments.GatewayId;
         _previous = new List<TItem>(arguments.Targets.Count);
@@ -161,6 +164,12 @@ internal sealed class SampleLogicRun<TItem> where TItem : class
     }
 
     internal ConnectionId Connection { get; }
+
+    /// <summary>The stream of the call that started it; a stream_end of it ends the run.</summary>
+    internal long Stream { get; }
+
+    /// <summary>The context of the call that started it, current around each of its samples.</summary>
+    internal CallContext Context { get; }
 
     internal SampleLogicArguments Arguments { get; }
 
@@ -261,10 +270,14 @@ internal sealed class LogicSampler<TItem> where TItem : class
 
     internal int Active => _runs.Count;
 
-    /// <summary>A new run, started at real time nowS; its first sample is due then (the next Poll takes it).</summary>
-    internal SampleLogicRun<TItem> Start(ConnectionId connection, SampleLogicArguments arguments, double nowS)
+    /// <summary>
+    /// A new run for a call on the connection's stream, started at real time nowS; its first sample is due then (the
+    /// next Poll takes it).
+    /// </summary>
+    internal SampleLogicRun<TItem> Start(ConnectionId connection, SampleLogicArguments arguments, double nowS,
+        long stream = 0)
     {
-        SampleLogicRun<TItem> run = new SampleLogicRun<TItem>(connection, arguments, nowS);
+        SampleLogicRun<TItem> run = new SampleLogicRun<TItem>(connection, arguments, nowS, stream);
         _runs.Add(run);
         return run;
     }
@@ -284,14 +297,23 @@ internal sealed class LogicSampler<TItem> where TItem : class
         }
     }
 
-    /// <summary>One frame: due samples, most overdue first, while the budget allows. Returns the samples taken.</summary>
+    /// <summary>
+    /// One frame: due samples, most overdue first, while the budget allows, each in the context of the call that
+    /// started its run. Returns the samples taken.
+    /// </summary>
     internal int Poll(RealTimeTick tick, ISamplingBudget budget, ISampleLogicEvents<TItem> events)
     {
         int taken = 0;
         while (MostOverdue(tick) is SampleLogicRun<TItem> run && budget.MayTakeAnother())
         {
             taken++;
-            if (run.Sample(tick, _reader, _comparer, _buffer) is SampleLogicOutcome<TItem> outcome)
+            SampleLogicOutcome<TItem>? outcome;
+            using (CallContext.Enter(run.Context))
+            {
+                outcome = run.Sample(tick, _reader, _comparer, _buffer);
+            }
+
+            if (outcome != null)
             {
                 _runs.Remove(run);
                 events.Finished(run, outcome);

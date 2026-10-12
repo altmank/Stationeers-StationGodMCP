@@ -9,6 +9,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP;
@@ -16,8 +17,8 @@ namespace StationGodMCP;
 /// <summary>
 /// Hands calls from the connections to the main thread and their answers back. Connections post a call to the
 /// scheduler's inbox; StationGodMod.Update runs one frame of the lane scheduler on the main thread, where the game's
-/// objects may be used (ApiHost.HandleCall): the subscription lane's samples, light calls round-robin across
-/// connections within the frame's budget, then at most one heavy call (scheduling.md). Each answer goes straight to its
+/// objects may be used (ApiHost.HandleCall): the subscription lane's samples, light calls in rounds by client and
+/// then by stream within the frame's budget, then at most one heavy call (scheduling.md). Each answer goes straight to its
 /// call's Deliver: no thread waits on the main thread. A call the main thread does not reach before its deadline is
 /// answered game_timeout by the DeadlineWatch (or by the scheduler when it meets it) unrun; a call it has started is
 /// always answered with its result.
@@ -48,6 +49,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     }
 
     public void Withdraw(QueuedCall call) => _requests.Withdraw(call);
+
+    public void StreamEnded(object source, StreamEnd end)
+    {
+        _requests.EndStreams(source, end);
+        Subscriptions?.StreamEnded(source, end);
+    }
 
     public void Closed(object source)
     {

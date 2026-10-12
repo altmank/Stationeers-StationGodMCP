@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// One message from a client, parsed on its connection's reader thread: hello, call, cancel or bye, or
+/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end or bye, or
 /// a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are fixed; an
 /// unknown one is a protocol error, so a client cannot believe the server read something it ignored.
 /// </summary>
@@ -69,6 +69,7 @@ internal abstract class ClientMessage
             "hello" => Hello.From(message, line),
             "call" => Call.From(message, line),
             "cancel" => Cancel.From(message, line),
+            "stream_end" => EndOfStream.From(message, line),
             "bye" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new Bye(),
             null => Refused.Protocol("A message needs a type.", line),
             _ => Refused.Protocol($"Unknown message type '{type}'.", line)
@@ -101,6 +102,27 @@ internal abstract class ClientMessage
         {
             // Not even leniently JSON: the refusal goes out without an id.
             return null;
+        }
+    }
+
+    /// <summary>
+    /// A stream number from minimum to StreamEnd.MaximumStream: an integer, or a number with no fraction; null for
+    /// anything else.
+    /// </summary>
+    private static long? StreamNumber(JToken? token, long minimum)
+    {
+        double value;
+        switch (token?.Type)
+        {
+            case JTokenType.Integer when token is JValue { Value: long whole }:
+                return whole >= minimum && whole <= StreamEnd.MaximumStream ? whole : null;
+            case JTokenType.Float:
+                value = (double)token;
+                return Math.Floor(value) == value && value >= minimum && value <= StreamEnd.MaximumStream
+                    ? (long)value
+                    : null;
+            default:
+                return null;
         }
     }
 
@@ -203,16 +225,17 @@ internal abstract class ClientMessage
         private static string? Text(JToken? token) => token?.Type == JTokenType.String ? (string)token! : null;
     }
 
-    /// <summary>call: one method call, by id, with its params, shape and deadline.</summary>
+    /// <summary>call: one method call, by id, with its params, shape, deadline and stream.</summary>
     internal sealed class Call : ClientMessage
     {
-        private Call(string id, string method, JObject? parameters, JToken? shape, int deadlineMs)
+        private Call(string id, string method, JObject? parameters, JToken? shape, int deadlineMs, long stream)
         {
             Id = id;
             Method = method;
             Params = parameters;
             Shape = shape;
             DeadlineMs = deadlineMs;
+            Stream = stream;
         }
 
         internal string Id { get; }
@@ -227,9 +250,12 @@ internal abstract class ClientMessage
 
         internal int DeadlineMs { get; }
 
+        /// <summary>The stream it belongs to; 0, the connection's default stream, when absent.</summary>
+        internal long Stream { get; }
+
         internal static ClientMessage From(JObject message, string line)
         {
-            Refused? unknown = OnlyKeys(message, line, "type", "id", "method", "params", "shape", "deadline_ms");
+            Refused? unknown = OnlyKeys(message, line, "type", "id", "method", "params", "shape", "deadline_ms", "stream");
             if (unknown != null)
             {
                 return unknown;
@@ -268,8 +294,22 @@ internal abstract class ClientMessage
                 deadlineMs = read.Value;
             }
 
+            JToken? givenStream = message["stream"];
+            long stream = 0;
+            if (givenStream != null && givenStream.Type != JTokenType.Null)
+            {
+                long? read = StreamNumber(givenStream, 0);
+                if (read == null)
+                {
+                    return new Refused("invalid_argument",
+                        $"stream must be an integer from 0 to {StreamEnd.MaximumStream}.", id, false, null);
+                }
+
+                stream = read.Value;
+            }
+
             JToken? shape = message["shape"];
-            return new Call(id, method, parameters, shape?.Type == JTokenType.Null ? null : shape, deadlineMs);
+            return new Call(id, method, parameters, shape?.Type == JTokenType.Null ? null : shape, deadlineMs, stream);
         }
     }
 
@@ -291,6 +331,35 @@ internal abstract class ClientMessage
             return message["id"]?.Type == JTokenType.String
                 ? new Cancel((string)message["id"]!)
                 : Refused.Protocol("cancel needs id, a string.", line);
+        }
+    }
+
+    /// <summary>
+    /// stream_end: the client is done with a stream (a script run ended); its unstarted calls are cancelled and it is
+    /// never used again on this connection. Stream 0, the default stream, never ends: ending it, or giving no stream
+    /// from 1 to StreamEnd.MaximumStream, is invalid_argument with a null id (the message has none), and the connection
+    /// stays open.
+    /// </summary>
+    internal sealed class EndOfStream : ClientMessage
+    {
+        private EndOfStream(long stream) => Stream = stream;
+
+        internal long Stream { get; }
+
+        internal static ClientMessage From(JObject message, string line)
+        {
+            Refused? unknown = OnlyKeys(message, line, "type", "stream");
+            if (unknown != null)
+            {
+                return unknown;
+            }
+
+            long? stream = StreamNumber(message["stream"], 1);
+            return stream != null
+                ? new EndOfStream(stream.Value)
+                : new Refused("invalid_argument",
+                    $"stream_end needs stream, an integer from 1 to {StreamEnd.MaximumStream}; stream 0 never ends.",
+                    null, false, null);
         }
     }
 

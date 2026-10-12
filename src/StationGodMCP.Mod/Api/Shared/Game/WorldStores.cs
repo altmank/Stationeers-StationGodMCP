@@ -59,6 +59,7 @@ internal static class WorldStores
         scope.Register("remote_views", Net.RemoteViews.Clear);
         scope.Register("prefab_index", ThingIndex.Reset);
         scope.Register("chip_programs", Pure.Lint.LintChipPrograms.Clear);
+        scope.Register("stream_stores", Protocol.StreamStores.Main.WorldChanged);
         return scope;
     }
 

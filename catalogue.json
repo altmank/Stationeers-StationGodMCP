@@ -170,7 +170,7 @@
           },
           "protocol": {
             "summary": "Connection and call codes from the protocol.",
-            "text": "Nothing ran, and the call is safe to send again: game_timeout, cancelled, shutting_down, too_many_in_flight, duplicate_id (use a new id). The connection closes: protocol_error, unauthorized (wrong TCP secret), request_too_large, unsupported_protocol. method_not_found: no such method on this game's StationGod (mod_info names its version). subscription_limit and unknown_subscription: subscriptions. internal_error: a bug; the call may have partly run, so check the world before repeating it."
+            "text": "Nothing ran, and the call is safe to send again: game_timeout, cancelled, shutting_down, too_many_in_flight, duplicate_id (use a new id). stream_ended: nothing ran; stream_end has ended that stream and it is never used again, so send the call on another stream. The connection closes: protocol_error, unauthorized (wrong TCP secret), request_too_large, unsupported_protocol. method_not_found: no such method on this game's StationGod (mod_info names its version). subscription_limit and unknown_subscription: subscriptions. internal_error: a bug; the call may have partly run, so check the world before repeating it."
           }
         }
       }
@@ -481,7 +481,7 @@
       "see": {"tool": "move_gas", "topic": "refusals"}
     },
     "cancelled": {
-      "description": "Cancelled before it started: nothing ran. Send it again if you still want it.",
+      "description": "Cancelled before it started: nothing ran. A sample_logic run whose stream ended is answered cancelled too, its samples dropped. Send it again if you still want it.",
       "origin": "protocol",
       "caller_may_resend": "yes",
       "see": {"topic": "errors", "subtopic": "protocol"}
@@ -1290,6 +1290,11 @@
       "origin": "tool",
       "see": {"topic": "slots"}
     },
+    "stream_ended": {
+      "description": "stream_end has ended that stream, and a stream is never used again on its connection: nothing ran. Send the call on another stream.",
+      "origin": "protocol",
+      "see": {"topic": "errors", "subtopic": "protocol"}
+    },
     "structure_broken": {
       "description": "The structure is in its broken build state; the game cannot build on it. Remove it and place a new one.",
       "origin": "tool",
@@ -1341,7 +1346,7 @@
       "see": {"tool": "set_battery_charge", "topic": "refusals"}
     },
     "too_many_in_flight": {
-      "description": "Too many calls are in flight on this connection. Nothing ran; wait for replies, then send again.",
+      "description": "Too many calls are in flight on this stream or connection (data.scope says which, data.limit gives the limit). Nothing ran; wait for replies, then send again.",
       "origin": "protocol",
       "caller_may_resend": "yes",
       "see": {"topic": "errors", "subtopic": "protocol"}

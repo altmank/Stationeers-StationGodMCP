@@ -154,6 +154,30 @@ public sealed class SampleLogicWireTests
     }
 
     [Fact]
+    public async Task EndingItsStreamAnswersAnUnfinishedRunCancelledAndLeavesOtherStreamsRuns()
+    {
+        SubscriptionHub hub = Hub();
+        using PipeRig rig = Rig(hub);
+        using V2Client client = await V2Client.Connect(rig);
+        JObject parameters = new JObject
+        {
+            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
+            ["duration_seconds"] = 5
+        };
+        client.Send(CallOn("1", parameters, 3));
+        client.Send(CallOn("2", parameters, 0));
+        WaitUntil(() => hub.SampleLogicRuns == 2, rig, atS: 0.0);
+
+        client.Send("""{"type":"stream_end","stream":3}""");
+        JObject reply = NextAfterFrames(rig, client);
+
+        Assert.Equal("1", (string?)reply["id"]);
+        Assert.False((bool)reply["ok"]!);
+        Assert.Equal("cancelled", (string?)reply["error"]!["code"]);
+        Assert.Equal(1, hub.SampleLogicRuns);
+    }
+
+    [Fact]
     public void TheDurationIsTheArgumentAtMostItsMaximumElseTheMaximum()
     {
         Assert.True(TestCatalogue.File.Value.Catalogue.TryGet("sample_logic", out CatalogueMethod? method));
@@ -191,6 +215,12 @@ public sealed class SampleLogicWireTests
     private PipeRig Rig(SubscriptionHub hub, bool strict = true) =>
         new PipeRig(mainThread: false, subscriptions: hub, settings: new ProtocolSettings(32, strictArguments: strict),
             tick: () => new SamplingTick(_frame, 0), realTick: () => new RealTimeTick(_frame, _realS, DateTimeOffset.UnixEpoch));
+
+    private static string CallOn(string id, JObject parameters, long stream) =>
+        new JObject
+        {
+            ["type"] = "call", ["id"] = id, ["method"] = "sample_logic", ["params"] = parameters, ["stream"] = stream
+        }.ToString(Formatting.None);
 
     private static string Call(string id, JObject parameters) =>
         new JObject { ["type"] = "call", ["id"] = id, ["method"] = "sample_logic", ["params"] = parameters }

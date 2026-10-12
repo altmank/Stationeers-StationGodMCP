@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Protocol;
 
@@ -111,6 +112,9 @@ internal sealed class ProtocolHost
 
     /// <summary>A queued call answered without running (cancelled) stops holding its place.</summary>
     internal void Withdraw(QueuedCall call) => _calls.Withdraw(call);
+
+    /// <summary>Streams of the connection ended (stream_end, a slow client): the main thread ends what they had going.</summary>
+    internal void StreamEnded(Connection connection, StreamEnd end) => _calls.StreamEnded(connection, end);
 
     /// <summary>A new connection's session: over TCP the shared secret comes first; then the protocol, hello first.</summary>
     internal Session SessionFor(Connection connection) =>

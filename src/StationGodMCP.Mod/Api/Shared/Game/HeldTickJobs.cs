@@ -8,6 +8,7 @@ using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -25,7 +26,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// that overran its limit is still running (AtmosphericsThread.Busy) no step runs, no queued job starts and the tick is
 /// not let go: a release asked for meanwhile is owed and made once that work has ended. With clients connected, no
 /// step runs until a state packet written after the end of the last step's frame has gone out (JobReplication), so a
-/// client replays each step's changes in the order the host made them.
+/// client replays each step's changes in the order the host made them. A job keeps the CallContext of the call that
+/// started or queued it, and each of its steps (a queued job's creation included) runs in that context, so a store kept
+/// per stream sees the job's steps as its caller's.
 /// </summary>
 internal static class HeldTickJobs
 {
@@ -41,6 +44,7 @@ internal static class HeldTickJobs
     private static readonly Dictionary<string, JobHold> Holds = new Dictionary<string, JobHold>();
     private static readonly HoldLengths HoldTimes = new HoldLengths();
     private static HeldTickJob? _active;
+    private static CallContext _activeContext;
     private static bool _tickHeld;
     private static bool _releaseOwed;
     private static long _next;
@@ -76,7 +80,7 @@ internal static class HeldTickJobs
         if (_active == null && Waiting.Count == 0 && !tickTaken)
         {
             string started = NextId(prefix);
-            object view = Launch(started, tool, create).View();
+            object view = Launch(started, tool, create, CallContext.Current).View();
             GasHold.Lift(hold);
             GasHoldReply.Record(hold, GasHoldStage.Started);
             Keep(started, hold, GasHoldStage.Started);
@@ -106,7 +110,7 @@ internal static class HeldTickJobs
         }
 
         string id = NextId(prefix);
-        if (!Waiting.Add(id, new QueuedJob(tool, create, pipeNetworks, acknowledge)))
+        if (!Waiting.Add(id, new QueuedJob(tool, create, pipeNetworks, acknowledge, CallContext.Current)))
         {
             GasHoldReply.Record(hold, GasHoldStage.NotStarted);
             return new JobBusyView(tool, _active?.Id ?? string.Empty, Waiting.Count,
@@ -120,13 +124,16 @@ internal static class HeldTickJobs
 
     private static string NextId(string prefix) => prefix + "-" + (++_next).ToString(CultureInfo.InvariantCulture);
 
-    private static HeldTickJob Launch(string id, string tool, Func<string, HeldTickJob> create)
+    private static HeldTickJob Launch(string id, string tool, Func<string, HeldTickJob> create, CallContext context)
     {
         HeldTickJob job;
         AtmosphericsThread.CurrentJob = id;
         try
         {
-            job = create(id);
+            using (CallContext.Enter(context))
+            {
+                job = create(id);
+            }
         }
         finally
         {
@@ -137,6 +144,7 @@ internal static class HeldTickJobs
         _tickHeld = true;
         NoteHeld(id, tool);
         _active = job;
+        _activeContext = context;
         return job;
     }
 
@@ -224,6 +232,7 @@ internal static class HeldTickJobs
         try
         {
             using (Prof.Scope(ProfId.JobStep))
+            using (CallContext.Enter(_activeContext))
             {
                 step = _active.Step();
             }
@@ -271,6 +280,7 @@ internal static class HeldTickJobs
 
         Remember(_active!.Id, done.View);
         _active = null;
+        _activeContext = CallContext.None;
         if (!_releaseOwed)
         {
             _tickHeld = false;
@@ -351,6 +361,7 @@ internal static class HeldTickJobs
         }
 
         _active = null;
+        _activeContext = CallContext.None;
         Waiting.Clear();
     }
 
@@ -396,7 +407,7 @@ internal static class HeldTickJobs
 
         try
         {
-            Launch(id, queued.Tool, queued.Create);
+            Launch(id, queued.Tool, queued.Create, queued.Context);
             GasHold.Lift(hold);
             Keep(id, hold, GasHoldStage.Started);
         }
@@ -406,6 +417,7 @@ internal static class HeldTickJobs
             StationGodMod.LogWarning($"queued job {id} failed to start: {exception}");
             ReleaseTick();
             _active = null;
+            _activeContext = CallContext.None;
             Remember(id, new JobDroppedView(id, queued.Tool, new ErrorView("internal_error", exception.Message)));
         }
     }
@@ -449,12 +461,14 @@ internal static class HeldTickJobs
 
     private sealed class QueuedJob
     {
-        internal QueuedJob(string tool, Func<string, HeldTickJob> create, bool pipeNetworks, string? acknowledge)
+        internal QueuedJob(string tool, Func<string, HeldTickJob> create, bool pipeNetworks, string? acknowledge,
+            CallContext context)
         {
             Tool = tool;
             Create = create;
             PipeNetworks = pipeNetworks;
             Acknowledge = acknowledge;
+            Context = context;
         }
 
         internal string Tool { get; }
@@ -465,6 +479,9 @@ internal static class HeldTickJobs
 
         /// <summary>The run's acknowledge_gas_lost, judged again when it leaves the queue.</summary>
         internal string? Acknowledge { get; }
+
+        /// <summary>The context of the call that queued it: its steps run in it once it starts.</summary>
+        internal CallContext Context { get; }
     }
 
     internal static bool IsSaving() => (bool)GameMembers.SaveIsSaving.Invoke(null);

@@ -59,6 +59,11 @@ internal abstract class SubscribeOutcome<TReading> where TReading : class
 /// stopped at goes first next frame. Admission keeps one subscription to one read_devices call, a connection to
 /// MaxSubscriptions and MaxConnectionValues, and the projected load of all of them to MaxProjectedMsPerSecond.
 /// </para>
+/// <para>
+/// Each subscription belongs to the stream of the call that made it (protocol.md, Streams): DropStream ends that
+/// stream's subscriptions without an event. The limits stay per connection, shared by all its streams, and any stream
+/// of the connection may unsubscribe any of its subscriptions.
+/// </para>
 /// </summary>
 internal sealed class SubscriptionEngine<TReading> where TReading : class
 {
@@ -111,7 +116,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
     /// as read_devices would.
     /// </summary>
     internal SubscribeOutcome<TReading> Subscribe(ConnectionId connection, DeviceSubscriptionQuery query,
-        SamplingInterval interval, SamplingTick tick)
+        SamplingInterval interval, SamplingTick tick, long stream = 0)
     {
         SubscriptionPlan plan = SubscriptionPlan.Of(query.Request);
         if (Admit(connection, plan, interval) is SubscriptionRefusal refusal)
@@ -122,13 +127,13 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         TReading first = _reader.Read(query);
         SubscriptionId id = new SubscriptionId(++_lastId);
         DeviceSubscription subscription = new DeviceSubscription(id, query, plan, interval,
-            new UpdateSlot<TReading>(connection, id), first, tick.GameTimeS + interval.Seconds);
+            new UpdateSlot<TReading>(connection, id), first, tick.GameTimeS + interval.Seconds, stream);
         Held(connection).Add(subscription);
         return new SubscribeOutcome<TReading>.Subscribed(id, interval, plan.Values, tick.Frame, first);
     }
 
     /// <summary>A world-topic subscription: world_changed and game_state events, nothing sampled.</summary>
-    internal SubscribeOutcome<TReading> SubscribeWorld(ConnectionId connection, SamplingTick tick)
+    internal SubscribeOutcome<TReading> SubscribeWorld(ConnectionId connection, SamplingTick tick, long stream = 0)
     {
         int held = CountOf(connection);
         if (held + 1 > Limits.MaxSubscriptions)
@@ -139,7 +144,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         }
 
         SubscriptionId id = new SubscriptionId(++_lastId);
-        Held(connection).World.Add(id);
+        Held(connection).World.Add(new WorldSubscription(id, stream));
         return new SubscribeOutcome<TReading>.Subscribed(id, SamplingInterval.Default, 0, tick.Frame, null);
     }
 
@@ -173,6 +178,16 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         return true;
     }
 
+    /// <summary>The stream ended (stream_end): its subscriptions end without an event; the connection's others stay.</summary>
+    internal void DropStream(ConnectionId connection, long stream)
+    {
+        if (_byConnection.TryGetValue(connection, out ConnectionSubscriptions? held))
+        {
+            held.CloseStream(stream);
+            PruneIfEmpty(held);
+        }
+    }
+
     /// <summary>The connection closed: its subscriptions end without an event.</summary>
     internal void DropConnection(ConnectionId connection)
     {
@@ -193,9 +208,9 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         {
             ConnectionSubscriptions held = _connections[index];
             held.EndDevices(SubscriptionEnd.WorldChanged, events);
-            foreach (SubscriptionId subscription in held.World)
+            foreach (WorldSubscription subscription in held.World)
             {
-                events.WorldChanged(held.Connection, subscription, world);
+                events.WorldChanged(held.Connection, subscription.Id, world);
             }
 
             PruneIfEmpty(held);
@@ -213,9 +228,9 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         _gameState = state;
         foreach (ConnectionSubscriptions held in _connections)
         {
-            foreach (SubscriptionId subscription in held.World)
+            foreach (WorldSubscription subscription in held.World)
             {
-                events.GameStateChanged(held.Connection, subscription, state);
+                events.GameStateChanged(held.Connection, subscription.Id, state);
             }
         }
     }
@@ -446,9 +461,10 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
     private sealed class DeviceSubscription
     {
         internal DeviceSubscription(SubscriptionId id, DeviceSubscriptionQuery query, SubscriptionPlan plan,
-            SamplingInterval interval, UpdateSlot<TReading> slot, TReading baseline, double nextDueS)
+            SamplingInterval interval, UpdateSlot<TReading> slot, TReading baseline, double nextDueS, long stream)
         {
             Id = id;
+            Stream = stream;
             Query = query;
             Plan = plan;
             Interval = interval;
@@ -459,6 +475,9 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         }
 
         internal SubscriptionId Id { get; }
+
+        /// <summary>The stream of the call that made it.</summary>
+        internal long Stream { get; }
 
         internal DeviceSubscriptionQuery Query { get; }
 
@@ -480,6 +499,20 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         internal double ProjectedMsPerSecond => Plan.ProjectedMsPerSecond(Interval);
     }
 
+    /// <summary>A world-topic subscription and the stream of the call that made it.</summary>
+    private readonly struct WorldSubscription
+    {
+        internal WorldSubscription(SubscriptionId id, long stream)
+        {
+            Id = id;
+            Stream = stream;
+        }
+
+        internal SubscriptionId Id { get; }
+
+        internal long Stream { get; }
+    }
+
     /// <summary>One connection's subscriptions, in the order they were made.</summary>
     private sealed class ConnectionSubscriptions
     {
@@ -492,7 +525,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
         internal List<DeviceSubscription> Devices { get; } = new List<DeviceSubscription>();
 
-        internal List<SubscriptionId> World { get; } = new List<SubscriptionId>();
+        internal List<WorldSubscription> World { get; } = new List<WorldSubscription>();
 
         internal int Values { get; private set; }
 
@@ -541,7 +574,16 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
                 return true;
             }
 
-            return World.Remove(id);
+            for (int index = 0; index < World.Count; index++)
+            {
+                if (World[index].Id.Equals(id))
+                {
+                    World.RemoveAt(index);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         internal void End(DeviceSubscription subscription, SubscriptionEnd end, ISubscriptionEvents<TReading> events)
@@ -562,7 +604,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         internal bool EndNewest(SubscriptionEnd end, ISubscriptionEvents<TReading> events)
         {
             long newestDevice = Devices.Count > 0 ? Devices[Devices.Count - 1].Id.Number : 0;
-            long newestWorld = World.Count > 0 ? World[World.Count - 1].Number : 0;
+            long newestWorld = World.Count > 0 ? World[World.Count - 1].Id.Number : 0;
             if (newestDevice == 0 && newestWorld == 0)
             {
                 return false;
@@ -573,7 +615,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
                 return EndNewestDevice(end, events);
             }
 
-            SubscriptionId id = World[World.Count - 1];
+            SubscriptionId id = World[World.Count - 1].Id;
             World.RemoveAt(World.Count - 1);
             events.Ended(Connection, id, end);
             return true;
@@ -598,6 +640,20 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
             }
 
             World.Clear();
+        }
+
+        /// <summary>Closes the stream's subscriptions of both topics, without an event.</summary>
+        internal void CloseStream(long stream)
+        {
+            for (int index = Devices.Count - 1; index >= 0; index--)
+            {
+                if (Devices[index].Stream == stream)
+                {
+                    Close(Devices[index]);
+                }
+            }
+
+            World.RemoveAll(subscription => subscription.Stream == stream);
         }
 
         private void Close(DeviceSubscription subscription)
