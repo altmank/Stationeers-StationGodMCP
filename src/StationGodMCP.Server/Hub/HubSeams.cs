@@ -81,11 +81,35 @@ public interface IRunChannel
     Task EndedAsync(JsonElement message);
 }
 
+/// <summary>
+/// Where a run's session sends its verb calls instead of straight to the pipeline: the run delivers its stop there,
+/// gives each call its gate and keeps its write log.
+/// </summary>
+public interface IVerbCalls
+{
+    Task<VerbReply> VerbAsync(VerbCall call, CancellationToken cancellation);
+}
+
 /// <summary>How a session is set up by whoever creates it.</summary>
 public sealed class HubSessionSettings
 {
+    public HubSessionSettings(Face face)
+    {
+        Face = face;
+    }
+
     /// <summary>Program for a --hub caller, Script for a run's worker.</summary>
-    public Face Face { get; init; } = Face.Program;
+    public Face Face { get; }
+
+    /// <summary>
+    /// True when the caller may call mod methods directly (pass-through, subscriptions, stream_end, release,
+    /// cursor_close): the --hub program only. Without it a session takes verb, ref, more, wait and hold, so a run's
+    /// writes always meet its gate.
+    /// </summary>
+    public bool PassThrough { get; init; }
+
+    /// <summary>Where verb calls go; the pipeline itself when null.</summary>
+    public IVerbCalls? Verbs { get; init; }
 
     /// <summary>The hub's name for the caller, sent as welcome.client_id; a fresh hub-N when null.</summary>
     public string? ClientId { get; init; }

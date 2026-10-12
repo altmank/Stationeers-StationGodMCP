@@ -19,7 +19,7 @@ public sealed class HubSessionTests
     public async Task HelloIsAnsweredWithTheModsWelcomeTheCallersIdAndPipeline()
     {
         FakeHubLink link = new();
-        await using HubCaller caller = HubCaller.Start(link, new HubSessionSettings { ClientId = "program-1" });
+        await using HubCaller caller = HubCaller.Start(link, new HubSessionSettings(Face.Program) { PassThrough = true, ClientId = "program-1" });
 
         JsonElement welcome = await caller.HelloAsync();
 
@@ -262,7 +262,7 @@ public sealed class HubSessionTests
     {
         FakeHubLink link = new();
         await using HubCaller plain = HubCaller.Start(link);
-        await using HubCaller extended = HubCaller.Start(link, new HubSessionSettings { Extras = new EchoExtras() });
+        await using HubCaller extended = HubCaller.Start(link, new HubSessionSettings(Face.Program) { PassThrough = true, Extras = new EchoExtras() });
         await plain.HelloAsync();
         await extended.HelloAsync();
 
@@ -300,9 +300,8 @@ public sealed class HubSessionTests
     {
         FakeHubLink link = new();
         RecordingRun run = new();
-        await using HubCaller caller = HubCaller.Start(link, new HubSessionSettings
+        await using HubCaller caller = HubCaller.Start(link, new HubSessionSettings(Face.Script)
         {
-            Face = Face.Script,
             Run = new JsonObject { ["id"] = "script-4", ["face"] = "script" },
             RunChannel = run,
             MainStream = 41
@@ -311,7 +310,7 @@ public sealed class HubSessionTests
         JsonElement welcome = await caller.HelloAsync();
         caller.Send("""{"type":"run_analysis","literals":["122643"],"while_lines":[],"writes":true,"holds":false,"syntax_error":null}""");
         caller.Send("""{"type":"run_end","state":"done","returned":null,"printed":"","error":null}""");
-        JsonElement afterEnd = await caller.CallAsync("1", "thing_health");
+        JsonElement afterEnd = await caller.CallAsync("1", "wait", """{"s":1,"kind":"wait","in_loop":false}""");
         caller.Send("""{"type":"run_analysis","literals":[],"while_lines":[],"writes":false,"holds":false,"syntax_error":null}""");
         JsonElement second = await caller.NextAsync();
         await caller.EndAsync();
@@ -321,6 +320,58 @@ public sealed class HubSessionTests
         Assert.Equal("session_ended", afterEnd.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("protocol_error", second.GetProperty("error").GetProperty("code").GetString());
         Assert.Empty(link.EndedStreams);
+    }
+
+    [Fact]
+    public async Task AScriptSessionRefusesModMethodsAndSendsNothing()
+    {
+        FakeHubLink link = new();
+        await using HubCaller caller = HubCaller.Start(link, new HubSessionSettings(Face.Script)
+        {
+            Run = new JsonObject { ["id"] = "script-5" },
+            RunChannel = new RecordingRun(),
+            MainStream = 7
+        });
+        await caller.HelloAsync();
+        caller.Send("""{"type":"run_analysis","literals":[],"while_lines":[],"writes":true,"holds":false,"syntax_error":null}""");
+
+        List<string> codes = [];
+        foreach (string method in new[] { "write_logic", "drop_job", "hold_restore", "stream_costs", "subscribe" })
+        {
+            codes.Add((await caller.CallAsync(method, method, "{}")).GetProperty("error").GetProperty("code").GetString()!);
+        }
+
+        caller.Send("""{"type":"stream_end","stream":3}""");
+        JsonElement streamEnd = await caller.NextAsync();
+        caller.Send("""{"type":"session_end"}""");
+        JsonElement sessionEnd = await caller.NextAsync();
+        JsonElement otherStream = await caller.CallAsync("w", "wait", """{"s":1,"kind":"wait","in_loop":false}""", stream: 2);
+
+        Assert.All(codes, code => Assert.Equal("not_allowed", code));
+        Assert.Equal("not_allowed", streamEnd.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("not_allowed", sessionEnd.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("invalid_argument", otherStream.GetProperty("error").GetProperty("code").GetString());
+        Assert.False(link.SessionEnded);
+        Assert.Empty(link.Calls);
+    }
+
+    [Fact]
+    public async Task ARunsFirstCallBeforeItsAnalysisIsAProtocolError()
+    {
+        FakeHubLink link = new();
+        await using HubCaller caller = HubCaller.Start(link, new HubSessionSettings(Face.Script)
+        {
+            Run = new JsonObject { ["id"] = "script-6" },
+            RunChannel = new RecordingRun(),
+            MainStream = 8
+        });
+        await caller.HelloAsync();
+
+        JsonElement early = await caller.CallAsync("1", "wait", """{"s":1,"kind":"wait","in_loop":false}""");
+
+        Assert.Equal("protocol_error", early.GetProperty("error").GetProperty("code").GetString());
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new HubSession(link, new VerbPipeline(link), new HubSessionSettings(Face.Script) { MainStream = 0 }));
     }
 
     [Fact]
@@ -359,7 +410,7 @@ public sealed class HubSessionTests
     public async Task SessionEndFromTheHubCallerEndsTheLinksSession()
     {
         FakeHubLink link = new();
-        await using HubCaller caller = HubCaller.Start(link, new HubSessionSettings { EndsLinkSession = true });
+        await using HubCaller caller = HubCaller.Start(link, new HubSessionSettings(Face.Program) { PassThrough = true, EndsLinkSession = true });
         await caller.HelloAsync();
 
         caller.Send("""{"type":"session_end"}""");

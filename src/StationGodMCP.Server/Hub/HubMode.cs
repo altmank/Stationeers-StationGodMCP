@@ -13,7 +13,7 @@ internal static class HubMode
         GameLink link = new(options.Client);
         using CallRecorder? recorder = options.RecordPath is { } path ? new CallRecorder(path) : null;
         VerbPipeline pipeline = new(link, recorder: recorder);
-        HubSession session = new(link, pipeline, new HubSessionSettings { Face = Face.Program, EndsLinkSession = true });
+        HubSession session = new(link, pipeline, new HubSessionSettings(Face.Program) { PassThrough = true, EndsLinkSession = true });
         try
         {
             await session.RunAsync(input, output, CancellationToken.None).ConfigureAwait(false);

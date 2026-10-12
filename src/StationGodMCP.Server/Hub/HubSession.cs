@@ -34,6 +34,11 @@ public sealed class HubSession
     private static readonly string[] CursorKeys = ["type", "cursor_id"];
     private static readonly string[] TypeOnly = ["type"];
     private static readonly string[] VerbKeys = ["verb", "what", "args", "line"];
+    private static readonly string[] AnalysisKeys = ["type", "literals", "while_lines", "writes", "holds", "syntax_error"];
+    private static readonly string[] RunEndKeys = ["type", "state", "returned", "printed", "error"];
+    private static readonly string[] PipelineMethods = ["verb", "ref", "more", "wait", "hold"];
+    private const string NotAllowed = "not_allowed";
+    private const string PipelineOnly = "a run's session calls verb, ref, more, wait and hold; mod methods go through verb";
     private static readonly JsonElement NoParameters = HubLines.Element("{}");
     private static readonly JsonElement SupportedVersions = HubLines.Element(HubLines.Supported);
     private static readonly TimeSpan CloseWait = TimeSpan.FromSeconds(2);
@@ -65,6 +70,11 @@ public sealed class HubSession
         _link = link;
         _pipeline = pipeline;
         _settings = settings;
+        if (settings.MainStream is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(settings), "A session's main stream is a hub stream from 1.");
+        }
+
         ClientId = settings.ClientId ?? "hub-" + Interlocked.Increment(ref _sessions).ToString(CultureInfo.InvariantCulture);
         if (settings.MainStream is { } given)
         {
@@ -84,6 +94,18 @@ public sealed class HubSession
 
     /// <summary>The hub stream the caller's stream 0 maps to.</summary>
     public long MainStream { get; }
+
+    /// <summary>True once hello was answered: the caller started speaking the protocol.</summary>
+    public bool Welcomed
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _welcomed;
+            }
+        }
+    }
 
     /// <summary>True once the caller sent session_end.</summary>
     public bool SessionEndSent
@@ -166,10 +188,7 @@ public sealed class HubSession
             foreach (InFlight call in _inFlight.Values)
             {
                 call.Cancellation.Cancel();
-                if (call.Running != null)
-                {
-                    running.Add(call.Running);
-                }
+                running.Add(call.Finished.Task);
             }
         }
 
@@ -242,12 +261,19 @@ public sealed class HubSession
                 return Call(message, line);
             case "cancel":
                 return Cancel(message, line);
+            case "stream_end" or "release" or "cursor_close" when !_settings.PassThrough:
+                Send(HubLines.Error(null, NotAllowed, PipelineOnly));
+                return null;
             case "stream_end":
                 return await StreamEndAsync(message, line).ConfigureAwait(false);
             case "release":
                 return await ReleaseAsync(message, line).ConfigureAwait(false);
             case "cursor_close":
                 return await CursorCloseAsync(message, line).ConfigureAwait(false);
+            case "session_end" when _settings.RunChannel != null:
+                // A worker ends its run with run_end; the link's session is the hub's alone.
+                Send(HubLines.Error(null, NotAllowed, "A run's session ends with run_end, not session_end."));
+                return null;
             case "session_end":
                 return await SessionEndAsync(message, line).ConfigureAwait(false);
             case "bye":
@@ -368,9 +394,34 @@ public sealed class HubSession
             parameters = given;
         }
 
+        if (!_settings.PassThrough && Array.IndexOf(PipelineMethods, method) < 0)
+        {
+            return Refuse(id, NotAllowed, PipelineOnly);
+        }
+
         if (!StreamOf(message, minimum: 0, out long stream))
         {
             return Refuse(id, "invalid_argument", "stream must be a whole number from 0 to 2^53.");
+        }
+
+        if (_settings.RunChannel != null)
+        {
+            // Everything a run does goes on its own stream: its costs, order and held restores are the run's.
+            if (stream != 0)
+            {
+                return Refuse(id, "invalid_argument", "A run's calls go on stream 0 (the run's stream).");
+            }
+
+            bool analysed;
+            lock (_gate)
+            {
+                analysed = _analysed;
+            }
+
+            if (!analysed)
+            {
+                return Broken(id, "run_analysis comes before a run's first call.", line);
+            }
         }
 
         int? deadline = null;
@@ -427,14 +478,15 @@ public sealed class HubSession
         }
 
         // Started here, on the reader, so calls reach the link in the order they came: the mod keeps the order on a
-        // stream only as the calls arrive.
-        call.Running = RunCallAsync(id, method, parameters, message, deadline, hubStream, call.Cancellation.Token);
+        // stream only as the calls arrive. A call still in flight when run_end comes is late, and still answered.
+        _ = RunCallAsync(id, method, parameters, message, deadline, hubStream, call);
         return null;
     }
 
     private async Task RunCallAsync(string id, string method, JsonElement parameters, JsonElement message, int? deadline,
-        long hubStream, CancellationToken cancellation)
+        long hubStream, InFlight inFlight)
     {
+        CancellationToken cancellation = inFlight.Cancellation.Token;
         try
         {
             switch (method)
@@ -478,11 +530,13 @@ public sealed class HubSession
         {
             lock (_gate)
             {
-                if (_inFlight.TryGetValue(id, out InFlight? call) && call.Cancellation.Token == cancellation)
+                if (_inFlight.TryGetValue(id, out InFlight? call) && call == inFlight)
                 {
                     _inFlight.Remove(id);
                 }
             }
+
+            inFlight.Finished.TrySetResult();
         }
     }
 
@@ -564,7 +618,10 @@ public sealed class HubSession
             return Refused("line must be a code line: a whole number from 1.");
         }
 
-        return _pipeline.CallAsync(new VerbCall(verb, what, args, _settings.Face, hubStream, line), cancellation);
+        VerbCall call = new(verb, what, args, _settings.Face, hubStream, line);
+        return _settings.Verbs != null
+            ? _settings.Verbs.VerbAsync(call, cancellation)
+            : _pipeline.CallAsync(call, cancellation);
     }
 
     private Task<VerbReply> ExtrasAsync(string method, JsonElement parameters, long hubStream, CancellationToken cancellation)
@@ -896,12 +953,21 @@ public sealed class HubSession
             return Broken(null, "run_analysis belongs to a run's session; this session serves no run.", line);
         }
 
-        if (_analysed)
+        if (KeyProblem(message, AnalysisKeys) is { } problem)
         {
-            return Broken(null, "The hub takes only the first run_analysis of a session.", line);
+            return Broken(null, problem, line);
         }
 
-        _analysed = true;
+        lock (_gate)
+        {
+            if (_analysed)
+            {
+                return Broken(null, "The hub takes only the first run_analysis of a session.", line);
+            }
+
+            _analysed = true;
+        }
+
         await channel.AnalysisAsync(message).ConfigureAwait(false);
         return null;
     }
@@ -911,6 +977,11 @@ public sealed class HubSession
         if (_settings.RunChannel is not { } channel)
         {
             return Broken(null, "run_end belongs to a run's session; this session serves no run.", line);
+        }
+
+        if (KeyProblem(message, RunEndKeys) is { } problem)
+        {
+            return Broken(null, problem, line);
         }
 
         lock (_gate)
@@ -1063,7 +1134,8 @@ public sealed class HubSession
     {
         internal CancellationTokenSource Cancellation { get; } = new();
 
-        internal Task? Running { get; set; }
+        /// <summary>Set when the call's task has finished, so CloseAsync can wait for it.</summary>
+        internal TaskCompletionSource Finished { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     /// <summary>A relayed subscription: the mod's id and the hub stream it was made on.</summary>

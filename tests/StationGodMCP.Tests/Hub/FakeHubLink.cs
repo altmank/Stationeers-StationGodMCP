@@ -137,7 +137,7 @@ internal sealed class HubCaller : IAsyncDisposable
     public Task<HubSessionEnd> Running { get; }
 
     public static HubCaller Start(FakeHubLink link, HubSessionSettings? settings = null, IWriteGate? gate = null) =>
-        new(new HubSession(link, new VerbPipeline(link, gate) { PollInterval = TimeSpan.Zero }, settings ?? new HubSessionSettings()));
+        new(new HubSession(link, new VerbPipeline(link, gate) { PollInterval = TimeSpan.Zero }, settings ?? new HubSessionSettings(Face.Program) { PassThrough = true }));
 
     public void Send(string json)
     {
