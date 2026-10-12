@@ -52,6 +52,12 @@ internal sealed class FakeCall
 
     /// <summary>CurrentFrame.BudgetReached as it finished: what its reply's budget_hit would say.</summary>
     internal bool BudgetHit { get; set; }
+
+    /// <summary>Goes on over later frames once run: unanswered until the test sets Answered.</summary>
+    internal bool Defers { get; set; }
+
+    /// <summary>Whether it has its answer: set as it runs unless it defers.</summary>
+    internal bool Answered { get; set; }
 }
 
 /// <summary>Runs a call by advancing the clock by its cost, and records what ran and what expired, in order.</summary>
@@ -78,9 +84,12 @@ internal sealed class FakeRunner : ICallRunner<FakeCall>
         Ran.Add(call);
         _clock.Advance(call.CostMs);
         call.BudgetHit = CurrentFrame.BudgetReached(_clock.NowMs);
+        call.Answered = !call.Defers;
     }
 
     public void Expire(FakeCall call) => Expired.Add(call);
+
+    public bool IsAnswered(FakeCall call) => call.Answered;
 
     internal List<string> RanNames()
     {
@@ -179,6 +188,15 @@ internal sealed class SchedulerRig
 
     internal Admission LightOn(FrameScheduler<FakeCall>.Connection connection, long stream, string name,
         double costMs = 0.1) => AddOn(connection, stream, name, Read(), costMs);
+
+    /// <summary>A read on one stream of the connection that goes on over frames once run, until its Answered is set.</summary>
+    internal FakeCall DeferredOn(FrameScheduler<FakeCall>.Connection connection, long stream, string name,
+        CallProfile? profile = null, double costMs = 0.1)
+    {
+        FakeCall call = new FakeCall(name, costMs) { Stream = stream, Defers = true };
+        Scheduler.Enqueue(connection, stream, call, profile ?? Read("find_things"), double.PositiveInfinity);
+        return call;
+    }
 
     internal FrameOutcome Frame(bool jobHoldsTick = false, ISampleLane? samples = null)
     {

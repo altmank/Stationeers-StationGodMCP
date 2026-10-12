@@ -228,7 +228,7 @@ frame passes its request budget: the
 candidates are taken when the call starts (things built later are not in the walk), filtered one at a time, then
 sorted in bounded steps (insertion-sorted runs of 16, then merge passes of at most 256 moves a step), each frame
 taking what the frame's calls left of the budget after them (*scheduling.md*, the slice lane). `nearest` is measured
-from where the player stood when the call started. Meanwhile the call is deferred: it holds its place in flight, and
+from where the player stood when the call started. Meanwhile the call is deferred: it holds its place in flight and its stream (*Order on one stream*), and
 `cancel`, the end of its stream or connection, its deadline or a world change stop it with nothing kept. It answers
 with its first page once its ids are in order; a world small enough answers in the frame it started in. When more follow, the mod keeps the reference ids of the rest, in that order, under a
 cursor owned by the call's connection and stream, and the reply adds `cursor_id` (a short string such as `"k12"`,
@@ -281,7 +281,12 @@ Replies may arrive in any order and are matched by `id`. The server keeps this o
 - A call whose effective class is write or cheat (see *Method classes*) does not start until every earlier
   call on the same stream has been answered.
 - No call starts until every earlier write or cheat call on the same stream has been answered.
-- Reads may overtake reads, and calls on different streams never wait for each other.
+- A deferred call (one that goes on over later frames after it starts: every `find_things` page, `sample_logic`)
+  holds its stream until it answers: no later call on that stream starts meanwhile, reads included. However it ends
+  (its answer, `cancel`, its deadline, a world change, `stream_end`, `session_end`, a shutdown, the connection
+  closing), the stream goes on. A find followed by a write on one stream therefore finds the world from before the
+  write.
+- Otherwise reads may overtake reads, and calls on different streams never wait for each other.
 
 The order covers handlers and their replies, not work that continues after the reply. A building tool's real run
 answers with a `job_id` while its job goes on over later frames
@@ -408,7 +413,9 @@ For each stream the mod counts, from the stream's first call: `calls`, the calls
 `main_thread_ms`, their whole main-thread time from the start of each call to its serialised reply, which
 `elapsed_ms` leaves out (*Replies*); and `over_budget_frames`, the frames in which one of its calls ended with the
 frame's request time at or past the budget, as `budget_hit` judges it but after serialising, each frame counted once
-per stream however many of its calls ran in it. A `sample_logic` call counts its start only; its later samples are the
+per stream however many of its calls ran in it. A call whose work goes on over frames (a `find_things` page) is one
+call whose `main_thread_ms` adds every slice of that work, each slice's frame judged as above; mod_info's per-connection
+ms per method adds them the same way. A `sample_logic` call counts its start only; its later samples are the
 subscription lane's. Without `streams` the reply lists every stream of the caller with counts, in stream order; with
 `streams` (1 to 256 numbers) it lists each one asked, in the order asked, with 0s for a stream that has none. The
 counts belong to the caller's connection, or to its resume token, so they survive a resume (*Resuming*); another

@@ -47,6 +47,31 @@ internal abstract class QueuedCall
 
     internal void MarkDeferred() => Volatile.Write(ref _deferred, 1);
 
+    /// <summary>
+    /// The known method its connection counts it under (mod_info connections), once its run is counted; null before,
+    /// or for a call that came on no connection.
+    /// </summary>
+    internal string? CountedAs { get; private set; }
+
+    /// <summary>Counts its run for its connection under a known method (main thread).</summary>
+    internal void CountOnConnection(string method, bool ok, double ms)
+    {
+        if (Source is Connection connection)
+        {
+            connection.Calls.Record(method, ok, ms);
+            CountedAs = method;
+        }
+    }
+
+    /// <summary>A later slice of its work: the ms add to its connection's count for its method, not another call.</summary>
+    internal void CountSliceOnConnection(double ms)
+    {
+        if (CountedAs != null && Source is Connection connection)
+        {
+            connection.Calls.AddMs(CountedAs, ms);
+        }
+    }
+
     /// <summary>Stopwatch.GetTimestamp when it was received.</summary>
     internal long ReceivedAt { get; }
 

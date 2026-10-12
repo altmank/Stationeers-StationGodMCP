@@ -30,6 +30,12 @@ internal interface ICallRunner<in TCall>
 
     /// <summary>Answers game_timeout for a call whose deadline passed before it started; must not run it.</summary>
     void Expire(TCall call);
+
+    /// <summary>
+    /// Whether the call has its answer. A call Run left unanswered goes on over later frames (a find page, sample_logic)
+    /// and holds its stream until this turns true.
+    /// </summary>
+    bool IsAnswered(TCall call);
 }
 
 /// <summary>
