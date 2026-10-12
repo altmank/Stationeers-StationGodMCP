@@ -165,7 +165,7 @@ def swallowed_refusal(ctx):
     ctx.oracle.set_logic(FIX["cap1"], "Setting", 1000)
     ctx.oracle.set_logic(FIX["cap2"], "Setting", 1000)
     ctx.show(h, [FIX["cap1"]])
-    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['devices'] "
+    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*MatterlinkCapacitor*')['devices'] "
             "if t['reference_id'] != '%s']\n"
             "for handler in ('exc', 'bare'):\n"
             "    try:\n        sg.write('logic', id=ids, logic='Setting', value=3000)\n"
@@ -281,7 +281,7 @@ def unseen_then_confirm(ctx):
     h = ctx.hub()
     ctx.oracle.set_logic(FIX["cap1"], "Setting", 1000)
     ctx.oracle.set_logic(FIX["cap2"], "Setting", 1000)
-    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*Capacitor*')['devices']][:2]\n"
+    code = ("ids = [t['reference_id'] for t in sg.find('device', prefab='*MatterlinkCapacitor*')['devices']][:2]\n"
             "sg.write('logic', id=ids, logic='Setting', value=1500)")
     first, _ = h.run_script(code, confirm=True, max_wait=20)
     untouched = ctx.oracle.logic(FIX["cap1"], "Setting") == 1000
@@ -375,7 +375,7 @@ def swallowed_stop(ctx):
     end = ctx.oracle.logic(FIX["cap1"], "Setting")
     time.sleep(2)
     final, _ = h.tool("inspect", {"what": "job", "id": rid})
-    return result(ctx.oracle.logic(FIX["cap1"], "Setting") == end and "killed" in final or "stopped" in final,
+    return result(ctx.oracle.logic(FIX["cap1"], "Setting") == end and ("killed" in final or "stopped" in final),
                   mid=alive_mid, end=end, final=final[:600])
 
 
@@ -480,7 +480,7 @@ def relief_loop(ctx):
 @case("world-rules", "a held vent closed while oxidiser enters is not reopened at session_end")
 def held_vent_not_reopened(ctx):
     h = ctx.hub()
-    ctx.oracle.set_logic(FIX["vent"], "On", 1)
+    ctx.oracle.call("write_logic", reference_id=FIX["vent"], logic_type="On", value=1, allow_lint=True)
     ctx.show(h, [FIX["vent"]])
     h.run_script("with sg.hold('%s', 'On', 0, after=1):\n    sg.wait(120)" % FIX["vent"], confirm=True, max_wait=3)
     closed = ctx.oracle.logic(FIX["vent"], "On")
@@ -495,7 +495,7 @@ def held_vent_not_reopened(ctx):
 @case("world-rules", "materials_from_player warns")
 def materials_from_player(ctx):
     h = ctx.hub()
-    text, _ = h.tool("build", {"what": "pipe", "grade": "insulated_gas", "waypoints": [[700, 202, 660], [702, 202, 660]], "materials": "player"})
+    text, _ = h.tool("build", {"what": "pipe", "grade": "insulated_gas", "waypoints": [[700, 202, 660], [702, 202, 660]]})
     return result("materials_from_player" in text, reply=text[:700])
 
 
