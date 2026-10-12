@@ -148,6 +148,12 @@ internal static class Wire
         writer.WriteNumber("stream", stream);
     });
 
+    internal static string CursorClose(string cursorId) => Write(writer =>
+    {
+        writer.WriteString("type", "cursor_close");
+        writer.WriteString("cursor_id", cursorId);
+    });
+
     internal static string Cancel(string id) => Write(writer =>
     {
         writer.WriteString("type", "cancel");

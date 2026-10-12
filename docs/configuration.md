@@ -57,6 +57,10 @@ wins over its variable.
 | `--inline-limit-kb <n>` | | `200` | A reply larger than this, without `output_file`, is written to a file on its own and answered with the pointer, marked `auto_output_file: true`. `0` never does. |
 | `--output-dir <folder>` | `STATIONGODMCP_OUTPUT_DIR` | `%LOCALAPPDATA%\StationGodMCP\output` | Where `output_file` writes replies (README, *Large replies*). The sidecar deletes files there older than 7 days and keeps the newest 200 `.json` files. |
 | `--record <path>` | | none | Append one JSON line per verb call to this file, as the call arrives and before it is checked: `{t_ms, face, stream, in_flight, verb, what, options}` (option names only, no values; `docs/architecture/hub.md`, *Recording*). |
+| `--hub` | | off | Serve the hub protocol on stdin and stdout instead of MCP: a child hub for one program (`sg.connect()`; `docs/architecture/hub.md`, *Modes*). It never adopts journals. Closing its stdin ends it. |
+| `--confirmed-ceiling-s <n>` | | `30` | The longest a confirmed script run's reply (and `inspect job` on a live confirmed run) waits, whatever `max_wait` says. `0` turns the ceiling off. Whole seconds, at most 86400. |
+| `--journal-dir <folder>` | | `%LOCALAPPDATA%\StationGodMCP\journal` (Windows), else `$XDG_STATE_HOME/stationgodmcp/journal` | Where the hub keeps its journal of script runs (`docs/architecture/hub.md`, *The journal*). |
+| `--python <path>` | | `py -3` (Windows), else `python3` | The Python that runs script workers. |
 
 The secret is never an argument, so it does not show in process lists. Set it in the agent's MCP
 registration (`claude mcp add --env "STATIONGODMCP_SECRET=..."`, or `[mcp_servers.stationeers.env]` in Codex).

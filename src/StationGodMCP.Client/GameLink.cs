@@ -15,7 +15,7 @@ namespace StationGodMCP.Client;
 /// MaybeRan; nothing is sent into a world other than the one the call was made in. After SessionEndAsync or
 /// DisposeAsync nothing more is written. Safe to use from several threads.
 /// </summary>
-public sealed class GameLink : IGameLink, IAsyncDisposable
+public sealed class GameLink : IHubLink, IAsyncDisposable
 {
     private const int KeptJobs = 256;
     private static readonly TimeSpan DefaultDeadline = TimeSpan.FromSeconds(30);
@@ -367,6 +367,18 @@ public sealed class GameLink : IGameLink, IAsyncDisposable
         if (_connection is { Alive: true } connection && connection.Features.Contains("release"))
         {
             await connection.TrySendAsync(Wire.Release(stream)).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Frees a walk's cursor (protocol.md, Walks), on the open connection only: a cursor does not outlive the connection
+    /// that made it unless the token resumes, and then it is freed when its stream ends.
+    /// </summary>
+    public async Task CursorCloseAsync(string cursorId)
+    {
+        if (!Closed && _connection is { Alive: true } connection && connection.Features.Contains("cursors"))
+        {
+            await connection.TrySendAsync(Wire.CursorClose(cursorId)).ConfigureAwait(false);
         }
     }
 
