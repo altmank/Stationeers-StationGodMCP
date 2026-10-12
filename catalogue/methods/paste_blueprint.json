@@ -2,8 +2,8 @@
   "name": "paste_blueprint",
   "summary": "Cheat: paste a BlueprintMod blueprint at an exact anchor and turn, with no player needed; it skips the game's placement checks. Ask the user first. status reads progress; undo removes the newest paste.",
   "help": {
-    "text": "Needs BlueprintMod; host only. Paste: name (in BlueprintMod's Blueprints folder, or an absolute path), anchor [x, y, z] (where the blueprint's reference point lands: x and z odd whole metres, y even, for the paste to line up with the grid) and rotation (0, 90, 180 or 270, added to its copy angle). Answers {started, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}; the pieces appear over 2 to 30 s, only while the game runs. Run check_replaceable over the pasted pieces.",
-    "keys": "known, active, complete, cancelled, created, failed, skipped, pasted, standing, fingerprint, file, entries, other_active, message, started, anchor, rotation, copy_y_angle, expected_duration_s.",
+    "text": "Needs BlueprintMod; host only. Paste: name (in BlueprintMod's Blueprints folder, or an absolute path), anchor [x, y, z] (where the blueprint's reference point lands: x and z odd whole metres, y even, for the paste to line up with the grid) and rotation (0, 90, 180 or 270, added to its copy angle). Answers {started, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}; the pieces appear over 2 to 30 s, only while the game runs. Run check_replaceable over the pasted pieces. dry_run reports a paste and starts nothing (topic report).",
+    "keys": "report_only, problems, known, active, complete, cancelled, created, failed, skipped, pasted, standing, fingerprint, file, entries, other_active, message, started, anchor, rotation, copy_y_angle, expected_duration_s.",
     "topics": {
       "status": {
         "summary": "status: true and its counts.",
@@ -17,17 +17,24 @@
         "summary": "Rooms after a paste, and the survival cost.",
         "text": "Rooms are not re-evaluated after a paste or undo: run the console command regeneraterooms before rooms. In survival BlueprintMod charges DeanamicMatter from the local player, which a dedicated server lacks: use a creative world there."
       },
+      "report": {
+        "summary": "dry_run: the paste checked and not started.",
+        "text": "A report (dry_run) runs the checks a paste runs (host, BlueprintMod, the file read, its entries, no paste still placing) and starts nothing. It answers {report_only, problems, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}, or the refusal as its problem (see report_only). BlueprintMod checks the rest (the same blueprint already pasted there, DeanamicMatter in survival) only when a paste starts, so a report cannot show those paste_refused cases. Not with status or undo."
+      },
       "refusals": {
         "summary": "The paste errors and what to do.",
         "text": "paste_refused: BlueprintMod's own message (the same blueprint already pasted there, no local player in survival, not enough DeanamicMatter, or a paste still placing: wait until status is not active). blueprint_failed: a BlueprintMod call failed (a file that is not a blueprint). mod_missing: BlueprintMod has no Blueprints folder yet; pass an absolute path. invalid_argument: a missing file (the message names the path tried), a blueprint with no entries, a rotation not 0, 90, 180 or 270. game_changed: this BlueprintMod lacks a member the tool calls."
       }
     },
-    "shared": ["cheats"]
+    "shared": ["cheats", "report_only"]
   },
   "class": "cheat",
-  "x-class-when": [{"when": {"status": {"equals": true}}, "class": "read"}],
+  "x-class-when": [{"when": {"status": {"equals": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
   "cost": "job",
-  "x-cost-when": [{"when": {"status": {"equals": true}}, "cost": "instant"}],
+  "x-cost-when": [
+    {"when": {"status": {"equals": true}}, "cost": "instant"},
+    {"when": {"dry_run": {"equals": true}}, "cost": "instant"}
+  ],
   "params": {
     "type": "object",
     "properties": {
@@ -50,13 +57,19 @@
         "maximum": 270
       },
       "status": {"type": "boolean", "description": "true alone: progress of the last paste this tool started."},
-      "undo": {"type": "boolean", "description": "true alone: BlueprintMod's undo of the newest paste."}
+      "undo": {"type": "boolean", "description": "true alone: BlueprintMod's undo of the newest paste."},
+      "dry_run": {
+        "type": "boolean",
+        "description": "Default false. true checks the paste and starts nothing; the reply starts report_only (topic report)."
+      }
     },
     "additionalProperties": false
   },
   "reply": {
     "type": "object",
     "properties": {
+      "report_only": {"type": "boolean"},
+      "problems": {"type": "array"},
       "known": {"type": "boolean"},
       "active": {"type": "boolean"},
       "complete": {"type": ["boolean", "null"]},
@@ -78,7 +91,13 @@
       "expected_duration_s": {"type": "number"}
     }
   },
-  "x-views": ["BlueprintPasteStatusView", "BlueprintUndoView", "BlueprintPasteStartedView"],
+  "x-views": [
+    "BlueprintPasteStatusView",
+    "BlueprintUndoView",
+    "BlueprintPasteStartedView",
+    "ReportRefusedView",
+    "BlueprintPasteReportView"
+  ],
   "x-shaping": "lists",
   "x-needs-mod": ["BlueprintMod"]
 }

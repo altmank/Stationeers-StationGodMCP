@@ -1,6 +1,7 @@
 #nullable enable
 
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Views;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -23,4 +24,25 @@ internal static class GeneArgs
 
         return genes;
     }
+
+    /// <summary>Why one gene's value is not written: not finite, or outside the game's range without force.</summary>
+    internal static GeneValueRefusal ValueRefusal(double value, bool force)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value))
+        {
+            return GeneValueRefusal.NotFinite;
+        }
+
+        return !force && (value < GeneView.Minimum || value > GeneView.Maximum)
+            ? GeneValueRefusal.OutOfRange
+            : GeneValueRefusal.None;
+    }
+}
+
+/// <summary>Why a gene value is not written; None when it is.</summary>
+internal enum GeneValueRefusal
+{
+    None,
+    NotFinite,
+    OutOfRange
 }

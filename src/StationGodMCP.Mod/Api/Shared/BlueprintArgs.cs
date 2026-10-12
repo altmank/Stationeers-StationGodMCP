@@ -77,4 +77,17 @@ internal static class PasteGate
                 $"{Vocabulary.Tool("paste_blueprint")} {Vocabulary.Arg("status")} says it is no longer active, then " +
                 "paste again."
             : null;
+
+    /// <summary>BlueprintMod's refusal of a paste, and this gate's.</summary>
+    internal const string RefusedCode = "paste_refused";
+
+    /// <summary>Refuses a paste while another one places (Busy).</summary>
+    internal static void Require(bool placing, bool complete, bool cancelled, int created)
+    {
+        string? busy = Busy(placing, complete, cancelled, created);
+        if (busy != null)
+        {
+            throw ApiErrors.Refused(RefusedCode, busy);
+        }
+    }
 }

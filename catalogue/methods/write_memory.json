@@ -2,10 +2,11 @@
   "name": "write_memory",
   "summary": "Cheat: write up to 512 values into a device's memory from start_address, as a chip's put does. Ask the user first. Nothing is written when the range runs past the last address.",
   "help": {
-    "text": "Writes the memory read_memory reads; a Logic Memory has none (memory_not_writable). A range past the memory's last address is invalid_argument and nothing is written. An IC Housing or suit without a chip is no_programmable_chip.",
-    "shared": ["gateways", "logic", "cheats"]
+    "text": "Writes the memory read_memory reads; a Logic Memory has none (memory_not_writable). A range past the memory's last address is invalid_argument and nothing is written. An IC Housing or suit without a chip is no_programmable_chip. A report (dry_run) answers {report_only, problems, gateway_id, reference_id, start_address, requested_values, previous_values (the memory there before), count, stack_size} and writes nothing (see report_only).",
+    "shared": ["gateways", "logic", "cheats", "report_only"]
   },
   "class": "cheat",
+  "x-class-when": [{"when": {"dry_run": {"equals": true}}, "class": "read"}],
   "cost": "instant",
   "params": {
     "type": "object",
@@ -19,6 +20,10 @@
         "maxItems": 512,
         "items": {"type": "number"},
         "description": "The values, finite numbers, 1 to 512, written from start_address on."
+      },
+      "dry_run": {
+        "type": "boolean",
+        "description": "Default false. true checks the write and writes nothing; the reply starts report_only (see report_only)."
       }
     },
     "required": ["reference_id", "start_address", "values"],
@@ -27,6 +32,8 @@
   "reply": {
     "type": "object",
     "properties": {
+      "report_only": {"type": "boolean"},
+      "problems": {"type": "array"},
       "gateway_id": {"type": "string"},
       "reference_id": {"type": "string"},
       "start_address": {"type": "integer"},
@@ -37,6 +44,6 @@
       "stack_size": {"type": ["integer", "null"]}
     }
   },
-  "x-views": ["MemoryWriteView"],
+  "x-views": ["MemoryWriteView", "ReportRefusedView", "MemoryWriteReportView"],
   "x-shaping": "none"
 }

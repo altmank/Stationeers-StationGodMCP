@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
@@ -55,7 +56,7 @@ internal sealed class ItemMovedView : BatchItemView
 }
 
 /// <summary>One move that was refused; nothing was changed for it.</summary>
-internal sealed class ItemNotMovedView : BatchItemView
+internal sealed class ItemNotMovedView : BatchItemView, IBatchFailure
 {
     internal ItemNotMovedView(int index, ThingId? referenceId, ApiException error) : base(index, ok: false)
     {
@@ -66,4 +67,87 @@ internal sealed class ItemNotMovedView : BatchItemView
     public ThingId? ReferenceId { get; }
 
     public ErrorView Error { get; }
+}
+
+/// <summary>One move a report checked: what it would move, from where to where; nothing was moved.</summary>
+internal sealed class MovePlannedView : BatchItemView
+{
+    internal MovePlannedView(int index, ThingId referenceId, SlotRefView? from, SlotRefView to, int quantityMoved,
+        ThingId? mergedInto) : base(index, ok: true)
+    {
+        ReferenceId = referenceId;
+        From = from;
+        To = to;
+        QuantityMoved = quantityMoved;
+        MergedInto = mergedInto;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    /// <summary>Where the item is; null when it lies loose in the world.</summary>
+    public SlotRefView? From { get; }
+
+    public SlotRefView To { get; }
+
+    /// <summary>How many would move (one for planting or fertilising).</summary>
+    public int QuantityMoved { get; }
+
+    /// <summary>The stack the items would join, or null for an empty slot.</summary>
+    public ThingId? MergedInto { get; }
+}
+
+/// <summary>move_item's report (dry_run) of one move: the move its checks passed; nothing moved.</summary>
+internal sealed class MoveReportView
+{
+    internal MoveReportView(MovePlannedView planned)
+    {
+        ReferenceId = planned.ReferenceId;
+        From = planned.From;
+        To = planned.To;
+        QuantityMoved = planned.QuantityMoved;
+        MergedInto = planned.MergedInto;
+    }
+
+    public bool ReportOnly => true;
+
+    /// <summary>Always empty: a refused check answers ReportRefusedView instead.</summary>
+    public List<ProblemView> Problems { get; } = new List<ProblemView>();
+
+    public ThingId ReferenceId { get; }
+
+    public SlotRefView? From { get; }
+
+    public SlotRefView To { get; }
+
+    public int QuantityMoved { get; }
+
+    public ThingId? MergedInto { get; }
+}
+
+/// <summary>
+/// move_item's report (dry_run) of a moves list: each move planned or refused, each refusal also a problem with its
+/// index; nothing moved.
+/// </summary>
+internal sealed class MovesReportView
+{
+    internal MovesReportView(BatchResultView results)
+    {
+        Problems = ProblemView.Of(results.Results);
+        Results = results.Results;
+        Count = results.Count;
+        SuccessCount = results.SuccessCount;
+        ErrorCount = results.ErrorCount;
+    }
+
+    public bool ReportOnly => true;
+
+    public List<ProblemView> Problems { get; }
+
+    public List<BatchItemView> Results { get; }
+
+    public int Count { get; }
+
+    public int SuccessCount { get; }
+
+    public int ErrorCount { get; }
 }

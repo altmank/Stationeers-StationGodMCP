@@ -1,5 +1,8 @@
 #nullable enable
 
+using System.Collections.Generic;
+using StationGodMCP.Api.Shared;
+
 namespace StationGodMCP.Api.Views;
 
 /// <summary>paste_blueprint: a paste BlueprintMod accepted and is now running as its coroutine.</summary>
@@ -30,6 +33,40 @@ internal sealed class BlueprintPasteStartedView
     public int Rotation { get; }
 
     /// <summary>BlueprintData.CopyYAngle, the paste's base angle, so the pieces land on the grid.</summary>
+    public float CopyYAngle { get; }
+
+    public double ExpectedDurationS { get; }
+}
+
+/// <summary>
+/// paste_blueprint's report (dry_run): the paste its checks passed, read from the blueprint file; nothing started.
+/// </summary>
+internal sealed class BlueprintPasteReportView
+{
+    internal BlueprintPasteReportView(BlueprintFileView file, double[] anchor, int rotation, float copyYAngle,
+        double expectedDurationS)
+    {
+        File = file.Path;
+        Entries = file.Entries;
+        Anchor = anchor;
+        Rotation = rotation;
+        CopyYAngle = copyYAngle;
+        ExpectedDurationS = expectedDurationS;
+    }
+
+    public bool ReportOnly => true;
+
+    /// <summary>Always empty: a refused check answers ReportRefusedView instead.</summary>
+    public List<ProblemView> Problems { get; } = new List<ProblemView>();
+
+    public string File { get; }
+
+    public int Entries { get; }
+
+    public double[] Anchor { get; }
+
+    public int Rotation { get; }
+
     public float CopyYAngle { get; }
 
     public double ExpectedDurationS { get; }

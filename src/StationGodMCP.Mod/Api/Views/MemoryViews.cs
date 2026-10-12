@@ -84,3 +84,38 @@ internal sealed class MemoryWriteView
 
     public int? StackSize { get; }
 }
+
+/// <summary>write_memory's report (dry_run): the write it would make and the memory there now; nothing written.</summary>
+internal sealed class MemoryWriteReportView
+{
+    internal MemoryWriteReportView(MemoryPlace place, List<double> requested, List<double>? previous)
+    {
+        GatewayId = place.GatewayId;
+        ReferenceId = place.ReferenceId;
+        StartAddress = place.StartAddress;
+        RequestedValues = requested;
+        PreviousValues = previous;
+        Count = requested.Count;
+        StackSize = place.StackSize;
+    }
+
+    public bool ReportOnly => true;
+
+    /// <summary>Always empty: a refused check answers ReportRefusedView instead.</summary>
+    public List<ProblemView> Problems { get; } = new List<ProblemView>();
+
+    public string GatewayId { get; }
+
+    public ThingId ReferenceId { get; }
+
+    public int StartAddress { get; }
+
+    public List<double> RequestedValues { get; }
+
+    /// <summary>The memory there now; null when the device's memory cannot be read.</summary>
+    public List<double>? PreviousValues { get; }
+
+    public int Count { get; }
+
+    public int? StackSize { get; }
+}

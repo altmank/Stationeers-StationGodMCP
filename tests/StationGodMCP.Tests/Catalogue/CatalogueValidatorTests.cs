@@ -112,6 +112,29 @@ public sealed class CatalogueValidatorTests
         Assert.NotEmpty(ArgumentCheck.RepeatedKey(JsonDocument.Parse("""{"limit":5,"limit":500}""").RootElement) ?? "");
     }
 
+    [Theory]
+    [InlineData("move_item", """{"reference_id":"1","to_id":"2","to_slot":0}""", "Write")]
+    [InlineData("move_item", """{"reference_id":"1","to_id":"2","to_slot":0,"force":true}""", "Cheat")]
+    [InlineData("write_memory", """{"reference_id":"1","start_address":0,"values":[1]}""", "Cheat")]
+    [InlineData("run_console_command", """{"command":"help"}""", "Cheat")]
+    [InlineData("plant_genes", """{"reference_id":"1","genes":{"WaterUsage":1}}""", "Cheat")]
+    [InlineData("paste_blueprint", """{"name":"a","anchor":[1,2,3]}""", "Cheat")]
+    public void AReportOfAnActAtOnceWriteIsAQuickRead(string tool, string acting, string actingClassName)
+    {
+        MethodClass actingClass = System.Enum.Parse<MethodClass>(actingClassName);
+        Catalogue.TryGet(tool, out CatalogueMethod method);
+        JObject report = JObject.Parse(acting);
+        report["dry_run"] = true;
+        JObject actingWithFalse = JObject.Parse(acting);
+        actingWithFalse["dry_run"] = false;
+
+        Assert.Equal(actingClass, method.ClassAt(JObject.Parse(acting)));
+        Assert.Equal(actingClass, method.ClassAt(actingWithFalse));
+        Assert.Equal(MethodClass.Read, method.ClassAt(report));
+        Assert.Empty(method.Check(report));
+        Assert.Contains(method.CostAt(report).Cost, new[] { CostClass.Instant, CostClass.Bounded });
+    }
+
     [Fact]
     public void ClassAndCostRulesFollowTheArguments()
     {

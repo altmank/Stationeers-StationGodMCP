@@ -130,6 +130,43 @@ internal sealed class ConsoleRunView : ITruncatingView
             ReplyDefaults.ConsoleLinesMaximum);
 }
 
+/// <summary>run_console_command's report (dry_run): the command the console would run; nothing run or printed.</summary>
+internal sealed class ConsoleReportView
+{
+    internal ConsoleReportView(ConsoleCommandInfo info, bool runSimulation, bool consoleAvailable, bool asynchronous)
+    {
+        Command = info.Command;
+        CommandKey = info.CommandKey;
+        Scope = info.Scope;
+        HelpText = info.HelpText;
+        Arguments = info.Arguments;
+        RunSimulation = runSimulation;
+        ConsoleAvailable = consoleAvailable;
+        CompletesAsynchronously = asynchronous;
+    }
+
+    public bool ReportOnly => true;
+
+    /// <summary>Always empty: a refused check answers ReportRefusedView instead.</summary>
+    public List<ProblemView> Problems { get; } = new List<ProblemView>();
+
+    public string Command { get; }
+
+    public string? CommandKey { get; }
+
+    public string Scope { get; }
+
+    public string? HelpText { get; }
+
+    public string[]? Arguments { get; }
+
+    public bool RunSimulation { get; }
+
+    public bool ConsoleAvailable { get; }
+
+    public bool CompletesAsynchronously { get; }
+}
+
 /// <summary>read_console: the most recent console lines, oldest first.</summary>
 internal sealed class ConsoleReadView
 {
