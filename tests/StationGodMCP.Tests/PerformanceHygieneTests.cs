@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -135,7 +136,7 @@ public sealed class PerformanceHygieneTests
     [Fact]
     public void WorkWithinTheLimitAnswers()
     {
-        OutstandingWork work = new OutstandingWork(TimeSpan.FromSeconds(5));
+        OutstandingWork work = new OutstandingWork(TimeSpan.FromSeconds(5), new TestLimit().WaitWithin);
 
         Assert.Equal(7, work.Run(static () => 7, "job-1"));
         Assert.False(work.Busy);
@@ -145,7 +146,7 @@ public sealed class PerformanceHygieneTests
     [Fact]
     public void WorkFailureIsRethrownAsItWas()
     {
-        OutstandingWork work = new OutstandingWork(TimeSpan.FromSeconds(5));
+        OutstandingWork work = new OutstandingWork(TimeSpan.FromSeconds(5), new TestLimit().WaitWithin);
 
         Assert.Throws<ArgumentException>(() => work.Run<int>(static () => throw new ArgumentException("bad"), null));
         Assert.False(work.Busy);
@@ -154,7 +155,8 @@ public sealed class PerformanceHygieneTests
     [Fact]
     public void OverrunWorkIsKeptUntilItEnds()
     {
-        OutstandingWork work = new OutstandingWork(TimeSpan.FromMilliseconds(50));
+        TestLimit limit = new TestLimit { Passed = true };
+        OutstandingWork work = new OutstandingWork(TimeSpan.FromMilliseconds(50), limit.WaitWithin);
         using ManualResetEventSlim gate = new ManualResetEventSlim(false);
 
         Assert.Throws<TimeoutException>(() => work.Run(() => gate.Wait(TimeSpan.FromSeconds(30)), "run-3"));
@@ -171,13 +173,14 @@ public sealed class PerformanceHygieneTests
         Assert.Null(ended.Failure);
         Assert.False(work.Busy);
         Assert.IsType<WorkSettlement.Idle>(work.Settle());
+        limit.Passed = false;
         Assert.Equal(2, work.Run(static () => 2, "run-5"));
     }
 
     [Fact]
     public void OverrunWorkFailureIsHandedBack()
     {
-        OutstandingWork work = new OutstandingWork(TimeSpan.FromMilliseconds(50));
+        OutstandingWork work = new OutstandingWork(TimeSpan.FromMilliseconds(50), new TestLimit { Passed = true }.WaitWithin);
         using ManualResetEventSlim gate = new ManualResetEventSlim(false);
 
         Assert.Throws<TimeoutException>(() => work.Run<int>(() =>
@@ -191,6 +194,27 @@ public sealed class PerformanceHygieneTests
         Assert.Equal("upgrade-2", ended.Owner);
         Assert.IsType<InvalidOperationException>(ended.Failure);
         Assert.Equal("pipe gone", ended.Failure!.Message);
+    }
+
+    /// <summary>
+    /// The work's time limit as the test sets it, not the wall clock's: while Passed is false the limit never passes and
+    /// the work is waited for however long a busy pool takes to start it; once true it has passed, and only work already
+    /// ended is within it.
+    /// </summary>
+    private sealed class TestLimit
+    {
+        internal bool Passed { get; set; }
+
+        internal bool WaitWithin(Task task, TimeSpan limit)
+        {
+            if (Passed)
+            {
+                return task.Wait(0);
+            }
+
+            task.Wait();
+            return true;
+        }
     }
 
     private static WorkSettlement.Ended WaitForEnd(OutstandingWork work)

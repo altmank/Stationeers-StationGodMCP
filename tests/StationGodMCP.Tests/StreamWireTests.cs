@@ -178,7 +178,10 @@ public sealed class StreamWireTests
     [Fact]
     public async Task EachStreamHoldsSixteenCallsInFlightAndTheConnection256()
     {
-        using PipeRig rig = new PipeRig(mainThread: false, settings: new ProtocolSettings(32, strictArguments: false));
+        // No call may reach its deadline however long a busy machine takes to send them all.
+        Scheduling.FakeClock clock = new Scheduling.FakeClock();
+        using PipeRig rig = new PipeRig(mainThread: false, settings: new ProtocolSettings(32, strictArguments: false),
+            frameClock: clock, deadlineClock: clock);
         using V2Client client = await V2Client.Connect(rig);
         for (int index = 0; index <= 16; index++)
         {
@@ -410,7 +413,7 @@ public sealed class StreamWireTests
 
         internal StreamCall(object source, string client, long stream, string name, List<string> ran,
             MethodClass methodClass = MethodClass.Read, CostClass cost = CostClass.Instant)
-            : base(DeadlineAfter(60000), new CallProfile(name, methodClass, new CallCost(cost, 1)))
+            : base(DeadlineAfterMs(60000), new CallProfile(name, methodClass, new CallCost(cost, 1)))
         {
             _source = source;
             _client = client;
