@@ -29,15 +29,17 @@ def main():
     for group, name, fn in cases.CASES:
         if args.only and not any(o in name or o in group for o in args.only):
             continue
-        ctx = cases.Ctx(args.pipe, args.exe)
         start = time.time()
+        ctx = None
         try:
+            ctx = cases.Ctx(args.pipe, args.exe)
             outcome = fn(ctx)
         except Exception as error:  # noqa: BLE001 - a case that crashes fails, with its traceback kept
             outcome = {"ok": False, "evidence": {"crash": traceback.format_exc()[-1500:]}}
         finally:
-            stderr = [line for h in ctx.hubs for line in h.stderr_lines[-20:]]
-            ctx.close()
+            stderr = [line for h in ctx.hubs for line in h.stderr_lines[-20:]] if ctx else []
+            if ctx:
+                ctx.close()
         outcome.update(group=group, name=name, seconds=round(time.time() - start, 1), hub_stderr=stderr)
         results.append(outcome)
         print("%-5s %-12s %s (%.0f s)" % ("PASS" if outcome["ok"] else "FAIL", group, name, outcome["seconds"]),

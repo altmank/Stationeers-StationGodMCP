@@ -15,7 +15,14 @@ class Oracle:
     """Calls handler methods on the mod directly, one at a time, and keeps the events it hears."""
 
     def __init__(self, pipe):
-        self.conn = open_connection(PipeTarget(pipe), client="sg-gate-oracle")
+        for attempt in range(6):
+            try:
+                self.conn = open_connection(PipeTarget(pipe), client="sg-gate-oracle")
+                break
+            except Exception:  # noqa: BLE001 - a busy or slow game: try again, then give up
+                if attempt == 5:
+                    raise
+                time.sleep(5)
         self.welcome = self.conn.welcome
         self._ids = itertools.count(1)
         self._replies = {}
