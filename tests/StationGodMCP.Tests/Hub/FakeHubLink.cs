@@ -166,7 +166,7 @@ internal sealed class HubCaller : IAsyncDisposable
 
     public static HubCaller Start(FakeHubLink link, HubSessionSettings? settings = null, IWriteGate? gate = null,
         TimeSpan? slowAfter = null) =>
-        new(new HubSession(link, new VerbPipeline(link, gate) { PollInterval = TimeSpan.Zero }, settings ?? new HubSessionSettings())
+        new(new HubSession(link, new VerbPipeline(link, gate) { PollInterval = TimeSpan.Zero }, settings ?? new HubSessionSettings(Face.Program) { PassThrough = true })
         {
             SlowClientAfter = slowAfter ?? TimeSpan.FromSeconds(35)
         });

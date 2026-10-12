@@ -57,6 +57,8 @@ internal static class Program
 
         await using GameLink link = new(options.Client);
         await using McpAdapter adapter = new(options, link);
+        adapter.Notify = WriteAsync;
+        adapter.Runs?.Warm();
         List<Task> running = [];
         string? line;
         while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)

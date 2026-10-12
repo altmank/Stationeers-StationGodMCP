@@ -16,6 +16,15 @@
   12 KB is cut to about 4 KB with `ref`, `cut` and `next`. A write on a list acts as `write-N`, which `inspect job`
   and `undo` know. Confirmed jobs answer when done, up to `max_wait`. Known limit: a job's step texts are printed
   without the rename map, so they may name a handler argument.
+- **run_script.** A run is `script-N` on its own stream, served by a pre-started Python worker (one per run, in a
+  kill-on-close Job Object on Windows; `--python` picks the Python, sg ships next to the binary). Without `confirm`
+  it is a report run: every write is listed `[id, name, current -> new]` and nothing changes. With `confirm: true`
+  writes act on seen targets (ids this session's replies showed, the code's own constants and selectors, the run's
+  builds, `player`); an unseen target stops the run with its rows and the fix. `server stop` (or cancelling the
+  request, or a world change) stops a run once; its `finally` may still put back what it wrote and its held
+  restores, and the worker is killed 5 s later. Confirmed runs answer within `--confirmed-ceiling-s` (30 s), then
+  `script-N running`; `inspect job` follows. Replies end with the writes by outcome and a cost line; a run that left
+  something is a notice on every reply until inspected. Undo of runs is not in this release yet.
 
 - **Frame cost measurement.** `mod_info` `include_counters` adds `runtime.frame_ms`: StationGod's request time per
   busy frame as fixed buckets, reported as `p50`, `p90`, `p99` and `over_8ms` (the default reply is unchanged).

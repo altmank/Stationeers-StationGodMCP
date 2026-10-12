@@ -28,10 +28,7 @@ public sealed partial class HubSession
             foreach (InFlight call in _inFlight.Values)
             {
                 call.Cancellation.Cancel();
-                if (call.Running != null)
-                {
-                    running.Add(call.Running);
-                }
+                running.Add(call.Finished.Task);
             }
         }
 

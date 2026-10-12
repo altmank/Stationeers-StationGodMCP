@@ -196,7 +196,7 @@ public sealed class HubSessionBoundsTests
     public async Task AWriterFaultOtherThanIoEndsTheSessionOutputBrokenAndCloseCompletes()
     {
         FakeHubLink link = new();
-        HubSession session = new(link, new VerbPipeline(link), new HubSessionSettings());
+        HubSession session = new(link, new VerbPipeline(link), new HubSessionSettings(Face.Program) { PassThrough = true });
         using AnonymousPipeServerStream toSession = new(PipeDirection.Out);
         using AnonymousPipeClientStream input = new(PipeDirection.In, toSession.ClientSafePipeHandle);
         Task<HubSessionEnd> running = Task.Run(() => session.RunAsync(input, new ThrowingStream(), CancellationToken.None));
