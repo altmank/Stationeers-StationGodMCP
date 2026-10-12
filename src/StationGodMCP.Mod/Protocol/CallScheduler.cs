@@ -61,7 +61,9 @@ internal interface ICallScheduler
 /// per-stream stores here, at the start of the frame.
 /// <para>
 /// A call that goes on with work over frames (CallOutcome.Continued) joins Deferred, the frame's slice lane, until it
-/// answers; ended streams, closed connections and the calls' own cancels, deadlines and worlds stop it there.
+/// answers; ended streams, closed connections and the calls' own cancels, deadlines and worlds stop it there. Every
+/// deferred call (sample_logic's too) holds its stream in FrameScheduler until its state is answered, by whoever
+/// answers it; its stream's end or its connection's close lets go of it unanswered.
 /// </para>
 /// <para>
 /// Each call it runs is timed on the scheduler's clock from its start to its serialised reply (the span the
@@ -102,6 +104,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     internal DeferredCalls Deferred { get; }
 
     internal SchedulerSettings Settings { get; }
+
+    /// <summary>Started calls still unanswered, each holding its stream.</summary>
+    internal int Holding => _scheduler.Holding;
 
     public StreamCosts Costs { get; } = new StreamCosts();
 
@@ -167,6 +172,8 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     }
 
     void ICallRunner<QueuedCall>.Expire(QueuedCall call) => call.Drop(call.TimeoutReply());
+
+    bool ICallRunner<QueuedCall>.IsAnswered(QueuedCall call) => call.State.IsAnswered;
 
     private static WorldFacts CurrentWorld() => ServerFacts.Current.World;
 

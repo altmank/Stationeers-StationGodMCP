@@ -22,6 +22,9 @@ public sealed class DeferredCallsTests
     private const double BudgetMs = 4.0;
     private static readonly CallContext Hub = new CallContext("c1", 2);
 
+    // The frame's other calls come on another stream: the deferred call holds its own until it answers.
+    private static readonly CallContext Busy = new CallContext("c1", 5);
+
     private readonly FakeClock _clock = new FakeClock();
     private readonly object _connection = new object();
     private string _world = "w1";
@@ -41,7 +44,7 @@ public sealed class DeferredCallsTests
         while (call.Answer == null)
         {
             double startMs = _clock.NowMs;
-            scheduler.Add(new CostCall(_connection, Hub, _clock, 1.5));
+            scheduler.Add(new CostCall(_connection, Busy, _clock, 1.5));
             scheduler.RunFrame(false, null, new NoRunner());
             Assert.True(_clock.NowMs - startMs <= BudgetMs, $"frame {frames} spent {_clock.NowMs - startMs} ms");
             Assert.InRange(work.LastSliceSteps, 1, 5);
@@ -67,7 +70,7 @@ public sealed class DeferredCallsTests
         List<int> steps = new List<int>();
         for (int frame = 0; frame < 6; frame++)
         {
-            scheduler.Add(new CostCall(_connection, Hub, _clock, 5.0));
+            scheduler.Add(new CostCall(_connection, Busy, _clock, 5.0));
             int taken = work.Steps;
             scheduler.RunFrame(false, null, new NoRunner());
             steps.Add(work.Steps - taken);
