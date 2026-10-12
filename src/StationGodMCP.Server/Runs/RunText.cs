@@ -19,7 +19,7 @@ internal static class RunText
     private const int ReportedRows = 60;
 
     /// <summary>The whole reply of a finished run, adding what it shows to the seen set.</summary>
-    internal static string Final(RunRecord run, SeenSet seen)
+    internal static string Final(RunRecord run, SeenSet? seen)
     {
         StringBuilder text = new();
         lock (run.Sync)
@@ -40,7 +40,7 @@ internal static class RunText
             if (run.Returned != null)
             {
                 string returned = Cut(Run.Shown(run.Returned), out bool cut);
-                seen.ShownPlain(returned);
+                seen?.ShownPlain(returned);
                 text.Append("returned: ").Append(returned);
                 if (cut)
                 {
@@ -53,7 +53,7 @@ internal static class RunText
             if (run.Printed.Length > 0)
             {
                 string printed = Cut(run.Printed.TrimEnd('\n'), out bool cut);
-                seen.ShownPlain(printed);
+                seen?.ShownPlain(printed);
                 text.Append(printed).Append('\n');
                 if (cut)
                 {
@@ -102,7 +102,7 @@ internal static class RunText
     };
 
     // Under the run's lock.
-    private static void Footer(RunRecord run, SeenSet seen, StringBuilder text)
+    private static void Footer(RunRecord run, SeenSet? seen, StringBuilder text)
     {
         if (run.StopRows is { Count: > 0 } stopRows)
         {
@@ -164,7 +164,8 @@ internal static class RunText
                 continue;
             }
 
-            string key = GroupWord(write.Group) + "\n" + write.Label + "\n" + write.UndoMark;
+            string key = GroupWord(write.Group) + "\n" + write.Label + "\n" + write.UndoMark +
+                         (write.MaybeRan ? " (maybe ran)" : "");
             if (!items.TryGetValue(key, out List<WrittenTarget>? list))
             {
                 list = [];
@@ -206,7 +207,7 @@ internal static class RunText
     }
 
     // REPORTED verb what xN [mark]: every row, up to 60, then "... N more". The rows shown become seen.
-    private static void ReportedGroups(RunRecord run, SeenSet seen, StringBuilder text)
+    private static void ReportedGroups(RunRecord run, SeenSet? seen, StringBuilder text)
     {
         List<string> keys = [];
         Dictionary<string, List<JsonObject>> groups = new(StringComparer.Ordinal);
@@ -281,11 +282,11 @@ internal static class RunText
     }
 
     // A row shown to the agent: its id is seen from now on.
-    private static void Shown(JsonNode? row, SeenSet seen)
+    private static void Shown(JsonNode? row, SeenSet? seen)
     {
         if (Run.IdText(row?["id"]) is { } id)
         {
-            seen.Add(id);
+            seen?.Add(id);
         }
     }
 

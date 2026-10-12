@@ -141,9 +141,21 @@ public sealed partial class RunHost : IAsyncDisposable
             return OptionProblem.Refusal("run_script", [new OptionProblem("code", "required: the Python to run")]);
         }
 
+        if (options["output_file"] != null)
+        {
+            return OptionProblem.Refusal("run_script",
+                [new OptionProblem("output_file", "not taken by run_script: its reply is text; print to a file in the code")]);
+        }
+
         if (Phase != SessionPhase.Open)
         {
             return SessionEnded();
+        }
+
+        // A run is made for one world: before the first connection the link knows none, so it connects first.
+        if (_link.WorldId == null)
+        {
+            await _link.ConnectAsync(CancellationToken.None).ConfigureAwait(false);
         }
 
         DateTime asked = DateTime.UtcNow;
@@ -151,7 +163,11 @@ public sealed partial class RunHost : IAsyncDisposable
         using CancellationTokenRegistration cancel = hooks.Cancelled.Register(() =>
             run.RequestStop("stopped", "the agent cancelled the run_script request", world: false));
         await WaitReplyAsync(run, MaxWait(options, _settings.DefaultMaxWait), asked, hooks).ConfigureAwait(false);
-        return new VerbReply.Done(new JsonObject { ["text"] = await ReplyTextAsync(run).ConfigureAwait(false) });
+        // A cancelled request's reply is never read, so nothing in it counts as shown.
+        return new VerbReply.Done(new JsonObject
+        {
+            ["text"] = await ReplyTextAsync(run, shown: !hooks.Cancelled.IsCancellationRequested).ConfigureAwait(false)
+        });
     }
 
     internal static VerbReply.Failed SessionEnded() =>
@@ -218,11 +234,16 @@ public sealed partial class RunHost : IAsyncDisposable
         }
     }
 
-    // The final text (now delivered, so its notices are done), or the running line.
-    private async Task<string> ReplyTextAsync(Run run)
+    // The final text (now delivered, so its notices are done, and what it shows is seen), or the running line.
+    private async Task<string> ReplyTextAsync(Run run, bool shown = true)
     {
         if (run.Ended.IsCompleted)
         {
+            if (!shown)
+            {
+                return RunText.Final(run.Record, null);
+            }
+
             MarkSeen(run.Record.Id);
             return RunText.Final(run.Record, Seen);
         }
@@ -364,23 +385,38 @@ public sealed partial class RunHost : IAsyncDisposable
         ["line"] = run.Line
     };
 
-    /// <summary>A script's own call of server stop, inspect job or undo for runs; null for every other call.</summary>
-    internal async Task<VerbReply?> RunsCallAsync(VerbCall call, CancellationToken cancellation)
+    /// <summary>
+    /// A script's own call of server stop, inspect job or undo for runs; null for every other call. A script may stop
+    /// or inspect only its own run: anything about another run (or every run) is the agent's to ask, and nothing a
+    /// worker is answered feeds the seen set or marks a run's notices done.
+    /// </summary>
+    internal Task<VerbReply?> RunsCallAsync(VerbCall call, Run caller, CancellationToken cancellation)
     {
-        if (call.Verb == "undo" && JsonNodes.Text(call.Args["id"])?.Trim() is { } id &&
-            id.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
+        string? id = JsonNodes.Text(call.Args["id"])?.Trim();
+        bool aboutRuns = (call.Verb == "server" && call.What == "stop") ||
+                         (call.Verb == "inspect" && call.What == "job" && (id == null || IsRunId(id))) ||
+                         (call.Verb == "undo" && id != null && IsRunId(id));
+        if (!aboutRuns)
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable,
-                "undo of a run is answered on the direct face: send undo {id: \"" + id + "\"} from the MCP client.");
+            return Task.FromResult<VerbReply?>(null);
         }
 
-        return call.Verb switch
+        if (call.Verb == "undo" || id == null || !string.Equals(id, caller.Record.Id, StringComparison.OrdinalIgnoreCase))
         {
-            "server" when call.What == "stop" => Stop(call.Args),
-            "inspect" when call.What == "job" => await InspectJobAsync(call.Args).ConfigureAwait(false),
-            _ => null
-        };
+            return Task.FromResult<VerbReply?>(new VerbReply.Failed("not_allowed",
+                "runs are inspected, stopped and undone by the agent directly; a script may stop or inspect only its own run"));
+        }
+
+        VerbReply own = call.Verb == "server"
+            ? new VerbReply.Done(Stopping(caller))
+            : new VerbReply.Done(new JsonObject
+            {
+                ["text"] = RunText.Running(caller.Record, caller.Line, caller.ActedWrites, caller.LastWrite, null)
+            });
+        return Task.FromResult<VerbReply?>(own);
     }
+
+    private static bool IsRunId(string id) => id.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>sg.ref('script-N'): a finished run's whole returned value and printed output.</summary>
     internal VerbReply RunRef(string id)
@@ -546,6 +582,8 @@ public sealed partial class RunHost : IAsyncDisposable
     // Undo of the old world's runs expires by itself: each run keeps the world it ran in.
     private void OnWorldChanged(string? world)
     {
+        // Ids are reused across saves: what was shown of the old world says nothing of this one.
+        Seen.Clear();
         List<Run> live = LiveRuns();
         List<string> dropped = [];
         foreach (Run run in live)

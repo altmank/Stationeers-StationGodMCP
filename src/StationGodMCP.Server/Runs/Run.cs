@@ -22,6 +22,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private readonly IRunJournal _journal;
     private readonly RunHostSettings _settings;
     private readonly HashSet<string> _literals = new(StringComparer.Ordinal);
+    private readonly HashSet<double> _literalNumbers = new();
     private readonly HashSet<string> _builds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, WrittenTarget> _lastWritten = new(StringComparer.Ordinal);
     private readonly List<string> _writtenOrder = [];
@@ -133,15 +134,39 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
 
     // ---- life -------------------------------------------------------------------------------------------------------
 
-    /// <summary>Takes a worker, serves its session until it ends, then finishes the run.</summary>
+    /// <summary>
+    /// Takes a worker, serves its session until it ends, then finishes the run. A fault of the hub's own is logged and
+    /// ends the run failed; the run always ends.
+    /// </summary>
     internal async Task LiveAsync(WorkerPool pool)
     {
+        try
+        {
+            await ServeAsync(pool).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            Console.Error.WriteLine($"[StationGodMCP] {Record.Id} failed in the hub: {exception}");
+            lock (Record.Sync)
+            {
+                Record.Error ??= "the hub failed on the run: " + exception.Message;
+            }
+
+            Kill();
+            End(RunState.Failed);
+        }
+    }
+
+    private async Task ServeAsync(WorkerPool pool)
+    {
+        // Every call of the run is made for the world it started in (the link refuses it unsent once that is gone).
+        _pipeline.PinWorld(Record.Stream, Record.World);
         ScriptWorker worker;
         try
         {
             worker = await pool.TakeAsync().ConfigureAwait(false);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             await FinishUnstartedAsync("the script worker did not start: " + exception.Message).ConfigureAwait(false);
             return;
@@ -194,85 +219,166 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
 
     private async Task FinishUnstartedAsync(string error)
     {
+        lock (Record.Sync)
+        {
+            Record.Error = error;
+        }
+
         try
         {
             await _link.EndStreamAsync(Record.Stream).ConfigureAwait(false);
         }
         finally
         {
-            lock (Record.Sync)
-            {
-                Record.Error = error;
-                Record.State = RunState.Failed;
-                Record.Ended = DateTime.UtcNow;
-            }
-
             _pipeline.EndStream(Record.Stream);
-            _ended.TrySetResult();
-            _host.OnRunEnded(this);
+            End(RunState.Failed);
         }
     }
 
     // The end, in order: the session's calls are cancelled, the end state is decided, held restores are cleared after a
-    // normal end, what a stopped run left is read, the costs are read, then the stream ends and the worker is reaped.
+    // normal end and written back after any other (a hold is not lost when the hub kills a run), what a stopped run
+    // left is read, the costs are read, then the stream ends and the worker is reaped. The run ends whatever fails.
     private async Task FinishAsync(HubSession session, ScriptWorker worker)
     {
-        await session.CloseAsync().ConfigureAwait(false);
-        RunState state = EndState(session.Welcomed, worker.StderrTail);
-        bool world;
-        lock (Record.Sync)
-        {
-            world = _stopWorld;
-        }
-
+        RunState state = RunState.Failed;
         try
         {
-            bool normal = state is RunState.Done or RunState.Report or RunState.Failed && !_stopDelivered;
-            if (normal && !world && HasHolds())
+            await session.CloseAsync().ConfigureAwait(false);
+            state = EndState(session.Welcomed, worker.StderrTail);
+            bool world;
+            bool normal;
+            lock (Record.Sync)
             {
-                await _link.HoldRestoreAsync(Record.Stream, JsonNodes.ToElement(new JsonObject { ["clear_all"] = true }),
-                    CancellationToken.None).ConfigureAwait(false);
+                world = _stopWorld;
+                normal = state is RunState.Done or RunState.Report or RunState.Failed && !_stopDelivered;
+            }
+
+            try
+            {
+                if (!world && HasHolds() && _host.Phase != SessionPhase.Ended)
+                {
+                    if (normal)
+                    {
+                        await _link.HoldRestoreAsync(Record.Stream,
+                            JsonNodes.ToElement(new JsonObject { ["clear_all"] = true }), Record.World,
+                            CancellationToken.None).ConfigureAwait(false);
+                        lock (Record.Sync)
+                        {
+                            _holds.Clear();
+                        }
+                    }
+                    else
+                    {
+                        await RestoreHoldsAsync().ConfigureAwait(false);
+                    }
+                }
+
+                if (state is RunState.Stopped or RunState.Killed && !world)
+                {
+                    await ReadLeftAsync().ConfigureAwait(false);
+                }
+
+                StreamCost[] costs = await _link.StreamCostsAsync([Record.Stream], CancellationToken.None)
+                    .ConfigureAwait(false);
                 lock (Record.Sync)
                 {
-                    _holds.Clear();
+                    Record.Cost = costs.Length > 0 ? costs[0] : null;
+                }
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                // The game went away: the run still ends, without its costs.
+            }
+
+            // stream_end clears a stream's held restores unwritten, so a run whose holds could not be written back keeps
+            // its stream: the mod then applies them at session_end (or when the resume window passes).
+            if (world || !HasHolds())
+            {
+                await _link.EndStreamAsync(Record.Stream).ConfigureAwait(false);
+            }
+
+            ReleaseWhenSettled();
+            _pipeline.EndStream(Record.Stream);
+            worker.Dispose();
+        }
+        finally
+        {
+            End(state);
+        }
+    }
+
+    // A run that ended inside a hold (killed, dead, stopped and swallowed): its registered afters are written as
+    // CLEANUP, then the registrations whose restore acted are cleared.
+    private async Task RestoreHoldsAsync()
+    {
+        List<(string Id, string Logic, JsonNode? After)> holds;
+        lock (Record.Sync)
+        {
+            holds = [.. _holds];
+        }
+
+        List<string> logics = [];
+        foreach ((string _, string logic, JsonNode? _) in holds)
+        {
+            if (!logics.Contains(logic))
+            {
+                logics.Add(logic);
+            }
+        }
+
+        foreach (string logic in logics)
+        {
+            List<string> ids = [];
+            List<JsonNode?> after = [];
+            foreach ((string id, string held, JsonNode? value) in holds)
+            {
+                if (held == logic)
+                {
+                    ids.Add(id);
+                    after.Add(value?.DeepClone());
                 }
             }
 
-            if (state is RunState.Stopped or RunState.Killed && !world)
+            VerbReply wrote = await SendAsync("write", "logic", new JsonObject { ["writes"] = Writes(ids, JsonValue.Create(logic), after) },
+                new RunCallContext(null, WriteGroup.Cleanup, holdExit: true), CancellationToken.None).ConfigureAwait(false);
+            List<string> restored = [];
+            if (wrote is VerbReply.Done done && !(done.Reply is JsonObject report && JsonNodes.IsTrue(report["report_only"])))
             {
-                await ReadLeftAsync().ConfigureAwait(false);
+                List<JsonObject> rows = BulkWrites.Rows(done.Reply);
+                for (int index = 0; index < ids.Count; index++)
+                {
+                    JsonObject? row = RowFor(rows, index, ids[index]);
+                    if (row != null && (row["ok"] is not { } ok || JsonNodes.IsTrue(ok)))
+                    {
+                        restored.Add(ids[index]);
+                    }
+                }
             }
 
-            StreamCost[] costs = await _link.StreamCostsAsync([Record.Stream], CancellationToken.None).ConfigureAwait(false);
-            lock (Record.Sync)
+            if (restored.Count > 0)
             {
-                Record.Cost = costs.Length > 0 ? costs[0] : null;
+                await ClearHoldsAsync(restored, JsonValue.Create(logic), CancellationToken.None).ConfigureAwait(false);
             }
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            // The game went away: the run still ends, without its costs.
-        }
+    }
 
-        // stream_end clears a stream's held restores unwritten, so a run that stopped inside a hold keeps its stream:
-        // the restores then apply at session_end (or when the resume window passes), as they are meant to.
-        if (world || !HasHolds())
-        {
-            await _link.EndStreamAsync(Record.Stream).ConfigureAwait(false);
-        }
-
-        ReleaseWhenSettled();
-        _pipeline.EndStream(Record.Stream);
-        worker.Dispose();
+    // The record is final: its state, its end, and the one OnRunEnded.
+    private void End(RunState state)
+    {
         lock (Record.Sync)
         {
-            Record.State = state;
-            Record.Ended = DateTime.UtcNow;
+            if (Record.State == RunState.Running)
+            {
+                Record.State = state;
+                Record.Ended = DateTime.UtcNow;
+            }
         }
 
         _stopSignal.Cancel();
-        _ended.TrySetResult();
-        _host.OnRunEnded(this);
+        if (_ended.TrySetResult())
+        {
+            _host.OnRunEnded(this);
+        }
     }
 
     // The hub's own record decides: no hello is a worker that did not start; no run_end a kill or a death; a stop it
@@ -597,7 +703,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
                 return RunHost.SessionEnded();
             }
 
-            if (await _host.RunsCallAsync(call, cancellation).ConfigureAwait(false) is { } runs)
+            if (await _host.RunsCallAsync(call, this, cancellation).ConfigureAwait(false) is { } runs)
             {
                 return runs;
             }
@@ -619,9 +725,15 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
             {
                 foreach (JsonElement literal in literals.EnumerateArray())
                 {
-                    if (IdText(JsonNodes.FromElement(literal)) is { } text)
+                    JsonNode? node = JsonNodes.FromElement(literal);
+                    if (IdText(node) is { } text)
                     {
                         _literals.Add(text);
+                    }
+
+                    if (JsonNodes.Number(node) is { } number)
+                    {
+                        _literalNumbers.Add(number);
                     }
                 }
             }
@@ -719,7 +831,29 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         }
 
         VerbCall gated = new(verb, what, args, Face.Script, Record.Stream, context.Line) { Gate = new RunGate(this, context) };
-        VerbReply reply = await _pipeline.CallAsync(gated, cancellation).ConfigureAwait(false);
+        VerbReply reply;
+        try
+        {
+            reply = await _pipeline.CallAsync(gated, cancellation).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled after the gate let it act (a kill, a closing session): it may have reached the game, so it stays
+            // in the log as maybe ran, and the journal hears of it, before the cancellation goes on.
+            if (context.Pending is { } pending)
+            {
+                lock (Record.Sync)
+                {
+                    pending.MaybeRan = true;
+                    pending.Acted = true;
+                }
+
+                _journal.After(Record, pending);
+            }
+
+            throw;
+        }
+
         Observe(verb, what, context, reply);
         return reply;
     }
@@ -788,9 +922,28 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
             return text;
         }
 
-        return JsonNodes.Number(node) is { } number && number == Math.Floor(number) && Math.Abs(number) < 1e19
-            ? ((decimal)number).ToString(CultureInfo.InvariantCulture)
-            : null;
+        // An integer as written, digit for digit: ids pass 2^53, where a double would round them.
+        if (node is not JsonValue value || value.GetValueKind() != JsonValueKind.Number)
+        {
+            return null;
+        }
+
+        string raw = value.ToJsonString();
+        int start = raw.StartsWith('-') ? 1 : 0;
+        if (raw.Length == start)
+        {
+            return null;
+        }
+
+        for (int index = start; index < raw.Length; index++)
+        {
+            if (!char.IsAsciiDigit(raw[index]))
+            {
+                return null;
+            }
+        }
+
+        return raw;
     }
 
     private static string Key(string id, string logic) => id + "\n" + logic;

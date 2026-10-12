@@ -150,6 +150,20 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
             world = _lastWorldId;
         }
 
+        if (call.World is { } pinned)
+        {
+            // The caller's own world (a run's): a call for a world the link has left is not sent at all.
+            if (worldKnown && world != pinned)
+            {
+                return new GameReply.Refused("world_changed",
+                    $"The game is in another world than the one {call.Method} was made for; it was not sent, because the " +
+                    "ids it carries may name other things now.", null);
+            }
+
+            world = pinned;
+            worldKnown = true;
+        }
+
         TimeSpan backoff = FirstBackoff;
         bool waiting = false;
         int resends = 0;
@@ -451,6 +465,21 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
         }
 
         return await CallAsync(new GameCall("hold_restore", change, stream), cancellation).ConfigureAwait(false);
+    }
+
+    /// <summary>hold_restore for a run in its own world: refused world_changed, unsent, once the link has left it.</summary>
+    public async Task<GameReply> HoldRestoreAsync(long stream, JsonElement change, string? world,
+        CancellationToken cancellation)
+    {
+        if (await ConnectionAsync(cancellation).ConfigureAwait(false) is Connecting.Connected { Connection: var connection } &&
+            !connection.Features.Contains("streams"))
+        {
+            return new GameReply.Refused("not_supported",
+                "This mod has no streams ('streams' not in welcome.features), so hold_restore would act on the stream " +
+                "every run shares; it was not sent.", null);
+        }
+
+        return await CallAsync(new GameCall("hold_restore", change, stream) { World = world }, cancellation).ConfigureAwait(false);
     }
 
     /// <summary>stream_costs for the streams asked, in the order asked; empty when the game did not answer it.</summary>

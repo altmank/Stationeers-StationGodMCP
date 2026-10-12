@@ -143,15 +143,26 @@ other exception; `error` is the failed-run text of note 22, built in the worker)
 
 One set per hub (a documented limit: runs and the direct face share it). It holds:
 - ids in text the hub sent the MCP client: in a JSON reply after the cut, every string of 1 to 19 digits, or integer,
-  that is the value, or an element of the value, of a key named `id`, `ids`, or ending `_id` or `_ids`, or of `placed`,
-  `removed`, `created_ids`, `targets`; every report row's id; and in a finished run's printed and returned text (within
-  their cut), every run of 1 to 19 digits not touching a letter, digit, `.` or `-`. They are added when the text is
-  sent, and a run's printed and returned value after the run ends.
-- each run's `literals` (for that run only), its selectors written in code (a `network`, `near`, `room`, `box` or ref
-  value equal to one of its literals), its own builds (`placed`, swap results), and `player`.
+  that is the value, or an element of the value, of a key on an allow-list: `id`, `ids`, `reference_id`,
+  `reference_ids`, `created_ids`, `placed`, `removed`, `targets`, `thing_id`, `device_id`, or ending `_reference_id`
+  (other `_id` keys name networks, jobs and the like); every report row's id; and in a finished run's printed and
+  returned text (within their cut), every run of 1 to 19 digits not touching a letter, digit, `.` or `-`. They are
+  added when the text is sent (a run_script reply whose request was cancelled is never read, so it adds nothing), and a
+  run's printed and returned value after the run ends. Nothing a script's worker is answered adds to it.
+- each run's `literals` (for that run only), its selectors written in code (every string and number in a `network`,
+  `near`, `room`, `box` value, or build blueprint's `at`, equal to one of its literals by value, floats included;
+  booleans are switches, not selectors), a ref written as a literal that the agent was shown, its own builds
+  (`placed`, swap results), and `player`.
+
+The set is cleared on a world change: ids are reused across saves.
 
 A write's targets are its `x-target` paths (acts-on and pays-from), resolved to ids. A target passes when it is in
-the set; a selector target passes when the selector does.
+the set; a selector target passes when the selector does. A write whose what declares no `x-target` (`server
+command`) stops a confirmed run: it can only be checked by its own report, on the direct face.
+
+A script may stop or inspect only its own run (`server stop`, `inspect job`); runs are the agent's to stop, inspect
+and undo. User Python can always open its own connection to the mod (sockets, files); the seen rule governs what a
+run does through `sg`, not what the Python language can reach (a public-release term, deferred).
 
 ### Routes
 

@@ -301,7 +301,16 @@ public sealed class RunRecord
     /// <summary>The run's stream costs, read at its end (null until then, or when the game did not answer).</summary>
     public Client.StreamCost? Cost { get; internal set; }
 
-    public bool IsLive => State == RunState.Running;
+    public bool IsLive
+    {
+        get
+        {
+            lock (Sync)
+            {
+                return State == RunState.Running;
+            }
+        }
+    }
 
     internal static string FirstCodeLine(string code)
     {

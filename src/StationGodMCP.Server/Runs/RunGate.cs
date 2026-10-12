@@ -30,6 +30,9 @@ internal sealed class RunCallContext
 
     /// <summary>The error row the gate answered instead of acting (after a stop).</summary>
     internal JsonObject? Refused { get; set; }
+
+    /// <summary>True when the gate stopped the run on this call (the stop is recorded already).</summary>
+    internal bool RuleStop { get; set; }
 }
 
 /// <summary>

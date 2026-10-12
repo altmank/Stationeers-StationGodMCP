@@ -176,13 +176,34 @@ internal sealed class McpAdapter : IAsyncDisposable
         }
         catch (McpException exception)
         {
-            return RpcError(requestId, exception.Code, exception.Message);
+            return RpcError(requestId, exception.Code, exception.Message + await NoticeTextAsync(root).ConfigureAwait(false));
         }
         catch (Exception exception)
         {
             // The details (handler names among them) go to the log; the agent gets no internals.
             Console.Error.WriteLine($"[StationGodMCP] {exception}");
-            return RpcError(requestId, -32603, "Internal error in the MCP server; its log has the details.");
+            return RpcError(requestId, -32603,
+                "Internal error in the MCP server; its log has the details." + await NoticeTextAsync(root).ConfigureAwait(false));
+        }
+    }
+
+    // A tool call answered with a JSON-RPC error still carries the runs' notices (after its message).
+    private async Task<string> NoticeTextAsync(JsonElement root)
+    {
+        if (_runs == null || root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("method", out JsonElement method) ||
+            method.ValueKind != JsonValueKind.String || method.GetString() != "tools/call")
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            List<string> notices = await _runs.NoticesAsync("", null, null).ConfigureAwait(false);
+            return notices.Count == 0 ? string.Empty : "\n" + string.Join("\n", notices);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return string.Empty;
         }
     }
 

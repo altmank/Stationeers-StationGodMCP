@@ -19,7 +19,9 @@ internal sealed partial class Run
     {
         WhatEntry? what = _pipeline.Catalogue.Verb(call.Verb)?.What(call.What);
         string mark = what?.Write?.UndoMark ?? "[cannot undo]";
-        WriteEntry entry;
+        string label = what?.Label ?? call.Verb;
+        WriteEntry? entry = null;
+        WriteDecision.Stop? stop = null;
         lock (Record.Sync)
         {
             _wrote = true;
@@ -37,10 +39,11 @@ internal sealed partial class Run
                         : "this run was stopped; this write was not sent");
                 }
 
-                if (!context.HoldExit && !(what?.Key == LogicKey && AllWritten(call, targets)))
+                if (context.HoldExit ? !HeldOnly(call, targets) : !(what?.Key == LogicKey && AllWritten(call, targets)))
                 {
-                    return RefuseRow(call, targets, context,
-                        "this run was stopped; only held restores and writes to targets it already wrote act now");
+                    return RefuseRow(call, targets, context, context.HoldExit
+                        ? "this run was stopped; a held restore acts only for a hold this run entered, with its value"
+                        : "this run was stopped; only held restores and writes to targets it already wrote act now");
                 }
 
                 entry = Open(call, what, targets, context, WriteGroup.Cleanup);
@@ -49,9 +52,16 @@ internal sealed partial class Run
             {
                 return new WriteDecision.Report();
             }
-            else if (Unseen(targets))
+            else if (Untargeted(what) is { } fix)
             {
-                return new WriteDecision.Stop(StopRows(call, targets, mark), Fix());
+                // A write that names no targets cannot be checked against the seen set, so a run never acts with it.
+                stop = RecordRuleStop(StopRows(call, targets, mark), fix, "untargeted_write",
+                    $"{label} names no targets a run can check; nothing acted.", context);
+            }
+            else if (Unseen(what, call, targets))
+            {
+                stop = RecordRuleStop(StopRows(call, targets, mark), Fix(), "unseen_target",
+                    $"{label} names targets not seen; nothing acted.", context);
             }
             else
             {
@@ -59,8 +69,68 @@ internal sealed partial class Run
             }
         }
 
-        _journal.Before(Record, entry);
+        if (stop != null)
+        {
+            _stopSignal.Cancel();
+            _ = KillLaterAsync();
+            return stop;
+        }
+
+        _journal.Before(Record, entry!);
         return new WriteDecision.Act();
+    }
+
+    // Under Sync: a write-rule stop is the run's stop from the moment it is decided, so a write on another thread of the
+    // run that the gate decides next meets the stop rule, not the route.
+    private WriteDecision.Stop RecordRuleStop(JsonArray rows, string fix, string code, string message, RunCallContext context)
+    {
+        _stops++;
+        _stopCode = code;
+        _stopMessage = $"line {context.Line?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?"}: {message}";
+        _stopAt = DateTime.UtcNow;
+        _stopDelivered = true;
+        Record.StopCode = _stopCode;
+        Record.StopMessage = _stopMessage;
+        Record.StopRows = (JsonArray)rows.DeepClone();
+        Record.StopFix = fix;
+        context.RuleStop = true;
+        return new WriteDecision.Stop(rows, fix, code, message);
+    }
+
+    // The fix for a write that declares no targets (x-target []), or null when it declares some. build blueprint is
+    // checked by its at instead (a selector written in the code).
+    private static string? Untargeted(WhatEntry? what)
+    {
+        if (what?.Write is not { } write || write.Targets.Count > 0 || what.Key == "build.blueprint")
+        {
+            return null;
+        }
+
+        return what.Key == "server.command"
+            ? "server {what: \"command\"} directly: it reports until confirm (ask the user first: a cheat)"
+            : $"run {what.Label} directly; it reports until confirm";
+    }
+
+    // Under Sync: after a stop, a hold exit acts only for (id, logic) pairs the run registered, with their registered
+    // value; a forged exit, or one for a hold never entered, gets an error row.
+    private bool HeldOnly(VerbCall call, WriteTargets targets)
+    {
+        List<(string Id, string Logic, JsonNode? New)> pairs = LogicPairs(call.Args, targets);
+        if (pairs.Count == 0)
+        {
+            return false;
+        }
+
+        foreach ((string id, string logic, JsonNode? next) in pairs)
+        {
+            int found = _holds.FindIndex(hold => hold.Id == id && hold.Logic == logic);
+            if (found < 0 || !SameValue(_holds[found].After, next))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // Under Sync.
@@ -90,8 +160,13 @@ internal sealed partial class Run
     // ---- seen -------------------------------------------------------------------------------------------------------
 
     // Under Sync: true when any target is not seen (hub.md, The seen set).
-    private bool Unseen(WriteTargets targets)
+    private bool Unseen(WhatEntry? what, VerbCall call, WriteTargets targets)
     {
+        if (what?.Key == "build.blueprint" && call.Args["at"] is { } at && !SelectorWritten(at))
+        {
+            return true;
+        }
+
         foreach (WriteTarget target in targets.Targets)
         {
             if (!Passes(target))
@@ -107,8 +182,8 @@ internal sealed partial class Run
     {
         if (target.Source == TargetSource.Ref)
         {
-            // A ref names the ids its reply showed: the reply the agent saw.
-            return target.From != null && _pipeline.Refs.Get(target.From) != null;
+            // A ref passes when the code names it (a literal) and the agent was shown it (it is in the store).
+            return target.From is { } reference && RefWritten(reference) && _pipeline.Refs.Get(reference) != null;
         }
 
         foreach (string id in target.Ids)
@@ -126,42 +201,62 @@ internal sealed partial class Run
     private bool IsSeen(string id) =>
         id == Player || _literals.Contains(id) || _builds.Contains(id) || _seen.Contains(id);
 
-    /// <summary>Seen ids for a hold's targets, which do not pass through the pipeline's gate before they register.</summary>
-    private bool AllSeen(List<string> ids)
+    // Under Sync: "r7" written in the code, or a path of it ("r7.things.2").
+    private bool RefWritten(string reference)
     {
-        lock (Record.Sync)
+        foreach (string literal in _literals)
         {
-            foreach (string id in ids)
+            if (literal == reference || literal.StartsWith(reference + ".", StringComparison.Ordinal))
             {
-                if (!IsSeen(id))
-                {
-                    return false;
-                }
+                return true;
             }
-
-            return true;
         }
+
+        return false;
     }
 
     /// <summary>
-    /// A selector passes when it is written in the code: a string or integer equal to a literal; an object or list when
-    /// each of its string and integer values is one (numbers with a fraction and booleans are not literals and do not
-    /// name things, so they are not asked about).
+    /// Seen ids for a hold's targets, which do not pass through the pipeline's gate before they register. An unseen one
+    /// is the run's stop from here (recorded under the lock, as the gate does), with these rows and the fix.
     /// </summary>
-    private bool SelectorWritten(JsonNode selector)
+    private VerbReply.Failed? HoldSeen(List<string> ids, Func<JsonArray> rows, int? line)
     {
-        int asked = 0;
-        return LeavesWritten(selector, ref asked) && asked > 0;
+        WriteDecision.Stop stop;
+        lock (Record.Sync)
+        {
+            bool all = true;
+            foreach (string id in ids)
+            {
+                all &= IsSeen(id);
+            }
+
+            if (all)
+            {
+                return null;
+            }
+
+            stop = RecordRuleStop(rows(), Fix(), "unseen_target", "hold names targets not seen; nothing acted.",
+                new RunCallContext(line));
+        }
+
+        _stopSignal.Cancel();
+        _ = KillLaterAsync();
+        return new VerbReply.Failed(stop.Code, stop.Message!, stop.Fix, new JsonObject { ["rows"] = stop.Rows.DeepClone() },
+            stopped: true);
     }
 
-    private bool LeavesWritten(JsonNode? node, ref int asked)
+    /// <summary>
+    /// A selector passes when it is written in the code: every string and number in it equals a literal by value (floats
+    /// included). Booleans and nulls are switches, not selectors, and are not asked about.
+    /// </summary>
+    private bool SelectorWritten(JsonNode? node)
     {
         switch (node)
         {
             case JsonObject entries:
                 foreach ((string _, JsonNode? value) in entries)
                 {
-                    if (!LeavesWritten(value, ref asked))
+                    if (!SelectorWritten(value))
                     {
                         return false;
                     }
@@ -171,16 +266,17 @@ internal sealed partial class Run
             case JsonArray list:
                 foreach (JsonNode? value in list)
                 {
-                    if (!LeavesWritten(value, ref asked))
+                    if (!SelectorWritten(value))
                     {
                         return false;
                     }
                 }
 
                 return true;
-            case JsonValue value when IdText(value) is { } text:
-                asked++;
+            case JsonValue value when JsonNodes.Text(value) is { } text:
                 return _literals.Contains(text);
+            case JsonValue value when JsonNodes.Number(value) is { } number:
+                return _literalNumbers.Contains(number);
             default:
                 return true;
         }
@@ -373,7 +469,7 @@ internal sealed partial class Run
         string label = what == null ? verb : verb + " " + what;
         if (reply is VerbReply.Failed failed)
         {
-            if (failed.Stopped && context.Pending == null && context.Refused == null)
+            if (failed.Stopped && !context.RuleStop && context.Pending == null && context.Refused == null)
             {
                 NoteRuleStop(failed, context.Line);
             }
@@ -387,6 +483,7 @@ internal sealed partial class Run
                     if (!unsent.Acted)
                     {
                         Record.Writes.Remove(unsent);
+                        NoteRefused(unsent, failed.ToJson());
                     }
                 }
 
@@ -473,6 +570,11 @@ internal sealed partial class Run
             if (row != null && row["ok"] is { } ok && !JsonNodes.IsTrue(ok))
             {
                 target.Acted = false;
+                Record.Refused.Add(new ListedRow(entry.Label, entry.UndoMark, new JsonObject
+                {
+                    ["reference_id"] = target.Id,
+                    ["error"] = row["error"]?.DeepClone() ?? new JsonObject { ["message"] = "the game refused it" }
+                }));
                 continue;
             }
 
@@ -500,6 +602,16 @@ internal sealed partial class Run
         }
 
         entry.Acted = any || entry.Targets.Count == 0;
+    }
+
+    // Under Sync: a write the game refused, one row per target, for the footer's refused group.
+    private void NoteRefused(WriteEntry write, JsonObject error)
+    {
+        foreach (WrittenTarget target in write.Targets)
+        {
+            Record.Refused.Add(new ListedRow(write.Label, write.UndoMark,
+                new JsonObject { ["reference_id"] = target.Id, ["error"] = error.DeepClone() }));
+        }
     }
 
     // The reply row of a target: the one at its index when that names it, else the first that names it.

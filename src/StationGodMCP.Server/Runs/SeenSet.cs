@@ -12,7 +12,9 @@ public sealed class SeenSet : IShownText
 {
     private const int LongestId = 19;
 
-    private static readonly string[] IdListKeys = ["id", "ids", "placed", "removed", "created_ids", "targets"];
+    // The keys whose values name things: an allow-list, since a key ending _id may hold anything (a network, a job).
+    private static readonly string[] IdListKeys =
+        ["id", "ids", "reference_id", "reference_ids", "created_ids", "placed", "removed", "targets", "thing_id", "device_id"];
 
     private readonly object _gate = new();
     private readonly HashSet<string> _ids = new(StringComparer.Ordinal);
@@ -22,6 +24,15 @@ public sealed class SeenSet : IShownText
         lock (_gate)
         {
             return _ids.Contains(id);
+        }
+    }
+
+    /// <summary>A world change: ids are reused across saves, so nothing shown before names anything now.</summary>
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _ids.Clear();
         }
     }
 
@@ -52,7 +63,8 @@ public sealed class SeenSet : IShownText
 
     /// <summary>
     /// Every string of 1 to 19 digits, or integer, that is the value or an element of the value of a key named id, ids,
-    /// ending _id or _ids, or placed, removed, created_ids, targets; at any depth.
+    /// reference_id, reference_ids, created_ids, placed, removed, targets, thing_id, device_id, or ending _reference_id;
+    /// at any depth.
     /// </summary>
     internal static List<string> IdsInJson(string text)
     {
@@ -136,8 +148,7 @@ public sealed class SeenSet : IShownText
     }
 
     private static bool IsIdKey(string key) =>
-        Array.IndexOf(IdListKeys, key) >= 0 || key.EndsWith("_id", StringComparison.Ordinal) ||
-        key.EndsWith("_ids", StringComparison.Ordinal);
+        Array.IndexOf(IdListKeys, key) >= 0 || key.EndsWith("_reference_id", StringComparison.Ordinal);
 
     // The value itself, or each element of a list value.
     private static void Take(JsonElement value, List<string> ids)

@@ -14,16 +14,16 @@ namespace StationGodMCP.Tests.Runs;
 public sealed class SeenSetTests
 {
     [Fact]
-    public void JsonIdsComeFromIdKeysOnly()
+    public void JsonIdsComeFromTheAllowListedKeysOnly()
     {
         List<string> ids = SeenSet.IdsInJson("""
             {"id":"12","ids":["13",14],"network_id":"15","reference_ids":[16],"placed":["17"],"removed":[18],
              "created_ids":["19"],"targets":["20",{"id":"21","name":"Pump 22"}],"count":23,"name":"24",
              "things":[{"reference_id":"25","position":{"x":26}}],"other_id":"abc","big_id":"12345678901234567890",
-             "neg_id":-5,"frac_id":2.5}
+             "neg_id":-5,"frac_id":2.5,"thing_id":"30","device_id":31,"pump_reference_id":"32","job_id":"33"}
             """);
 
-        Assert.Equal(new[] { "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "25" }, Sorted(ids));
+        Assert.Equal(new[] { "12", "13", "14", "16", "17", "18", "19", "20", "21", "25", "30", "31", "32" }, Sorted(ids));
     }
 
     [Fact]

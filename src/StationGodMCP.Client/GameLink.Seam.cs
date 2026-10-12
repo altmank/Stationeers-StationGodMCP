@@ -30,6 +30,13 @@ public interface IGameLink
     /// <summary>hold_restore on the stream with the change object ({set?, clear?, clear_all?}).</summary>
     Task<GameReply> HoldRestoreAsync(long stream, JsonElement change, CancellationToken cancellation);
 
+    /// <summary>
+    /// hold_restore made for a world (a run's): refused world_changed, unsent, once the link has left it. A link that
+    /// cannot tell sends it as HoldRestoreAsync does.
+    /// </summary>
+    Task<GameReply> HoldRestoreAsync(long stream, JsonElement change, string? world, CancellationToken cancellation) =>
+        HoldRestoreAsync(stream, change, cancellation);
+
     /// <summary>stream_costs for the streams asked, in the order asked.</summary>
     Task<StreamCost[]> StreamCostsAsync(IReadOnlyList<long> streams, CancellationToken cancellation);
 
@@ -93,6 +100,12 @@ public sealed class GameCall
     public JsonElement? Rename { get; init; }
 
     public int? DeadlineMs { get; init; }
+
+    /// <summary>
+    /// The world the call was made for (a run's, fixed at its start); null for the link's current one. A link that has
+    /// left that world refuses the call world_changed without sending it.
+    /// </summary>
+    public string? World { get; init; }
 
     /// <summary>
     /// Called with the mod's reply on the link's reader, before the caller wakes and before any later event is raised,

@@ -37,6 +37,7 @@ public sealed partial class VerbPipeline
     private readonly BulkWrites _bulk = new();
     private readonly HubCursors _cursors = new();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
+    private readonly Dictionary<long, string> _worlds = new();
     private int _inFlight;
 
     /// <summary>
@@ -98,7 +99,39 @@ public sealed partial class VerbPipeline
     internal void TextShown(string text) => _shown?.Shown(text);
 
     /// <summary>The stream ended: its hub cursors go.</summary>
-    public void EndStream(long stream) => _cursors.FreeStream(stream);
+    public void EndStream(long stream)
+    {
+        _cursors.FreeStream(stream);
+        lock (_worlds)
+        {
+            _worlds.Remove(stream);
+        }
+    }
+
+    /// <summary>
+    /// Every call on the stream is made for this world (a run's, fixed at its start): once the link has left it, the
+    /// calls are refused world_changed unsent, even before the world change reaches the run.
+    /// </summary>
+    internal void PinWorld(long stream, string? world)
+    {
+        if (world == null)
+        {
+            return;
+        }
+
+        lock (_worlds)
+        {
+            _worlds[stream] = world;
+        }
+    }
+
+    private string? WorldOf(long stream)
+    {
+        lock (_worlds)
+        {
+            return _worlds.TryGetValue(stream, out string? world) ? world : null;
+        }
+    }
 
     // Ids in refs and cursors name things of the world they came from.
     private void OnWorldChanged(string? world)
@@ -741,6 +774,7 @@ public sealed partial class VerbPipeline
         CancellationToken cancellation) =>
         _link.CallAsync(new GameCall(handlerCall.Handler, JsonNodes.ToElement(handlerCall.Args), stream)
         {
+            World = WorldOf(stream),
             Shape = shape,
             Rename = handlerCall.Rename
         }, cancellation);

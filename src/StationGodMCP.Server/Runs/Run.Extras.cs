@@ -133,7 +133,7 @@ internal sealed partial class Run
         {
             if (_stopCode != null)
             {
-                return new VerbReply.Failed("stopped", "this run was stopped; a new hold does not start.");
+                return NotEntered(ids, logic, [], "stopped", "this run was stopped; a new hold does not start");
             }
 
             _wrote = true;
@@ -183,9 +183,9 @@ internal sealed partial class Run
 
         if (Record.Confirm)
         {
-            if (!AllSeen(ids))
+            if (HoldSeen(ids, () => HoldRows(ids, logic, value, after), line) is { } stop)
             {
-                return HoldStop(ids, logic, value, after, line);
+                return stop;
             }
 
             JsonArray set = [];
@@ -200,7 +200,7 @@ internal sealed partial class Run
             }
 
             GameReply registered = await _link.HoldRestoreAsync(Record.Stream,
-                JsonNodes.ToElement(new JsonObject { ["set"] = set }), cancellation).ConfigureAwait(false);
+                JsonNodes.ToElement(new JsonObject { ["set"] = set }), Record.World, cancellation).ConfigureAwait(false);
             if (registered is not GameReply.Ok)
             {
                 return VerbPipeline.Failure(registered);
@@ -222,8 +222,9 @@ internal sealed partial class Run
 
         if (value != null)
         {
+            RunCallContext context = new(line, WriteGroup.Held) { KnownBefore = before };
             VerbReply wrote = await SendAsync("write", "logic", new JsonObject { ["writes"] = Writes(ids, logic, value) },
-                new RunCallContext(line, WriteGroup.Held) { KnownBefore = before }, cancellation).ConfigureAwait(false);
+                context, cancellation).ConfigureAwait(false);
             if (wrote is VerbReply.Failed failed)
             {
                 if (Record.Confirm)
@@ -233,57 +234,123 @@ internal sealed partial class Run
 
                 return failed;
             }
+
+            if (context.Refused is { } refused)
+            {
+                // A stop came between the registration and the write: the hold did not start.
+                if (Record.Confirm)
+                {
+                    await ClearHoldsAsync(ids, logic, cancellation).ConfigureAwait(false);
+                }
+
+                return NotEntered(ids, logic, after, JsonNodes.Text(refused["error"]?["code"]) ?? "stopped",
+                    JsonNodes.Text(refused["error"]?["message"]) ?? "the run was stopped before the hold's write");
+            }
         }
 
-        JsonArray afterList = [];
-        foreach (JsonNode? one in after)
-        {
-            afterList.Add(one?.DeepClone());
-        }
-
-        return new VerbReply.Done(new JsonObject { ["after"] = afterList });
+        return new VerbReply.Done(new JsonObject { ["after"] = List(after), ["entered"] = true });
     }
 
-    // A hold on an unseen target stops the run as an unseen write does, before anything is registered.
-    private VerbReply HoldStop(List<string> ids, JsonNode logic, JsonNode? value, List<JsonNode?> after, int? line)
+    // A hold that did not start answers rows, not an error, so a finally that enters one goes on.
+    private static VerbReply NotEntered(List<string> ids, JsonNode logic, List<JsonNode?> after, string code, string message)
     {
+        JsonArray rows = [];
+        foreach (string id in ids)
+        {
+            rows.Add(new JsonObject
+            {
+                ["id"] = id,
+                ["logic"] = logic.DeepClone(),
+                ["ok"] = false,
+                ["error"] = new JsonObject { ["code"] = code, ["message"] = message }
+            });
+        }
+
+        return new VerbReply.Done(new JsonObject { ["after"] = List(after), ["entered"] = false, ["rows"] = rows });
+    }
+
+    private static JsonArray List(List<JsonNode?> values)
+    {
+        JsonArray list = [];
+        foreach (JsonNode? value in values)
+        {
+            list.Add(value?.DeepClone());
+        }
+
+        return list;
+    }
+
+    // A hold's targets as report rows: [id, ?, after -> value].
+    private JsonArray HoldRows(List<string> ids, JsonNode logic, JsonNode? value, List<JsonNode?> after)
+    {
+        string mark = _pipeline.Catalogue.Verb("write")?.What("logic")?.Write?.UndoMark ?? "[undo]";
         JsonArray rows = [];
         for (int index = 0; index < ids.Count; index++)
         {
-            JsonObject row = VerbPipeline.Row(ids[index], null, null, after[index], value, "[undo]");
+            JsonObject row = VerbPipeline.Row(ids[index], null, null, after[index], value, mark);
             row["logic"] = logic.DeepClone();
             rows.Add(row);
         }
 
-        string fix;
-        lock (Record.Sync)
-        {
-            fix = Fix();
-        }
-
-        VerbReply.Failed stop = new("unseen_target", "hold names targets not seen; nothing acted.", fix,
-            new JsonObject { ["rows"] = rows }, stopped: true);
-        NoteRuleStop(stop, line);
-        return stop;
+        return rows;
     }
 
-    // Write after (acting as CLEANUP after a stop), then clear the registration.
+    // Write after (acting as CLEANUP after a stop), then clear the registrations whose restore acted. After a stop only
+    // the pairs the run registered are written, each with its registered value; any other id answers an error row.
     private async Task<VerbReply> ExitHoldAsync(List<string> ids, JsonNode logic, JsonObject given, int? line,
         CancellationToken cancellation)
     {
         string logicName = LogicName(logic)!;
-        List<JsonNode?> after;
-        if (given["after"] is { } stated)
+        bool stopped;
+        lock (Record.Sync)
+        {
+            stopped = _stopCode != null;
+        }
+
+        List<string> writing = [];
+        List<JsonNode?> after = [];
+        JsonArray refusedRows = [];
+        if (stopped)
+        {
+            lock (Record.Sync)
+            {
+                foreach (string id in ids)
+                {
+                    int found = _holds.FindIndex(hold => hold.Id == id && hold.Logic == logicName);
+                    if (found < 0)
+                    {
+                        refusedRows.Add(new JsonObject
+                        {
+                            ["id"] = id,
+                            ["logic"] = logic.DeepClone(),
+                            ["ok"] = false,
+                            ["error"] = new JsonObject
+                            {
+                                ["code"] = "stopped",
+                                ["message"] = "this run was stopped; it holds no restore for this id, so none is written"
+                            }
+                        });
+                        continue;
+                    }
+
+                    writing.Add(id);
+                    after.Add(_holds[found].After?.DeepClone());
+                }
+            }
+        }
+        else if (given["after"] is { } stated)
         {
             if (Expanded(stated, ids.Count) is not { } expanded)
             {
                 return new VerbReply.Failed(Invalid, "after is one value, or one per id.");
             }
 
+            writing.AddRange(ids);
             after = expanded;
         }
         else if (Registered(ids, logicName) is { } registered)
         {
+            writing.AddRange(ids);
             after = registered;
         }
         else
@@ -291,48 +358,64 @@ internal sealed partial class Run
             return new VerbReply.Failed(Invalid, "hold exit needs after: the values to restore.");
         }
 
-        VerbReply wrote = await SendAsync("write", "logic", new JsonObject { ["writes"] = Writes(ids, logic, after) },
-            new RunCallContext(line, WriteGroup.Held, holdExit: true), cancellation).ConfigureAwait(false);
-        bool world;
-        lock (Record.Sync)
-        {
-            world = _stopWorld;
-        }
-
-        if (Record.Confirm && !world && _host.Phase != SessionPhase.Ended)
-        {
-            await ClearHoldsAsync(ids, logic, cancellation).ConfigureAwait(false);
-        }
-
-        if (wrote is VerbReply.Failed failed)
-        {
-            return failed;
-        }
-
-        JsonNode? reply = ((VerbReply.Done)wrote).Reply;
-        bool reported = reply is JsonObject report && JsonNodes.IsTrue(report["report_only"]);
-        List<JsonObject> results = BulkWrites.Rows(reply);
         JsonArray rows = [];
-        for (int index = 0; index < ids.Count; index++)
+        if (writing.Count > 0)
         {
-            JsonObject row = new() { ["id"] = ids[index], ["logic"] = logic.DeepClone(), ["value"] = after[index]?.DeepClone() };
-            JsonObject? result = reported ? null : RowFor(results, index, ids[index]);
-            if (reported)
+            VerbReply wrote = await SendAsync("write", "logic", new JsonObject { ["writes"] = Writes(writing, logic, after) },
+                new RunCallContext(line, WriteGroup.Held, holdExit: true), cancellation).ConfigureAwait(false);
+            if (wrote is VerbReply.Failed failed)
             {
-                row["reported"] = true;
-            }
-            else if (result != null && result["ok"] is { } ok && !JsonNodes.IsTrue(ok))
-            {
-                row["ok"] = false;
-                row["error"] = result["error"]?.DeepClone();
-            }
-            else
-            {
-                row["ok"] = true;
-                row["restored"] = true;
+                return failed;
             }
 
-            rows.Add(row);
+            JsonNode? reply = ((VerbReply.Done)wrote).Reply;
+            bool reported = reply is JsonObject report && JsonNodes.IsTrue(report["report_only"]);
+            List<JsonObject> results = BulkWrites.Rows(reply);
+            List<string> restored = [];
+            for (int index = 0; index < writing.Count; index++)
+            {
+                JsonObject row = new()
+                {
+                    ["id"] = writing[index],
+                    ["logic"] = logic.DeepClone(),
+                    ["value"] = after[index]?.DeepClone()
+                };
+                JsonObject? result = reported ? null : RowFor(results, index, writing[index]);
+                if (reported)
+                {
+                    row["reported"] = true;
+                }
+                else if (result == null || result["ok"] is { } ok && !JsonNodes.IsTrue(ok))
+                {
+                    row["ok"] = false;
+                    row["error"] = result?["error"]?.DeepClone() ??
+                                   new JsonObject { ["code"] = "not_restored", ["message"] = "no row came back" };
+                }
+                else
+                {
+                    row["ok"] = true;
+                    row["restored"] = true;
+                    restored.Add(writing[index]);
+                }
+
+                rows.Add(row);
+            }
+
+            bool world;
+            lock (Record.Sync)
+            {
+                world = _stopWorld;
+            }
+
+            if (Record.Confirm && !world && _host.Phase != SessionPhase.Ended && restored.Count > 0)
+            {
+                await ClearHoldsAsync(restored, logic, cancellation).ConfigureAwait(false);
+            }
+        }
+
+        foreach (JsonNode? refused in refusedRows)
+        {
+            rows.Add(refused?.DeepClone());
         }
 
         return new VerbReply.Done(new JsonObject { ["rows"] = rows });
@@ -347,8 +430,8 @@ internal sealed partial class Run
             clear.Add(new JsonObject { ["reference_id"] = id, ["logic_type"] = logic.DeepClone() });
         }
 
-        await _link.HoldRestoreAsync(Record.Stream, JsonNodes.ToElement(new JsonObject { ["clear"] = clear }), cancellation)
-            .ConfigureAwait(false);
+        await _link.HoldRestoreAsync(Record.Stream, JsonNodes.ToElement(new JsonObject { ["clear"] = clear }), Record.World,
+            cancellation).ConfigureAwait(false);
         lock (Record.Sync)
         {
             _holds.RemoveAll(hold => hold.Logic == logicName && ids.Contains(hold.Id));
