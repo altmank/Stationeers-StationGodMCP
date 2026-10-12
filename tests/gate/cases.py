@@ -20,7 +20,16 @@ FIX = {
     "doors": [str(i) for i in range(4936423, 4936430)],
     "door_switch": "4945550",
     "door_chip": "4945551",
+    "vent": "213177",             # Furnace Waste Vent, outdoors, logic On (off on the save)
+    "vent_net": "325097",         # its pipe network
+    "o2_source": "4291358",       # smelter oxidiser hold, ~10 mol oxygen
 }
+
+
+def plant_oxygen(ctx, mol=2):
+    """Puts oxidiser on the outdoor vent's network (a cheat on the test copy)."""
+    return ctx.oracle.call("move_gas", **{"from": FIX["o2_source"], "to": FIX["vent_net"], "gases": ["Oxygen"],
+                                          "amount_mol": mol, "dry_run": False})
 
 CASES = []
 
@@ -368,6 +377,54 @@ def driven_by(ctx):
     ctx.show(h, FIX["doors"][:1])
     text, _ = h.run_script("sg.write('logic', id='%s', logic='Open', value=0)" % FIX["doors"][0], max_wait=30)
     return result("driven_by" in text or FIX["door_chip"] in text, reply=text[:600])
+
+
+@case("world-rules", "an oxidiser vent opening is refused")
+def oxidiser_vent_refused(ctx):
+    h = ctx.hub()
+    ctx.oracle.set_logic(FIX["vent"], "On", 0)
+    plant_oxygen(ctx)
+    time.sleep(2)
+    direct, err = h.tool("write", {"what": "logic", "id": FIX["vent"], "logic": "On", "value": 1})
+    script, _ = h.run_script("sg.write('logic', id='%s', logic='On', value=1)" % FIX["vent"], confirm=True, max_wait=30)
+    return result("lint" in direct and "lint" in script and ctx.oracle.logic(FIX["vent"], "On") == 0,
+                  direct=direct[:500], script=script[:600])
+
+
+@case("world-rules", "a relief loop whose network gains oxygen is refused at its next opening")
+def relief_loop(ctx):
+    h = ctx.hub()
+    ctx.oracle.set_logic(FIX["vent"], "On", 0)
+    code = ("for i in range(6):\n    sg.write('logic', id='%s', logic='On', value=1)\n    sg.wait(1)\n"
+            "    sg.write('logic', id='%s', logic='On', value=0)\n    sg.wait(1)" % (FIX["vent"], FIX["vent"]))
+    first, _ = h.run_script(code, confirm=True, max_wait=2)
+    rid = run_id(first)
+    time.sleep(2.5)
+    plant_oxygen(ctx)
+    final, _ = h.tool("inspect", {"what": "job", "id": rid, "max_wait": 30})
+    return result("lint" in final and ctx.oracle.logic(FIX["vent"], "On") == 0, final=final[:900])
+
+
+@case("world-rules", "a held vent closed while oxidiser enters is not reopened at session_end")
+def held_vent_not_reopened(ctx):
+    h = ctx.hub()
+    ctx.oracle.set_logic(FIX["vent"], "On", 1)
+    ctx.show(h, [FIX["vent"]])
+    h.run_script("with sg.hold('%s', 'On', 0, after=1):\n    sg.wait(120)" % FIX["vent"], confirm=True, max_wait=3)
+    closed = ctx.oracle.logic(FIX["vent"], "On")
+    plant_oxygen(ctx)
+    time.sleep(2)
+    h.end_session_like_claude()
+    time.sleep(1.5)
+    return result(closed == 0 and ctx.oracle.logic(FIX["vent"], "On") == 0, closed=closed,
+                  after=ctx.oracle.logic(FIX["vent"], "On"))
+
+
+@case("world-rules", "materials_from_player warns")
+def materials_from_player(ctx):
+    h = ctx.hub()
+    text, _ = h.tool("build", {"what": "pipe", "grade": "insulated_gas", "waypoints": [[700, 202, 660], [702, 202, 660]], "materials": "player"})
+    return result("materials_from_player" in text, reply=text[:700])
 
 
 # ---- Load ---------------------------------------------------------------------------------------------------------
