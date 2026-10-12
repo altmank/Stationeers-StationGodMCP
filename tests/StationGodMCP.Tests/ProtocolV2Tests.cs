@@ -517,7 +517,8 @@ public sealed class ProtocolV2Tests
         using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, pingAfterMilliseconds: 300));
         using V2Client client = await V2Client.Connect(rig);
 
-        JObject ping = client.Next(3000);
+        // A ceiling, not a race: Next answers at the first message; under full CPU load the 300 ms timer can lag seconds.
+        JObject ping = client.Next(15000);
 
         Assert.Equal("event", (string?)ping["type"]);
         Assert.Equal("ping", (string?)ping["event"]);
