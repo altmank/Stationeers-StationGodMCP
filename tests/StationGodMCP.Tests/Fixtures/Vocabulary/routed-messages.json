@@ -624,7 +624,7 @@
     "confirm: true needs dry_run: false; nothing was changed.",
     "refund_to ground: remove_structure puts each refund where its piece stood; the pieces a piece run removes give theirs on the ground in front of the source, as that tool does.",
     "{count} piece(s) the job built are removed by {groups[index].Tool} itself (remove_ids), in the job that builds the old pieces again: the network is never left cut between two jobs, and that run's guards see it as it ends up.",
-    "{notFound.Message} Its snapshots are gone too (the last {JobSnapshots.KeptJobs} jobs keep theirs), so the created_ids, removed, changed and placed passed are not enough to undo it."
+    "{notFound.Message} Its snapshots are not kept either, so the created_ids, removed, changed and placed passed are not enough to undo it."
   ],
   "Api/UpgradeNetwork.cs": [
     "A real run needs dry_run: false and confirm: true; nothing was changed.",
@@ -762,7 +762,8 @@
     "{job.JobId} was already undone: undo_job started {string.Join(\", \", undo)}. Nothing is left to undo; undo those jobs, the last first, to have it back."
   ],
   "Pure/Layout/UndoFactsSource.cs": [
-    "{jobId} is past the last {keptJobs} jobs kept: what it built and removed is the request's created_ids, removed, changed and placed, and only what they list is undone."
+    "{JobId}'s final status was evicted under the memory bound for kept jobs. Pass the created_ids, removed, changed and placed its job_ended event or final reply gave to undo it; nothing was changed.",
+    "{jobId}'s final status is no longer kept: what it built and removed is the request's created_ids, removed, changed and placed, and only what they list is undone."
   ],
   "Pure/Layout/UndoSource.cs": [
     "The job placed for free (free: true): removing what it built gives nothing back (refund_to none).",

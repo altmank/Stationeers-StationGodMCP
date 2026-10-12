@@ -73,6 +73,8 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     public void CursorClosed(string owner, string cursorId) => _requests.CloseCursor(owner, cursorId);
 
+    public void PinsReleased(string owner, long stream) => _requests.ReleasePins(owner, stream);
+
     public void SessionEnded(string owner) => _requests.EndSession(owner);
 
     public void Closed(object source)

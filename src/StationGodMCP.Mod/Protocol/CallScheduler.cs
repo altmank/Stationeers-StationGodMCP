@@ -12,9 +12,9 @@ using StationGodMCP.Pure.Scheduling;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// The order in which the main thread runs queued calls. Add, Withdraw, EndStreams, CloseCursor, EndSession and Close run
-/// on any thread and only post to an inbox; RunFrame, on the main thread, takes the inbox in and runs one frame of calls,
-/// each to its answer (or, for a deferred call, to its start) before the next.
+/// The order in which the main thread runs queued calls. Add, Withdraw, EndStreams, CloseCursor, ReleasePins, EndSession
+/// and Close run on any thread and only post to an inbox; RunFrame, on the main thread, takes the inbox in and runs one
+/// frame of calls, each to its answer (or, for a deferred call, to its start) before the next.
 /// </summary>
 internal interface ICallScheduler
 {
@@ -32,6 +32,9 @@ internal interface ICallScheduler
 
     /// <summary>cursor_close: the cursor stores hear it at the start of the next frame, before that frame's calls.</summary>
     void CloseCursor(string owner, string cursorId);
+
+    /// <summary>release: the pin stores hear it at the start of the next frame, before that frame's calls.</summary>
+    void ReleasePins(string owner, long stream);
 
     /// <summary>
     /// The owner's session ended abruptly: the session-end stores (held restores) hear it at the start of the next frame,
@@ -104,6 +107,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
     public void CloseCursor(string owner, string cursorId) =>
         _inbox.Enqueue(new Posted(PostKind.CloseCursor, null, NoSource, default, owner, cursorId));
+
+    public void ReleasePins(string owner, long stream) =>
+        _inbox.Enqueue(new Posted(PostKind.ReleasePins, null, NoSource, default, owner, null, stream));
 
     public void EndSession(string owner) =>
         _inbox.Enqueue(new Posted(PostKind.EndSession, null, NoSource, default, owner));
@@ -186,6 +192,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
                 case PostKind.CloseCursor:
                     _stores.CloseCursor(posted.Owner!, posted.CursorId!);
                     break;
+                case PostKind.ReleasePins:
+                    _stores.ReleasePins(posted.Owner!, posted.Stream);
+                    break;
                 case PostKind.EndSession:
                     _stores.SessionEnded(posted.Owner!);
                     break;
@@ -264,6 +273,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         Withdraw,
         EndStreams,
         CloseCursor,
+        ReleasePins,
         EndSession,
         Close
     }
@@ -271,8 +281,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     private readonly struct Posted
     {
         internal Posted(PostKind kind, QueuedCall? call, object source, StreamEnd end = default,
-            string? owner = null, string? cursorId = null)
+            string? owner = null, string? cursorId = null, long stream = 0)
         {
+            Stream = stream;
             Kind = kind;
             Call = call;
             Source = source;
@@ -289,10 +300,15 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
         internal StreamEnd End { get; }
 
-        /// <summary>cursor_close and an ended session: the connection's owner (CallContext.Owner); the cursor id.</summary>
+        /// <summary>
+        /// cursor_close, release and an ended session: the connection's owner (CallContext.Owner); the cursor id;
+        /// release's stream.
+        /// </summary>
         internal string? Owner { get; }
 
         internal string? CursorId { get; }
+
+        internal long Stream { get; }
     }
 }
 

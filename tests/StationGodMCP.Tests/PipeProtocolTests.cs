@@ -395,6 +395,17 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         _added.Release();
     }
 
+    /// <summary>release messages, in order, with their connection's owner.</summary>
+    internal ConcurrentQueue<(string Owner, long Stream)> PinReleases { get; } =
+        new ConcurrentQueue<(string Owner, long Stream)>();
+
+    public void PinsReleased(string owner, long stream)
+    {
+        _calls.ReleasePins(owner, stream);
+        PinReleases.Enqueue((owner, stream));
+        _added.Release();
+    }
+
     /// <summary>Owners whose session ended abruptly, in order.</summary>
     internal ConcurrentQueue<string> SessionEnds { get; } = new ConcurrentQueue<string>();
 

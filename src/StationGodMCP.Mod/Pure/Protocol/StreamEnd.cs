@@ -70,10 +70,10 @@ internal readonly struct StreamEnd
 }
 
 /// <summary>
-/// A store that keeps something per stream (CallContext as key: walk cursors, and later build footprints and job
-/// pins). Told on the main thread, at the start of a frame, when streams end; it drops what it keeps for every
-/// context the end covers. Job undo data, job snapshots and building jobs are not per-stream stores: a stream's end
-/// leaves them as they are.
+/// A store that keeps something per stream (CallContext as key: walk cursors, job pins, and later build footprints).
+/// Told on the main thread, at the start of a frame, when streams end; it drops what it keeps for every context the
+/// end covers. Job pins are dropped by release and an owner's end, never by one stream's end; job undo data, job
+/// snapshots and building jobs are not per-stream stores: a stream's end leaves them as they are.
 /// </summary>
 internal interface IStreamStore
 {
@@ -88,6 +88,16 @@ internal interface IStreamStore
 internal interface ICursorStore : IStreamStore
 {
     void Close(string owner, string cursorId);
+}
+
+/// <summary>
+/// A per-stream store that also hears release (protocol.md, Job pins): the owner of the connection that sent it
+/// (CallContext.Owner) and the stream whose job pins go, told on the main thread at the start of the frame after it
+/// arrived. The stream may have ended already, or never have been used.
+/// </summary>
+internal interface IPinStore : IStreamStore
+{
+    void Release(string owner, long stream);
 }
 
 /// <summary>

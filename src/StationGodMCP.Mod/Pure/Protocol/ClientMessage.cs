@@ -9,8 +9,8 @@ using Newtonsoft.Json.Linq;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end, cursor_close,
-/// session_end or bye, or a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are
+/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end, release,
+/// cursor_close, session_end or bye, or a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are
 /// fixed; an unknown one is a protocol error, so a client cannot believe the server read something it ignored.
 /// </summary>
 internal abstract class ClientMessage
@@ -73,6 +73,7 @@ internal abstract class ClientMessage
             "call" => Call.From(message, line),
             "cancel" => Cancel.From(message, line),
             "stream_end" => EndOfStream.From(message, line),
+            "release" => Release.From(message, line),
             "cursor_close" => CursorClose.From(message, line),
             "session_end" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new SessionEnd(),
             "bye" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new Bye(),
@@ -438,6 +439,35 @@ internal abstract class ClientMessage
                 : new Refused("invalid_argument",
                     $"stream_end needs stream, an integer from 1 to {StreamEnd.MaximumStream}; stream 0 never ends.",
                     null, false, null);
+        }
+    }
+
+    /// <summary>
+    /// release: the client is done with undoing the jobs a stream started (protocol.md, Job pins): their pins go at the
+    /// next frame, so memory may evict their snapshots and final statuses. No reply, like stream_end; the stream may
+    /// have ended already (the usual case), and stream 0 may be released too. One without a stream from 0 to
+    /// StreamEnd.MaximumStream is invalid_argument with a null id (the message has none), and the connection stays
+    /// open.
+    /// </summary>
+    internal sealed class Release : ClientMessage
+    {
+        private Release(long stream) => Stream = stream;
+
+        internal long Stream { get; }
+
+        internal static ClientMessage From(JObject message, string line)
+        {
+            Refused? unknown = OnlyKeys(message, line, "type", "stream");
+            if (unknown != null)
+            {
+                return unknown;
+            }
+
+            long? stream = StreamNumber(message["stream"], 0);
+            return stream != null
+                ? new Release(stream.Value)
+                : new Refused("invalid_argument",
+                    $"release needs stream, an integer from 0 to {StreamEnd.MaximumStream}.", null, false, null);
         }
     }
 

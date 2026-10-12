@@ -1,6 +1,6 @@
 {
   "name": "undo_job",
-  "summary": "Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure; the last 16): remove what it built, build back what it removed. Dry run by default; confirm to undo.",
+  "summary": "Undo a finished place or remove job (place_cables, place_pipes, place_chutes, remove_*, place_structure, remove_structure): remove what it built, build back what it removed. Dry run by default; confirm to undo.",
   "help": {
     "text": "The inverse, from a snapshot taken when the job started (position, turn, build state, label). Pieces come back through place_cables, place_pipes and place_chutes (the pieces form, one run per tool and grade; a long straight as singles), so every guard applies; everything else through place_structure. paste_blueprint has its own undo. Host only.",
     "keys": "job_id, tool, status, plan {remove, restore, diverged, notes, ready, ...}, remove_arguments, place_arguments, removal, placement, piece_runs [{tool, arguments, reply}], resolved_networks, gas_hold.",
@@ -14,8 +14,8 @@
         "text": "Refused, status refused with plan.diverged naming why: something it built is gone or is another prefab; something it removed has no snapshot, stood off the grid's axes, or is a piece no coil or kit lays; the job had not finished; or an earlier undo of it ran (plan.undone_by lists those jobs: undo them, the last first, to have it back)."
       },
       "facts": {
-        "summary": "Undo a job past the last 16.",
-        "text": "The last 16 jobs to end, across every client, are kept with their final reply. For an older one pass the four lists its job_ended event (subscribe, topic jobs) or its final reply carries (created_ids, removed, placed and the swapped pieces): undo_job plans from them, and plan.notes says so. They count only while the job's snapshots are kept (the last 32 jobs); past that the job is job_not_found. While the job is among the 16 they are ignored and its own final reply is used."
+        "summary": "Undo a job whose final reply the mod has evicted.",
+        "text": "Jobs' snapshots and final replies are kept within a memory bound, across every client, oldest evicted first. A job is pinned to the stream that started it and outlasts unpinned jobs until the stream is released (the hub's release) or its session ends. When the final reply is gone, pass the four lists its job_ended event (subscribe, topic jobs) or its final reply carries (created_ids, removed, placed and the swapped pieces): undo_job plans from them, and plan.notes says so. They count only while the job's snapshots are kept; once those are evicted the job is undo_expired (data.job_id), and an id never seen is job_not_found. While the final reply is kept they are ignored and it is used."
       },
       "runs": {
         "summary": "The dry run and the real run.",
@@ -69,7 +69,7 @@
         "type": "array",
         "maxItems": 4096,
         "items": {"type": "string"},
-        "description": "For a job past the last 16: every id it built, as its job_ended event gives them (topic facts)."
+        "description": "For a job whose final reply is gone: every id it built, as its job_ended event gives them (topic facts)."
       },
       "removed": {
         "type": "array",
@@ -85,7 +85,7 @@
           ],
           "description": "An id, or a thing with its reference_id."
         },
-        "description": "For a job past the last 16: every id it removed, as its job_ended event gives them (topic facts)."
+        "description": "For a job whose final reply is gone: every id it removed, as its job_ended event gives them (topic facts)."
       },
       "changed": {
         "type": "array",
@@ -99,7 +99,7 @@
           },
           "required": ["old_reference_id", "new_reference_id"]
         },
-        "description": "For a job past the last 16: the pieces a run swapped, old for new, as its job_ended event gives them (topic facts)."
+        "description": "For a job whose final reply is gone: the pieces a run swapped, old for new, as its job_ended event gives them (topic facts)."
       },
       "placed": {
         "type": "array",
@@ -112,7 +112,7 @@
           },
           "required": ["reference_id"]
         },
-        "description": "For a job past the last 16: the things it built with their prefab, as its job_ended event gives them (topic facts)."
+        "description": "For a job whose final reply is gone: the things it built with their prefab, as its job_ended event gives them (topic facts)."
       }
     },
     "required": ["job_id"],

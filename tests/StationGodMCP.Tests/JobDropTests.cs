@@ -22,14 +22,12 @@ namespace StationGodMCP.Tests;
 /// </summary>
 public sealed class JobDropTests
 {
-    private const int Kept = 16;
-
     [Fact]
     public void AWaitingJobLeavesTheLineAndHandsBackWhatWouldHaveStartedIt()
     {
         JobLine<string> line = Line("upgrade-2", "upgrade-3", "upgrade-4");
 
-        string start = JobDrops.Take(line, "upgrade-3", "upgrade-1", false, Kept);
+        string start = JobDrops.Take(line, "upgrade-3", "upgrade-1", false);
 
         Assert.Equal("start upgrade-3", start);
         Assert.Null(line.PositionOf("upgrade-3"));
@@ -41,7 +39,7 @@ public sealed class JobDropTests
     {
         JobLine<string> line = Line("upgrade-2");
 
-        ApiException refused = Assert.Throws<ApiException>(() => JobDrops.Take(line, "upgrade-1", "upgrade-1", false, Kept));
+        ApiException refused = Assert.Throws<ApiException>(() => JobDrops.Take(line, "upgrade-1", "upgrade-1", false));
 
         Assert.Equal("job_not_waiting", refused.Code);
         Assert.StartsWith("Job upgrade-1 has started; it cannot be dropped.", refused.Message);
@@ -52,7 +50,7 @@ public sealed class JobDropTests
     public void AnEndedJobIsRefusedAsEnded()
     {
         ApiException refused = Assert.Throws<ApiException>(() =>
-            JobDrops.Take(Line("upgrade-2"), "upgrade-0", "upgrade-1", true, Kept));
+            JobDrops.Take(Line("upgrade-2"), "upgrade-0", "upgrade-1", true));
 
         Assert.Equal("job_not_waiting", refused.Code);
         Assert.StartsWith("Job upgrade-0 has ended;", refused.Message);
@@ -62,10 +60,10 @@ public sealed class JobDropTests
     public void AnUnknownIdIsNotFoundWordedAsAPollIs()
     {
         ApiException refused = Assert.Throws<ApiException>(() =>
-            JobDrops.Take(Line("upgrade-2"), "upgrade-9", null, false, Kept));
+            JobDrops.Take(Line("upgrade-2"), "upgrade-9", null, false));
 
         Assert.Equal("job_not_found", refused.Code);
-        Assert.Equal("No job upgrade-9 is running, queued or among the last 16.", refused.Message);
+        Assert.Equal("No job upgrade-9 is running, queued or among the ended jobs kept.", refused.Message);
     }
 
     [Fact]
@@ -192,7 +190,7 @@ public sealed class JobDropTests
         dropped = taken;
         JobDropCalls drops = new JobDropCalls(id =>
         {
-            JobDrops.Take(line, id, "upgrade-1", ended.Contains(id), Kept);
+            JobDrops.Take(line, id, "upgrade-1", ended.Contains(id));
             taken.Add(id);
             return new JobDropReplyView(id);
         });

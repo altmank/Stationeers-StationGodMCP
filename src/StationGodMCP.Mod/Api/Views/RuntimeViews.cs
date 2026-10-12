@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Jobs;
 
 using StationGodMCP.Pure.Shaping;
 
@@ -30,6 +31,7 @@ internal sealed class RuntimeView : ITruncatingView
         BatchConsole = counters?.BatchConsole;
         FrameMs = counters != null ? new FrameHistogramView(frames.Histogram) : null;
         Restores = counters?.Restores;
+        JobStores = counters?.JobStores;
         Connections = connections;
         Profiling = profiling;
         JobSettles = jobSettles ?? new JobSettlesView(0, 0, 0);
@@ -102,6 +104,10 @@ internal sealed class RuntimeView : ITruncatingView
     /// <summary>Held restores applied, skipped and dropped since load (RestoreCountsView), only with include_counters.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public RestoreCountsView? Restores { get; }
+
+    /// <summary>The kept jobs against their memory budgets (JobStoresView), only with include_counters.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public JobStoresView? JobStores { get; }
 
     /// <summary>The profiler's summary while profiling is on; absent otherwise.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -389,14 +395,15 @@ internal sealed class PrefabIndexView
 
 /// <summary>
 /// The counters mod_info's runtime lists beside prefab_index with include_counters: job tick holds, the print log, the
-/// lint chip-program cache, a dedicated server's console lines and held restores.
+/// lint chip-program cache, a dedicated server's console lines, held restores and the kept jobs' stores.
 /// </summary>
 internal sealed class GameCountersView
 {
     internal GameCountersView(JobHoldsView jobHolds, PrintLogView printLog, int lintChipPrograms,
-        BatchConsoleView batchConsole, RestoreCountsView? restores = null)
+        BatchConsoleView batchConsole, RestoreCountsView? restores = null, JobStoresView? jobStores = null)
     {
         Restores = restores;
+        JobStores = jobStores;
         JobHolds = jobHolds;
         PrintLog = printLog;
         LintChipPrograms = lintChipPrograms;
@@ -412,6 +419,55 @@ internal sealed class GameCountersView
     internal BatchConsoleView BatchConsole { get; }
 
     internal RestoreCountsView? Restores { get; }
+
+    internal JobStoresView? JobStores { get; }
+}
+
+/// <summary>
+/// The kept jobs (KeptJobs, protocol.md, Job pins): for the snapshots and the final statuses, the estimated bytes held
+/// against the budget, the jobs held and how many of them are pinned; and the jobs pinned in all (running and queued
+/// ones too).
+/// </summary>
+internal sealed class JobStoresView
+{
+    private JobStoresView(JobStoreView snapshots, JobStoreView finalStatuses, int pins)
+    {
+        Snapshots = snapshots;
+        FinalStatuses = finalStatuses;
+        Pins = pins;
+    }
+
+    public JobStoreView Snapshots { get; }
+
+    public JobStoreView FinalStatuses { get; }
+
+    public int Pins { get; }
+
+    internal static JobStoresView Of(KeptJobs kept) =>
+        new JobStoresView(JobStoreView.Of(kept.Snapshots), JobStoreView.Of(kept.Finals), kept.Pins.Count);
+}
+
+/// <summary>One kept-job store: estimated bytes held, its budget, entries and pinned entries.</summary>
+internal sealed class JobStoreView
+{
+    private JobStoreView(long bytes, long budgetBytes, int entries, int pinned)
+    {
+        Bytes = bytes;
+        BudgetBytes = budgetBytes;
+        Entries = entries;
+        Pinned = pinned;
+    }
+
+    public long Bytes { get; }
+
+    public long BudgetBytes { get; }
+
+    public int Entries { get; }
+
+    public int Pinned { get; }
+
+    internal static JobStoreView Of<T>(KeptJobStore<T> store) where T : class =>
+        new JobStoreView(store.Bytes, store.BudgetBytes, store.Count, store.PinnedCount());
 }
 
 /// <summary>

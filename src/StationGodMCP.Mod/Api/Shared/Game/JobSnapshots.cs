@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Jobs;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -14,15 +15,15 @@ namespace StationGodMCP.Api.Shared.Game;
 /// <summary>
 /// How the things a place or remove job will remove stood when the job was started, and where the job took its
 /// materials and put its refund (JobSource), kept by the job's id for undo_job (the job logs name removed things by id
-/// only, and a job's status does not echo its request). The last KeptJobs jobs; in memory only.
+/// only, and a job's status does not echo its request). Kept in KeptJobs.Main.Snapshots, bounded by memory, the job's
+/// pin (its caller's stream) passed over until it is released; in memory only.
 /// </summary>
 internal static class JobSnapshots
 {
-    internal const int KeptJobs = 32;
+    /// <summary>Undone jobs whose undo is remembered (RecordUndo).</summary>
+    internal const int KeptUndos = 32;
 
-    private static readonly Dictionary<string, RecordedJob> ByJob = new Dictionary<string, RecordedJob>();
-
-    private static readonly Queue<string> Order = new Queue<string>();
+    private static KeptJobStore<RecordedJob> ByJob => KeptJobs.Main.Snapshots;
 
     private static readonly Dictionary<string, List<string>> Undos = new Dictionary<string, List<string>>();
 
@@ -59,17 +60,8 @@ internal static class JobSnapshots
             }
         }
 
-        if (!ByJob.ContainsKey(jobId))
-        {
-            Order.Enqueue(jobId);
-        }
-
-        ByJob[jobId] = new RecordedJob(tool, snapshots, SourceOf(args));
-        while (ByJob.Count > KeptJobs && Order.Count > 0)
-        {
-            ByJob.Remove(Order.Dequeue());
-        }
-
+        RecordedJob job = new RecordedJob(tool, snapshots, SourceOf(args));
+        ByJob.Put(jobId, job, KeptJobSizes.Snapshot(job));
         return reply;
     }
 
@@ -77,16 +69,18 @@ internal static class JobSnapshots
     internal static void Clear()
     {
         ByJob.Clear();
-        Order.Clear();
         Undos.Clear();
         UndoOrder.Clear();
     }
 
-    internal static RecordedJob? Of(string jobId) => ByJob.TryGetValue(jobId, out RecordedJob entry) ? entry : null;
+    internal static RecordedJob? Of(string jobId) => ByJob.Of(jobId);
+
+    /// <summary>Whether the job's snapshots were evicted under their memory bound (undo_expired).</summary>
+    internal static bool Evicted(string jobId) => ByJob.WasEvicted(jobId);
 
     /// <summary>
     /// Records the jobs a real undo_job run started to undo a job (its removal, placement and piece runs), so a later
-    /// undo_job of the same job says it was already undone. The last KeptJobs undone jobs; in memory only.
+    /// undo_job of the same job says it was already undone. The last KeptUndos undone jobs; in memory only.
     /// </summary>
     internal static void RecordUndo(string jobId, List<string> undoJobIds)
     {
@@ -101,7 +95,7 @@ internal static class JobSnapshots
         }
 
         Undos[jobId] = undoJobIds;
-        while (Undos.Count > KeptJobs && UndoOrder.Count > 0)
+        while (Undos.Count > KeptUndos && UndoOrder.Count > 0)
         {
             Undos.Remove(UndoOrder.Dequeue());
         }
@@ -181,21 +175,4 @@ internal static class JobSnapshots
         JToken? id = Wire(reply)["job_id"];
         return id != null && id.Type == JTokenType.String ? id.Value<string>() : null;
     }
-}
-
-/// <summary>What JobSnapshots keeps of one job: the tool, the snapshots of what it removes, and its source.</summary>
-internal sealed class RecordedJob
-{
-    internal RecordedJob(string tool, Dictionary<long, ThingSnapshot> removed, JobSource source)
-    {
-        Tool = tool;
-        Removed = removed;
-        Source = source;
-    }
-
-    internal string Tool { get; }
-
-    internal Dictionary<long, ThingSnapshot> Removed { get; }
-
-    internal JobSource Source { get; }
 }
