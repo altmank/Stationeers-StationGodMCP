@@ -50,7 +50,7 @@ internal static class ShowPreviewApi
             throw ApiErrors.InvalidArgument($"seconds is at most {MaximumSeconds}.");
         }
 
-        PlayerScreen screen = player.RequireScreen("show_preview");
+        PlayerScreen screen = player.RequireScreen(Vocabulary.Tool("show_preview"));
         bool xray = args.OptionalBool("xray") ?? false;
         float time = (float)seconds;
         List<PreviewBox> boxes = new List<PreviewBox>();

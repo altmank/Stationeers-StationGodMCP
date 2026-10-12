@@ -49,7 +49,8 @@ internal static class RunArgs
 
         if (!position.HasValue)
         {
-            throw ApiErrors.InvalidArgument($"{name} must be a position: [x, y, z] or {{x, y, z}} in metres.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be a position: [x, y, z] or {{x, y, z}} " +
+                "in metres.");
         }
 
         Vector3 found = position.Value;
@@ -57,8 +58,8 @@ internal static class RunArgs
             Mathf.Abs(found.z) > MaximumCoordinate)
         {
             throw ApiErrors.InvalidArgument(
-                $"{name} ({found.x}, {found.y}, {found.z}) is outside the world: no coordinate may be more than " +
-                $"{MaximumCoordinate:0} m from the origin.");
+                $"{Vocabulary.Path(name)} ({found.x}, {found.y}, {found.z}) is outside the world: no coordinate may " +
+                $"be more than {MaximumCoordinate:0} m from the origin.");
         }
 
         return found;
@@ -170,13 +171,15 @@ internal static class RunArgs
             string? text = ends[index].Type == JTokenType.String ? (string?)ends[index] : null;
             if (!GridStep.TryParse(text, out GridStep step))
             {
-                error = $"{name}.ends[{index}] must be one of +x, -x, +y, -y, +z, -z.";
+                error = $"{Vocabulary.Path(name)}.{Vocabulary.Arg("ends")}[{index}] must be one of +x, -x, +y, -y, " +
+                    "+z, -z.";
                 return null;
             }
 
             if (seen.Contains(step))
             {
-                error = $"{name}.ends[{index}] repeats {step.Name}; name each end once.";
+                error = $"{Vocabulary.Path(name)}.{Vocabulary.Arg("ends")}[{index}] repeats {step.Name}; name each " +
+                    "end once.";
                 return null;
             }
 

@@ -127,7 +127,8 @@ internal static class Reroutes
         {
             if (port.HasValue)
             {
-                throw ApiErrors.InvalidArgument($"{name}.port: {label} is a {kind.Noun} piece, not a device.");
+                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}.{Vocabulary.Arg("port")}: {label} is a " +
+                    $"{kind.Noun} piece, not a device.");
             }
 
             return new RerouteEndNetworks(label,
@@ -136,7 +137,8 @@ internal static class Reroutes
 
         if (!(thing is Device device))
         {
-            throw ApiErrors.InvalidArgument($"{name}: {label} is neither a {kind.Noun} piece nor a device.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}: {label} is neither a {kind.Noun} piece nor a " +
+                "device.");
         }
 
         List<EndNetwork> ports = new List<EndNetwork>();
@@ -158,8 +160,9 @@ internal static class Reroutes
         if (named == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{name}.port {port.Value} is not a {kind.Noun} port of {label}; its {kind.Noun} ports are " +
-                $"[{string.Join("; ", ports)}] ({Vocabulary.Tool("connections")} lists them).");
+                $"{Vocabulary.Path(name)}.{Vocabulary.Arg("port")} {port.Value} is not a {kind.Noun} port of " +
+                $"{label}; its {kind.Noun} ports are [{string.Join("; ", ports)}] ({Vocabulary.Tool("connections")} " +
+                "lists them).");
         }
 
         return new RerouteEndNetworks($"{label} port {port.Value}", new List<EndNetwork> { named });

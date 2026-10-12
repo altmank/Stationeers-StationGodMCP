@@ -179,7 +179,7 @@ internal static class DeepMinerSpotsApi
         if (!(value >= minimum && value <= maximum))
         {
             throw ApiErrors.InvalidArgument(
-                $"Argument '{name}' must be from {minimum.ToString(CultureInfo.InvariantCulture)} to " +
+                $"Argument '{Vocabulary.Arg(name)}' must be from {minimum.ToString(CultureInfo.InvariantCulture)} to " +
                 $"{maximum.ToString(CultureInfo.InvariantCulture)}.");
         }
 

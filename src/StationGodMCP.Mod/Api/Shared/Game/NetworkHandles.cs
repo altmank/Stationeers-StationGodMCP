@@ -22,7 +22,8 @@ namespace StationGodMCP.Api.Shared.Game;
 internal static class NetworkHandles
 {
     internal static ThingId Resolve(Args args, string name, UpgradeFamily family) =>
-        Resolve(args.Optional(name) ?? throw ApiErrors.InvalidArgument($"Argument '{name}' is required."), name,
+        Resolve(args.Optional(name) ?? throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Path(name)}' is " +
+            "required."), name,
             family);
 
     internal static ThingId Resolve(JToken token, string name, UpgradeFamily family)
@@ -84,8 +85,8 @@ internal static class NetworkHandles
                 catch (ApiException missing) when (missing.Code == "network_not_found")
                 {
                     throw ApiErrors.Refused(missing.Code,
-                        $"{entry}: {handle.Id} names no thing and no {family.NetworkKind} network. A piece's id " +
-                        "changes when an edit replaces it (a split, a junction); read it again " +
+                        $"{Vocabulary.Path(entry)}: {handle.Id} names no thing and no {family.NetworkKind} network. " +
+                        "A piece's id changes when an edit replaces it (a split, a junction); read it again " +
                         $"({Vocabulary.Tool("connections")}).");
                 }
             }
@@ -96,15 +97,15 @@ internal static class NetworkHandles
             else if (!(thing is Device device))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{entry}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} piece, a " +
-                    "device nor a network.");
+                    $"{Vocabulary.Path(entry)}: {Names.Of(thing)} ({thing.PrefabName}) is neither a " +
+                    $"{family.NetworkKind} piece, a device nor a network.");
             }
             else if (BridgingPorts(device, bridges) < 2)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{entry}: {Names.Of(device)} ({device.PrefabName}) has no two {family.NetworkKind} ports that " +
-                    "could share a network, so it bridges nothing; name a network, a piece of one or " +
-                    $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
+                    $"{Vocabulary.Path(entry)}: {Names.Of(device)} ({device.PrefabName}) has no two " +
+                    $"{family.NetworkKind} ports that could share a network, so it bridges nothing; name a network, " +
+                    $"a piece of one or {{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
             }
         }
 
@@ -130,7 +131,8 @@ internal static class NetworkHandles
         if (thing is SmallGrid piece && family.IsMember(piece))
         {
             IReferencable network = family.NetworkOf(piece) ?? throw ApiErrors.Refused("no_network",
-                $"{name}: {piece.PrefabName} {piece.ReferenceId} is on no {family.NetworkKind} network.");
+                $"{Vocabulary.Path(name)}: {piece.PrefabName} {piece.ReferenceId} is on no {family.NetworkKind} " +
+                "network.");
             return new ThingId(network.ReferenceId);
         }
 
@@ -143,13 +145,14 @@ internal static class NetworkHandles
             }
 
             throw ApiErrors.Refused(networks.Count == 0 ? "no_network" : "ambiguous_port",
-                $"{name}: {device.PrefabName} {device.ReferenceId} is on {networks.Count} {family.NetworkKind} " +
-                $"networks [{string.Join(", ", networks)}]; name one with {{{Vocabulary.Arg("reference_id")}, " +
-                $"{Vocabulary.Arg("port")}}} (ports: {Ports(device, family)}).");
+                $"{Vocabulary.Path(name)}: {device.PrefabName} {device.ReferenceId} is on {networks.Count} " +
+                $"{family.NetworkKind} networks [{string.Join(", ", networks)}]; name one with " +
+                $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}} (ports: {Ports(device, family)}).");
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} piece nor a device.");
+            $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} " +
+            "piece nor a device.");
     }
 
     /// <summary>
@@ -166,8 +169,8 @@ internal static class NetworkHandles
         if (device.OpenEnds == null || port >= device.OpenEnds.Count || device.OpenEnds[port]?.Transform == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{name}: port {port} is not a port of {device.PrefabName} {device.ReferenceId} (ports: " +
-                $"{Ports(device, family)}).");
+                $"{Vocabulary.Path(name)}: port {port} is not a port of {device.PrefabName} {device.ReferenceId} " +
+                $"(ports: {Ports(device, family)}).");
         }
 
         Connection end = device.OpenEnds[port];
@@ -189,8 +192,8 @@ internal static class NetworkHandles
         }
 
         throw ApiErrors.Refused("port_not_joined",
-            $"{name}: port {port} of {device.PrefabName} {device.ReferenceId} joins no {family.NetworkKind} network " +
-            $"(ports: {Ports(device, family)}).");
+            $"{Vocabulary.Path(name)}: port {port} of {device.PrefabName} {device.ReferenceId} joins no " +
+            $"{family.NetworkKind} network (ports: {Ports(device, family)}).");
     }
 
     // Each port with the family's network on it, as "index: network" (or "index: -" when nothing is joined).

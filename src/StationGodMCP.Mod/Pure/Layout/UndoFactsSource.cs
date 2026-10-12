@@ -1,6 +1,7 @@
 #nullable enable
 
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -58,8 +59,9 @@ internal abstract class UndoFactsSource
         internal JObject Facts { get; }
 
         internal static string Note(string jobId, int keptJobs) =>
-            $"{jobId} is past the last {keptJobs} jobs kept: what it built and removed is the request's created_ids, " +
-            "removed, changed and placed, and only what they list is undone.";
+            $"{jobId} is past the last {keptJobs} jobs kept: what it built and removed is the request's " +
+            Vocabulary.Text("{arg:created_ids}, {arg:removed}, {arg:changed} and {arg:placed}, and only what they " +
+                "list is undone.");
     }
 
     /// <summary>No facts: job_not_found. FactsGiven: the request gave facts, but the job's snapshots are gone too.</summary>

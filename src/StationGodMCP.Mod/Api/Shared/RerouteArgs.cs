@@ -52,8 +52,8 @@ internal static class RerouteArgs
 
         if (!(token is JObject item))
         {
-            throw ApiErrors.InvalidArgument($"{name} must be a reference id or {{{Vocabulary.Arg("reference_id")}, " +
-                $"{Vocabulary.Arg("port")}}}.");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be a reference id or " +
+                $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
         }
 
         Args fields = new Args(item);
@@ -63,7 +63,7 @@ internal static class RerouteArgs
         }
         catch (ApiException problem) when (problem.Code == ApiErrors.InvalidArgumentCode)
         {
-            throw ApiErrors.InvalidArgument($"{name}: {problem.Message}");
+            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}: {problem.Message}");
         }
     }
 }

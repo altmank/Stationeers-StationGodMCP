@@ -301,7 +301,8 @@ internal sealed class GasEnd
             return FromAtmosphere(atmosphere, name);
         }
 
-        throw ApiErrors.Refused("atmosphere_not_found", $"'{name}': no thing, pipe network or atmosphere has id {id}.");
+        throw ApiErrors.Refused("atmosphere_not_found", $"'{Vocabulary.Path(name)}': no thing, pipe network or " +
+            $"atmosphere has id {id}.");
     }
 
     private static GasEnd FromThing(Thing thing, string name)
@@ -322,8 +323,8 @@ internal sealed class GasEnd
         }
 
         throw ApiErrors.Refused("no_atmosphere",
-            $"'{name}': {Names.Of(thing)} ({thing.ReferenceId}) has no internal atmosphere and is not a pipe or " +
-            "a landing pad piece. For a device's pipe network, pass the network's id.");
+            $"'{Vocabulary.Path(name)}': {Names.Of(thing)} ({thing.ReferenceId}) has no internal atmosphere and is " +
+            "not a pipe or a landing pad piece. For a device's pipe network, pass the network's id.");
     }
 
     private static GasEnd FromNetwork(AtmosphericsNetwork network, string name)
@@ -331,8 +332,8 @@ internal sealed class GasEnd
         if (network.Atmosphere == null)
         {
             throw ApiErrors.Refused("no_atmosphere",
-                $"'{name}': {AtmosphereOwners.SourceOf(network).Replace('_', ' ')} {network.ReferenceId} has no " +
-                "atmosphere yet.");
+                $"'{Vocabulary.Path(name)}': {AtmosphereOwners.SourceOf(network).Replace('_', ' ')} " +
+                $"{network.ReferenceId} has no atmosphere yet.");
         }
 
         return Checked(new GasEnd(network.Atmosphere, null, network), name);
@@ -351,8 +352,8 @@ internal sealed class GasEnd
         }
 
         throw ApiErrors.Refused("refused",
-            $"'{name}': atmosphere {atmosphere.ReferenceId} is a {atmosphere.Mode} atmosphere. A single world cell " +
-            $"is not moved to or from; name its room ({{\"{Vocabulary.Arg("room_id")}\"}} or " +
+            $"'{Vocabulary.Path(name)}': atmosphere {atmosphere.ReferenceId} is a {atmosphere.Mode} atmosphere. A " +
+            $"single world cell is not moved to or from; name its room ({{\"{Vocabulary.Arg("room_id")}\"}} or " +
             $"{{\"{Vocabulary.Arg("room_of")}\"}}) instead.");
     }
 
@@ -361,13 +362,13 @@ internal sealed class GasEnd
         if (end.Atmosphere.IsGlobalAtmosphere || end.Atmosphere.Mode == AtmosphereHelper.AtmosphereMode.World)
         {
             throw ApiErrors.Refused("refused",
-                $"'{name}' is the planet's or a world cell's atmosphere; name a room " +
+                $"'{Vocabulary.Path(name)}' is the planet's or a world cell's atmosphere; name a room " +
                 $"({{\"{Vocabulary.Arg("room_id")}\"}} or {{\"{Vocabulary.Arg("room_of")}\"}}) instead.");
         }
 
         if (end.IsGone)
         {
-            throw ApiErrors.Refused("atmosphere_not_found", $"'{name}' is being destroyed.");
+            throw ApiErrors.Refused("atmosphere_not_found", $"'{Vocabulary.Path(name)}' is being destroyed.");
         }
 
         return end;

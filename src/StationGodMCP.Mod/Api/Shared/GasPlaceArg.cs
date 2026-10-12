@@ -75,7 +75,7 @@ internal abstract class GasPlaceArg
     }
 
     internal static GasPlaceArg Required(Args args, string name) =>
-        Optional(args, name) ?? throw ApiErrors.InvalidArgument($"Argument '{name}' is required.");
+        Optional(args, name) ?? throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(name)}' is required.");
 
     private static GasPlaceArg ParseRoom(JObject room, string name)
     {
@@ -104,7 +104,7 @@ internal abstract class GasPlaceArg
 
     private static ApiException Invalid(string name) =>
         ApiErrors.InvalidArgument(
-            $"Argument '{name}' must be a reference id as a decimal string, \"planet\", " +
+            $"Argument '{Vocabulary.Arg(name)}' must be a reference id as a decimal string, \"planet\", " +
             $"{{\"{Vocabulary.Arg("room_id")}\": \"<id>\"}} (a room as the {Vocabulary.Tool("rooms")} tool reports " +
             $"it) or {{\"{Vocabulary.Arg("room_of")}\": \"<reference id>\"}} (the room that thing is in).");
 }

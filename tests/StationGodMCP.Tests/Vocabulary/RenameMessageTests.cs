@@ -21,7 +21,7 @@ public sealed class RenameMessageTests
     private static readonly RenameMap VerbNames = VocabularyTests.Map("""
         {"args": {"reference_id": "id", "reference_ids": "id", "room_id": "id (a room)", "min": "box",
                   "max": "box", "near": "near", "radius_m": "radius", "limit": "count", "offset": "skip",
-                  "job_id": "job", "items": "reads", "include_logic_types": "include", "dry_run": "report_only"},
+                  "job_id": "job", "items": "reads", "from": "source", "include_logic_types": "include", "dry_run": "report_only"},
          "tools": {"rooms": "survey {what: \"rooms\"}", "advance_build_state": "change {what: \"structure\"}",
                    "describe_device": "inspect {what: \"device\"}"}}
         """);
@@ -72,6 +72,17 @@ public sealed class RenameMessageTests
     public void AnAreaGivenTwoWays() =>
         Says("Give min and max, or near with radius_m, not both.", "Give box and box, or near with radius, not both.",
             () => AreaArgs.Parse(new Args(JObject.Parse("""{"min": [0, 0, 0], "near": [1, 1, 1]}"""))));
+
+    [Fact]
+    public void AnArgumentPathAHelperIsHanded() =>
+        Says("items[2].at must be a position: [x, y, z] or {x, y, z} in metres.",
+            "reads[2].at must be a position: [x, y, z] or {x, y, z} in metres.",
+            () => BuildArgs.PositionOf(JToken.Parse("\"here\""), "items[2].at"));
+
+    [Fact]
+    public void AnArgumentHeldInAConstant() =>
+        Says("Argument 'from' is required.", "Argument 'source' is required.",
+            () => GasPlaceArg.Required(new Args(new JObject()), "from"));
 
     [Fact]
     public void AHandlerLiteralNamingAnotherTool() =>

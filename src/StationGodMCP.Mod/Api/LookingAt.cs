@@ -66,7 +66,7 @@ internal static class LookingAtApi
             throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("max_distance_m")} is at most {MaximumReachM}.");
         }
 
-        CameraView camera = PlayerView.Current().Require("looking_at");
+        CameraView camera = PlayerView.Current().Require(Vocabulary.Tool("looking_at"));
         Thing? thing = camera.Target;
         LookView view = new LookView(camera.Eye, camera.Basis, camera.ThirdPerson, camera.Seated, camera.Source);
         CameraHit? found = camera.HitWithin(reach);

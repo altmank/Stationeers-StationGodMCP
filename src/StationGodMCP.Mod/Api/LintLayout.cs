@@ -63,7 +63,8 @@ internal static class LintLayoutApi
         {
             string? code = array[index].Type == JTokenType.String ? array[index].Value<string>()?.Trim() : null;
             codes.Add(string.IsNullOrEmpty(code)
-                ? throw ApiErrors.InvalidArgument($"{name}[{index}] must be a lint code (counts names them).")
+                ? throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}[{index}] must be a lint code (counts " +
+                    "names them).")
                 : code!);
         }
 

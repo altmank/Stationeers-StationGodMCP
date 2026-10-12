@@ -55,11 +55,11 @@ internal sealed class WalkRequest
         bool opens = args.OptionalBool(CursorArgument) ?? false;
         if (cursorId != null)
         {
-            args.RejectAllBut(CursorIdArgument, CursorIdArgument, "limit");
+            args.RejectAllBut("{arg:cursor_id}", CursorIdArgument, "limit");
         }
         else if (opens)
         {
-            args.Reject(CursorArgument, "offset");
+            args.Reject("{arg:cursor}", "offset");
             if (CallContext.Current.IsNone)
             {
                 throw ApiErrors.InvalidArgument(
@@ -121,7 +121,8 @@ internal sealed class WalkRequest
         if (cursorId != null)
         {
             Pure.Shaping.Truncations.Note(list, returned, total,
-                Vocabulary.Text("pass {arg:cursor_id} ") + cursorId + " for the next page (limit up to " +
+                Vocabulary.Text("pass {arg:cursor_id} ") + cursorId + Vocabulary.Text(" for the next page " +
+                    "({arg:limit} up to ") +
                 page.Maximum.ToString(CultureInfo.InvariantCulture) + ")");
         }
         else if (!Continues)

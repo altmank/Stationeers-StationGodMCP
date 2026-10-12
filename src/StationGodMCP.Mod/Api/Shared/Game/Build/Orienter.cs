@@ -90,7 +90,7 @@ internal static class Orienter
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or " +
+            $"{Vocabulary.Path(name)} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or " +
             $"{{{Vocabulary.Arg("reference_id")}}}.");
     }
 

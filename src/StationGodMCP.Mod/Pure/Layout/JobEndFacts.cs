@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
@@ -231,7 +232,7 @@ internal static class JobEndFacts
             return array;
         }
 
-        problem ??= $"Argument '{name}' must be a list, as the job's final reply gives it.";
+        problem ??= $"Argument '{Vocabulary.Arg(name)}' must be a list, as the job's final reply gives it.";
         return System.Array.Empty<JToken>();
     }
 
@@ -239,7 +240,7 @@ internal static class JobEndFacts
     {
         if (!ok)
         {
-            problem ??= $"Every entry of '{name}' must be {shape}, as the job's final reply gives it.";
+            problem ??= $"Every entry of '{Vocabulary.Arg(name)}' must be {shape}, as the job's final reply gives it.";
         }
     }
 
