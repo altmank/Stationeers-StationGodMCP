@@ -173,7 +173,7 @@
         },
         "protocol": {
           "summary": "Connection and call codes from the protocol.",
-          "text": "Nothing ran, and the call is safe to send again: game_timeout, cancelled, shutting_down, too_many_in_flight, duplicate_id (use a new id). stream_ended: nothing ran; stream_end has ended that stream and it is never used again, so send the call on another stream. The connection closes: protocol_error, unauthorized (wrong TCP secret), request_too_large, unsupported_protocol. method_not_found: no such method on this game's StationGod (mod_info names its version). subscription_limit and unknown_subscription: subscriptions. internal_error: a bug; the call may have partly run, so check the world before repeating it."
+          "text": "Nothing ran, and the call is safe to send again: game_timeout, cancelled, shutting_down, too_many_in_flight, duplicate_id (use a new id). stream_ended: nothing ran; stream_end has ended that stream and it is never used again, so send the call on another stream. world_changed: nothing ran; the call named a world that another load replaced, so find its ids again. The connection closes: protocol_error, unauthorized (wrong TCP secret), request_too_large, unsupported_protocol. method_not_found: no such method on this game's StationGod (mod_info names its version). subscription_limit and unknown_subscription: subscriptions. internal_error: a bug; the call may have partly run, so check the world before repeating it."
         }
       }
     }

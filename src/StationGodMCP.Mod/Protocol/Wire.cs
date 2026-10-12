@@ -90,8 +90,10 @@ internal sealed class WorldFacts
 internal sealed class WelcomeView
 {
     internal WelcomeView(string clientId, string client, WelcomeServerView server, WelcomeCatalogueView catalogue,
-        WelcomeLimitsView limits, IReadOnlyList<string> features, WelcomeResumeView? resume = null)
+        WelcomeLimitsView limits, IReadOnlyList<string> features, WelcomeResumeView? resume = null,
+        RestoreReport? restores = null)
     {
+        Restores = restores;
         Resume = resume;
         ClientId = clientId;
         Client = client;
@@ -120,6 +122,13 @@ internal sealed class WelcomeView
     /// <summary>The answer to hello.resume; absent when hello had none.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public WelcomeResumeView? Resume { get; }
+
+    /// <summary>
+    /// What the mod's held restores did for the resume token's owners since its last welcome (protocol.md, Held
+    /// restores); absent when nothing was applied, skipped or dropped.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RestoreReport? Restores { get; }
 }
 
 /// <summary>

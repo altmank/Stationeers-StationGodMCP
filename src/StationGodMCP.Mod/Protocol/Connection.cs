@@ -92,6 +92,8 @@ internal sealed class Connection
     private volatile bool _ending;
     private volatile bool _superseded;
     private volatile string? _owner;
+    private volatile string? _resumeToken;
+    private volatile bool _saidBye;
     private volatile Session? _session;
     private long _served;
     private long _bytesSent;
@@ -120,6 +122,12 @@ internal sealed class Connection
 
     /// <summary>Whether its state belongs to a resume token rather than to the connection.</summary>
     internal bool IsResumable => _owner != null;
+
+    /// <summary>The resume token hello claimed; null without one.</summary>
+    internal string? ResumeToken => _resumeToken;
+
+    /// <summary>Whether the client sent bye: its end is then a normal one, and its held restores are not applied.</summary>
+    internal bool SaidBye => _saidBye;
 
     internal string Transport => _transport.Kind;
 
@@ -174,7 +182,14 @@ internal sealed class Connection
     internal void Served() => Interlocked.Increment(ref _served);
 
     /// <summary>hello claimed a resume token: the connection's state belongs to the token's owner key from now on.</summary>
-    internal void ResumeAs(string owner) => _owner = owner;
+    internal void ResumeAs(string owner, string token)
+    {
+        _resumeToken = token;
+        _owner = owner;
+    }
+
+    /// <summary>The client sent bye.</summary>
+    internal void Goodbye() => _saidBye = true;
 
     /// <summary>
     /// Another connection took over its resume token: it reads no more lines, is told why, and ends once that is written

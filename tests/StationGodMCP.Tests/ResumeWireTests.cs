@@ -297,6 +297,32 @@ public sealed class ResumeWireTests
         Assert.Equal(second.Owner, Assert.Single(calls.Ended).Owner);
     }
 
+    [Fact]
+    public void AWindowThatPassesEndsTheTokensSessionFirstButAWorldChangeOrAByeDoesNot()
+    {
+        RecordingQueue calls = new RecordingQueue();
+        ResumeHolds holds = new ResumeHolds(1000, calls, _clock);
+        Connection expiring = Unstarted(calls);
+        Connection reloaded = Unstarted(calls);
+        Connection leaving = Unstarted(calls);
+        holds.Claim(Token, expiring, out _);
+        holds.Release(expiring);
+        holds.Claim(Token + "-2", reloaded, out _);
+        holds.Release(reloaded);
+        holds.Claim(Token + "-3", leaving, out _);
+        holds.Goodbye(leaving);
+        holds.Release(leaving);
+
+        _clock.Advance(1000);
+        holds.Claim(Token + "-2", reloaded, out _);
+        holds.Release(reloaded);
+        holds.Tick();
+        holds.WorldChanged();
+
+        Assert.Equal(new[] { expiring.Owner }, calls.SessionEnds);
+        Assert.Equal(new[] { leaving.Owner, expiring.Owner, reloaded.Owner }, calls.Ended.ConvertAll(end => end.Owner));
+    }
+
     // ---- the rig: a walk over ids 1..10, two a page, kept in the test's own cursor store ----
 
     private PipeRig Rig(int windowMs = WindowMs)
@@ -424,6 +450,10 @@ public sealed class ResumeWireTests
         public void CursorClosed(string owner, string cursorId)
         {
         }
+
+        public void SessionEnded(string owner) => SessionEnds.Add(owner);
+
+        internal List<string> SessionEnds { get; } = new List<string>();
 
         public void Closed(object source)
         {

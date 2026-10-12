@@ -945,6 +945,11 @@
     "origin": "tool",
     "see": {"topic": "networks"}
   },
+  "too_many_restores": {
+    "description": "The change would pass the held restores' bound (data.scope: stream, 256 per stream; owner, 4,096 per connection or resume token). Nothing is held from the call; clear some restores first.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "trade_failed": {"description": "The game refused the trade; the message says why.", "origin": "tool", "see": {"topic": "trading"}},
   "transfer_not_found": {
     "description": "No gas move with that id is waiting or kept. Start the move again if needed.",
@@ -1005,6 +1010,11 @@
     "description": "The player's game stopped sending its view: the last one is too old or taken too far from where they stand. Use frame world or target, or have them look again.",
     "origin": "tool",
     "see": {"topic": "player", "subtopic": "view"}
+  },
+  "world_changed": {
+    "description": "The call named a world id that is not the current world, so another world has loaded in between (data.world is the current one, id empty while none runs). Nothing ran. Find the things again in the new world before acting.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
   },
   "would_burst": {
     "description": "The change would take a pipe, tank or network past its pressure limit; the message gives the numbers. Change less; move_gas also takes force to do it anyway.",

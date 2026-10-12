@@ -319,7 +319,10 @@ open one. With no frames the percentiles are `null`. `over_8ms` counts frames ov
 does not count. `buckets` is the 20 bucket counts since load, shortest bucket first and the open one last. Percentiles
 since load cannot be split into a time window, so to measure one (a test run, say) read `mod_info` with
 `include_counters` before and after, subtract the two `buckets` arrays bucket by bucket, and take the window's
-percentiles from the differences against the edges above.
+percentiles from the differences against the edges above. `runtime.restores` counts held restores since load (the
+hub's `sg.hold`; protocol method `hold_restore`): `applied`, written when a session ended abruptly; `skipped`, not
+written because the device held another value than its stream last wrote, was gone or refused the write; and
+`dropped`, not written because their world was left.
 
 ## Profiling a running server
 

@@ -9,8 +9,8 @@ using Newtonsoft.Json.Linq;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end, cursor_close or
-/// bye, or a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are
+/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end, cursor_close,
+/// session_end or bye, or a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are
 /// fixed; an unknown one is a protocol error, so a client cannot believe the server read something it ignored.
 /// </summary>
 internal abstract class ClientMessage
@@ -22,6 +22,7 @@ internal abstract class ClientMessage
     internal const int MinimumDeadlineMs = 100;
     internal const int MaximumDeadlineMs = 600000;
     internal const int DefaultDeadlineMs = 30000;
+    internal const int MaximumWorldIdLength = 64;
 
     private static readonly JsonLoadSettings Strict = new JsonLoadSettings
     {
@@ -73,6 +74,7 @@ internal abstract class ClientMessage
             "cancel" => Cancel.From(message, line),
             "stream_end" => EndOfStream.From(message, line),
             "cursor_close" => CursorClose.From(message, line),
+            "session_end" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new SessionEnd(),
             "bye" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new Bye(),
             null => Refused.Protocol("A message needs a type.", line),
             _ => Refused.Protocol($"Unknown message type '{type}'.", line)
@@ -264,12 +266,13 @@ internal abstract class ClientMessage
         private static string? Text(JToken? token) => token?.Type == JTokenType.String ? (string)token! : null;
     }
 
-    /// <summary>call: one method call, by id, with its params, shape, deadline, stream and rename map.</summary>
+    /// <summary>call: one method call, by id, with its params, shape, deadline, stream, rename map and world.</summary>
     internal sealed class Call : ClientMessage
     {
         private Call(string id, string method, JObject? parameters, JToken? shape, int deadlineMs, long stream,
-            RenameMap? rename)
+            RenameMap? rename, string? world)
         {
+            World = world;
             Id = id;
             Method = method;
             Params = parameters;
@@ -300,10 +303,16 @@ internal abstract class ClientMessage
         /// </summary>
         internal RenameMap? Rename { get; }
 
+        /// <summary>
+        /// The world id the caller means (welcome.server.world.id, or a world_changed event's): the call runs only while
+        /// that world is the current one, checked as it starts. Null when it gave none.
+        /// </summary>
+        internal string? World { get; }
+
         internal static ClientMessage From(JObject message, string line)
         {
             Refused? unknown = OnlyKeys(message, line, "type", "id", "method", "params", "shape", "deadline_ms",
-                "stream", "rename");
+                "stream", "rename", "world");
             if (unknown != null)
             {
                 return unknown;
@@ -362,9 +371,23 @@ internal abstract class ClientMessage
                 return new Refused("invalid_argument", renameProblem, id, false, null);
             }
 
+            JToken? givenWorld = message["world"];
+            string? world = null;
+            if (givenWorld != null && givenWorld.Type != JTokenType.Null)
+            {
+                world = givenWorld.Type == JTokenType.String ? (string)givenWorld! : null;
+                if (world == null || world.Length == 0 || world.Length > MaximumWorldIdLength)
+                {
+                    return new Refused("invalid_argument",
+                        "world must be the world id from welcome or world_changed, a string of 1 to " +
+                        $"{MaximumWorldIdLength} characters.",
+                        id, false, null);
+                }
+            }
+
             JToken? shape = message["shape"];
             return new Call(id, method, parameters, shape?.Type == JTokenType.Null ? null : shape, deadlineMs, stream,
-                rename);
+                rename, world);
         }
     }
 
@@ -440,6 +463,15 @@ internal abstract class ClientMessage
                 ? new CursorClose((string)message["cursor_id"]!)
                 : Refused.Protocol("cursor_close needs cursor_id, a string.", line);
         }
+    }
+
+    /// <summary>
+    /// session_end: the client's session is ending abruptly (a hub whose own client closed its input and will kill it):
+    /// the owner's unstarted calls are cancelled and its held restores apply at the next frame (protocol.md, Held
+    /// restores). No reply; the connection stays open.
+    /// </summary>
+    internal sealed class SessionEnd : ClientMessage
+    {
     }
 
     /// <summary>bye: the client is closing.</summary>

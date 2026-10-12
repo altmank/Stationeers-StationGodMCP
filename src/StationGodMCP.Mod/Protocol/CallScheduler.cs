@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,9 +12,9 @@ using StationGodMCP.Pure.Scheduling;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// The order in which the main thread runs queued calls. Add, Withdraw, EndStreams, CloseCursor and Close run on any
-/// thread and only post to an inbox; RunFrame, on the main thread, takes the inbox in and runs one frame of calls, each
-/// to its answer (or, for a deferred call, to its start) before the next.
+/// The order in which the main thread runs queued calls. Add, Withdraw, EndStreams, CloseCursor, EndSession and Close run
+/// on any thread and only post to an inbox; RunFrame, on the main thread, takes the inbox in and runs one frame of calls,
+/// each to its answer (or, for a deferred call, to its start) before the next.
 /// </summary>
 internal interface ICallScheduler
 {
@@ -31,6 +32,12 @@ internal interface ICallScheduler
 
     /// <summary>cursor_close: the cursor stores hear it at the start of the next frame, before that frame's calls.</summary>
     void CloseCursor(string owner, string cursorId);
+
+    /// <summary>
+    /// The owner's session ended abruptly: the session-end stores (held restores) hear it at the start of the next frame,
+    /// in order with the streams that end.
+    /// </summary>
+    void EndSession(string owner);
 
     /// <summary>The connection ended: its waiting calls are dropped unrun and it takes no more.</summary>
     void Close(object source);
@@ -67,10 +74,17 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
     private readonly StreamStores _stores;
     private readonly IMonotonicClock _clock;
+    private readonly Func<WorldFacts> _world;
 
-    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null, IMonotonicClock? clock = null)
+    /// <summary>
+    /// world: the running world as welcome names it (WorldFacts.None while none runs), read on the main thread as a call
+    /// that names a world starts; ServerFacts.Current's when not given.
+    /// </summary>
+    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null, IMonotonicClock? clock = null,
+        Func<WorldFacts>? world = null)
     {
         Settings = settings;
+        _world = world ?? CurrentWorld;
         _stores = stores ?? StreamStores.Main;
         _clock = clock ?? StopwatchClock.Instance;
         _scheduler = new FrameScheduler<QueuedCall>(settings, this, _clock, new CostPredictor());
@@ -91,6 +105,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     public void CloseCursor(string owner, string cursorId) =>
         _inbox.Enqueue(new Posted(PostKind.CloseCursor, null, NoSource, default, owner, cursorId));
 
+    public void EndSession(string owner) =>
+        _inbox.Enqueue(new Posted(PostKind.EndSession, null, NoSource, default, owner));
+
     public FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner)
     {
         _runner = runner;
@@ -104,6 +121,16 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         {
             // Answered while it waited (its deadline, or the connection going): not run.
             return;
+        }
+
+        if (call.World != null)
+        {
+            WorldFacts world = _world();
+            if (!string.Equals(world.Id, call.World, StringComparison.Ordinal))
+            {
+                call.Finish(WorldChangedReply(call, world), null);
+                return;
+            }
         }
 
         double began = _clock.NowMs;
@@ -122,6 +149,17 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     }
 
     void ICallRunner<QueuedCall>.Expire(QueuedCall call) => call.Drop(call.TimeoutReply());
+
+    private static WorldFacts CurrentWorld() => ServerFacts.Current.World;
+
+    // A call that names a world other than the current one (a load since it was sent): refused unrun, with the world now.
+    private static string WorldChangedReply(QueuedCall call, WorldFacts world) =>
+        call.RefusalReply(ProtocolCall.WorldChangedCode,
+            world.Id.Length == 0
+                ? $"The call is for world {call.World}, but no world is running now. Nothing ran."
+                : $"The call is for world {call.World}, but world {world.Id} has loaded since, and its reference ids " +
+                  "may name other things. Nothing ran.",
+            new Dictionary<string, WorldFacts> { ["world"] = world });
 
     /// <summary>Stopwatch.GetTimestamp as StopwatchClock milliseconds.</summary>
     internal static double ClockMs(long timestamp) => timestamp * 1000.0 / Stopwatch.Frequency;
@@ -147,6 +185,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
                     break;
                 case PostKind.CloseCursor:
                     _stores.CloseCursor(posted.Owner!, posted.CursorId!);
+                    break;
+                case PostKind.EndSession:
+                    _stores.SessionEnded(posted.Owner!);
                     break;
                 case PostKind.Close:
                     if (_connections.TryGetValue(posted.Source, out FrameScheduler<QueuedCall>.Connection? closing))
@@ -223,6 +264,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         Withdraw,
         EndStreams,
         CloseCursor,
+        EndSession,
         Close
     }
 
@@ -247,7 +289,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
         internal StreamEnd End { get; }
 
-        /// <summary>cursor_close: the connection's owner (CallContext.Owner) and the cursor id.</summary>
+        /// <summary>cursor_close and an ended session: the connection's owner (CallContext.Owner); the cursor id.</summary>
         internal string? Owner { get; }
 
         internal string? CursorId { get; }

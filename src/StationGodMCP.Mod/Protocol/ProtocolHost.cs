@@ -65,8 +65,10 @@ internal sealed class ProtocolHost
     private readonly ConcurrentDictionary<Connection, byte> _open = new ConcurrentDictionary<Connection, byte>();
 
     internal ProtocolHost(ProtocolSettings settings, ICallQueue calls, DeadlineWatch deadlines, CatalogueFile? catalogue,
-        string? legacySecret = null, SubscriptionHub? subscriptions = null, ResumeHolds? holds = null)
+        string? legacySecret = null, SubscriptionHub? subscriptions = null, ResumeHolds? holds = null,
+        HeldRestores? restores = null)
     {
+        Restores = restores;
         Subscriptions = subscriptions;
         Holds = holds ?? new ResumeHolds(0, calls);
         Settings = settings;
@@ -81,6 +83,12 @@ internal sealed class ProtocolHost
     /// and TCP's hosts so a token resumes over either. Off unless given.
     /// </summary>
     internal ResumeHolds Holds { get; }
+
+    /// <summary>
+    /// Held restores (protocol.md, Held restores), for welcome.restores on a resume token: what the mod applied,
+    /// skipped and dropped for the token since its last welcome. Null when the host keeps none.
+    /// </summary>
+    internal HeldRestores? Restores { get; }
 
     /// <summary>Subscriptions and their events (welcome lists the subscriptions feature); null when off.</summary>
     internal SubscriptionHub? Subscriptions { get; }
@@ -103,10 +111,19 @@ internal sealed class ProtocolHost
 
     internal void Opened(Connection connection) => _open.TryAdd(connection, 0);
 
+    /// <summary>
+    /// The connection ended. A connection without a resume token that did not say bye ended abruptly: its session ends
+    /// (its held restores apply) before its streams do. A token's connection leaves that to ResumeHolds.
+    /// </summary>
     internal void Ended(Connection connection)
     {
         _open.TryRemove(connection, out _);
         Holds.Release(connection);
+        if (!connection.IsResumable && !connection.SaidBye)
+        {
+            _calls.SessionEnded(connection.Owner);
+        }
+
         _calls.Closed(connection);
         ConnectionEnded?.Invoke(connection);
     }
@@ -123,6 +140,9 @@ internal sealed class ProtocolHost
 
     /// <summary>Streams of an owner ended (stream_end, a slow client): the main thread ends what they had going.</summary>
     internal void StreamEnded(Connection connection, StreamEnd end) => _calls.StreamEnded(connection, end);
+
+    /// <summary>The owner's session ended abruptly (session_end, a slow client): its held restores apply at the next frame.</summary>
+    internal void SessionEnded(string owner) => _calls.SessionEnded(owner);
 
     /// <summary>cursor_close from a connection of that owner: the main thread frees the cursor if the owner holds it.</summary>
     internal void CursorClosed(string owner, string cursorId) => _calls.CursorClosed(owner, cursorId);

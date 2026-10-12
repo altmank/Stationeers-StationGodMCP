@@ -39,7 +39,7 @@ public sealed class StationGodMod : ModBehaviour
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
     private StationGodRequestDispatcher _dispatcher =
-        new StationGodRequestDispatcher(Deadlines, new LaneScheduler(SchedulerSettings.Default));
+        new StationGodRequestDispatcher(Deadlines, new LaneScheduler(SchedulerSettings.Default, world: CallWorld));
     private Harmony? _harmony;
     private PipeListener? _pipeListener;
     private bool _pipeUnavailable;
@@ -70,6 +70,12 @@ public sealed class StationGodMod : ModBehaviour
     /// WorldStores ends every held token's state on a world change.
     /// </summary>
     internal static ResumeHolds? Holds { get; private set; }
+
+    /// <summary>
+    /// The streams' held restores (hold_restore) once the mod has loaded: applied at an owner's abrupt end, cleared at a
+    /// normal one, dropped on a world change (StreamStores.Main); write_logic tells it each stream's last written value.
+    /// </summary>
+    internal static HeldRestores? Restores { get; private set; }
 
     /// <summary>Every open connection on the pipe and over TCP.</summary>
     internal static System.Collections.Generic.IEnumerable<StationGodMCP.Protocol.Connection> AllConnections()
@@ -113,7 +119,8 @@ public sealed class StationGodMod : ModBehaviour
             ProfilingControl.Load(typeof(StationGodMod).Assembly, PerformanceSettings.Profiling);
             Api.Shared.Game.ThingIndex.Verify = PerformanceSettings.VerifyPrefabIndex;
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
-            _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
+            _dispatcher = new StationGodRequestDispatcher(Deadlines,
+                new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld));
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
                 Subscriptions.ReadLogicManyReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
             _dispatcher.Subscriptions = _subscriptions;
@@ -121,6 +128,9 @@ public sealed class StationGodMod : ModBehaviour
             SubscriptionHub jobsHub = _subscriptions;
             HeldTickJobs.Ended = view => jobsHub.JobEnded(view, Time.frameCount);
             Holds = new ResumeHolds(_server.ResumeWindowSeconds * 1000, _dispatcher);
+            Restores = new HeldRestores(Api.Shared.Game.RestoreDevices.Instance, static () => WorldStores.WorldId);
+            StreamStores.Main.Register(Restores);
+            _dispatcher.Restores = Restores;
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
@@ -291,7 +301,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxPipeConnections, strictArguments: _server.StrictArguments), _dispatcher,
-                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions, holds: Holds);
+                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions, holds: Holds, restores: Restores);
             PipeListener listener = new PipeListener(Pipe.Value, host);
             listener.Start();
             _pipeListener = listener;
@@ -302,6 +312,10 @@ public sealed class StationGodMod : ModBehaviour
             PipeUnavailable(exception.Message);
         }
     }
+
+    // The world a call that names one must match as it starts: the one welcome names, published this frame before the
+    // calls run; none while no world runs (the menu, a load in progress), so an old id never matches mid-load.
+    private static WorldFacts CallWorld() => WorldStores.Running ? ServerFacts.Current.World : WorldFacts.None;
 
     private void PipeUnavailable(string reason)
     {
@@ -358,7 +372,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxTcpConnections, strictArguments: _server.StrictArguments),
-                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions, Holds);
+                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions, Holds, Restores);
             server = new TcpAcceptor(remote.BindAddress, remote.Port, _server.MaxTcpConnections, host);
             server.Start();
             _tcpListener = server;

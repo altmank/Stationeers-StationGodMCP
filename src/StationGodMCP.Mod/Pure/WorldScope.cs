@@ -25,6 +25,9 @@ internal sealed class WorldScope
     /// <summary>The running world's id (16 hex digits), new each time a world starts running; empty before the first.</summary>
     internal string WorldId { get; private set; } = string.Empty;
 
+    /// <summary>Whether a world was running at the last Observe.</summary>
+    internal bool Running => _inWorld;
+
     /// <summary>Whether the last Observe was the first frame of a running world.</summary>
     internal bool Entered { get; private set; }
 

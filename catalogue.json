@@ -180,7 +180,7 @@
           },
           "protocol": {
             "summary": "Connection and call codes from the protocol.",
-            "text": "Nothing ran, and the call is safe to send again: game_timeout, cancelled, shutting_down, too_many_in_flight, duplicate_id (use a new id). stream_ended: nothing ran; stream_end has ended that stream and it is never used again, so send the call on another stream. The connection closes: protocol_error, unauthorized (wrong TCP secret), request_too_large, unsupported_protocol. method_not_found: no such method on this game's StationGod (mod_info names its version). subscription_limit and unknown_subscription: subscriptions. internal_error: a bug; the call may have partly run, so check the world before repeating it."
+            "text": "Nothing ran, and the call is safe to send again: game_timeout, cancelled, shutting_down, too_many_in_flight, duplicate_id (use a new id). stream_ended: nothing ran; stream_end has ended that stream and it is never used again, so send the call on another stream. world_changed: nothing ran; the call named a world that another load replaced, so find its ids again. The connection closes: protocol_error, unauthorized (wrong TCP secret), request_too_large, unsupported_protocol. method_not_found: no such method on this game's StationGod (mod_info names its version). subscription_limit and unknown_subscription: subscriptions. internal_error: a bug; the call may have partly run, so check the world before repeating it."
           }
         }
       }
@@ -1371,6 +1371,11 @@
       "origin": "tool",
       "see": {"topic": "networks"}
     },
+    "too_many_restores": {
+      "description": "The change would pass the held restores' bound (data.scope: stream, 256 per stream; owner, 4,096 per connection or resume token). Nothing is held from the call; clear some restores first.",
+      "origin": "protocol",
+      "see": {"topic": "errors", "subtopic": "protocol"}
+    },
     "trade_failed": {"description": "The game refused the trade; the message says why.", "origin": "tool", "see": {"topic": "trading"}},
     "transfer_not_found": {
       "description": "No gas move with that id is waiting or kept. Start the move again if needed.",
@@ -1431,6 +1436,11 @@
       "description": "The player's game stopped sending its view: the last one is too old or taken too far from where they stand. Use frame world or target, or have them look again.",
       "origin": "tool",
       "see": {"topic": "player", "subtopic": "view"}
+    },
+    "world_changed": {
+      "description": "The call named a world id that is not the current world, so another world has loaded in between (data.world is the current one, id empty while none runs). Nothing ran. Find the things again in the new world before acting.",
+      "origin": "protocol",
+      "see": {"topic": "errors", "subtopic": "protocol"}
     },
     "would_burst": {
       "description": "The change would take a pipe, tank or network past its pressure limit; the message gives the numbers. Change less; move_gas also takes force to do it anyway.",
@@ -1496,6 +1506,68 @@
         "additionalProperties": false
       },
       "reply": {"type": "object", "properties": {"job_id": {"type": "string"}, "dropped": {"type": "boolean"}}},
+      "x-shaping": "none",
+      "x-mcp": "hidden"
+    },
+    {
+      "name": "hold_restore",
+      "description": "Change the logic writes the mod makes for this stream if its session ends abruptly: on session_end, when a resume token's window passes without a resume, or when a connection without a token closes without bye. A stream holds one restore per device and logic type: set adds one, or takes the place of the one for that pair; clear removes one; clear_all removes every one. They apply in the order clear_all, clear, set, and the reply lists the stream's restores after the change. A restore is written only in the world of its registration and only while the device still holds the value this stream last wrote to that logic type (or, if it has not written it, the value at registration); otherwise it is skipped. stream_end and bye clear them unwritten; a world change drops them. The device must take and read the logic type. At most 256 per stream and 4,096 per connection (too_many_restores); a refused call changes nothing. Results come in the next welcome on the same resume token.",
+      "class": "write",
+      "cost": "instant",
+      "params": {
+        "type": "object",
+        "properties": {
+          "set": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "type": "object",
+              "properties": {
+                "reference_id": {"type": "string", "description": "The device's reference id (list_devices)."},
+                "logic_type": {
+                  "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+                  "description": "A logic type name (On) or number."
+                },
+                "value": {"type": "number", "description": "The value to write back: a finite number."}
+              },
+              "required": ["reference_id", "logic_type", "value"],
+              "additionalProperties": false
+            },
+            "description": "Restores to add or replace, one per device and logic type."
+          },
+          "clear": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "type": "object",
+              "properties": {
+                "reference_id": {"type": "string", "description": "The device's reference id."},
+                "logic_type": {
+                  "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
+                  "description": "A logic type name (On) or number."
+                }
+              },
+              "required": ["reference_id", "logic_type"],
+              "additionalProperties": false
+            },
+            "description": "Restores to remove; one the stream does not hold is ignored."
+          },
+          "clear_all": {"type": "boolean", "description": "Remove every restore of the stream first; default false."}
+        },
+        "additionalProperties": false
+      },
+      "reply": {
+        "type": "object",
+        "properties": {
+          "restores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {"reference_id": {"type": "string"}, "logic_type": {"type": "object"}, "value": {"type": "number"}}
+            }
+          }
+        }
+      },
       "x-shaping": "none",
       "x-mcp": "hidden"
     },
@@ -4254,7 +4326,7 @@
       "description": "The running mod's identity and health: version, pipe name, per-method call counts and times, the game members it reaches, and its cost to the game. Read only.\nMore: tool_info {tool: \"mod_info\"}",
       "help": {
         "text": "pipe_name is the local pipe this game listens on (the server's --pipe), telling which game a server reached when two run on one machine. Lists methods 12 and reflection 10 by default; list_limits keeps more. include_counters true adds the counters of the mod's game-side work (the counters topic).",
-        "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], prefab_index, job_holds, print_log, lint_chip_programs, batch_console, frame_ms {frames, p50, p90, p99, over_8ms, buckets}, profiling, ...}.",
+        "keys": "mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, job_settles {run, skipped, unchecked}, connections [{client_id, label, served, subscriptions, methods [{method, calls, errors, total_ms}], method_count}], prefab_index, job_holds, print_log, lint_chip_programs, batch_console, frame_ms {frames, p50, p90, p99, over_8ms, buckets}, restores {applied, skipped, dropped}, profiling, ...}.",
         "topics": {
           "methods": {
             "summary": "Per-method counts and times.",
@@ -4274,7 +4346,7 @@
           },
           "counters": {
             "summary": "Counters of the game-side work the mod does.",
-            "text": "Only with include_counters true. Counted from mod load, profiling on or off. prefab_index.arrived and left: things the game reported spawning and despawning. job_holds {under_100ms, under_1s, under_10s, under_60s, over_60s}: how long jobs held the game tick, one count per hold, each bucket from its lower edge (over_60s: 60 s or more). print_log {records, capacity}: print provenance records held, and the most kept before the oldest drop. lint_chip_programs: chip programs the lint cache holds parsed. batch_console {lines, lines_per_minute}: lines a dedicated server printed, and per minute over the last full minute; 0 on a game with a window. frame_ms {frames, p50, p90, p99, over_8ms, buckets}: StationGod's main-thread request ms per frame, over the frames that served a call or stopped at the budget (frames.busy_frames), in 20 fixed buckets with upper edges 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 25, 33, 50, 100 and 250 ms, each edge in the bucket it ends, the last bucket open above 250 ms. pN is the upper edge of the bucket holding that frame, or the longest frame when it is the open one, and null with no frames; over_8ms counts frames over 8.0 ms. buckets: each bucket's frame count, shortest first; subtract two reads for a window's counts."
+            "text": "Only with include_counters true. Counted from mod load, profiling on or off. prefab_index.arrived and left: things the game reported spawning and despawning. job_holds {under_100ms, under_1s, under_10s, under_60s, over_60s}: how long jobs held the game tick, one count per hold, each bucket from its lower edge (over_60s: 60 s or more). print_log {records, capacity}: print provenance records held, and the most kept before the oldest drop. lint_chip_programs: chip programs the lint cache holds parsed. batch_console {lines, lines_per_minute}: lines a dedicated server printed, and per minute over the last full minute; 0 on a game with a window. frame_ms {frames, p50, p90, p99, over_8ms, buckets}: StationGod's main-thread request ms per frame, over the frames that served a call or stopped at the budget (frames.busy_frames), in 20 fixed buckets with upper edges 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 25, 33, 50, 100 and 250 ms, each edge in the bucket it ends, the last bucket open above 250 ms. pN is the upper edge of the bucket holding that frame, or the longest frame when it is the open one, and null with no frames; over_8ms counts frames over 8.0 ms. buckets: each bucket's frame count, shortest first; subtract two reads for a window's counts. restores {applied, skipped, dropped}: held restores written at an abrupt session end, skipped (the device holds another value, is gone or refuses), and dropped (their world is gone)."
           }
         },
         "shared": ["truncation"]
@@ -4286,7 +4358,7 @@
         "properties": {
           "include_counters": {
             "type": "boolean",
-            "description": "Default false; true adds runtime counters of the mod's game-side work: job_holds, print_log, lint_chip_programs, batch_console, frame_ms, and prefab_index arrived and left."
+            "description": "Default false; true adds runtime counters of the mod's game-side work: job_holds, print_log, lint_chip_programs, batch_console, frame_ms, restores, and prefab_index arrived and left."
           }
         },
         "additionalProperties": false

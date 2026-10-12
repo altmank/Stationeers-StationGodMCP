@@ -185,6 +185,19 @@ public sealed class GameCountersTests
             WireCheck.New(view));
     }
 
+    [Fact]
+    public void HeldRestoreCountsFollowFrameMsWithIncludeCounters()
+    {
+        GameCountersView counters = new GameCountersView(new JobHoldsView(new long[5]), new PrintLogView(0, 0), 0,
+            new BatchConsoleView(0, 0), new RestoreCountsView(4, 1, 2));
+        RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>(),
+            prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0), counters: counters);
+
+        Assert.EndsWith("\"buckets\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}," +
+                        "\"restores\":{\"applied\":4,\"skipped\":1,\"dropped\":2}}", WireCheck.New(view));
+    }
+
     private static void NoteAt(EventRate rate, long timestamp, int times)
     {
         for (int time = 0; time < times; time++)

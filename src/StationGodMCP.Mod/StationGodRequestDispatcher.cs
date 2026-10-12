@@ -28,6 +28,8 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     private readonly ICallScheduler _requests;
     private readonly DeadlineWatch _deadlines;
     private readonly StreamCostCalls _costs;
+    private HeldRestores? _restores;
+    private HoldRestoreCalls? _restoreCalls;
 
     internal StationGodRequestDispatcher(DeadlineWatch deadlines, ICallScheduler scheduler)
     {
@@ -44,6 +46,17 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     /// </summary>
     internal SubscriptionHub? Subscriptions { get; set; }
 
+    /// <summary>The held restores hold_restore changes; null before the mod has loaded.</summary>
+    internal HeldRestores? Restores
+    {
+        get => _restores;
+        set
+        {
+            _restores = value;
+            _restoreCalls = value == null ? null : new HoldRestoreCalls(value);
+        }
+    }
+
     public void Submit(QueuedCall call)
     {
         _deadlines.Watch(call);
@@ -59,6 +72,8 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     }
 
     public void CursorClosed(string owner, string cursorId) => _requests.CloseCursor(owner, cursorId);
+
+    public void SessionEnded(string owner) => _requests.EndSession(owner);
 
     public void Closed(object source)
     {
@@ -98,8 +113,8 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     /// <summary>
     /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
-    /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic, drop_job and stream_costs count as
-    /// answered). The lane scheduler times the same span for the call's stream (stream_costs).
+    /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic, drop_job, stream_costs and
+    /// hold_restore count as answered). The lane scheduler times the same span for the call's stream (stream_costs).
     /// </summary>
     public CallOutcome RunCall(ProtocolCall call, double queueWaitMs)
     {
@@ -121,6 +136,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             if (JobDropCalls.Handles(call.Request.Method))
             {
                 return new CallOutcome(Drops.Run(call, queueWaitMs, UnityEngine.Time.frameCount), call.Request.Method);
+            }
+
+            if (_restoreCalls != null && HoldRestoreCalls.Handles(call.Request.Method))
+            {
+                return new CallOutcome(_restoreCalls.Run(call, queueWaitMs, UnityEngine.Time.frameCount),
+                    call.Request.Method);
             }
 
             if (StreamCostCalls.Handles(call.Request.Method))
