@@ -10,8 +10,9 @@ namespace StationGodMCP.Pure;
 /// 4), the last one open. The edges are half a millisecond to a millisecond apart up to the 4 ms default budget and
 /// its 2 ms job-held cap, coarser above, with 8, 16 and 33 ms (half a 60 Hz frame, a 60 Hz and a 30 Hz frame) among
 /// them, so over_8ms is exact. pN is the upper edge of the bucket that holds the N-th percentile frame (nearest
-/// rank); in the open bucket it is the longest frame seen. Plain increments into a fixed array, nothing allocated per
-/// frame; the owner (DispatchStats) takes the lock.
+/// rank); in the open bucket it is the longest frame seen. A reading carries a copy of the counts, so a caller can
+/// subtract two readings for a window's counts. Plain increments into a fixed array, nothing allocated per frame; the
+/// owner (DispatchStats) takes the lock.
 /// </summary>
 internal sealed class FrameHistogram
 {
@@ -59,7 +60,8 @@ internal sealed class FrameHistogram
             over += _counts[bucket];
         }
 
-        return new FrameHistogramReading(_frames, Percentile(50), Percentile(90), Percentile(99), over);
+        return new FrameHistogramReading(_frames, Percentile(50), Percentile(90), Percentile(99), over,
+            (long[])_counts.Clone());
     }
 
     /// <summary>
@@ -88,11 +90,15 @@ internal sealed class FrameHistogram
     }
 }
 
-/// <summary>FrameHistogram as read at one moment: busy frames, p50, p90 and p99 in ms (null with none), over_8ms.</summary>
+/// <summary>
+/// FrameHistogram as read at one moment: busy frames, p50, p90 and p99 in ms (null with none), over_8ms, and every
+/// bucket's count.
+/// </summary>
 internal sealed class FrameHistogramReading
 {
-    internal FrameHistogramReading(long frames, double? p50, double? p90, double? p99, long over8Ms)
+    internal FrameHistogramReading(long frames, double? p50, double? p90, double? p99, long over8Ms, long[] buckets)
     {
+        Buckets = buckets;
         Frames = frames;
         P50 = p50;
         P90 = p90;
@@ -109,4 +115,7 @@ internal sealed class FrameHistogramReading
     internal double? P99 { get; }
 
     internal long Over8Ms { get; }
+
+    /// <summary>Each bucket's frames, shortest first, the open one last: FrameHistogram.BucketCount of them.</summary>
+    internal long[] Buckets { get; }
 }

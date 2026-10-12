@@ -6,6 +6,7 @@
   busy frame as fixed buckets, reported as `p50`, `p90`, `p99` and `over_8ms` (the default reply is unchanged).
   Replies gain `budget_hit: true` when the frame's request budget had been reached as the call's handler finished;
   it is left out otherwise, so ordinary replies are the same size.
+  `frame_ms` also carries `buckets`, the 20 bucket counts, so two reads can be differenced into a window.
 - **`mod_info` `include_counters`, and safety fixes that change no replies.** `include_counters: true` (default
   false, so the default reply is unchanged) adds runtime counters next to `prefab_index`:
   - how long jobs hold the game tick (`job_holds`, counts in five length buckets)
