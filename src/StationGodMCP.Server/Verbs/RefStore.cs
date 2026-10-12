@@ -31,11 +31,28 @@ internal sealed class StoredRef
 
     internal JsonNode? Whole { get; }
 
-    internal JsonNode? Shown { get; }
+    /// <summary>The reply as shown; the whole reply once it was asked whole (then all of it was shown).</summary>
+    internal JsonNode? Shown { get; set; }
+
+    /// <summary>For a report: the options that act on exactly what it listed (refs and expanded spreads as ids).</summary>
+    internal JsonObject? Replay { get; init; }
+
+    /// <summary>Said when a repeat with confirm acts on the call again (a spread: the selection may differ).</summary>
+    internal string? ReplayNote { get; init; }
 
     internal string? MainList { get; }
 
     internal bool Report { get; }
+}
+
+/// <summary>A ref used as a target: the option path it stood in, the ref, and the ids it gave.</summary>
+internal sealed class RefUse(string path, string reference, List<string> ids)
+{
+    internal string Path { get; } = path;
+
+    internal string Ref { get; } = reference;
+
+    internal List<string> Ids { get; } = ids;
 }
 
 /// <summary>

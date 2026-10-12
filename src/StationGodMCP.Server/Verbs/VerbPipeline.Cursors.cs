@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using StationGodMCP.Client;
 
@@ -28,17 +29,23 @@ public sealed partial class VerbPipeline
         }
 
         HubCursor? cursor = null;
+        JsonElement? shape = Shape(options).Shape;
         if (walks && JsonNodes.Text(page["cursor_id"]) is { } walk)
         {
-            cursor = _cursors.Open(call.Stream, what, first, what.MainList!);
+            cursor = _cursors.Open(call.Stream, what, first, what.MainList!, shape);
             cursor.WalkCursor = walk;
             page.Remove("cursor_id");
         }
         else if (JsonNodes.IsTrue(page["has_more"]) && _schemas.Arg(first.Handler, "offset") != null)
         {
-            cursor = _cursors.Open(call.Stream, what, first, what.MainList!);
+            cursor = _cursors.Open(call.Stream, what, first, what.MainList!, shape);
             cursor.NextOffset = (int)(JsonNodes.Number(page["offset"]) ?? JsonNodes.Number(first.Args["offset"]) ?? 0) +
                                 entries.Count;
+        }
+        else if (JsonNodes.IsTrue(page["has_more"]))
+        {
+            // No walk and no offset: the rest cannot be paged to.
+            page["rest_unreachable"] = $"{what.Label} answers one page and takes no offset; narrow the call for the rest.";
         }
 
         if (cursor != null)
@@ -80,8 +87,8 @@ public sealed partial class VerbPipeline
             args["limit"] = most;
         }
 
-        GameReply reply = await SendAsync(new HandlerCall(cursor.Call.Handler, args, cursor.Call.Rename), stream, null,
-            cancellation).ConfigureAwait(false);
+        GameReply reply = await SendAsync(new HandlerCall(cursor.Call.Handler, args, cursor.Call.Rename), stream,
+            cursor.Shape, cancellation).ConfigureAwait(false);
         if (reply is not GameReply.Ok ok)
         {
             _cursors.Free(cursor.Id);

@@ -55,7 +55,7 @@ public sealed class WriteRuleTests
         WhatEntry paint = VerbExampleTests.WhatOf("write.paint");
 
         WriteTargets fromRef = WriteTargetPaths.Resolve(logic, Options("""{"id":["1","2"]}"""),
-            new Dictionary<string, string> { ["id"] = "r4" });
+            new List<RefUse> { new("id", "r4", new List<string> { "1", "2" }) });
         JsonObject filtered = Options("""{"to":"20","prefab":"*Ore*"}""");
         JsonObject network = Options("""{"network":"9","color":"Red"}""");
         JsonObject forced = Options("""{"id":"1","to":"9","slot":0,"force":true}""");
@@ -148,7 +148,8 @@ public sealed class WriteRuleTests
             .Done();
 
         Assert.Empty(game.CallsTo("write_logic_many"));
-        Assert.Equal("[1, Pump A, 0 -> 1] [undo] held settings; [cannot undo: action] pulse and action types",
+        // Each row its own mark: On holds a setting.
+        Assert.Equal("[1, Pump A, 0 -> 1] [undo]",
             (string)report!["targets"]![0]!["text"]!);
         Assert.Equal("Pump B", (string)report["targets"]![1]!["name"]!);
         Assert.Equal(1, (int)report["targets"]![1]!["current"]!);

@@ -144,18 +144,13 @@ public sealed partial class VerbPipeline
             return HelpPages.Answer(_catalogue, call.Args);
         }
 
-        Dictionary<string, string> refs = new(StringComparer.Ordinal);
+        List<RefUse> refs = [];
         if (ResolveRefs(what!, call.Args, refs, out JsonObject resolved) is { } unknown)
         {
             return unknown;
         }
 
         JsonObject options = Normalised(what!, call.Face, resolved);
-        if (BulkJob(call, what!, options) is { } bulk)
-        {
-            return await bulk.ConfigureAwait(false);
-        }
-
         JsonArray? ids = what!.Options.ContainsKey("id") ? options["id"] as JsonArray : null;
         if (ids != null && what.ListForm == "one")
         {
@@ -165,7 +160,24 @@ public sealed partial class VerbPipeline
         VerbReply reply = what.Write != null
             ? await WriteAsync(call, what, options, ids, refs, cancellation).ConfigureAwait(false)
             : await ReadAsync(call, what, options, ids, cancellation).ConfigureAwait(false);
-        return call.Face == Face.Direct ? Capped(call, what, options, reply) : reply;
+        if (call.Note != null && reply is VerbReply.Done { Reply: JsonObject noted })
+        {
+            noted["note"] = call.Note;
+        }
+
+        return call.Face == Face.Direct ? Capped(call, what, options, reply) : Unmarked(reply);
+    }
+
+    // The replay a report keeps for its ref is the direct face's; other faces never see it.
+    private static VerbReply Unmarked(VerbReply reply)
+    {
+        if (reply is VerbReply.Done { Reply: JsonObject marked })
+        {
+            marked.Remove(ReplayKey);
+            marked.Remove(ReplayNoteKey);
+        }
+
+        return reply;
     }
 
     // On the script and program faces a what that takes an id list answers rows even for one id (D13).
@@ -197,6 +209,13 @@ public sealed partial class VerbPipeline
             return await SplitAsync(call, what, options, ids, null, cancellation).ConfigureAwait(false);
         }
 
+        if (what.Key == "inspect.job" && BulkWrites.IsBulkId(JsonNodes.Text(options["id"])))
+        {
+            return _bulk.Get(JsonNodes.Text(options["id"])!) is { } write
+                ? new VerbReply.Done(write.View())
+                : NoBulk(JsonNodes.Text(options["id"])!.Trim());
+        }
+
         Translation translation = _map.Translate(what, options);
         if (call.Face != Face.Direct && what.MainList != null && options["limit"] == null &&
             translation is Translation.Calls { List.Count: 1 } single)
@@ -211,15 +230,14 @@ public sealed partial class VerbPipeline
     private async Task<VerbReply> SplitAsync(VerbCall call, WhatEntry what, JsonObject options, JsonArray ids, bool? acting,
         CancellationToken cancellation)
     {
-        JsonArray rows = [];
+        JsonObject[] rowsByIndex = new JsonObject[ids.Count];
         int succeeded = 0;
-        for (int index = 0; index < ids.Count; index++)
+        foreach (int index in Order(what, ids))
         {
             JsonNode? id = ids[index];
             JsonObject one = (JsonObject)options.DeepClone();
             one["id"] = id?.DeepClone();
-            VerbReply reply = await ExecuteAsync(_map.Translate(what, one), call, what, one, acting, cancellation)
-                .ConfigureAwait(false);
+            VerbReply reply = await OneAsync(call, what, one, acting, cancellation).ConfigureAwait(false);
             JsonObject row = new() { ["index"] = index };
             switch (reply)
             {
@@ -237,6 +255,12 @@ public sealed partial class VerbPipeline
                     break;
             }
 
+            rowsByIndex[index] = row;
+        }
+
+        JsonArray rows = [];
+        foreach (JsonObject row in rowsByIndex)
+        {
             rows.Add(row);
         }
 
@@ -247,6 +271,57 @@ public sealed partial class VerbPipeline
             ["success_count"] = succeeded,
             ["error_count"] = ids.Count - succeeded
         });
+    }
+
+    // One id of a split call: the hub's own forms (a write-N's view or undo, the paste's undo) or the handlers.
+    private async Task<VerbReply> OneAsync(VerbCall call, WhatEntry what, JsonObject one, bool? acting,
+        CancellationToken cancellation)
+    {
+        string? id = JsonNodes.Text(one["id"])?.Trim();
+        if (what.Key == "inspect.job" && BulkWrites.IsBulkId(id))
+        {
+            return _bulk.Get(id!) is { } write ? new VerbReply.Done(write.View()) : NoBulk(id!);
+        }
+
+        if (what.Key == "undo" && OneOwn(one) is { } own)
+        {
+            return await OwnUndoAsync(call, what, one, own, acting == true, cancellation).ConfigureAwait(false);
+        }
+
+        return await ExecuteAsync(_map.Translate(what, one), call, what, one, acting, cancellation).ConfigureAwait(false);
+    }
+
+    // The order a split call's ids go in: as given, but an undo's newest first (by the number its id ends in).
+    private static List<int> Order(WhatEntry what, JsonArray ids)
+    {
+        List<int> order = [];
+        for (int index = 0; index < ids.Count; index++)
+        {
+            order.Add(index);
+        }
+
+        if (what.Key == "undo")
+        {
+            order.Sort((a, b) =>
+            {
+                int byNumber = Trailing(ids[b]).CompareTo(Trailing(ids[a]));
+                return byNumber != 0 ? byNumber : a.CompareTo(b);
+            });
+        }
+
+        return order;
+    }
+
+    private static long Trailing(JsonNode? id)
+    {
+        string text = JsonNodes.Text(id) ?? string.Empty;
+        int start = text.Length;
+        while (start > 0 && char.IsAsciiDigit(text[start - 1]))
+        {
+            start--;
+        }
+
+        return start < text.Length && long.TryParse(text[start..], out long number) ? number : -1;
     }
 
     // acting: null for a read; for a write, true sends it to act and false to report.
@@ -328,13 +403,20 @@ public sealed partial class VerbPipeline
             return unreadable;
         }
 
-        if (acting is { } acts)
+        if (acting is { } acts && (!ApplyMode(handlerCall, acts) | !ApplyMode(handlerCall.Fallback, acts)))
         {
-            ApplyMode(handlerCall, acts);
-            ApplyMode(handlerCall.Fallback, acts);
+            // Under a report nothing leaves that could act: a form with no report of its own is not sent.
+            return new VerbReply.Failed("cannot_report",
+                $"{what.Label}: this form has no report, so nothing was sent; with confirm: true it acts.");
         }
 
         (JsonElement? shape, Unparsed unparsed) = Shape(options);
+        List<HandlerCall> chunks = Chunks(handlerCall);
+        if (chunks.Count > 1)
+        {
+            return await ChunkedAsync(chunks, call, what, options, shape, unparsed, cancellation).ConfigureAwait(false);
+        }
+
         GameReply reply = await SendAsync(handlerCall, call.Stream, shape, cancellation).ConfigureAwait(false);
         if (reply is GameReply.Refused refusedFirst && handlerCall.Fallback is { } fallback &&
             refusedFirst.Code == handlerCall.FallbackCode)
@@ -372,23 +454,27 @@ public sealed partial class VerbPipeline
     }
 
     /// <summary>
-    /// The gate's choice on the handler call: dry_run false and confirm true to act, dry_run true and no confirm to
-    /// report (the handler's own report). A poll, a status read or an undo form carries neither.
+    /// The gate's choice on the handler call, whatever the caller's confirm said: dry_run false and confirm true to
+    /// act; dry_run true and no confirm to report (the handler's own report). A job poll or a status read is a read and
+    /// carries neither. False when the call cannot be made a report (no dry_run and no confirm, or the paste's undo,
+    /// which acts at once): under a report it must not be sent.
     /// </summary>
-    private void ApplyMode(HandlerCall? handlerCall, bool acting)
+    private bool ApplyMode(HandlerCall? handlerCall, bool acting)
     {
-        if (handlerCall == null || handlerCall.Args["job_id"] != null || handlerCall.Args["status"] != null ||
-            handlerCall.Args["undo"] != null)
+        if (handlerCall == null || handlerCall.PollsJob || JsonNodes.IsTrue(handlerCall.Args["status"]) ||
+            handlerCall.Args["cursor_id"] != null)
         {
-            return;
+            return true;
         }
 
-        if (_schemas.Arg(handlerCall.Handler, "dry_run") != null)
+        bool dryRun = _schemas.Arg(handlerCall.Handler, "dry_run") != null && handlerCall.Args["undo"] == null;
+        bool confirm = _schemas.Arg(handlerCall.Handler, "confirm") != null;
+        if (dryRun)
         {
             handlerCall.Args["dry_run"] = !acting;
         }
 
-        if (_schemas.Arg(handlerCall.Handler, "confirm") != null)
+        if (confirm)
         {
             if (acting)
             {
@@ -399,6 +485,115 @@ public sealed partial class VerbPipeline
                 handlerCall.Args.Remove("confirm");
             }
         }
+
+        return acting || dryRun || confirm;
+    }
+
+    /// <summary>
+    /// A call whose list is longer than its handler takes (the list argument's maxItems: place 64, paint 256, logic
+    /// 256...) as one call per part, in order; one that fits as itself.
+    /// </summary>
+    private List<HandlerCall> Chunks(HandlerCall handlerCall)
+    {
+        foreach ((string name, JsonNode? value) in handlerCall.Args)
+        {
+            if (value is not JsonArray list ||
+                JsonNodes.Number(_schemas.Arg(handlerCall.Handler, name)?["maxItems"]) is not { } most || list.Count <= most)
+            {
+                continue;
+            }
+
+            List<HandlerCall> chunks = [];
+            int size = (int)most;
+            for (int start = 0; start < list.Count; start += size)
+            {
+                JsonArray part = [];
+                for (int index = start; index < Math.Min(list.Count, start + size); index++)
+                {
+                    part.Add(list[index]?.DeepClone());
+                }
+
+                JsonObject args = (JsonObject)handlerCall.Args.DeepClone();
+                args[name] = part;
+                chunks.Add(new HandlerCall(handlerCall.Handler, args, handlerCall.Rename) { Part = start.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+            }
+
+            return chunks;
+        }
+
+        return [handlerCall];
+    }
+
+    /// <summary>
+    /// The parts of a long list sent one after another: their rows re-indexed into one reply (counts summed); a refused
+    /// part stops the rest, named in not_run (the first entry index of each part not sent).
+    /// </summary>
+    private async Task<VerbReply> ChunkedAsync(List<HandlerCall> chunks, VerbCall call, WhatEntry what, JsonObject options,
+        JsonElement? shape, Unparsed unparsed, CancellationToken cancellation)
+    {
+        JsonObject? merged = null;
+        JsonArray rows = [];
+        int succeeded = 0;
+        int failed = 0;
+        JsonArray notRun = [];
+        for (int part = 0; part < chunks.Count; part++)
+        {
+            HandlerCall chunk = chunks[part];
+            int start = int.Parse(chunk.Part!, System.Globalization.CultureInfo.InvariantCulture);
+            if (notRun.Count > 0)
+            {
+                notRun.Add(start);
+                continue;
+            }
+
+            GameReply reply = await SendAsync(chunk, call.Stream, shape, cancellation).ConfigureAwait(false);
+            if (reply is not GameReply.Ok ok)
+            {
+                if (part == 0)
+                {
+                    return Failure(reply, chunk, what);
+                }
+
+                notRun.Add(start);
+                continue;
+            }
+
+            JsonNode? result = JsonNodes.FromElement(ok.Result);
+            if (what.Options.ContainsKey("max_wait"))
+            {
+                (result, _) = await SettledAsync(chunk, result, call.Stream, options, cancellation).ConfigureAwait(false);
+            }
+
+            merged ??= result as JsonObject ?? new JsonObject();
+            List<JsonObject> partRows = BulkWrites.Rows(result);
+            bool rowShaped = result?["results"] is JsonArray;
+            for (int index = 0; index < partRows.Count; index++)
+            {
+                JsonObject row = rowShaped ? (JsonObject)partRows[index].DeepClone() : new JsonObject
+                {
+                    ["ok"] = true, ["payload"] = partRows[index].DeepClone()
+                };
+                row["index"] = start + (JsonNodes.Number(row["index"]) is { } at ? (int)at : index);
+                bool rowOk = row["ok"] is not { } flag || JsonNodes.IsTrue(flag);
+                succeeded += rowOk ? 1 : 0;
+                failed += rowOk ? 0 : 1;
+                rows.Add(row);
+            }
+        }
+
+        JsonObject answer = (JsonObject)(merged ?? new JsonObject()).DeepClone();
+        answer["results"] = rows;
+        answer["count"] = rows.Count;
+        answer["success_count"] = succeeded;
+        answer["error_count"] = failed;
+        if (notRun.Count > 0)
+        {
+            answer["not_run"] = notRun;
+        }
+
+        return new VerbReply.Done(unparsed.Fields.Count > 0 || unparsed.Omit.Count > 0
+            ? JsonNodes.FromElement(SidecarArguments.WithUnmatched(JsonNodes.ToElement(answer), unparsed))
+            : answer);
     }
 
     internal static VerbReply.Failed Failure(GameReply reply) => Failure(reply, null, null);

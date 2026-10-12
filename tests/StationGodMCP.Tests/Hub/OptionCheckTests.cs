@@ -158,10 +158,10 @@ public sealed class OptionCheckTests
     {
         FakeGameLink game = new();
 
-        VerbReply.Failed failed = game.Pipeline().Call("write", "paint", """{"network":"5","color":"Red"}""").Failed();
+        VerbReply.Failed failed = game.Pipeline().Call("check", "ignition", """{"id":"5"}""").Failed();
 
         Assert.Equal("not_available", failed.Code);
-        Assert.Contains("network", failed.Message);
+        Assert.Contains("id", failed.Message);
         Assert.Empty(game.Calls);
     }
 
