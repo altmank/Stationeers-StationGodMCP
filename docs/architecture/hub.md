@@ -88,7 +88,10 @@ and pages in the rest on `len`, an index, `sorted` or a second pass. The hub bac
 where the handler has one (`find_things`), and otherwise with `offset` pages.
 
 The program face is a reading: PLAN names programs as `sg` users but gives no write rule for them; they get the
-direct rule, since nothing reviews a program's run as a whole.
+direct rule, since nothing reviews a program's run as a whole. So a program's pass-through takes only read-class mod
+methods with no `x-effects` (plus `subscribe`, `unsubscribe`, `cursor_close`, `release`); every write goes through
+`verb`, where the write rule and the recording apply. A script worker's session takes no mod methods at all: only
+`verb`, `ref`, `more`, `wait` and `hold`, on its run's stream.
 
 ## Runs
 
