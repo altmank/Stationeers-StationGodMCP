@@ -135,9 +135,10 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "room", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "room", "role": "spread"},
+          {"path": "prefab", "role": "spread"}
         ]
       }
     },
@@ -266,9 +267,10 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "room", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "room", "role": "spread"},
+          {"path": "prefab", "role": "spread"}
         ]
       }
     },
@@ -497,9 +499,11 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "network", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "network", "role": "spread"},
+          {"path": "only", "role": "spread"},
+          {"path": "older_than", "role": "spread"}
         ]
       }
     },
@@ -735,9 +739,11 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "network", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "network", "role": "spread"},
+          {"path": "only", "role": "spread"},
+          {"path": "older_than", "role": "spread"}
         ]
       }
     },
@@ -883,9 +889,10 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "network", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
-          {"path": "refund_to", "role": "pays-from"}
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "network", "role": "spread"},
+          {"path": "box", "role": "spread"}
         ]
       }
     }

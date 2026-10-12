@@ -13,12 +13,17 @@ SCRIPT_FILENAME = "<script>"
 
 class Run:
     """What sg needs to know about the run in progress: its id, the lines inside a while body (a wait there counts
-    as a loop wait in a report run), and whether a stop has already been delivered."""
+    as a loop wait in a report run), and the stop (Stopped or _PassEnd) the hub delivered, if any. A delivered stop
+    decides the run's end state even when the code swallowed it."""
 
     def __init__(self, run_id=None, while_lines=()):
         self.id = run_id
         self.while_lines = frozenset(while_lines)
-        self.stopped = False
+        self.stop = None
+
+    @property
+    def stopped(self):
+        return self.stop is not None
 
 
 _transport = None
@@ -51,19 +56,27 @@ def current_run():
     return _run
 
 
-def calling_line():
-    """The 1-based line of the run's code that is executing now, or None outside a run."""
+def _script_frames():
+    """The frames of the run's code on the stack, innermost first."""
     frame = sys._getframe(1)
     while frame is not None:
         if frame.f_code.co_filename == SCRIPT_FILENAME:
-            return frame.f_lineno
+            yield frame
         frame = frame.f_back
-    return None
 
 
-def in_loop(line):
-    """True when line is inside a while body of the run's code."""
-    return _run is not None and line is not None and line in _run.while_lines
+def calling_line():
+    """The 1-based line of the run's code that is executing now (the innermost frame), or None outside a run."""
+    return next((frame.f_lineno for frame in _script_frames()), None)
+
+
+def in_loop():
+    """True when any frame of the run's code on the stack is on a line inside a while body: a wait in a function
+    that a while loop calls counts too. Loops made by recursion or by `for` over an endless iterator
+    (itertools.count) are not seen."""
+    if _run is None:
+        return False
+    return any(frame.f_lineno in _run.while_lines for frame in _script_frames())
 
 
 def request(method, params, call=None):
@@ -77,6 +90,6 @@ def request(method, params, call=None):
         return reply.get("result")
     exception = from_error(reply.get("error"), call=call if call is not None else {"method": method, **params},
                            line=line)
-    if isinstance(exception, (Stopped, _PassEnd)) and _run is not None:
-        _run.stopped = True
+    if isinstance(exception, (Stopped, _PassEnd)) and _run is not None and _run.stop is None:
+        _run.stop = exception
     raise exception

@@ -49,5 +49,5 @@ def plan(what: Literal['flight'], *,
       mining: {site: str, kind: str, collectable: bool, units_per_hour: float, units_in_stop: float, slots_in_stop: int, problems: list[str] | None} |
           None
     Example: sg.plan('flight', id='4067059', node='pad')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

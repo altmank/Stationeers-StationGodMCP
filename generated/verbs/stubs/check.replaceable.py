@@ -6,5 +6,5 @@ def check(what: Literal['replaceable'], *,
     Reply:
       results: list[{reference_id: str, prefab_name: str | None, replaceable: bool | None, rule: str | None, reason: str | None}]
     Example: sg.check('replaceable', id='r12.things')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

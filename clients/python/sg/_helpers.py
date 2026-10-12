@@ -14,8 +14,7 @@ HEAVY_POLL_S = 5.0
 def wait(s):
     """Waits s seconds and returns None. Inside a run, time.sleep is this function. After a stop the hub answers at
     once (the run is unwinding), so a wait in a finally block never hangs."""
-    line = _session.calling_line()
-    _session.request("wait", {"s": float(s), "kind": "wait", "in_loop": _session.in_loop(line)})
+    _session.request("wait", {"s": float(s), "kind": "wait", "in_loop": _session.in_loop()})
     return None
 
 
@@ -39,9 +38,8 @@ def watch(reads, until, timeout):
         left = timeout - (time.monotonic() - started)
         if left <= 0:
             return rows, False
-        line = _session.calling_line()
         answer = _session.request("wait", {"s": min(interval, left), "kind": "watch",
-                                           "in_loop": _session.in_loop(line)})
+                                           "in_loop": _session.in_loop()})
         if isinstance(answer, dict) and answer.get("instant"):
             return rows, True
         rows = _watch_rows(reads)
@@ -61,7 +59,7 @@ class hold:
     `.rows` (the restore's rows)."""
 
     def __init__(self, ids, logic, value=None, after=None):
-        self.ids = list(ids) if isinstance(ids, (list, tuple)) else [ids]
+        self.ids = [ids] if isinstance(ids, (str, int)) else list(ids)  # any other iterable (a set too) is a list
         self.logic = logic
         self.value = value
         self.after = after
@@ -95,9 +93,13 @@ class hold:
             return _session.request("hold", self._params("exit", self.after)) or {}
         except (Stopped, _PassEnd) as stop:
             # The stop arrived on this exit call, so the restore may not have acted. After a stop the hub lets hold
-            # exits act (as CLEANUP), so send it once more, then let the stop go on up.
-            result = _session.request("hold", self._params("exit", self.after)) or {}
-            self.rows = result.get("rows")
+            # exits act (as CLEANUP), so send it once more, then let the stop go on up. If that is refused too (after a
+            # world change no cleanup acts), the stop is still what ended the run.
+            try:
+                result = _session.request("hold", self._params("exit", self.after)) or {}
+                self.rows = result.get("rows")
+            except Error:
+                pass
             raise stop
 
 

@@ -2222,7 +2222,12 @@
         {"arg": "merge", "option": "merge", "change": "kept"},
         {"arg": "force", "option": "force", "change": "kept"},
         {"arg": "allow_in_use", "option": "allow", "change": "merged", "note": "allow: [\"in_use\"]"},
-        {"arg": "moves", "option": "moves", "change": "kept"},
+        {
+          "arg": "moves",
+          "option": "moves",
+          "change": "merged",
+          "note": "each entry's id, to, slot and allow become reference_id, to_id, to_slot (auto when left out) and allow_in_use; an id list becomes one moves list (x-list-shape)"
+        },
         {"arg": "fields", "option": "fields", "change": "kept"},
         {"arg": "omit", "option": "omit", "change": "kept"},
         {"arg": "list_limits", "option": "list_limits", "change": "kept"},

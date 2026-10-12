@@ -25,6 +25,7 @@ PROTOCOL = [2]
 FEATURES = ["pipeline"]
 HUB_ENVIRONMENT_VARIABLE = "STATIONGODMCP_HUB"
 HUB_PROGRAM = "StationGodMCP.Server"
+HELLO_TIMEOUT_S = 10.0
 
 
 def encode(message):
@@ -43,7 +44,9 @@ class _Pending:
 class Transport:
     """One hub-protocol connection. `hello()` opens a session; `call()` sends a call and waits for its reply."""
 
-    def __init__(self, reader, writer, client="sg-py", process=None):
+    def __init__(self, reader, writer, client="sg-py", process=None, on_end_of_stream=None):
+        """on_end_of_stream: called (on the reader thread) once the hub's stream ends or breaks."""
+        self._on_end_of_stream = on_end_of_stream
         self._reader = reader
         self._writer = writer
         self._client = client
@@ -103,7 +106,11 @@ class Transport:
             self._pending[call_id] = pending
         try:
             self._write({"type": "call", "id": call_id, "method": method, "params": params or {}})
-        except OSError:
+        except TypeError:  # params JSON cannot carry: the caller's mistake, not the connection's
+            with self._state_lock:
+                self._pending.pop(call_id, None)
+            raise
+        except Exception:  # noqa: BLE001 - a closed or broken writer (OSError, ValueError): nothing was sent
             with self._state_lock:
                 self._pending.pop(call_id, None)
             raise self._closed_error(maybe_ran=False) from None
@@ -113,11 +120,16 @@ class Transport:
         return pending.reply
 
     def send(self, message):
-        """Writes a message that has no reply (run_analysis, run_end, stream_end)."""
-        self._write(message)
+        """Writes a message that has no reply (run_analysis, run_end, stream_end). A closed writer raises sg.Error."""
+        try:
+            self._write(message)
+        except (OSError, ValueError):
+            raise self._closed_error(maybe_ran=False) from None
 
     def on_event(self, handler):
-        """Calls handler(event) on the reader thread for every `event` message (subscriptions, ping)."""
+        """Calls handler(event) for every `event` message (subscriptions, ping). It runs on the reader thread, so it
+        must be quick and must not make sg calls itself (their replies come through that same thread): hand the event
+        to another thread (a queue.Queue) for anything more."""
         self._event_handlers.append(handler)
 
     # ----- closing -----
@@ -172,6 +184,8 @@ class Transport:
             pass  # the stream broke or was closed under us: the same as end of stream
         finally:
             self._finish("the hub closed the connection")
+            if self._on_end_of_stream is not None:
+                self._on_end_of_stream()
             try:
                 self._reader.close()
             except OSError:
@@ -240,86 +254,103 @@ def connect(hub_path=None, *hub_args, client="sg-py"):
     program = find_hub(hub_path)
     command = ["dotnet", program] if program.lower().endswith(".dll") else [program]
     command += ["--hub", *hub_args]
+    job = _KillJob.create()  # made before the child starts, so assigning it right after leaves the shortest gap
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
-    job = _kill_with_this_process(process)
+    if job is not None and not job.assign(process.pid):
+        job = None
     transport = Transport(process.stdout, process.stdin, client=client, process=process)
     transport._job = job
-    atexit.register(transport.close)
-    welcome = transport.hello()
+    try:
+        welcome = transport.hello(timeout=HELLO_TIMEOUT_S)
+    except BaseException:
+        process.kill()
+        transport.close()
+        raise
     if welcome is None:
         code = process.poll()
+        process.kill()
+        transport.close()
         raise Error("unreachable", f"the hub exited before its welcome (exit code {code})",
                     "run the hub by hand with --hub to see why")
+    atexit.register(transport.close)
     return transport
 
 
-def _kill_with_this_process(process):
-    """On Windows, puts the child in a Job Object with kill-on-close and keeps the handle open for the life of this
-    process: when this process ends, Windows closes the handle and kills the child. Elsewhere closing stdin at exit
-    (atexit) is the whole mechanism, and the hub exits on stdin EOF. Returns the job handle, or None."""
-    if sys.platform != "win32":
-        return None
-    try:
-        return _windows_job(process.pid)
-    except OSError:
-        return None  # no job (for example inside a job that forbids nesting): stdin EOF still ends the child
+class _KillJob:
+    """A Windows Job Object with kill-on-close. The handle is kept open for the life of this process and never
+    closed: when this process ends, however it ends, Windows closes the handle and kills every process in the job.
+    Elsewhere closing stdin at exit (atexit) is the whole mechanism, and the hub exits on stdin EOF.
 
+    A child that starts processes of its own before it is assigned leaves those outside the job; the gap is two
+    system calls long (the hub starts its workers much later)."""
 
-def _windows_job(pid):
-    import ctypes
-    from ctypes import wintypes
+    def __init__(self, kernel32, handle):
+        self._kernel32 = kernel32
+        self.handle = handle
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    @classmethod
+    def create(cls):
+        """The job, or None off Windows or when it cannot be made."""
+        if sys.platform != "win32":
+            return None
+        try:
+            return cls._create()
+        except OSError:
+            return None  # no job: stdin EOF still ends the child
 
-    class IoCounters(ctypes.Structure):
-        _fields_ = [(name, ctypes.c_ulonglong) for name in (
-            "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
-            "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+    @classmethod
+    def _create(cls):
+        import ctypes
+        from ctypes import wintypes
 
-    class BasicLimits(ctypes.Structure):
-        _fields_ = [("PerProcessUserTimeLimit", ctypes.c_longlong), ("PerJobUserTimeLimit", ctypes.c_longlong),
-                    ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
-                    ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
-                    ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
-                    ("SchedulingClass", wintypes.DWORD)]
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
-    class ExtendedLimits(ctypes.Structure):
-        _fields_ = [("BasicLimitInformation", BasicLimits), ("IoInfo", IoCounters),
-                    ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
-                    ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
+        class IoCounters(ctypes.Structure):
+            _fields_ = [(name, ctypes.c_ulonglong) for name in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
 
-    job_object_extended_limit_information = 9
-    job_object_limit_kill_on_job_close = 0x2000
-    process_set_quota, process_terminate = 0x0100, 0x0001
+        class BasicLimits(ctypes.Structure):
+            _fields_ = [("PerProcessUserTimeLimit", ctypes.c_longlong), ("PerJobUserTimeLimit", ctypes.c_longlong),
+                        ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                        ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                        ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
+                        ("SchedulingClass", wintypes.DWORD)]
 
-    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
-    kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
-    kernel32.OpenProcess.restype = wintypes.HANDLE
-    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-    kernel32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
-    kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
-    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        class ExtendedLimits(ctypes.Structure):
+            _fields_ = [("BasicLimitInformation", BasicLimits), ("IoInfo", IoCounters),
+                        ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
+                        ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
 
-    job = kernel32.CreateJobObjectW(None, None)
-    if not job:
-        raise ctypes.WinError(ctypes.get_last_error())
-    limits = ExtendedLimits()
-    limits.BasicLimitInformation.LimitFlags = job_object_limit_kill_on_job_close
-    if not kernel32.SetInformationJobObject(job, job_object_extended_limit_information,
-                                            ctypes.byref(limits), ctypes.sizeof(limits)):
-        error = ctypes.get_last_error()
-        kernel32.CloseHandle(job)
-        raise ctypes.WinError(error)
-    handle = kernel32.OpenProcess(process_set_quota | process_terminate, False, pid)
-    if not handle:
-        error = ctypes.get_last_error()
-        kernel32.CloseHandle(job)
-        raise ctypes.WinError(error)
-    try:
-        if not kernel32.AssignProcessToJobObject(job, handle):
+        job_object_extended_limit_information = 9
+        job_object_limit_kill_on_job_close = 0x2000
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        handle = kernel32.CreateJobObjectW(None, None)
+        if not handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        limits = ExtendedLimits()
+        limits.BasicLimitInformation.LimitFlags = job_object_limit_kill_on_job_close
+        if not kernel32.SetInformationJobObject(handle, job_object_extended_limit_information,
+                                                ctypes.byref(limits), ctypes.sizeof(limits)):
             error = ctypes.get_last_error()
-            kernel32.CloseHandle(job)
+            kernel32.CloseHandle(handle)
             raise ctypes.WinError(error)
-    finally:
-        kernel32.CloseHandle(handle)
-    return job  # deliberately never closed: closing it would kill the hub
+        return cls(kernel32, handle)
+
+    def assign(self, pid):
+        """Puts the process in the job; False when Windows refuses."""
+        process_set_quota, process_terminate = 0x0100, 0x0001
+        process = self._kernel32.OpenProcess(process_set_quota | process_terminate, False, pid)
+        if not process:
+            return False
+        try:
+            return bool(self._kernel32.AssignProcessToJobObject(self.handle, process))
+        finally:
+            self._kernel32.CloseHandle(process)

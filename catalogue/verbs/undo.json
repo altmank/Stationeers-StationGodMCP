@@ -20,7 +20,7 @@
           "use": "id",
           "description": "The job, the bulk write (write-N), the script run (script-14), or \"paste\"; a list is undone newest first, in one report.",
           "required": true,
-          "x-script": "drop"
+          "x-script": "same"
         },
         "allow_bridge": {
           "schema": {"type": "array", "items": {}, "maxItems": 64},

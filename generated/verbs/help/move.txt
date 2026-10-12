@@ -1,4 +1,4 @@
-Move items, gas and players. Reports first; confirm: true moves. gas and player are cheats: ask the user.
+Move items, gas and players. Items by typed ids move at once; a ref or a filter reports until confirm: true. gas and player are cheats: ask the user.
 Items go into or out of an Ingot Vault or SDB Silo store when to or source is one.
 A report carries report_only: true and lists every target with its current and new value.
 

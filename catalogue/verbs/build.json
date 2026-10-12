@@ -446,7 +446,7 @@
           "schema": {"type": "string", "enum": ["gas", "liquid", "insulated_gas", "insulated_liquid"]},
           "description": "Required except when repeating.",
           "required": true,
-          "x-script": "same"
+          "x-script": "Required."
         },
         "waypoints": {
           "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},

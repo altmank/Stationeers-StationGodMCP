@@ -13,5 +13,5 @@ def inspect(what: Literal['atmosphere'], *,
           polluted_l: float, steam_mol: float, steam_if_condensed_l: float}} | None}]
       count: int
     Example: sg.inspect('atmosphere', id='2005300')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

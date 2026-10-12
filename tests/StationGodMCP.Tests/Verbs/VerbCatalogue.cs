@@ -30,7 +30,7 @@ internal static class VerbCatalogue
 
     internal static readonly string[] ListForms = { "native", "split", "native-shape", "one" };
 
-    internal static readonly string[] TargetRoles = { "acts-on", "pays-from" };
+    internal static readonly string[] TargetRoles = { "acts-on", "pays-from", "spread" };
 
     private static readonly Lazy<JsonObject> SharedFile = new(() => Read("_shared"));
 

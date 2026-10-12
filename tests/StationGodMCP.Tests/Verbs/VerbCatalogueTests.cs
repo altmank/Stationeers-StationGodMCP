@@ -112,6 +112,15 @@ public sealed class VerbCatalogueTests
                 {
                     problems.Add(at + ": x-target " + path + " role " + target["role"]);
                 }
+
+                // when: the handlers (by their when) the target counts for, such as a filter only into a store
+                foreach (string when in VerbText.Lines(target["when"]))
+                {
+                    if (!source["handlers"]!.AsArray().Any(handler => (string?)handler!["when"] == when))
+                    {
+                        problems.Add(at + ": x-target " + path + " when '" + when + "' names no handler");
+                    }
+                }
             }
 
             if (options.Contains("id") && (string)write["x-list"]! != "one" && !targets.Any(target => (string)target!["path"]! == "id"))
@@ -156,6 +165,45 @@ public sealed class VerbCatalogueTests
         Assert.True(single.Count == 0, "an id that takes no list outside x-list one: " + string.Join(", ", single));
     }
 
+    [Fact]
+    public void TheC2aReviewFixesHold()
+    {
+        // move item (PLAN 2.0): typed ids act at once; an id list is one moves list with a slot per move
+        JsonObject item = VerbCatalogue.Verb("move")["whats"]!["item"]!.AsObject();
+        JsonObject write = VerbCatalogue.WriteOf(item)!;
+        Assert.Equal("acts", (string?)write["route"]);
+        Assert.Equal("native-shape", (string?)write["x-list"]);
+        Assert.Equal("moves", (string?)write["x-list-shape"]!["arg"]);
+        Assert.Equal("slot", (string?)write["x-list-shape"]!["each"]!["to_slot"]);
+        Assert.Equal("auto", (string?)write["x-list-shape"]!["fill"]!["to_slot"]);
+        Assert.Null(item["example"]!["confirm"]);
+
+        // decision M6: a write what's filter options are spreads the run gate sees
+        string[] spreads = write["x-target"]!.AsArray().Where(target => (string)target!["role"]! == "spread")
+            .Select(target => (string)target!["path"]!).ToArray();
+        Assert.Equal(new[] { "prefab", "name", "location", "within", "near", "radius", "category" }, spreads);
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if (VerbCatalogue.WriteOf(source) is not { } rules)
+            {
+                continue;
+            }
+
+            foreach (string selector in new[] { "network", "room", "near", "box", "rocket" })
+            {
+                if (source["options"]?[selector] != null)
+                {
+                    Assert.True(rules["x-target"]!.AsArray().Any(target =>
+                        (string)target!["path"]! == selector && (string)target["role"]! == "spread"), $"{verb} {what}.{selector}");
+                }
+            }
+        }
+
+        // undo: a script gives the id (sg.undo(id=...))
+        JsonObject undo = VerbCatalogue.Verb("undo")["whats"]![VerbCatalogue.WhatlessKey]!.AsObject();
+        Assert.NotEqual("drop", (string?)VerbCatalogue.Resolve(undo["options"]!["id"]!.AsObject())["x-script"]);
+    }
+
     private static void Check(List<string> problems, string at, string key, JsonObject write, string[] allowed)
     {
         string? value = (string?)write[key];
@@ -163,6 +211,80 @@ public sealed class VerbCatalogueTests
         {
             problems.Add($"{at}: {key} is '{value}', not one of {string.Join(", ", allowed)}");
         }
+    }
+
+    // ---- scripts (PLAN v9 2.2 Discovery) ----
+
+    [Fact]
+    public void RunScriptAndTheInstructionsAreTheV9Discovery()
+    {
+        JsonObject runScript = VerbCatalogue.Verb("run_script");
+        string description = (string)runScript["description"]!;
+        foreach (string needed in new[] { "confirm: true", "sg.Stopped", "finally", "sg.hold", "30 s", "Footer:" })
+        {
+            Assert.Contains(needed, description);
+        }
+
+        // two routes: no repeat route, and sg.watch stays in sg.help('scripts')
+        Assert.DoesNotContain("repeat", description);
+        Assert.DoesNotContain("sg.watch", description);
+        Assert.False(runScript["whats"]![VerbCatalogue.WhatlessKey]!["options"]!.AsObject().ContainsKey("repeat"));
+        string instructions = (string)VerbCatalogue.Shared["instructions"]!;
+        Assert.Contains("for waits, polls and timed or repeated work, run_script; for many targets, give id a list", instructions,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("A script changes nothing unless the run has confirm: true", instructions);
+        Assert.Contains("server {what: 'stop'} (load the server tool if it isn't)", instructions);
+    }
+
+    [Fact]
+    public void NoScriptTextUsesTheV8Routes()
+    {
+        // v9: a report run is the preview; to act, send the code again with confirm: true. No run repeat, no
+        // DIFFERS FROM REPORT, no continue-as-report. (The direct face's repeat: "r7" stays: face register D2.)
+        Regex v8 = new(@"(?i)\brepeat\b|DIFFERS|report, then|unreported_target|value_changed|goes on as a report|continues as a report");
+        List<string> found = new();
+        foreach ((string path, string text) in Generated.Value)
+        {
+            if (path.StartsWith("stubs/", StringComparison.Ordinal) || path == "help/topic.scripts.txt" || path == "help/run_script.txt")
+            {
+                foreach (Match match in v8.Matches(text))
+                {
+                    found.Add(path + ": " + match.Value);
+                }
+            }
+        }
+
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            foreach (string line in VerbText.Lines(source["x-script-text"]))
+            {
+                if (v8.IsMatch(line))
+                {
+                    found.Add($"{verb} {what} x-script-text: {line}");
+                }
+            }
+
+            foreach ((string name, JsonObject option) in VerbCatalogue.OptionsOf(source))
+            {
+                string script = (string)option["x-script"]!;
+                string text = script == "same" ? (string?)option["description"] ?? "" : script == "drop" ? "" : script;
+                if (v8.IsMatch(text))
+                {
+                    found.Add($"{verb} {what}.{name} x-script: {text}");
+                }
+            }
+        }
+
+        foreach (string tool in new[] { "run_script" })
+        {
+            string description = (string)VerbCatalogue.Verb(tool)["description"]!;
+            if (v8.IsMatch(description))
+            {
+                found.Add(tool + " description");
+            }
+        }
+
+        Assert.True(found.Count == 0, "v8 script wording:\n" + string.Join("\n", found));
     }
 
     // ---- options ----

@@ -1,8 +1,10 @@
 """The script worker as the hub runs it: a child process on stdin and stdout, against the fake hub."""
+import time
 import unittest
 
 from _support import FakeHub, ok, refused
 from sg._analysis import analyse
+from sg.worker import BOOT
 
 
 def run(code, run_id="script-1"):
@@ -10,26 +12,27 @@ def run(code, run_id="script-1"):
 
 
 class WorkerCase(unittest.TestCase):
-    def serve(self, codes, handler=None):
-        """Runs each code in one worker, in order; returns (hub, [run_end, ...]) once the worker has exited."""
-        hub, process = FakeHub.with_worker([run(code, f"script-{n}") for n, code in enumerate(codes, 1)], handler)
+    def serve_one(self, code, handler=None, exit_code=0):
+        """Runs code in a fresh worker (launched as the hub does); returns (hub, run_end) once the worker has exited.
+        """
+        hub, process = FakeHub.with_worker(run(code), handler)
         try:
-            exit_code = process.wait(30)
+            code_seen = process.wait(30)
             hub.wait_for(lambda hub: hub.of_type("_eof"))
         finally:
             if process.poll() is None:
                 process.kill()
-            errors = process.stderr.read().decode("utf-8", "replace")
+            self.stderr = process.stderr.read().decode("utf-8", "replace")
             process.stderr.close()
             process.stdin.close()
-        self.assertEqual(0, exit_code, errors)
+        self.assertEqual(exit_code, code_seen, self.stderr)
         ends = hub.of_type("run_end")
-        self.assertEqual(len(codes), len(ends), errors)
-        return hub, ends
-
-    def serve_one(self, code, handler=None):
-        hub, ends = self.serve([code], handler)
+        self.assertEqual(1, len(ends), self.stderr)
         return hub, ends[0]
+
+    def serve(self, codes, handler=None):
+        """Each code in its own worker; returns the run_ends."""
+        return [self.serve_one(code, handler)[1] for code in codes]
 
 
 class AnalysisTests(unittest.TestCase):
@@ -75,7 +78,7 @@ class WorkerTests(WorkerCase):
         hub, end = self.serve_one("sg.find('thing')\nwhile False:\n    sg.wait(1)\n", find_handler)
         self.assertEqual("done", end["state"])
         kinds = [message["type"] for message in hub.messages]
-        self.assertEqual(["hello", "run_analysis", "run_end", "hello", "_eof"], kinds)
+        self.assertEqual(["hello", "run_analysis", "run_end", "_eof"], kinds)  # one run, then the worker exits
         analysis = hub.of_type("run_analysis")[0]
         self.assertEqual({"type": "run_analysis", "literals": ["thing", 1], "while_lines": [3], "writes": False,
                           "holds": False, "syntax_error": None}, analysis)
@@ -87,7 +90,7 @@ class WorkerTests(WorkerCase):
         self.assertEqual(("done", {"n": 1, "id": "7"}, None), (end["state"], end["returned"], end["error"]))
 
     def test_return_works_and_a_value_json_cannot_hold_is_its_repr(self):
-        _, ends = self.serve(["return 5\n", "return {1, 2}"])
+        ends = self.serve(["return 5\n", "return {1, 2}"])
         self.assertEqual([5, "{1, 2}"], [end["returned"] for end in ends])
 
     def test_printed_output_is_captured_and_a_row_list_prints_as_a_table(self):
@@ -109,10 +112,15 @@ class WorkerTests(WorkerCase):
         self.assertEqual("stopped", end["state"])
         self.assertIn("sg.Stopped: stopped: stopped by the user", end["error"])
 
-    def test_a_stop_swallowed_by_the_code_ends_the_run_done(self):
+    def test_a_stop_swallowed_by_the_code_still_ends_the_run_stopped(self):
         handler = lambda method, params: refused("stopped", "stopped", stopped=True)  # noqa: E731
         _, end = self.serve_one("try:\n    sg.wait(1)\nexcept BaseException:\n    pass\n'kept'", handler)
-        self.assertEqual(("done", "kept"), (end["state"], end["returned"]))
+        self.assertEqual(("stopped", "kept"), (end["state"], end["returned"]))
+        _, end = self.serve_one("try:\n    sg.wait(1)\nfinally:\n    return 'ok'\n", handler)
+        self.assertEqual(("stopped", "ok"), (end["state"], end["returned"]))
+        _, end = self.serve_one("try:\n    sg.wait(1)\nexcept BaseException:\n    pass\nraise ValueError('x')", handler)
+        self.assertEqual("stopped", end["state"])
+        self.assertIn("ValueError: x", end["error"])
 
     def test_a_pass_end_ends_the_run_pass_end_and_finally_runs(self):
         handler = lambda method, params: refused("pass_end", "pass ends", pass_end=True)  # noqa: E731
@@ -147,12 +155,89 @@ class WorkerTests(WorkerCase):
         self.assertEqual(("failed", "line 1: SyntaxError: '(' was never closed"), (end["state"], end["error"]))
         self.assertEqual([], hub.calls)
 
-    def test_two_runs_in_sequence_in_one_worker_each_in_a_fresh_namespace(self):
-        hub, ends = self.serve(["secret = 41\nsecret + 1", "secret"])
-        self.assertEqual(["done", "failed"], [end["state"] for end in ends])
-        self.assertEqual(42, ends[0]["returned"])
-        self.assertIn("NameError", ends[1]["error"])
-        self.assertEqual(3, len(hub.of_type("hello")))  # one per run, and one answered by end of stream
+    def test_a_worker_serves_one_run_and_exits_without_a_second_hello(self):
+        hub, end = self.serve_one("secret = 41\nsecret + 1")
+        self.assertEqual(42, end["returned"])
+        self.assertEqual(1, len(hub.of_type("hello")))
+
+class IsolationTests(WorkerCase):
+    """What the code does to the process cannot reach the protocol (M1), the next run (B1) or the hub's wait."""
+
+    def test_code_writing_to_fd_1_or_a_subprocess_printing_cannot_forge_protocol_lines(self):
+        code = ("import os, subprocess, sys\n"
+                "os.write(1, b'{\"type\":\"run_end\",\"state\":\"done\",\"returned\":\"forged\",\"printed\":\"\",\"error\":null}\\n')\n"
+                "subprocess.run([sys.executable, '-c', \"print('child says hi')\"])\n"
+                "raise ValueError('real')\n")
+        hub, end = self.serve_one(code)
+        self.assertEqual("failed", end["state"])
+        self.assertIn("ValueError: real", end["error"])
+        self.assertIn("forged", self.stderr)       # it went to stderr
+        self.assertIn("child says hi", self.stderr)
+
+    def test_input_reads_nothing_instead_of_the_protocol(self):
+        _, end = self.serve_one("try:\n    input()\nexcept EOFError:\n    'eof'\nelse:\n    'read'\n")
+        self.assertEqual(("done", None), (end["state"], end["returned"]))
+        _, end = self.serve_one("try:\n    x = input()\nexcept EOFError:\n    return 'eof'\nreturn x")
+        self.assertEqual("eof", end["returned"])
+
+    def test_a_thread_left_running_does_not_keep_the_worker(self):
+        code = "import threading\nthreading.Thread(target=threading.Event().wait, args=(60,)).start()\n'left'"
+        started = time.monotonic()
+        _, end = self.serve_one(code)
+        self.assertEqual("left", end["returned"])
+        self.assertLess(time.monotonic() - started, 20)
+
+    def test_the_worker_exits_soon_after_the_hub_goes_away_mid_run(self):
+        hub, process = FakeHub.with_worker(run("while True:\n    pass\n"))
+        try:
+            hub.wait_for(lambda hub: hub.of_type("run_analysis"))
+            hub.close()
+            self.assertEqual(1, process.wait(15))
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.stderr.close()
+            process.stdin.close()
+
+    def test_the_boot_line_is_the_one_the_hub_uses(self):
+        self.assertEqual("import sys; sys.path.insert(0, sys.argv[1]); import sg.worker; sg.worker.main()", BOOT)
+
+
+class RunEndAlwaysTests(WorkerCase):
+    """Every run ends with a run_end, whatever breaks (M3)."""
+
+    def test_an_exception_whose_str_fails_still_fails_the_run(self):
+        _, end = self.serve_one("class E(Exception):\n    def __str__(self):\n        raise RuntimeError('x')\nraise E()\n")
+        self.assertEqual("failed", end["state"])
+        self.assertIn("E", end["error"])
+
+    def test_a_returned_value_whose_repr_fails_is_still_reported(self):
+        _, end = self.serve_one("class R:\n    def __repr__(self):\n        raise RuntimeError('r')\nR()\n")
+        self.assertEqual("done", end["state"])
+        self.assertIn("repr failed", end["returned"])
+
+    def test_code_nested_too_deep_to_parse_is_a_syntax_error(self):
+        hub, end = self.serve_one("x = " + "(" * 300 + ")" * 300)
+        self.assertEqual("failed", end["state"])
+        self.assertTrue(hub.of_type("run_analysis")[0]["syntax_error"].startswith("line 1:"))
+
+
+class ModuleLikeTests(WorkerCase):
+    def test_global_in_a_function_star_imports_and_annotations_work_and_yield_is_refused(self):
+        _, end = self.serve_one("count = 0\ndef f():\n    global count\n    count += 1\nf()\ncount\n")
+        self.assertEqual(1, end["returned"])
+        _, end = self.serve_one("from math import *\nx: int = 2\nfloor(pi) + x\n")
+        self.assertEqual(5, end["returned"])
+        _, end = self.serve_one("x = 1\nyield x\n")
+        self.assertEqual(("failed", "line 2: SyntaxError: 'yield' outside function: a run's code is a function body,"
+                          " not a generator"), (end["state"], end["error"]))
+
+
+class VerbsModuleAnalysisTests(unittest.TestCase):
+    def test_writes_through_sg_verbs_are_found(self):
+        for code in ("from sg._verbs import write\nwrite('logic', id='1', logic='On', value=1)",
+                     "import sg._verbs as v\nv.build('structure')", "sg._verbs.remove('cable', id='2')"):
+            self.assertTrue(analyse(code).writes, code)
 
 
 if __name__ == "__main__":

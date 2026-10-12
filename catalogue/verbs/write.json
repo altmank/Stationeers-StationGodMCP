@@ -34,7 +34,7 @@
         "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. A ref reports each target's current value until confirm: true. To write every device of a kind, find them with a limit above their count (has_more false), then pass the ref."
       ],
       "x-script-text": [
-        "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run, ids a find returned that you have not seen make the run a report before anything acts, and stop it after: report, then repeat)."
+        "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run an id you have not seen stops the run: run it as a report first, then again with confirm: true)."
       ],
       "example": {"id": "4820585", "logic": "On", "value": 1},
       "handlers": [
@@ -585,8 +585,9 @@
         "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
-          {"path": "network", "role": "acts-on"},
-          {"path": "items[].id", "role": "acts-on"}
+          {"path": "items[].id", "role": "acts-on"},
+          {"path": "network", "role": "spread"},
+          {"path": "kind", "role": "spread"}
         ]
       },
       "brief": "paint things or a network"
@@ -821,11 +822,7 @@
         "x-undo": "undo",
         "x-undo-mark": "[undo: restores the value, not what happened since]",
         "x-list": "native",
-        "x-target": [
-          {"path": "id", "role": "acts-on"},
-          {"path": "rocket", "role": "acts-on"},
-          {"path": "within", "role": "acts-on"}
-        ]
+        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "rocket", "role": "spread"}, {"path": "within", "role": "spread"}]
       },
       "brief": "set charge"
     },
