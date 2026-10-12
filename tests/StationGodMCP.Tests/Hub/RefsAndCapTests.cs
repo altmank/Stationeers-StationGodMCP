@@ -78,6 +78,14 @@ public sealed class RefsAndCapTests : IDisposable
 
         Assert.Null(game.Pipeline().Call("find", "thing", """{"whole":true}""").Done()!["cut"]);
         Assert.Null(game.Pipeline().Call("find", "thing", """{"list_limits":{"things":100}}""").Done()!["cut"]);
+
+        // A report over 12 KB (a hub report of 300 logic writes) is answered whole.
+        string ids = string.Join(",", Enumerable.Range(100000, 300).Select(n => $"\"{n}\""));
+        JsonNode report = new FakeGameLink().Pipeline()
+            .Call("write", "logic", $$"""{"id":[{{ids}}],"logic":"On","value":1,"confirm":false}""").Done()!;
+        Assert.True(ReplyCap.Bytes(report) > ReplyCap.Threshold);
+        Assert.Null(report["cut"]);
+        Assert.Equal(300, report["targets"]!.AsArray().Count);
     }
 
     [Theory]
@@ -219,14 +227,19 @@ public sealed class RefsAndCapTests : IDisposable
     {
         ShownTexts shown = new();
         FakeGameLink game = new();
-        game.Answer = _ => FakeGameLink.Ok("""{"things":[{"reference_id":"1"}]}""");
+        string big = ReplyOfBytes(20000);
+        game.Answer = _ => FakeGameLink.Ok(big);
         McpAdapter adapter = new(new SidecarOptions(new ClientOptions(new GameTarget.Pipe("x")), new OutputFolder(_folder),
             200 * 1024), game, shown: shown);
 
         string line = (await adapter.HandleAsync(
             """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find","arguments":{"what":"thing"}}}"""))!;
 
-        Assert.Equal((string)JsonNode.Parse(line)!["result"]!["content"]![0]!["text"]!, Assert.Single(shown.Texts));
+        // The text heard is the cut reply as sent, not the whole one.
+        string text = (string)JsonNode.Parse(line)!["result"]!["content"]![0]!["text"]!;
+        Assert.Equal(text, Assert.Single(shown.Texts));
+        Assert.NotNull(JsonNode.Parse(text)!["cut"]);
+        Assert.True(Encoding.UTF8.GetByteCount(text) <= ReplyCap.Target);
     }
 
     private static JsonObject Without(JsonNode node, string key)

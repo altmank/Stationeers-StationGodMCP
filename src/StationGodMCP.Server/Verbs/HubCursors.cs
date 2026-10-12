@@ -23,6 +23,9 @@ internal sealed class HubCursor(string id, long stream, WhatEntry what, HandlerC
     internal string? WalkCursor { get; set; }
 
     internal int NextOffset { get; set; }
+
+    /// <summary>The first call's shape (fields, omit, list_limits): every page keeps it.</summary>
+    internal System.Text.Json.JsonElement? Shape { get; init; }
 }
 
 /// <summary>The hub cursors of one hub, freed at the walk's end, when their stream ends and on a world change.</summary>
@@ -32,12 +35,16 @@ internal sealed class HubCursors
     private readonly Dictionary<string, HubCursor> _cursors = new(StringComparer.Ordinal);
     private int _next;
 
-    internal HubCursor Open(long stream, WhatEntry what, HandlerCall call, string main)
+    internal HubCursor Open(long stream, WhatEntry what, HandlerCall call, string main,
+        System.Text.Json.JsonElement? shape = null)
     {
         lock (_gate)
         {
             _next++;
-            HubCursor cursor = new("c" + _next.ToString(CultureInfo.InvariantCulture), stream, what, call, main);
+            HubCursor cursor = new("c" + _next.ToString(CultureInfo.InvariantCulture), stream, what, call, main)
+            {
+                Shape = shape
+            };
             _cursors.Add(cursor.Id, cursor);
             return cursor;
         }
