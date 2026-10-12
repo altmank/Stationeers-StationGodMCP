@@ -236,10 +236,11 @@ internal sealed class PipeRig : IDisposable
     internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, bool mainThread = true,
         ProtocolSettings? settings = null, SubscriptionHub? subscriptions = null,
         Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null, StreamStores? stores = null,
-        int resumeWindowMs = 0, IMonotonicClock? resumeClock = null, HeldRestores? restores = null)
+        int resumeWindowMs = 0, IMonotonicClock? resumeClock = null, HeldRestores? restores = null,
+        Func<WorldFacts>? world = null)
     {
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
-        Mod = new FakeMod(mainThread, _deadlines, stores: stores);
+        Mod = new FakeMod(mainThread, _deadlines, stores: stores, world: world);
         if (subscriptions != null)
         {
             Mod.Samples = subscriptions;
@@ -309,10 +310,10 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     private int _holdMs;
 
     internal FakeMod(bool mainThread, DeadlineWatch deadlines, SchedulerSettings? settings = null,
-        StreamStores? stores = null, IMonotonicClock? clock = null)
+        StreamStores? stores = null, IMonotonicClock? clock = null, Func<WorldFacts>? world = null)
     {
         _deadlines = deadlines;
-        _calls = new LaneScheduler(settings ?? SchedulerSettings.Default, stores, clock);
+        _calls = new LaneScheduler(settings ?? SchedulerSettings.Default, stores, clock, world);
         if (mainThread)
         {
             _thread = new Thread(() =>

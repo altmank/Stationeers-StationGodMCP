@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -73,10 +74,17 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
     private readonly StreamStores _stores;
     private readonly IMonotonicClock _clock;
+    private readonly Func<WorldFacts> _world;
 
-    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null, IMonotonicClock? clock = null)
+    /// <summary>
+    /// world: the running world as welcome names it (WorldFacts.None while none runs), read on the main thread as a call
+    /// that names a world starts; ServerFacts.Current's when not given.
+    /// </summary>
+    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null, IMonotonicClock? clock = null,
+        Func<WorldFacts>? world = null)
     {
         Settings = settings;
+        _world = world ?? CurrentWorld;
         _stores = stores ?? StreamStores.Main;
         _clock = clock ?? StopwatchClock.Instance;
         _scheduler = new FrameScheduler<QueuedCall>(settings, this, _clock, new CostPredictor());
@@ -115,6 +123,16 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
             return;
         }
 
+        if (call.World != null)
+        {
+            WorldFacts world = _world();
+            if (!string.Equals(world.Id, call.World, StringComparison.Ordinal))
+            {
+                call.Finish(WorldChangedReply(call, world), null);
+                return;
+            }
+        }
+
         double began = _clock.NowMs;
         CallOutcome outcome;
         using (CallContext.Enter(call.Context))
@@ -131,6 +149,17 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     }
 
     void ICallRunner<QueuedCall>.Expire(QueuedCall call) => call.Drop(call.TimeoutReply());
+
+    private static WorldFacts CurrentWorld() => ServerFacts.Current.World;
+
+    // A call that names a world other than the current one (a load since it was sent): refused unrun, with the world now.
+    private static string WorldChangedReply(QueuedCall call, WorldFacts world) =>
+        call.RefusalReply(ProtocolCall.WorldChangedCode,
+            world.Id.Length == 0
+                ? $"The call is for world {call.World}, but no world is running now. Nothing ran."
+                : $"The call is for world {call.World}, but world {world.Id} has loaded since, and its reference ids " +
+                  "may name other things. Nothing ran.",
+            new Dictionary<string, WorldFacts> { ["world"] = world });
 
     /// <summary>Stopwatch.GetTimestamp as StopwatchClock milliseconds.</summary>
     internal static double ClockMs(long timestamp) => timestamp * 1000.0 / Stopwatch.Frequency;

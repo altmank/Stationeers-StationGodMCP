@@ -53,7 +53,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `type` | When | Keys |
 | --- | --- | --- |
 | `hello` | First message, once. | `protocol` (array of integers, the major versions the client speaks, required), `client` (object: `name` string 1-64 characters of letters, digits, `-`, `_`, `.`; `version` string; `library` string, optional), `features` (array of strings the client understands, optional), `resume` (string 16-128 characters of letters, digits, `-`, `_`, a token the client chose, optional; see *Resuming*). |
-| `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000), `stream` (integer 0 to 2^53, optional, default 0; see *Streams*), `rename` (object, optional; see *Rename*). |
+| `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000), `stream` (integer 0 to 2^53, optional, default 0; see *Streams*), `rename` (object, optional; see *Rename*), `world` (string 1-64 characters, a world id from `welcome` or `world_changed`, optional; see *A call's world*). |
 | `cancel` | Any time after `welcome`. | `id` of a call in flight. |
 | `stream_end` | Any time after `welcome`. | `stream` (integer 1 to 2^53, required). No reply; see *Streams*. |
 | `cursor_close` | Any time after `welcome`. | `cursor_id` (string, required). No reply; see *Walks*. |
@@ -286,6 +286,17 @@ timeout adds it too.
 answered normally. Cancelling an unknown id does nothing. A building run queued with `wait: true` has been answered
 already, so `cancel` cannot reach it; `drop_job` takes it out of the job queue before it starts (*Protocol methods*).
 
+### A call's world
+
+A call may carry `world`, the world id the caller means: `welcome.server.world.id`, or the id of the last
+`world_changed` event. The mod compares it with the current world's id on the main thread, as the call starts, not
+when it arrives, so a call queued before a world load and started after it is refused `world_changed`, unrun, with
+`data: {world: {id, save, epoch}}`, the current world as `welcome` names it (`id` empty while no world runs: the menu,
+or a load in progress). A write sent for one save never acts on the save loaded after it, which reuses the same
+reference ids. A call without `world` runs in whatever world is current, as before. A `world` that is not a string of
+1 to 64 characters is refused `invalid_argument` with the call's id, and nothing is queued. The check costs one string
+compare per call that carries it.
+
 ### Replies
 
 ```json
@@ -395,6 +406,7 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `internal_error` | A bug. The method may have partly run. As today. | none | no |
 | `subscription_limit` | A subscription would exceed a per-subscription, connection or global limit. | `{limit, requested, projected_ms_per_s}` | no; poll instead |
 | `unknown_subscription` | `unsubscribe` of an id this connection does not have. | none | no |
+| `world_changed` | The call's `world` is not the current world: another world loaded after the call was sent. Nothing ran (*A call's world*). | `{world: {id, save, epoch}}`, the current world (`id` empty while none runs) | no; find the ids again |
 | `too_many_restores` | A `hold_restore` change would pass 256 restores on the stream or 4,096 on the owner (the connection, or its resume token). Nothing changed. | `{limit, scope}`, `scope` `stream` or `owner` | after clearing some |
 
 ## Shaping
@@ -862,7 +874,8 @@ A connection can break at any time: the game closed, the save reloaded, the mod 
   today's dashboard rule (StationeersScriptDashboard `stationscript/transport.py:84-110`), with the catalogue instead of a
   hand-kept list; that list already leaves out `highlight` and `show_preview`, which draw (`transport.py:23`).
 - Any automatic resend, and any resubscribe, happens only when the new `welcome.server.world.id` equals the last one
-  seen. A different id means another world: every reference id the client holds may now name something else.
+  seen. A different id means another world: every reference id the client holds may now name something else. A call
+  that carries `world` is held to it by the mod as well (*A call's world*).
 
 ### Resuming
 

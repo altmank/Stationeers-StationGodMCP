@@ -26,6 +26,9 @@ internal static class WorldStores
     /// <summary>The running world's id, new each time a world starts running.</summary>
     internal static string WorldId => Scope.WorldId;
 
+    /// <summary>Whether a world is running this frame (not the menu, not a load in progress).</summary>
+    internal static bool Running => Scope.Running;
+
     /// <summary>Whether this frame is the first of a running world.</summary>
     internal static bool Entered => Scope.Entered;
 

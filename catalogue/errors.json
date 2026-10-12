@@ -1011,6 +1011,11 @@
     "origin": "tool",
     "see": {"topic": "player", "subtopic": "view"}
   },
+  "world_changed": {
+    "description": "The call named a world id that is not the current world, so another world has loaded in between (data.world is the current one, id empty while none runs). Nothing ran. Find the things again in the new world before acting.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "would_burst": {
     "description": "The change would take a pipe, tank or network past its pressure limit; the message gives the numbers. Change less; move_gas also takes force to do it anyway.",
     "origin": "tool",

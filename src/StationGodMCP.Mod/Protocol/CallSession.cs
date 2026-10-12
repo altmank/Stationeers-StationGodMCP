@@ -317,7 +317,8 @@ internal sealed class CallSession : Session
             shape = ShapeRequest.WithDefaultLimits(shape, method.DefaultLimits);
         }
 
-        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, namesChecked, call.Rename);
+        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, namesChecked, call.Rename,
+            call.World);
         CallProfile profile = method != null
             ? new CallProfile(method.Name, method.ClassAt(call.Params), method.CostAt(call.Params))
             : CallProfiles.Of(null, call.Method, call.Params);

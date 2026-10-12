@@ -58,6 +58,9 @@ internal abstract class QueuedCall
     /// <summary>Whether it is held to the order of a write call.</summary>
     internal bool IsWrite => Profile.IsOrdered;
 
+    /// <summary>The world id it may run in (protocol.md, A call's world); null to run in any.</summary>
+    internal virtual string? World => null;
+
     /// <summary>Runs the call on the main thread, through the game-side runner.</summary>
     internal abstract CallOutcome Run(ICallRunner runner, double queueWaitMs);
 
@@ -131,8 +134,9 @@ internal interface ICallRunner
 internal sealed class CallRequest
 {
     internal CallRequest(string id, string method, JObject? parameters, ShapeRequest? shape, bool argumentNamesChecked,
-        RenameMap? rename = null)
+        RenameMap? rename = null, string? world = null)
     {
+        World = world;
         Id = id;
         Method = method;
         Params = parameters;
@@ -160,6 +164,9 @@ internal sealed class CallRequest
     /// its reply is written; null when it sent none. Params are in handler names either way.
     /// </summary>
     internal RenameMap? Rename { get; }
+
+    /// <summary>The world id the call may run in (ClientMessage.Call.World); null to run in any.</summary>
+    internal string? World { get; }
 }
 
 /// <summary>
@@ -171,6 +178,7 @@ internal sealed class ProtocolCall : QueuedCall
     internal const string TimeoutCode = "game_timeout";
     internal const string CancelledCode = "cancelled";
     internal const string ShuttingDownCode = "shutting_down";
+    internal const string WorldChangedCode = "world_changed";
 
     private readonly Action<ProtocolCall, string, string?> _deliver;
     private readonly object _source;
@@ -195,6 +203,8 @@ internal sealed class ProtocolCall : QueuedCall
     internal override CallContext Context => _context;
 
     internal override string? ClientName => _clientName;
+
+    internal override string? World => Request.World;
 
     internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunCall(this, queueWaitMs);
 

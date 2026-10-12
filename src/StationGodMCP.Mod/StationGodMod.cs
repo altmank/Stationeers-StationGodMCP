@@ -39,7 +39,7 @@ public sealed class StationGodMod : ModBehaviour
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
     private StationGodRequestDispatcher _dispatcher =
-        new StationGodRequestDispatcher(Deadlines, new LaneScheduler(SchedulerSettings.Default));
+        new StationGodRequestDispatcher(Deadlines, new LaneScheduler(SchedulerSettings.Default, world: CallWorld));
     private Harmony? _harmony;
     private PipeListener? _pipeListener;
     private bool _pipeUnavailable;
@@ -119,7 +119,8 @@ public sealed class StationGodMod : ModBehaviour
             ProfilingControl.Load(typeof(StationGodMod).Assembly, PerformanceSettings.Profiling);
             Api.Shared.Game.ThingIndex.Verify = PerformanceSettings.VerifyPrefabIndex;
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
-            _dispatcher = new StationGodRequestDispatcher(Deadlines, new LaneScheduler(PerformanceSettings.Scheduler));
+            _dispatcher = new StationGodRequestDispatcher(Deadlines,
+                new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld));
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
                 Subscriptions.ReadLogicManyReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
             _dispatcher.Subscriptions = _subscriptions;
@@ -311,6 +312,10 @@ public sealed class StationGodMod : ModBehaviour
             PipeUnavailable(exception.Message);
         }
     }
+
+    // The world a call that names one must match as it starts: the one welcome names, published this frame before the
+    // calls run; none while no world runs (the menu, a load in progress), so an old id never matches mid-load.
+    private static WorldFacts CallWorld() => WorldStores.Running ? ServerFacts.Current.World : WorldFacts.None;
 
     private void PipeUnavailable(string reason)
     {

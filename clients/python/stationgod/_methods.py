@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:7d97f9251d274770af75002258cbe0d11aaf0c1af1aa85f7cfd67585924a1485'
+CATALOGUE_HASH = 'sha256:38ddd4038cb05f8e6cdbe976647a06346df11baee6f9c15fb8e9dcfa4330b89e'
 MOD_VERSION = '1.33.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
