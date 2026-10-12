@@ -20,7 +20,12 @@ internal abstract record Connecting
 /// </summary>
 internal static class Handshake
 {
-    internal static async Task<Connecting> OpenAsync(ClientOptions options, CancellationToken cancellation)
+    internal static Task<Connecting> OpenAsync(ClientOptions options, CancellationToken cancellation) =>
+        OpenAsync(options, Library.Features, resume: null, cancellation);
+
+    /// <summary>Opens a connection offering these features, with the resume token in hello when given.</summary>
+    internal static async Task<Connecting> OpenAsync(ClientOptions options, IReadOnlyList<string> features, string? resume,
+        CancellationToken cancellation)
     {
         GameTarget target = options.Target;
         Opened opened = await target.OpenAsync(options.EffectiveConnectTimeout, cancellation).ConfigureAwait(false);
@@ -36,7 +41,7 @@ internal static class Handshake
             Connecting? signIn = target is GameTarget.Tcp
                 ? await SecretAsync(options, channel, cancellation).ConfigureAwait(false)
                 : null;
-            outcome = signIn ?? await HelloAsync(options, channel, cancellation).ConfigureAwait(false);
+            outcome = signIn ?? await HelloAsync(options, channel, features, resume, cancellation).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is IOException or ObjectDisposedException ||
                                           exception is OperationCanceledException && !cancellation.IsCancellationRequested)
@@ -52,10 +57,11 @@ internal static class Handshake
         return outcome;
     }
 
-    private static async Task<Connecting> HelloAsync(ClientOptions options, LineChannel channel, CancellationToken cancellation)
+    private static async Task<Connecting> HelloAsync(ClientOptions options, LineChannel channel,
+        IReadOnlyList<string> features, string? resume, CancellationToken cancellation)
     {
         GameTarget target = options.Target;
-        await channel.WriteLineAsync(Wire.Hello(options), cancellation).ConfigureAwait(false);
+        await channel.WriteLineAsync(Wire.Hello(options, features, resume), cancellation).ConfigureAwait(false);
         Answer answer = await NextAsync(options, channel, "hello", cancellation).ConfigureAwait(false);
         if (answer is not Answer.Message { Value: var message })
         {

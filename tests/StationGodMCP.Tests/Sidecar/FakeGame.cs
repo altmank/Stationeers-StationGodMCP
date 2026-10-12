@@ -72,6 +72,15 @@ internal sealed class FakeGame : IAsyncDisposable
 
     public int MaxInFlight { get; set; } = 16;
 
+    /// <summary>limits.max_in_flight_per_stream in the welcome; left out when null.</summary>
+    public int? MaxInFlightPerStream { get; set; }
+
+    /// <summary>limits.max_in_flight_per_connection in the welcome; left out when null.</summary>
+    public int? MaxInFlightPerConnection { get; set; }
+
+    /// <summary>welcome.resume.resumed for a hello that carries a resume token.</summary>
+    public bool Resumed { get; set; }
+
     public ConcurrentQueue<JsonElement> Received { get; } = new();
 
     public ConcurrentQueue<FakeCall> Calls { get; } = new();
@@ -211,8 +220,14 @@ internal sealed class FakeGame : IAsyncDisposable
 
         peer.Welcomed = true;
         string features = string.Join(",", Features.Select(feature => $"\"{feature}\""));
+        string limits = "\"max_in_flight\":" + MaxInFlight +
+                        (MaxInFlightPerStream is { } perStream ? ",\"max_in_flight_per_stream\":" + perStream : "") +
+                        (MaxInFlightPerConnection is { } perConnection ? ",\"max_in_flight_per_connection\":" + perConnection : "");
+        string resume = hello.TryGetProperty("resume", out JsonElement token)
+            ? ",\"resume\":{\"token\":" + token.GetRawText() + ",\"resumed\":" + (Resumed ? "true" : "false") + ",\"window_s\":60}"
+            : "";
         await peer.WriteAsync(
-            $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":92,"protocol_methods":3},"limits":{"max_in_flight":{{MaxInFlight}}},"features":[{{features}}]}""");
+            $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":92,"protocol_methods":3},"limits":{{{limits}}},"features":[{{features}}]{{resume}}}""");
         while (await ReadAsync(peer) is { } message)
         {
             string? kind = message.TryGetProperty("type", out JsonElement value) ? value.GetString() : null;

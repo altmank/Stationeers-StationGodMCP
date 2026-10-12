@@ -9,7 +9,10 @@ internal static class Wire
 {
     private static readonly JsonWriterOptions Compact = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    internal static string Hello(ClientOptions options) => Write(writer =>
+    internal static string Hello(ClientOptions options) => Hello(options, Library.Features, resume: null);
+
+    /// <summary>hello with the features offered and, when given, the resume token (protocol.md, Resuming).</summary>
+    internal static string Hello(ClientOptions options, IReadOnlyList<string> features, string? resume) => Write(writer =>
     {
         writer.WriteString("type", "hello");
         writer.WriteStartArray("protocol");
@@ -21,12 +24,16 @@ internal static class Wire
         writer.WriteString("library", Library.Name);
         writer.WriteEndObject();
         writer.WriteStartArray("features");
-        foreach (string feature in Library.Features)
+        foreach (string feature in features)
         {
             writer.WriteStringValue(feature);
         }
 
         writer.WriteEndArray();
+        if (resume != null)
+        {
+            writer.WriteString("resume", resume);
+        }
     });
 
     // The TCP sign-in: the shared secret in plain text, sent before anything else.
@@ -67,6 +74,71 @@ internal static class Wire
         {
             writer.WriteNumber("deadline_ms", deadline);
         }
+    });
+
+    /// <summary>
+    /// A link call: {type, id, method, params, stream?, shape?, rename?, deadline_ms?, world?}. stream only when it is
+    /// not 0 and the server lists streams, shape and rename only when listed, world whenever the link knows one.
+    /// Written without a closure, since every call of the hub passes here.
+    /// </summary>
+    internal static string LinkCall(IReadOnlySet<string> features, string id, GameCall call, JsonElement parameters,
+        string? world)
+    {
+        using MemoryStream buffer = new();
+        using (Utf8JsonWriter writer = new(buffer, Compact))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", "call");
+            writer.WriteString("id", id);
+            writer.WriteString("method", call.Method);
+            writer.WritePropertyName("params");
+            parameters.WriteTo(writer);
+            if (call.Stream != 0 && features.Contains("streams"))
+            {
+                writer.WriteNumber("stream", call.Stream);
+            }
+
+            if (call.Shape is { ValueKind: JsonValueKind.Object } shape && features.Contains("shape"))
+            {
+                writer.WritePropertyName("shape");
+                shape.WriteTo(writer);
+            }
+
+            if (call.Rename is { ValueKind: JsonValueKind.Object } rename && features.Contains("rename"))
+            {
+                writer.WritePropertyName("rename");
+                rename.WriteTo(writer);
+            }
+
+            if (call.DeadlineMs is { } deadline)
+            {
+                writer.WriteNumber("deadline_ms", deadline);
+            }
+
+            if (world != null)
+            {
+                writer.WriteString("world", world);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+    }
+
+    internal static string StreamEnd(long stream) => Write(writer =>
+    {
+        writer.WriteString("type", "stream_end");
+        writer.WriteNumber("stream", stream);
+    });
+
+    internal static string SessionEnd() => Write(writer => writer.WriteString("type", "session_end"));
+
+    // protocol.md does not define release yet; this takes stream_end's shape and is sent only when the mod lists it.
+    internal static string Release(long stream) => Write(writer =>
+    {
+        writer.WriteString("type", "release");
+        writer.WriteNumber("stream", stream);
     });
 
     internal static string Cancel(string id) => Write(writer =>
