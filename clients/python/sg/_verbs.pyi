@@ -257,7 +257,7 @@ def find(what: Literal['plant'], *,
       plants: list[Any]
       count: int
     Example: sg.find('plant')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -274,7 +274,7 @@ def find(what: Literal['room'], *,
       local_player_room_id: str | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('room', id='4820585')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -404,7 +404,7 @@ def inspect(what: Literal['device'], *,
       writable: list[str]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('device', id='4820585')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -464,7 +464,7 @@ def inspect(what: Literal['slots'], *,
       slot_count: int
     Types: LogicType = {id: int, name: str | None}
     Example: sg.inspect('slots', id='1199811')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -494,7 +494,7 @@ def inspect(what: Literal['contents'], *,
           contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}]} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('contents', id='player')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -582,7 +582,7 @@ def inspect(what: Literal['health'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Vec3 = {x: float, y:
         float, z: float}
     Example: sg.inspect('health', network='5012345', kind='pipe', damaged_only=True)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -641,7 +641,7 @@ def inspect(what: Literal['connections'], *,
     Types: Color = {index: int | None, name: str | None, is_default: bool}; Thing = {reference_id: str, prefab_name: str | None, display_name: str |
         None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('connections', id=['2514519', '3575779'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -660,7 +660,7 @@ def inspect(what: Literal['atmosphere'], *,
           polluted_l: float, steam_mol: float, steam_if_condensed_l: float}} | None}]
       count: int
     Example: sg.inspect('atmosphere', id='2005300')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -677,7 +677,7 @@ def inspect(what: Literal['reagents'], *,
       total: float
       reagents: list[{reagent: str, name: str | None, quantity: float, unit: str | None}]
     Example: sg.inspect('reagents', id='4191359')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -714,7 +714,7 @@ def inspect(what: Literal['genes'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('genes', id='3311223')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -785,7 +785,7 @@ def inspect(what: Literal['chip'], *,
       batch_device_count: int | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('chip', id='4820585', parts=['status', 'source'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -818,7 +818,7 @@ def inspect(what: Literal['screen'], *,
       image: {path: str, surface: str, width: int, height: int} | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('screen', id='4860097', text='error')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -858,7 +858,7 @@ def inspect(what: Literal['rocket'], *,
       explanations: list[str] | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('rocket', compact=True)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -873,7 +873,7 @@ def inspect(what: Literal['vault'], *,
       remote_vaults: list[{remote: Thing, vault_id: str | None, connection: str}]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('vault')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -983,6 +983,7 @@ def inspect(what: Literal['job'], *,
     """One build, removal, swap or gas move by its id (place-41), or a script run (script-14): running, queued or finished. With no id: runs with notices pending (stopped or killed with something left, writes not done, or done and not yet seen).
     status: queued or waiting (not started yet), then applied, applied_with_differences, applied_unchecked, stopped or refused (jobs); queued, then applied or failed (gas moves). Only queued and waiting are not final.
     A script run answers run_script's text block: script-N and its state (done, REPORT, stopped, killed, or running with the line and what it waits on), the returned value, and the footer so far, with its cost line.
+    On a live confirmed run it answers within 30 s, whatever max_wait says.
     Reply, one of:
     (a build or removal job)
       BuildJob
@@ -1001,7 +1002,7 @@ def inspect(what: Literal['job'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobQueued, RunJob, SwapJob,
         UndoJob, UpgradeJob
     Example: sg.inspect('job', id='place-41')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1016,7 +1017,7 @@ def inspect(what: Literal['controllers'], *,
       controllers: list[{reference_id: str, display_name: str | None, kind: str, how: str, logic_types: list[str], line: int | None, on: bool | None}]
       count: int
     Example: sg.inspect('controllers', id='4936423')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1177,7 +1178,7 @@ def survey(what: Literal['feeds'], *,
       unreached: list[Thing]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.survey('feeds', id='720259')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1221,7 +1222,7 @@ def read(what: Literal['logic'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; LogicType = {id:
         int, name: str | None}
     Example: sg.read('logic', id=['1199811', '1199812'], logic=['Pressure', 'Temperature'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1245,7 +1246,7 @@ def read(what: Literal['snapshot'], *,
       matched_count: int
       truncated: bool
     Example: sg.read('snapshot', prefab='StructureBatteryLarge', limit=10)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1265,7 +1266,7 @@ def read(what: Literal['memory'], *,
       count: int
       stack_size: int | None
     Example: sg.read('memory', id='4820585', start=0, count=32)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1357,7 +1358,7 @@ def read(what: Literal['flight_log'], *,
           burn_time_s: float, rule: str}], offset: int, every: int, has_more: bool}]
       count: int
     Example: sg.read('flight_log', limit=20)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1371,7 +1372,7 @@ def write(what: Literal['logic'], *,
     allow: list[Literal['lint']] = None,  # lint: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed (passed lists it).
 ) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
     """Logic values on devices, as a chip or console writes them; answers previous and read-back values.
-    id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run, ids a find returned that you have not seen make the run a report before anything acts, and stop it after: report, then repeat).
+    id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run an id you have not seen stops the run: run it as a report first, then again with confirm: true).
     Reply, one of:
     (LogicWrite)
       gateway_id: str
@@ -1391,7 +1392,7 @@ def write(what: Literal['logic'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; LogicType = {id:
         int, name: str | None}
     Example: sg.write('logic', id='4820585', logic='On', value=1)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1531,7 +1532,7 @@ def write(what: Literal['label'], *,
       error_count: int
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
     Example: sg.write('label', id='1199811', label='O2 Tank 1')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1556,7 +1557,7 @@ def write(what: Literal['paint'], *,
       error_count: int
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
     Example: sg.write('paint', network='4639870', kind='pipe', color='Red')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1662,7 +1663,7 @@ def write(what: Literal['battery'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('battery', within='player')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1826,7 +1827,7 @@ def plan(what: Literal['removal'], *,
       notes: list[str] | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.plan('removal', kind='cable', network='3768865')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1913,7 +1914,7 @@ def plan(what: Literal['flight'], *,
       mining: {site: str, kind: str, collectable: bool, units_per_hour: float, units_in_stop: float, slots_in_stop: int, problems: list[str] | None} |
           None
     Example: sg.plan('flight', id='4067059', node='pad')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1944,7 +1945,7 @@ def plan(what: Literal['mining'], *,
       count: int
       notes: list[str]
     Example: sg.plan('mining', collectable_only=True)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -1991,7 +1992,7 @@ def plan(what: Literal['aim'], *,
       stale_pose_deg: float
       samples: int
     Example: sg.plan('aim', id='3300111')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2023,7 +2024,7 @@ def check(what: Literal['layout'], *,
           rule_id: str | None, field: str | None, line: int, column: int, position: int | None, message: str}]}
       elapsed_ms: float
     Example: sg.check('layout', room='17')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2055,7 +2056,7 @@ def check(what: Literal['rules'], *,
           str, values: list[str]}]}] | None
       valid: bool | None
     Example: sg.check('rules', action='explain', rule='door_keepout', id='1199811')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2067,7 +2068,7 @@ def check(what: Literal['replaceable'], *,
     Reply:
       results: list[{reference_id: str, prefab_name: str | None, replaceable: bool | None, rule: str | None, reason: str | None}]
     Example: sg.check('replaceable', id='r12.things')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2086,7 +2087,7 @@ def check(what: Literal['ignition'], *,
       prefabs: list[{prefab_name: str | None, display_name: str | None, flashpoint_k: float | None, autoignition_k: float | None}] | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.check('ignition', id='2005300')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2265,7 +2266,7 @@ def build(what: Literal['cable'], *,
 @overload
 def build(what: Literal['pipe'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    grade: Literal['gas', 'liquid', 'insulated_gas', 'insulated_liquid'],  # Required except when repeating.
+    grade: Literal['gas', 'liquid', 'insulated_gas', 'insulated_liquid'],  # Required.
     waypoints: list = None,  # Points joined by straight axis lines.
     cells: list = None,  # Every cell, each next to the one before.
     piece: dict = None,  # One piece {at, ends}.
@@ -2493,7 +2494,7 @@ def build(what: Literal['finish'], *,
           None} | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.build('finish', id='1199811', state=2)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2552,7 +2553,7 @@ def swap(what: Literal['wall'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, SwapJob
     Example: sg.swap('wall', room='17', into='StructureCompositeWall')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2611,7 +2612,7 @@ def swap(what: Literal['frame'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, SwapJob
     Example: sg.swap('frame', room='17')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2688,7 +2689,7 @@ def swap(what: Literal['cable'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, UpgradeJob
     Example: sg.swap('cable', network='3768865', into='super_heavy')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2766,7 +2767,7 @@ def swap(what: Literal['pipe'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, UpgradeJob
     Example: sg.swap('pipe', network='5012345', into='insulated')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2839,7 +2840,7 @@ def swap(what: Literal['chute'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, UpgradeJob
     Example: sg.swap('chute', network='6100100')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2916,7 +2917,7 @@ def remove(what: Literal['structure'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobBusy, JobDropped, JobQueued,
         RunJob
     Example: sg.remove('structure', id=['1559707'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -2985,7 +2986,7 @@ def remove(what: Literal['cable'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobBusy, JobDropped, JobQueued,
         RunJob
     Example: sg.remove('cable', id=['3763565'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -3055,7 +3056,7 @@ def remove(what: Literal['pipe'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobBusy, JobDropped, JobQueued,
         RunJob
     Example: sg.remove('pipe', id=['3763565'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -3124,7 +3125,7 @@ def remove(what: Literal['chute'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobBusy, JobDropped, JobQueued,
         RunJob
     Example: sg.remove('chute', id=['3763565'])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -3137,7 +3138,7 @@ def move(what: Literal['item'], *,
     merge: bool = True,  # Join a matching stack in the slot.
     force: bool = False,  # Into an empty slot by index even when hidden. Cheat.
     allow: list[Literal['in_use', 'ground']] = None,  # in_use: take a part its device is using; ground: what does not fit goes on the ground.
-    moves: list = None,  # Up to 64 moves in order, each {id, quantity, to, slot, merge, allow}.
+    moves: list = None,  # Up to 64 moves in order, each {id, to, slot, quantity, merge, allow}; slot auto when left out.
     source: str = None,  # A vault or silo to take from.
     prefab: str | int | list = None,  # Into a store: filter; out of a store: the item to take (whole name or hash).
     reagent: str = None,  # Out of a vault: the stored reagent (Iron, Steel).
@@ -3155,7 +3156,6 @@ def move(what: Literal['item'], *,
     Filters (prefab parts, name, location, within, near, category) work for moves into a store; slot moves take ids.
     Out of a vault: sg.move('item', source='4191359', prefab='ItemIronIngot', quantity=500, to='player').
     Into a silo by filter: sg.move('item', to='5200100', prefab='*Ore*', location='player').
-    Reports in a report run; acts in a confirmed run.
     Cheat when force: true: ask the user first.
     Reply, one of:
     (ItemMoved)
@@ -3232,7 +3232,6 @@ def move(what: Literal['item'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.move('item', id='3311223', to='player')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
     """
 
 @overload
@@ -3333,7 +3332,7 @@ def trade(what: Literal['inventory'], *,
           sellable: int | None}], sells: list[{name: str | None, prefab_name: str | None, credits_each: float, stock: int, gas: bool, details: str |
           None}]}]
     Example: sg.trade('inventory', id='7')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -3363,7 +3362,7 @@ def trade(what: Literal['buy'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('buy', id='7', items=[{'prefab': 'ItemIronIngot', 'quantity': 50}])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -3393,7 +3392,7 @@ def trade(what: Literal['sell'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('sell', id='7', items=[{'prefab': 'ItemGoldIngot', 'quantity': 20}])
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -3473,6 +3472,7 @@ def show(what: Literal['highlight'], *,
 def undo(*,
     id: str | list[str] = None,  # see sg.help('undo')
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    id: str | list[str],  # The job, the bulk write (write-N), the script run (script-14), or "paste"; a list is undone newest first, in one report.
 ) -> dict:  # main list: r['piece_runs']; iterating or indexing it walks every page, in order
     """A job id (place-12, run-4, remove-3...), a bulk write (write-N), a script run (script-14: the whole run), or "paste".
     A bulk write undo lists every step with its mark: build and removal jobs [undo] (undo of each, newest first); swap jobs [cannot undo: change job]; logic writes of held settings, memory, label, paint, pins, uplink and genes [undo] (previous values written back); action and pulse logic types [cannot undo: action]; battery [undo: restores the value, not what happened since]; item slot moves [undo] unless merged; chip source, run controls, screen presses, gas moves, player moves, trades, console commands and store moves [cannot undo].
@@ -3490,8 +3490,8 @@ def undo(*,
       piece_runs: list[{tool: str, arguments: dict, reply: dict}]
       resolved_networks: list | None
       gas_hold: dict | None
-    Example: sg.undo()
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    Example: sg.undo(id='place-41')
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
 
 @overload
@@ -3605,7 +3605,7 @@ def server(what: Literal['stop'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str = None,  # The run (script-14) or job (place-41). Left out: every live run, answered as one combined list.
 ) -> dict:
-    """Stop a script run or a job; with no id, every live run of this session. A script run gets sg.Stopped (a BaseException) once, at its next sg call (at once inside sg.wait or sg.watch), so its finally blocks run: after it, reads and writes act, while waits and watches raise at once. The worker is killed 5 s after the stop (longer while an sg call is in flight, never past 30 s), or on a second stop. A running job is allowed to settle.
+    """Stop a script run or a job; with no id, every live run. The run gets sg.Stopped once, so its finally runs; held restores and logic writes to targets it already wrote act as CLEANUP until the kill (5 s, longer while a call is in flight, never past 30 s, or a second stop); other writes answer an error row.
     Reply:
       id: str
       state: str

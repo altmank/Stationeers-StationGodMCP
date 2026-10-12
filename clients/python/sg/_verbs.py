@@ -179,9 +179,9 @@ def show(what, *, fields=None, placements=None, prefab=None, at=None, rotation=N
                      targets}, options)
 
 
-def undo(*, id=None, fields=None, **options):
+def undo(*, fields=None, id=None, **options):
     """Undo a finished build or removal job, a bulk write (write-N), a script run (script-14: the whole run, newest first), or the newest blueprint paste. sg.help('undo') gives it in full."""
-    return verb_call('undo', None, {'id': id, 'fields': fields}, options)
+    return verb_call('undo', None, {'fields': fields, 'id': id}, options)
 
 
 def server(what, *, fields=None, include=None, action=None, slow_frame_ms=None, csv=None, lines=None, command=None,
