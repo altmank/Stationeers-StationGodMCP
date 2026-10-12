@@ -9,9 +9,9 @@ using Newtonsoft.Json.Linq;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end or bye, or
-/// a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are fixed; an
-/// unknown one is a protocol error, so a client cannot believe the server read something it ignored.
+/// One message from a client, parsed on its connection's reader thread: hello, call, cancel, stream_end, cursor_close or
+/// bye, or a Refused line the protocol does not allow (what to answer is in it). The keys each type may carry are
+/// fixed; an unknown one is a protocol error, so a client cannot believe the server read something it ignored.
 /// </summary>
 internal abstract class ClientMessage
 {
@@ -70,6 +70,7 @@ internal abstract class ClientMessage
             "call" => Call.From(message, line),
             "cancel" => Cancel.From(message, line),
             "stream_end" => EndOfStream.From(message, line),
+            "cursor_close" => CursorClose.From(message, line),
             "bye" => (ClientMessage?)OnlyKeys(message, line, "type") ?? new Bye(),
             null => Refused.Protocol("A message needs a type.", line),
             _ => Refused.Protocol($"Unknown message type '{type}'.", line)
@@ -360,6 +361,30 @@ internal abstract class ClientMessage
                 : new Refused("invalid_argument",
                     $"stream_end needs stream, an integer from 1 to {StreamEnd.MaximumStream}; stream 0 never ends.",
                     null, false, null);
+        }
+    }
+
+    /// <summary>
+    /// cursor_close: the client is done with a walk before its end (protocol.md, Walks); the cursor is freed at the next
+    /// frame if this connection owns it. No reply, like cancel: an unknown or already freed id does nothing.
+    /// </summary>
+    internal sealed class CursorClose : ClientMessage
+    {
+        private CursorClose(string cursorId) => CursorId = cursorId;
+
+        internal string CursorId { get; }
+
+        internal static ClientMessage From(JObject message, string line)
+        {
+            Refused? unknown = OnlyKeys(message, line, "type", "cursor_id");
+            if (unknown != null)
+            {
+                return unknown;
+            }
+
+            return message["cursor_id"]?.Type == JTokenType.String
+                ? new CursorClose((string)message["cursor_id"]!)
+                : Refused.Protocol("cursor_close needs cursor_id, a string.", line);
         }
     }
 

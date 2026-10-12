@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:d27485577b089df9908039ae4ffa560dc22faea85a48c6c1458322ffaca8e54e'
+CATALOGUE_HASH = 'sha256:cd185470d60f953e9094e946aaa37e8f4b566ee6692b33884cb0992d327a7fbc'
 MOD_VERSION = '1.33.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -351,7 +351,9 @@ TABLE = {'catalogue': {'class': 'read',
                             'location',
                             'limit',
                             'offset',
-                            'order'],
+                            'order',
+                            'cursor',
+                            'cursor_id'],
                  'required': [],
                  'shaping': 'lists',
                  'protocol': False},
@@ -1815,12 +1817,12 @@ class Methods:
         """
         return self.call('find_spot', **{'prefab': prefab, 'near': near, 'plane': plane, 'side': side, 'looking': looking, 'around': around, 'room_id': room_id, 'facing': facing, 'radius_m': radius_m, 'require': require, 'limit': limit, 'max_checks': max_checks}, **options)
 
-    def find_things(self, *, name_contains: str | None = None, prefab: str | None = None, prefabs: list | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, **options) -> dict:
+    def find_things(self, *, name_contains: str | None = None, prefab: str | None = None, prefabs: list | None = None, prefab_contains: str | None = None, kind: str | None = None, labelled_only: bool | None = None, runtime_type: str | None = None, broken: bool | None = None, has_atmosphere: bool | None = None, made_by: object | None = None, made_since: float | None = None, min: object | None = None, max: object | None = None, near: object | None = None, radius_m: float | None = None, near_player_m: float | None = None, location: str | None = None, limit: int | None = None, offset: int | None = None, order: str | None = None, cursor: bool | None = None, cursor_id: str | None = None, **options) -> dict:
         """Find anything by name or filter: portable tanks, crates, structures, devices, items, players, animals.
 
-        Class: read. Arguments: name_contains, prefab, prefabs, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near, radius_m, near_player_m, location, limit, offset, order.
+        Class: read. Arguments: name_contains, prefab, prefabs, prefab_contains, kind, labelled_only, runtime_type, broken, has_atmosphere, made_by, made_since, min, max, near, radius_m, near_player_m, location, limit, offset, order, cursor, cursor_id.
         """
-        return self.call('find_things', **{'name_contains': name_contains, 'prefab': prefab, 'prefabs': prefabs, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset, 'order': order}, **options)
+        return self.call('find_things', **{'name_contains': name_contains, 'prefab': prefab, 'prefabs': prefabs, 'prefab_contains': prefab_contains, 'kind': kind, 'labelled_only': labelled_only, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere': has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'min': min, 'max': max, 'near': near, 'radius_m': radius_m, 'near_player_m': near_player_m, 'location': location, 'limit': limit, 'offset': offset, 'order': order, 'cursor': cursor, 'cursor_id': cursor_id}, **options)
 
     def game_clock(self, **options) -> dict:
         """Read the game clock: game_time_s, paused, time_of_day_ratio and days_past.

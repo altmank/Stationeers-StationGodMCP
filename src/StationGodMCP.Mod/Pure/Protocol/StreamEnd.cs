@@ -81,6 +81,16 @@ internal interface IStreamStore
 }
 
 /// <summary>
+/// A per-stream store of walk cursors, which also hears cursor_close (protocol.md, Walks): the connection that sent it
+/// and the cursor id, told on the main thread at the start of the frame after it arrived. A cursor the connection does
+/// not own, or an unknown id, is left alone.
+/// </summary>
+internal interface ICursorStore : IStreamStore
+{
+    void Close(string connectionId, string cursorId);
+}
+
+/// <summary>
 /// The streams one connection has ended, which are never used again on it (protocol.md, Streams). Kept as sorted,
 /// disjoint ranges of ended numbers: a hub numbers its runs upward and ends each when it finishes, so the ended numbers
 /// merge into a few ranges, one more for each stream still open below the highest ended one. At most MaximumRanges

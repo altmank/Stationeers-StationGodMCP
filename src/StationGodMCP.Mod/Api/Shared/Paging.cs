@@ -56,13 +56,13 @@ internal static class ListOrderArg
 /// <summary>One page of an already sorted list, with the list's total and whether more follows.</summary>
 internal sealed class Slice<T>
 {
-    private Slice(List<T> items, int offset, int limit, int total)
+    private Slice(List<T> items, int offset, int limit, int total, bool? hasMore = null)
     {
         Items = items;
         Offset = offset;
         Limit = limit;
         Total = total;
-        HasMore = offset + items.Count < total;
+        HasMore = hasMore ?? offset + items.Count < total;
     }
 
     internal List<T> Items { get; }
@@ -78,6 +78,13 @@ internal sealed class Slice<T>
     /// <summary>A page already cut from a list of the given total, e.g. after its rows were read in full.</summary>
     internal static Slice<T> Page(List<T> items, PageRequest page, int total) =>
         new Slice<T>(items, page.Offset, page.Limit, total);
+
+    /// <summary>
+    /// A later page of a walk (WalkRequest): offset is the walk's entries passed before it, total the walk's length at
+    /// its first call; skipped entries make offset plus count fall short of the next offset, so has_more is the walk's.
+    /// </summary>
+    internal static Slice<T> Walked(List<T> items, int offset, int limit, int total, bool hasMore) =>
+        new Slice<T>(items, offset, limit, total, hasMore);
 
     internal static Slice<T> Of(List<T> sorted, PageRequest page)
     {

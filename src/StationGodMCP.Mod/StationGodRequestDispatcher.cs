@@ -56,6 +56,8 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         Subscriptions?.StreamEnded(source, end);
     }
 
+    public void CursorClosed(string connectionId, string cursorId) => _requests.CloseCursor(connectionId, cursorId);
+
     public void Closed(object source)
     {
         _requests.Close(source);

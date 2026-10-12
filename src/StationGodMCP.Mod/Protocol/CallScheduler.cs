@@ -11,9 +11,9 @@ using StationGodMCP.Pure.Scheduling;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// The order in which the main thread runs queued calls. Add, Withdraw, EndStreams and Close run on any thread and only
-/// post to an inbox; RunFrame, on the main thread, takes the inbox in and runs one frame of calls, each to its answer (or, for
-/// a deferred call, to its start) before the next.
+/// The order in which the main thread runs queued calls. Add, Withdraw, EndStreams, CloseCursor and Close run on any
+/// thread and only post to an inbox; RunFrame, on the main thread, takes the inbox in and runs one frame of calls, each
+/// to its answer (or, for a deferred call, to its start) before the next.
 /// </summary>
 internal interface ICallScheduler
 {
@@ -27,6 +27,9 @@ internal interface ICallScheduler
     /// the per-stream stores hear of it.
     /// </summary>
     void EndStreams(object source, StreamEnd end);
+
+    /// <summary>cursor_close: the cursor stores hear it at the start of the next frame, before that frame's calls.</summary>
+    void CloseCursor(string connectionId, string cursorId);
 
     /// <summary>The connection ended: its waiting calls are dropped unrun and it takes no more.</summary>
     void Close(object source);
@@ -71,6 +74,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     public void EndStreams(object source, StreamEnd end) => _inbox.Enqueue(new Posted(PostKind.EndStreams, null, source, end));
 
     public void Close(object source) => _inbox.Enqueue(new Posted(PostKind.Close, null, source));
+
+    public void CloseCursor(string connectionId, string cursorId) =>
+        _inbox.Enqueue(new Posted(PostKind.CloseCursor, null, NoSource, default, connectionId, cursorId));
 
     public FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner)
     {
@@ -122,6 +128,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
                     break;
                 case PostKind.EndStreams:
                     EndStreamsNow(posted.Source, posted.End);
+                    break;
+                case PostKind.CloseCursor:
+                    _stores.CloseCursor(posted.ConnectionId!, posted.CursorId!);
                     break;
                 case PostKind.Close:
                     if (_connections.TryGetValue(posted.Source, out FrameScheduler<QueuedCall>.Connection? closing))
@@ -194,17 +203,21 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         Add,
         Withdraw,
         EndStreams,
+        CloseCursor,
         Close
     }
 
     private readonly struct Posted
     {
-        internal Posted(PostKind kind, QueuedCall? call, object source, StreamEnd end = default)
+        internal Posted(PostKind kind, QueuedCall? call, object source, StreamEnd end = default,
+            string? connectionId = null, string? cursorId = null)
         {
             Kind = kind;
             Call = call;
             Source = source;
             End = end;
+            ConnectionId = connectionId;
+            CursorId = cursorId;
         }
 
         internal PostKind Kind { get; }
@@ -214,6 +227,11 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         internal object Source { get; }
 
         internal StreamEnd End { get; }
+
+        /// <summary>cursor_close: the connection's client_id and the cursor id.</summary>
+        internal string? ConnectionId { get; }
+
+        internal string? CursorId { get; }
     }
 }
 

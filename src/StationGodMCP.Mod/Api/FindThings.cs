@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
@@ -25,7 +26,10 @@ namespace StationGodMCP.Api;
 /// Labeller's name when there is one) and on the prefab's own name under a label (Labels). Nearest first or by
 /// reference id (order), paged; only the page is described in full. Every thing reports is_broken and condition from the game's own broken state
 /// (Pure/HealthCondition: a broken structure reads 100 % health, so the numbers cannot tell), and broken filters on it.
-/// Read only.
+/// With cursor the sorted list is walked (WalkRequest): a later page with cursor_id takes the next kept ids instead of
+/// scanning, skips things that no longer exist or are being destroyed and does not check the filter again (a thing
+/// that stopped matching is still walked, with its current values), and measures distances from where the player is
+/// now, as a first page does. Read only.
 /// </summary>
 internal static class FindThingsApi
 {
@@ -35,9 +39,15 @@ internal static class FindThingsApi
     [Profiled]
     internal static FindThingsView Handle(Args args)
     {
+        WalkRequest walk = WalkRequest.From(args);
+        PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
+        if (walk.Continues)
+        {
+            return NextPage(walk, page);
+        }
+
         ThingFilter filter = ThingFilter.Parse(args);
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
-        PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
         ListOrder order = ListOrderArg.From(args);
         List<Thing> things = ThingIndex.Things(filter.Prefab) ?? Pools.Snapshot(OcclusionManager.AllThings);
         List<ThingHit> hits = new List<ThingHit>();
@@ -63,8 +73,35 @@ internal static class FindThingsApi
             views.Add(ViewOf(hit.Thing, origin, swatches));
         }
 
-        page.Note("things", views.Count, hits.Count, ListOrders.PagingAdvice(order, origin.IsPresent));
-        return new FindThingsView(Slice<FoundThingView>.Page(views, page, hits.Count), things.Count, origin.View);
+        string? cursorId = walk.Keep(hits, slice.Items.Count, static hit => hit.Thing.ReferenceId);
+        walk.Note("things", page, views.Count, hits.Count, cursorId, ListOrders.PagingAdvice(order, origin.IsPresent));
+        return new FindThingsView(Slice<FoundThingView>.Page(views, page, hits.Count), things.Count, origin.View,
+            cursorId);
+    }
+
+    // A walk's later page: the next kept ids that still name a thing, described as a first page describes them.
+    private static FindThingsView NextPage(WalkRequest walk, PageRequest page)
+    {
+        List<Thing> things = new List<Thing>(page.Limit);
+        WalkStep step = walk.Next(page.Limit, static id => Live(id), things);
+        PlayerOrigin origin = PlayerOrigin.Current();
+        List<FoundThingView> views = new List<FoundThingView>(things.Count);
+        List<ColorSwatch> swatches = PaintApi.Swatches();
+        foreach (Thing thing in things)
+        {
+            views.Add(ViewOf(thing, origin, swatches));
+        }
+
+        walk.Note("things", page, views.Count, step.Total, step.CursorId);
+        return new FindThingsView(Slice<FoundThingView>.Walked(views, step.Offset, page.Limit, step.Total, step.HasMore),
+            0, origin.View, step.CursorId, step.Skipped);
+    }
+
+    // The thing a walk's id still names, or null when it is gone or being destroyed.
+    private static Thing? Live(long id)
+    {
+        Thing thing = Thing.Find(id);
+        return thing != null && !thing.IsBeingDestroyed ? thing : null;
     }
 
     // Where a thing is for distances: a thing in a slot is where its outermost holder is, as find_items measures.

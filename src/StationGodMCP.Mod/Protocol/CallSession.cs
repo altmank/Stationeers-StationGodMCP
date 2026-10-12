@@ -12,7 +12,7 @@ namespace StationGodMCP.Protocol;
 
 /// <summary>
 /// The protocol on one connection: hello and welcome, then calls by id, several in flight, answered in any order and
-/// matched by id; cancel; stream_end; events. The first message must be hello; anything else is a protocol error that
+/// matched by id; cancel; stream_end; cursor_close; events. The first message must be hello; anything else is a protocol error that
 /// closes the connection. Lines are parsed and checked here, on the connection's reader thread; only the methods
 /// themselves run on the main thread.
 /// <para>
@@ -38,11 +38,11 @@ internal sealed class CallSession : Session
     internal const string AnonymousClient = "anonymous";
 
     /// <summary>What welcome lists in features: what this server does beyond the basics.</summary>
-    internal static readonly string[] Features = { "shape", "shape.paths", "shape.omit", "cancel", "streams" };
+    internal static readonly string[] Features = { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors" };
 
     /// <summary>The features with subscriptions, when the server has them.</summary>
     internal static readonly string[] FeaturesWithSubscriptions =
-        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams" };
+        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors" };
 
     private readonly Connection _connection;
     private readonly ProtocolHost _host;
@@ -115,6 +115,9 @@ internal sealed class CallSession : Session
                 break;
             case ClientMessage.EndOfStream ended:
                 EndStream(ended.Stream);
+                break;
+            case ClientMessage.CursorClose closed:
+                _host.CursorClosed(_connection.ClientId, closed.CursorId);
                 break;
             case ClientMessage.Bye _:
                 _connection.EndGracefully();

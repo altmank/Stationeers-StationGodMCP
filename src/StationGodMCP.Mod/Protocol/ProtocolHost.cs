@@ -116,6 +116,9 @@ internal sealed class ProtocolHost
     /// <summary>Streams of the connection ended (stream_end, a slow client): the main thread ends what they had going.</summary>
     internal void StreamEnded(Connection connection, StreamEnd end) => _calls.StreamEnded(connection, end);
 
+    /// <summary>cursor_close from the connection of that client_id: the main thread frees the cursor if it owns it.</summary>
+    internal void CursorClosed(string connectionId, string cursorId) => _calls.CursorClosed(connectionId, cursorId);
+
     /// <summary>A new connection's session: over TCP the shared secret comes first; then the protocol, hello first.</summary>
     internal Session SessionFor(Connection connection) =>
         connection.Transport == "pipe" ? AfterSignIn(connection) : new SecretGateSession(connection, this);

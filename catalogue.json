@@ -72,7 +72,13 @@
       },
       "paging": {
         "summary": "limit and offset: a long list page by page.",
-        "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order. Nearest-first pages are measured from where the player stands at each call, so they do not fit together while the player moves: an entry is seen twice or skipped. To page a whole list (a box of structures, every item), pass order reference_id: find_things, find_items, list_containers and outer_frames take it."
+        "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order. Nearest-first pages are measured from where the player stands at each call, so they do not fit together while the player moves: an entry is seen twice or skipped. To page a whole list (a box of structures, every item), pass order reference_id: find_things, find_items, list_containers and outer_frames take it. To see every entry once, in order, walk it with a cursor (see paging/walk).",
+        "subtopics": {
+          "walk": {
+            "summary": "cursor and cursor_id: every page of one search, once each, in order.",
+            "text": "find_things takes cursor true: when more pages follow, it keeps the rest of its sorted list and the reply gives cursor_id. Pass cursor_id (with limit, nothing else) for each next page: no new scan, the same order, things removed after the first call are skipped (skipped counts them), and the filters are not checked again, so a thing that stopped matching still comes, with its current values. Things built after it are not in the walk. On a later page offset is the walk's entries before it, total its length at the first call, and scanned 0. The last page frees the cursor; so do cursor_close, the end of the call's stream and a world change. A cursor that is gone answers cursor_expired."
+          }
+        }
       },
       "shaping": {
         "summary": "fields, omit, output_file: smaller replies or a file.",
@@ -530,6 +536,11 @@
       "description": "No trader contact has that reference id. trader_contacts lists them.",
       "origin": "tool",
       "see": {"topic": "trading"}
+    },
+    "cursor_expired": {
+      "description": "The walk's cursor is gone: its last page is taken, cursor_close or the end of its stream freed it, the world is another, or the memory bound evicted it. data.position: the things it had returned. Start the walk again with cursor true.",
+      "origin": "tool",
+      "see": {"topic": "paging", "subtopic": "walk"}
     },
     "device_not_found": {
       "description": "No device with that id is reachable here. Check the id, or the gateway the call is scoped to.",
@@ -3154,6 +3165,7 @@
       },
       "class": "read",
       "cost": "world",
+      "x-cost-when": [{"when": {"cursor_id": {"present": true}}, "cost": "bounded"}],
       "params": {
         "type": "object",
         "properties": {
@@ -3223,6 +3235,14 @@
             "type": "string",
             "enum": ["nearest", "reference_id"],
             "description": "nearest (default): nearest the player first; reference_id: lowest id first, pages that stay put while the player moves (see paging)."
+          },
+          "cursor": {
+            "type": "boolean",
+            "description": "true: when more pages follow, keep them for cursor_id (see paging/walk). Not with offset."
+          },
+          "cursor_id": {
+            "type": "string",
+            "description": "The next page of a walk, from an earlier reply's cursor_id; goes only with limit (see paging/walk)."
           }
         },
         "additionalProperties": false
@@ -3237,7 +3257,9 @@
           "limit": {"type": "integer"},
           "has_more": {"type": "boolean"},
           "scanned": {"type": "integer"},
-          "local_player": {"type": ["object", "null"]}
+          "local_player": {"type": ["object", "null"]},
+          "cursor_id": {"type": "string"},
+          "skipped": {"type": "integer"}
         }
       },
       "x-views": ["FindThingsView"],

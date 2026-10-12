@@ -115,6 +115,11 @@
     "origin": "tool",
     "see": {"topic": "trading"}
   },
+  "cursor_expired": {
+    "description": "The walk's cursor is gone: its last page is taken, cursor_close or the end of its stream freed it, the world is another, or the memory bound evicted it. data.position: the things it had returned. Start the walk again with cursor true.",
+    "origin": "tool",
+    "see": {"topic": "paging", "subtopic": "walk"}
+  },
   "device_not_found": {
     "description": "No device with that id is reachable here. Check the id, or the gateway the call is scoped to.",
     "origin": "tool",

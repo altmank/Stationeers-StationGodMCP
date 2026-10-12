@@ -65,7 +65,13 @@
     },
     "paging": {
       "summary": "limit and offset: a long list page by page.",
-      "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order. Nearest-first pages are measured from where the player stands at each call, so they do not fit together while the player moves: an entry is seen twice or skipped. To page a whole list (a box of structures, every item), pass order reference_id: find_things, find_items, list_containers and outer_frames take it."
+      "text": "A paged tool answers one page: limit entries from offset, with total (or count) and has_more. Ask again with offset + limit for the next page. Pages are not a snapshot: things that appear or vanish between calls can be missed or seen twice. Each tool says its default page size and its order. Nearest-first pages are measured from where the player stands at each call, so they do not fit together while the player moves: an entry is seen twice or skipped. To page a whole list (a box of structures, every item), pass order reference_id: find_things, find_items, list_containers and outer_frames take it. To see every entry once, in order, walk it with a cursor (see paging/walk).",
+      "subtopics": {
+        "walk": {
+          "summary": "cursor and cursor_id: every page of one search, once each, in order.",
+          "text": "find_things takes cursor true: when more pages follow, it keeps the rest of its sorted list and the reply gives cursor_id. Pass cursor_id (with limit, nothing else) for each next page: no new scan, the same order, things removed after the first call are skipped (skipped counts them), and the filters are not checked again, so a thing that stopped matching still comes, with its current values. Things built after it are not in the walk. On a later page offset is the walk's entries before it, total its length at the first call, and scanned 0. The last page frees the cursor; so do cursor_close, the end of the call's stream and a world change. A cursor that is gone answers cursor_expired."
+        }
+      }
     },
     "shaping": {
       "summary": "fields, omit, output_file: smaller replies or a file.",

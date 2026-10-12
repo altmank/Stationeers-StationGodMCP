@@ -31,11 +31,18 @@ internal static class ThingLocations
     }
 }
 
-/// <summary>find_things: one page of the things whose names match, in the order asked.</summary>
+/// <summary>
+/// find_things: one page of the things whose names match, in the order asked. A walk (WalkRequest) adds cursor_id while
+/// more pages follow, and its later pages add skipped; on those, offset is the walk's entries passed before the page,
+/// total the walk's length at its first call and scanned 0 (no scan ran).
+/// </summary>
 internal sealed class FindThingsView
 {
-    internal FindThingsView(Slice<FoundThingView> page, int scanned, LocalPlayerView? localPlayer)
+    internal FindThingsView(Slice<FoundThingView> page, int scanned, LocalPlayerView? localPlayer,
+        string? cursorId = null, int? skipped = null)
     {
+        CursorId = cursorId;
+        Skipped = skipped;
         Things = page.Items;
         Count = page.Items.Count;
         Total = page.Total;
@@ -62,6 +69,14 @@ internal sealed class FindThingsView
     public int Scanned { get; }
 
     public LocalPlayerView? LocalPlayer { get; }
+
+    /// <summary>The walk's cursor while more pages follow; absent otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? CursorId { get; }
+
+    /// <summary>A walk's later page: the walk's things passed over on this page because they no longer exist.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? Skipped { get; }
 }
 
 /// <summary>A thing find_things found: what it is, its names, where it is, what other tools can do with it.</summary>

@@ -56,6 +56,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000), `stream` (integer 0 to 2^53, optional, default 0; see *Streams*). |
 | `cancel` | Any time after `welcome`. | `id` of a call in flight. |
 | `stream_end` | Any time after `welcome`. | `stream` (integer 1 to 2^53, required). No reply; see *Streams*. |
+| `cursor_close` | Any time after `welcome`. | `cursor_id` (string, required). No reply; see *Walks*. |
 | `bye` | Optional, before closing. | none |
 
 ### Server to client
@@ -97,7 +98,7 @@ The `welcome` message:
     "max_values_per_subscription": 1024,
     "min_subscription_interval_s": 0.5
   },
-  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams"]
+  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors"]
 }
 ```
 
@@ -173,6 +174,42 @@ few ranges, one more for each stream still open below the highest ended one. At 
 that the two lowest merge, and the streams in the gap between them count as ended too. Closing the connection, or a
 slow client (*Outbound queue and slow clients*), ends every stream of it; a world change clears what the mod keeps
 per stream on every connection.
+
+### Walks
+
+A walk pages one search through to its end, each entry at most once and in the search's own order (feature
+`cursors`; `find_things` today). The first call passes `cursor: true` and runs as it would without it: scan, filter,
+sort, the first `limit` entries. When more follow, the mod keeps the reference ids of the rest, in that order, under a
+cursor owned by the call's connection and stream, and the reply adds `cursor_id` (a short string such as `"k12"`,
+never reused while the mod runs). With nothing more to come there is no cursor and no `cursor_id`. `offset` with
+`cursor` is refused `invalid_argument`.
+
+Each later call passes `cursor_id` and optionally `limit`, nothing else: the walk keeps its first call's filter and
+order, so other arguments are refused `invalid_argument` rather than ignored. A later page:
+
+- takes the next kept ids, without a scan (its cost class is `bounded`, not `world`, so it runs in the light lane);
+- skips ids whose thing is gone or being destroyed, and goes on until it holds `limit` things or the ids run out;
+  the reply's `skipped` counts the ids passed over on that page;
+- does not check the filter again: a thing that stopped matching is still walked, with its current values, and things
+  built after the first call are not in the walk;
+- describes each thing as the first page does, distances measured from where the player is at that call;
+- keeps the reply's keys: `offset` is the walk's entries passed before the page (returned or skipped), `total` the
+  walk's length at its first call, `has_more` whether ids remain, `scanned` 0; `cursor_id` while more remain.
+
+A cursor is freed when the page that takes its last ids is answered; by `{"type":"cursor_close","cursor_id":"k12"}`
+from the connection that owns it (no reply, like `cancel`; an unknown id or another connection's cursor does
+nothing); when its stream ends or its connection closes; on a world change; and by the bound on all cursors together:
+1,000,000 ids (8 bytes each, 8 MB) and 1,024 cursors, the least recently used freed first, so a walk still being paged
+outlives the short walks a loop opens and drops. `cursor_close` reaches the main thread through the same inbox as
+calls and `stream_end`, at the start of the next frame and before that frame's calls, so a page still in flight when
+its cursor is closed may answer `cursor_expired`.
+
+A `cursor_id` that is unknown, freed, evicted, or owned by another connection or stream is answered `cursor_expired`,
+`data: {cursor_id, position}`, `position` being how many things the walk had returned. The mod remembers the
+positions of the last 256 freed cursors; past those, and for another owner's cursor, `position` is null. Another
+stream's cursor is `cursor_expired`, not `invalid_argument`: the answer does not tell a stream whether another has
+that cursor, and the way on is the same, start the walk again. A walk longer than the whole bound is refused
+`invalid_argument` on its first call.
 
 ### Order on one stream
 
@@ -288,6 +325,7 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `duplicate_id` | The id is already in flight on this connection. Nothing ran. | none | no |
 | `too_many_in_flight` | More calls in flight on the stream than `limits.max_in_flight`, or on the connection than `max_in_flight_per_connection`. Nothing ran. | `{limit, scope}`, `scope` `stream` or `connection` | yes |
 | `stream_ended` | The call's stream was ended with `stream_end`; streams are never reused. Nothing ran. | `{stream}` | on another stream |
+| `cursor_expired` | A walk's later page names a cursor that is gone: its walk ended, `cursor_close`, its stream's or connection's end, a world change, the memory bound, or another connection or stream owns it (see *Walks*). Nothing ran. | `{cursor_id, position}`, `position` null when unknown | no; start the walk again |
 | `request_too_large` | A message longer than `limits.max_request_bytes`. The connection is closed. | `{limit}` | no |
 | `reply_too_large` | The reply would exceed `shape.max_bytes` or `limits.max_reply_bytes`. The method ran. | `{bytes, limit, counts}` | only if the method is read class |
 | `game_timeout` | The call was not started before its deadline. Nothing ran. As today. | none | yes |
@@ -659,6 +697,17 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
   change.
 - `mod_info`'s connections keep one `in_flight` per connection, all streams together; the default reply gains nothing.
 
+### As built: walks
+
+- `Pure/Paging/WalkCursors.cs` is the store: cursors by number in a dictionary and on a recency list, each holding a
+  `long[]` of the ids after its first page; the bounds, eviction and the ring of the last freed cursors' positions.
+  It is an `ICursorStore` (an `IStreamStore` that also hears `cursor_close`), registered in `StreamStores.Main`.
+- `Api/Shared/WalkRequest.cs` reads `cursor` and `cursor_id`, keeps a first page's rest (`Keep`), takes a later page
+  (`Next`), writes the truncation note naming the cursor and raises `cursor_expired`. `find_things` uses it; another
+  handler that sorts its whole list before paging needs only those calls and the two catalogue arguments.
+- `ClientMessage.CursorClose` parses `cursor_close`; `CallSession` posts it (`ICallQueue.CursorClosed`), and
+  `LaneScheduler` hands it to `StreamStores.CloseCursor` when it takes its inbox in.
+
 ## Reconnecting
 
 A connection can break at any time: the game closed, the save reloaded, the mod restarted. The rules a client follows
@@ -685,7 +734,7 @@ that meets an older mod gets that mod's answer to `hello`, which is no `welcome`
 
 ```text
 -> {"type":"hello","protocol":[2],"client":{"name":"agents","version":"1.12.0","library":"stationgod-cs/1.12.0"}}
-<- {"type":"welcome","protocol":2,"client_id":"c9","client":"anonymous","server":{...},"catalogue":{...},"limits":{...},"features":["shape","shape.paths","shape.omit","subscriptions","cancel","streams"]}
+<- {"type":"welcome","protocol":2,"client_id":"c9","client":"anonymous","server":{...},"catalogue":{...},"limits":{...},"features":["shape","shape.paths","shape.omit","subscriptions","cancel","streams","cursors"]}
 -> {"type":"call","id":"a1","method":"grid_survey","params":{"room_id":"r12"},"shape":{"fields":["devices.reference_id","devices.prefab_name"]}}
 -> {"type":"call","id":"a2","method":"game_clock","params":{}}
 <- {"type":"reply","id":"a2","ok":true,"shaped":false,"result":{"game_time_s":84211.5,"paused":false,"time_of_day_ratio":0.41,"days_past":12},"elapsed_ms":0.02,"queue_ms":9.8,"frame":81301}
