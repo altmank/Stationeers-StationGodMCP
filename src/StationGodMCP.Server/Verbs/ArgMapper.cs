@@ -263,8 +263,42 @@ internal sealed class ArgMapper
                 continue;
             }
 
+            if (Switches(handler.Name, name, value, args))
+            {
+                continue;
+            }
+
             unavailable.Add(name);
         }
+    }
+
+    // An include or allow word the tables leave out that the handler takes as its own switch (allow: ["lint"] is
+    // write logic's allow_lint): every word must be one.
+    private bool Switches(string handler, string option, JsonNode value, JsonObject args)
+    {
+        if (Array.IndexOf(TokenOptions, option) < 0 || value is not JsonArray words || words.Count == 0)
+        {
+            return false;
+        }
+
+        List<string> found = [];
+        foreach (JsonNode? word in words)
+        {
+            string? arg = JsonNodes.Text(word) is { } text ? option + "_" + text.Trim().ToLowerInvariant() : null;
+            if (arg == null || !HandlerSchemas.HasType(_schemas.Arg(handler, arg), "boolean"))
+            {
+                return false;
+            }
+
+            found.Add(arg);
+        }
+
+        foreach (string arg in found)
+        {
+            args[arg] = true;
+        }
+
+        return true;
     }
 
     // The when of another handler of the what whose table takes the option; null when none does.
