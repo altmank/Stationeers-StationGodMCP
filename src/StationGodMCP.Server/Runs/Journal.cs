@@ -65,7 +65,8 @@ public sealed class Journal : IRunJournal, IDisposable
     /// Opens this hub's journal and writes its hub line. A journal that cannot be opened is returned turned off (the
     /// hub still runs); its reason is told like a write failure.
     /// </summary>
-    public static Journal Open(string directory, string token, bool mcp, Func<string?> world, TextWriter? log = null)
+    public static Journal Open(string directory, string token, bool mcp, Func<string?> world, TextWriter? log = null,
+        string? target = null)
     {
         log ??= Console.Error;
         long started = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -105,7 +106,8 @@ public sealed class Journal : IRunJournal, IDisposable
             ["hub"] = name,
             ["token"] = token,
             ["world"] = world(),
-            ["mcp"] = mcp
+            ["mcp"] = mcp,
+            ["target"] = target
         });
         return journal;
     }
@@ -236,7 +238,7 @@ public sealed class Journal : IRunJournal, IDisposable
             ["what"] = write.What,
             ["targets"] = targets,
             ["undo"] = write.Undo,
-            ["world"] = _world()
+            ["world"] = run.World
         });
     }
 
@@ -293,6 +295,14 @@ public sealed class Journal : IRunJournal, IDisposable
         ["id"] = id,
         ["logic"] = logic,
         ["after"] = after?.DeepClone()
+    });
+
+    public void HoldCleared(RunRecord run, string id, string logic) => Append(new JsonObject
+    {
+        ["t"] = "hold_cleared",
+        ["run"] = run.Id,
+        ["id"] = id,
+        ["logic"] = logic
     });
 
     public void Ended(RunRecord run)
@@ -368,8 +378,11 @@ public sealed class Journal : IRunJournal, IDisposable
 
             try
             {
-                _file.Write(bytes);
-                _file.Write(NewLine);
+                // One write per line: a line torn by a crash never runs into the next one.
+                byte[] whole = new byte[bytes.Length + 1];
+                bytes.CopyTo(whole, 0);
+                whole[^1] = NewLine[0];
+                _file.Write(whole);
                 _file.Flush();
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException

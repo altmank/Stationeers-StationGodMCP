@@ -211,8 +211,10 @@ public sealed class RunReviewTests
         await using RunBench bench = new();
         string ids = string.Join(", ", Enumerable.Range(11, 40).Select(id => $"'{id}'"));
 
+        // The unseen stop comes first; then another thread writes fresh literal (seen, never written) ids: every one of
+        // them must be refused, since the stop was recorded when the gate decided it.
         string text = await bench.RunAsync(
-            "import threading, time\n" +
+            "import threading\n" +
             $"ids = [{ids}]\n" +
             "seen = []\n" +
             "def other():\n" +
@@ -222,19 +224,17 @@ public sealed class RunReviewTests
             "            seen.append(r['results'][0]['ok'])\n" +
             "        except BaseException:\n" +
             "            seen.append(False)\n" +
-            "        time.sleep(0.005)\n" +
-            "t = threading.Thread(target=other)\n" +
-            "t.start()\n" +
             "pump = sg.find('thing')['things'][0]['reference_id']\n" +
             "try:\n" +
             "    sg.write('logic', id=pump, logic='On', value=1)\n" +
             "finally:\n" +
+            "    t = threading.Thread(target=other)\n" +
+            "    t.start()\n" +
             "    t.join()\n" +
-            "    first = seen.index(False) if False in seen else len(seen)\n" +
-            "    print('violation' if any(seen[first:]) else 'ordered')\n", confirm: true);
+            "    print('acted after the stop:', sum(1 for ok in seen if ok), 'of', len(seen))\n", confirm: true);
 
-        Assert.Contains("ordered", text);
-        Assert.DoesNotContain("violation", text);
+        Assert.Contains("acted after the stop: 0 of 40", text);
+        Assert.Equal(0, bench.World.Count("write_logic_many"));
     }
 
     [PythonFact]
@@ -333,12 +333,16 @@ public sealed class RunReviewTests
     public async Task ACancelledRunScriptReplyAddsNothingToTheSeenSet()
     {
         await using RunBench bench = new();
-        using CancellationTokenSource cancel = new(TimeSpan.FromMilliseconds(300));
+        using CancellationTokenSource cancel = new();
+        // The request is cancelled as the run ends (its costs are read then), so the reply is the finished run's text,
+        // built for a reply nobody reads.
+        bench.World.OnStreamCosts = cancel.Cancel;
 
-        await bench.Host.RunScriptAsync(new JsonObject { ["code"] = "print('pump 4820585')\nsg.wait(0.5)", ["confirm"] = true },
+        VerbReply reply = await bench.Host.RunScriptAsync(new JsonObject { ["code"] = "print('pump 4820585')", ["confirm"] = true },
             new ReplyHooks { Cancelled = cancel.Token, Progress = null });
-        await Task.Delay(100);
 
+        Assert.StartsWith("script-1 done", RunBench.Text(reply));
+        Assert.Contains("pump 4820585", RunBench.Text(reply));
         Assert.False(bench.Seen.Contains("4820585"));
     }
 

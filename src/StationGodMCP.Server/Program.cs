@@ -56,7 +56,9 @@ internal static class Program
         }
 
         await using GameLink link = new(options.Client);
-        Journal journal = Journal.Open(options.JournalDirectory, link.ResumeToken, mcp: true, () => link.WorldId);
+        string target = options.Client.Target.Description;
+        Journal journal = Journal.Open(options.JournalDirectory, link.ResumeToken, mcp: true, () => link.WorldId,
+            target: target);
         await using McpAdapter adapter = new(options, link, runs: new RunHostSettings
         {
             ConfirmedCeiling = TimeSpan.FromSeconds(options.ConfirmedCeilingSeconds),
@@ -68,7 +70,7 @@ internal static class Program
         if (options.AdoptsJournals)
         {
             adapter.Runs?.StartAdoption(options.JournalDirectory, journal.FilePath,
-                token => new GameTokenLink(new GameLink(options.Client, token)));
+                token => new GameTokenLink(new GameLink(options.Client, token)), target);
         }
         List<Task> running = [];
         string? line;

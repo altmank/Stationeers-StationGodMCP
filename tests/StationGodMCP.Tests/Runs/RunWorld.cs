@@ -68,7 +68,13 @@ internal sealed class RunWorld : IHubLink
     public bool EndStreamThrows { get; set; }
 
     /// <summary>The world changes here without the event reaching anyone yet (the race a world change can win).</summary>
-    public void ChangeWorldQuietly(string world) => WorldId = world;
+    public void ChangeWorldQuietly(string? world) => WorldId = world;
+
+    /// <summary>Asked at each hold_restore with its change (null: the world answers it ok); the test may stop a run there.</summary>
+    public Func<JsonElement, GameReply?>? OnHoldRestore { get; set; }
+
+    /// <summary>Called at each stream_costs (a run's end reads its costs there).</summary>
+    public Action? OnStreamCosts { get; set; }
 
     public StreamCost Cost { get; set; } = new(0, 12, 48.0, 2);
 
@@ -153,15 +159,9 @@ internal sealed class RunWorld : IHubLink
 
         if (Gate?.Invoke(call) is { } gate)
         {
-            using CancellationTokenSource either = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _sessionEnd.Token);
-            try
-            {
-                await gate.WaitAsync(either.Token);
-            }
-            catch (OperationCanceledException) when (_sessionEnd.IsCancellationRequested && !cancellation.IsCancellationRequested)
-            {
-                return FakeGameLink.Refused("cancelled", "session_end cancelled the call before it ran");
-            }
+            // As the mod does: the call runs when the gate opens even if its caller has given up (a late reply), and
+            // its reply then settles it (OnReply); session_end cancels it unrun.
+            return await LateAsync(call, gate).WaitAsync(cancellation);
         }
 
         if (CallDelay?.Invoke(call) is { } delay && delay > TimeSpan.Zero)
@@ -177,6 +177,32 @@ internal sealed class RunWorld : IHubLink
             }
         }
 
+        GameReply reply = Answer(call, args, report);
+        call.OnReply?.Invoke(reply);
+        return reply;
+    }
+
+    private async Task<GameReply> LateAsync(GameCall call, Task gate)
+    {
+        GameReply reply;
+        try
+        {
+            await gate.WaitAsync(_sessionEnd.Token);
+            JsonObject args = JsonNode.Parse(call.Parameters.GetRawText())!.AsObject();
+            bool report = args["dry_run"] is JsonValue dry && dry.GetValueKind() == JsonValueKind.True;
+            reply = Answer(call, args, report);
+        }
+        catch (OperationCanceledException)
+        {
+            reply = FakeGameLink.Refused("cancelled", "session_end cancelled the call before it ran");
+        }
+
+        call.OnReply?.Invoke(reply);
+        return reply;
+    }
+
+    private GameReply Answer(GameCall call, JsonObject args, bool report)
+    {
         if (Override?.Invoke(call) is { } given)
         {
             return given;
@@ -336,7 +362,7 @@ internal sealed class RunWorld : IHubLink
             _log.Add("hold_restore " + change.GetRawText());
         }
 
-        return Task.FromResult(FakeGameLink.Ok("""{"restores":[]}"""));
+        return Task.FromResult(OnHoldRestore?.Invoke(change) ?? FakeGameLink.Ok("""{"restores":[]}"""));
     }
 
     public Task<StreamCost[]> StreamCostsAsync(IReadOnlyList<long> streams, CancellationToken cancellation)
@@ -345,6 +371,8 @@ internal sealed class RunWorld : IHubLink
         {
             _log.Add("stream_costs");
         }
+
+        OnStreamCosts?.Invoke();
 
         return Task.FromResult(new[] { new StreamCost(streams[0], Cost.Calls, Cost.MainThreadMs, Cost.OverBudgetFrames) });
     }

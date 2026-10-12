@@ -12,16 +12,18 @@ public sealed partial class RunHost
     private readonly List<AdoptedJournal> _adopted = [];
     private Task _adoption = Task.CompletedTask;
     private bool _firstReplyDone;
+    private bool _firstReplyGone;
 
     /// <summary>
-    /// Adopts, in the background, every journal in the folder (but this hub's own) whose lock it can take and that is
-    /// not retired; the first reply waits for it. Only a hub serving an MCP client adopts (SidecarOptions.AdoptsJournals).
+    /// Adopts, in the background, every journal in the folder (but this hub's own) whose lock it can take, that is not
+    /// retired and that served the same game; the first reply waits for it. The old tokens' restores are read for all
+    /// journals at once, within one bound. Only a hub serving an MCP client adopts (SidecarOptions.AdoptsJournals).
     /// </summary>
-    internal void StartAdoption(string directory, string? ownPath, Func<string, ITokenLink> links)
+    internal void StartAdoption(string directory, string? ownPath, Func<string, ITokenLink> links, string? target = null)
     {
         _adoption = Task.Run(async () =>
         {
-            List<AdoptedJournal> taken = AdoptedJournal.TakeAll(directory, ownPath);
+            List<AdoptedJournal> taken = AdoptedJournal.TakeAll(directory, ownPath, target);
             lock (_gate)
             {
                 foreach (AdoptedJournal journal in taken)
@@ -36,28 +38,36 @@ public sealed partial class RunHost
                 }
             }
 
+            using CancellationTokenSource bound = new(RestoresBound);
+            List<Task> reading = [];
             foreach (AdoptedJournal journal in taken)
             {
-                using CancellationTokenSource bound = new(RestoresBound);
-                bool read;
-                try
-                {
-                    read = await journal.ReadRestoresAsync(links, _settings.AdoptionReconnect, bound.Token).ConfigureAwait(false);
-                }
-                catch (Exception exception) when (exception is not OutOfMemoryException)
-                {
-                    read = false;
-                }
-
-                if (!read)
-                {
-                    foreach (RunRecord run in journal.Runs)
-                    {
-                        run.Restores ??= "held restores: unknown (the game could not be reached to read them)";
-                    }
-                }
+                reading.Add(ReadRestoresAsync(journal, links, bound.Token));
             }
+
+            await Task.WhenAll(reading).ConfigureAwait(false);
         });
+    }
+
+    private async Task ReadRestoresAsync(AdoptedJournal journal, Func<string, ITokenLink> links, CancellationToken bound)
+    {
+        bool read;
+        try
+        {
+            read = await journal.ReadRestoresAsync(links, _settings.AdoptionReconnect, bound).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            read = false;
+        }
+
+        if (!read && journal.HasHolds)
+        {
+            foreach (RunRecord run in journal.Runs)
+            {
+                run.Restores ??= "held restores: unknown (the game could not be reached to read them)";
+            }
+        }
     }
 
     private async Task AdoptedAsync()
@@ -72,9 +82,25 @@ public sealed partial class RunHost
         }
     }
 
-    // One line per adopted run that left something, on the session's first reply; then the adopted journals retire.
+    // One line per adopted run that left something, on the session's first reply. The adopted journals retire once that
+    // reply has gone (the next reply is built, or the hub ends) and only when their restores' outcomes are known.
     private async Task<List<string>> FirstReplyLinesAsync()
     {
+        bool retire = false;
+        lock (_gate)
+        {
+            if (_firstReplyDone)
+            {
+                retire = !_firstReplyGone;
+                _firstReplyGone = true;
+            }
+        }
+
+        if (retire)
+        {
+            RetireAdopted();
+        }
+
         lock (_gate)
         {
             if (_firstReplyDone)
@@ -87,7 +113,6 @@ public sealed partial class RunHost
 
         await AdoptedAsync().ConfigureAwait(false);
         List<string> lines = [];
-        List<AdoptedJournal> journals;
         lock (_gate)
         {
             foreach (Notes notes in _order)
@@ -106,19 +131,34 @@ public sealed partial class RunHost
 
                 string left = record.Left.Count > 0 ? "; left: " + string.Join(", ", record.Left) : "";
                 string restores = record.Restores != null ? "; " + record.Restores : "";
+                string torn = notes.Journal is { TornLines: > 0 } journal
+                    ? $"; {journal.TornLines} torn journal lines skipped"
+                    : "";
                 lines.Add($"notice: {record.Id} ({record.FirstLine}) {Run.StateWord(record.State)} in an earlier session" +
-                          $"{left}{restores}; undo it with undo {{id: \"{record.Id}\"}}; if you did not start it, leave it");
+                          $"{left}{restores}{torn}; undo it with undo {{id: \"{record.Id}\"}}; if you did not start it, " +
+                          "leave it");
             }
+        }
 
+        return lines;
+    }
+
+    // A journal whose restores' outcomes are unknown (it held some, and they could not be read) stays for the next hub.
+    private void RetireAdopted()
+    {
+        List<AdoptedJournal> journals;
+        lock (_gate)
+        {
             journals = [.. _adopted];
         }
 
         foreach (AdoptedJournal journal in journals)
         {
-            journal.Retire();
+            if (journal.HasRestores || !journal.HasHolds)
+            {
+                journal.Retire();
+            }
         }
-
-        return lines;
     }
 
     // Past the bound, the oldest ended runs' write logs go; their undo then names what it can no longer revert.
@@ -206,6 +246,18 @@ public sealed partial class RunHost
             }
 
             adopted = [.. _adopted];
+        }
+
+        bool firstReplyBuilt;
+        lock (_gate)
+        {
+            firstReplyBuilt = _firstReplyDone && !_firstReplyGone;
+            _firstReplyGone = true;
+        }
+
+        if (firstReplyBuilt)
+        {
+            RetireAdopted();
         }
 
         if (_settings.Journal is Journal own)

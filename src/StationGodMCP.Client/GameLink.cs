@@ -113,7 +113,8 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     internal TimeSpan ReplyGrace { get; init; } = TimeSpan.FromSeconds(5);
 
     /// <summary>How long SessionEndAsync may spend opening a connection when none is open.</summary>
-    internal TimeSpan SessionEndWait { get; init; } = TimeSpan.FromMilliseconds(300);
+    // The hub's cleanup window (0.3 s) plus this stays inside the ~0.4 s the client gives a hub after EOF.
+    internal TimeSpan SessionEndWait { get; init; } = TimeSpan.FromMilliseconds(50);
 
     /// <summary>True while a connection is being opened under the connect lock.</summary>
     internal bool IsConnecting => _connectLock.CurrentCount == 0;

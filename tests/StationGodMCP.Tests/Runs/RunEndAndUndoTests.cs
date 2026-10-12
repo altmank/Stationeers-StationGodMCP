@@ -156,28 +156,65 @@ public sealed class RunEndAndUndoTests : IDisposable
     // ---- session end ----------------------------------------------------------------------------------------------------
 
     [PythonFact]
-    public async Task AtEofCleanupWritesGoThenSessionEndWithinTheWindowAndOtherWritesAreRefused()
+    public async Task AtEofCleanupWritesGoThenSessionEndAndOtherWritesAreRefused()
     {
-        await using RunBench bench = new();
+        // A long window, so the order does not depend on the runs beating a clock: session_end goes when they have ended.
+        await using RunBench bench = new(adjust: settings => new RunHostSettings
+        {
+            SgRoot = settings.SgRoot,
+            CleanupWindow = TimeSpan.FromSeconds(20)
+        });
         await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\ntry:\n    sg.wait(30)\nfinally:\n" +
                                "    sg.write('logic', id='1', logic='On', value=0)", confirm: true, line: 3);
         await bench.StartAsync("with sg.hold('7', 'On', 1):\n    sg.wait(30)", confirm: true, line: 2);
         await bench.StartAsync("try:\n    sg.wait(30)\nfinally:\n    sg.write('logic', id='9', logic='On', value=1)",
             confirm: true, line: 2);
+        int atEof = bench.World.Log.Count;
 
-        Stopwatch eof = Stopwatch.StartNew();
         await bench.Host.EndSessionAsync();
-        TimeSpan toSessionEnd = eof.Elapsed;
 
-        Assert.True(toSessionEnd < TimeSpan.FromMilliseconds(350), $"session_end went {toSessionEnd.TotalMilliseconds} ms after EOF");
         var log = bench.World.Log;
         int sessionEnd = log.IndexOf("session_end");
-        Assert.True(sessionEnd > 0);
+        Assert.True(sessionEnd > atEof);
+        int writesAfterEof = log.Skip(atEof).Take(sessionEnd - atEof).Count(entry => entry == "write_logic_many");
+        Assert.Equal(2, writesAfterEof);
         Assert.Equal(0, bench.World.Value("1", "On"));
         Assert.Equal(0, bench.World.Value("7", "On"));
         Assert.Equal(0, bench.World.Value("9", "On"));
-        Assert.True(log.LastIndexOf("write_logic_many", sessionEnd) > 0);
         Assert.Equal(SessionPhase.Ended, bench.Host.Phase);
+        Assert.False(bench.Host.Find("script-3")!.IsLive);
+    }
+
+    [PythonFact]
+    public async Task AtEofSessionEndGoesWhenTheWindowEndsThoughACleanupIsStillWaiting()
+    {
+        await using RunBench bench = new(adjust: settings => new RunHostSettings
+        {
+            SgRoot = settings.SgRoot,
+            CleanupWindow = TimeSpan.FromMilliseconds(300)
+        });
+        TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task never = new TaskCompletionSource().Task;
+        bench.World.Gate = call =>
+        {
+            if (call.Method != "write_logic_many" || !call.Parameters.GetRawText().Contains("\"value\":0"))
+            {
+                return null;
+            }
+
+            arrived.TrySetResult();
+            return never;
+        };
+        await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\ntry:\n    sg.wait(30)\nfinally:\n" +
+                               "    sg.write('logic', id='1', logic='On', value=0)", confirm: true, line: 3);
+
+        Stopwatch eof = Stopwatch.StartNew();
+        await bench.Host.EndSessionAsync();
+
+        // The cleanup write never ends; session_end still goes once the window is over.
+        Assert.True(eof.Elapsed >= TimeSpan.FromMilliseconds(300), "session_end went before the window ended");
+        Assert.NotNull(bench.World.SessionEndedAt);
+        Assert.True(arrived.Task.IsCompleted);
     }
 
     [PythonFact]

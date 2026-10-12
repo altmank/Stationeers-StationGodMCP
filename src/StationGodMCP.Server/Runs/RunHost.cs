@@ -74,6 +74,9 @@ internal enum SessionPhase
 /// the pool; inspect job, server stop and undo for script-N and for runs adopted from earlier hubs' journals
 /// (script-&lt;pid&gt;.N); the notices and cost lines that ride replies; a world change stops every live run and drops
 /// its holds; at stdin EOF the session-end order. The seen set is the hub's, fed by the MCP adapter.
+///
+/// Lock order: RunHost._gate, then a RunRecord.Sync, then the leaf locks (SeenSet, RefStore, the pipeline's). Code
+/// holding a record's lock never takes _gate (it reads Phase, which needs none).
 /// </summary>
 public sealed partial class RunHost : IAsyncDisposable
 {
@@ -88,7 +91,9 @@ public sealed partial class RunHost : IAsyncDisposable
     private readonly List<Notes> _order = [];
     private DateTime _lastCostLines = DateTime.MinValue;
     private int _next;
-    private SessionPhase _phase = SessionPhase.Open;
+    // Read without a lock (Volatile): a run reads it under its record's lock, and the lock order is RunHost._gate before
+    // any RunRecord.Sync, never the other way. Changed only under _gate.
+    private int _phase = (int)SessionPhase.Open;
 
     internal RunHost(IHubLink link, VerbPipeline pipeline, SeenSet seen, RunHostSettings settings)
     {
@@ -103,16 +108,8 @@ public sealed partial class RunHost : IAsyncDisposable
     /// <summary>The hub's seen set (hub.md, The seen set).</summary>
     public SeenSet Seen { get; }
 
-    internal SessionPhase Phase
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return _phase;
-            }
-        }
-    }
+    /// <summary>Where the session is; lock-free, so a run may read it while holding its record's lock.</summary>
+    internal SessionPhase Phase => (SessionPhase)Volatile.Read(ref _phase);
 
     /// <summary>Starts the idle worker now, so the first run does not wait for Python.</summary>
     public void Warm() => _pool.Warm();
@@ -152,10 +149,16 @@ public sealed partial class RunHost : IAsyncDisposable
             return SessionEnded();
         }
 
-        // A run is made for one world: before the first connection the link knows none, so it connects first.
+        // A run is made for one world: before the first connection the link knows none, so it connects first; with no
+        // world loaded (the menu, the game out of reach) no run starts, since its ids would name nothing it can pin.
         if (_link.WorldId == null)
         {
             await _link.ConnectAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+
+        if (_link.WorldId == null)
+        {
+            return new VerbReply.Failed("no_world", "no world loaded: start the run when the game is in a world.");
         }
 
         DateTime asked = DateTime.UtcNow;
@@ -265,11 +268,39 @@ public sealed partial class RunHost : IAsyncDisposable
         }
     }
 
-    /// <summary>The run's record is final: the journal closes it, and old write logs go past the memory bound.</summary>
+    /// <summary>
+    /// The run's record is final: the journal closes it, old write logs go past the memory bound, and the streams kept
+    /// for held restores that could not be written back are tried again.
+    /// </summary>
     internal void OnRunEnded(Run run)
     {
         _settings.Journal.Ended(run.Record);
         KeepUndoMemory();
+        foreach (Run kept in KeptRuns())
+        {
+            if (kept != run)
+            {
+                _ = kept.RetryKeptAsync();
+            }
+        }
+    }
+
+    // The ended runs whose stream is kept for held restores not yet written back.
+    private List<Run> KeptRuns()
+    {
+        List<Run> kept = [];
+        lock (_gate)
+        {
+            foreach (Notes notes in _order)
+            {
+                if (notes.Run is { } run && !notes.Record.IsLive && run.KeptStream)
+                {
+                    kept.Add(run);
+                }
+            }
+        }
+
+        return kept;
     }
 
     // ---- inspect job, stop, ref -------------------------------------------------------------------------------------
@@ -538,6 +569,12 @@ public sealed partial class RunHost : IAsyncDisposable
             }
         }
 
+        if (verb == "server" && what == "info" && KeptRuns() is { Count: > 0 } keptRuns)
+        {
+            lines.Add($"kept streams: {keptRuns.Count} (held restores of ended runs not yet written back; the mod applies " +
+                      "them at session end)");
+        }
+
         return lines;
     }
 
@@ -609,11 +646,13 @@ public sealed partial class RunHost : IAsyncDisposable
             run.Kill();
         }
 
+        List<Task> ended = [];
         foreach (Run run in live)
         {
-            await Task.WhenAny(run.Ended, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
+            ended.Add(run.Ended);
         }
 
+        await Task.WhenAny(Task.WhenAll(ended), Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
         _pool.Dispose();
         CloseJournals();
     }

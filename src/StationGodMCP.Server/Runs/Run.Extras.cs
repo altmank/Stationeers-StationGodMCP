@@ -147,7 +147,30 @@ internal sealed partial class Run
             _wrote = true;
         }
 
-        List<JsonNode?> after;
+        // The current values: the hold's after where none is given, and its write's before in any case.
+        VerbReply read = await SendAsync("read", "logic", new JsonObject { ["reads"] = Reads(ids, logic) },
+            new RunCallContext(line), cancellation).ConfigureAwait(false);
+        if (read is not VerbReply.Done readDone)
+        {
+            return read;
+        }
+
+        List<JsonNode?> current = [];
+        List<JsonObject> rows = BulkWrites.Rows(readDone.Reply);
+        for (int index = 0; index < ids.Count; index++)
+        {
+            if (index >= rows.Count || !JsonNodes.IsTrue(rows[index]["ok"]) && rows[index]["ok"] != null)
+            {
+                JsonNode? error = index < rows.Count ? rows[index]["error"] : null;
+                return new VerbReply.Failed(JsonNodes.Text(error?["code"]) ?? "read_failed",
+                    $"hold could not read {ids[index]}'s {LogicName(logic)}: " +
+                    (JsonNodes.Text(error?["message"]) ?? "no value came back"));
+            }
+
+            current.Add(rows[index]["value"]?.DeepClone());
+        }
+
+        List<JsonNode?> after = current;
         if (given["after"] is { } stated)
         {
             if (Expanded(stated, ids.Count) is not { } expanded)
@@ -157,36 +180,13 @@ internal sealed partial class Run
 
             after = expanded;
         }
-        else
-        {
-            VerbReply read = await SendAsync("read", "logic", new JsonObject { ["reads"] = Reads(ids, logic) },
-                new RunCallContext(line), cancellation).ConfigureAwait(false);
-            if (read is not VerbReply.Done readDone)
-            {
-                return read;
-            }
-
-            after = [];
-            List<JsonObject> rows = BulkWrites.Rows(readDone.Reply);
-            for (int index = 0; index < ids.Count; index++)
-            {
-                if (index >= rows.Count || !JsonNodes.IsTrue(rows[index]["ok"]) && rows[index]["ok"] != null)
-                {
-                    JsonNode? error = index < rows.Count ? rows[index]["error"] : null;
-                    return new VerbReply.Failed(JsonNodes.Text(error?["code"]) ?? "read_failed",
-                        $"hold could not read {ids[index]}'s {LogicName(logic)}: " +
-                        (JsonNodes.Text(error?["message"]) ?? "no value came back"));
-                }
-
-                after.Add(rows[index]["value"]?.DeepClone());
-            }
-        }
 
         JsonNode? value = given["value"];
+        string logicName = LogicName(logic)!;
         Dictionary<string, JsonNode?> before = new(StringComparer.Ordinal);
         for (int index = 0; index < ids.Count; index++)
         {
-            before[ids[index]] = after[index];
+            before[Key(ids[index], logicName)] = current[index]?.DeepClone();
         }
 
         if (Record.Confirm)
@@ -207,24 +207,47 @@ internal sealed partial class Run
                 });
             }
 
+            // Write-ahead: the hold lines go to the journal before the registration does.
+            for (int index = 0; index < ids.Count; index++)
+            {
+                _journal.Held(Record, ids[index], logicName, after[index]);
+            }
+
             GameReply registered = await _link.HoldRestoreAsync(Record.Stream,
                 JsonNodes.ToElement(new JsonObject { ["set"] = set }), Record.World, cancellation).ConfigureAwait(false);
             if (registered is not GameReply.Ok)
             {
+                foreach (string id in ids)
+                {
+                    _journal.HoldCleared(Record, id, logicName);
+                }
+
                 return VerbPipeline.Failure(registered);
             }
 
+            bool stoppedMeanwhile;
             lock (Record.Sync)
             {
-                for (int index = 0; index < ids.Count; index++)
+                stoppedMeanwhile = _stopCode != null;
+                if (!stoppedMeanwhile)
                 {
-                    _holds.Add((ids[index], LogicName(logic)!, after[index]?.DeepClone()));
+                    for (int index = 0; index < ids.Count; index++)
+                    {
+                        _holds.Add((ids[index], logicName, after[index]?.DeepClone()));
+                    }
                 }
             }
 
-            for (int index = 0; index < ids.Count; index++)
+            if (stoppedMeanwhile)
             {
-                _journal.Held(Record, ids[index], LogicName(logic)!, after[index]);
+                // A stop came while the registration went: the hold does not start, and its registration goes again.
+                await ClearRegistrationAsync(ids, logic, cancellation).ConfigureAwait(false);
+                foreach (string id in ids)
+                {
+                    _journal.HoldCleared(Record, id, logicName);
+                }
+
+                return NotEntered(ids, logic, after, "stopped", "the run was stopped while the hold was registered");
             }
         }
 
@@ -429,21 +452,26 @@ internal sealed partial class Run
         return new VerbReply.Done(new JsonObject { ["rows"] = rows });
     }
 
+    // The mod's registrations for these ids go; the run forgets them only when the mod said so.
     private async Task ClearHoldsAsync(List<string> ids, JsonNode logic, CancellationToken cancellation)
     {
-        string logicName = LogicName(logic)!;
+        if (await ClearRegistrationAsync(ids, logic, cancellation).ConfigureAwait(false))
+        {
+            ClearedHolds(ids, LogicName(logic));
+        }
+    }
+
+    private async Task<bool> ClearRegistrationAsync(List<string> ids, JsonNode logic, CancellationToken cancellation)
+    {
         JsonArray clear = [];
         foreach (string id in ids)
         {
             clear.Add(new JsonObject { ["reference_id"] = id, ["logic_type"] = logic.DeepClone() });
         }
 
-        await _link.HoldRestoreAsync(Record.Stream, JsonNodes.ToElement(new JsonObject { ["clear"] = clear }), Record.World,
-            cancellation).ConfigureAwait(false);
-        lock (Record.Sync)
-        {
-            _holds.RemoveAll(hold => hold.Logic == logicName && ids.Contains(hold.Id));
-        }
+        GameReply reply = await _link.HoldRestoreAsync(Record.Stream, JsonNodes.ToElement(new JsonObject { ["clear"] = clear }),
+            Record.World, cancellation).ConfigureAwait(false);
+        return reply is GameReply.Ok;
     }
 
     // The registered after per id, or null when any id has none.
