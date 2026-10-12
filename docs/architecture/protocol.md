@@ -57,7 +57,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `cancel` | Any time after `welcome`. | `id` of a call in flight. |
 | `stream_end` | Any time after `welcome`. | `stream` (integer 1 to 2^53, required). No reply; see *Streams*. |
 | `cursor_close` | Any time after `welcome`. | `cursor_id` (string, required). No reply; see *Walks*. |
-| `session_end` | Any time after `welcome`. | none. No reply: the client's session is ending abruptly, so the mod applies its held restores (see *Held restores*). |
+| `session_end` | Any time after `welcome`. | none. No reply: the client's session is ending abruptly, so the mod applies its held restores (see *Held restores*); every call the session sends after it is refused `session_ended`. |
 | `bye` | Optional, before closing. | none |
 
 ### Server to client
@@ -423,6 +423,7 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `duplicate_id` | The id is already in flight on this connection. Nothing ran. | none | no |
 | `too_many_in_flight` | More calls in flight on the stream than `limits.max_in_flight`, or on the connection than `max_in_flight_per_connection`. Nothing ran. | `{limit, scope}`, `scope` `stream` or `connection` | yes |
 | `stream_ended` | The call's stream was ended with `stream_end`; streams are never reused. Nothing ran. | `{stream}` | on another stream |
+| `session_ended` | The session sent `session_end`; nothing it sends after that runs (*Held restores*). Nothing ran. Also the poll of a queued job dropped at its session's abrupt end. | `{stream}` | in a new session |
 | `cursor_expired` | A walk's later page names a cursor that is gone: its walk ended, `cursor_close`, its stream's or connection's end, a world change, the memory bound, or another connection or stream owns it (see *Walks*). Nothing ran. | `{cursor_id, position}`, `position` null when unknown | no; start the walk again |
 | `request_too_large` | A message longer than `limits.max_request_bytes`. The connection is closed. | `{limit}` | no |
 | `reply_too_large` | The reply would exceed `shape.max_bytes` or `limits.max_reply_bytes`. The method ran. | `{bytes, limit, counts}` | only if the method is read class |
@@ -904,6 +905,10 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
   the checked write's judge (`OpeningLint` over `OpeningTransition`'s table), and skips on a problem or an unavailable
   verdict (`OpeningVerdict.IsUnavailable`). The game side sits behind `IRestoreDevices`
   (`Api/Shared/Game/RestoreDevices.cs`).
+- `session_end` marks the owner's `EndedStreams` (`SessionEnded`), which `CallSession.Accept` checks before
+  anything else, so later calls are refused `session_ended` on the reader thread; a token is the owner's, so the mark
+  passes with it, and `ResumeHolds.Claim` starts a marked token afresh. `HeldJobSessionEnds`, a second session-end
+  store, drops the owner's waiting jobs (`HeldTickJobs.DropOwner` through `JobDrops.TakeOwners`).
 - Abrupt ends reach the store through `ICallQueue.SessionEnded`, posted to the scheduler's inbox ahead of the owner's
   stream ends: by `CallSession` on `session_end` and on a slow client without a token, by `ProtocolHost.Ended` for a
   connection without a token that never sent `bye` (`Connection.SaidBye`), and by `ResumeHolds` when a window passes
@@ -982,8 +987,13 @@ The mod applies a stream's restores, at the start of the next frame, on the main
 game write, when its owner's session ends abruptly:
 
 - the owner sends `session_end` (a hub sends it when its input closes, within the 0.4 s): every stream of the owner
-  applies at once. The connection's calls that have not started are answered `cancelled` first, so none of them
-  writes after a restore; the connection and its streams stay open;
+  applies at once. The connection's calls that have not started are answered `cancelled` first, and from then on
+  every call of the owner, on any stream, is refused `session_ended` unrun (a second `session_end` changes nothing).
+  A call that had already started finishes first: calls run whole on the main thread, and the restores apply at the
+  start of the next frame, so they are the session's last writes. The connection stays open, refusing calls, until
+  it closes. A hub forwards nothing after `session_end`; this rule holds if one does. A resume token whose owner sent
+  `session_end` is over: a `hello` with it starts afresh (`resumed: false`; a connection still holding it is sent
+  `goodbye {reason: "resumed_elsewhere"}`), and its `welcome` still carries the restores' results;
 - a resume token's window passes without a resume (*Resuming*);
 - a connection without a resume token closes without `bye`: the socket dropped, a slow client, a protocol error.
   Without a token there is no window to wait for, so this applies at the close. With `[Server] ResumeWindowSeconds
@@ -1008,6 +1018,11 @@ or game read that fails, `lint_unavailable` on a checked write) skip it too, wit
 is there to judge the opening, so an opening that cannot be checked is not made. A warning does not skip it; the
 applied entry lists the warning codes (`warnings: ["lint_<rule id>"]`). A restore that closes its device or leaves it
 as it is runs no rule.
+
+At every abrupt end, the jobs the owner's calls queued (`wait: true`) that have not started leave the queue, so none
+starts after the restores; a poll of one answers `refused` with `session_ended`. A job that has started runs on: a
+job that started after `session_end` was sent but before the mod took it in (the same frame) can still act after
+the restores.
 
 A normal end writes nothing: `stream_end` clears the stream's restores, `bye` clears every restore of the connection
 (or of its token), and a hub clears a run's restores itself when the run ends. A world change drops every restore of

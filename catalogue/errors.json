@@ -837,6 +837,11 @@
     "origin": "tool",
     "see": {"topic": "trading"}
   },
+  "session_ended": {
+    "description": "The session sent session_end, and nothing it sends after that runs, so its held restores stay its last writes: nothing ran. A queued job dropped because the session that queued it ended abruptly answers it too. Start a new session (a new connection, or hello with the token again) to go on.",
+    "origin": "protocol",
+    "see": {"topic": "errors", "subtopic": "protocol"}
+  },
   "shutting_down": {
     "description": "The game is stopping or the world is unloading; the call did not start. Send it again once the world is loaded.",
     "origin": "protocol",

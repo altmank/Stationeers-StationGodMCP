@@ -275,8 +275,9 @@ public sealed class HeldRestoreWireTests
 
         Assert.Equal(0, _devices.Get(Pump, On));
         Assert.Equal(0, _devices.Get(Valve, On));
-        Assert.True((bool)Write(client, "after", Pump, "On", 1, stream: 3)["ok"]!);
         Assert.Equal(0, _restores.Held);
+        Assert.Null(client.NextOrNull(100));
+        Assert.False(client.WaitClosed(100));
     }
 
     [Fact]
@@ -424,8 +425,108 @@ public sealed class HeldRestoreWireTests
         Settle(rig);
 
         Assert.Null(client.NextOrNull(100));
-        Assert.True((bool)Write(client, "w1", Pump, "On", 1, stream: 3)["ok"]!);
         Assert.Equal(0, _restores.Applied + _restores.Skipped + _restores.Dropped);
+    }
+
+    // ---- nothing runs after session_end ----
+
+    [Fact]
+    public async Task ALoopWritingTheHeldTargetAfterSessionEndIsRefusedAndTheRestoreIsTheLastWrite()
+    {
+        using PipeRig rig = Rig();
+        using V2Client client = await V2Client.Connect(rig, "hub");
+        Write(client, "w1", Pump, "On", 1, stream: 3);
+        Hold(client, "h1", 3, Set(Pump, "On", 0));
+
+        client.Send("""{"type":"session_end"}""");
+        JObject late = Write(client, "w2", Pump, "On", 1, stream: 3);
+        WaitUntil(() => _restores.Applied == 1);
+        Settle(rig);
+
+        Assert.False((bool)late["ok"]!);
+        Assert.Equal("session_ended", (string?)late["error"]!["code"]);
+        Assert.Contains("Nothing ran", (string?)late["error"]!["message"]);
+        Assert.Equal(0, _devices.Get(Pump, On));
+        Assert.Equal(2, rig.Mod.Ran);
+    }
+
+    [Fact]
+    public async Task EveryCallAfterSessionEndIsRefusedOnEveryStreamForTheConnectionsLife()
+    {
+        using PipeRig rig = Rig();
+        using V2Client client = await V2Client.Connect(rig, "hub");
+        client.Send("""{"type":"session_end"}""");
+
+        JObject write = Write(client, "w1", Pump, "On", 1, stream: 0);
+        JObject hold = Hold(client, "h1", 9, Set(Pump, "On", 0));
+        client.Send("""{"type":"session_end"}""");
+        JObject again = Write(client, "w2", Valve, "On", 1, stream: 4);
+
+        Assert.Equal("session_ended", (string?)write["error"]!["code"]);
+        Assert.Equal("session_ended", (string?)hold["error"]!["code"]);
+        Assert.Equal("session_ended", (string?)again["error"]!["code"]);
+        Assert.Equal(0, rig.Mod.Ran);
+        Assert.Equal(0, _restores.Held);
+        Assert.Equal(0, _devices.Get(Valve, On));
+    }
+
+    [Fact]
+    public async Task AnotherOwnerIsUnaffectedBySessionEnd()
+    {
+        using PipeRig rig = Rig();
+        using V2Client ending = await V2Client.Connect(rig, "hub");
+        using V2Client other = await V2Client.Connect(rig, "hub");
+        Write(ending, "w1", Pump, "On", 1, stream: 3);
+        Hold(ending, "h1", 3, Set(Pump, "On", 0));
+        Write(other, "o1", Valve, "On", 1, stream: 3);
+        Hold(other, "o2", 3, Set(Valve, "On", 0));
+
+        ending.Send("""{"type":"session_end"}""");
+        WaitUntil(() => _restores.Applied == 1);
+
+        Assert.Equal(0, _devices.Get(Pump, On));
+        Assert.True((bool)Write(other, "o3", Pump, "On", 1, stream: 3)["ok"]!);
+        Assert.Equal(1, _devices.Get(Pump, On));
+        Assert.Equal(1, _devices.Get(Valve, On));
+        Assert.Equal(1, _restores.Held);
+    }
+
+    [Fact]
+    public async Task ATokenPresentedAfterSessionEndStartsFreshAndItsWelcomeReportsTheRestores()
+    {
+        using PipeRig rig = Rig();
+        using (V2Client client = await Resume(rig))
+        {
+            Write(client, "w1", Pump, "On", 1, stream: 3);
+            Hold(client, "h1", 3, Set(Pump, "On", 0));
+            client.Send("""{"type":"stream_end","stream":5}""");
+            client.Send("""{"type":"session_end"}""");
+            WaitUntil(() => _restores.Applied == 1);
+        }
+
+        using V2Client second = await Resume(rig);
+
+        Assert.False((bool)second.Welcome["resume"]!["resumed"]!);
+        Assert.Single((JArray)second.Welcome["restores"]!["applied"]!);
+        Assert.True((bool)Write(second, "w2", Pump, "On", 1, stream: 5)["ok"]!);
+        Assert.Equal(1, _devices.Get(Pump, On));
+        WaitUntil(() => rig.Holds.Held == 0);
+    }
+
+    [Fact]
+    public async Task ATokenTakenOverAfterSessionEndStartsFreshAndTheOldConnectionIsToldWhy()
+    {
+        using PipeRig rig = Rig();
+        using V2Client first = await Resume(rig);
+        first.Send("""{"type":"session_end"}""");
+        WaitUntil(() => rig.Mod.SessionEnds.Count == 1);
+
+        using V2Client second = await Resume(rig);
+        JObject goodbye = first.Next();
+
+        Assert.False((bool)second.Welcome["resume"]!["resumed"]!);
+        Assert.Equal("resumed_elsewhere", (string?)goodbye["reason"]);
+        Assert.True((bool)Write(second, "w1", Pump, "On", 1, stream: 3)["ok"]!);
     }
 
     // ---- the write rules on an opening restore ----

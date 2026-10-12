@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using Xunit;
 
@@ -75,6 +76,34 @@ public sealed class JobDropTests
         Assert.Equal("refused", (string?)view["status"]);
         Assert.Equal("dropped", (string?)view["error"]!["code"]);
         Assert.Equal("Dropped from the queue before it started; nothing was changed.", (string?)view["error"]!["message"]);
+    }
+
+    [Fact]
+    public void ASessionEndTakesEveryWaitingJobOfItsOwnerAndLeavesTheOthersInOrder()
+    {
+        JobLine<CallContext> line = new JobLine<CallContext>(8);
+        line.Add("upgrade-2", new CallContext("r1", 3));
+        line.Add("upgrade-3", new CallContext("r2", 3));
+        line.Add("upgrade-4", new CallContext("r1", 7));
+        line.Add("upgrade-5", CallContext.None);
+        List<KeyValuePair<string, CallContext>> taken = new List<KeyValuePair<string, CallContext>>();
+
+        JobDrops.TakeOwners(line, "r1", static context => context, taken);
+
+        Assert.Equal(new[] { "upgrade-2", "upgrade-4" }, taken.ConvertAll(job => job.Key));
+        Assert.Equal(1, line.PositionOf("upgrade-3"));
+        Assert.Equal(2, line.PositionOf("upgrade-5"));
+        Assert.Equal(2, line.Count);
+    }
+
+    [Fact]
+    public void AJobDroppedAtASessionEndAnswersSessionEnded()
+    {
+        JObject view = JObject.Parse(ApiJson.WriteShared(new JobDroppedView("upgrade-3", "upgrade_pipes",
+            JobDrops.SessionEnded())));
+
+        Assert.Equal("refused", (string?)view["status"]);
+        Assert.Equal("session_ended", (string?)view["error"]!["code"]);
     }
 
     [Fact]

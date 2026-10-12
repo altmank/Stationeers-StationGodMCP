@@ -130,6 +130,7 @@ public sealed class StationGodMod : ModBehaviour
             Holds = new ResumeHolds(_server.ResumeWindowSeconds * 1000, _dispatcher);
             Restores = new HeldRestores(Api.Shared.Game.RestoreDevices.Instance, static () => WorldStores.WorldId);
             StreamStores.Main.Register(Restores);
+            StreamStores.Main.Register(HeldJobSessionEnds.Instance);
             _dispatcher.Restores = Restores;
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;

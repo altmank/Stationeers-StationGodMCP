@@ -205,6 +205,31 @@ internal static class HeldTickJobs
         return new JobDropReplyView(id);
     }
 
+    /// <summary>
+    /// The owner's session ended abruptly (HeldJobSessionEnds): every job its calls queued leaves the line, kept as
+    /// finished with a JobDroppedView whose poll answers session_ended, so none starts after the owner's held restores.
+    /// The running job runs on, whoever started it.
+    /// </summary>
+    internal static void DropOwner(string owner)
+    {
+        if (Waiting.Count == 0)
+        {
+            return;
+        }
+
+        List<KeyValuePair<string, QueuedJob>> taken = new List<KeyValuePair<string, QueuedJob>>();
+        JobDrops.TakeOwners(Waiting, owner, static queued => queued.Context, taken);
+        foreach (KeyValuePair<string, QueuedJob> entry in taken)
+        {
+            if (Holds.TryGetValue(entry.Key, out JobHold kept))
+            {
+                Holds[entry.Key] = new JobHold(kept.Verdict, GasHoldStage.NotStarted);
+            }
+
+            Remember(entry.Key, new JobDroppedView(entry.Key, entry.Value.Tool, JobDrops.SessionEnded()));
+        }
+    }
+
     private static string ToolOf(string id)
     {
         string tool = string.Empty;
@@ -593,4 +618,19 @@ internal abstract class JobStep
 
         internal bool ReleaseTick { get; }
     }
+}
+
+/// <summary>
+/// The job line as a session-end store (StreamStores.Main): an owner's abrupt end drops the jobs its calls queued
+/// (HeldTickJobs.DropOwner). A stream's end leaves jobs as they are.
+/// </summary>
+internal sealed class HeldJobSessionEnds : ISessionEndStore
+{
+    internal static HeldJobSessionEnds Instance { get; } = new HeldJobSessionEnds();
+
+    public void Ended(StreamEnd end)
+    {
+    }
+
+    public void SessionEnded(string owner) => HeldTickJobs.DropOwner(owner);
 }
