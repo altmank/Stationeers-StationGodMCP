@@ -37,6 +37,9 @@ internal interface ICallScheduler
 
     /// <summary>One frame: the subscription lane's samples, then light calls, then at most one heavy call.</summary>
     FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner);
+
+    /// <summary>What each (owner, stream) has cost the main thread (stream_costs); main thread only.</summary>
+    StreamCosts Costs { get; }
 }
 
 /// <summary>
@@ -46,6 +49,11 @@ internal interface ICallScheduler
 /// carries; each call waits on its context's stream. A call the scheduler refuses beyond the in-flight limits is
 /// answered too_many_in_flight unrun, with the limit and its scope. Ended streams and closed connections reach the
 /// per-stream stores here, at the start of the frame.
+/// <para>
+/// Each call it runs is timed on the scheduler's clock from its start to its serialised reply (the span the
+/// dispatcher's RunCall covers) and counted for its context in Costs, with whether the frame's request budget had been
+/// reached by then; stream ends reach Costs with the stores.
+/// </para>
 /// </summary>
 internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 {
@@ -58,15 +66,19 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     private ICallRunner? _runner;
 
     private readonly StreamStores _stores;
+    private readonly IMonotonicClock _clock;
 
-    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null)
+    internal LaneScheduler(SchedulerSettings settings, StreamStores? stores = null, IMonotonicClock? clock = null)
     {
         Settings = settings;
         _stores = stores ?? StreamStores.Main;
-        _scheduler = new FrameScheduler<QueuedCall>(settings, this, StopwatchClock.Instance, new CostPredictor());
+        _clock = clock ?? StopwatchClock.Instance;
+        _scheduler = new FrameScheduler<QueuedCall>(settings, this, _clock, new CostPredictor());
     }
 
     internal SchedulerSettings Settings { get; }
+
+    public StreamCosts Costs { get; } = new StreamCosts();
 
     public void Add(QueuedCall call) => _inbox.Enqueue(new Posted(PostKind.Add, call, call.Source ?? NoSource));
 
@@ -94,12 +106,15 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
             return;
         }
 
+        double began = _clock.NowMs;
         CallOutcome outcome;
         using (CallContext.Enter(call.Context))
         {
             outcome = call.Run(_runner!, QueuedCall.MillisecondsSince(call.ReceivedAt));
         }
 
+        double ended = _clock.NowMs;
+        Costs.Record(call.Context, ended - began, CurrentFrame.BudgetReached(ended), _scheduler.Frame);
         if (!outcome.IsDeferred)
         {
             call.Finish(outcome.Reply, outcome.Method);
@@ -142,7 +157,9 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
 
                     if (posted.Source is Connection connection)
                     {
-                        _stores.End(StreamEnd.AllOf(connection.ClientId));
+                        StreamEnd closed = StreamEnd.AllOf(connection.ClientId);
+                        _stores.End(closed);
+                        Costs.Ended(closed);
                     }
 
                     break;
@@ -197,6 +214,7 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
         }
 
         _stores.End(end);
+        Costs.Ended(end);
     }
 
     private enum PostKind

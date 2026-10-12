@@ -309,10 +309,10 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     private int _holdMs;
 
     internal FakeMod(bool mainThread, DeadlineWatch deadlines, SchedulerSettings? settings = null,
-        StreamStores? stores = null)
+        StreamStores? stores = null, IMonotonicClock? clock = null)
     {
         _deadlines = deadlines;
-        _calls = new LaneScheduler(settings ?? SchedulerSettings.Default, stores);
+        _calls = new LaneScheduler(settings ?? SchedulerSettings.Default, stores, clock);
         if (mainThread)
         {
             _thread = new Thread(() =>
@@ -418,7 +418,13 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     /// <summary>The ids of calls in the order the fake main thread ran them.</summary>
     internal ConcurrentQueue<string> RunOrder { get; } = new ConcurrentQueue<string>();
 
-    /// <summary>A call is answered with its method and params as result, after params.hold_ms if given.</summary>
+    /// <summary>What each (owner, stream) has cost, as the lane scheduler counts it.</summary>
+    internal StreamCosts Costs => _calls.Costs;
+
+    /// <summary>
+    /// A call is answered with its method and params as result, after params.hold_ms if given; stream_costs as the
+    /// dispatcher answers it.
+    /// </summary>
     public CallOutcome RunCall(ProtocolCall queued, double queueWaitMs)
     {
         Interlocked.Increment(ref _ran);
@@ -428,6 +434,11 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         if (CallHook?.Invoke(queued, queueWaitMs) is CallOutcome taken)
         {
             return taken;
+        }
+
+        if (StreamCostCalls.Handles(call.Method))
+        {
+            return new CallOutcome(new StreamCostCalls(_calls.Costs).Run(queued, queueWaitMs, 1), call.Method);
         }
 
         int hold = call.Params?.Value<int?>("hold_ms") ?? 0;

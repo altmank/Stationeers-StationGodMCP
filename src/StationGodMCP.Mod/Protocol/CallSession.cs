@@ -502,13 +502,14 @@ internal static class ProtocolMethods
     internal static readonly string[] Names =
     {
         CallSession.CatalogueMethod, SubscriptionHub.SubscribeMethod, SubscriptionHub.UnsubscribeMethod,
-        JobDropCalls.DropJobMethod
+        JobDropCalls.DropJobMethod, StreamCostCalls.StreamCostsMethod
     };
 
     /// <summary>
-    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, sample_logic and drop_job.
+    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, sample_logic, drop_job and
+    /// stream_costs.
     /// </summary>
     internal static bool RunsOnMainThread(string? method) =>
         method != null && (SubscriptionHub.Handles(method) || method == SubscriptionHub.SampleLogicMethod ||
-                           JobDropCalls.Handles(method));
+                           JobDropCalls.Handles(method) || StreamCostCalls.Handles(method));
 }

@@ -543,9 +543,10 @@ internal sealed class ServerSettings
                 new AcceptableValueRange<int>(1, 64)));
         ConfigEntry<int> resume = configuration.Bind(Section, "ResumeWindowSeconds", ResumeHolds.DefaultWindowSeconds,
             new ConfigDescription(
-                "Seconds a client's walk cursors, subscriptions and ended streams are kept after its connection " +
-                "breaks, when its hello carried a resume token, so a client that reconnects within them goes on " +
-                "where it was. Calls in flight are not kept. 0 turns resuming off. Restart the game to apply.",
+                "Seconds a client's walk cursors, subscriptions, ended streams and stream cost counters are kept " +
+                "after its connection breaks, when its hello carried a resume token, so a client that reconnects " +
+                "within them goes on where it was. Calls in flight are not kept. 0 turns resuming off. Restart the " +
+                "game to apply.",
                 new AcceptableValueRange<int>(0, ResumeHolds.MaximumWindowSeconds)));
         int maximum = connections.Value;
         if (maximum < ProtocolSettings.MinimumPipeConnections || maximum > ProtocolSettings.MaximumPipeConnections)

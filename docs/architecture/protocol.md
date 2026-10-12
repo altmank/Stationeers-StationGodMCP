@@ -86,7 +86,7 @@ The `welcome` message:
     "world": {"id": "3b9e1a40c2d84f6e", "save": "Vulcan2_4", "epoch": 3},
     "game_state": "Running"
   },
-  "catalogue": {"hash": "sha256:4f2a...", "methods": 92, "protocol_methods": 4},
+  "catalogue": {"hash": "sha256:4f2a...", "methods": 92, "protocol_methods": 5},
   "limits": {
     "max_in_flight": 16,
     "max_in_flight_per_stream": 16,
@@ -277,14 +277,21 @@ later calls in the same frame reached it, because its reply is built before the 
 never ran (`game_timeout`, `cancelled`, `too_many_in_flight`) never carry it. The per-frame `budget_stops` count in
 `mod_info` is unchanged.
 
+`budget_hit` is decided before the reply is serialised, since it is part of the reply, so a call whose own serialising
+pushes the frame over its budget says false; so does its `elapsed_ms`, which is the handler's time only. A large
+reply's JSON (a walk's page of 500 entries) can cost more than its handler. The per-stream counters of `stream_costs`
+(*Protocol methods*) are the measure that includes it: each call's whole main-thread time from its start to its
+serialised reply, and its frame counted over budget when the budget had been reached by the end of that.
+
 Inside the mod a call's reply is handed from the main thread to the connection's outbound queue when the handler and
 serialising finish; no thread waits for it, unlike today's listener, which blocks per request
 (`StationGodRequestDispatcher.cs:84`).
 
 ### Protocol methods
 
-Four methods belong to the protocol itself. They are listed in the catalogue's `protocol_methods` section and are
-called like any other method. `catalogue`, `subscribe` and `unsubscribe` are read class. `drop_job` is write class: it
+Five methods belong to the protocol itself. They are listed in the catalogue's `protocol_methods` section and are
+called like any other method. `catalogue`, `subscribe`, `unsubscribe` and `stream_costs` are read class. `drop_job` is
+write class: it
 changes what will happen to the world, so on its connection it waits for every earlier call to be answered and later
 calls wait for it (*Order on one stream*), a poll sent after it answers the drop, and a client never sends it again
 after a broken connection (*Reconnecting*).
@@ -295,12 +302,27 @@ after a broken connection (*Reconnecting*).
 | `subscribe` | See *Subscriptions*. | `{subscription, interval_s, values, frame, result}` |
 | `unsubscribe` | `{subscription}` | `{subscription, ended: true}` |
 | `drop_job` | `{job_id}` | `{job_id, dropped: true}` |
+| `stream_costs` | `{streams?: [n, ...]}` | `{streams: [{stream, calls, main_thread_ms, over_budget_frames}]}` |
 
 `drop_job` takes a building run that waits in the job queue (`wait: true`, answered `status: queued`) out of the queue
 before it starts; the jobs behind it move up by one, and nothing in the world changes. A later poll of its `job_id`
 answers `status: refused` with error `dropped`. A job that has started or ended is refused `job_not_waiting`, an id
 that is not running, queued or kept `job_not_found` (`src/StationGodMCP.Mod/Api/Shared/Game/HeldTickJobs.cs`,
 `DropWaiting`). Any connection may drop any queued job.
+
+`stream_costs` reads what the caller's own streams have cost the game's main thread, for a hub's cost line per run.
+For each stream the mod counts, from the stream's first call: `calls`, the calls run on the main thread;
+`main_thread_ms`, their whole main-thread time from the start of each call to its serialised reply, which
+`elapsed_ms` leaves out (*Replies*); and `over_budget_frames`, the frames in which one of its calls ended with the
+frame's request time at or past the budget, as `budget_hit` judges it but after serialising, each frame counted once
+per stream however many of its calls ran in it. A `sample_logic` call counts its start only; its later samples are the
+subscription lane's. Without `streams` the reply lists every stream of the caller with counts, in stream order; with
+`streams` (1 to 256 numbers) it lists each one asked, in the order asked, with 0s for a stream that has none. The
+counts belong to the caller's connection, or to its resume token, so they survive a resume (*Resuming*); another
+connection's streams are never read. A stream's counts end with it (`stream_end`, the connection's close without a
+token, a token's window passing), so a hub reads a run's final counts with `stream_costs` before it sends that run's
+`stream_end`; a world change keeps them. The `stream_costs` call's own cost is counted after its reply is built, so it
+is not in that reply.
 
 ## Errors
 
@@ -717,6 +739,18 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
 - `ClientMessage.CursorClose` parses `cursor_close`; `CallSession` posts it (`ICallQueue.CursorClosed`), and
   `LaneScheduler` hands it to `StreamStores.CloseCursor` when it takes its inbox in.
 
+### As built: stream costs
+
+- `Pure/Scheduling/StreamCosts.cs` keeps the counters by `CallContext`: an entry made at a stream's first call, then a
+  dictionary lookup and three additions per call, nothing allocated (about 8 ns a call on net8, about 50 ns with the
+  two clock reads and the budget check around it). The frame counter is `FrameScheduler.Frame`.
+- `LaneScheduler` times each call it runs on the scheduler's clock, the same span `StationGodRequestDispatcher.RunCall`
+  measures for `mod_info`, and records it with `CurrentFrame.BudgetReached` read at the end. It passes every stream
+  end it hears to the counters with the stores; a world change does not reach them.
+- `Protocol/StreamCostCalls.cs` answers `stream_costs` on the main thread, routed by the dispatcher like `drop_job`.
+  The hub's final counts come from reading before `stream_end`, rather than from counts kept past the end: nothing
+  is held for streams that have gone, and a run's last call is answered before its hub ends the stream.
+
 ### As built: resuming
 
 - `CallContext` and `StreamEnd` key by an owner rather than a connection: the connection's `client_id`, or the owner
@@ -753,7 +787,8 @@ per-run state under the token rather than under the connection:
 
 - the streams it ended, so a stream id stays never-reused across the reconnect (`stream_ended`);
 - its walk cursors (*Walks*);
-- its subscriptions (*Subscriptions*).
+- its subscriptions (*Subscriptions*);
+- its streams' cost counters (`stream_costs`, *Protocol methods*).
 
 When the connection closes for any reason but `bye` (the socket dropped, `slow_client`, a protocol error, the server
 stopping), that state is held for `[Server] ResumeWindowSeconds` (default 60; `welcome.resume.window_s`). A
