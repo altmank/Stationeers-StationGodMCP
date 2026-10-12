@@ -1,29 +1,14 @@
 {
   "verb": "server",
   "description": "StationGod and the game server: mod version, health and costs, profiling, the in-game console. command is a cheat.",
-  "help": [
-    "StationGod and the game server: mod version, health and costs, profiling, the in-game console. command is a cheat.",
-    "",
-    "whats:",
-    "- info: the running mod: version, per-method calls and times, game members, its cost to the game, and live script runs with status and cost",
-    "- profiling: profile StationGod's main-thread cost: on, off, reset, report",
-    "- console: the latest in-game console lines, oldest first",
-    "- stop: stop a script run or job, or every live run with no id (finally blocks run; the reply lists what it left changed)",
-    "- command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings. Cheat, not undoable. (cheat)",
-    "",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"server\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": false,
   "tool": {
-    "what": "info: the running mod: version, per-method calls and times, game members, its cost to the game, and live script runs with their status and cost; profiling: profile StationGod's main-thread cost: on, off, reset, report; console: the latest in-game console lines, oldest first; command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings; stop: stop a script run or job (id), or every live run (no id): the script gets sg.Stopped, so its finally blocks run",
     "options": {
       "confirm": "true acts; left out, it reports.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out.",
       "id": "The run or job to stop: 'script-14'. Left out: every live run."
-    },
-    "required": null
+    }
   },
   "whats": {
     "info": {
@@ -73,7 +58,7 @@
       "options": {
         "action": {
           "schema": {"type": "string", "enum": ["on", "off", "reset", "report"]},
-          "description": "",
+          "description": "on, off, reset, or report the scopes so far.",
           "required": true,
           "x-script": "same"
         },
@@ -173,7 +158,7 @@
       }
     },
     "command": {
-      "summary": "run any console command and answer what it printed: spawn, delete, teleport, storms, settings. Cheat, not undoable",
+      "summary": "run any console command and answer what it printed: spawn, delete, teleport, storms, settings",
       "options": {
         "command": {"schema": {"type": "string"}, "description": "The whole command line.", "required": true, "x-script": "same"},
         "lines": {
@@ -188,7 +173,6 @@
         "Read-only commands (help, rocket print) also need confirm: true; the game does not mark which commands change nothing."
       ],
       "x-script-text": [
-        "Reports in a report run; acts in a confirmed run. Cheat: ask the user first.",
         "Read-only commands (help, rocket print) also only report in a report run; the game does not mark which commands change nothing."
       ],
       "example": {"command": "help", "confirm": true},
@@ -247,12 +231,22 @@
           "description": "The run (script-14) or job (place-41). Left out: every live run, answered as one combined list."
         }
       },
-      "x-script-text": [
-        "Reply keys: id, state (stopped or killed), line, left [{id, logic, value, line}] (what the run changed and did not restore), in_flight [{job_id, fate}] (fate: finishing, undo script-N includes it once done | dropped), undo."
-      ],
       "example": {"id": "script-14"},
       "handlers": [{"name": "hub:stop", "args": []}],
-      "reply": {"variants": []},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "id": "str",
+              "state": "str",
+              "line": "str | None",
+              "left": "list[{id: str, logic: str, value: float, line: int | None}]",
+              "in_flight": "list[{job_id: str, fate: str}]",
+              "undo": "str | None"
+            }
+          }
+        ]
+      },
       "write": {
         "report": "none",
         "route": "acts",

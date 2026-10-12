@@ -1,0 +1,10 @@
+Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. buy and sell report until confirm: true.
+
+whats:
+- contacts: every trader contact in the sky and every satellite dish with where it points
+- inventory: what each contact buys and sells: prices, stock, conditions, and what you hold that meets them
+- buy: buy from the landed trader as the trade window's Buy does
+- sell: sell to the landed trader as the trade window's Sell does
+
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "trade", what} gives a what's options, reply keys and an example.

@@ -1,0 +1,14 @@
+A cable, pipe or chute network's members (or the pieces in a box), with filters or a summary.
+Options:
+- network (string or object): A network: its id, a piece or device on it, or {id, port}.
+- box (list): Box form: the pieces in it (alone: open ends in it).
+- kind (pipe | cable | chute): Box form: only this kind. With network, left out, it is read from the network.
+- prefab (string or integer or array): Only members whose prefab holds this part.
+- summarize (boolean, default false): Counts by prefab and colour, devices and open ends instead of members.
+- open_ends (boolean, default false): Only members with an end nothing is attached at.
+- near (string or array): Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
+- radius (number): Metres around near.
+- limit (integer, default 30; box 25; summarize 10): Members per page.
+- offset (integer, default 0): Entries to skip.
+Reply: (Connections) thing {reference_id, prefab_name, display_name}, position {x, y, z}, rotation {facing, up, euler}, own_network {kind, id}, color {index, name, is_default}, ends [{index, type, type_name, role, role_name, position, network, connected}], count | (NetworkMembers) network {kind, id}, summary, warning, members [{reference_id, prefab_name, display_name, member, position, color, open_ends, network_id}], count, structure_count, device_count, offset, limit, total, has_more | (NetworkOverview) network {kind, id}, summary, warning, broken_neighbour_count, broken_neighbours [{reference_id, prefab_name, position, pipe_burst, network, touches}], structure_count, device_count, by_prefab [{prefab_name, display_name, member, count, colors}], devices [{reference_id, prefab_name, display_name, member, position, color, open_ends, network_id}], open_ends [{reference_id, prefab_name, display_name, member, position, color, open_ends, network_id}], open_end_count | (AreaOpenEnds) members [{reference_id, prefab_name, display_name, member, position, color, open_ends, network_id}], count, offset, limit, total, has_more
+Example: survey {what: "network", network: "3768865", kind: "cable", summarize: true}

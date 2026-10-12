@@ -1,23 +1,8 @@
 {
   "verb": "read",
   "description": "Read live values: logic (one, many, with slots, atmosphere and reagents in one frame), memory, a device snapshot, values over time, the clock, flight logs. Read only.",
-  "help": [
-    "Read live values: logic (one, many, with slots, atmosphere and reagents in one frame), memory, a device snapshot, values over time, the clock, flight logs. Read only.",
-    "",
-    "whats:",
-    "- logic: logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame",
-    "- snapshot: every readable logic value of matching devices, in one frame",
-    "- memory: up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status)",
-    "- sample: watch up to 32 logic values for up to 30 s: first readings and every change with its time",
-    "- clock: game time, paused, time of day, days past",
-    "- flight_log: a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)",
-    "",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"read\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": true,
   "tool": {
-    "what": "logic: logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame; snapshot: every readable logic value of matching devices, in one frame; memory: up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status); sample: watch up to 32 logic values for up to 30 s: first readings and every change with its time; clock: game time, paused, time of day, days past; flight_log: a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)",
     "options": {
       "id": "logic: Device(s); with logic, every id is read for every logic type. snapshot: Only these devices. memory: One id, or \"looking_at\" (the thing the crosshair is on). sample: An id, a list, a ref ('r3'), or \"looking_at\". flight_log: A rocket's id, name, network or any part; left out when there is one rocket. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
       "logic": "logic: Logic type(s): name (Temperature) or number. snapshot: Logic types; left out, every one. sample:",
@@ -27,8 +12,7 @@
       "action": "Default read.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
-    },
-    "required": null
+    }
   },
   "whats": {
     "logic": {
@@ -280,7 +264,11 @@
           "description": "Target: an id, a list of ids, a ref (\"r3\": the ids that reply showed; \"r3.rockets.parts\"), or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says.",
           "x-script": "Target: an id, a list of ids, or \"looking_at\" (the thing the crosshair is on); \"player\" where the what says."
         },
-        "logic": {"schema": {"type": ["string", "integer", "array"]}, "description": "", "x-script": "same"},
+        "logic": {
+          "schema": {"type": ["string", "integer", "array"]},
+          "description": "Logic type(s) to watch on every id: name or number.",
+          "x-script": "same"
+        },
         "reads": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 32},
           "description": "Separate {id, logic} pairs.",
@@ -300,10 +288,7 @@
           "x-script": "same"
         }
       },
-      "x-script-text": [
-        "Reply keys: gateway_id, started_at_utc, duration_seconds, interval_seconds, sample_count, change_count, changes.",
-        "A list of ids keeps this reply: one series of changes over all of them (x-list native-shape)."
-      ],
+      "x-script-text": ["A list of ids keeps this reply: one series of changes over all of them (x-list native-shape)."],
       "example": {"id": "1199811", "logic": "Pressure", "seconds": 10},
       "handlers": [
         {
@@ -326,7 +311,21 @@
           ]
         }
       ],
-      "reply": {"variants": []},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "gateway_id": "str",
+              "started_at_utc": "str",
+              "duration_seconds": "float",
+              "interval_seconds": "float",
+              "sample_count": "int",
+              "change_count": "int",
+              "changes": "list[{reference_id: str, logic_type: str, value: float, at_s: float}]"
+            }
+          }
+        ]
+      },
       "x-list": "native-shape"
     },
     "clock": {
@@ -340,11 +339,11 @@
       }
     },
     "flight_log": {
-      "summary": "A rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)",
+      "summary": "a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)",
       "options": {
         "action": {
           "schema": {"type": "string", "enum": ["read", "list"]},
-          "description": "",
+          "description": "read: a page of a recording's rows; list: the recordings.",
           "default": "read",
           "x-script": "same"
         },

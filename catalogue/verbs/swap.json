@@ -1,24 +1,8 @@
 {
   "verb": "swap",
   "description": "Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. Reports first; confirm: true does it.",
-  "help": [
-    "Change things already built, in place: swap walls or frames, upgrade or tidy cable, pipe and chute networks, advance a build state. Reports first; confirm: true does it.",
-    "",
-    "whats:",
-    "- structure: build a placed structure on to a later build state, paying each state's materials",
-    "- wall: replace walls and windows with another wall or window prefab without opening a face",
-    "- frame: replace frames with another frame prefab, or finish unfinished frames, without opening a cell",
-    "- cable: upgrade cable in place (into heavy or super_heavy) or tidy a network (tidy: remove dead ends, loops...)",
-    "- pipe: upgrade pipe in place (into insulated, or repair burst pieces) or tidy a network, keeping its contents",
-    "- chute: remove chute pieces no item can pass to a consumer; junctions left with one way become straights",
-    "",
-    "Every what here takes: confirm, id, materials.",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"swap\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": false,
   "tool": {
-    "what": "wall: replace walls and windows with another wall or window prefab without opening a face; frame: replace frames with another frame prefab, or finish unfinished frames, without opening a cell; cable: upgrade cable in place (into heavy or super_heavy) or tidy a network (tidy: remove dead ends, loops...); pipe: upgrade pipe in place (into insulated, or repair burst pieces) or tidy a network, keeping its contents; chute: remove chute pieces no item can pass to a consumer; junctions left with one way become straights",
     "options": {
       "id": "frame, pipe, chute: An id, a list, a ref ('r3'), or \"looking_at\". cable: Pieces (up to 4096). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
       "materials": "Holder(s) that pay, in order; ids or \"player\".",
@@ -31,8 +15,7 @@
       "riding": "A piece holding an item: skip it, or refuse the run. Default skip.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
-    },
-    "required": null
+    }
   },
   "whats": {
     "wall": {

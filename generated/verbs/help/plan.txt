@@ -1,0 +1,12 @@
+Work out how, changing nothing: cable, pipe and chute routes, removal prices, free spots for a prefab, rocket flights and landings, mining yields, aim angles. Read only.
+
+whats:
+- route: a cable, pipe or chute route between ends, ports or networks, dry-run as the build would; answers build_arguments
+- removal: price a removal of cable, pipe or chute pieces without doing it, ever: ids, cells or a whole network
+- spot: free places to put one prefab you are about to build, near a point, on a face plane or a room's walls, checked by the game's cursor; answers build_arguments
+- flight: fly a copy of a rocket to a node or pad, tick by tick: launch, hops, re-entry, landing, fuel, power and the verdict; the landing check
+- mining: what a rocket can collect per site, by the game's formulas: yield per cycle and hour, what stops it
+- aim: horizontal and Vertical that point a solar panel at the sun, or a satellite dish at a trader contact
+
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "plan", what} gives a what's options, reply keys and an example.

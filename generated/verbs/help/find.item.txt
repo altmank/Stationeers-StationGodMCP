@@ -1,0 +1,18 @@
+Stackable items and kits with quantity and holders, anywhere: ground, carried, stored, machine stock, silos; a kit such as Kit (Battery Large) is an item to find and move, a built structure is not; group_by sums them.
+Options:
+- name (string): Part of the shown name or label, any case.
+- prefab (string or integer or array): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+- location (any | ground | player | stored | machine_stock | silo, default any): Where the item is.
+- within (string): Only items inside this holder at any depth (and its machine stock or silo store).
+- near (string or array): Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
+- radius (number): Metres around near; at most 1000 around a point, no limit around "player".
+- box (list): Two corners [[x, y, z], [x, y, z]].
+- group_by (holder | prefab | place): holder: sum per holder and prefab; prefab: sum per prefab; place: per prefab split into ground, carried, stored, machine stock and silo, with top holders.
+- holders (integer, default 1): group_by place: holders listed per prefab, most first.
+- exclude_in_use (boolean, default false): Leave out parts a device is using (chips in holders, a running filter's filters).
+- limit (integer, default 10; group_by place 12): Items (or groups) per page.
+- offset (integer, default 0): Entries to skip.
+- order (nearest | id, default nearest): nearest (default) or id (stable pages).
+group_by place takes no offset, order or exclude_in_use (the totals are not paged).
+Reply: (list or group_by holder/prefab) items [{prefab_name, display_name, reagent, quantity, entries, location, holder, position, distance_m, prefab_name, display_name, quantity, max_quantity, location, carried_by, held_in, position, distance_m, display_name, reagent, quantity, entries, holders, display_name, quantity, max_quantity, held_in, position, distance_m, silo, display_name, quantity, held_in, position, distance_m, machine_stock}], count, total, offset, limit, has_more, local_player {reference_id, display_name, position}, in_use_left_out | (group_by place) totals [{prefab_name, display_name, items, quantity, on_ground, carried, stored, machine_stock, silo, reagent, top_holders}], prefab_count, item_count, machine_stock_entries, silo_entries
+Example: find {what: "item", prefab: "ItemIronIngot", group_by: "place"}

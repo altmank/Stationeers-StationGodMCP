@@ -1,0 +1,24 @@
+Fly a copy of a rocket to a node or pad, tick by tick: launch, hops, re-entry, landing, fuel, power and the verdict; the landing check.
+Options:
+- id (string or array): A rocket's id, name, network or any part; left out when there is one rocket.
+- node (string): Destination node: name, map code, id, or 'pad'; default the rocket's target, else its pad.
+- profile (Low | Medium | High | Max): Re-entry profile; default the rocket's.
+- park_s (number): Seconds at the destination.
+- mine (boolean, default false): Mine while parked.
+- fill_holds (boolean): Every cargo slot filled by the end of the stop.
+- add_cargo_slots (integer): Cargo slots filled during the stop.
+- park_load_w (number, default what auto shut-off leaves on, plus mining gear with mine): Power draw per tick while parked.
+- then_return (boolean, default false): After the stop, fly back and land.
+- return_to (string): The mount to land on after the stop; default this rocket's pad.
+- deploy_payload (boolean, default false): At a Deploy node the payloads leave.
+- transfer_mol (number): Fuel received at the stop (negative: given).
+- transfer_with (string): Another rocket at the stop whose umbilicals equalise with this one.
+- transfer_battery_j (number): Battery charge received at the stop (negative: given).
+- what_if (object): Replace measured values: {fuel_mol, fuel_temperature_k, fuel_mix {gas: fraction}, thrust_scale 0-10, throttle 0-100, cargo_slots, add_cargo_kg, payload_kg, battery_j, battery_percent, extra_load_w}.
+- min_confidence (number, default 0.25): Confidence floor for the verdict.
+- limits (boolean, default true): Landing limits, profiles and least fuel.
+- column_check (boolean, default true): Scan the landing column above the pad.
+- include (list of explain): explain: the model's fixed rules.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: rocket_id, rocket_name, start_state, destination {reference_id, name, code, code_value, type, charted}, route [{from, to, to_code, distance, done, charted}], uncharted, assumptions, legs [{kind, from, to, distance, outcome, detail, seconds, burn_seconds, delta_v, fuel_start_mol, fuel_used_mol, fuel_left_mol, fuel_kpa_end, mass_start_kg, mass_end_kg, battery_start_j, battery_end_j, peak_thrust_n, max_recorded_thrust_n, landing}], succeeded, verdict, fuel_now_mol, least_fuel_mol, landing_limits {max_landing_mass_kg, max_fuel_plus_cargo_kg, min_fuel_mol, max_fuel_mol, survivable_thrust_drop_pct, confidence_floor, confident_mass_kg}, profiles [{profile, altitude_m, outcome, fuel_used_mol, confidence, seconds, touchdown_speed_ms, survivable_thrust_drop_pct}], column {clear, from_y, to_y, blockers, more}, combustion {rate, source, note}, mining {site, kind, collectable, units_per_hour, units_in_stop, slots_in_stop, problems}
+Example: plan {what: "flight", id: "4067059", node: "pad"}

@@ -1,0 +1,34 @@
+SwapJob = {job_id: str, tool: str, status: str, preflight: {tool: str, target: str, status: str, job_id: str | None, ready: bool, problems:
+    list[{code: str, message: str, reference_id: str | None}], pieces_total: int, to_swap: int, kept: int, unmatched: int, pieces: list[{reference_id:
+    str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, target_prefab_name: str | None, target_build_state: int,
+    blocks_air_before: bool, blocks_air_after: bool, blocks_gravity_before: bool, blocks_gravity_after: bool, air_change: str, seals: bool, stressed:
+    bool, faces: list[{position: Vec3, cells: list[Vec3], pressure_kpa_a: float, pressure_kpa_b: float, difference_kpa: float,
+    max_pressure_delta_kpa_before: float, max_pressure_delta_kpa_after: float, verdict: str}] | None, room_ids: list[str], materials:
+    list[{prefab_name: str | None, cost: int, refund: int, net: int}]}], pieces_listed: int, by_prefab: list[{prefab_name: str | None,
+    target_prefab_name: str | None, count: int}], kept_pieces: list[{reference_id: str, prefab_name: str | None, reason: str, message: str}],
+    unmatched_pieces: list[{reference_id: str, prefab_name: str | None, reason: str, message: str}], from: Thing | None, materials: list[{prefab_name:
+    str | None, display_name: str | None, cost: int, refund: int, charge: int, give_back: int, available: int, paid_by: list[{reference_id: str, name:
+    str | None, quantity: int, available: int}] | None, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int |
+    None}]}], refund_enabled: bool, refund_plan: RefundPlan | None, rooms: list[{room_id: str, cell_count: int, total_mol: float, energy_j: float}],
+    notes: list[str] | None} | None, preflight_summary: {placed: int | None, changed: int | None, removed: int | None, warnings: list[str]} | None,
+    final_check: {tool: str, target: str, status: str, job_id: str | None, ready: bool, problems: list[{code: str, message: str, reference_id: str |
+    None}], pieces_total: int, to_swap: int, kept: int, unmatched: int, pieces: list[{reference_id: str, prefab_name: str | None, position: Vec3,
+    rotation_deg: Vec3, build_state: int, target_prefab_name: str | None, target_build_state: int, blocks_air_before: bool, blocks_air_after: bool,
+    blocks_gravity_before: bool, blocks_gravity_after: bool, air_change: str, seals: bool, stressed: bool, faces: list[{position: Vec3, cells:
+    list[Vec3], pressure_kpa_a: float, pressure_kpa_b: float, difference_kpa: float, max_pressure_delta_kpa_before: float,
+    max_pressure_delta_kpa_after: float, verdict: str}] | None, room_ids: list[str], materials: list[{prefab_name: str | None, cost: int, refund: int,
+    net: int}]}], pieces_listed: int, by_prefab: list[{prefab_name: str | None, target_prefab_name: str | None, count: int}], kept_pieces:
+    list[{reference_id: str, prefab_name: str | None, reason: str, message: str}], unmatched_pieces: list[{reference_id: str, prefab_name: str | None,
+    reason: str, message: str}], from: Thing | None, materials: list[{prefab_name: str | None, display_name: str | None, cost: int, refund: int,
+    charge: int, give_back: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None, stacks:
+    list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}]}], refund_enabled: bool, refund_plan: RefundPlan | None,
+    rooms: list[{room_id: str, cell_count: int, total_mol: float, energy_j: float}], notes: list[str] | None} | None, swapped: list[{old_reference_id:
+    str, new_reference_id: str, prefab_name: str | None, target_prefab_name: str | None}], swapped_count: int, not_swapped: list[str], stopped_at:
+    {reference_id: str, error: Error, piece_intact: bool, rolled_back: bool, replacement_id: str | None} | None, used: list[{prefab_name: str | None,
+    quantity: int}], refund_delivered: list[{reference_id: str, prefab_name: str | None, quantity: int, where: str, target: str | None, target_id: str
+    | None, target_name: str | None}], refund_error: Error | None, held_check: {ok: bool, problems: list[{code: str, message: str, reference_id: str |
+    None}]} | None, room_check: {settled: bool, ticks_run: int, ok: bool, problems: list[{code: str, message: str, reference_id: str | None}], rooms:
+    list[{room_id: str, exists: bool, cell_count_before: int, cell_count_expected: int, cell_count_after: int | None, cells_lost: int, cells_gained:
+    int, total_mol_before: float, total_mol_after: float | None, delta_mol: float | None, tolerance_mol: float, energy_j_before: float,
+    energy_j_after: float | None, delta_energy_j: float | None, tolerance_energy_j: float, problems: list[str]}], new_rooms: list[{room_id: str,
+    cell_count: int, total_mol: float, energy_j: float}]} | None, error: Error | None}

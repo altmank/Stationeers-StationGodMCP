@@ -1,0 +1,10 @@
+Deep miner spots: the ore profile at a point, and the nearest spots holding given ores.
+Options:
+- near (list): The point to report and search from; default the player's position.
+- ores (list): Reagents a spot must all hold (["Cobalt"]).
+- radius (number, default 500): Search radius.
+- separation (number, default 100): Least distance between two spots.
+- step (number): Sample spacing; default the finest within the budget.
+- limit (integer, default 5): Spots returned, nearest first.
+Reply: at {position, regions, profile_id}, profiles [{id, reagents, quantity, time_s, regions}], search {ores, profiles, radius_m, step_m, min_separation_m, samples, matched, searched_radius_m, truncated}, spots [{at, distance_m, bearing_deg, compass, profile_id, regions, terrain}], beacons [{at, label}]
+Example: find {what: "ore", ores: ["Cobalt"]}

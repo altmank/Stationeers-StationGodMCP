@@ -1,0 +1,5 @@
+A point is [x, y, z] or {x, y, z} in world metres, +y up. Building tools snap it to the cell it falls in: 0.5 m small cells for pieces and small devices, 2 m large cells for frames, walls and large structures; the reply's resolved says where it landed. Where a what's at says so, it also takes:
+- "looking_at": where the player's look ray hits within 10 m. {looking_at: true, right, up, forward} moves it in the player's frame. Example: at: "looking_at".
+- {relative_to, frame, right, up, forward, anchor}: a point beside a thing. relative_to takes "player", "looking_at" or an id; frame player, world or target; anchor origin, top, bottom, left, right, front or back of its footprint. Example: at: {relative_to: "4820585", right: 2}.
+- {on_face: true, along_right, along_up}: a point on the 2 m face plane you look at, right and up as you see them. Example: at: {on_face: true, along_right: 1}.
+Every length is metres. no_crosshair_hit or no_face when the ray hits nothing; these need the player's view.

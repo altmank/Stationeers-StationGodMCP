@@ -1,0 +1,4 @@
+The player's hunger and thirst: nutrition, hydration, drain, time left.
+No options.
+Reply: reference_id, display_name, nutrition, nutrition_capacity, hydration, hydration_capacity, food_quality, food_quality_multiplier, mood, thirst_temperature {temperature_k, source}, difficulty {id, hunger_rate, hydration_rate, offline_metabolism}, hunger {per_second, per_hour, awake_per_second, awake_per_hour, time_left_s, time_left_awake_s, factors}, thirst {per_second, per_hour, awake_per_second, awake_per_hour, time_left_s, time_left_awake_s, factors}, warnings {nutrition_warning, nutrition_critical, hydration_warning, hydration_critical}, game_tick_s
+Example: inspect {what: "player"}

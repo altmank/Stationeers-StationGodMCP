@@ -1,0 +1,31 @@
+Any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job.
+Reports first; confirm: true does it.
+Cheat when free: true.
+Options:
+- placements (list): Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color}, built in order in one job; or one at the top level.
+- prefab (string or integer): Prefab name or hash.
+- at (array or object or string): A point, "looking_at", or a relative or look-face form (help positions).
+- rotation (list): [x, y, z] degrees, multiples of 90.
+- spread (object or array): {from, to, step} or a list: this prefab every step metres along each line; reports first.
+- facing (+x | -x | +y | -y | +z | -z | toward_player | away_from_player | out_of_face | into_room): Where the front points.
+- up (+x | -x | +y | -y | +z | -z, default +y (+z when facing is vertical)): Where the top points.
+- face (+x | -x | +y | -y | +z | -z): Face-placed pieces (walls): the cell face it sits on.
+- orient (object): {mount, upright, controls_toward, ports, flow}: choose the turn by intent.
+- above_floor (number): Bottom this many metres above the floor below at.
+- build_state (string or integer): finished (default), first, or a state index.
+- label (string): A name, as the Labeller writes it.
+- color (string or integer): A colour name or index.
+- materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- free (boolean, default false): Creative worlds: no materials. Cheat.
+- allow (list of door_keepout | lint | pad): door_keepout: a keep-out cell is a warning; lint: lint problems are warnings (listed in lint_passed); pad: building in a landing pad's approach.
+- include (list of notes | footprint_cells): footprint_cells: each footprint's cells.
+- verbose (boolean, default false): Dry run: layouts a refused report leaves out; real run: the whole preflight.
+- acknowledge_gas_lost (string): The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
+- from_plan (string): A ref of a plan route or plan spot reply ("r9"; one spot: "r9.spots.2", default the first): build its build_arguments; options given here are added.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- queue (boolean, default true): Wait in line behind a running job (up to 8) instead of answering busy.
+- max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
+A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
+Every build reply has placed: [ids] at the top: the new ids ([] in any report).
+Reply: (JobQueued) a JobQueued (help {topic: "types", subtopic: "JobQueued"}) | (BuildJob) a BuildJob (help {topic: "types", subtopic: "BuildJob"}) | (PlaceReport) tool, status, job_id, ready, problems [{code, message, index, reference_id}], warnings [{code, message, index, reference_id}], placements [{index, prefab_name, prefab_hash, display_name, placement, position, orientation, face, ports, build_state, build_states, label, color, cost, layout, orient, resolved}], materials [{prefab_name, needed, available, paid_by}], from {reference_id, prefab_name, display_name}, free, notes | (RemoveReport) tool, status, job_id, ready, problems [{code, message, index, reference_id}], warnings [{code, message, index, reference_id}], removals [{index, reference_id, prefab_name, display_name, position, build_state, kind, refund}], refund [{prefab_name, quantity}], refund_to, refund_plan, from {reference_id, prefab_name, display_name}, will_burst [{network_id, networks_left, volume_left_l, pressure_now_kpa, pressure_after_kpa, rating_kpa, pipes, where, holds_mol, released_mol, gases}], notes | (RunJob) a RunJob (help {topic: "types", subtopic: "RunJob"}) | (JobBusy) a JobBusy (help {topic: "types", subtopic: "JobBusy"}) | (JobDropped) a JobDropped (help {topic: "types", subtopic: "JobDropped"})
+Example: build {what: "structure", prefab: "StructureWallLight", at: [716, 203, 668], facing: "-x", confirm: true}

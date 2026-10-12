@@ -1,0 +1,1 @@
+JobDropped = {job_id: str, tool: str, error: Error}

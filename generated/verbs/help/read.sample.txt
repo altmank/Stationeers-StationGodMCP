@@ -1,0 +1,10 @@
+Watch up to 32 logic values for up to 30 s: first readings and every change with its time.
+Options:
+- id (string or array): Target: an id, a list of ids, a ref ("r3": the ids that reply showed; "r3.rockets.parts"), or "looking_at" (the thing the crosshair is on); "player" where the what says.
+- logic (string or integer or array): Logic type(s) to watch on every id: name or number.
+- reads (list): Separate {id, logic} pairs.
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+- seconds (number, default 5): How long to watch.
+- interval (number, default 0.5): Least time between samples (s).
+Reply: gateway_id, started_at_utc, duration_seconds, interval_seconds, sample_count, change_count, changes [{reference_id, logic_type, value, at_s}]
+Example: read {what: "sample", id: "1199811", logic: "Pressure", seconds: 10}

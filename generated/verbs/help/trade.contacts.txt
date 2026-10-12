@@ -1,0 +1,4 @@
+Every trader contact in the sky and every satellite dish with where it points.
+No options.
+Reply: game_time_s, contacts [{reference_id, trader, display_name, shuttle, pad_size_tiles, direction, elevation_deg, min_power_to_resolve_w, min_power_to_contact_w, contacted, time_left_s}], dishes [{reference_id, display_name, prefab_name, forward, transform_up, horizontal, vertical, finished, powered, on, can_rotate, min_power_w, max_power_w, field_of_view_deg}]
+Example: trade {what: "contacts"}

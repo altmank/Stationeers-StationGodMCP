@@ -1,0 +1,9 @@
+Up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status).
+Options:
+- id (string or array, required): One id, or "looking_at" (the thing the crosshair is on).
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+- start (integer, required): First address.
+- count (integer, required): Values to read.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: gateway_id, reference_id, start_address, values, count, stack_size
+Example: read {what: "memory", id: "4820585", start: 0, count: 32}

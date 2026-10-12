@@ -1,0 +1,4 @@
+Game time, paused, time of day, days past.
+No options.
+Reply: game_time_s, paused, time_of_day_ratio, days_past
+Example: read {what: "clock"}

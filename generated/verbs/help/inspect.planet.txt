@@ -1,0 +1,4 @@
+The planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps.
+No options.
+Reply: (PlanetNotLoaded) terraforming_mod {version, state, temperature_adjustment_k} | (Planet) gases [{gas, display_name, state, amount_mol, per_cell_mol, partial_kpa, freezes_below_k, min_liquid_pressure_kpa, condenses_below_today_coldest_k, condenses_below_orbit_coldest_k}], reservoirs {liquid_clouds, ice_clouds, ice_caps}, starting_air {per_cell_mol, mol, gases}, terraforming_mod {version, state, temperature_adjustment_k}
+Example: inspect {what: "planet"}

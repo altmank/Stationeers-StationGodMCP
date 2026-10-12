@@ -1,0 +1,21 @@
+Wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes.
+Options:
+- placements (list): As build structure's placements.
+- prefab (string or integer): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+- at (array or object or string): A point, "looking_at", or a relative or look-face form (help positions).
+- rotation (list): [x, y, z] degrees, multiples of 90.
+- facing (string): Where the front points (as build structure).
+- up (string): Where the top points (as build structure).
+- face (string): Face-placed pieces: the cell face it sits on.
+- orient (object): {mount, upright, controls_toward, ports, flow}: choose the turn by intent.
+- above_floor (number): Bottom this many metres above the floor below at.
+- build_state (string or integer): finished (default), first, or a state index.
+- allow (list of door_keepout): Guards to lift, by name.
+- cells (list): Yellow 0.5 m cubes at these points.
+- boxes (list): {min, max, color} boxes.
+- seconds (number, default 30): How long to show.
+- keep (boolean, default false): Keep what earlier calls drew.
+- clear (boolean): Only remove what is drawn.
+- xray (boolean, default false): Draw through walls and terrain.
+Reply: shown, cleared, seconds, dry_run {tool, status, job_id, ready, problems, warnings, placements, materials, from, free, notes}, notes, drawn_on, view {source, age_s}
+Example: show {what: "preview", prefab: "StructureWallLight", at: [716, 203, 668], facing: "-x"}

@@ -1,20 +1,8 @@
 {
   "verb": "show",
   "description": "Draw on the player's screen only, for a while: a build preview, or highlights through walls. Nothing in the world changes.",
-  "help": [
-    "Draw on the player's screen only, for a while: a build preview, or highlights through walls. Nothing in the world changes.",
-    "",
-    "whats:",
-    "- preview: wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes",
-    "- highlight: show the player where things, a network or far points are, tinted and labelled",
-    "",
-    "Every what here takes: clear, keep, seconds.",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"show\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": true,
   "tool": {
-    "what": "preview: wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled",
     "options": {
       "placements": "As build structure's placements.",
       "prefab": "Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.",
@@ -22,8 +10,7 @@
       "targets": "Up to 64, each one of {id (one or a list), network, at} with color, label, pulse.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
-    },
-    "required": null
+    }
   },
   "whats": {
     "preview": {
@@ -35,14 +22,42 @@
           "x-script": "same"
         },
         "prefab": {"use": "prefab", "schema": {"type": ["string", "integer"]}},
-        "at": {"schema": {"type": ["array", "object", "string"]}, "description": "", "x-script": "same"},
-        "rotation": {"schema": {"type": "array", "items": {"type": "number"}, "maxItems": 3}, "description": "", "x-script": "same"},
-        "facing": {"schema": {"type": "string"}, "description": "", "x-script": "same"},
-        "up": {"schema": {"type": "string"}, "description": "", "x-script": "same"},
-        "face": {"schema": {"type": "string"}, "description": "", "x-script": "same"},
-        "orient": {"schema": {"type": "object"}, "description": "", "x-script": "same"},
-        "above_floor": {"schema": {"type": "number"}, "description": "", "x-script": "same"},
-        "build_state": {"schema": {"type": ["string", "integer"]}, "description": "", "x-script": "same"},
+        "at": {
+          "schema": {"type": ["array", "object", "string"]},
+          "description": "A point, \"looking_at\", or a relative or look-face form (help positions).",
+          "x-script": "same"
+        },
+        "rotation": {
+          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "description": "[x, y, z] degrees, multiples of 90.",
+          "x-script": "same"
+        },
+        "facing": {
+          "schema": {"type": "string"},
+          "description": "Where the front points (as build structure).",
+          "x-script": "same"
+        },
+        "up": {"schema": {"type": "string"}, "description": "Where the top points (as build structure).", "x-script": "same"},
+        "face": {
+          "schema": {"type": "string"},
+          "description": "Face-placed pieces: the cell face it sits on.",
+          "x-script": "same"
+        },
+        "orient": {
+          "schema": {"type": "object"},
+          "description": "{mount, upright, controls_toward, ports, flow}: choose the turn by intent.",
+          "x-script": "same"
+        },
+        "above_floor": {
+          "schema": {"type": "number"},
+          "description": "Bottom this many metres above the floor below at.",
+          "x-script": "same"
+        },
+        "build_state": {
+          "schema": {"type": ["string", "integer"]},
+          "description": "finished (default), first, or a state index.",
+          "x-script": "same"
+        },
         "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout"]}}},
         "cells": {
           "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 512},

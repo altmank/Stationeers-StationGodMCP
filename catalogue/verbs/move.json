@@ -1,21 +1,8 @@
 {
   "verb": "move",
   "description": "Move items, gas and players. Items go into or out of an Ingot Vault or SDB Silo store when to or source is one. Reports first; confirm: true moves. gas and player are cheats.",
-  "help": [
-    "Move items, gas and players. Items go into or out of an Ingot Vault or SDB Silo store when to or source is one. Reports first; confirm: true moves. gas and player are cheats.",
-    "",
-    "whats:",
-    "- item: items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store",
-    "- gas: move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump. Cheat. (cheat)",
-    "- player: move a player anywhere at once: to a point, beside a thing or another player. Cheat. (cheat)",
-    "",
-    "Every what here takes: confirm, to.",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"move\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": false,
   "tool": {
-    "what": "item: items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store; gas: move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump; player: move a player anywhere at once: to a point, beside a thing or another player",
     "options": {
       "id": "The item(s); for a vault or silo deposit, whole things by id. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
       "quantity": "Slot move: how many off the stack, default the whole item. Out of a vault: grams of ingot or a count of ore or ice; out of a silo: an item count; required for both.",
@@ -35,8 +22,7 @@
       "to_player": "Destination: beside this player (a name).",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
-    },
-    "required": null
+    }
   },
   "whats": {
     "item": {
@@ -55,7 +41,7 @@
         },
         "slot": {
           "schema": {"type": ["integer", "string"]},
-          "description": "A slot index of to, or \"auto\" (move_item required it; auto is now the default). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.",
+          "description": "A slot index of to, or \"auto\" (the default). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.",
           "default": "auto",
           "x-script": "same"
         },
@@ -507,7 +493,7 @@
       }
     },
     "gas": {
-      "summary": "move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump. Cheat",
+      "summary": "move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump",
       "options": {
         "source": {
           "schema": {"type": ["string", "object"]},
@@ -552,11 +538,6 @@
       "text": [
         "Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job)."
       ],
-      "x-script-text": [
-        "Reports in a report run; acts in a confirmed run. Cheat: ask the user first.",
-        "Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job).",
-        "Reply keys: transfer_id, status, predicted, joined, from {members [{owner {kind, reference_id, prefab_name, display_name}, atmosphere_id, before {pressure_kpa, temperature_k, total_mol, gases [{gas, amount_mol}]}, after {...}}], total {before {pressure_kpa, temperature_k, total_mol, gases [{gas, amount_mol}]}, after {...}, after_boiling}, joined_by [{reference_id, prefab_name, display_name}], room}, to {...same as from}, deleted, moved, error, before, amount_mol, ticks, note"
-      ],
       "example": {"source": "2005300", "gases": ["Hydrogen"], "delete": true},
       "handlers": [
         {
@@ -583,7 +564,28 @@
           ]
         }
       ],
-      "reply": {"list": "members", "variants": []},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "transfer_id": "str | None",
+              "status": "str",
+              "predicted": "bool",
+              "joined": "bool",
+              "from": "{members: list[{owner: {kind: str, reference_id: str, prefab_name: str | None, display_name: str | None}, atmosphere_id: str, before: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}}], total: {before: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after_boiling: bool | None}, joined_by: list[{reference_id: str, prefab_name: str | None, display_name: str | None}], room: str | None} | None",
+              "to": "{members: list[{owner: {kind: str, reference_id: str, prefab_name: str | None, display_name: str | None}, atmosphere_id: str, before: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}}], total: {before: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after: {pressure_kpa: float, temperature_k: float, total_mol: float, gases: list[{gas: str, amount_mol: float}]}, after_boiling: bool | None}, joined_by: list[{reference_id: str, prefab_name: str | None, display_name: str | None}], room: str | None} | None",
+              "deleted": "bool",
+              "moved": "float | None",
+              "error": "Error | None",
+              "before": "Any | None",
+              "amount_mol": "float | None",
+              "ticks": "int | None",
+              "note": "str | None"
+            }
+          }
+        ],
+        "types": ["Error"]
+      },
       "write": {
         "report": "dry_run",
         "route": "confirm",
@@ -595,7 +597,7 @@
       }
     },
     "player": {
-      "summary": "move a player anywhere at once: to a point, beside a thing or another player. Cheat",
+      "summary": "move a player anywhere at once: to a point, beside a thing or another player",
       "options": {
         "player": {
           "schema": {"type": "string"},
@@ -613,7 +615,6 @@
         },
         "confirm": {"use": "confirm"}
       },
-      "x-script-text": ["Reports in a report run; acts in a confirmed run. Cheat: ask the user first."],
       "example": {"to_player": "xceled", "confirm": true},
       "handlers": [
         {

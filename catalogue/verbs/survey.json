@@ -1,21 +1,8 @@
 {
   "verb": "survey",
   "description": "Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths. Read only.",
-  "help": [
-    "Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths. Read only.",
-    "",
-    "whats:",
-    "- area: the 2 m cells of a box or room: what occupies each, the pieces, devices, ports and networks",
-    "- wall: a text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits",
-    "- network: a cable, pipe or chute network's members (or the pieces in a box), with filters or a summary",
-    "- feeds: how a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices",
-    "",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"survey\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": true,
   "tool": {
-    "what": "area: the 2 m cells of a box or room: what occupies each, the pieces, devices, ports and networks; wall: a text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits; network: a cable, pipe or chute network's members (or the pieces in a box), with filters or a summary; feeds: how a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices",
     "options": {
       "box": "area: Two corners; at most 20000 2 m cells. network: Box form: the pieces in it (alone: open ends in it).",
       "sections": "Only these parts. Default all.",
@@ -29,8 +16,7 @@
       "id": "The root device (an APC output, a generator). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
-    },
-    "required": null
+    }
   },
   "whats": {
     "area": {
@@ -156,7 +142,7 @@
       }
     },
     "wall": {
-      "summary": "A text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits",
+      "summary": "a text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits",
       "options": {
         "plane": {
           "schema": {"type": "string"},
@@ -227,7 +213,7 @@
       }
     },
     "network": {
-      "summary": "A cable, pipe or chute network's members (or the pieces in a box), with filters or a summary",
+      "summary": "a cable, pipe or chute network's members (or the pieces in a box), with filters or a summary",
       "options": {
         "network": {"use": "network"},
         "box": {"use": "box", "description": "Box form: the pieces in it (alone: open ends in it)."},
@@ -363,7 +349,7 @@
         },
         "kind": {
           "schema": {"type": "string", "enum": ["cable", "pipe", "chute"]},
-          "description": "",
+          "description": "The network's kind when root is a device on several.",
           "default": "cable",
           "x-script": "same"
         }

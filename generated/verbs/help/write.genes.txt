@@ -1,0 +1,12 @@
+Edit plant genes as the Gene Splicer does.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- id (string, required): One id, or "looking_at" (the thing the crosshair is on).
+- unit (integer): Which gene set; default the top.
+- genes (object, required): Gene name to new value, -1 to 1 ({"GrowthSpeedMultiplier": 1}).
+- allow (list of out_of_range): out_of_range: write values outside -1..1 too.
+- include (list of notes): Parts to add to the reply.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+Reply: (PlantGenes) thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}] | (BatchResult) results [{index, ok, error}], count, success_count, error_count | (GenesWritten) thing {reference_id, prefab_name, display_name}, holder, unit, is_top, results [{index, ok, gene, previous_value, error, ok, gene, previous_value, value, ok, ok, error}], count, success_count, error_count
+Example: write {what: "genes", id: "3311223", genes: {GrowthSpeedMultiplier: 1}, confirm: true}

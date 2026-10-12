@@ -1,0 +1,31 @@
+A cable, pipe or chute route between ends, ports or networks, dry-run as the build would; answers build_arguments.
+Options:
+- kind (cable | pipe | chute, required): The run's kind.
+- start (object or array): (route) {at}, {id} of a piece, {id, port} of a device, or a list.
+- end (object): (route) As start, one, or {network}.
+- reroute (object): {id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.
+- trunk (object): Bus mode instead of end: {waypoints} or {cells} every start branches from.
+- grade (normal | heavy | super_heavy | gas | liquid | insulated_gas | insulated_liquid | chute): cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.
+- style (supported | frame_edges | walls | hidden | inside_frames | free, default supported): What the route keeps to.
+- allow (list of door_keepout | split): door_keepout: may enter a door keep-out; split: removals may split networks.
+- split_long (boolean, default true): Split long straights the route meets.
+- avoid (list of room_interior | walkways): Extra cost for room interiors or walkways.
+- avoid_networks (boolean or array): true, or networks: keep beside no other network.
+- min_bends (boolean, default false): Turns cost much more.
+- axis_order (any | vertical_first | horizontal_first, default any): Which way the route turns first.
+- max_length (integer, default 400): Most cells.
+- margin (number, default 6): Search box margin around the ends.
+- join (ends | none | all, default ends): What the run joins.
+- allow_bridge (list): Networks and devices whose joining is meant.
+- root (string, default every supplier): The device would_split measures cut-off against.
+- join_to (string or object, default end's network): The network the route must end on.
+- join_trunk (boolean, default false): Add a missing tap to join_to.
+- reserve_cells (list): Cells kept free for another run.
+- reserve_ports (list): {id, port} ports whose joining cell stays free.
+- assume_removed (list): Things planned as if gone; the kind's pieces are removed in the same job.
+- materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- include (list of links | notes | network_devices): links: every added and lost link; notes: fixed text; network_devices: each network's devices.
+- summarize (boolean, default false): The dry run in short instead of whole.
+- rows (integer, default 5): Cells the dry run lists; 0 for none.
+Reply: tool, found, route {waypoints, length, bends, cost, expanded, removes, air_cells, air, branches, extra_ends, visibility, assumed_removed, removal_refund}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, problems, warnings, cells_total, placed, changed, kept, removed_count, air_cells, cells, removals, materials, networks_before, networks_after, would_bridge, would_split, links, notes}, dry_run_summary {status, ready, problems, warnings, cells_total, placed, changed, kept, removed_count, air_cells, would_bridge, would_split, needed}, notes
+Example: plan {what: "route", kind: "pipe", grade: "gas", start: {id: "720259", port: 1}, end: {network: "5012345"}}

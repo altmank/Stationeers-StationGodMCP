@@ -1,0 +1,1131 @@
+{
+  "instructions": "StationGod reads and changes a running Stationeers world. Each tool is a verb; most take what (the kind of thing) and share option names: find (lists), inspect (one thing in detail), survey (an area or network), read (live values), write (set values), plan (work out, change nothing), check (rules), build, swap (existing pieces), remove, move, trade, show (draw for the player), undo, server. help {verb, what} gives one in full. Targets: id (one, a list, or a ref \"r3\" from an earlier reply), near + radius, box, room, network. 'this', 'that' or 'here' is the thing the crosshair is on: inspect {what: \"looking_at\"}. build, swap, remove, move, trade, undo and cheats only report until confirm: true, and so does any write given a ref or network; ask the user before a cheat. For many things, give id a list or a ref. Shaping on every verb: fields, omit, list_limits, output_file, repeat (a ref: that call again), whole: true (lifts the cut of a reply over 12 KB; pages stay pages). For work across many replies or many targets, run_script. A script changes nothing unless the run has confirm: true. If the user says stop or hold: server {what: 'stop'}.",
+  "tools": [
+    {
+      "name": "find",
+      "description": "List things in the world or an area, filtered, a page at a time, nearest first. Read only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": [
+              "thing",
+              "item",
+              "device",
+              "container",
+              "frame",
+              "pad",
+              "water",
+              "ore",
+              "food",
+              "plant",
+              "room",
+              "gateway",
+              "damaged"
+            ],
+            "description": "thing: any object: structures, devices, tanks, loose items, players, animals; item: stackable items and kits with quantity and holders, anywhere: ground, carried, stored, machine stock, silos; a kit such as Kit (Battery Large) is an item to find and move, a built structure is not; group_by sums them; device: devices with logic, in the world or on one gateway's data networks; container: outermost holders with at least one item: lockers, crates, machines, a backpack on the floor; frame: outer frames (a face on outside air), with exposed faces and airtightness; pad: landing pads for traders and rockets (not power or teleport pads), by the game's checks: size, runway, which ships fit; water: canisters, tanks, devices and pipe networks holding water or steam, largest first; ore: deep miner spots: the ore profile at a point, and the nearest spots holding given ores; food: every food and drink: nutrition, hydration, decay, totals; plant: plants in trays, planters and stations: stage, health, problems, time to harvest; room: closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in; gateway: the device scopes: 'world' and each StationGod Gateway with its status; damaged: damaged and broken things in the world, worst first"
+          },
+          "name": {"type": "string"},
+          "prefab": {
+            "type": ["string", "integer", "array"],
+            "items": {"type": ["string", "integer"]},
+            "description": "Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them."
+          },
+          "category": {
+            "type": "string",
+            "enum": ["any", "item", "dynamic", "structure", "entity", "other"],
+            "description": "Only this kind of thing. Default any."
+          },
+          "labelled": {"type": "boolean"},
+          "runtime_type": {"type": "string"},
+          "broken": {"type": "boolean"},
+          "has_atmosphere": {"type": "boolean"},
+          "made_by": {"type": "string"},
+          "made_since": {"type": "number"},
+          "location": {
+            "type": "string",
+            "enum": ["any", "ground", "player", "stored", "built", "world", "machine_stock", "silo"],
+            "description": "thing: ground, player, stored, built or world (players, animals). Default any. item: Where the item is. Default any."
+          },
+          "near": {
+            "type": ["string", "array"],
+            "description": "thing, item: Centre: [x, y, z], \"player\", \"looking_at\" or a thing's id (its position); with radius. container, frame, damaged: \"player\" only. ore: The point to report and search from; default the player's position."
+          },
+          "radius": {"type": "number"},
+          "box": {"type": "array", "minItems": 2, "maxItems": 2, "description": "Two corners [[x, y, z], [x, y, z]]."},
+          "limit": {"type": "integer", "minimum": 1},
+          "offset": {"type": "integer", "minimum": 0},
+          "order": {"type": "string", "enum": ["nearest", "id"]},
+          "within": {
+            "type": "string",
+            "description": "Only items inside this holder at any depth (and its machine stock or silo store)."
+          },
+          "group_by": {
+            "type": "string",
+            "enum": ["holder", "prefab", "place"],
+            "description": "holder: sum per holder and prefab; prefab: sum per prefab; place: per prefab split into ground, carried, stored, machine stock and silo, with top holders."
+          },
+          "holders": {"type": "integer", "minimum": 0, "maximum": 100},
+          "exclude_in_use": {"type": "boolean"},
+          "gateway": {"type": "string"},
+          "include": {"type": "array", "items": {"type": "string", "enum": ["inner", "unplanted", "cells", "devices"]}},
+          "min_mol": {"type": "number"},
+          "ores": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
+          "separation": {"type": "number", "minimum": 0, "maximum": 3000},
+          "step": {"type": "number", "minimum": 0.5, "maximum": 500},
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "plant: One plant, in full. room: A thing: only the room it is in. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "verbose": {"type": "boolean"},
+          "min_damage": {"type": "number", "minimum": 0},
+          "broken_only": {"type": "boolean"},
+          "structures_only": {"type": "boolean"},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "inspect",
+      "description": "Describe one thing, or a few by id, in detail. Read only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": [
+              "device",
+              "prefab",
+              "slots",
+              "contents",
+              "health",
+              "connections",
+              "atmosphere",
+              "reagents",
+              "genes",
+              "chip",
+              "screen",
+              "rocket",
+              "vault",
+              "looking_at",
+              "player",
+              "planet",
+              "weather",
+              "job",
+              "controllers"
+            ],
+            "description": "device: a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details; prefab: a buildable prefab before it stands anywhere: placement kind, turns, cells, ports; slots: a device's slots: occupants, what each takes, slot logic values; contents: any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player); health: damage state of things, or of every piece of a network, worst first; connections: one pipe, cable, chute or device: its ends and what each joins; atmosphere: the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks; reagents: the reagents a furnace, centrifuge, mixer or microwave holds; genes: the genes of plants, seeds and produce; chip: a circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory; screen: what a ScriptedScreens screen shows: surfaces and one surface's elements; rocket: every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight; vault: what each Ingot Vault stores, and every Remote Vault's link; looking_at: what the player's crosshair is on, and where a longer look ray lands; player: the player's hunger and thirst: nutrition, hydration, drain, time left; planet: the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps; weather: the storm schedule, weather events and season; job: one build, removal, swap or gas move by its id (place-41), or a script run (script-14): running, queued or finished. With no id: runs with notices pending (stopped or killed with something left, writes not done, or done and not yet seen); controllers: controllers: what can write or override a device: IC chips (through their pins, and batch writers reaching it over its data network), logic writer and memory structures, Lua screen scripts, and writers the hub knows (the dashboard's hub, other runs). A write or report on a driven device carries driven_by naming the controller"
+          },
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "device, slots, connections, reagents: An id, a list, a ref ('r3'), or \"looking_at\". contents: A holder's id or \"player\". health: Up to 256 things. atmosphere: A thing, a pipe or landing pad network, or an atmosphere id. genes: Up to 256 plants, seeds or produce. chip: The circuit holder, worn holder, Lua board or the chip. screen: One id, or \"looking_at\" (the thing the crosshair is on). rocket: A rocket's id, name, network or any part; left out, every rocket. vault: One Ingot or Remote Vault; default every vault. controllers: The device(s). job: A job id (place-12, run-4, remove-3...), a script run (script-14), a gas transfer id, or \"paste\"; left out, runs with notices pending. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "gateway": {"type": "string"},
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "logic_types",
+                "small_cells",
+                "empty",
+                "notes",
+                "style",
+                "image",
+                "parts",
+                "explain",
+                "player",
+                "interactable",
+                "view",
+                "hit",
+                "body",
+                "all"
+              ]
+            }
+          },
+          "prefab": {
+            "type": ["string", "integer", "array"],
+            "description": "prefab: Whole prefab name or hash. contents: Only slots holding this prefab (part with *) at any depth."
+          },
+          "slot": {"type": "integer", "minimum": 0},
+          "depth": {"type": "integer", "minimum": 1, "maximum": 6},
+          "name": {"type": "string"},
+          "limit": {"type": "integer", "minimum": 1},
+          "offset": {"type": "integer", "minimum": 0},
+          "network": {"type": ["string", "object"], "description": "A network: its id, a piece or device on it, or {id, port}."},
+          "kind": {"type": "string", "enum": ["pipe", "cable", "chute"]},
+          "damaged_only": {"type": "boolean"},
+          "unit": {"type": "integer", "minimum": 0},
+          "parts": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["status", "source", "selectors"]},
+            "description": "Parts: status, source, selectors. Default [status]."
+          },
+          "start": {"type": "integer", "minimum": 0, "description": "status: first stack address. Default 0."},
+          "count": {"type": "integer", "minimum": 0, "maximum": 512},
+          "log": {"type": "integer", "minimum": 0, "maximum": 200},
+          "targets": {
+            "type": "array",
+            "items": {"type": "string"},
+            "maxItems": 256,
+            "description": "selectors: devices to evaluate; default those on the holder's data network."
+          },
+          "surface": {"type": "string"},
+          "type": {"type": "string"},
+          "text": {"type": "string"},
+          "shown_only": {"type": "boolean"},
+          "compact": {"type": "boolean"},
+          "self_test": {"type": "boolean"},
+          "distance": {"type": "number", "minimum": 0, "maximum": 50},
+          "max_wait": {
+            "type": "number",
+            "minimum": 0,
+            "description": "How long this reply waits (default 30), at most your client's timeout; the job or run goes on."
+          },
+          "verbose": {"type": "boolean"},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "survey",
+      "description": "Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths. Read only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["area", "wall", "network", "feeds"],
+            "description": "area: the 2 m cells of a box or room: what occupies each, the pieces, devices, ports and networks; wall: a text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits; network: a cable, pipe or chute network's members (or the pieces in a box), with filters or a summary; feeds: how a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices"
+          },
+          "box": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "area: Two corners; at most 20000 2 m cells. network: Box form: the pieces in it (alone: open ends in it)."
+          },
+          "room": {"type": "string"},
+          "sections": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["cells", "pieces", "devices", "networks", "network_visibility", "doors"]},
+            "description": "Only these parts. Default all."
+          },
+          "networks": {"type": "boolean"},
+          "include": {"type": "array", "items": {"type": "string", "enum": ["refund", "piece_cells"]}},
+          "network": {
+            "type": ["array", "string", "object"],
+            "description": "area: Only pieces on these networks. network, feeds: A network: its id, a piece or device on it, or {id, port}."
+          },
+          "kind": {"type": ["array", "string"]},
+          "prefab": {
+            "type": ["string", "integer", "array"],
+            "items": {"type": ["string", "integer"]},
+            "description": "area: Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them. network: Only members whose prefab holds this part."
+          },
+          "cell_detail": {
+            "type": "string",
+            "enum": ["occupancy", "full"],
+            "description": "occupancy: cells {at, empty, frame_id, faces, small}; full: cells {at, room_id, frame, walls, small, support} in place of those. Default occupancy."
+          },
+          "occupied_only": {"type": "boolean"},
+          "limit": {"type": "integer", "minimum": 1},
+          "offset": {"type": "integer", "minimum": 0},
+          "plane": {"type": "string"},
+          "side": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+          "looking": {"type": "boolean"},
+          "at": {"type": "array", "description": "The map's centre."},
+          "half_width": {"type": "number", "minimum": 0, "maximum": 16, "description": "Half-width of the map in metres. Default 4."},
+          "free_rects": {"type": "object", "description": "{w, h, one_section, require_wall, limit}: where a w x h rectangle fits."},
+          "summarize": {"type": "boolean"},
+          "open_ends": {"type": "boolean"},
+          "near": {
+            "type": ["string", "array"],
+            "description": "Centre: [x, y, z], \"player\", \"looking_at\" or a thing's id (its position); with radius."
+          },
+          "radius": {"type": "number", "minimum": 0, "maximum": 1000},
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "The root device (an APC output, a generator). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "port": {"type": "integer", "minimum": 0, "maximum": 64},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "read",
+      "description": "Read live values: logic (one, many, with slots, atmosphere and reagents in one frame), memory, a device snapshot, values over time, the clock, flight logs. Read only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["logic", "snapshot", "memory", "sample", "clock", "flight_log"],
+            "description": "logic: logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame; snapshot: every readable logic value of matching devices, in one frame; memory: up to 512 values of any device's memory, as a chip's get reads them (a chip's stack is also in inspect chip status); sample: watch up to 32 logic values for up to 30 s: first readings and every change with its time; clock: game time, paused, time of day, days past; flight_log: a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)"
+          },
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "logic: Device(s); with logic, every id is read for every logic type. snapshot: Only these devices. memory: One id, or \"looking_at\" (the thing the crosshair is on). sample: An id, a list, a ref ('r3'), or \"looking_at\". flight_log: A rocket's id, name, network or any part; left out when there is one rocket. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "logic": {
+            "type": ["string", "integer", "array"],
+            "description": "logic: Logic type(s): name (Temperature) or number. snapshot: Logic types; left out, every one. sample:"
+          },
+          "reads": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "logic: Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads. sample: Separate {id, logic} pairs."
+          },
+          "gateway": {"type": "string"},
+          "include": {"type": "array", "items": {"type": "string", "enum": ["clock", "zero_ratios"]}},
+          "prefab": {
+            "type": ["string", "integer", "array"],
+            "items": {"type": ["string", "integer"]},
+            "description": "Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them."
+          },
+          "name": {"type": "string"},
+          "limit": {"type": "integer", "minimum": 1},
+          "start": {"type": "integer", "minimum": 0, "description": "First address."},
+          "count": {"type": "integer", "minimum": 1, "maximum": 512},
+          "seconds": {"type": "number", "minimum": 0.1, "maximum": 30},
+          "interval": {"type": "number", "minimum": 0.05, "maximum": 5},
+          "action": {"type": "string", "enum": ["read", "list"], "description": "Default read."},
+          "every": {"type": "integer", "minimum": 1, "maximum": 100000},
+          "offset": {"type": "integer", "minimum": 0},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "write",
+      "description": "Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks. Ids you type out act at once; a ref or network reports until confirm: true. A write on a device a chip or another writer drives warns driven_by. memory, battery and genes are cheats: they report until confirm: true.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["logic", "memory", "chip", "screen", "label", "paint", "flight_log", "uplink", "battery", "genes"],
+            "description": "logic: logic values on devices, as a chip or console writes them; answers previous and read-back values; memory: up to 512 values into a device's memory from start, as a chip's put does; chip: a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart; screen: touch a control on a ScriptedScreens screen, as a player's touch does; label: rename things as the hand Labeller does; empty name gives back the game's name; paint: paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours; flight_log: start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log; uplink: point a Logic Rocket Uplink at a Logic Rocket Downlink; battery: set the charge of batteries and cells: full by default, or a ratio or joules; genes: edit plant genes as the Gene Splicer does"
+          },
+          "id": {
+            "type": ["string", "array"],
+            "description": "logic: Device(s) or a ref; every one gets logic = value. memory, genes: An id, a list, or \"looking_at\". chip, screen: One id, or \"looking_at\" (the thing the crosshair is on). label: One id; a list or a ref names each '<label> 1', '<label> 2' in id order. paint: Things to paint the one color, or a ref. flight_log: A rocket's id, name, network or any part; left out when there is one rocket. uplink: The uplink. battery: Batteries or cells (up to 256). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error. chip, screen, uplink and flight_log take one id: a list is refused, naming run_script."
+          },
+          "logic": {"type": ["string", "integer"], "description": "Logic type name or number."},
+          "value": {"type": "number"},
+          "writes": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 256,
+            "description": "Separate writes, each {id, logic, value}, applied in order."
+          },
+          "gateway": {"type": "string"},
+          "allow": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["lint", "off_network", "out_of_range"]},
+            "description": "[\"lint\"]: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed."
+          },
+          "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},
+          "start": {"type": "integer", "minimum": 0, "description": "First address."},
+          "values": {"type": "array", "items": {"type": "number"}, "maxItems": 512},
+          "code": {"type": "string", "description": "The complete program: IC10, or Lua for a Lua chip."},
+          "code_file": {"type": "string"},
+          "pins": {"type": "object", "description": "{d0..d5: device id or null}; pins left out keep their device."},
+          "run": {
+            "type": "string",
+            "enum": ["pause", "step", "resume", "restart"],
+            "description": "pause, step, resume (IC10) or restart (Lua)."
+          },
+          "include": {"type": "array", "items": {"type": "string", "enum": ["code", "devices", "notes"]}},
+          "surface": {"type": "string"},
+          "element": {"type": "string"},
+          "pixel": {"type": "array", "items": {"type": "number"}, "maxItems": 2},
+          "event": {"type": "string", "enum": ["click", "change", "toggle"], "description": "Default click."},
+          "text": {"type": "string"},
+          "as_player": {"type": "string"},
+          "label": {"type": "string"},
+          "labels": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 64,
+            "description": "Several renames, each {id, label}, in order."
+          },
+          "network": {
+            "type": ["string", "object"],
+            "description": "A pipe, cable or chute network (its id, a piece on it, or a device with kind): paints its pieces."
+          },
+          "kind": {"type": "string", "enum": ["pipe", "cable", "chute"]},
+          "color": {"type": "string"},
+          "items": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 256,
+            "description": "{id, color} pairs, a colour each."
+          },
+          "action": {"type": "string", "enum": ["start", "stop", "clear"]},
+          "interval_s": {"type": "number", "minimum": 0.1, "maximum": 600},
+          "capacity": {"type": "integer", "minimum": 10, "maximum": 100000},
+          "csv": {"type": "boolean"},
+          "downlink": {"type": "string", "description": "The downlink to follow."},
+          "rocket": {"type": "string", "description": "Every battery of this rocket."},
+          "within": {"type": "string", "description": "Every cell in this holder's slots, nested; \"player\" for the player."},
+          "ratio": {"type": "number", "minimum": 0, "maximum": 1},
+          "joules": {"type": "number", "minimum": 0},
+          "unit": {"type": "integer", "minimum": 0},
+          "genes": {"type": "object", "description": "Gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1})."},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "plan",
+      "description": "Work out how, changing nothing: cable, pipe and chute routes, removal prices, free spots for a prefab, rocket flights and landings, mining yields, aim angles. Read only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["route", "removal", "spot", "flight", "mining", "aim"],
+            "description": "route: a cable, pipe or chute route between ends, ports or networks, dry-run as the build would; answers build_arguments; removal: price a removal of cable, pipe or chute pieces without doing it, ever: ids, cells or a whole network; spot: free places to put one prefab you are about to build, near a point, on a face plane or a room's walls, checked by the game's cursor; answers build_arguments; flight: fly a copy of a rocket to a node or pad, tick by tick: launch, hops, re-entry, landing, fuel, power and the verdict; the landing check; mining: what a rocket can collect per site, by the game's formulas: yield per cycle and hour, what stops it; aim: horizontal and Vertical that point a solar panel at the sun, or a satellite dish at a trader contact"
+          },
+          "kind": {"type": "string", "enum": ["cable", "pipe", "chute"]},
+          "start": {
+            "type": ["object", "array"],
+            "description": "(route) {at}, {id} of a piece, {id, port} of a device, or a list."
+          },
+          "end": {"type": "object", "description": "(route) As start, one, or {network}."},
+          "reroute": {
+            "type": "object",
+            "description": "{id: [...]} or {between: [end, end]}: replace an old run; leave out start and end."
+          },
+          "trunk": {
+            "type": "object",
+            "description": "Bus mode instead of end: {waypoints} or {cells} every start branches from."
+          },
+          "grade": {
+            "type": "string",
+            "enum": ["normal", "heavy", "super_heavy", "gas", "liquid", "insulated_gas", "insulated_liquid", "chute"],
+            "description": "cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute."
+          },
+          "style": {
+            "type": "string",
+            "enum": ["supported", "frame_edges", "walls", "hidden", "inside_frames", "free"],
+            "description": "What the route keeps to. Default supported."
+          },
+          "allow": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}},
+          "split_long": {"type": "boolean"},
+          "avoid": {"type": "array", "items": {"type": "string", "enum": ["room_interior", "walkways"]}},
+          "avoid_networks": {"type": ["boolean", "array"]},
+          "min_bends": {"type": "boolean"},
+          "axis_order": {"type": "string", "enum": ["any", "vertical_first", "horizontal_first"]},
+          "max_length": {"type": "integer", "minimum": 2, "maximum": 1024},
+          "margin": {"type": "number", "minimum": 0, "maximum": 32},
+          "join": {"type": "string", "enum": ["ends", "none", "all"], "description": "What the run joins. Default ends."},
+          "allow_bridge": {"type": "array", "items": {}, "maxItems": 64, "description": "Networks and devices whose joining is meant."},
+          "root": {"type": "string"},
+          "join_to": {"type": ["string", "object"], "description": "The network the route must end on. Default end's network."},
+          "join_trunk": {"type": "boolean"},
+          "reserve_cells": {
+            "type": "array",
+            "items": {"type": "array"},
+            "maxItems": 1024,
+            "description": "Cells kept free for another run."
+          },
+          "reserve_ports": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 64,
+            "description": "{id, port} ports whose joining cell stays free."
+          },
+          "assume_removed": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "materials": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "maxItems": 8,
+            "description": "Holder(s) that pay, in order; ids or \"player\"."
+          },
+          "include": {"type": "array", "items": {"type": "string", "enum": ["links", "notes", "network_devices", "explain"]}},
+          "summarize": {"type": "boolean"},
+          "rows": {"type": "integer", "minimum": 0, "maximum": 1024},
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "removal: Pieces to price. flight: A rocket's id, name, network or any part; left out when there is one rocket. mining: A rocket's id or name; left out when there is one. aim: The solar panel or the satellite dish; a list answers one entry each. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "waypoints": {
+            "type": "array",
+            "items": {"type": "array"},
+            "maxItems": 1024,
+            "description": "The pieces along these lines."
+          },
+          "cells": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "network": {"type": ["string", "object"], "description": "Every piece of this network, up to 1024."},
+          "refund_to": {"type": ["string", "integer", "array"]},
+          "prefab": {"type": ["string", "integer"], "description": "Whole prefab name or hash."},
+          "near": {
+            "type": ["string", "array"],
+            "description": "[x, y, z], \"player\", \"looking_at\" (the crosshair) or an id. Default looking_at."
+          },
+          "plane": {"type": "string"},
+          "side": {"type": "string", "enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+          "looking": {"type": "boolean"},
+          "around": {"type": "array"},
+          "room": {"type": "string"},
+          "facing": {
+            "type": "string",
+            "enum": ["+x", "-x", "+y", "-y", "+z", "-z"],
+            "description": "Try every spot with this facing."
+          },
+          "radius": {"type": "number", "minimum": 0, "maximum": 12},
+          "require": {
+            "type": "object",
+            "description": "{one_section, min_bottom_above_floor_m, ports_reachable, avoid_doors, front_clear_m, no_visual_overlap}."
+          },
+          "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+          "max_checks": {"type": "integer", "minimum": 1, "maximum": 200},
+          "node": {
+            "type": "string",
+            "description": "flight: Destination node: name, map code, id, or 'pad'; default the rocket's target, else its pad. mining: A node: its deposit and sites; left out, every charted node with a deposit."
+          },
+          "profile": {"type": "string", "enum": ["Low", "Medium", "High", "Max"]},
+          "park_s": {"type": "number", "minimum": 0},
+          "mine": {"type": "boolean"},
+          "fill_holds": {"type": "boolean"},
+          "add_cargo_slots": {"type": "integer", "minimum": 0},
+          "park_load_w": {"type": "number", "minimum": 0},
+          "then_return": {"type": "boolean"},
+          "return_to": {"type": "string"},
+          "deploy_payload": {"type": "boolean"},
+          "transfer_mol": {"type": "number"},
+          "transfer_with": {"type": "string"},
+          "transfer_battery_j": {"type": "number"},
+          "what_if": {
+            "type": "object",
+            "description": "Replace measured values: {fuel_mol, fuel_temperature_k, fuel_mix {gas: fraction}, thrust_scale 0-10, throttle 0-100, cargo_slots, add_cargo_kg, payload_kg, battery_j, battery_percent, extra_load_w}."
+          },
+          "min_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "limits": {"type": "boolean"},
+          "column_check": {"type": "boolean"},
+          "collectable_only": {"type": "boolean"},
+          "contact": {"type": "string", "description": "Dish only: the trader contact."},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "check",
+      "description": "Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk. Read only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["layout", "rules", "replaceable", "ignition"],
+            "description": "layout: lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more; rules: the lint rule set: list, validate a file, fields, functions, run examples, explain a finding; replaceable: could a player place each thing again exactly where it stands, every neighbour present; ignition: whether carried items, or a tank or network by id, would catch fire in the air around them"
+          },
+          "room": {"type": "string"},
+          "box": {"type": "array", "minItems": 2, "maxItems": 2, "description": "Two corners; at most 4000 2 m cells."},
+          "codes": {"type": "array", "items": {"type": "string"}, "maxItems": 64},
+          "exclude_codes": {"type": "array", "items": {"type": "string"}, "maxItems": 64},
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024). ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "since": {"type": "string"},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 500},
+          "action": {
+            "type": "string",
+            "enum": ["list", "validate", "fields", "functions", "test", "explain"],
+            "description": "Default list."
+          },
+          "rule": {"type": "string"},
+          "full": {"type": "boolean"},
+          "rules_text": {"type": "string"},
+          "port": {"type": "integer", "minimum": 0, "maximum": 64},
+          "other": {"type": "string"},
+          "at": {"type": "array", "description": "explain: a cell."},
+          "include": {"type": "array", "items": {"type": "string", "enum": ["prefabs"]}},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "build",
+      "description": "Build new things as a player would, paying materials: structures, cable, pipe and chute runs, blueprints. Reports first; confirm: true builds and answers when the job is done.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["structure", "cable", "pipe", "chute", "blueprint", "finish"],
+            "description": "structure: any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job; cable: a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload; pipe: a pipe run or pieces from the grade's kit, with the pipe guards and a gas check; chute: a chute run or pieces from Kit (Chute), source to sink, with flow guards; blueprint: paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks; finish: build a placed structure on to a later build state, paying each state's materials"
+          },
+          "placements": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 64,
+            "description": "Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color}, built in order in one job; or one at the top level."
+          },
+          "prefab": {"type": ["string", "integer"], "description": "Prefab name or hash."},
+          "at": {
+            "type": ["array", "object", "string"],
+            "description": "structure: A point, \"looking_at\", or a relative or look-face form (help positions). blueprint: World position of the blueprint's anchor."
+          },
+          "rotation": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "spread": {
+            "type": ["object", "array"],
+            "description": "{from, to, step} or a list: this prefab every step metres along each line; reports first."
+          },
+          "facing": {
+            "type": "string",
+            "enum": ["+x", "-x", "+y", "-y", "+z", "-z", "toward_player", "away_from_player", "out_of_face", "into_room"],
+            "description": "Where the front points."
+          },
+          "up": {
+            "type": "string",
+            "enum": ["+x", "-x", "+y", "-y", "+z", "-z"],
+            "description": "Where the top points. Default +y (+z when facing is vertical)."
+          },
+          "face": {
+            "type": "string",
+            "enum": ["+x", "-x", "+y", "-y", "+z", "-z"],
+            "description": "Face-placed pieces (walls): the cell face it sits on."
+          },
+          "orient": {
+            "type": "object",
+            "description": "{mount, upright, controls_toward, ports, flow}: choose the turn by intent."
+          },
+          "above_floor": {"type": "number", "minimum": 0, "maximum": 20},
+          "build_state": {"type": ["string", "integer"], "description": "finished (default), first, or a state index."},
+          "label": {"type": "string"},
+          "color": {"type": ["string", "integer"]},
+          "materials": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "maxItems": 8,
+            "description": "Holder(s) that pay, in order; ids or \"player\"."
+          },
+          "free": {"type": "boolean"},
+          "allow": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "lint", "pad", "split"]}},
+          "include": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["notes", "footprint_cells", "links", "network_devices"]}
+          },
+          "verbose": {"type": "boolean"},
+          "acknowledge_gas_lost": {"type": "string"},
+          "from_plan": {
+            "type": "string",
+            "description": "A ref of a plan route or plan spot reply (\"r9\"; one spot: \"r9.spots.2\", default the first): build its build_arguments; options given here are added."
+          },
+          "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},
+          "queue": {"type": "boolean"},
+          "max_wait": {"type": "number", "minimum": 0},
+          "grade": {
+            "type": "string",
+            "enum": ["normal", "heavy", "super_heavy", "gas", "liquid", "insulated_gas", "insulated_liquid", "chute"],
+            "description": "cable: Default heavy. pipe: Required except when repeating. chute: Default chute."
+          },
+          "waypoints": {
+            "type": "array",
+            "items": {"type": "array"},
+            "maxItems": 1024,
+            "description": "Points joined by straight axis lines."
+          },
+          "cells": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "piece": {"type": "object", "description": "One piece {at, ends}."},
+          "pieces": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 256,
+            "description": "Separate pieces, each {at, ends}."
+          },
+          "branches": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 16,
+            "description": "Side runs, each {waypoints or cells, attach}."
+          },
+          "extra_ends": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 64,
+            "description": "Extra ends on run cells, each {at, toward}."
+          },
+          "join": {"type": "string", "enum": ["ends", "none", "all"], "description": "What the run joins. Default ends."},
+          "split_long": {"type": "boolean"},
+          "remove_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "assume_removed": {"type": "array", "items": {"type": "string"}, "maxItems": 1024},
+          "allow_bridge": {"type": "array", "items": {}, "maxItems": 64, "description": "Networks and devices whose joining is meant."},
+          "root": {"type": "string"},
+          "join_to": {"type": ["string", "object"], "description": "The network the run must end on."},
+          "join_trunk": {"type": "boolean"},
+          "refund_to": {"type": ["string", "integer", "array"]},
+          "rows": {"type": "integer", "minimum": 0, "maximum": 1024},
+          "blueprint": {"type": "string"},
+          "turn": {"type": "integer", "enum": [0, 90, 180, 270]},
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "One structure, a list or a ref: one job per id, in order. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "state": {"type": "integer", "minimum": 0, "maximum": 64, "description": "The build state to reach; default the next."},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "swap",
+      "description": "Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. Reports first; confirm: true does it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["wall", "frame", "cable", "pipe", "chute"],
+            "description": "wall: replace walls and windows with another wall or window prefab without opening a face; frame: replace frames with another frame prefab, or finish unfinished frames, without opening a cell; cable: upgrade cable in place (into heavy or super_heavy) or tidy a network (tidy: remove dead ends, loops...); pipe: upgrade pipe in place (into insulated, or repair burst pieces) or tidy a network, keeping its contents; chute: remove chute pieces no item can pass to a consumer; junctions left with one way become straights"
+          },
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "frame, pipe, chute: An id, a list, a ref ('r3'), or \"looking_at\". cable: Pieces (up to 4096). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "room": {"type": "string"},
+          "into": {
+            "type": "string",
+            "description": "wall: The new wall prefab. frame: The new frame prefab; default each frame's own (finishes it). cable: Upgrade to this grade (heavy was today's default). One of into or tidy is required. pipe: insulated (today's default), or repair: burst pieces become new. One of into or tidy is required."
+          },
+          "prefab": {
+            "type": ["string", "integer", "array"],
+            "items": {"type": ["string", "integer"]},
+            "description": "wall: Only pieces of these prefabs; the others are kept. frame: Only pieces of these prefabs."
+          },
+          "materials": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "maxItems": 8,
+            "description": "Holder(s) that pay, in order; ids or \"player\"."
+          },
+          "skip_unmatched": {"type": "boolean"},
+          "refund_to": {"type": ["string", "integer", "array"]},
+          "include": {"type": "array", "items": {"type": "string", "enum": ["notes"]}},
+          "rows": {"type": "integer", "minimum": 0, "maximum": 4096},
+          "verbose": {"type": "boolean"},
+          "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},
+          "queue": {"type": "boolean"},
+          "max_wait": {"type": "number", "minimum": 0},
+          "network": {"type": ["string", "object"], "description": "A network: its id, a piece or device on it, or {id, port}."},
+          "tidy": {
+            "type": ["array", "boolean"],
+            "items": {
+              "type": "string",
+              "enum": [
+                "remove_dead_ends",
+                "remove_loops",
+                "remove_redundant",
+                "split_long_straights",
+                "merge_straights",
+                "simplify_junctions"
+              ]
+            },
+            "maxItems": 6,
+            "description": "cable: Tidy operations, alone or together; true is [simplify_junctions], today's default. pipe: Tidy operations; true is [simplify_junctions], today's default."
+          },
+          "spare": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
+          "only": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
+          "older_than": {"type": "string"},
+          "root": {"type": "string"},
+          "acknowledge_gas_lost": {"type": "string"},
+          "box": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Every chute piece in the box (at most a 32 m cube)."
+          },
+          "riding": {
+            "type": "string",
+            "enum": ["skip", "refuse"],
+            "description": "A piece holding an item: skip it, or refuse the run. Default skip."
+          },
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "remove",
+      "description": "Take things away as a player would, with refunds and guards. Reports first; confirm: true removes and answers when the job is done.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["structure", "cable", "pipe", "chute"],
+            "description": "structure: built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit; cable: cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells; pipe: pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas; chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells"
+          },
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "structure: The structures. cable, pipe, chute: Pieces. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "allow": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["contents", "breach", "broken", "burst", "unsupported", "split"]}
+          },
+          "refund_to": {"type": ["string", "integer", "array"]},
+          "materials": {
+            "type": ["string", "array"],
+            "description": "structure: The one holder for source and storage refunds: an id or \"player\". Default the player. cable, pipe, chute: Holder(s) that pay, in order; ids or \"player\"."
+          },
+          "gas_to": {"type": "string"},
+          "include": {"type": "array", "items": {"type": "string", "enum": ["notes", "links", "network_devices"]}},
+          "verbose": {"type": "boolean"},
+          "acknowledge_gas_lost": {"type": "string"},
+          "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},
+          "queue": {"type": "boolean"},
+          "max_wait": {"type": "number", "minimum": 0},
+          "waypoints": {
+            "type": "array",
+            "items": {"type": "array"},
+            "maxItems": 1024,
+            "description": "The piece in every cell along these lines."
+          },
+          "cells": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
+          "root": {"type": "string"},
+          "rows": {"type": "integer", "minimum": 0, "maximum": 1024},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "move",
+      "description": "Move items, gas and players. Items go into or out of an Ingot Vault or SDB Silo store when to or source is one. Reports first; confirm: true moves. gas and player are cheats.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["item", "gas", "player"],
+            "description": "item: items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store; gas: move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump; player: move a player anywhere at once: to a point, beside a thing or another player"
+          },
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "The item(s); for a vault or silo deposit, whole things by id. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Slot move: how many off the stack, default the whole item. Out of a vault: grams of ingot or a count of ore or ice; out of a silo: an item count; required for both."
+          },
+          "to": {
+            "type": ["string", "object"],
+            "description": "item: The holder that gets them: a container, belt, suit, \"player\", a vault or a silo. gas: A thing id, \"looking_at\" or a room; left out with delete. player: Destination: beside this thing (an id)."
+          },
+          "slot": {"type": ["integer", "string"]},
+          "merge": {"type": "boolean"},
+          "force": {"type": "boolean"},
+          "allow": {"type": "array", "items": {"type": "string", "enum": ["in_use", "ground", "burst"]}},
+          "moves": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 64,
+            "description": "Up to 64 moves in order, each {id, quantity, to, slot, merge, allow}."
+          },
+          "source": {
+            "type": ["string", "object"],
+            "description": "item: A vault or silo to take from. gas: A thing id, \"looking_at\", \"planet\" (with delete), or a room {room} or {room_of}."
+          },
+          "prefab": {
+            "type": ["string", "integer", "array"],
+            "items": {"type": ["string", "integer"]},
+            "description": "Into a store: filter; out of a store: the item to take (whole name or hash)."
+          },
+          "reagent": {"type": "string"},
+          "items": {
+            "type": ["array", "string"],
+            "items": {"type": "object"},
+            "maxItems": 256,
+            "description": "Store moves: lines {id, quantity} (deposit) or {prefab, reagent, quantity} (vault to vault: grams of ingot, a count of ore or ice; \"all\" moves every line; required vault to vault, where a top-level prefab and quantity become one line)."
+          },
+          "name": {"type": "string"},
+          "location": {
+            "type": "string",
+            "enum": ["any", "ground", "player", "stored"],
+            "description": "Into a store: filter. Default any."
+          },
+          "within": {"type": "string", "description": "Into a store: only things inside this holder."},
+          "near": {"type": ["string", "array"], "description": "\"player\" only."},
+          "radius": {"type": "number"},
+          "category": {
+            "type": "string",
+            "enum": ["any", "ingot", "ore", "ice"],
+            "description": "Into a vault: filter. Default any."
+          },
+          "at_most": {"type": "integer", "minimum": 1, "maximum": 1000},
+          "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},
+          "delete": {"type": "boolean"},
+          "gases": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Gas names as inspect atmosphere gives them; left out, every gas and liquid."
+          },
+          "amount_mol": {"type": "number"},
+          "joined": {"type": "boolean"},
+          "max_wait": {"type": "number", "minimum": 0},
+          "player": {"type": "string", "description": "The player to move, by name; default the player."},
+          "at": {"type": "array", "description": "Destination point."},
+          "to_player": {"type": "string", "description": "Destination: beside this player (a name)."},
+          "safe_ground": {"type": "boolean"},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "trade",
+      "description": "Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. buy and sell report until confirm: true.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["contacts", "inventory", "buy", "sell"],
+            "description": "contacts: every trader contact in the sky and every satellite dish with where it points; inventory: what each contact buys and sells: prices, stock, conditions, and what you hold that meets them; buy: buy from the landed trader as the trade window's Buy does; sell: sell to the landed trader as the trade window's Sell does"
+          },
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "inventory: One contact; left out, every contact. buy, sell: The trader contact. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error."
+          },
+          "card": {
+            "type": "string",
+            "description": "inventory: The card whose holder's goods count; default the player's. buy: The credit card; default the one the player carries. sell:"
+          },
+          "items": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 32,
+            "description": "buy: Up to 32 lines {name or prefab, quantity}, in order. sell: Up to 32 lines {name or prefab, quantity}."
+          },
+          "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "show",
+      "description": "Draw on the player's screen only, for a while: a build preview, or highlights through walls. Nothing in the world changes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["preview", "highlight"],
+            "description": "preview: wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled"
+          },
+          "placements": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 64,
+            "description": "As build structure's placements."
+          },
+          "prefab": {
+            "type": ["string", "integer"],
+            "description": "Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them."
+          },
+          "at": {"type": ["array", "object", "string"]},
+          "rotation": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "facing": {"type": "string"},
+          "up": {"type": "string"},
+          "face": {"type": "string"},
+          "orient": {"type": "object"},
+          "above_floor": {"type": "number"},
+          "build_state": {"type": ["string", "integer"]},
+          "allow": {"type": "array", "items": {"type": "string", "enum": ["door_keepout"]}},
+          "cells": {"type": "array", "items": {"type": "array"}, "maxItems": 512},
+          "boxes": {"type": "array", "items": {"type": "object"}, "maxItems": 64, "description": "{min, max, color} boxes."},
+          "seconds": {"type": "number", "minimum": 0},
+          "keep": {"type": "boolean"},
+          "clear": {"type": "boolean"},
+          "xray": {"type": "boolean"},
+          "targets": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 64,
+            "description": "Up to 64, each one of {id (one or a list), network, at} with color, label, pulse."
+          },
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "undo",
+      "description": "Undo a finished build or removal job, a bulk write (write-N), a script run (script-14: the whole run, newest first), or the newest blueprint paste. Reports first; confirm: true undoes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": ["string", "array"],
+            "items": {"type": "string"},
+            "description": "The job, the bulk write (write-N), the script run (script-14), or \"paste\"; a list is undone newest first, in one report."
+          },
+          "allow_bridge": {"type": "array", "items": {}, "maxItems": 64, "description": "Passed to every piece run."},
+          "materials": {
+            "type": "string",
+            "description": "The one holder every call pays from and refunds to. Default the job's own recorded source, else the player; never filled in by the verb layer."
+          },
+          "refund_to": {"type": ["string", "integer", "array"]},
+          "acknowledge_gas_lost": {"type": "string"},
+          "allow": {"type": "array", "items": {"type": "string", "enum": ["overwrite"]}},
+          "from_step": {"type": "integer", "minimum": 1},
+          "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},
+          "max_wait": {"type": "number", "minimum": 0},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "server",
+      "description": "StationGod and the game server: mod version, health and costs, profiling, the in-game console. command is a cheat.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["info", "profiling", "console", "command", "stop"],
+            "description": "info: the running mod: version, per-method calls and times, game members, its cost to the game; profiling: profile StationGod's main-thread cost: on, off, reset, report; console: the latest in-game console lines, oldest first; command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings; stop: stop a script run or a job; with no id, every live run of this session. A script run gets sg.Stopped (a BaseException) once, at its next sg call (at once inside sg.wait or sg.watch), so its finally blocks run: after it, reads and writes act, while waits and watches raise at once. The worker is killed 5 s after the stop (longer while an sg call is in flight, never past 30 s), or on a second stop. A running job is allowed to settle"
+          },
+          "include": {"type": "array", "items": {"type": "string", "enum": ["counters"]}},
+          "action": {"type": "string", "enum": ["on", "off", "reset", "report"]},
+          "slow_frame_ms": {"type": "number", "minimum": 1, "maximum": 1000},
+          "csv": {"type": "boolean"},
+          "lines": {"type": "integer", "minimum": 1, "maximum": 500},
+          "command": {"type": "string"},
+          "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},
+          "id": {"type": "string", "description": "The run or job to stop: 'script-14'. Left out: every live run."},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
+          "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
+          "list_limits": {"type": "object"},
+          "output_file": {"type": ["boolean", "string"]},
+          "whole": {"type": "boolean"},
+          "repeat": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "help",
+      "description": "StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "verb": {"type": "string"},
+          "lang": {
+            "type": "string",
+            "enum": ["python"],
+            "description": "python: the stub for sg calls in a script; leave it out for a direct call."
+          },
+          "what": {"type": "string"},
+          "topic": {"type": "string"},
+          "subtopic": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "run_script",
+      "description": "Run Python 3.10 against the game: one call made of verb calls. sg.<verb>('what', **options) is the direct call: same options, same reply keys (a dict).\nA script changes nothing unless the run has confirm: true. Seen targets: ids this session's replies showed you (direct replies, report rows, a finished run's printed or returned value), any int or str constant in the code, selectors written in the code (a network, a spread, sg.ref('r7')), and what the run builds. Three routes:\n- run_script {code}: a report run. Every write reports (report_only: True) and nothing changes. The report lists every target [id or cell, name, current -> new]; builds report placed: []. It begins: script-14 REPORT: nothing changed; run_script {repeat: \"script-14\", confirm: true} does it.\n- run_script {code, confirm: true}: acts as it goes on seen targets. An unseen target before anything acted: the run goes on as a report and its reply is that report. After an act: the run stops with sg.Stopped (a BaseException); only held restores and the finally it unwinds through still act; the stop reply lists the remaining targets as report rows (now seen) and says repeat, or undo script-N first.\n- run_script {repeat: \"script-14\", confirm: true}: runs the code again on fresh reads; the report's rows are seen. Logic values may differ (DIFFERS FROM REPORT in the footer); [cannot undo] writes must match the report's arguments.\nconfirm inside the code is refused.\nGive id a list, not a loop of calls:\n  r = sg.find('thing', prefab='*Light*', box=[...], fields=['reference_id', 'display_name'])\n  ids = [t['reference_id'] for t in r['things']]\n  sg.write('logic', id=ids, logic='On', value=0)\nBuild, then act on what was built (report it, then repeat it):\n  b = sg.build('structure', placements=[...])\n  for h in b['placed']: sg.write('logic', id=h, logic='On', value=1)   # placed: [] in a report run\nHold a value while waiting; restored on exit, on stop, and at session end:\n  with sg.hold(pump, 'On', 1, after=0):\n      rows, met = sg.watch([{'id': tank, 'logic': 'Pressure'}], until=lambda r: r[0]['value'] >= 8000, timeout=480)\n  return met                                            # or a final bare expression\nsg.wait(s); sg.ref('r7'); sg.help('read', 'logic'); sg.help('scripts') has the full API. Errors raise sg.Error(code, message, fix, maybe_ran).\nReply wait: 30 s for confirmed runs, up to 600 s for report and read-only runs; a longer run answers script-N running (follow with inspect {what: 'job', id}); stop: server {what: 'stop', id}.\nFooter: writes by outcome, DIFFERS FROM REPORT, WARNINGS (driven_by), CLEANUP, undo script-N, cost.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": {"type": "string", "description": "Python 3.10 source, run as a function body."},
+          "confirm": {
+            "type": "boolean",
+            "description": "true: writes act, on targets you have seen. Left out: a report run; nothing acts."
+          },
+          "repeat": {
+            "type": "string",
+            "description": "A report run's id ('script-14'): run its code again on fresh reads; with confirm: true its reported targets are seen and act."
+          },
+          "max_wait": {
+            "type": "number",
+            "minimum": 0,
+            "description": "How long this reply waits (default 30), at most your client's timeout; the run goes on."
+          }
+        }
+      }
+    }
+  ]
+}

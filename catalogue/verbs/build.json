@@ -1,23 +1,8 @@
 {
   "verb": "build",
   "description": "Build new things as a player would, paying materials: structures, cable, pipe and chute runs, blueprints. Reports first; confirm: true builds and answers when the job is done.",
-  "help": [
-    "Build new things as a player would, paying materials: structures, cable, pipe and chute runs, blueprints. Reports first; confirm: true builds and answers when the job is done.",
-    "",
-    "whats:",
-    "- structure: any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job",
-    "- cable: a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload",
-    "- pipe: a pipe run or pieces from the grade's kit, with the pipe guards and a gas check",
-    "- chute: a chute run or pieces from Kit (Chute), source to sink, with flow guards",
-    "- blueprint: paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks. Cheat. (cheat)",
-    "",
-    "Every what here takes: confirm.",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"build\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": false,
   "tool": {
-    "what": "structure: any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job; cable: a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload; pipe: a pipe run or pieces from the grade's kit, with the pipe guards and a gas check; chute: a chute run or pieces from Kit (Chute), source to sink, with flow guards; blueprint: paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks; finish: build a placed structure on to a later build state, paying each state's materials",
     "options": {
       "placements": "Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color}, built in order in one job; or one at the top level.",
       "prefab": "Prefab name or hash.",
@@ -44,8 +29,7 @@
       "omit": "Key paths to leave out.",
       "id": "One structure, a list or a ref: one job per id, in order. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
       "state": "The build state to reach; default the next."
-    },
-    "required": null
+    }
   },
   "whats": {
     "structure": {
@@ -255,11 +239,11 @@
       }
     },
     "cable": {
-      "summary": "A cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload",
+      "summary": "a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload",
       "options": {
         "grade": {
           "schema": {"type": "string", "enum": ["normal", "heavy", "super_heavy"]},
-          "description": "",
+          "description": "The cable's grade.",
           "default": "heavy",
           "x-script": "same"
         },
@@ -476,7 +460,7 @@
       }
     },
     "pipe": {
-      "summary": "A pipe run or pieces from the grade's kit, with the pipe guards and a gas check",
+      "summary": "a pipe run or pieces from the grade's kit, with the pipe guards and a gas check",
       "options": {
         "grade": {
           "schema": {"type": "string", "enum": ["gas", "liquid", "insulated_gas", "insulated_liquid"]},
@@ -699,9 +683,14 @@
       }
     },
     "chute": {
-      "summary": "A chute run or pieces from Kit (Chute), source to sink, with flow guards",
+      "summary": "a chute run or pieces from Kit (Chute), source to sink, with flow guards",
       "options": {
-        "grade": {"schema": {"type": "string", "enum": ["chute"]}, "description": "", "default": "chute", "x-script": "same"},
+        "grade": {
+          "schema": {"type": "string", "enum": ["chute"]},
+          "description": "The chute kit (one grade).",
+          "default": "chute",
+          "x-script": "same"
+        },
         "waypoints": {
           "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 1024},
           "description": "Points joined by straight axis lines.",
@@ -915,7 +904,7 @@
       }
     },
     "blueprint": {
-      "summary": "paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks. Cheat",
+      "summary": "paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks",
       "options": {
         "blueprint": {
           "schema": {"type": "string"},
@@ -938,10 +927,7 @@
         "confirm": {"use": "confirm"}
       },
       "text": ["Progress: inspect {what: \"job\", id: \"paste\"}; take it back: undo {id: \"paste\"}."],
-      "x-script-text": [
-        "Reports in a report run; acts in a confirmed run. Cheat: ask the user first.",
-        "Progress: sg.inspect('job', id='paste'); take it back: sg.undo(id='paste')."
-      ],
+      "x-script-text": ["Progress: sg.inspect('job', id='paste'); take it back: sg.undo(id='paste')."],
       "example": {"blueprint": "airlock", "at": [700, 202, 660], "confirm": true},
       "handlers": [
         {
@@ -1086,5 +1072,6 @@
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "materials", "role": "pays-from"}]
       }
     }
-  }
+  },
+  "reply_top": {"placed": "list[str]"}
 }

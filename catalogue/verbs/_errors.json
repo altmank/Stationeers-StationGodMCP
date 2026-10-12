@@ -1,0 +1,515 @@
+{
+  "already_complete": {
+    "description": "The structure stands at its last build state; there is nothing more to build on it.",
+    "see": {"verb": "build", "what": "finish"}
+  },
+  "ambiguous_axis": {
+    "description": "A relative point or named facing lies within 10 degrees of a diagonal from the as_player, so the axis is unclear. Use frame world or target, or turn toward an axis.",
+    "see": {"topic": "positions"}
+  },
+  "ambiguous_circuit_holder": {
+    "description": "The device holds several circuit holders. Pass the reference id of the one you mean; the message lists them."
+  },
+  "ambiguous_item": {"description": "Several of the trader's entries match the name. Give both name and prefab."},
+  "ambiguous_node": {"description": "The name matches several space-map nodes. Give the node's code; the message lists them."},
+  "ambiguous_player": {
+    "description": "The name matches several players; the message lists them. Give a whole name or a reference id.",
+    "see": {"verb": "move", "what": "player"}
+  },
+  "ambiguous_port": {
+    "description": "The device sits on several networks of that category. Name one with {id, port}; the message lists the ports."
+  },
+  "ambiguous_rocket": {"description": "There are several rockets. Give rocket_id; the message lists them."},
+  "assumed_present": {
+    "description": "A thing named in assume_removed still stands, so the real run cannot go ahead. Remove it first, then run again."
+  },
+  "atmosphere_not_found": {
+    "description": "No thing, pipe network or atmosphere has that id. Check the id with inspect atmosphere or find thing.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "blueprint_failed": {
+    "description": "BlueprintMod read nothing from that path. Check the file name and folder.",
+    "see": {"verb": "build", "what": "blueprint"}
+  },
+  "build_failed": {
+    "description": "Building a piece failed part way; the message names the piece and why. The job stopped there; check what it built."
+  },
+  "busy": {
+    "description": "Too many gas moves are already waiting for the next atmospherics tick (is the game paused?). Unpause, or queue and try again.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "cancelled": {
+    "description": "Cancelled before it started: nothing ran. Send it again if you still want it.",
+    "see": {"topic": "errors"}
+  },
+  "capture_failed": {
+    "description": "ScriptedScreens could not picture the surface; the message gives its reason.",
+    "see": {"verb": "inspect", "what": "screen"}
+  },
+  "card_not_found": {"description": "That reference id is not a credit card. Use a card the as_player carries, or leave card out."},
+  "card_not_usable": {
+    "description": "The credit card is not where the game's sell can use it. Use a card a as_player carries or a vending machine holds."
+  },
+  "client_cannot_move": {
+    "description": "The as_player plays on another machine whose game this server cannot reach, so nothing moved; the message says why. They need the same StationGod version.",
+    "see": {"verb": "move", "what": "player"}
+  },
+  "coils_short": {
+    "description": "Fewer coils or kits could be taken than the piece costs; the build stopped before it and gave back what it took. Bring more, then run again."
+  },
+  "command_not_found": {
+    "description": "No console command has that name. Run the console command 'help' to list them.",
+    "see": {"verb": "server", "what": "command"}
+  },
+  "command_not_ready": {
+    "description": "The game has not finished loading, so the console would not run the command yet. Try again once the world is loaded.",
+    "see": {"verb": "server", "what": "command"}
+  },
+  "confirm_required": {"description": "A real run needs confirm: false and confirm: true together. Nothing ran."},
+  "contact_not_found": {"description": "No trader contact has that reference id. trade contacts lists them."},
+  "device_not_found": {"description": "No device with that id is reachable here. Check the id, or the gateway the call is scoped to."},
+  "dish_not_ready": {"description": "The dish has no pivot or pointing part to turn: it is not built far enough. Finish building it."},
+  "duplicate_id": {
+    "description": "That request id is already in flight on this connection. Nothing ran; use a new id.",
+    "see": {"topic": "errors"}
+  },
+  "element_not_found": {
+    "description": "The surface has no element with that id. inspect screen lists them.",
+    "see": {"verb": "write", "what": "screen"}
+  },
+  "engine_not_modelled": {"description": "The rocket has an engine the forecast has no model for. The forecast cannot run for this rocket."},
+  "final_check_failed": {
+    "description": "The check run once the tick stopped found problems, so nothing ran. The report lists them; fix them and run again."
+  },
+  "game_changed": {
+    "description": "This game build lacks a game member the verb needs. The verb cannot run on this build; server info lists what is missing.",
+    "see": {"topic": "errors"}
+  },
+  "game_not_running": {"description": "The world is not running. Load a world, then try again.", "see": {"topic": "errors"}},
+  "game_timeout": {
+    "description": "The call did not start before its deadline. Nothing ran; it is safe to send again.",
+    "see": {"topic": "errors"}
+  },
+  "game_unavailable": {
+    "description": "The server could not reach the game, or the game took the call and sent no reply in time; then it may have run. Check the game is running with StationGod, then retry a read; check before repeating a write.",
+    "see": {"topic": "errors"}
+  },
+  "gas_check_failed": {
+    "description": "An earlier pipe job lost gas, so real runs that touch pipe networks are held. Ask the user; only with their agreement pass acknowledge_gas_lost with that job's id."
+  },
+  "gas_hold_mismatch": {
+    "description": "acknowledge_gas_lost names another job than the one holding pipe jobs. Use the job id the message names, with the user's agreement."
+  },
+  "gateway_not_found": {
+    "description": "No StationGod Gateway has that id. find gateway lists them; or leave gateway out for the whole world."
+  },
+  "gateway_unavailable": {
+    "description": "The gateway cannot scope calls: it is not fully built, or has no data cable on either port. Finish it or connect a data cable."
+  },
+  "has_color_state": {
+    "description": "This thing keeps its colour as an animation state; the spray can does not write paint it. Nothing to do: it cannot be painted.",
+    "see": {"verb": "write", "what": "paint"}
+  },
+  "help_not_found": {
+    "description": "No help node has that name. The message lists the names it knows or the nearest ones; help {} lists the shared topics.",
+    "see": {"verb": "help"}
+  },
+  "ic_compile_error": {"description": "The chip has a compile error, so it cannot be stepped. Fix the code with write chip first."},
+  "ic_not_operable": {
+    "description": "The IC Housing is off, unpowered or not operable, or a worn item's battery is flat. Fix that, then try again."
+  },
+  "in_use": {
+    "description": "The item is a part its device is using (a chip in its holder, a console's motherboard, or a running machine's filter, battery or canister); the message names the device, its write label and the slot. Take a spare, switch the device off first, or pass allow true."
+  },
+  "in_vault_slot": {"description": "The item sits in a vault's slot. Take it out first, or let the vault finish."},
+  "ingot_vault_changed": {"description": "This StationGod build does not know the loaded IngotVault version. Nothing ran; update StationGod."},
+  "ingot_vault_mod_required": {"description": "The vault tools need the IngotVault mod, which is not loaded."},
+  "insufficient_available": {"description": "Fewer of the item than asked are held where the trader can take them. Sell fewer, or bring more."},
+  "insufficient_credits": {"description": "The card holds fewer credits than this costs. Buy less, or use another card."},
+  "insufficient_stock": {"description": "The trader has fewer in stock than asked. Buy no more than the stock."},
+  "internal_error": {
+    "description": "A bug in StationGod; the call may have partly run. Check the world before repeating it, and report the message.",
+    "see": {"topic": "errors"}
+  },
+  "invalid_argument": {
+    "description": "An argument is missing, has the wrong type, or breaks a rule; the message names it. Fix that argument and send again; nothing ran.",
+    "see": {"topic": "errors"}
+  },
+  "invalid_color": {
+    "description": "The colour is empty or unknown. Give a colour name or index; write paint lists them.",
+    "see": {"verb": "write", "what": "paint"}
+  },
+  "invalid_destination": {"description": "The destination is the item itself or inside it. Pick another slot or container."},
+  "invalid_downlink": {"description": "That is no downlink this uplink can follow. Give a built, logic-readable Logic Rocket Downlink."},
+  "invalid_logic_type": {
+    "description": "The logic type is not one the game knows. Use a LogicType name or number; inspect device lists a device's."
+  },
+  "invalid_prefab": {
+    "description": "No kit builds that prefab, or it is not a structure or not loaded. Check the name; inspect looking_at and find thing report prefab names."
+  },
+  "invalid_shape": {
+    "description": "The call's shape (fields, omit, limits) is malformed. Fix it; nothing ran.",
+    "see": {"topic": "shaping"}
+  },
+  "items_riding": {
+    "description": "A chute piece the run would remove or replace holds an item, and riding is refuse. Let the item pass or take it out with move item, or pass riding skip to leave those pieces.",
+    "see": {"verb": "swap", "what": "chute"}
+  },
+  "job_not_found": {
+    "description": "No job with that id is running, queued or kept. Job ids are kept for the last jobs only; start the run again if needed."
+  },
+  "joined_too_large": {
+    "description": "Too many atmospheres are joined to the one named. Pass joined: false to move gas from the named one only.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "logic_not_readable": {"description": "The device does not expose that logic type as readable. inspect device lists what it reads."},
+  "logic_not_writable": {"description": "The device does not expose that logic type as writable. inspect device lists what it writes."},
+  "long_piece": {
+    "description": "The route starts or ends on a long straight. Start from one of its cells with at, or make it the target (to), where the route may join any of its cells."
+  },
+  "lua_changed": {"description": "This StationGod build does not know the loaded StationeersLua version. Update StationGod."},
+  "lua_chip_unsupported": {
+    "description": "A Lua chip runs a whole tick per game tick, so it cannot be stepped or paused at a line. Use restart, or write chip to change it."
+  },
+  "lua_not_installed": {"description": "Lua chips need the StationeersLua mod, which is not loaded."},
+  "manned_target": {
+    "description": "Someone sits in a Crew Module Chair, so the rocket may only target a launch mount. Pick a launch mount, or empty the chair."
+  },
+  "materials_failed": {
+    "description": "Taking the materials for a swap failed; the run stopped. Check materials holds them, then run again."
+  },
+  "materials_short": {
+    "description": "Fewer materials could be taken than the piece costs; the run stopped after it. Bring more, then run again for the rest."
+  },
+  "memory_not_readable": {"description": "The device has no readable memory. Pick a device with memory, such as an IC Housing."},
+  "memory_not_writable": {"description": "The device has no writable memory. Pick a device with memory, such as an IC Housing."},
+  "method_not_found": {
+    "description": "No such method on this game's StationGod. The game may run an older version; server info names it.",
+    "see": {"topic": "errors"}
+  },
+  "mod_missing": {
+    "description": "BlueprintMod has not set up its Blueprints folder yet. Pass an absolute path.",
+    "see": {"verb": "build", "what": "blueprint"}
+  },
+  "move_failed": {"description": "The game refused the move; the message says why. Check the code and destination, then try again."},
+  "network_empty": {"description": "The network has no piece of that category. Name another network, or a piece on it."},
+  "network_gone": {"description": "No network has that id any more: the world moved on. Read the id again."},
+  "network_not_found": {
+    "description": "No network of that category has that id. Name a piece or device on it instead, or read the id again."
+  },
+  "no_atmosphere": {
+    "description": "The thing holds no gas or liquid: no internal atmosphere, no pipe network and nothing with an atmosphere in its slots. Pick a pipe, tank or device that holds gas.",
+    "see": {"verb": "inspect", "what": "atmosphere"}
+  },
+  "no_batteries": {
+    "description": "The rocket or the thing named holds no battery, so there is nothing to set.",
+    "see": {"verb": "write", "what": "battery"}
+  },
+  "no_build_states": {
+    "description": "The thing is not a structure with two or more build states, so it cannot be built on.",
+    "see": {"verb": "build", "what": "finish"}
+  },
+  "no_control_at": {
+    "description": "No shown control stands at that point. inspect screen gives each element its box; touch by element instead.",
+    "see": {"verb": "write", "what": "screen"}
+  },
+  "no_credit_card": {"description": "The as_player carries no credit card. Carry one, or give card."},
+  "no_crosshair_hit": {
+    "description": "The look ray hits nothing within reach. Look at a surface, or give the point another way.",
+    "see": {"topic": "positions"}
+  },
+  "no_cursor": {"description": "The game has no placement cursor for this prefab, so it cannot be placed. Pick another prefab."},
+  "no_face": {
+    "description": "The look ray does not hit a 2 m face plane. Look straight at a wall, floor or ceiling.",
+    "see": {"topic": "positions"}
+  },
+  "no_flight_log": {"description": "This rocket has no flight log. Start one with run start."},
+  "no_free_slot": {"description": "No slot of the container takes the item. Free a slot, or pick another container."},
+  "no_fuel_line": {
+    "description": "No engine on this rocket has a pipe network on its input, so there is nothing to burn. Connect the fuel line."
+  },
+  "no_genes": {
+    "description": "The plant has no gene set yet. Wait until it grows one.",
+    "see": {"verb": "inspect", "what": "genes"}
+  },
+  "no_kit": {"description": "No coil or kit builds this piece, so it cannot be placed or put back. Pick another piece."},
+  "no_line_shader": {
+    "description": "This game build has no built-in shader to draw lines with, so nothing can be drawn.",
+    "see": {"verb": "show", "what": "highlight"}
+  },
+  "no_local_player": {
+    "description": "There is no single as_player: no local as_player, and none or several connected living players. The message names them; act with a as_player in the world, or give materials."
+  },
+  "no_network": {"description": "The thing is on no network of that category. Name a piece or device that is on one."},
+  "no_programmable_chip": {"description": "The device keeps its memory on a programmable chip and has none installed. Install a chip first."},
+  "no_reagents": {"description": "The item carries no inspect reagents; the vault would destroy it and store nothing. Leave it out."},
+  "no_room": {
+    "description": "There is no empty slot to put the goods in. Free a slot in a vending machine on the pad's network or in the holder."
+  },
+  "no_run_between": {
+    "description": "No run of pieces of that category joins the two ends. Check the ends, or name the run's pieces with id."
+  },
+  "no_save_folder": {"description": "No save is loaded, so there is no folder for the CSV. Save the world first."},
+  "no_screen": {
+    "description": "The holder shows no ScriptedScreens UI: its chip has drawn nothing yet, or it is not a ScriptedScreens board, cartridge or visor.",
+    "see": {"verb": "inspect", "what": "screen"}
+  },
+  "no_slots": {"description": "The thing has no slots. Pick a container or device with slots."},
+  "no_target": {"description": "The rocket stands on its pad with no target. Give 'to': a node's name or code."},
+  "no_view": {
+    "description": "There is no as_player view to read or screen to draw on; the message says why. Use frame world or target, or have the as_player run StationGod."
+  },
+  "no_world": {"description": "No world is loaded. Load one, then try again.", "see": {"topic": "errors"}},
+  "no_xray_material": {
+    "description": "This game build has no material to draw through walls with. Draw without xray.",
+    "see": {"verb": "show", "what": "highlight"}
+  },
+  "node_not_found": {"description": "No space-map node has that name. Give its name, its map code, or 'pad'."},
+  "not_a_battery": {
+    "description": "The thing stores no power; the message names what it is, and when its slots hold battery cells, the within call that sets them.",
+    "see": {"verb": "write", "what": "battery"}
+  },
+  "not_a_lua_chip": {"description": "restart is for Lua chips. An IC10 chip restarts at line 0 when write chip writes it."},
+  "not_a_plant": {
+    "description": "That thing is not a plant, seed or plant produce. find plant lists the find plant.",
+    "see": {"verb": "inspect", "what": "genes"}
+  },
+  "not_a_segment": {
+    "description": "The pieces meet the rest of the world at more or fewer than two cells. A reroute swaps out a run with one way in and one way out: name a segment without branches or dead ends."
+  },
+  "not_a_silo": {"description": "That thing is not an SDB Silo. find thing {prefab: \"Silo\"} lists them."},
+  "not_a_vault": {"description": "That thing is not an Ingot Vault or a Remote Vault. find thing lists vaults."},
+  "not_connectable": {
+    "description": "That thing is not a pipe, cable, chute or device, so it has no connection ends.",
+    "see": {"verb": "inspect", "what": "connections"}
+  },
+  "not_creative": {
+    "description": "free takes no materials and is only for creative worlds. Pay from an inventory with materials instead."
+  },
+  "not_enough_coils": {
+    "description": "The code holds fewer coils or pipes than the run needs. The message names what is missing; bring more or use another materials."
+  },
+  "not_enough_kits": {
+    "description": "The code holds fewer chute kits than the run needs. The message names what is missing; bring more or use another materials."
+  },
+  "not_enough_materials": {
+    "description": "The sources hold fewer of a material than the build needs. The message names what is missing; bring more or add a materials code."
+  },
+  "not_enough_stock": {
+    "description": "The vault or silo holds less than asked. Take no more than it holds; inspect vault or inspect contents lists it."
+  },
+  "not_host": {
+    "description": "This game is a multiplayer client; only the host can change the world. Run StationGod on the host.",
+    "see": {"topic": "errors"}
+  },
+  "not_ic_housing": {"description": "That circuit holder is not an IC Housing; only an IC Housing's pins can be set."},
+  "not_in_room": {
+    "description": "The thing is not in a closed room: its cell is outside. Name a thing inside a room.",
+    "see": {"verb": "find", "what": "room"}
+  },
+  "not_in_silo": {"description": "The silo holds none of that item. inspect contents on the silo lists its entries."},
+  "not_in_vault": {"description": "The vault holds none of that item. inspect vault lists what it holds."},
+  "not_labelable": {
+    "description": "The thing takes no write label. Pick a device, sign or tank.",
+    "see": {"verb": "write", "what": "label"}
+  },
+  "not_landed": {"description": "The trader's ship has not landed on the pad. Wait for it to land."},
+  "not_logic_device": {"description": "The thing is not a logic device a pin can hold. Pick a device on the data network."},
+  "not_movable": {"description": "The thing is not an item that fits in a slot."},
+  "not_on_data_network": {
+    "description": "The device is not on the housing's data network, so the chip would not reach it. Connect it, or pass allow to store it anyway."
+  },
+  "not_on_network": {"description": "The device is not on the network named; the message lists the networks it is on. Name one of those."},
+  "not_paintable": {"description": "The thing does not take write paint.", "see": {"verb": "write", "what": "paint"}},
+  "not_ready": {"description": "The world is still loading. Try again in a moment.", "see": {"topic": "errors"}},
+  "not_rendered": {
+    "description": "This game draws nothing (a dedicated server), so there is no picture of the screen. Read its elements instead.",
+    "see": {"verb": "inspect", "what": "screen"}
+  },
+  "not_solar_panel": {
+    "description": "That reference id is not a solar panel. find thing with prefab Solar lists them.",
+    "see": {"topic": "errors"}
+  },
+  "not_sold": {"description": "The trader does not trade that item. trade inventory lists what it buys and sells."},
+  "not_uplink": {"description": "That thing is not a Logic Rocket Uplink."},
+  "not_vault_material": {"description": "The vault keeps ingots, ores and ices only. Leave the item out."},
+  "not_wanted": {"description": "The trader wants fewer of the item than offered. Sell no more than it wants."},
+  "nothing_to_move": {
+    "description": "The code holds none of the gases asked for. Check its contents with inspect atmosphere.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "out_of_range": {
+    "description": "The gene text is outside the game's range. Use a text inside it, or pass allow to write it anyway.",
+    "see": {"verb": "inspect", "what": "genes"}
+  },
+  "outside_world": {
+    "description": "The point is beyond the world's terrain, where nothing holds a as_player up. Pick a point inside the map.",
+    "see": {"verb": "move", "what": "player"}
+  },
+  "pad_unavailable": {"description": "The trader's landing pad is off (unpowered) or has an error. Power it and clear the error."},
+  "paint_failed": {
+    "description": "The thing still shows its old colour after painting. It does not keep this colour.",
+    "see": {"verb": "write", "what": "paint"}
+  },
+  "partial_merge": {
+    "description": "Part of a stack can only go into an empty slot; the game has no partial merge. Move it to an empty slot, or move the whole stack."
+  },
+  "paste_refused": {
+    "description": "BlueprintMod refused the paste; the message says why.",
+    "see": {"verb": "build", "what": "blueprint"}
+  },
+  "plant_not_found": {
+    "description": "Nothing with that id is a plant. find plant lists the find plant.",
+    "see": {"verb": "inspect", "what": "genes"}
+  },
+  "planted": {
+    "description": "The plant is growing: a as_player never takes a plant out whole, only harvests it once mature or clears it. Harvest it instead."
+  },
+  "player_not_found": {
+    "description": "No as_player has that name or reference id; the message lists the players. Give one of them.",
+    "see": {"verb": "move", "what": "player"}
+  },
+  "player_not_movable": {
+    "description": "The as_player is dead, or another as_player is dragging them, so they are not moved. The message says which.",
+    "see": {"verb": "move", "what": "player"}
+  },
+  "port_not_joined": {"description": "That port joins no network of the category. Name a port that is joined, or the network itself."},
+  "prefab_missing": {"description": "No prefab exists for what the vault or silo would make. Pick another item."},
+  "protocol_error": {
+    "description": "A message the protocol does not allow. The connection is closed after the reply; reconnect and send a valid message.",
+    "see": {"topic": "errors"}
+  },
+  "read_failed": {"description": "The game failed to read the text; the message says why."},
+  "refund_failed": {
+    "description": "Giving the refund_to back failed; the message says why. Check refund_to, then the ground in front of the code."
+  },
+  "refused": {
+    "description": "The atmosphere is a single world cell, which gas is not moved to or from. Name its room ({room} or {room_of}) instead.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "remove_failed": {
+    "description": "Removing a piece failed part way; the message names it and why. The job stopped there; check what it removed."
+  },
+  "reply_too_large": {
+    "description": "The reply is larger than allowed; the method ran. Narrow it with fields, limit or filters, or use output_file.",
+    "see": {"topic": "shaping"}
+  },
+  "request_too_large": {
+    "description": "The message is longer than the protocol allows. The connection is closed; send a smaller request.",
+    "see": {"topic": "errors"}
+  },
+  "rocket_not_found": {"description": "No rocket has that id. Give a rocket's, its rocket network's or any of its include' reference id."},
+  "room_not_found": {"description": "No room has that id. find room lists them.", "see": {"topic": "errors"}},
+  "rule_error": {
+    "description": "A lint rule failed to run; the message names the rule and why. Fix or disable that rule.",
+    "see": {"verb": "check", "what": "rules"}
+  },
+  "rule_not_found": {"description": "No lint rule has that id. check rules lists them.", "see": {"verb": "check", "what": "rules"}},
+  "same_joined_set": {
+    "description": "'to' is joined to 'from', so the gas would flow straight back. Pass joined: false to move between them anyway.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "same_slot": {"description": "The item is already in that slot. Nothing to do."},
+  "same_vault": {"description": "Both ids reach one Ingot Vault. Name two different vaults.", "see": {"verb": "move", "what": "item"}},
+  "save_started": {"description": "A save began while the job waited for the game tick, so nothing ran. Run it again."},
+  "screens_changed": {
+    "description": "This ScriptedScreens version keeps its screens in a shape StationGod cannot read. StationGod needs an update.",
+    "see": {"verb": "inspect", "what": "screen"}
+  },
+  "screens_mod_required": {
+    "description": "The screen tools need the ScriptedScreens mod, which is not loaded.",
+    "see": {"verb": "inspect", "what": "screen"}
+  },
+  "sell_separately": {
+    "description": "An earlier line of this call sold goods the game would take again for this entry. Sell this entry in a call of its own."
+  },
+  "shutting_down": {
+    "description": "The game is stopping or the world is unloading; the call did not start. Send it again once the world is loaded.",
+    "see": {"topic": "errors"}
+  },
+  "silo_busy": {
+    "description": "The silo is busy: an IC asked it to dispense an entry this would move, or the thing is in a silo's slot. Let the silo export or finish, then try again."
+  },
+  "silo_full": {"description": "The silo holds 600 entries, or would with this deposit. Withdraw or export some first."},
+  "silo_unpowered": {
+    "description": "The silo is off, unpowered or not finished, so it neither imports nor exports. Nothing ran; power it on."
+  },
+  "slot_locked": {"description": "The item is in a locked slot. Unlock the slot first."},
+  "slot_not_found": {"description": "The thing has no slot with that index; the message gives how many it has. inspect slots lists them."},
+  "slot_occupied": {"description": "The slot is taken. Pick an empty slot, or move what is there first."},
+  "slot_refuses": {"description": "The slot does not take that item. Pick a slot that does; inspect slots lists them."},
+  "source_too_large": {"description": "The Lua code is over the chip's limit. Split it into library chips (--@module) and require them."},
+  "stack_full": {"description": "The stack is full; the rest does not fit. Move fewer, or into an empty slot."},
+  "structure_broken": {
+    "description": "The structure is in its broken build state; the game cannot build on it. Remove it and place a new one.",
+    "see": {"verb": "build", "what": "finish"}
+  },
+  "structure_damaged": {
+    "description": "The structure is damaged; the game builds on it only once it is repaired.",
+    "see": {"verb": "build", "what": "finish"}
+  },
+  "subject_not_found": {
+    "description": "None of the things at the place given is the subject named. Check the rule's subject and the place.",
+    "see": {"verb": "check", "what": "rules"}
+  },
+  "subscription_limit": {"description": "A subscription would pass a limit; poll instead.", "see": {"topic": "errors"}},
+  "surface_not_found": {
+    "description": "The screen has no surface by that name. The message lists the surfaces.",
+    "see": {"verb": "inspect", "what": "screen"}
+  },
+  "terraforming_mod_required": {
+    "description": "Removing gas from the inspect planet needs Terraforming Reloaded; the stock game keeps the inspect planet's air read-only.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "thing_not_found": {
+    "description": "No thing has that reference id: it is gone or the id is wrong. Find it again with find thing or inspect looking_at.",
+    "see": {"topic": "errors"}
+  },
+  "tick_held": {
+    "description": "An earlier job's atmosphere work is still running, so the tick stays held. Try again, or pass queue: true to queue the run."
+  },
+  "tick_not_stopped": {"description": "The game tick did not stop in time, so nothing ran. Try again."},
+  "too_many_batteries": {
+    "description": "The rocket or holder has over 256 batteries, more than one call sets, so none is set. Name them in id calls instead.",
+    "see": {"verb": "write", "what": "battery"}
+  },
+  "too_many_in_flight": {
+    "description": "Too many calls are in flight on this connection. Nothing ran; queue for replies, then send again.",
+    "see": {"topic": "errors"}
+  },
+  "too_many_pieces": {"description": "The network has more members than the verb walks. Name a smaller part of it."},
+  "trade_failed": {"description": "The game refused the trade; the message says why."},
+  "transfer_not_found": {
+    "description": "No gas move with that id is waiting or kept. Start the move again if needed.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "unauthorized": {
+    "description": "The TCP shared secret is missing or wrong. The connection is closed; reconnect with the right secret.",
+    "see": {"topic": "errors"}
+  },
+  "unit_out_of_range": {
+    "description": "The gene set index is out of range; the message gives how many sets the plant has.",
+    "see": {"verb": "inspect", "what": "genes"}
+  },
+  "unknown_gas": {
+    "description": "That is not a gas name as inspect atmosphere reports them (Oxygen, Nitrogen, CarbonDioxide, LiquidOxygen, Steam...).",
+    "see": {"verb": "inspect", "what": "job"}
+  },
+  "unknown_gene": {"description": "That is not a gene; the message lists the genes.", "see": {"verb": "inspect", "what": "genes"}},
+  "unknown_subscription": {"description": "This connection has no subscription with that id.", "see": {"topic": "errors"}},
+  "unsupported_protocol": {
+    "description": "The client and the game share no protocol version. Update the older side.",
+    "see": {"topic": "errors"}
+  },
+  "vault_display_slot": {"description": "That slot only shows the vault's store. Use move item to store reads."},
+  "vault_not_connected": {"description": "The Remote Vault reaches no vault: it needs exactly one Ingot Vault on its data network."},
+  "vault_not_ready": {"description": "The vault has no store yet. Wait until it is built and powered."},
+  "vault_unpowered": {"description": "The vault is off or unpowered, so it neither imports nor vends. Nothing ran; power it on."},
+  "view_stale": {
+    "description": "The as_player's game stopped sending its view: the last one is too old or taken too far from where they stand. Use frame world or target, or have them look again."
+  },
+  "would_burst": {
+    "description": "The change would take a pipe, tank or network past its pressure limit; the message gives the numbers. Change less; inspect job also takes allow to do it anyway."
+  },
+  "write_failed": {"description": "The game failed to write the text; the message says why."}
+}

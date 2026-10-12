@@ -1,0 +1,2 @@
+RefundPlan = {refund_to: Any, skipped: list[str], destinations: list[{prefab_name: str | None, quantity: int, target: str, target_id: str | None,
+    target_name: str | None, where: str, into: str | None, fallback: bool | None}], on_ground_as_fallback: int}

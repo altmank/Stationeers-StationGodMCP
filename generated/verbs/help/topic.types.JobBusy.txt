@@ -1,0 +1,1 @@
+JobBusy = {tool: str, running_job_id: str, waiting: int, message: str}

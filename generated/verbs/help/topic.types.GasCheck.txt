@@ -1,0 +1,7 @@
+GasCheck = {checked: bool, ok: bool, summary: str, families: list[{networks_before: list[str], networks_after: list[str], mol_before: float,
+    mol_after: float, energy_before_j: float, energy_after_j: float, planned_loss_mol: float, planned_release_mol: float, missing_mol: float, emptied:
+    bool, ok: bool}], ghosts: list[{network_id: str, mol: float, energy_j: float, devices: list[str], family_networks: list[str] | None}], recovered:
+    list[{into: str, mol: float, energy_j: float}], withheld: list[{network_id: str, family_networks: list[str], mol: float, pressure_after_kpa:
+    float, rating_kpa: float}], ghosts_cleared: list[str], old_ghosts: list[{network_id: str, mol: float, energy_j: float, devices: list[str],
+    family_networks: list[str] | None}], orphans: list[{network_id: str, pipes: int, mol: float, energy_j: float, volume_l: float}], old_orphans:
+    list[{network_id: str, pipes: int, mol: float, energy_j: float, volume_l: float}]}

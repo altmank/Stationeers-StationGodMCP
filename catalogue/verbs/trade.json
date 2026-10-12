@@ -1,21 +1,8 @@
 {
   "verb": "trade",
   "description": "Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. buy and sell report until confirm: true.",
-  "help": [
-    "Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. buy and sell report until confirm: true.",
-    "",
-    "whats:",
-    "- contacts: every trader contact in the sky and every satellite dish with where it points",
-    "- inventory: what each contact buys and sells: prices, stock, conditions, and what you hold that meets them",
-    "- buy: buy from the landed trader as the trade window's Buy does",
-    "- sell: sell to the landed trader as the trade window's Sell does",
-    "",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"trade\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": false,
   "tool": {
-    "what": "contacts: every trader contact in the sky and every satellite dish with where it points; inventory: what each contact buys and sells: prices, stock, conditions, and what you hold that meets them; buy: buy from the landed trader as the trade window's Buy does; sell: sell to the landed trader as the trade window's Sell does",
     "options": {
       "id": "inventory: One contact; left out, every contact. buy, sell: The trader contact. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
       "card": "inventory: The card whose holder's goods count; default the player's. buy: The credit card; default the one the player carries. sell:",
@@ -23,8 +10,7 @@
       "confirm": "true acts; left out, it reports.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
-    },
-    "required": null
+    }
   },
   "whats": {
     "contacts": {
@@ -166,7 +152,11 @@
       "summary": "sell to the landed trader as the trade window's Sell does",
       "options": {
         "id": {"use": "id", "description": "The trader contact.", "required": true},
-        "card": {"schema": {"type": "string"}, "description": "", "x-script": "same"},
+        "card": {
+          "schema": {"type": "string"},
+          "description": "The credit card paid into; default the one the player carries.",
+          "x-script": "same"
+        },
         "items": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 32},
           "description": "Up to 32 lines {name or prefab, quantity}.",

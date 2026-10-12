@@ -1,0 +1,19 @@
+def inspect(what: Literal['planet'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+) -> dict:  # main list: r['gases']; iterating or indexing it walks every page, in order
+    """The planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps.
+    No options.
+    Reply, one of:
+    (PlanetNotLoaded)
+      terraforming_mod: {version: str | None, state: str | None, temperature_adjustment_k: float | None} | None
+    (Planet)
+      gases: list[{gas: str, display_name: str | None, state: str, amount_mol: float, per_cell_mol: float, partial_kpa: float | None, freezes_below_k:
+          float | None, min_liquid_pressure_kpa: float | None, condenses_below_today_coldest_k: float | None, condenses_below_orbit_coldest_k: float |
+          None}]
+      reservoirs: {liquid_clouds: {volume_l: float, liquid_l: float, amount_mol: float, contents: list[{gas: str, amount_mol: float}]} | None,
+          ice_clouds: {volume_l: float, liquid_l: float, amount_mol: float, contents: list[{gas: str, amount_mol: float}]} | None, ice_caps:
+          {volume_l: float, liquid_l: float, amount_mol: float, contents: list[{gas: str, amount_mol: float}]} | None}
+      starting_air: {per_cell_mol: float, mol: float, gases: list[{gas: str, amount_mol: float}]}
+      terraforming_mod: {version: str | None, state: str | None, temperature_adjustment_k: float | None} | None
+    Example: sg.inspect('planet')
+    """

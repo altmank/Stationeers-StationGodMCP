@@ -1,0 +1,7 @@
+The gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks.
+Options:
+- id (string or array, required): A thing, a pipe or landing pad network, or an atmosphere id.
+id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: reference_id, subject, atmospheres [{source, owner, slot_index, slot_name, atmosphere}], count
+Example: inspect {what: "atmosphere", id: "2005300"}

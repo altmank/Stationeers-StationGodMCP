@@ -1,0 +1,20 @@
+Pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas.
+Reports first; confirm: true does it.
+Options:
+- id (string or array): Pieces.
+- waypoints (list): The piece in every cell along these lines.
+- cells (list): The piece in each cell.
+- allow (list of split): split: may split networks or leave ports joined to nothing.
+- root (string, default every supplier): The device would_split measures cut-off against.
+- materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn.
+- include (list of links | notes | network_devices): Parts to add to the reply.
+- rows (integer, default 5): Pieces listed; 0 for none.
+- verbose (boolean, default false): The long form of the reply.
+- acknowledge_gas_lost (string): The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- queue (boolean, default true): Wait in line behind a running job (up to 8) instead of answering busy.
+- max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (JobQueued) a JobQueued (help {topic: "types", subtopic: "JobQueued"}) | (RunJob) a RunJob (help {topic: "types", subtopic: "RunJob"}) | (RunReport) tool, status, job_id, grade, ready, problems [{code, message, reference_id, at}], warnings [{code, message, reference_id, at}], cells_total, placed, changed, kept, removed_count, air_cells, cells [{at, action, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end, flow}], removals [{reference_id, prefab_name, at, network_id, refund, assumed}], materials {from, needed, refund_enabled, refund, refund_plan}, networks_before, networks_after [{index, networks_before, new_pieces, device_count, port_count, devices, guard}], would_bridge [{kind, networks, device, ports, allowed}], would_split [{network_id, parts, cut_ports, allowed, components, root, cut_off}], links {count_before, count_after, added, lost, added_count, lost_count, model_matches_game, model_differences}, notes | (BuildJob) a BuildJob (help {topic: "types", subtopic: "BuildJob"}) | (JobBusy) a JobBusy (help {topic: "types", subtopic: "JobBusy"}) | (JobDropped) a JobDropped (help {topic: "types", subtopic: "JobDropped"})
+Example: remove {what: "pipe", id: ["3763565"]}

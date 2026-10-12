@@ -1,0 +1,12 @@
+Logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame.
+Options:
+- id (string or array): Device(s); with logic, every id is read for every logic type.
+- logic (string or integer or array): Logic type(s): name (Temperature) or number.
+- reads (list): Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads.
+- gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
+- include (list of clock): clock: the game clock in the same frame.
+One rule for the reply: one id and one logic type answer {reference_id, logic_type {id, name}, value}. id and logic lists, or reads whose every entry is a pair, answer one row per (id, logic) pair, index counting the pairs: results [{index, ok, reference_id, logic_type, value} or {index, ok, reference_id, error}], up to 256. Any entry with a logic list, slots, atmosphere or reagents, or include, answers one row per item in one frame: results [{index, ok, reference_id, logic {Type: value}, logic_errors, slots, atmosphere, reagents, errors} or {index, ok, reference_id, error}], up to 128 items and 1,024 values; more is refused, naming the bound.
+The two list forms: id: [a, b], logic: ["On", "Power"] answers 4 rows, one per (id, logic) pair: {index, ok, reference_id, logic_type {id, name}, value}. reads: [{id: a, logic: ["On", "Power"]}, {id: b, logic: ["On", "Power"]}] answers 2 rows, one per id: {index, ok, reference_id, logic {On: 1, Power: 40.2}}.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (one id, one logic type) gateway_id, reference_id, logic_type {id, name}, value | (pairs) gateway_id, results [{index, ok, reference_id, logic_type, error, ok, reference_id, logic_type, value, ok, reference_id, logic_type, requested_value, previous_value, current_value, ok, error}], count, success_count, error_count | (with slots, atmosphere, reagents or clock) gateway_id, clock {game_time_s, paused, time_of_day_ratio, days_past}, count, success_count, error_count, results [{index, ok, reference_id, error, ok, reference_id, logic, logic_errors, slots, atmosphere, reagents, errors, ok, error}]
+Example: read {what: "logic", id: ["1199811", "1199812"], logic: ["Pressure", "Temperature"]}

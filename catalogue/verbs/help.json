@@ -1,18 +1,11 @@
 {
   "verb": "help",
   "description": "StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic.",
-  "help": [
-    "StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic."
-  ],
   "read_only": true,
-  "tool": {
-    "what": "With verb: that what's options, reply keys and an example.",
-    "options": {"lang": "python: the stub for sg calls in a script; leave it out for a direct call."},
-    "required": null
-  },
+  "tool": {"options": {"lang": "python: the stub for sg calls in a script; leave it out for a direct call."}},
   "whats": {
     "-": {
-      "summary": "stationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic",
+      "summary": "StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic",
       "options": {
         "verb": {"schema": {"type": "string"}, "description": "A verb: its whats and shared options.", "x-script": "drop"},
         "lang": {
@@ -47,7 +40,22 @@
           ]
         }
       ],
-      "reply": {"variants": []}
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "tool": "str | None",
+              "topic": "str | None",
+              "subtopic": "str | None",
+              "text": "str",
+              "reply_keys": "str | None",
+              "topics": "list[str] | None",
+              "shared_topics": "list[str] | None",
+              "subtopics": "list[str] | None"
+            }
+          }
+        ]
+      }
     }
   }
 }

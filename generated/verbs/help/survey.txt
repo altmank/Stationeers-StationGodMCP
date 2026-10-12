@@ -1,0 +1,10 @@
+Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths. Read only.
+
+whats:
+- area: the 2 m cells of a box or room: what occupies each, the pieces, devices, ports and networks
+- wall: a text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits
+- network: a cable, pipe or chute network's members (or the pieces in a box), with filters or a summary
+- feeds: how a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices
+
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "survey", what} gives a what's options, reply keys and an example.

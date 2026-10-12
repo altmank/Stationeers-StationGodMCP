@@ -1,22 +1,8 @@
 {
   "verb": "check",
   "description": "Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk. Read only.",
-  "help": [
-    "Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk. Read only.",
-    "",
-    "whats:",
-    "- layout: lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more",
-    "- rules: the lint rule set: list, validate a file, fields, functions, run examples, explain a finding",
-    "- replaceable: could a player place each thing again exactly where it stands, every neighbour present",
-    "- ignition: whether carried items, or a tank or network by id, would catch fire in the air around them",
-    "",
-    "Every what here takes: id.",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"check\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": true,
   "tool": {
-    "what": "layout: lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more; rules: the lint rule set: list, validate a file, fields, functions, run examples, explain a finding; replaceable: could a player place each thing again exactly where it stands, every neighbour present; ignition: whether carried items, or a tank or network by id, would catch fire in the air around them",
     "options": {
       "box": "Two corners; at most 4000 2 m cells.",
       "id": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024). ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
@@ -24,8 +10,7 @@
       "at": "explain: a cell.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
-    },
-    "required": null
+    }
   },
   "whats": {
     "layout": {
@@ -106,7 +91,7 @@
       "options": {
         "action": {
           "schema": {"type": "string", "enum": ["list", "validate", "fields", "functions", "test", "explain"]},
-          "description": "",
+          "description": "list the rules, validate a rule file, list fields or functions, test examples, or explain a finding.",
           "default": "list",
           "x-script": "same"
         },

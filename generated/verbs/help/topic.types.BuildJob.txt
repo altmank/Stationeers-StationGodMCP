@@ -1,0 +1,6 @@
+BuildJob = {job_id: str, tool: str, status: str, preflight: Any | None, preflight_summary: {placed: int | None, changed: int | None, removed: int |
+    None, warnings: list[str]} | None, result: {final_check: Any | None, placed: list[{index: int, reference_id: str, prefab_name: str | None,
+    display_name: str | None}], removed: list[{index: int, reference_id: str, prefab_name: str | None, display_name: str | None}], used:
+    list[{prefab_name: str | None, quantity: int}], refunded: list[{reference_id: str, prefab_name: str | None, quantity: int, where: str, target: str
+    | None, target_id: str | None, target_name: str | None}], refund_error: Error | None, stopped_at: {index: int, error: Error} | None, verification:
+    list[{index: int, reference_id: str | None, ok: bool, issues: list[str]}], error: Error | None, gas_check: GasCheck | None} | None}

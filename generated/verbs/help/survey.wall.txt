@@ -1,0 +1,10 @@
+A text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits.
+Options:
+- plane (string): A face plane, "x=716": an axis and an even metre.
+- side (+x | -x | +y | -y | +z | -z): The side you view from.
+- looking (boolean): Map the face your look ray hits instead of plane.
+- at (list): The map's centre.
+- half_width (number, default 4): Half-width of the map in metres.
+- free_rects (object): {w, h, one_section, require_wall, limit}: where a w x h rectangle fits.
+Reply: plane, side, right, up, rows, top_left {x, y, z}, sections [{face, look, reference_id, prefab_name}], things [{key, reference_id, prefab_name, display_name, position}], free_rects [{row, column, centre, cells_wide, cells_high}], legend, view {source, age_s}
+Example: survey {what: "wall", plane: "x=716", side: "-x", at: [716, 202, 668]}

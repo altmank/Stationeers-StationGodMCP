@@ -1,0 +1,12 @@
+Paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- blueprint (string, required): A blueprint in BlueprintMod's folder (.blueprint optional) or an absolute path.
+- at (list, required): World position of the blueprint's anchor.
+- turn (0 | 90 | 180 | 270, default 0): Degrees added to the copy angle.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+Progress: inspect {what: "job", id: "paste"}; take it back: undo {id: "paste"}.
+Every build reply has placed: [ids] at the top: the new ids ([] in any report).
+Reply: (BlueprintPasteStatus) known, active, complete, cancelled, created, failed, skipped, pasted, standing, fingerprint, file, entries, other_active | (BlueprintUndo) message | (BlueprintPasteStarted) file, entries, anchor, rotation, copy_y_angle, expected_duration_s
+Example: build {what: "blueprint", blueprint: "airlock", at: [700, 202, 660], confirm: true}

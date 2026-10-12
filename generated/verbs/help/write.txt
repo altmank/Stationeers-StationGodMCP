@@ -1,0 +1,17 @@
+Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks. Ids you type out act at once; a ref or network reports until confirm: true. A write on a device a chip or another writer drives warns driven_by. memory, battery and genes are cheats: they report until confirm: true.
+
+whats:
+- logic: logic values on devices, as a chip or console writes them; answers previous and read-back values
+- memory: up to 512 values into a device's memory from start, as a chip's put does (cheat)
+- chip: a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart
+- screen: touch a control on a ScriptedScreens screen, as a player's touch does
+- label: rename things as the hand Labeller does; empty name gives back the game's name
+- paint: paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours
+- flight_log: start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log
+- uplink: point a Logic Rocket Uplink at a Logic Rocket Downlink
+- battery: set the charge of batteries and cells: full by default, or a ratio or joules (cheat)
+- genes: edit plant genes as the Gene Splicer does (cheat)
+
+Every what here takes: id.
+Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+help {verb: "write", what} gives a what's options, reply keys and an example.

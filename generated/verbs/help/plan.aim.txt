@@ -1,0 +1,9 @@
+Horizontal and Vertical that point a solar panel at the sun, or a satellite dish at a trader contact.
+Options:
+- id (string or array, required): The solar panel or the satellite dish; a list answers one entry each.
+- contact (string): Dish only: the trader contact.
+id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.
+Write the answer with write logic (Horizontal, Vertical).
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (SolarFixed) reference_id, prefab_name, can_turn, operable, sun {x, y, z, above_horizon, eclipse}, current {horizontal, vertical, ratio} | (SolarTurn) reference_id, prefab_name, can_turn, operable, sun {x, y, z, above_horizon, eclipse}, current {horizontal, vertical, ratio}, horizontal, vertical, off_sun_deg, alignment_ratio | (DishAim) dish_id, contact_id, finished, powered, on, can_rotate, horizontal, vertical, error_deg, pointing, target, current {horizontal, vertical, forward, error_deg}, stale_pose_deg, samples
+Example: plan {what: "aim", id: "3300111"}

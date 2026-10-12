@@ -1,28 +1,8 @@
 {
   "verb": "write",
   "description": "Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks. Ids you type out act at once; a ref or network reports until confirm: true. A write on a device a chip or another writer drives warns driven_by. memory, battery and genes are cheats: they report until confirm: true.",
-  "help": [
-    "Set values and states: logic, chip source, pins and run state, screen presses, labels, paint, uplinks. Ids you type out act at once; a ref or network reports until confirm: true. memory, battery and genes are cheats: they report until confirm: true.",
-    "",
-    "whats:",
-    "- logic: logic values on devices, as a chip or console writes them; answers previous and read-back values",
-    "- memory: up to 512 values into a device's memory from start, as a chip's put does. Cheat. (cheat)",
-    "- chip: a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart",
-    "- screen: touch a control on a ScriptedScreens screen, as a player's touch does",
-    "- label: rename things as the hand Labeller does; empty name gives back the game's name",
-    "- paint: paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours",
-    "- flight_log: start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log",
-    "- uplink: point a Logic Rocket Uplink at a Logic Rocket Downlink",
-    "- battery: set the charge of batteries and cells: full by default, or a ratio or joules. Cheat. (cheat)",
-    "- genes: edit plant genes as the Gene Splicer does. Cheat. (cheat)",
-    "",
-    "Every what here takes: id.",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"write\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": false,
   "tool": {
-    "what": "logic: logic values on devices, as a chip or console writes them; answers previous and read-back values; memory: up to 512 values into a device's memory from start, as a chip's put does; chip: a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart; screen: touch a control on a ScriptedScreens screen, as a player's touch does; label: rename things as the hand Labeller does; empty name gives back the game's name; paint: paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours; flight_log: start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log; uplink: point a Logic Rocket Uplink at a Logic Rocket Downlink; battery: set the charge of batteries and cells: full by default, or a ratio or joules; genes: edit plant genes as the Gene Splicer does",
     "options": {
       "id": "logic: Device(s) or a ref; every one gets logic = value. memory, genes: An id, a list, or \"looking_at\". chip, screen: One id, or \"looking_at\" (the thing the crosshair is on). label: One id; a list or a ref names each '<label> 1', '<label> 2' in id order. paint: Things to paint the one color, or a ref. flight_log: A rocket's id, name, network or any part; left out when there is one rocket. uplink: The uplink. battery: Batteries or cells (up to 256). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error. chip, screen, uplink and flight_log take one id: a list is refused, naming run_script.",
       "logic": "Logic type name or number.",
@@ -43,8 +23,7 @@
       "genes": "Gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1}).",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
-    },
-    "required": null
+    }
   },
   "whats": {
     "logic": {
@@ -164,7 +143,7 @@
       }
     },
     "memory": {
-      "summary": "up to 512 values into a device's memory from start, as a chip's put does. Cheat",
+      "summary": "up to 512 values into a device's memory from start, as a chip's put does",
       "options": {
         "id": {
           "use": "id",
@@ -187,7 +166,6 @@
         },
         "confirm": {"use": "confirm"}
       },
-      "x-script-text": ["Reports in a report run; acts in a confirmed run. Cheat: ask the user first."],
       "example": {"id": "4820585", "start": 10, "values": [1, 0, 2], "confirm": true},
       "handlers": [
         {
@@ -227,7 +205,7 @@
       }
     },
     "chip": {
-      "summary": "A circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart",
+      "summary": "a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart",
       "options": {
         "id": {
           "use": "id",
@@ -418,7 +396,7 @@
         },
         "event": {
           "schema": {"type": "string", "enum": ["click", "change", "toggle"]},
-          "description": "",
+          "description": "The touch: click, change (a slider or field) or toggle.",
           "default": "click",
           "x-script": "same"
         },
@@ -631,7 +609,7 @@
       "options": {
         "action": {
           "schema": {"type": "string", "enum": ["start", "stop", "clear"]},
-          "description": "",
+          "description": "start, stop or clear the recorder.",
           "required": true,
           "x-script": "same"
         },
@@ -782,7 +760,7 @@
       }
     },
     "battery": {
-      "summary": "set the charge of batteries and cells: full by default, or a ratio or joules. Cheat",
+      "summary": "set the charge of batteries and cells: full by default, or a ratio or joules",
       "options": {
         "id": {"use": "id", "description": "Batteries or cells (up to 256)."},
         "rocket": {"schema": {"type": "string"}, "description": "Every battery of this rocket.", "x-script": "same"},
@@ -805,7 +783,6 @@
         },
         "confirm": {"use": "confirm"}
       },
-      "x-script-text": ["Reports in a report run; acts in a confirmed run. Cheat: ask the user first."],
       "example": {"within": "player", "confirm": true},
       "handlers": [
         {
@@ -863,7 +840,7 @@
       }
     },
     "genes": {
-      "summary": "edit plant genes as the Gene Splicer does. Cheat",
+      "summary": "edit plant genes as the Gene Splicer does",
       "options": {
         "id": {
           "use": "id",
@@ -890,7 +867,6 @@
         "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
         "confirm": {"use": "confirm"}
       },
-      "x-script-text": ["Reports in a report run; acts in a confirmed run. Cheat: ask the user first."],
       "example": {"id": "3311223", "genes": {"GrowthSpeedMultiplier": 1}, "confirm": true},
       "handlers": [
         {

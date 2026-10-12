@@ -1,0 +1,10 @@
+Outer frames (a face on outside air), with exposed faces and airtightness.
+Options:
+- near (string or array): "player" only.
+- radius (number): Metres around near.
+- include (list of inner): inner: list inner frames too.
+- limit (integer, default 20): Entries per page.
+- offset (integer, default 0): Entries to skip.
+- order (nearest | id, default nearest): nearest (default) or id (stable pages).
+Reply: frames [{reference_id, prefab_name, display_name, position, distance_m, exposed_faces, exposed_face_count, blocks_air, build_state, color}], count, total_frames, total_outer, offset, limit, total, has_more, include_inner, local_player {reference_id, display_name, position}
+Example: find {what: "frame", near: "player", radius: 20}

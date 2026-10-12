@@ -1,0 +1,12 @@
+Paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours.
+Options:
+- id (string or array): Things to paint the one color, or a ref.
+- network (string or object): A pipe, cable or chute network (its id, a piece on it, or a device with kind): paints its pieces.
+- kind (pipe | cable | chute): With network given as a device: which of its networks.
+- include (list of devices): devices: also paint the network's devices.
+- color (string): A colour name, an index, or 'default'.
+- items (list): {id, color} pairs, a colour each.
+- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Reply: (PaintColors) colors [{index, name, paint_only}], count | (BatchResult) results [{index, ok, error}], count, success_count, error_count
+Example: write {what: "paint", network: "4639870", kind: "pipe", color: "Red"}

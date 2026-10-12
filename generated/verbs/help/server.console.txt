@@ -1,0 +1,5 @@
+The latest in-game console lines, oldest first.
+Options:
+- lines (integer, default 40): How many recent lines.
+Reply: requested_lines, line_count, console_available, lines [{time, level, text}]
+Example: server {what: "console", lines: 80}

@@ -1,36 +1,8 @@
 {
   "verb": "inspect",
   "description": "Describe one thing, or a few by id, in detail. Read only.",
-  "help": [
-    "Describe one thing, or a few by id, in detail. Read only.",
-    "",
-    "whats:",
-    "- device: a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details",
-    "- prefab: a buildable prefab before it stands anywhere: placement kind, turns, cells, ports",
-    "- slots: a device's slots: occupants, what each takes, slot logic values",
-    "- contents: any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player)",
-    "- health: damage state of things, or of every piece of a network, worst first",
-    "- connections: one pipe, cable, chute or device: its ends and what each joins",
-    "- atmosphere: the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks",
-    "- reagents: the reagents a furnace, centrifuge, mixer or microwave holds",
-    "- genes: the genes of plants, seeds and produce",
-    "- chip: a circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory",
-    "- screen: what a ScriptedScreens screen shows: surfaces and one surface's elements",
-    "- rocket: every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight.",
-    "- vault: what each Ingot Vault stores, and every Remote Vault's link",
-    "- looking_at: what the player's crosshair is on, and where a longer look ray lands",
-    "- player: the player's hunger and thirst: nutrition, hydration, drain, time left",
-    "- planet: the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps",
-    "- weather: the storm schedule, weather events and season",
-    "- controllers: what can write or override a device: chips, logic writers, screen scripts, other runs",
-    "- job: one build, removal, change or gas move by its id (place-41): running, queued or finished",
-    "",
-    "Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: \"shaping\"}).",
-    "help {verb: \"inspect\", what} gives a what's options, reply keys and an example."
-  ],
   "read_only": true,
   "tool": {
-    "what": "device: a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details; prefab: a buildable prefab before it stands anywhere: placement kind, turns, cells, ports; slots: a device's slots: occupants, what each takes, slot logic values; contents: any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player); health: damage state of things, or of every piece of a network, worst first; connections: one pipe, cable, chute or device: its ends and what each joins; atmosphere: the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks; reagents: the reagents a furnace, centrifuge, mixer or microwave holds; genes: the genes of plants, seeds and produce; chip: a circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors; screen: what a ScriptedScreens screen shows: surfaces and one surface's elements; rocket: every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power; vault: what each Ingot Vault stores, and every Remote Vault's link; looking_at: what the player's crosshair is on, and where a longer look ray lands; player: the player's hunger and thirst: nutrition, hydration, drain, time left; planet: the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps; weather: the storm schedule, weather events and season; job: one build, removal, change or gas move by its id (place-41): running, queued or finished; controllers: what can write or override a device: chips, logic writers, screen scripts, other runs (driven_by on writes names them)",
     "options": {
       "id": "device, slots, connections, reagents: An id, a list, a ref ('r3'), or \"looking_at\". contents: A holder's id or \"player\". health: Up to 256 things. atmosphere: A thing, a pipe or landing pad network, or an atmosphere id. genes: Up to 256 plants, seeds or produce. chip: The circuit holder, worn holder, Lua board or the chip. screen: One id, or \"looking_at\" (the thing the crosshair is on). rocket: A rocket's id, name, network or any part; left out, every rocket. vault: One Ingot or Remote Vault; default every vault. controllers: The device(s). job: A job id (place-12, run-4, remove-3...), a script run (script-14), a gas transfer id, or \"paste\"; left out, runs with notices pending. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
       "prefab": "prefab: Whole prefab name or hash. contents: Only slots holding this prefab (part with *) at any depth.",
@@ -41,12 +13,11 @@
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out.",
       "max_wait": "How long this reply waits (default 30), at most your client's timeout; the job or run goes on."
-    },
-    "required": null
+    }
   },
   "whats": {
     "device": {
-      "summary": "A device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details",
+      "summary": "a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details",
       "options": {
         "id": {
           "use": "id",
@@ -108,7 +79,7 @@
       "x-list": "split"
     },
     "prefab": {
-      "summary": "A buildable prefab before it stands anywhere: placement kind, turns, cells, ports",
+      "summary": "a buildable prefab before it stands anywhere: placement kind, turns, cells, ports",
       "options": {
         "prefab": {
           "use": "prefab",
@@ -173,7 +144,7 @@
       }
     },
     "slots": {
-      "summary": "A device's slots: occupants, what each takes, slot logic values",
+      "summary": "a device's slots: occupants, what each takes, slot logic values",
       "options": {
         "id": {
           "use": "id",
@@ -716,7 +687,7 @@
       "x-list": "native"
     },
     "chip": {
-      "summary": "A circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory",
+      "summary": "a circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory",
       "options": {
         "id": {"use": "id", "description": "The circuit holder, worn holder, Lua board or the chip.", "required": true},
         "gateway": {"use": "gateway"},
@@ -1206,11 +1177,6 @@
         "status: queued or waiting (not started yet), then applied, applied_with_differences, applied_unchecked, stopped or refused (jobs); queued, then applied or failed (gas moves). Only queued and waiting are not final.",
         "A script run answers run_script's text block: script-N and its state (done, REPORT, stopped, killed, or running with the line and what it waits on), the returned value, and the footer so far, with its cost line."
       ],
-      "x-script-text": [
-        "status: queued or waiting (not started yet), then applied, applied_with_differences, applied_unchecked, stopped or refused (jobs); queued, then applied or failed (gas moves). Only queued and waiting are not final.",
-        "A script run answers run_script's text block: script-N and its state (done, REPORT, stopped, killed, or running with the line and what it waits on), the returned value, and the footer so far, with its cost line.",
-        "Reply keys: a job answers its own job view (BuildJob, RunJob, SwapJob, UpgradeJob, UndoJob, JobQueued; one per help call: help {topic: \"types\", subtopic: \"BuildJob\"}); a script run answers run_script's text block."
-      ],
       "example": {"id": "place-41"},
       "handlers": [
         {"name": "hub:job_poll", "when": "a job id (place-12, remove-3, run-4, write-N, script-N)", "args": []},
@@ -1232,7 +1198,17 @@
           "args": [{"arg": "status", "option": "id", "change": "moved", "note": "inspect {what: job, id: \"paste\"}"}]
         }
       ],
-      "reply": {"variants": []},
+      "reply": {
+        "variants": [
+          {"label": "a build or removal job", "job_view": "BuildJob"},
+          {"label": "a piece run", "job_view": "RunJob"},
+          {"label": "a swap job", "job_view": "SwapJob"},
+          {"label": "an upgrade job", "job_view": "UpgradeJob"},
+          {"label": "an undo job", "job_view": "UndoJob"},
+          {"label": "queued", "job_view": "JobQueued"},
+          {"label": "a script run", "keys": {"text": "str"}}
+        ]
+      },
       "x-list": "split"
     },
     "controllers": {
