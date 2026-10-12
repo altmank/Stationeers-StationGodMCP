@@ -97,7 +97,8 @@ methods with no `x-effects` (plus `subscribe`, `unsubscribe`, `cursor_close`, `r
 
 A run is one `run_script` call. Its worker is a pre-started Python process from the pool (`PYTHONHASHSEED=0`, in a
 Windows Job Object with kill-on-close so workers die with the hub), started as
-`python -I -c "<sg.worker.BOOT>" <dir holding sg>`. A worker serves one run and exits; the pool starts the next while
+`python -s -P -c "<sg.worker.BOOT>" <dir holding sg>` with every `PYTHON*` variable removed from its
+environment and `PYTHONHASHSEED=0` set (`-I` would ignore the seed); the worker refuses to run with hash randomisation on. A worker serves one run and exits; the pool starts the next while
 a run runs, so no state of one run reaches another. The hub refuses every call of a session after its `run_end`, and
 takes a run's end state from its own record (a stop it delivered is `stopped`, whatever the worker says).
 The worker sends `hello` and gets its run in the `welcome` of a hub-protocol session, with one extra key:
