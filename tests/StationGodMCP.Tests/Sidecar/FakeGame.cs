@@ -53,7 +53,10 @@ internal sealed class FakeGame : IAsyncDisposable
         Target = pipeName != null
             ? new GameTarget.Pipe(pipeName)
             : new GameTarget.Tcp("127.0.0.1", ((IPEndPoint)listener!.LocalEndpoint).Port);
-        _ = Task.Run(AcceptAsync);
+        // The first pipe instance exists before the constructor returns (as the TCP listener does): a client's connect,
+        // which gives up after a second, must not wait for a busy thread pool to start the accept loop.
+        NamedPipeServerStream? first = pipeName != null ? NewPipe() : null;
+        _ = Task.Run(() => AcceptAsync(first));
     }
 
     public GameTarget Target { get; }
@@ -117,7 +120,10 @@ internal sealed class FakeGame : IAsyncDisposable
         await Task.Yield();
     }
 
-    private async Task AcceptAsync()
+    private NamedPipeServerStream NewPipe() => new(_pipeName!, PipeDirection.InOut,
+        NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+
+    private async Task AcceptAsync(NamedPipeServerStream? listening)
     {
         while (!_stopping.IsCancellationRequested)
         {
@@ -132,8 +138,7 @@ internal sealed class FakeGame : IAsyncDisposable
                 }
                 else
                 {
-                    NamedPipeServerStream pipe = new(_pipeName!, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-                        PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                    NamedPipeServerStream pipe = listening!;
                     try
                     {
                         await pipe.WaitForConnectionAsync(_stopping.Token);
@@ -144,6 +149,9 @@ internal sealed class FakeGame : IAsyncDisposable
                         throw;
                     }
 
+                    // The next instance listens before this connection is served, so a client that has heard from
+                    // this one finds an instance when it connects again.
+                    listening = NewPipe();
                     stream = pipe;
                 }
             }
