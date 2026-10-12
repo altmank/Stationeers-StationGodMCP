@@ -15,21 +15,31 @@ internal static class HubLines
     internal const string Supported = "{\"supported\":[2]}";
 
     private static readonly JsonWriterOptions Compact = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-    /// <summary>A game reply passed back under the caller's id: the result with its frame, or the mod's error.</summary>
+    /// <summary>
+    /// A game reply passed back under the caller's id: the result with its frame, or the mod's error; their texts
+    /// (messages, warnings, notes) in verb names, which the mod's rename map does not give protocol methods.
+    /// </summary>
     internal static string Reply(string id, GameReply reply)
     {
         switch (reply)
         {
             case GameReply.Ok ok:
-                return Ok(id, ok.Result, ok);
+                return Ok(id, Said(ok.Result), ok);
             case GameReply.Refused refused:
-                return Error(id, refused.Code, refused.Message, refused.Data, refused.MaybeRan);
+                return Error(id, refused.Code, VerbNames.Default.Say(refused.Message),
+                    refused.Data is { } data ? Said(data) : null, refused.MaybeRan);
             case GameReply.Unreachable unreachable:
-                return Error(id, HubSession.GameUnreachable, unreachable.Message, null, unreachable.MaybeRan);
+                return Error(id, HubSession.GameUnreachable, VerbNames.Default.Say(unreachable.Message), null,
+                    unreachable.MaybeRan);
             default:
                 throw new InvalidOperationException("A game reply is ok, refused or unreachable.");
         }
     }
+
+    private static JsonElement Said(JsonElement value) =>
+        value.ValueKind is JsonValueKind.Object or JsonValueKind.Array
+            ? JsonNodes.ToElement(VerbNames.Default.SayAll(JsonNodes.FromElement(value)))
+            : value;
 
     /// <summary>A verb's (or a pipeline method's) reply: the result, or the hub error object.</summary>
     internal static string Reply(string id, VerbReply reply)
