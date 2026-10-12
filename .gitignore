@@ -9,3 +9,4 @@ Sidecar/*.zip
 .vs/
 .idea/
 release/
+__pycache__/
