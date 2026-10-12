@@ -193,7 +193,10 @@ internal static class JobBrief
         verbose ? started : JobStartReplies.Brief(started, summary);
 }
 
-/// <summary>A queued run that never started (the world stopped first): status refused, nothing changed.</summary>
+/// <summary>
+/// A queued run that never started (the world stopped first, or drop_job took it out of the queue): status refused,
+/// nothing changed.
+/// </summary>
 internal sealed class JobDroppedView
 {
     internal JobDroppedView(string jobId, string tool, ErrorView error)
@@ -210,4 +213,17 @@ internal sealed class JobDroppedView
     public string Status => "refused";
 
     public ErrorView Error { get; }
+}
+
+/// <summary>drop_job's reply: {job_id, dropped: true}.</summary>
+internal sealed class JobDropReplyView
+{
+    internal JobDropReplyView(string jobId)
+    {
+        JobId = jobId;
+    }
+
+    public string JobId { get; }
+
+    public bool Dropped => true;
 }

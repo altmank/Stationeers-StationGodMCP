@@ -19,7 +19,8 @@ namespace StationGodMCP.Api.Shared.Game;
 /// and goes on without it (a check that needs the game to run), and may hold it again later. A save that starts
 /// meanwhile owns the tick: the runner never lets the tick go while a save is running. A run that finds the slot
 /// taken answers busy with the running job's id; with wait it is queued (up to MaximumWaiting) and started, in
-/// order, once the slot is free and nothing else holds the tick. A queued job's own first step runs its whole
+/// order, once the slot is free and nothing else holds the tick; until it starts, drop_job can take it out of the
+/// queue (DropWaiting), and a poll of its id answers the drop. A queued job's own first step runs its whole
 /// preflight again, so the world the earlier jobs left is what it is checked against. While a job's atmosphere work
 /// that overran its limit is still running (AtmosphericsThread.Busy) no step runs, no queued job starts and the tick is
 /// not let go: a release asked for meanwhile is owed and made once that work has ended. With clients connected, no
@@ -164,6 +165,24 @@ internal static class HeldTickJobs
         return Finished.TryGetValue(id, out object view)
             ? view
             : throw ApiErrors.Refused("job_not_found", $"No job {id} is running, queued or among the last {KeptJobs}.");
+    }
+
+    /// <summary>
+    /// drop_job, on the main thread: takes a waiting job out of the queue (the jobs behind it move up) and keeps it as
+    /// finished with a JobDroppedView, so a poll by its id answers dropped. A queued job never lifted the gas hold, so
+    /// nothing is lifted; a gas_hold kept for it is reported as not started from then on. The running job, an ended
+    /// one and an unknown id are refused (JobDrops.Take).
+    /// </summary>
+    internal static object DropWaiting(string id)
+    {
+        QueuedJob queued = JobDrops.Take(Waiting, id, _active?.Id, Finished.ContainsKey(id), KeptJobs);
+        if (Holds.TryGetValue(id, out JobHold kept))
+        {
+            Holds[id] = new JobHold(kept.Verdict, GasHoldStage.NotStarted);
+        }
+
+        Remember(id, new JobDroppedView(id, queued.Tool, JobDrops.Dropped()));
+        return new JobDropReplyView(id);
     }
 
     private static string ToolOf(string id)

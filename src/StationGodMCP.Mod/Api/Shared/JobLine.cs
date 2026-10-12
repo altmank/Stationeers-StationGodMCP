@@ -65,6 +65,26 @@ internal sealed class JobLine<T>
         return true;
     }
 
+    /// <summary>
+    /// Takes the job with this id out of the line, wherever it waits; the jobs behind it move up by one. False when
+    /// the id is not waiting.
+    /// </summary>
+    internal bool Remove(string id, out T start)
+    {
+        for (int index = 0; index < _waiting.Count; index++)
+        {
+            if (_waiting[index].Key == id)
+            {
+                start = _waiting[index].Value;
+                _waiting.RemoveAt(index);
+                return true;
+            }
+        }
+
+        start = default!;
+        return false;
+    }
+
     /// <summary>The waiting jobs, front first.</summary>
     internal IReadOnlyList<KeyValuePair<string, T>> Entries() => _waiting;
 

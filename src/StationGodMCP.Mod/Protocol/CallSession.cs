@@ -343,9 +343,22 @@ internal sealed class CatalogueReplyView
     public JRaw Result { get; }
 }
 
-/// <summary>The methods the protocol layer answers itself, not the main thread; the catalogue lists them in protocol_methods.</summary>
+/// <summary>
+/// The methods of the protocol itself rather than of a tool; the catalogue lists them in protocol_methods. catalogue
+/// is answered on the connection's reader thread, the others on the main thread outside ApiHost.
+/// </summary>
 internal static class ProtocolMethods
 {
     internal static readonly string[] Names =
-        { CallSession.CatalogueMethod, SubscriptionHub.SubscribeMethod, SubscriptionHub.UnsubscribeMethod };
+    {
+        CallSession.CatalogueMethod, SubscriptionHub.SubscribeMethod, SubscriptionHub.UnsubscribeMethod,
+        JobDropCalls.DropJobMethod
+    };
+
+    /// <summary>
+    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, sample_logic and drop_job.
+    /// </summary>
+    internal static bool RunsOnMainThread(string? method) =>
+        method != null && (SubscriptionHub.Handles(method) || method == SubscriptionHub.SampleLogicMethod ||
+                           JobDropCalls.Handles(method));
 }
