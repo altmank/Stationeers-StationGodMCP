@@ -60,6 +60,7 @@ internal static class WorldStores
         scope.Register("prefab_index", ThingIndex.Reset);
         scope.Register("chip_programs", Pure.Lint.LintChipPrograms.Clear);
         scope.Register("stream_stores", Protocol.StreamStores.Main.WorldChanged);
+        scope.Register("resume_holds", static () => StationGodMod.Holds?.WorldChanged());
         return scope;
     }
 

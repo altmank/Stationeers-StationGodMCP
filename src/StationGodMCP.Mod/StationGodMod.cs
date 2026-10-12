@@ -65,6 +65,12 @@ public sealed class StationGodMod : ModBehaviour
     /// <summary>The subscription hub once the mod has loaded (mod_info's per-connection counts).</summary>
     internal static SubscriptionHub? Hub { get; private set; }
 
+    /// <summary>
+    /// The resume tokens ([Server] ResumeWindowSeconds) once the mod has loaded, shared by the pipe's and TCP's hosts;
+    /// WorldStores ends every held token's state on a world change.
+    /// </summary>
+    internal static ResumeHolds? Holds { get; private set; }
+
     /// <summary>Every open connection on the pipe and over TCP.</summary>
     internal static System.Collections.Generic.IEnumerable<StationGodMCP.Protocol.Connection> AllConnections()
     {
@@ -112,6 +118,7 @@ public sealed class StationGodMod : ModBehaviour
                 Subscriptions.ReadLogicManyReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
             _dispatcher.Subscriptions = _subscriptions;
             Hub = _subscriptions;
+            Holds = new ResumeHolds(_server.ResumeWindowSeconds * 1000, _dispatcher);
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
@@ -163,6 +170,8 @@ public sealed class StationGodMod : ModBehaviour
                 WorldStores.Tick();
             }
 
+            // Before the hub's frame begins, so a passed window's end reaches it and the stores this frame.
+            Holds?.Tick();
             using (Prof.Scope(ProfId.SubscriptionsBeginFrame))
             {
                 _subscriptions?.BeginFrame(new SamplingTick(Time.frameCount, Time.time),
@@ -279,7 +288,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxPipeConnections, strictArguments: _server.StrictArguments), _dispatcher,
-                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions);
+                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions, holds: Holds);
             PipeListener listener = new PipeListener(Pipe.Value, host);
             listener.Start();
             _pipeListener = listener;
@@ -346,7 +355,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxTcpConnections, strictArguments: _server.StrictArguments),
-                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions);
+                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions, Holds);
             server = new TcpAcceptor(remote.BindAddress, remote.Port, _server.MaxTcpConnections, host);
             server.Start();
             _tcpListener = server;
@@ -493,8 +502,10 @@ internal sealed class ServerSettings
 
     internal const int DefaultMaxTcpConnections = 8;
 
-    private ServerSettings(int maxPipeConnections, bool strictArguments, int maxTcpConnections = DefaultMaxTcpConnections)
+    private ServerSettings(int maxPipeConnections, bool strictArguments, int maxTcpConnections = DefaultMaxTcpConnections,
+        int resumeWindowSeconds = ResumeHolds.DefaultWindowSeconds)
     {
+        ResumeWindowSeconds = resumeWindowSeconds;
         MaxTcpConnections = maxTcpConnections;
         MaxPipeConnections = maxPipeConnections;
         StrictArguments = strictArguments;
@@ -509,6 +520,9 @@ internal sealed class ServerSettings
 
     /// <summary>The most TCP connections at once, counted apart from the pipe's.</summary>
     internal int MaxTcpConnections { get; }
+
+    /// <summary>How long a resume token's state is held after its connection closes; 0 turns resuming off.</summary>
+    internal int ResumeWindowSeconds { get; }
 
     internal static ServerSettings Load(ConfigFile configuration)
     {
@@ -527,6 +541,12 @@ internal sealed class ServerSettings
                 "The most TCP connections at once, counted apart from the pipe's, so remote clients and unfinished " +
                 "sign-ins never take a local client's place. Restart the game to apply.",
                 new AcceptableValueRange<int>(1, 64)));
+        ConfigEntry<int> resume = configuration.Bind(Section, "ResumeWindowSeconds", ResumeHolds.DefaultWindowSeconds,
+            new ConfigDescription(
+                "Seconds a client's walk cursors, subscriptions and ended streams are kept after its connection " +
+                "breaks, when its hello carried a resume token, so a client that reconnects within them goes on " +
+                "where it was. Calls in flight are not kept. 0 turns resuming off. Restart the game to apply.",
+                new AcceptableValueRange<int>(0, ResumeHolds.MaximumWindowSeconds)));
         int maximum = connections.Value;
         if (maximum < ProtocolSettings.MinimumPipeConnections || maximum > ProtocolSettings.MaximumPipeConnections)
         {
@@ -535,8 +555,16 @@ internal sealed class ServerSettings
             maximum = ProtocolSettings.DefaultMaxPipeConnections;
         }
 
+        int window = resume.Value;
+        if (window < 0 || window > ResumeHolds.MaximumWindowSeconds)
+        {
+            StationGodMod.LogWarning($"Ignoring invalid [Server] ResumeWindowSeconds {window}; using " +
+                                     $"{ResumeHolds.DefaultWindowSeconds}.");
+            window = ResumeHolds.DefaultWindowSeconds;
+        }
+
         return new ServerSettings(maximum, strict.Value,
-            tcp.Value >= 1 && tcp.Value <= 64 ? tcp.Value : DefaultMaxTcpConnections);
+            tcp.Value >= 1 && tcp.Value <= 64 ? tcp.Value : DefaultMaxTcpConnections, window);
     }
 }
 

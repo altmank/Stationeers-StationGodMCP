@@ -8,9 +8,9 @@ using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// The one place a per-stream store hears that streams ended (protocol.md, Streams): a stream_end, a connection that
-/// closed or was too slow (every stream of it), and a world change (every stream of every connection: the stores clear
-/// entirely). The lane scheduler tells it at the start of the frame after the end, WorldStores on the frame after a
+/// The one place a per-stream store hears that streams ended (protocol.md, Streams): a stream_end, an owner whose state
+/// ended (every stream of it: a connection without a resume token that closed or was too slow, a resume token's window
+/// that passed, a bye), and a world change (every stream of every owner: the stores clear entirely). The lane scheduler tells it at the start of the frame after the end, WorldStores on the frame after a
 /// world was left; cursor_close reaches the cursor stores the same way. Main thread only. A store that throws is logged
 /// and the others still hear.
 /// </summary>
@@ -39,8 +39,8 @@ internal sealed class StreamStores
         }
     }
 
-    /// <summary>cursor_close from the connection of that client_id: every cursor store frees the cursor if it owns it.</summary>
-    internal void CloseCursor(string connectionId, string cursorId)
+    /// <summary>cursor_close from a connection of that owner: every cursor store frees the cursor if the owner holds it.</summary>
+    internal void CloseCursor(string owner, string cursorId)
     {
         foreach (IStreamStore store in _stores)
         {
@@ -51,7 +51,7 @@ internal sealed class StreamStores
 
             try
             {
-                cursors.Close(connectionId, cursorId);
+                cursors.Close(owner, cursorId);
             }
             catch (Exception exception)
             {

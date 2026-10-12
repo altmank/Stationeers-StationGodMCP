@@ -44,6 +44,12 @@ deciding what is a read:
 The libraries never resend a call because of an error reply, whatever the code; the error goes to the caller, whom the
 catalogue's `caller_may_resend` advises.
 
+**Resuming.** The libraries send no `resume` token today, so a reconnect starts them empty, as above. A client that
+keeps runs across a break (a hub) sends the same token in every `hello` of its session and gets its walk cursors,
+subscriptions and ended streams back within the mod's window ([protocol.md](protocol.md), *Resuming*); the rules
+above for calls in flight stay as they are, since calls are never resumed. It does not subscribe again when
+`welcome.resume.resumed` is true, and takes each subscription's next update as its current state.
+
 **World changes.** Every library subscribes to the `world` topic. When `world.id` changes, or differs after a
 reconnect, it tells the caller, because reference ids may now mean other things; the dashboard already rebinds every
 card on reconnect for this reason (`stationscript/runner.py:350-360`).

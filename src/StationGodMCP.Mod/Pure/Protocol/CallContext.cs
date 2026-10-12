@@ -5,9 +5,11 @@ using System;
 namespace StationGodMCP.Pure.Protocol;
 
 /// <summary>
-/// Who the main thread is working for: the connection (welcome.client_id, unique while the mod runs) and the stream on
-/// it (protocol.md, Streams; 0 for direct calls). Stores that hold something per stream key by it, and StreamEnd says
-/// which keys a stream_end, a closed connection or a world change ends. Handlers do not take it as an argument: the
+/// Who the main thread is working for: the owner of the call's per-stream state and the stream (protocol.md, Streams;
+/// 0 for direct calls). The owner is the connection's client_id (welcome.client_id, unique while the mod runs), or, for
+/// a connection whose hello carried a resume token, the token's owner key, which outlives the connection for the
+/// resume window (protocol.md, Resuming). Stores that hold something per stream key by it, and StreamEnd says which
+/// keys a stream_end, a closed connection, an expired resume window or a world change ends. Handlers do not take it as an argument: the
 /// lane scheduler enters a call's context around the call's run, and whatever a call starts that goes on over later
 /// frames (a building job, a sample_logic run) keeps the context it was started in and enters it around each later
 /// step. Outside those it is None.
@@ -23,11 +25,11 @@ internal readonly struct CallContext : IEquatable<CallContext>
     [ThreadStatic]
     private static CallContext _current;
 
-    internal CallContext(string connectionId, long stream)
+    internal CallContext(string owner, long stream)
     {
-        ConnectionId = string.IsNullOrEmpty(connectionId)
-            ? throw new ArgumentException("A call context names its connection.", nameof(connectionId))
-            : connectionId;
+        Owner = string.IsNullOrEmpty(owner)
+            ? throw new ArgumentException("A call context names its owner.", nameof(owner))
+            : owner;
         Stream = stream >= 0
             ? stream
             : throw new ArgumentOutOfRangeException(nameof(stream), stream, "Streams are numbered from 0.");
@@ -39,12 +41,12 @@ internal readonly struct CallContext : IEquatable<CallContext>
     /// <summary>The context of the call or step running on this thread; None outside one.</summary>
     internal static CallContext Current => _current;
 
-    /// <summary>The connection's client_id; null for None.</summary>
-    internal string? ConnectionId { get; }
+    /// <summary>The connection's client_id, or its resume token's owner key; null for None.</summary>
+    internal string? Owner { get; }
 
     internal long Stream { get; }
 
-    internal bool IsNone => ConnectionId == null;
+    internal bool IsNone => Owner == null;
 
     /// <summary>Makes context current until the returned scope is disposed, which restores the one before.</summary>
     internal static Scope Enter(CallContext context)
@@ -55,14 +57,14 @@ internal readonly struct CallContext : IEquatable<CallContext>
     }
 
     public bool Equals(CallContext other) =>
-        Stream == other.Stream && string.Equals(ConnectionId, other.ConnectionId, StringComparison.Ordinal);
+        Stream == other.Stream && string.Equals(Owner, other.Owner, StringComparison.Ordinal);
 
     public override bool Equals(object? obj) => obj is CallContext other && Equals(other);
 
     public override int GetHashCode() =>
-        unchecked(((ConnectionId == null ? 0 : StringComparer.Ordinal.GetHashCode(ConnectionId)) * 397) ^ Stream.GetHashCode());
+        unchecked(((Owner == null ? 0 : StringComparer.Ordinal.GetHashCode(Owner)) * 397) ^ Stream.GetHashCode());
 
-    public override string ToString() => IsNone ? "none" : ConnectionId + "/" + Stream;
+    public override string ToString() => IsNone ? "none" : Owner + "/" + Stream;
 
     /// <summary>Restores the context that was current before Enter; a struct, so a using block allocates nothing.</summary>
     internal readonly struct Scope : IDisposable

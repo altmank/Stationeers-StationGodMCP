@@ -90,8 +90,9 @@ internal sealed class WorldFacts
 internal sealed class WelcomeView
 {
     internal WelcomeView(string clientId, string client, WelcomeServerView server, WelcomeCatalogueView catalogue,
-        WelcomeLimitsView limits, IReadOnlyList<string> features)
+        WelcomeLimitsView limits, IReadOnlyList<string> features, WelcomeResumeView? resume = null)
     {
+        Resume = resume;
         ClientId = clientId;
         Client = client;
         Server = server;
@@ -115,6 +116,30 @@ internal sealed class WelcomeView
     public WelcomeLimitsView Limits { get; }
 
     public IReadOnlyList<string> Features { get; }
+
+    /// <summary>The answer to hello.resume; absent when hello had none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public WelcomeResumeView? Resume { get; }
+}
+
+/// <summary>
+/// welcome.resume (protocol.md, Resuming): the token hello gave, whether held state was picked up for it, and the
+/// window the state is held for after a close (0 when resuming is off).
+/// </summary>
+internal sealed class WelcomeResumeView
+{
+    internal WelcomeResumeView(string token, bool resumed, double windowS)
+    {
+        Token = token;
+        Resumed = resumed;
+        WindowS = windowS;
+    }
+
+    public string Token { get; }
+
+    public bool Resumed { get; }
+
+    public double WindowS { get; }
 }
 
 internal sealed class WelcomeServerView

@@ -52,7 +52,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 
 | `type` | When | Keys |
 | --- | --- | --- |
-| `hello` | First message, once. | `protocol` (array of integers, the major versions the client speaks, required), `client` (object: `name` string 1-64 characters of letters, digits, `-`, `_`, `.`; `version` string; `library` string, optional), `features` (array of strings the client understands, optional). |
+| `hello` | First message, once. | `protocol` (array of integers, the major versions the client speaks, required), `client` (object: `name` string 1-64 characters of letters, digits, `-`, `_`, `.`; `version` string; `library` string, optional), `features` (array of strings the client understands, optional), `resume` (string 16-128 characters of letters, digits, `-`, `_`, a token the client chose, optional; see *Resuming*). |
 | `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000), `stream` (integer 0 to 2^53, optional, default 0; see *Streams*). |
 | `cancel` | Any time after `welcome`. | `id` of a call in flight. |
 | `stream_end` | Any time after `welcome`. | `stream` (integer 1 to 2^53, required). No reply; see *Streams*. |
@@ -66,7 +66,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `welcome` | After `hello`. | See below. |
 | `reply` | Once per `call`. | `id`, `ok`, then `result` (when `ok`) or `error` (when not), `shaped` (true when the mod applied `shape`), `elapsed_ms` (main-thread time of the handler, as today, `src/StationGodMCP.Mod/Api/Views/HostViews.cs:10-50`), `queue_ms` (time from receipt to start), `frame` (the mod's frame counter when the handler ran), `budget_hit` (only when true: the frame's request budget was reached as the handler finished; see *Replies*). |
 | `event` | Any time after `welcome`. | `event` (name), then the event's keys; see *Subscriptions* and *Connection events*. |
-| `goodbye` | Before the server closes the connection on purpose. | `reason`: `shutting_down`, `world_unloaded`, `idle`, `slow_client`, `protocol_error`. |
+| `goodbye` | Before the server closes the connection on purpose. | `reason`: `shutting_down`, `world_unloaded`, `idle`, `slow_client`, `protocol_error`, `resumed_elsewhere` (another connection presented this connection's resume token; *Resuming*). |
 
 The `welcome` message:
 
@@ -98,7 +98,8 @@ The `welcome` message:
     "max_values_per_subscription": 1024,
     "min_subscription_interval_s": 0.5
   },
-  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors"]
+  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "resume"],
+  "resume": {"token": "hub-7f3a9c2e41d84b6a", "resumed": false, "window_s": 60}
 }
 ```
 
@@ -108,6 +109,9 @@ The `welcome` message:
   name share one turn in the scheduler's rounds ([scheduling.md](scheduling.md), *One frame, step by step*).
 - `limits.max_in_flight` and `max_in_flight_per_stream`: calls in flight on one stream; a client that sends no
   `stream` uses stream 0 only, so this is its whole limit. `max_in_flight_per_connection`: all streams together.
+- `resume`: only when `hello` carried `resume`: the token, whether state held for it was picked up (`resumed`), and
+  how many seconds the state is held after a close (`window_s`, 0 when resuming is off, when `resumed` is always
+  false). `features` lists `resume` when the window is above 0 (*Resuming*).
 - `server.instance_id`: random, new each time the mod loads.
 - `server.world.id`: random, new each time a world finishes loading. It is the world's identity for clients: two
   welcomes with the same `world.id` reached the same loaded world, across reconnects. A game restart or a save load
@@ -161,8 +165,9 @@ difference. A `stream` that is not an integer from 0 to 2^53 (a number without a
 - the stream's subscriptions end without an event, and its unfinished `sample_logic` calls are answered `cancelled`
   (the samples taken so far are dropped; the method only reads);
 - whatever the mod keeps per stream (walk cursors and the like) is dropped;
-- the stream is never used again on this connection: a later call on it is refused `stream_ended` (`data: {stream}`),
-  and a later `stream_end` of it does nothing. A stream may be ended before any call used it.
+- the stream is never used again on this connection, nor on a connection that resumes its token (*Resuming*): a later
+  call on it is refused `stream_ended` (`data: {stream}`), and a later `stream_end` of it does nothing. A stream may
+  be ended before any call used it.
 
 The calls are answered at once, on the connection's own thread; the rest happens at the start of the next frame. A
 `stream_end` does not touch building jobs, queued or running, nor job snapshots or undo data: a run's job outlives its
@@ -172,8 +177,9 @@ with a null id (the message has none), and the connection stays open; an unknown
 A connection remembers the streams it ended as ranges of numbers, so a hub that numbers its runs upward costs a
 few ranges, one more for each stream still open below the highest ended one. At most 1,024 ranges are kept; past
 that the two lowest merge, and the streams in the gap between them count as ended too. Closing the connection, or a
-slow client (*Outbound queue and slow clients*), ends every stream of it; a world change clears what the mod keeps
-per stream on every connection.
+slow client (*Outbound queue and slow clients*), ends every stream of it, unless its `hello` carried a resume token:
+then its streams are the token's, held for the resume window and ended when it passes (*Resuming*). A world change
+clears what the mod keeps per stream on every connection.
 
 ### Walks
 
@@ -198,7 +204,8 @@ order, so other arguments are refused `invalid_argument` rather than ignored. A 
 
 A cursor is freed when the page that takes its last ids is answered; by `{"type":"cursor_close","cursor_id":"k12"}`
 from the connection that owns it (no reply, like `cancel`; an unknown id or another connection's cursor does
-nothing); when its stream ends or its connection closes; on a world change; and by the bound on all cursors together:
+nothing); when its stream ends or its connection closes (with a resume token: when the token's window passes without
+a resume, *Resuming*); on a world change; and by the bound on all cursors together:
 1,000,000 ids (8 bytes each, 8 MB) and 1,024 cursors, the least recently used freed first, so a walk still being paged
 outlives the short walks a loop opens and drops. `cursor_close` reaches the main thread through the same inbox as
 calls and `stream_end`, at the start of the next frame and before that frame's calls, so a page still in flight when
@@ -528,7 +535,8 @@ subscriptions end.
 The connection has one socket and one writer for all its streams, so a write that timed out cannot be pinned on one
 stream. A slow client ends every stream of the connection the way `stream_end` ends one (unstarted calls dropped,
 here unanswered since the client takes nothing; subscriptions and `sample_logic` runs ended; per-stream stores
-cleared), then is closed.
+cleared), then is closed. A slow client whose `hello` carried a resume token only has its unstarted calls dropped and
+its `sample_logic` runs ended: the rest is the token's, held as after any other close (*Resuming*).
 
 ## Subscriptions
 
@@ -599,7 +607,7 @@ event), or when the mod ends it with an event:
 ```
 
 Reasons: `world_changed` (reference ids may mean other things in another world), `limit` (the owner lowered a
-limit). Subscriptions do not survive a reconnect. The libraries keep each
+limit). Subscriptions survive a reconnect only through a resume token (*Resuming*). The libraries keep each
 subscription's request and subscribe again after reconnecting only when `welcome.server.world.id` is the one they last
 saw; otherwise they close it and tell the caller ([clients.md](clients.md), *Subscriptions*).
 
@@ -611,7 +619,8 @@ is paused, and reporting the changes with elapsed real seconds (`src/StationGodM
 `:359-376`, `:448`). It is not a subscription: it has its own sampler in the mod, which takes each sample in the first
 frame at or after it is due and counts in the subscription lane's time ([scheduling.md](scheduling.md)). Its catalogue
 entry declares `x-duration` from `duration_seconds`, so the call's deadline and every client's wait for its reply add
-the duration. A `stream_end` of its call's stream answers an unfinished run `cancelled` (*Streams*).
+the duration. A `stream_end` of its call's stream answers an unfinished run `cancelled` (*Streams*). A run ends,
+unanswered, when its call's connection closes, resume token or not: the reply belonged to that connection (*Resuming*).
 
 ### Connection events
 
@@ -708,6 +717,20 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
 - `ClientMessage.CursorClose` parses `cursor_close`; `CallSession` posts it (`ICallQueue.CursorClosed`), and
   `LaneScheduler` hands it to `StreamStores.CloseCursor` when it takes its inbox in.
 
+### As built: resuming
+
+- `CallContext` and `StreamEnd` key by an owner rather than a connection: the connection's `client_id`, or the owner
+  key (`r1`, `r2`, ...) of the resume token it claimed (`Connection.Owner`). Every per-stream store, the subscription
+  engine and the sampler key by it, so a resumed connection reaches the held state by its owner key alone.
+- `Protocol/ResumeHolds.cs` keeps the tokens: `Claim` at `hello` (resume, or take over), `Goodbye` on `bye`, `Release`
+  when a connection ends (held, or ended after a bye), `Tick` once a frame on the main thread (one volatile read while
+  nothing is held; no allocation), `WorldChanged` through `WorldStores`. A token whose state ended gets a new owner key
+  when presented again. One instance serves the pipe's and TCP's hosts.
+- The main thread hears of holds and resumes through `ICallQueue.OwnerHeld` and `OwnerResumed`, posted under the
+  holds' lock, so they arrive in order with the ends. `SubscriptionEngine.Pause` stops a held owner's sampling;
+  `Resume` forces each devices subscription's next sample and requeues its `UpdateSlot` (a new epoch, so an entry left
+  in the old connection's queue writes nothing).
+
 ## Reconnecting
 
 A connection can break at any time: the game closed, the save reloaded, the mod restarted. The rules a client follows
@@ -720,6 +743,41 @@ A connection can break at any time: the game closed, the save reloaded, the mod 
   hand-kept list; that list already leaves out `highlight` and `show_preview`, which draw (`transport.py:23`).
 - Any automatic resend, and any resubscribe, happens only when the new `welcome.server.world.id` equals the last one
   seen. A different id means another world: every reference id the client holds may now name something else.
+
+### Resuming
+
+A client that holds runs across a break (feature `resume`; a hub) sends `resume: "<token>"` in `hello`: a string of 16
+to 128 letters, digits, `-` and `_` that it chose, the same on every connection of its session. A malformed token is
+refused like any other bad `hello` (`protocol_error`, then `goodbye` and close). The mod then keeps the connection's
+per-run state under the token rather than under the connection:
+
+- the streams it ended, so a stream id stays never-reused across the reconnect (`stream_ended`);
+- its walk cursors (*Walks*);
+- its subscriptions (*Subscriptions*).
+
+When the connection closes for any reason but `bye` (the socket dropped, `slow_client`, a protocol error, the server
+stopping), that state is held for `[Server] ResumeWindowSeconds` (default 60; `welcome.resume.window_s`). A
+connection that sends the same token within the window picks it up (`welcome.resume.resumed: true`): its next page of
+a walk follows the last, an `unsubscribe` of an old subscription works, an ended stream stays ended. While held, the
+token's subscriptions take no samples, so a client that is away costs the game nothing; after the resume, each devices
+subscription's next sample is taken at once and sent whole, changed or not, with the next `seq` (an update that was
+waiting in the old connection's queue keeps its `seq`). The client knows nothing reached it in between, so it reads
+the update as the subscription's current state.
+
+What is not resumed: calls. A closed connection's calls that had not started are dropped unanswered, and a call that
+had started is answered on the connection that sent it, which is gone; the client's resend rules above decide what
+to send again. A `sample_logic` run ends, unanswered, when its call's connection closes, since its reply cannot reach
+anyone; the client calls it again if it still wants it.
+
+The state ends, as a `stream_end` would end each of its streams, when the window passes without a resume (checked
+once per frame), at once on `bye` (a clean goodbye means the session is over, so nothing is kept for it), and at once
+on a world change, since its reference ids may name other things now; a connection that then sends the token gets
+`resumed: false` and starts empty. A token presented while another connection still holds it is taken over: the new
+connection resumes the state, and the old one is sent `goodbye {reason: "resumed_elsewhere"}` and closed. A broken
+connection over a VPN can look open until the slow-client timeout, so a refusal would lock the client out for that
+long. Without a token nothing changes: the connection's state ends with it. `[Server] ResumeWindowSeconds 0` turns
+resuming off: `welcome` does not list `resume`, a token is answered `resumed: false, window_s: 0`, and every
+connection keeps its state to itself.
 
 ## Old clients
 

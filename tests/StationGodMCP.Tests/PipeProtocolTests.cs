@@ -235,10 +235,11 @@ internal sealed class PipeRig : IDisposable
 
     internal PipeRig(int maxConnections = 32, int firstLineMs = 10000, bool mainThread = true,
         ProtocolSettings? settings = null, SubscriptionHub? subscriptions = null,
-        Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null)
+        Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null, StreamStores? stores = null,
+        int resumeWindowMs = 0, IMonotonicClock? resumeClock = null)
     {
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
-        Mod = new FakeMod(mainThread, _deadlines);
+        Mod = new FakeMod(mainThread, _deadlines, stores: stores);
         if (subscriptions != null)
         {
             Mod.Samples = subscriptions;
@@ -251,10 +252,14 @@ internal sealed class PipeRig : IDisposable
                     : null;
             Mod.ClosedHook = subscriptions.Closed;
             Mod.StreamEndedHook = subscriptions.StreamEnded;
+            Mod.HeldHook = subscriptions.Held;
+            Mod.ResumedHook = subscriptions.Resumed;
         }
 
+        Holds = new ResumeHolds(resumeWindowMs, Mod, resumeClock);
+        Mod.Holds = Holds;
         Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs), Mod, _deadlines,
-            TestCatalogue.File.Value, subscriptions: subscriptions);
+            TestCatalogue.File.Value, subscriptions: subscriptions, holds: Holds);
         _listener = new PipeListener(Name, Host);
         _listener.Connected += connection => _connected.Add(connection);
         _listener.Start();
@@ -265,6 +270,9 @@ internal sealed class PipeRig : IDisposable
     internal FakeMod Mod { get; }
 
     internal ProtocolHost Host { get; }
+
+    /// <summary>The resume tokens; off unless the rig was given a window.</summary>
+    internal ResumeHolds Holds { get; }
 
     internal async Task<NamedPipeClientStream> ConnectAsync()
     {
@@ -300,10 +308,11 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     private int _ran;
     private int _holdMs;
 
-    internal FakeMod(bool mainThread, DeadlineWatch deadlines, SchedulerSettings? settings = null)
+    internal FakeMod(bool mainThread, DeadlineWatch deadlines, SchedulerSettings? settings = null,
+        StreamStores? stores = null)
     {
         _deadlines = deadlines;
-        _calls = new LaneScheduler(settings ?? SchedulerSettings.Default);
+        _calls = new LaneScheduler(settings ?? SchedulerSettings.Default, stores);
         if (mainThread)
         {
             _thread = new Thread(() =>
@@ -331,6 +340,18 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
 
     /// <summary>Called on the main thread at the start of each frame.</summary>
     internal Action? BeforeFrame { get; set; }
+
+    /// <summary>The resume tokens whose windows each frame checks first, as StationGodMod.Update does.</summary>
+    internal ResumeHolds? Holds { get; set; }
+
+    /// <summary>Called (on the connection's thread) when a resume token's state is held.</summary>
+    internal Action<string>? HeldHook { get; set; }
+
+    /// <summary>Called (on the connection's thread) when a connection resumes a token.</summary>
+    internal Action<string, object>? ResumedHook { get; set; }
+
+    /// <summary>Owners held for a resume, in order.</summary>
+    internal ConcurrentQueue<string> HeldOwners { get; } = new ConcurrentQueue<string>();
 
     /// <summary>Called on the main thread at the end of each frame.</summary>
     internal Action? AfterFrame { get; set; }
@@ -362,14 +383,27 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         _added.Release();
     }
 
-    /// <summary>cursor_close messages, in order, with their connection's client_id.</summary>
-    internal ConcurrentQueue<(string ConnectionId, string CursorId)> CursorCloses { get; } =
-        new ConcurrentQueue<(string ConnectionId, string CursorId)>();
+    /// <summary>cursor_close messages, in order, with their connection's owner.</summary>
+    internal ConcurrentQueue<(string Owner, string CursorId)> CursorCloses { get; } =
+        new ConcurrentQueue<(string Owner, string CursorId)>();
 
-    public void CursorClosed(string connectionId, string cursorId)
+    public void CursorClosed(string owner, string cursorId)
     {
-        _calls.CloseCursor(connectionId, cursorId);
-        CursorCloses.Enqueue((connectionId, cursorId));
+        _calls.CloseCursor(owner, cursorId);
+        CursorCloses.Enqueue((owner, cursorId));
+        _added.Release();
+    }
+
+    public void OwnerHeld(string owner)
+    {
+        HeldHook?.Invoke(owner);
+        HeldOwners.Enqueue(owner);
+        _added.Release();
+    }
+
+    public void OwnerResumed(string owner, object source)
+    {
+        ResumedHook?.Invoke(owner, source);
         _added.Release();
     }
 
@@ -451,6 +485,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         lock (_frame)
         {
+            Holds?.Tick();
             BeforeFrame?.Invoke();
             FrameOutcome outcome = _calls.RunFrame(jobHoldsTick, Samples, this);
             AfterFrame?.Invoke();

@@ -23,6 +23,12 @@ namespace StationGodMCP.Protocol;
 /// subscriptions, sample_logic runs and per-stream stores at the next frame. A slow client goes the same way for every
 /// stream before it is closed.
 /// </para>
+/// <para>
+/// Resuming (protocol.md, Resuming): a hello with resume claims the token from ResumeHolds, so the connection's state,
+/// its ended streams included, is the token's (Connection.Owner) and outlives it. Such a connection's slow-client close
+/// drops its unstarted calls and leaves its streams to the token: held for the window, then ended. A bye ends the
+/// token's state when the connection closes.
+/// </para>
 /// </summary>
 internal sealed class CallSession : Session
 {
@@ -44,12 +50,16 @@ internal sealed class CallSession : Session
     internal static readonly string[] FeaturesWithSubscriptions =
         { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors" };
 
+    private static readonly string[] FeaturesWithResume = WithResume(Features);
+
+    private static readonly string[] FeaturesWithSubscriptionsAndResume = WithResume(FeaturesWithSubscriptions);
+
     private readonly Connection _connection;
     private readonly ProtocolHost _host;
     private readonly object _sync = new object();
     private readonly Dictionary<string, ProtocolCall> _inFlight = new Dictionary<string, ProtocolCall>(StringComparer.Ordinal);
     private readonly Dictionary<long, int> _inFlightByStream = new Dictionary<long, int>();
-    private readonly EndedStreams _ended = new EndedStreams();
+    private EndedStreams _ended = new EndedStreams();
     private ClientMessage.Hello? _hello;
     private bool _welcomed;
 
@@ -117,9 +127,10 @@ internal sealed class CallSession : Session
                 EndStream(ended.Stream);
                 break;
             case ClientMessage.CursorClose closed:
-                _host.CursorClosed(_connection.ClientId, closed.CursorId);
+                _host.CursorClosed(_connection.Owner, closed.CursorId);
                 break;
             case ClientMessage.Bye _:
+                _host.Holds.Goodbye(_connection);
                 _connection.EndGracefully();
                 break;
         }
@@ -150,9 +161,23 @@ internal sealed class CallSession : Session
     /// <summary>
     /// One socket and one writer serve every stream, so a write that timed out cannot be pinned on one stream: every
     /// stream of the connection ends as with stream_end (its unstarted calls dropped, unanswered since the client takes
-    /// nothing, and its subscriptions, sample_logic runs and per-stream stores ended), then the connection closes.
+    /// nothing, and its subscriptions, sample_logic runs and per-stream stores ended), then the connection closes. A
+    /// connection holding a resume token only drops its unstarted calls: its streams are the token's, held on close.
     /// </summary>
-    internal override void OnSlowClient() => EndStreams(StreamEnd.AllOf(_connection.ClientId), false);
+    internal override void OnSlowClient()
+    {
+        if (_connection.IsResumable)
+        {
+            foreach (ProtocolCall call in Waiting())
+            {
+                call.State.TryDrop();
+            }
+
+            return;
+        }
+
+        EndStreams(StreamEnd.AllOf(_connection.Owner), false);
+    }
 
     internal override void OnWorldChanged(WorldFacts world)
     {
@@ -181,6 +206,18 @@ internal sealed class CallSession : Session
             return;
         }
 
+        WelcomeResumeView? resume = null;
+        if (hello.Resume != null)
+        {
+            bool resumed = false;
+            if (_host.Holds.Enabled)
+            {
+                _ended = _host.Holds.Claim(hello.Resume, _connection, out resumed);
+            }
+
+            resume = new WelcomeResumeView(hello.Resume, resumed, _host.Holds.WindowSeconds);
+        }
+
         CatalogueFile? file = _host.Catalogue;
         WelcomeView welcome = new WelcomeView(_connection.ClientId, Client,
             new WelcomeServerView(ServerFacts.Current, _connection.Transport),
@@ -188,7 +225,7 @@ internal sealed class CallSession : Session
                 file?.Catalogue.ProtocolMethodCount ?? 0),
             new WelcomeLimitsView(MaxInFlight, MaxInFlightPerConnection, MaxRequestBytes, _host.Settings.MaxReplyBytes,
                 _host.Subscriptions?.Limits),
-            _host.Subscriptions != null ? FeaturesWithSubscriptions : Features);
+            FeaturesFor(_host.Subscriptions != null, _host.Holds.Enabled), resume);
         _connection.Send(Wire.Line(welcome));
         _welcomed = true;
     }
@@ -203,9 +240,28 @@ internal sealed class CallSession : Session
         }
     }
 
+    private static string[] FeaturesFor(bool subscriptions, bool resume) =>
+        subscriptions
+            ? resume ? FeaturesWithSubscriptionsAndResume : FeaturesWithSubscriptions
+            : resume ? FeaturesWithResume : Features;
+
+    private static string[] WithResume(string[] features)
+    {
+        string[] with = new string[features.Length + 1];
+        features.CopyTo(with, 0);
+        with[features.Length] = ResumeHolds.Feature;
+        return with;
+    }
+
     private void Accept(ClientMessage.Call call)
     {
-        if (_ended.Contains(call.Stream))
+        bool ended;
+        lock (_ended)
+        {
+            ended = _ended.Contains(call.Stream);
+        }
+
+        if (ended)
         {
             _connection.Send(Wire.Refusal(call.Id, StreamEndedCode,
                 $"Stream {call.Stream} has ended on this connection; it is never used again. Nothing ran.",
@@ -249,7 +305,7 @@ internal sealed class CallSession : Session
         // A method that runs for a while (x-duration: sample_logic) gets that long added to its deadline.
         int deadlineMs = call.DeadlineMs + (method?.DurationMs(call.Params) ?? 0);
         ProtocolCall queued = new ProtocolCall(request, profile, deadlineMs, _connection,
-            new CallContext(_connection.ClientId, call.Stream), _hello?.ClientName, Answered);
+            new CallContext(_connection.Owner, call.Stream), _hello?.ClientName, Answered);
         lock (_sync)
         {
             _inFlightByStream.TryGetValue(call.Stream, out int onStream);
@@ -357,9 +413,15 @@ internal sealed class CallSession : Session
     // running), job snapshots and undo data are not the stream's: its end leaves them as they are.
     private void EndStream(long stream)
     {
-        if (_ended.End(stream))
+        bool ending;
+        lock (_ended)
         {
-            EndStreams(StreamEnd.Of(_connection.ClientId, stream), true);
+            ending = _ended.End(stream);
+        }
+
+        if (ending)
+        {
+            EndStreams(StreamEnd.Of(_connection.Owner, stream), true);
         }
     }
 

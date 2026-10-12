@@ -56,13 +56,17 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         Subscriptions?.StreamEnded(source, end);
     }
 
-    public void CursorClosed(string connectionId, string cursorId) => _requests.CloseCursor(connectionId, cursorId);
+    public void CursorClosed(string owner, string cursorId) => _requests.CloseCursor(owner, cursorId);
 
     public void Closed(object source)
     {
         _requests.Close(source);
         Subscriptions?.Closed(source);
     }
+
+    public void OwnerHeld(string owner) => Subscriptions?.Held(owner);
+
+    public void OwnerResumed(string owner, object source) => Subscriptions?.Resumed(owner, source);
 
     /// <summary>One frame of the scheduler, on the main thread; its outcome goes to mod_info's counters.</summary>
     internal void RunFrame(bool jobHoldsTick, ISampleLane? samples)

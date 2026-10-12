@@ -188,6 +188,39 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         }
     }
 
+    /// <summary>
+    /// The connection's owner is held for a resume (protocol.md, Resuming): its devices subscriptions take no samples
+    /// until Resume, so a client that is away costs the main thread nothing.
+    /// </summary>
+    internal void Pause(ConnectionId connection)
+    {
+        if (_byConnection.TryGetValue(connection, out ConnectionSubscriptions? held))
+        {
+            held.Paused = true;
+        }
+    }
+
+    /// <summary>
+    /// A connection resumed the owner: sampling goes on, each devices subscription's next sample is taken at once and
+    /// sent whatever it holds (as Resync), and an update that waited in the old connection's queue counts as never
+    /// sent, so its seq is used again and no seq goes missing on the new connection.
+    /// </summary>
+    internal void Resume(ConnectionId connection)
+    {
+        if (!_byConnection.TryGetValue(connection, out ConnectionSubscriptions? held))
+        {
+            return;
+        }
+
+        held.Paused = false;
+        foreach (DeviceSubscription subscription in held.Devices)
+        {
+            subscription.Slot.Requeue();
+            subscription.ForceNext = true;
+            subscription.NextDueS = double.NegativeInfinity;
+        }
+    }
+
     /// <summary>The connection closed: its subscriptions end without an event.</summary>
     internal void DropConnection(ConnectionId connection)
     {
@@ -531,6 +564,9 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
         internal int Count => Devices.Count + World.Count;
 
+        /// <summary>Held for a resume: no samples are due.</summary>
+        internal bool Paused { get; set; }
+
         internal void Add(DeviceSubscription subscription)
         {
             Devices.Add(subscription);
@@ -553,6 +589,11 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         /// <summary>The due subscription with the oldest due time, at most one sample per frame each.</summary>
         internal DeviceSubscription? OldestDue(SamplingTick tick)
         {
+            if (Paused)
+            {
+                return null;
+            }
+
             DeviceSubscription? oldest = null;
             foreach (DeviceSubscription subscription in Devices)
             {

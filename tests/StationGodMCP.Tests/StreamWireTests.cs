@@ -240,7 +240,7 @@ public sealed class StreamWireTests
         Assert.Empty(rig.Host.Open);
         (object source, StreamEnd end) = Assert.Single(rig.Mod.StreamEnds);
         Assert.True(end.IsWholeConnection);
-        Assert.Equal(clientId, end.ConnectionId);
+        Assert.Equal(clientId, end.Owner);
         Assert.Same(source, Assert.Single(rig.Mod.ClosedSources));
     }
 
@@ -320,7 +320,7 @@ public sealed class StreamWireTests
 
         StreamEnd end = Assert.Single(store.Ends);
         Assert.True(end.IsWholeConnection);
-        Assert.Equal("c7", end.ConnectionId);
+        Assert.Equal("c7", end.Owner);
     }
 
     [Fact]
