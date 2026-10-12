@@ -87,6 +87,9 @@ internal sealed class FakeGame : IAsyncDisposable
     /// <summary>limits.max_in_flight_per_connection in the welcome; left out when null.</summary>
     public int? MaxInFlightPerConnection { get; set; }
 
+    /// <summary>limits.max_request_bytes in the welcome; left out when null.</summary>
+    public int? MaxRequestBytes { get; set; }
+
     /// <summary>welcome.resume.resumed for a hello that carries a resume token.</summary>
     public bool Resumed { get; set; }
 
@@ -235,7 +238,8 @@ internal sealed class FakeGame : IAsyncDisposable
         string features = string.Join(",", Features.Select(feature => $"\"{feature}\""));
         string limits = "\"max_in_flight\":" + MaxInFlight +
                         (MaxInFlightPerStream is { } perStream ? ",\"max_in_flight_per_stream\":" + perStream : "") +
-                        (MaxInFlightPerConnection is { } perConnection ? ",\"max_in_flight_per_connection\":" + perConnection : "");
+                        (MaxInFlightPerConnection is { } perConnection ? ",\"max_in_flight_per_connection\":" + perConnection : "") +
+                        (MaxRequestBytes is { } requestBytes ? ",\"max_request_bytes\":" + requestBytes : "");
         string resume = hello.TryGetProperty("resume", out JsonElement token)
             ? ",\"resume\":{\"token\":" + token.GetRawText() + ",\"resumed\":" + (Resumed ? "true" : "false") + ",\"window_s\":60}"
             : "";

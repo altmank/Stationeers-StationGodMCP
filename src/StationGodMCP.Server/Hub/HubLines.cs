@@ -23,7 +23,7 @@ internal static class HubLines
             case GameReply.Ok ok:
                 return Ok(id, ok.Result, ok);
             case GameReply.Refused refused:
-                return Error(id, refused.Code, refused.Message, refused.Data);
+                return Error(id, refused.Code, refused.Message, refused.Data, refused.MaybeRan);
             case GameReply.Unreachable unreachable:
                 return Error(id, HubSession.GameUnreachable, unreachable.Message, null, unreachable.MaybeRan);
             default:
@@ -54,7 +54,17 @@ internal static class HubLines
             result.WriteTo(writer);
             if (meta != null)
             {
+                if (meta.Shaped)
+                {
+                    writer.WriteBoolean("shaped", true);
+                }
+
                 writer.WriteNumber("elapsed_ms", meta.ElapsedMs);
+                if (meta.QueueMs is { } queue)
+                {
+                    writer.WriteNumber("queue_ms", queue);
+                }
+
                 writer.WriteNumber("frame", meta.Frame);
                 if (meta.BudgetHit)
                 {
@@ -146,6 +156,36 @@ internal static class HubLines
                 {
                     property.WriteTo(writer);
                 }
+            }
+
+            writer.WriteEndObject();
+        }
+
+        return Text(buffer);
+    }
+
+    /// <summary>
+    /// The world_changed connection event (protocol.md, Connection events) for a world the link learned of, from the
+    /// mod's event or from a welcome after a reconnect: world as the link has it, else {id} ("" for no world).
+    /// </summary>
+    internal static string WorldChanged(JsonElement? world, string? id)
+    {
+        using MemoryStream buffer = new();
+        using (Utf8JsonWriter writer = new(buffer, Compact))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", "event");
+            writer.WriteString("event", "world_changed");
+            writer.WritePropertyName("world");
+            if (world is { ValueKind: JsonValueKind.Object } given)
+            {
+                given.WriteTo(writer);
+            }
+            else
+            {
+                writer.WriteStartObject();
+                writer.WriteString("id", id ?? "");
+                writer.WriteEndObject();
             }
 
             writer.WriteEndObject();
