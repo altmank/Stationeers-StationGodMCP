@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Scheduling;
@@ -144,6 +145,32 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     internal void ObserveGameState(string state) => _engine.ObserveGameState(state, this);
 
     /// <summary>
+    /// A held-tick job reached its final status (finished, failed, or dropped before it started), on the main thread
+    /// where it ended: every jobs-topic subscription of every connection gets a job_ended event with the job's facts
+    /// (JobEndFacts) taken from finalView, the view a poll of the job answers from then on. The facts are made once, and
+    /// only when someone subscribes. Each event is a line of its own in the connection's outbound queue, never merged
+    /// with another; a client too slow to take its lines is closed as for any line (slow_client).
+    /// </summary>
+    internal void JobEnded(object finalView, long frame)
+    {
+        if (!_engine.HasJobSubscriptions)
+        {
+            return;
+        }
+
+        try
+        {
+            JObject facts = JobEndFacts.Of(JObject.FromObject(finalView, ApiJson.Fresh()));
+            _engine.JobEnded(facts, frame, this);
+        }
+        catch (Exception exception)
+        {
+            // The job's bookkeeping calls this: a view that will not serialise loses its events, never the job.
+            ProtocolLog.Warning($"A job_ended event could not be sent: {exception.Message}");
+        }
+    }
+
+    /// <summary>
     /// subscribe or unsubscribe, run on the main thread: the reply message. Each method answers its result, or an
     /// ErrorView for an error that carries data (subscription_limit); a read that is refused throws ApiException.
     /// </summary>
@@ -258,6 +285,9 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     void ISubscriptionEvents<ReadDevicesView>.GameStateChanged(ConnectionId connection, SubscriptionId subscription,
         string state) => SendEvent(connection, new GameStateEventView(subscription, state));
 
+    void ISubscriptionEvents<ReadDevicesView>.JobEnded(ConnectionId connection, SubscriptionId subscription, long seq,
+        long frame, object job) => SendEvent(connection, new JobEndedEventView(subscription, seq, frame, job));
+
     /// <summary>A subscription event's line: the view's keys after the envelope's type.</summary>
     internal static string EventLine(object view)
     {
@@ -272,6 +302,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         {
             SubscribeRequest.Devices devices => _engine.Subscribe(id, devices.Query, devices.Interval, _tick, stream),
             SubscribeRequest.World _ => _engine.SubscribeWorld(id, _tick, stream),
+            SubscribeRequest.Jobs _ => _engine.SubscribeJobs(id, _tick, stream),
             SubscribeRequest.OverLimit over => new SubscribeOutcome<ReadDevicesView>.Refused(over.Refusal),
             SubscribeRequest.Invalid invalid => throw ApiErrors.InvalidArgument(invalid.Message),
             _ => throw ApiErrors.InvalidArgument("Unknown subscribe request.")

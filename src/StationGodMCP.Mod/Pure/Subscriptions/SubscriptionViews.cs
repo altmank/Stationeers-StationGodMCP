@@ -128,6 +128,32 @@ internal sealed class WorldChangedEventView
     }
 }
 
+/// <summary>
+/// A jobs-topic event: {event: "job_ended", subscription, seq, frame, job}; job is the ended job's facts
+/// (JobEndFacts), seq 1 for the subscription's first event and one more for each after it.
+/// </summary>
+internal sealed class JobEndedEventView
+{
+    internal JobEndedEventView(SubscriptionId subscription, long seq, long frame, object job)
+    {
+        Subscription = subscription.ToString();
+        Seq = seq;
+        Frame = frame;
+        Job = job;
+    }
+
+    [JsonProperty(Order = -2)]
+    public string Event => "job_ended";
+
+    public string Subscription { get; }
+
+    public long Seq { get; }
+
+    public long Frame { get; }
+
+    public object Job { get; }
+}
+
 /// <summary>A world-topic event: {event: "game_state", subscription, state}.</summary>
 internal sealed class GameStateEventView
 {

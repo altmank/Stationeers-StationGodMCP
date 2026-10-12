@@ -455,6 +455,77 @@ public sealed class SubscriptionEngineTests
         Assert.Equal(new[] { "Running", "Paused" }, _events.States.ConvertAll(state => state.State).ToArray());
     }
 
+    // ---- the jobs topic ----
+
+    [Fact]
+    public void EveryJobsSubscriberHearsEveryEndedJobInOrderWithItsOwnSeq()
+    {
+        SubscriptionEngine<FakeReading> engine = Engine();
+        Assert.False(engine.HasJobSubscriptions);
+        SubscriptionId first = Subscribed(engine.SubscribeJobs(A, At(0, 0))).Subscription;
+        SubscriptionId second = Subscribed(engine.SubscribeJobs(B, At(0, 0))).Subscription;
+        object placed = new object();
+        object removed = new object();
+
+        engine.JobEnded(placed, 40, _events);
+        engine.JobEnded(removed, 41, _events);
+
+        Assert.True(engine.HasJobSubscriptions);
+        Assert.Equal(new[] { (A, first, 1L, 40L), (B, second, 1L, 40L), (A, first, 2L, 41L), (B, second, 2L, 41L) },
+            _events.Jobs.ConvertAll(job => (job.Connection, job.Subscription, job.Seq, job.Frame)).ToArray());
+        Assert.Same(placed, _events.Jobs[0].Job);
+        Assert.Same(removed, _events.Jobs[3].Job);
+    }
+
+    [Fact]
+    public void AJobsSubscriptionCountsAgainstTheConnectionsLimit()
+    {
+        SubscriptionEngine<FakeReading> engine = Engine(new SubscriptionLimits(1, 8192, 1.5));
+        Subscribed(engine.SubscribeWorld(A, At(0, 0)));
+
+        SubscriptionRefusal refusal = Refused(engine.SubscribeJobs(A, At(0, 0)));
+
+        Assert.Equal(SubscriptionLimitKind.SubscriptionsPerConnection, refusal.Kind);
+        Assert.Equal(1, engine.CountOf(A));
+        Subscribed(engine.SubscribeJobs(B, At(0, 0)));
+    }
+
+    [Fact]
+    public void AnEndedJobsSubscriptionHearsNothing()
+    {
+        SubscriptionEngine<FakeReading> engine = Engine();
+        SubscriptionId unsubscribed = Subscribed(engine.SubscribeJobs(A, At(0, 0))).Subscription;
+        Subscribed(engine.SubscribeJobs(A, At(0, 0), stream: 3));
+        Subscribed(engine.SubscribeJobs(B, At(0, 0)));
+
+        Assert.True(engine.Unsubscribe(A, unsubscribed));
+        engine.DropStream(A, 3);
+        engine.DropConnection(B);
+        engine.JobEnded(new object(), 7, _events);
+
+        Assert.Empty(_events.Jobs);
+        Assert.Empty(_events.Ended);
+        Assert.False(engine.HasJobSubscriptions);
+        Assert.Equal(0, engine.CountOf(A));
+    }
+
+    [Fact]
+    public void JobsSubscriptionsStayAcrossANewWorldAndEndNewestFirstUnderALoweredLimit()
+    {
+        SubscriptionEngine<FakeReading> engine = Engine();
+        SubscriptionId world = Subscribed(engine.SubscribeWorld(A, At(0, 0))).Subscription;
+        SubscriptionId jobs = Subscribed(engine.SubscribeJobs(A, At(0, 0))).Subscription;
+
+        engine.WorldChanged(new ScriptedWorldIds().Next(), _events);
+        Assert.Equal(2, engine.CountOf(A));
+        engine.ApplyLimits(new SubscriptionLimits(1, 8192, 1.5), _events);
+
+        (_, SubscriptionId ended, SubscriptionEnd end) = Assert.Single(_events.Ended);
+        Assert.Equal(jobs, ended);
+        Assert.Equal("limit", end.Reason);
+        Assert.True(engine.Unsubscribe(A, world));
+    }
+
     // ---- timing on the game clock ----
 
     [Fact]

@@ -25,7 +25,9 @@ namespace StationGodMCP.Api;
 /// back. A real run is recorded (JobSnapshots.RecordUndo): undoing the same job again is refused as already undone, with
 /// the undo's own jobs named, unless every one of them was refused. acknowledge_gas_lost is passed on to every call, so a
 /// held pipe job is judged by the tool that runs it; a real run the hold would refuse in any of its calls is refused
-/// before the first job starts (GasHoldReply.Refusal).
+/// before the first job starts (GasHoldReply.Refusal). What the job built and removed comes from its final view while
+/// HeldTickJobs keeps it, else from the request's created_ids, removed, changed and placed while its snapshots are kept
+/// (UndoFactsSource).
 /// </summary>
 internal static class UndoJobApi
 {
@@ -48,13 +50,37 @@ internal static class UndoJobApi
         long? fromId = args.OptionalThingId("from_id")?.Value;
         RefundRoute? refundTo = RefundArgs.RouteOf(args.Optional(RefundArgs.Argument));
         string? acknowledge = GasHoldArgs.Acknowledgement(args);
-        JObject job = JobSnapshots.Wire(HeldTickJobs.Status(jobId));
+        JObject? given = JobEndFacts.FromRequest(args.Optional(JobEndFacts.CreatedIdsKey),
+            args.Optional(JobEndFacts.RemovedKey), args.Optional(JobEndFacts.ChangedKey),
+            args.Optional(JobEndFacts.PlacedKey), out string? problem);
+        if (problem != null)
+        {
+            throw ApiErrors.InvalidArgument(problem + " Nothing was changed.");
+        }
+
         RecordedJob? recorded = JobSnapshots.Of(jobId);
+        JObject? kept = KeptJob(jobId, out ApiException? notFound);
+        UndoFactsSource from = UndoFactsSource.Choose(kept, recorded != null, given);
+        JObject job = from switch
+        {
+            UndoFactsSource.Kept own => own.Facts,
+            UndoFactsSource.Given request => request.Facts,
+            UndoFactsSource.NotFound { FactsGiven: true } => throw ApiErrors.Refused(notFound!.Code,
+                notFound.Message + $" Its snapshots are gone too (the last {JobSnapshots.KeptJobs} jobs keep theirs), " +
+                "so the created_ids, removed, changed and placed passed are not enough to undo it."),
+            _ => throw notFound!
+        };
         string tool = job.Value<string>("tool") ?? recorded?.Tool ?? "unknown";
-        JobFacts facts = new JobFacts(jobId, tool, job.Value<string>("status") ?? "unknown", Created(job),
-            Removed(job), recorded?.Removed ?? new Dictionary<long, ThingSnapshot>(),
-            JobSnapshots.UndoOf(jobId).ConvertAll(StepOf));
+        string status = from is UndoFactsSource.Given
+            ? UndoFactsSource.Given.Status
+            : job.Value<string>("status") ?? "unknown";
+        JobFacts facts = new JobFacts(jobId, tool, status, JobEndFacts.Created(job), JobEndFacts.Removed(job),
+            recorded?.Removed ?? new Dictionary<long, ThingSnapshot>(), JobSnapshots.UndoOf(jobId).ConvertAll(StepOf));
         UndoPlan plan = UndoPlanner.Plan(facts, Standing);
+        if (from is UndoFactsSource.Given)
+        {
+            plan.Notes.Insert(0, UndoFactsSource.Given.Note(jobId, HeldTickJobs.KeptJobs));
+        }
         UndoSource source = UndoSource.Of(recorded?.Source ?? JobSource.Unknown, fromId, refundTo);
         plan.Notes.AddRange(source.Notes);
         List<PieceRestore> groups = plan.RestorePieces;
@@ -192,63 +218,24 @@ internal static class UndoJobApi
         }
     }
 
+    // The job as its polls answer it (running, queued or among the finished ones kept); null with the refusal when the
+    // mod no longer keeps it.
+    private static JObject? KeptJob(string jobId, out ApiException? notFound)
+    {
+        notFound = null;
+        try
+        {
+            return JobSnapshots.Wire(HeldTickJobs.Status(jobId));
+        }
+        catch (ApiException refused) when (refused.Code == HeldTickJobs.JobNotFoundCode)
+        {
+            notFound = refused;
+            return null;
+        }
+    }
+
     private static string? Standing(long id) =>
         GameLookup.TryFindThing(new ThingId(id), out Thing thing) && !thing.IsBeingDestroyed ? thing.PrefabName : null;
-
-    // Built things: a run's created_ids (new and changed pieces) with the prefab from placed or changed; a structure
-    // job's placed.
-    private static List<(long, string?)> Created(JObject job)
-    {
-        Dictionary<long, string?> prefabs = new Dictionary<long, string?>();
-        JToken? log = job["log"];
-        JToken? result = job["result"];
-        foreach (JToken placed in Array(log?["placed"]))
-        {
-            prefabs[Id(placed["reference_id"])] = placed.Value<string>("prefab_name");
-        }
-
-        foreach (JToken changed in Array(log?["changed"]))
-        {
-            prefabs[Id(changed["new_reference_id"])] = changed.Value<string>("target_prefab_name");
-        }
-
-        List<(long, string?)> created = new List<(long, string?)>();
-        foreach (JToken id in Array(log?["created_ids"]))
-        {
-            long value = Id(id);
-            created.Add((value, prefabs.TryGetValue(value, out string? prefab) ? prefab : null));
-        }
-
-        foreach (JToken placed in Array(result?["placed"]))
-        {
-            created.Add((Id(placed["reference_id"]), placed.Value<string>("prefab_name")));
-        }
-
-        return created;
-    }
-
-    // Removed things: a run's removed ids and its changed pieces' old ids; a structure job's removed.
-    private static List<long> Removed(JObject job)
-    {
-        List<long> removed = new List<long>();
-        JToken? log = job["log"];
-        foreach (JToken id in Array(log?["removed"]))
-        {
-            removed.Add(Id(id));
-        }
-
-        foreach (JToken changed in Array(log?["changed"]))
-        {
-            removed.Add(Id(changed["old_reference_id"]));
-        }
-
-        foreach (JToken piece in Array(job["result"]?["removed"]))
-        {
-            removed.Add(Id(piece["reference_id"]));
-        }
-
-        return removed;
-    }
 
     private static string Text(long id) => id.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
@@ -399,10 +386,4 @@ internal static class UndoJobApi
         new UndoPlanView(plan.Remove.ConvertAll(id => new ThingId(id)),
             plan.Restore.ConvertAll(snapshot => new ThingId(snapshot.Id)), plan.Diverged, plan.Notes, ready,
             plan.UndoneBy);
-
-    private static IEnumerable<JToken> Array(JToken? token) =>
-        token is JArray array ? array : (IEnumerable<JToken>)new JArray();
-
-    private static long Id(JToken? token) =>
-        token != null && ThingId.TryRead(token, out ThingId id) ? id.Value : 0L;
 }

@@ -28,12 +28,12 @@ internal abstract class SubscribeOutcome<TReading> where TReading : class
 
         internal SamplingInterval Interval { get; }
 
-        /// <summary>0 for the world topic.</summary>
+        /// <summary>0 for the world and jobs topics.</summary>
         internal int Values { get; }
 
         internal long Frame { get; }
 
-        /// <summary>The first reading; null for the world topic.</summary>
+        /// <summary>The first reading; null for the world and jobs topics.</summary>
         internal TReading? Reading { get; }
     }
 
@@ -58,6 +58,11 @@ internal abstract class SubscribeOutcome<TReading> where TReading : class
 /// across connections, the oldest due first within one, while the lane's budget allows; the connection the budget
 /// stopped at goes first next frame. Admission keeps one subscription to one read_devices call, a connection to
 /// MaxSubscriptions and MaxConnectionValues, and the projected load of all of them to MaxProjectedMsPerSecond.
+/// </para>
+/// <para>
+/// The world and jobs topics sample nothing: their events come from the mod's own news (a world, a game state, a
+/// held-tick job that ended), go to every subscription of the topic, and each such subscription counts against the
+/// connection's MaxSubscriptions.
 /// </para>
 /// <para>
 /// Each subscription belongs to the stream of the call that made it (protocol.md, Streams): DropStream ends that
@@ -87,7 +92,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
     internal SubscriptionLimits Limits { get; private set; }
 
-    /// <summary>Subscriptions held on the connection, both topics.</summary>
+    /// <summary>Subscriptions held on the connection, every topic.</summary>
     internal int CountOf(ConnectionId connection) =>
         _byConnection.TryGetValue(connection, out ConnectionSubscriptions? held) ? held.Count : 0;
 
@@ -135,17 +140,60 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
     /// <summary>A world-topic subscription: world_changed and game_state events, nothing sampled.</summary>
     internal SubscribeOutcome<TReading> SubscribeWorld(ConnectionId connection, SamplingTick tick, long stream = 0)
     {
-        int held = CountOf(connection);
-        if (held + 1 > Limits.MaxSubscriptions)
+        if (OverSubscriptions(connection) is SubscriptionRefusal refusal)
         {
-            return new SubscribeOutcome<TReading>.Refused(new SubscriptionRefusal(
-                SubscriptionLimitKind.SubscriptionsPerConnection, Limits.MaxSubscriptions, held + 1,
-                ProjectedMsPerSecond()));
+            return new SubscribeOutcome<TReading>.Refused(refusal);
         }
 
         SubscriptionId id = new SubscriptionId(++_lastId);
         Held(connection).World.Add(new WorldSubscription(id, stream));
         return new SubscribeOutcome<TReading>.Subscribed(id, SamplingInterval.Default, 0, tick.Frame, null);
+    }
+
+    /// <summary>A jobs-topic subscription: a job_ended event for every held-tick job that ends, nothing sampled.</summary>
+    internal SubscribeOutcome<TReading> SubscribeJobs(ConnectionId connection, SamplingTick tick, long stream = 0)
+    {
+        if (OverSubscriptions(connection) is SubscriptionRefusal refusal)
+        {
+            return new SubscribeOutcome<TReading>.Refused(refusal);
+        }
+
+        SubscriptionId id = new SubscriptionId(++_lastId);
+        Held(connection).Jobs.Add(new JobSubscription(id, stream));
+        return new SubscribeOutcome<TReading>.Subscribed(id, SamplingInterval.Default, 0, tick.Frame, null);
+    }
+
+    /// <summary>Whether any connection holds a jobs-topic subscription, so an ended job is worth describing.</summary>
+    internal bool HasJobSubscriptions
+    {
+        get
+        {
+            foreach (ConnectionSubscriptions held in _connections)
+            {
+                if (held.Jobs.Count > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// A held-tick job ended: every jobs-topic subscription of every connection hears of it, whichever client started
+    /// the job, each with its next seq (1 for its first event). job is what the events carry, built once for all.
+    /// </summary>
+    internal void JobEnded(object job, long frame, ISubscriptionEvents<TReading> events)
+    {
+        foreach (ConnectionSubscriptions held in _connections)
+        {
+            foreach (JobSubscription subscription in held.Jobs)
+            {
+                subscription.Seq++;
+                events.JobEnded(held.Connection, subscription.Id, subscription.Seq, frame, job);
+            }
+        }
     }
 
     /// <summary>Ends the connection's subscription; false when it holds no such subscription (unknown_subscription).</summary>
@@ -200,7 +248,8 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
     /// <summary>
     /// A world finished loading: every devices subscription ends with world_changed, since its reference ids may name
-    /// other things now, and every world-topic subscription is told the new id.
+    /// other things now, and every world-topic subscription is told the new id. Jobs-topic subscriptions stay: a job
+    /// id names one job while the mod runs, whichever world it ran in.
     /// </summary>
     internal void WorldChanged(WorldId world, ISubscriptionEvents<TReading> events)
     {
@@ -364,6 +413,15 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         return next > nowS ? next : next + intervalS;
     }
 
+    private SubscriptionRefusal? OverSubscriptions(ConnectionId connection)
+    {
+        int held = CountOf(connection);
+        return held + 1 > Limits.MaxSubscriptions
+            ? new SubscriptionRefusal(SubscriptionLimitKind.SubscriptionsPerConnection, Limits.MaxSubscriptions,
+                held + 1, ProjectedMsPerSecond())
+            : null;
+    }
+
     private SubscriptionRefusal? Admit(ConnectionId connection, SubscriptionPlan plan, SamplingInterval interval)
     {
         double projected = ProjectedMsPerSecond() + plan.ProjectedMsPerSecond(interval);
@@ -513,6 +571,22 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         internal long Stream { get; }
     }
 
+    /// <summary>A jobs-topic subscription, the stream of the call that made it, and the seq of its last event.</summary>
+    private sealed class JobSubscription
+    {
+        internal JobSubscription(SubscriptionId id, long stream)
+        {
+            Id = id;
+            Stream = stream;
+        }
+
+        internal SubscriptionId Id { get; }
+
+        internal long Stream { get; }
+
+        internal long Seq { get; set; }
+    }
+
     /// <summary>One connection's subscriptions, in the order they were made.</summary>
     private sealed class ConnectionSubscriptions
     {
@@ -527,9 +601,11 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
         internal List<WorldSubscription> World { get; } = new List<WorldSubscription>();
 
+        internal List<JobSubscription> Jobs { get; } = new List<JobSubscription>();
+
         internal int Values { get; private set; }
 
-        internal int Count => Devices.Count + World.Count;
+        internal int Count => Devices.Count + World.Count + Jobs.Count;
 
         internal void Add(DeviceSubscription subscription)
         {
@@ -583,6 +659,15 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
                 }
             }
 
+            for (int index = 0; index < Jobs.Count; index++)
+            {
+                if (Jobs[index].Id.Equals(id))
+                {
+                    Jobs.RemoveAt(index);
+                    return true;
+                }
+            }
+
             return false;
         }
 
@@ -600,23 +685,34 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
             }
         }
 
-        /// <summary>Ends the newest subscription of either topic; false when none is held.</summary>
+        /// <summary>Ends the newest subscription of any topic; false when none is held.</summary>
         internal bool EndNewest(SubscriptionEnd end, ISubscriptionEvents<TReading> events)
         {
             long newestDevice = Devices.Count > 0 ? Devices[Devices.Count - 1].Id.Number : 0;
             long newestWorld = World.Count > 0 ? World[World.Count - 1].Id.Number : 0;
-            if (newestDevice == 0 && newestWorld == 0)
+            long newestJobs = Jobs.Count > 0 ? Jobs[Jobs.Count - 1].Id.Number : 0;
+            if (newestDevice == 0 && newestWorld == 0 && newestJobs == 0)
             {
                 return false;
             }
 
-            if (newestDevice > newestWorld)
+            if (newestDevice > newestWorld && newestDevice > newestJobs)
             {
                 return EndNewestDevice(end, events);
             }
 
-            SubscriptionId id = World[World.Count - 1].Id;
-            World.RemoveAt(World.Count - 1);
+            SubscriptionId id;
+            if (newestJobs > newestWorld)
+            {
+                id = Jobs[Jobs.Count - 1].Id;
+                Jobs.RemoveAt(Jobs.Count - 1);
+            }
+            else
+            {
+                id = World[World.Count - 1].Id;
+                World.RemoveAt(World.Count - 1);
+            }
+
             events.Ended(Connection, id, end);
             return true;
         }
@@ -640,9 +736,10 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
             }
 
             World.Clear();
+            Jobs.Clear();
         }
 
-        /// <summary>Closes the stream's subscriptions of both topics, without an event.</summary>
+        /// <summary>Closes the stream's subscriptions of every topic, without an event.</summary>
         internal void CloseStream(long stream)
         {
             for (int index = Devices.Count - 1; index >= 0; index--)
@@ -654,6 +751,13 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
             }
 
             World.RemoveAll(subscription => subscription.Stream == stream);
+            for (int index = Jobs.Count - 1; index >= 0; index--)
+            {
+                if (Jobs[index].Stream == stream)
+                {
+                    Jobs.RemoveAt(index);
+                }
+            }
         }
 
         private void Close(DeviceSubscription subscription)

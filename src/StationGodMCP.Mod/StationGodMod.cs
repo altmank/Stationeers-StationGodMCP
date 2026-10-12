@@ -112,6 +112,8 @@ public sealed class StationGodMod : ModBehaviour
                 Subscriptions.ReadLogicManyReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
             _dispatcher.Subscriptions = _subscriptions;
             Hub = _subscriptions;
+            SubscriptionHub jobsHub = _subscriptions;
+            HeldTickJobs.Ended = view => jobsHub.JobEnded(view, Time.frameCount);
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
@@ -246,6 +248,7 @@ public sealed class StationGodMod : ModBehaviour
         StopServers("shutting_down");
         GatewayRegistry.Clear();
         IcExecutionController.Clear();
+        HeldTickJobs.Ended = null;
         HeldTickJobs.Abandon();
         Previews.Clear();
         Highlights.Clear();

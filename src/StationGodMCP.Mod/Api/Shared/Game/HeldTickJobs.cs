@@ -28,12 +28,17 @@ namespace StationGodMCP.Api.Shared.Game;
 /// step runs until a state packet written after the end of the last step's frame has gone out (JobReplication), so a
 /// client replays each step's changes in the order the host made them. A job keeps the CallContext of the call that
 /// started or queued it, and each of its steps (a queued job's creation included) runs in that context, so a store kept
-/// per stream sees the job's steps as its caller's.
+/// per stream sees the job's steps as its caller's. Every job that reaches its final status (finished or failed, or
+/// dropped before it started: by drop_job, by the world it was queued in being left, or refused as it left the queue)
+/// is handed to Ended with the view its polls answer from then on, on the main thread (the jobs subscription topic).
 /// </summary>
 internal static class HeldTickJobs
 {
     private const float TickWaitSeconds = 15f;
-    private const int KeptJobs = 16;
+    /// <summary>Finished jobs kept for polls and undo_job, across every client.</summary>
+    internal const int KeptJobs = 16;
+
+    internal const string JobNotFoundCode = "job_not_found";
     internal const int MaximumWaiting = 8;
 
     private static readonly Dictionary<string, object> Finished = new Dictionary<string, object>();
@@ -48,6 +53,12 @@ internal static class HeldTickJobs
     private static bool _tickHeld;
     private static bool _releaseOwed;
     private static long _next;
+
+    /// <summary>
+    /// Told of each job's final view as the job reaches it, once per job; null for no one. Set by the mod to the
+    /// subscription hub (jobs topic).
+    /// </summary>
+    internal static Action<object>? Ended { get; set; }
 
     /// <summary>A job holds the game tick now (the dispatcher's request budget is smaller then).</summary>
     internal static bool HoldsTick => _tickHeld;
@@ -172,7 +183,7 @@ internal static class HeldTickJobs
 
         return Finished.TryGetValue(id, out object view)
             ? view
-            : throw ApiErrors.Refused("job_not_found", $"No job {id} is running, queued or among the last {KeptJobs}.");
+            : throw ApiErrors.Refused(JobNotFoundCode, $"No job {id} is running, queued or among the last {KeptJobs}.");
     }
 
     /// <summary>
@@ -366,11 +377,21 @@ internal static class HeldTickJobs
     }
 
     /// <summary>
-    /// The world was left (WorldStores): queued runs are dropped and finished jobs forgotten, so a poll in the next
-    /// world answers job_not_found rather than a job of the last one. A running job is left to end on its own.
+    /// The world was left (WorldStores): queued runs are dropped (each one's end is told, refused game_not_running) and
+    /// finished jobs forgotten, so a poll in the next world answers job_not_found rather than a job of the last one. A
+    /// running job is left to end on its own.
     /// </summary>
     internal static void ForgetWorld()
     {
+        if (Ended != null)
+        {
+            foreach (KeyValuePair<string, QueuedJob> entry in Waiting.Entries())
+            {
+                Ended(new JobDroppedView(entry.Key, entry.Value.Tool, new ErrorView("game_not_running",
+                    "The world was left before the queued run started; nothing was changed.")));
+            }
+        }
+
         Waiting.Clear();
         Finished.Clear();
         FinishedOrder.Clear();
@@ -422,6 +443,7 @@ internal static class HeldTickJobs
         }
     }
 
+    // A job's final view: kept for its polls (the last KeptJobs), and told to Ended.
     private static void Remember(string id, object view)
     {
         Finished[id] = view;
@@ -432,6 +454,8 @@ internal static class HeldTickJobs
             Finished.Remove(forgotten);
             Holds.Remove(forgotten);
         }
+
+        Ended?.Invoke(view);
     }
 
     private static void Keep(string id, GasHoldVerdict hold, GasHoldStage stage)

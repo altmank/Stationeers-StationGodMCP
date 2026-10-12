@@ -543,7 +543,7 @@ new `features`.
 
 | Key | Type | Meaning |
 | --- | --- | --- |
-| `topic` | `devices` (default) or `world` | What to watch. |
+| `topic` | `devices` (default), `world` or `jobs` | What to watch. |
 | `items` | array, as `read_devices` `items` | For `devices`: what to read. Same parts, same bounds per subscription (`src/StationGodMCP.Mod/Pure/DeviceReads/DeviceReadRequest.cs:16-22`: at most 128 items and 1,024 values). |
 | `include` | array, as `read_devices` `include` | For `devices`: `clock`. |
 | `gateway_id` | string | For `devices`, as `read_devices`. |
@@ -557,6 +557,37 @@ Topics:
 - `devices`: device reads as above.
 - `world`: no params; pushes `world_changed` when a world finishes loading (a new `world.id`) and `game_state` when the
   game state changes (Running, Paused, Loading). Cheap; every library subscribes to it.
+- `jobs`: no params; pushes `job_ended` when a held-tick job (a confirmed `place_*`, `remove_*`, `upgrade_*`,
+  `clean_*`, `replace_*`, `place_structure` or `remove_structure` run, and `undo_job`'s jobs) reaches its final
+  status. Jobs are global, so every `jobs` subscription of every connection hears of every job, whichever client
+  started it. A script or hub waits on this instead of polling `job_id`.
+
+### Job events
+
+```json
+{"type":"event","event":"job_ended","subscription":"s7","seq":3,"frame":81990,
+ "job":{"job_id":"run-41","tool":"place_pipes","status":"applied","created_ids":["101","102"],"removed":["55"],
+        "changed":[{"old_reference_id":"60","new_reference_id":"102","target_prefab_name":"StructurePipeTJunction"}],
+        "placed":[{"reference_id":"101","prefab_name":"StructurePipeStraight"}]}}
+```
+
+- One event per job, sent from the main thread in the frame the job ends: it finished (any final status: `applied`,
+  `applied_with_differences`, `applied_unchecked`, `stopped`, `gas_lost`, `refused`, a step that threw), or it was
+  dropped from the queue before it started (status `refused`): by `drop_job` (`error.code` `dropped`), by a refusal
+  as it left the queue (the gas hold's code, `game_not_running`, `internal_error`), or because the world it was queued
+  in was left (`game_not_running`). Steps and queue moves before that send nothing.
+- `job` holds the job's facts, taken from the same final view a `job_id` poll answers from then on: `job_id`, `tool`,
+  `status`, `error` (`{code, message}`, when the job has one), and, each only when it holds something, the lists
+  `undo_job` plans from: `created_ids` (every id built, new and changed pieces), `removed` (ids removed outright),
+  `changed` (a run's swapped pieces, old for new) and `placed` (new things with their prefab). These are the lists
+  `undo_job` takes in its request for a job past the last 16 the mod keeps. The reports (preflight, final check,
+  verification, materials) are left out: poll the job with `job_id` for them while it is among the last 16. A 500-piece
+  run's `job` is about 44 KB, most of it `placed`.
+- `seq` is 1 for the subscription's first event and one more for each after it. Job events are never merged or
+  dropped: each is a line of its own in the connection's outbound queue, and jobs end one at a time. A client too
+  slow to take its lines is closed like any other (`slow_client`).
+- A new world leaves `jobs` subscriptions in place (a job id names one job while the mod runs); a running job of the
+  last world still ends with an event.
 
 ### Update events
 
@@ -648,6 +679,9 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
   constants; nothing measures them.
 - A read that throws while sampling ends that subscription with reason `read_failed`, a third reason beside the
   two above.
+- `SubscribeJobs` admits a `jobs` subscription under the same per-connection count as a world one; `JobEnded` gives
+  each `jobs` subscription its next `seq`; `WorldChanged` leaves them; `ApplyLimits` ends the newest of any topic
+  first.
 - `WorldIdentity` mints a random 16-hex-digit `world.id` on the first frame a world is running after none was, using
   the same notion of running as the per-world stores (`GameState` neither `None` nor `Loading`).
 - `sample_logic`'s `LogicSampler` keeps the sidecar loop's arguments, messages, change list (each result compared as
@@ -674,6 +708,11 @@ in `src/StationGodMCP.Mod/Subscriptions/GameReaders.cs`. What they settle beyond
   new world to every connection, and `ObserveGameState` every frame after the server's facts are published.
 - A closed connection posts its end; at the next frame its subscriptions and `sample_logic` runs are dropped without an
   event.
+- Job ends: `HeldTickJobs.Ended` is the seam. `HeldTickJobs` calls it with a job's final view where it keeps that view
+  for polls (`Remember`), and for each queued job a world change drops; the mod sets it to `SubscriptionHub.JobEnded`
+  with the frame. With no `jobs` subscription the hub returns at once; otherwise it turns the view into its facts once
+  (`Pure/Layout/JobEndFacts.cs`) and the engine sends them to each subscription. The mod's unload abandons a running
+  job with no event: the servers are stopped before it.
 - A subscription's sample reads through `ReadDevicesApi.Read` with the request parsed once at `subscribe`; only the
   gateway is looked up again each sample, since it may have gone.
 - `sample_logic`: arguments refused by `SampleLogicArguments.Of` are answered at once; otherwise the
