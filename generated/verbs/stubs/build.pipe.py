@@ -1,6 +1,6 @@
 def build(what: Literal['pipe'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    grade: Literal['gas', 'liquid', 'insulated_gas', 'insulated_liquid'],  # Required except when repeating.
+    grade: Literal['gas', 'liquid', 'insulated_gas', 'insulated_liquid'],  # Required.
     waypoints: list = None,  # Points joined by straight axis lines.
     cells: list = None,  # Every cell, each next to the one before.
     piece: dict = None,  # One piece {at, ends}.

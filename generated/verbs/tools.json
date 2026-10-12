@@ -1,5 +1,5 @@
 {
-  "instructions": "StationGod reads and changes a running Stationeers world. Each tool is a verb; most take what (the kind of thing) and share option names: find (lists), inspect (one thing in detail), survey (an area or network), read (live values), write (set values), plan (work out, change nothing), check (rules), build, swap (existing pieces), remove, move, trade, show (draw for the player), undo, server. help {verb, what} gives one in full. Targets: id (one, a list, or a ref \"r3\" from an earlier reply), near + radius, box, room, network. 'this', 'that' or 'here' is the thing the crosshair is on: inspect {what: \"looking_at\"}. build, swap, remove, move, trade, undo and cheats only report until confirm: true, and so does any write given a ref or network; ask the user before a cheat. For many things, give id a list or a ref. Shaping on every verb: fields, omit, list_limits, output_file, repeat (a ref: that call again), whole: true (lifts the cut of a reply over 12 KB; pages stay pages). For work across many replies or many targets, run_script. A script changes nothing unless the run has confirm: true. If the user says stop or hold: server {what: 'stop'}.",
+  "instructions": "StationGod reads and changes a running Stationeers world. Each tool is a verb; most take what (the kind of thing) and share option names: find (lists), inspect (one thing in detail), survey (an area or network), read (live values), write (set values), plan (work out, change nothing), check (rules), build, swap (existing pieces), remove, move, trade, show (draw for the player), undo, server. help {verb, what} gives one in full. Targets: id (one, a list, or a ref \"r3\" from an earlier reply), near + radius, box, room, network. 'this', 'that' or 'here' is the thing the crosshair is on: inspect {what: \"looking_at\"}. Typed ids act at once; build, swap, remove, trade, undo and cheats report until confirm: true, and so does any write given a ref, network or spread; ask the user before a cheat. Shaping on every verb: fields, omit, list_limits, output_file, repeat (a ref: that call again), whole: true (lifts the 12 KB cut). For waits, polls and timed or repeated work, run_script; for many targets, give id a list. A script changes nothing unless the run has confirm: true. If the user says stop or hold: server {what: 'stop'} (load the server tool if it isn't).",
   "tools": [
     {
       "name": "find",
@@ -629,7 +629,7 @@
     },
     {
       "name": "move",
-      "description": "Move items, gas and players. Reports first; confirm: true moves. gas and player are cheats: ask the user.",
+      "description": "Move items, gas and players. Items by typed ids move at once; a ref or a filter reports until confirm: true. gas and player are cheats: ask the user.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -797,7 +797,7 @@
           "what": {
             "type": "string",
             "enum": ["info", "profiling", "console", "command", "stop"],
-            "description": "info: the running mod: version, per-method calls and times, game members, its cost to the game; profiling: profile StationGod's main-thread cost: on, off, reset, report; console: the latest in-game console lines, oldest first; command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings; stop: stop a script run or a job; with no id, every live run of this session. A script run gets sg.Stopped (a BaseException) once, at its next sg call (at once inside sg.wait or sg.watch), so its finally blocks run: after it, reads and writes act, while waits and watches raise at once. The worker is killed 5 s after the stop (longer while an sg call is in flight, never past 30 s), or on a second stop. A running job is allowed to settle"
+            "description": "info: the running mod: version, per-method calls and times, game members, its cost to the game; profiling: profile StationGod's main-thread cost: on, off, reset, report; console: the latest in-game console lines, oldest first; command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings; stop: stop a script run or job; no id: every run"
           },
           "include": {"type": "array", "items": {"enum": ["counters"]}},
           "action": {"enum": ["on", "off", "reset", "report"]},
@@ -835,23 +835,16 @@
     },
     {
       "name": "run_script",
-      "description": "Run Python 3.10 against the game: one call made of verb calls. sg.<verb>('what', **options) is the direct call: same options, same reply keys (a dict).\nA script changes nothing unless the run has confirm: true. Seen targets: ids this session's replies showed you (direct replies, report rows, a finished run's printed or returned value), any int or str constant in the code, selectors written in the code (a network, a spread, sg.ref('r7')), and what the run builds. Three routes:\n- run_script {code}: a report run. Every write reports (report_only: True) and nothing changes. The report lists every target [id or cell, name, current -> new]; builds report placed: []. It begins: script-14 REPORT: nothing changed; run_script {repeat: \"script-14\", confirm: true} does it.\n- run_script {code, confirm: true}: acts as it goes on seen targets. An unseen target before anything acted: the run goes on as a report and its reply is that report. After an act: the run stops with sg.Stopped (a BaseException); only held restores and the finally it unwinds through still act; the stop reply lists the remaining targets as report rows (now seen) and says repeat, or undo script-N first.\n- run_script {repeat: \"script-14\", confirm: true}: runs the code again on fresh reads; the report's rows are seen. Logic values may differ (DIFFERS FROM REPORT in the footer); [cannot undo] writes must match the report's arguments.\nconfirm inside the code is refused.\nGive id a list, not a loop of calls:\n  r = sg.find('thing', prefab='*Light*', box=[...], fields=['reference_id', 'display_name'])\n  ids = [t['reference_id'] for t in r['things']]\n  sg.write('logic', id=ids, logic='On', value=0)\nBuild, then act on what was built (report it, then repeat it):\n  b = sg.build('structure', placements=[...])\n  for h in b['placed']: sg.write('logic', id=h, logic='On', value=1)   # placed: [] in a report run\nHold a value while waiting; restored on exit, on stop, and at session end:\n  with sg.hold(pump, 'On', 1, after=0):\n      rows, met = sg.watch([{'id': tank, 'logic': 'Pressure'}], until=lambda r: r[0]['value'] >= 8000, timeout=480)\n  return met                                            # or a final bare expression\nsg.wait(s); sg.ref('r7'); sg.help('read', 'logic'); sg.help('scripts') has the full API. Errors raise sg.Error(code, message, fix, maybe_ran).\nReply wait: 30 s for confirmed runs, up to 600 s for report and read-only runs; a longer run answers script-N running (follow with inspect {what: 'job', id}); stop: server {what: 'stop', id}.\nFooter: writes by outcome, DIFFERS FROM REPORT, WARNINGS (driven_by), CLEANUP, undo script-N, cost.",
+      "description": "Run Python 3.10 against the game: one call made of verb calls. sg.<verb>('what', **options) is the direct call with the same options and reply dicts; per-id whats always answer {results: [...]}.\nA script changes nothing unless the run has confirm: true. Seen targets: ids this session's replies showed you (report rows and a finished run's printed or returned value count), int or str constants in the code, selectors in the code (a network, a spread, sg.ref('r7')), what the run builds, and \"player\". Two routes:\n- run_script {code}: a report run. Nothing changes; every target is listed [id or cell, name, current -> new]. To act, send the same code with confirm: true: its rows are now seen.\n- run_script {code, confirm: true}: acts as it goes on seen targets. An unseen target stops the run with sg.Stopped (a BaseException); the reply lists that call's targets (now seen), what acted, and the fix.\nconfirm inside the code is refused.\nPoll, and put things back:\n  sg.write('logic', id=ff, logic='Open', value=1)\n  try:\n      while sg.read('logic', reads=[{'id': probe, 'atmosphere': True}])['results'][0]['atmosphere']['pressure_kpa'] < 15:\n          sg.wait(5)        # poll a sensor with read; a room or find query walks the world\n  finally:\n      sg.write('logic', id=ff, logic='Open', value=0)   # best effort at session end\n  # sure, even at session end: with sg.hold(ff, 'Open', 1, after=0): ...\nA confirmed run answers within 30 s, then script-N running (follow with inspect {what: 'job', id}); a report or read-only run waits up to 600 s. sg.help('scripts') has the full API; errors raise sg.Error(code, message, fix, maybe_ran).\nFooter: writes by outcome, WARNINGS, CLEANUP, undo script-N, cost.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "code": {"type": "string", "description": "Python 3.10 source, run as a function body."},
           "confirm": {
             "type": "boolean",
-            "description": "true: writes act, on targets you have seen. Left out: a report run; nothing acts."
+            "description": "true: writes act, on seen targets. Left out: a report run; nothing changes."
           },
-          "repeat": {
-            "type": "string",
-            "description": "A report run's id ('script-14'): run its code again on fresh reads; with confirm: true its reported targets are seen and act."
-          },
-          "max_wait": {
-            "type": "number",
-            "description": "How long this reply waits (default 30), at most your client's timeout; the run goes on."
-          }
+          "max_wait": {"type": "number", "description": "How long this reply waits; at most 30 s for a confirmed run."}
         }
       }
     }

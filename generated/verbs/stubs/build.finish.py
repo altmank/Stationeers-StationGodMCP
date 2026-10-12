@@ -24,5 +24,5 @@ def build(what: Literal['finish'], *,
           None} | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.build('finish', id='1199811', state=2)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

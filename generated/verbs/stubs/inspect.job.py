@@ -6,6 +6,7 @@ def inspect(what: Literal['job'], *,
     """One build, removal, swap or gas move by its id (place-41), or a script run (script-14): running, queued or finished. With no id: runs with notices pending (stopped or killed with something left, writes not done, or done and not yet seen).
     status: queued or waiting (not started yet), then applied, applied_with_differences, applied_unchecked, stopped or refused (jobs); queued, then applied or failed (gas moves). Only queued and waiting are not final.
     A script run answers run_script's text block: script-N and its state (done, REPORT, stopped, killed, or running with the line and what it waits on), the returned value, and the footer so far, with its cost line.
+    On a live confirmed run it answers within 30 s, whatever max_wait says.
     Reply, one of:
     (a build or removal job)
       BuildJob
@@ -24,5 +25,5 @@ def inspect(what: Literal['job'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobQueued, RunJob, SwapJob,
         UndoJob, UpgradeJob
     Example: sg.inspect('job', id='place-41')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

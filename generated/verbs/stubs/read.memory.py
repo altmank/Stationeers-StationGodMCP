@@ -14,5 +14,5 @@ def read(what: Literal['memory'], *,
       count: int
       stack_size: int | None
     Example: sg.read('memory', id='4820585', start=0, count=32)
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """

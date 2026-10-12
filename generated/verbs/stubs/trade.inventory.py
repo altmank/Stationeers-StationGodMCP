@@ -10,5 +10,5 @@ def trade(what: Literal['inventory'], *,
           sellable: int | None}], sells: list[{name: str | None, prefab_name: str | None, credits_each: float, stock: int, gas: bool, details: str |
           None}]}]
     Example: sg.trade('inventory', id='7')
-    A list of ids answers {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}.
+    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
     """
