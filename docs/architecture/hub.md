@@ -73,6 +73,12 @@ A hub-protocol error is the mod's error object plus, when they apply, `fix` (a s
 one that ends a report pass carries `"pass_end": true`. `sg` raises `sg.Stopped` for the first, its private pass-end
 exception for the second, and `sg.Error(code, message, fix, maybe_ran)` for every other error.
 
+Session limits, beyond `protocol.md`'s: a line over the mod's `limits.max_request_bytes` is answered
+`request_too_large` (null id) and ends the session; a call that would be sent over it is refused unsent
+(`request_too_large`, `data {limit, bytes}`); a session holds at most 64 open streams (`too_many_streams`) and
+64 x `max_in_flight_per_stream` calls in flight (`too_many_in_flight`, scope `session`); a caller whose oldest queued
+line has waited 35 s is ended (`slow_client`); a mod method a session may not pass through answers `not_allowed`.
+
 ### Faces
 
 | Face | Who | Options | Replies | Writes |
