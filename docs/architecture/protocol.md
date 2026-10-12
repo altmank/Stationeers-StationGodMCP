@@ -53,7 +53,7 @@ unknown keys in a server message MUST be ignored by clients, so the server can a
 | `type` | When | Keys |
 | --- | --- | --- |
 | `hello` | First message, once. | `protocol` (array of integers, the major versions the client speaks, required), `client` (object: `name` string 1-64 characters of letters, digits, `-`, `_`, `.`; `version` string; `library` string, optional), `features` (array of strings the client understands, optional). |
-| `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000), `stream` (integer 0 to 2^53, optional, default 0; see *Streams*). |
+| `call` | Any time after `welcome`. | `id` (string, 1-64 characters, required), `method` (required), `params` (object, optional, `{}` when absent), `shape` (object, optional, see *Shaping*), `deadline_ms` (integer 100-600000, optional, default 30000), `stream` (integer 0 to 2^53, optional, default 0; see *Streams*), `rename` (object, optional; see *Rename*). |
 | `cancel` | Any time after `welcome`. | `id` of a call in flight. |
 | `stream_end` | Any time after `welcome`. | `stream` (integer 1 to 2^53, required). No reply; see *Streams*. |
 | `cursor_close` | Any time after `welcome`. | `cursor_id` (string, required). No reply; see *Walks*. |
@@ -98,7 +98,7 @@ The `welcome` message:
     "max_values_per_subscription": 1024,
     "min_subscription_interval_s": 0.5
   },
-  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors"]
+  "features": ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "rename"]
 }
 ```
 
@@ -235,6 +235,33 @@ subscription event whose `frame` is greater than the write's reply `frame` refle
 smaller `frame` may not. For writes the game applies later, `frame` promises nothing: `move_gas` queues its transfer
 for the next atmospherics tick and answers with a `transfer_id`, building tools answer with a `job_id`, and both are
 polled with those ids.
+
+### Rename
+
+A call may carry `rename`: how its caller says the handler's argument names and the tool names the mod's messages
+point to, for a client that offers its own surface (the verb layer) over the handler methods.
+
+```json
+{"type": "call", "id": "c7", "method": "connections", "params": {"reference_id": "123"},
+ "rename": {"args": {"reference_id": "id", "min": "box", "max": "box"},
+            "tools": {"rooms": "survey {what: \"rooms\"}"}}}
+```
+
+- Each entry maps a handler name (a catalogue name: a lower-case letter, then lower-case letters, digits or `_`, up to
+  64 characters) to the phrase the caller uses (1 to 128 characters, no control characters). Several names may share
+  one phrase (`min` and `max` as `box`), and a phrase need not be a name. `args` and `tools` are apart, so an argument
+  and a tool of the same name map apart. At most 256 entries in all; `null`, `{}` or no entries is no map.
+- `params` stay in handler names: the client translates them before it sends. The map changes only what the mod
+  prints: argument names and paths in `invalid_argument` (the full check's `problems` included, `path` too), the
+  nearest-name suggestion and the list of names a method takes, the ways to get more in `truncated`, an error's
+  `see.tool`, and the argument and tool names in handlers' refusals, warnings and notes. A name the map does not hold
+  prints as it is.
+- A call without `rename` gets today's text byte for byte, and allocates nothing more (`Vocabulary`,
+  `src/StationGodMCP.Mod/Pure/Protocol/Vocabulary.cs`). Text a later frame builds (a job's own steps) is printed
+  without the map.
+- A `rename` that cannot be used is refused `invalid_argument` with the call's id, on the reader thread, like
+  `deadline_ms`; nothing runs and the connection stays open. Welcome lists the feature `rename`; an older server
+  refuses the key as an unknown one (`protocol_error`), so a client sends it only when the feature is listed.
 
 ### Deadlines and cancelling
 
@@ -734,7 +761,7 @@ that meets an older mod gets that mod's answer to `hello`, which is no `welcome`
 
 ```text
 -> {"type":"hello","protocol":[2],"client":{"name":"agents","version":"1.12.0","library":"stationgod-cs/1.12.0"}}
-<- {"type":"welcome","protocol":2,"client_id":"c9","client":"anonymous","server":{...},"catalogue":{...},"limits":{...},"features":["shape","shape.paths","shape.omit","subscriptions","cancel","streams","cursors"]}
+<- {"type":"welcome","protocol":2,"client_id":"c9","client":"anonymous","server":{...},"catalogue":{...},"limits":{...},"features":["shape","shape.paths","shape.omit","subscriptions","cancel","streams","cursors","rename"]}
 -> {"type":"call","id":"a1","method":"grid_survey","params":{"room_id":"r12"},"shape":{"fields":["devices.reference_id","devices.prefab_name"]}}
 -> {"type":"call","id":"a2","method":"game_clock","params":{}}
 <- {"type":"reply","id":"a2","ok":true,"shaped":false,"result":{"game_time_s":84211.5,"paused":false,"time_of_day_ratio":0.41,"days_past":12},"elapsed_ms":0.02,"queue_ms":9.8,"frame":81301}
