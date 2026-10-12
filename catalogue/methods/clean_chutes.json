@@ -99,6 +99,7 @@
       "target": {"type": "string"},
       "ready": {"type": "boolean"},
       "problems": {"type": "array"},
+      "warnings": {"type": "array"},
       "pieces_total": {"type": "integer"},
       "to_swap": {"type": "integer"},
       "kept": {"type": "integer"},

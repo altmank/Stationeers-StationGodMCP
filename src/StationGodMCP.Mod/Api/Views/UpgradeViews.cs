@@ -31,6 +31,7 @@ internal sealed class UpgradeReportView : ITruncatingView
         JobId = header.JobId;
         Ready = lists.Problems.Count == 0;
         Problems = lists.Problems;
+        Warnings = lists.Warnings.Count > 0 ? lists.Warnings : null;
         PiecesTotal = counts.Total;
         ToSwap = counts.ToSwap;
         Kept = counts.Kept;
@@ -67,6 +68,12 @@ internal sealed class UpgradeReportView : ITruncatingView
     public bool Ready { get; }
 
     public List<UpgradeProblemView> Problems { get; }
+
+    /// <summary>
+    /// What the run would do that is allowed but worth knowing, such as materials_from_player; absent for none.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeProblemView>? Warnings { get; }
 
     public int PiecesTotal { get; }
 
@@ -205,9 +212,11 @@ internal sealed class UpgradeCounts
 internal sealed class UpgradeLists
 {
     internal UpgradeLists(List<UpgradeProblemView> problems, List<UpgradePieceView> pieces, List<object> byPrefab,
-        List<UpgradeSkippedView> keptPieces, List<UpgradeSkippedView> unmatchedPieces)
+        List<UpgradeSkippedView> keptPieces, List<UpgradeSkippedView> unmatchedPieces,
+        List<UpgradeProblemView>? warnings = null)
     {
         Problems = problems;
+        Warnings = warnings ?? new List<UpgradeProblemView>();
         Pieces = pieces;
         ByPrefab = byPrefab;
         KeptPieces = keptPieces;
@@ -215,6 +224,8 @@ internal sealed class UpgradeLists
     }
 
     internal List<UpgradeProblemView> Problems { get; }
+
+    internal List<UpgradeProblemView> Warnings { get; }
 
     internal List<UpgradePieceView> Pieces { get; }
 

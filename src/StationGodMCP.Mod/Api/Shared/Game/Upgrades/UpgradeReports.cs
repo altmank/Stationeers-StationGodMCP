@@ -24,7 +24,7 @@ internal static class UpgradeReports
             request.IncludeNotes ? goal.Notes(request.Family) : null);
         UpgradeCounts counts = new UpgradeCounts(plan.Total, plan.Swaps.Count, plan.Kept.Count, plan.Unmatched.Count);
         UpgradeLists lists = new UpgradeLists(plan.Problems, Pieces(plan), ByPrefab(plan),
-            Skipped(plan.Kept, request.ListLimit), Skipped(plan.Unmatched, request.ListLimit));
+            Skipped(plan.Kept, request.ListLimit), Skipped(plan.Unmatched, request.ListLimit), plan.Warnings);
         UpgradeResources resources = new UpgradeResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Coils(plan), request.Refund, RefundTotals(plan),
             Networks(plan), Refunds.Forecast(plan.Refunds, RefundItems(plan)));

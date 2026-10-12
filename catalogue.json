@@ -108,7 +108,7 @@
       },
       "report_only": {
         "summary": "dry_run: true on the writes that act at once: every check, nothing done.",
-        "text": "move_item, write_memory, run_console_command, plant_genes edits and paste_blueprint act at once. dry_run: true runs every check the call runs, in the same order, and changes nothing. The reply starts report_only: true and problems, then what the call would do in the call's own keys: the targets, the values there before, the change. A check that would refuse the call does not refuse its report: the report answers {report_only: true, problems: [{code, message}]} with the error the call would give, so a report pass shows every write that would fail. In a list (moves, genes) each refused entry is a problem with its index, and the other entries are still reported. A report is clean when problems is empty. Arguments that do not read (missing, malformed, not for that form) are refused as in a real call. Each move of a list is checked against the world as it stands, without the moves before it. A report is a read, on a cheat tool too: it orders and resends like one."
+        "text": "move_item, write_memory, write_logic, write_logic_many, run_console_command, plant_genes edits and paste_blueprint act at once. dry_run: true runs every check the call runs, in the same order, and changes nothing. The reply starts report_only: true and problems, then what the call would do in the call's own keys: the targets, the values there before, the change. A check that would refuse the call does not refuse its report: the report answers {report_only: true, problems: [{code, message}]} with the error the call would give, so a report pass shows every write that would fail. In a list (moves, genes, writes) each refused entry is a problem with its index, and the other entries are still reported. A report is clean when problems is empty. Arguments that do not read (missing, malformed, not for that form) are refused as in a real call. Each move or write of a list is checked against the world as it stands, without the ones before it. A report is a read, on a cheat tool too: it orders and resends like one."
       },
       "cheats": {
         "summary": "Cheat tools: the user approves each use.",
@@ -188,7 +188,7 @@
     "families": {
       "materials": {
         "summary": "from_id: where a build's materials come from.",
-        "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. A part a device is using (slots/in_use) never pays, nor anything inside it. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held."
+        "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. A part a device is using (slots/in_use) never pays, nor anything inside it. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held. A build a player pays for (from_id left out, or naming a player) warns materials_from_player."
       },
       "gas_hold": {
         "summary": "gas_check and the gas hold after a pipe job lost gas; acknowledge_gas_lost.",
@@ -205,8 +205,8 @@
         }
       },
       "lint": {
-        "summary": "Dry-run lint findings (lint_<rule id>); problems refuse.",
-        "text": "The dry_run rules of lint-rules.json (the mod's file, with the save's file over it; lint_rules lists them) run on what a building request would place, in the world around it. Each finding about a placed thing is lint_<rule id>, such as lint_floating_run: a problem when the rule's level is problem (the request is refused; the message names the rule and how to allow it: its level warning or \"enabled\": false in the save's lint-rules.json), else a warning. A rule turned off never runs. plan_chute_route also routes around chute_outside_frame while it is in effect (refusing cells outside frames at level problem, avoiding them otherwise; the ends and their neighbours excepted), whatever the style. lint_layout runs every rule over standing things."
+        "summary": "Build and write lint findings (lint_<rule id>); problems refuse.",
+        "text": "The dry_run rules of lint-rules.json (the mod's file, with the save's file over it; lint_rules lists them) run on what a building request would place, in the world around it. Each finding about a placed thing is lint_<rule id>, such as lint_floating_run: a problem when the rule's level is problem (the request is refused; the message names the rule and how to allow it: its level warning or \"enabled\": false in the save's lint-rules.json), else a warning. A rule turned off never runs. plan_chute_route also routes around chute_outside_frame while it is in effect (refusing cells outside frames at level problem, avoiding them otherwise; the ends and their neighbours excepted), whatever the style. lint_layout runs every rule over standing things. Rules with \"write\" in their on run on each write_logic that opens a vent, valve, pump or regulator, over the pipe networks it opens to (a valve's both sides and their vents), never cached: a problem refuses (lint_refused) unless allow_lint, a warning is lint_<rule id>. A check runs at the write; a network that changes after it is not watched."
       },
       "doors": {
         "summary": "Door keep-outs and windows: allow_door_keepout.",
@@ -737,6 +737,11 @@
       "description": "Too many atmospheres are joined to the one named. Pass joined: false to move gas from the named one only.",
       "origin": "tool",
       "see": {"tool": "move_gas", "topic": "refusals"}
+    },
+    "lint_refused": {
+      "description": "The write would open a vent, valve or pump onto a pipe network on which a write lint rule finds a problem, such as oxidiser vented outdoors. Nothing is written; data.rules lists each rule, its message and the thing. Fix the network first, or change the rule's level in the save's rule file.",
+      "origin": "tool",
+      "see": {"topic": "lint"}
     },
     "logic_not_readable": {
       "description": "The device does not expose that logic type as readable. describe_device lists what it reads.",
@@ -1722,6 +1727,7 @@
           "tools": {"type": "array"},
           "ready": {"type": "boolean"},
           "problems": {"type": "array"},
+          "warnings": {"type": "array"},
           "build_state": {"type": ["object", "null"]}
         }
       },
@@ -1966,6 +1972,7 @@
           "target": {"type": "string"},
           "ready": {"type": "boolean"},
           "problems": {"type": "array"},
+          "warnings": {"type": "array"},
           "pieces_total": {"type": "integer"},
           "to_swap": {"type": "integer"},
           "kept": {"type": "integer"},
@@ -2142,6 +2149,7 @@
           "target": {"type": "string"},
           "ready": {"type": "boolean"},
           "problems": {"type": "array"},
+          "warnings": {"type": "array"},
           "pieces_total": {"type": "integer"},
           "to_swap": {"type": "integer"},
           "kept": {"type": "integer"},
@@ -2351,6 +2359,7 @@
           "target": {"type": "string"},
           "ready": {"type": "boolean"},
           "problems": {"type": "array"},
+          "warnings": {"type": "array"},
           "pieces_total": {"type": "integer"},
           "to_swap": {"type": "integer"},
           "kept": {"type": "integer"},
@@ -7945,6 +7954,7 @@
           "target": {"type": "string"},
           "ready": {"type": "boolean"},
           "problems": {"type": "array"},
+          "warnings": {"type": "array"},
           "pieces_total": {"type": "integer"},
           "to_swap": {"type": "integer"},
           "kept": {"type": "integer"},
@@ -8092,6 +8102,7 @@
           "target": {"type": "string"},
           "ready": {"type": "boolean"},
           "problems": {"type": "array"},
+          "warnings": {"type": "array"},
           "pieces_total": {"type": "integer"},
           "to_swap": {"type": "integer"},
           "kept": {"type": "integer"},
@@ -10122,6 +10133,7 @@
           "target": {"type": "string"},
           "ready": {"type": "boolean"},
           "problems": {"type": "array"},
+          "warnings": {"type": "array"},
           "pieces_total": {"type": "integer"},
           "to_swap": {"type": "integer"},
           "kept": {"type": "integer"},
@@ -10287,6 +10299,7 @@
           "target": {"type": "string"},
           "ready": {"type": "boolean"},
           "problems": {"type": "array"},
+          "warnings": {"type": "array"},
           "pieces_total": {"type": "integer"},
           "to_swap": {"type": "integer"},
           "kept": {"type": "integer"},
@@ -10777,10 +10790,11 @@
       "name": "write_logic",
       "description": "Write one logic value to a device, by logic type name or number, as a chip or console would. Answers the value read back at once.\nMore: tool_info {tool: \"write_logic\"}",
       "help": {
-        "text": "Returns requested_value, previous_value and current_value. current_value is read back at once and can differ from the request: the device clamps it (On 7 reads 1), ignores it (a colour index only paint sets), or moves toward it over time (a solar panel turning). The write still succeeds.",
-        "shared": ["gateways", "logic"]
+        "text": "Returns requested_value, previous_value and current_value. current_value is read back at once and can differ from the request: the device clamps it (On 7 reads 1), ignores it (a colour index only paint sets), or moves toward it over time (a solar panel turning). The write still succeeds. A write that opens a vent, valve, pump or regulator (On or Open from 0 to 1, a vent's Mode from inward to outward, a turbo pump's Mode turned the other way, a volume pump's Setting from 0) first runs the write lint rules on the pipe networks it opens to, as they stand at the write, every time (see lint). A problem refuses the write as lint_refused (its data lists each rule, message and thing) unless allow_lint; a warning comes back in warnings [{code, message, index, reference_id}], absent when there are none. A write that opens nothing runs no rule. A report (dry_run) answers {report_only, problems, gateway_id, reference_id, logic_type, requested_value, previous_value (the device's value before the write), opens, warnings} and writes nothing (see report_only).",
+        "shared": ["gateways", "logic", "lint", "report_only"]
       },
       "class": "write",
+      "x-class-when": [{"when": {"dry_run": {"equals": true}}, "class": "read"}],
       "cost": "instant",
       "params": {
         "type": "object",
@@ -10794,7 +10808,15 @@
             "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
             "description": "A logic type name (Temperature) or number."
           },
-          "value": {"type": "number", "description": "The value to write: a finite number."}
+          "value": {"type": "number", "description": "The value to write: a finite number."},
+          "allow_lint": {
+            "type": "boolean",
+            "description": "Default false: a write that opens a device onto a network a write lint rule finds a problem on is refused (lint_refused); true writes, each problem a warning."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Default false. true checks the write, the write lint rules included, and writes nothing; the reply starts report_only (see report_only)."
+          }
         },
         "required": ["reference_id", "logic_type", "value"],
         "additionalProperties": false
@@ -10802,26 +10824,31 @@
       "reply": {
         "type": "object",
         "properties": {
+          "report_only": {"type": "boolean"},
+          "problems": {"type": "array"},
           "gateway_id": {"type": "string"},
           "reference_id": {"type": "string"},
           "logic_type": {"type": "object"},
           "requested_value": {"type": "number"},
           "previous_value": {"type": ["number", "null"]},
-          "current_value": {"type": ["number", "null"]}
+          "current_value": {"type": ["number", "null"]},
+          "opens": {"type": "boolean"},
+          "warnings": {"type": "array"}
         }
       },
-      "x-views": ["LogicWriteView"],
+      "x-views": ["LogicWriteView", "ReportRefusedView", "LogicWriteReportView"],
       "x-shaping": "none"
     },
     {
       "name": "write_logic_many",
       "description": "Write up to 256 logic values in order in one call; each result stands alone, by index, with its own error.\nMore: tool_info {tool: \"write_logic_many\"}",
       "help": {
-        "text": "Each result is {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value read back as write_logic does), or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read.",
-        "keys": "gateway_id, results, count, success_count, error_count.",
-        "shared": ["gateways", "logic"]
+        "text": "Each result is {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value read back as write_logic does), or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read. Each write runs the write lint rules as write_logic does (see lint): a refusal (lint_refused) fails only its entry and the others still run, and allow_lint covers every entry. Warnings are listed once for the call, each with its entry's index. A report (dry_run) checks each write against the world as it stands, without the writes before it, and writes nothing: results of {index, ok, reference_id, logic_type, requested_value, previous_value, opens}, each refused entry also a problem with its index (see report_only).",
+        "keys": "report_only, problems, gateway_id, results, count, success_count, error_count, warnings.",
+        "shared": ["gateways", "logic", "lint", "report_only"]
       },
       "class": "write",
+      "x-class-when": [{"when": {"dry_run": {"equals": true}}, "class": "read"}],
       "cost": "bounded",
       "x-cost-when": [{"when": {"writes": {"present": true}}, "cost": "bounded", "per_item": "writes"}],
       "params": {
@@ -10849,6 +10876,14 @@
               "additionalProperties": false
             },
             "description": "The writes, up to 256, each {reference_id, logic_type, value}, applied in order."
+          },
+          "allow_lint": {
+            "type": "boolean",
+            "description": "Default false: an entry that opens a device onto a network a write lint rule finds a problem on fails (lint_refused); true writes it anyway."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Default false. true checks every write, the write lint rules included, and writes nothing; the reply starts report_only (see report_only)."
           }
         },
         "required": ["writes"],
@@ -10857,14 +10892,17 @@
       "reply": {
         "type": "object",
         "properties": {
+          "report_only": {"type": "boolean"},
+          "problems": {"type": "array"},
           "gateway_id": {"type": "string"},
           "results": {"type": "array"},
           "count": {"type": "integer"},
           "success_count": {"type": "integer"},
-          "error_count": {"type": "integer"}
+          "error_count": {"type": "integer"},
+          "warnings": {"type": "array"}
         }
       },
-      "x-views": ["LogicBatchView"],
+      "x-views": ["LogicWriteBatchView", "ReportRefusedView", "LogicBatchReportView"],
       "x-shaping": "lists"
     },
     {

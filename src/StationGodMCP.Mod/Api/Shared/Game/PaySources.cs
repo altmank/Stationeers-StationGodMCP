@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Entities;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
@@ -30,6 +31,23 @@ internal static class PaySources
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// materials_from_player (PayerRule) for a build paid from the source and the further things: the first player
+    /// among them pays. named: from_id was given (so it named the player); pays: the build takes materials.
+    /// </summary>
+    internal static GuardFinding? PlayerPays(bool pays, Thing? from, IReadOnlyList<Thing> more, bool named)
+    {
+        Human? player = from as Human;
+        for (int index = 0; player == null && index < more.Count; index++)
+        {
+            player = more[index] as Human;
+        }
+
+        return player != null
+            ? PayerRule.FromPlayer(pays, Names.Of(player), player.ReferenceId, named)
+            : PayerRule.FromPlayer(pays, null, 0, named);
     }
 
     /// <summary>The stock of the item across the source and the further things; empty without a source.</summary>

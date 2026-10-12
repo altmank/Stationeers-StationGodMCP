@@ -657,6 +657,19 @@ internal static class RunPlanner
                     $"{PaySources.Holders(plan.From, plan.MoreFrom)}.", plan.From.ReferenceId);
             }
         }
+
+        bool pays = false;
+        foreach (int count in needed.Values)
+        {
+            pays |= count > 0;
+        }
+
+        GuardFinding? fromPlayer = PaySources.PlayerPays(plan.Request.Build != null && pays, plan.From, plan.MoreFrom,
+            plan.Request.Options.From.HasValue);
+        if (fromPlayer != null)
+        {
+            plan.Warnings.Add(new LayoutIssue(fromPlayer.Code, fromPlayer.Message, null, null));
+        }
     }
 
     private static Thing? Source(RunPlan plan)

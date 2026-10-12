@@ -297,6 +297,13 @@ internal static class StructureSwapPlanner
                     $"{PaySources.Holders(plan.From, plan.MoreFrom)}.", plan.From);
             }
         }
+
+        GuardFinding? fromPlayer = PaySources.PlayerPays(charge > 0, plan.From, plan.MoreFrom,
+            plan.Request.Arguments.From.HasValue);
+        if (fromPlayer != null)
+        {
+            plan.Warnings.Add(new UpgradeProblemView(fromPlayer.Code, fromPlayer.Message));
+        }
     }
 
     // from_id is a structure the request swaps away while refund_to gives into it: the holder is gone before the

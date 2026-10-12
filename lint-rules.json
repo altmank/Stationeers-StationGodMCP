@@ -320,7 +320,7 @@
       "id": "no_oxidiser_vented_outdoors",
       "level": "problem",
       "description": "An outdoor vent (active or passive) whose pipe network, or any network upstream of it through pumps, valves, regulators, filters and mixers, holds oxygen, nitrous oxide or ozone.",
-      "on": ["audit"],
+      "on": ["audit", "write"],
       "select": "things where outdoors and (\"ActiveVent\" in runtime_types or \"PassiveVent\" in runtime_types)",
       "let": {
         "oxidisers": "[\"Oxygen\", \"LiquidOxygen\", \"NitrousOxide\", \"LiquidNitrousOxide\", \"Ozone\", \"LiquidOzone\"]",
@@ -337,7 +337,7 @@
       "id": "fuel_oxidiser_mix_temperature",
       "level": "warning",
       "description": "A pipe network holding both fuel (over 1 mol) and oxidiser must stay below its auto-ignition temperature (GasMixture.IsAutoIgnition: methane and hydrogen 573.15 K, alcohol 673.15 K, 250 K lower with nitrous oxide, 150 K with ozone; hydrazine at its critical temperature), or it burns by itself.",
-      "on": ["audit"],
+      "on": ["audit", "write"],
       "select": "networks where kind == \"pipe\" and any(keys(gases), g => is_fuel(g) and gases[g] > 1) and any(keys(gases), g => is_oxidiser(g) and gases[g] > 0.00001)",
       "let": { "limit": "auto_ignition_temperature(gases)" },
       "assert": "not has(limit) or (temperature ?? 0) <= limit",

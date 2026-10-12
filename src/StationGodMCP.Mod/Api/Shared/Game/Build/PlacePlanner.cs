@@ -1160,6 +1160,13 @@ internal static class PlacePlanner
                     $"{PaySources.Holders(plan.From, plan.MoreFrom)}.");
             }
         }
+
+        GuardFinding? fromPlayer = PaySources.PlayerPays(needed.Count > 0, plan.From, plan.MoreFrom,
+            plan.Arguments.From.HasValue);
+        if (fromPlayer != null)
+        {
+            plan.Warn(fromPlayer.Code, fromPlayer.Message);
+        }
     }
 
     internal static string Describe(Vector3 position) =>

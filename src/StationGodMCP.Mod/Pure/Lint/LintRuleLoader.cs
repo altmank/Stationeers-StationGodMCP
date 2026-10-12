@@ -277,7 +277,7 @@ internal static class LintRuleLoader
             {
                 if (phase.Type != JTokenType.String || Array.IndexOf(LintRule.Phases, (string)phase!) < 0)
                 {
-                    errors.Add(ErrorAt(file, id, "on", phase, "on lists audit and/or dry_run"));
+                    errors.Add(ErrorAt(file, id, "on", phase, "on lists audit, dry_run and/or write"));
                 }
                 else if (!on.Contains((string)phase!))
                 {
@@ -287,7 +287,7 @@ internal static class LintRuleLoader
         }
         else
         {
-            errors.Add(ErrorAt(file, id, "on", source["on"]!, "on is a list: [\"audit\", \"dry_run\"]"));
+            errors.Add(ErrorAt(file, id, "on", source["on"]!, "on is a list: [\"audit\", \"dry_run\", \"write\"]"));
         }
 
         string? selectText = Text(source, "select", file, id, errors, true);

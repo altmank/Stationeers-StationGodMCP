@@ -149,6 +149,9 @@ internal sealed class StructureSwapPlan
     /// <summary>The further things materials are taken from, after From.</summary>
     internal List<Thing> MoreFrom { get; } = new List<Thing>();
 
+    /// <summary>What the run would do that is allowed but worth knowing (materials_from_player).</summary>
+    internal List<UpgradeProblemView> Warnings { get; } = new List<UpgradeProblemView>();
+
     /// <summary>Where the refund goes (refund_to resolved); null until the materials are counted.</summary>
     internal RefundReceivers? Refunds { get; set; }
 
