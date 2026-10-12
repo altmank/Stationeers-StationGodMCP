@@ -116,13 +116,14 @@ public sealed class StreamCostsTests
             costs.Record(context, 0.1, true, 1);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int call = 0; call < 10000; call++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            costs.Record(contexts[call % contexts.Length], 0.1, call % 3 == 0, call / 8);
-        }
+            for (int call = 0; call < 10000; call++)
+            {
+                costs.Record(contexts[call % contexts.Length], 0.1, call % 3 == 0, call / 8);
+            }
+        });
 
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.Equal(0, allocated);
     }
 

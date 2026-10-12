@@ -104,13 +104,13 @@ public sealed class SchedulerInvariantTests
             Cycle();
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int measured = 0; measured < 20; measured++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            Cycle();
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int measured = 0; measured < 20; measured++)
+            {
+                Cycle();
+            }
+        });
 
         Assert.Equal(0, allocated);
     }
@@ -251,13 +251,13 @@ public sealed class SchedulerInvariantTests
             Cycle();
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int measured = 0; measured < 30; measured++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            Cycle();
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int measured = 0; measured < 30; measured++)
+            {
+                Cycle();
+            }
+        });
 
         Assert.Equal(0, allocated);
     }
@@ -296,13 +296,13 @@ public sealed class SchedulerInvariantTests
             Cycle();
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int measured = 0; measured < Cycles / 2; measured++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            Cycle();
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int measured = 0; measured < Cycles / 2; measured++)
+            {
+                Cycle();
+            }
+        });
 
         Assert.Equal(0, allocated);
         Assert.Equal(12, scheduler.Costs.Count);
