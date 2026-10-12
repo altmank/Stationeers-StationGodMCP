@@ -1,0 +1,289 @@
+#nullable enable
+
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
+using Xunit;
+
+namespace StationGodMCP.Tests;
+
+/// <summary>
+/// The report path of the act-at-once writes (move_item, write_memory, run_console_command, plant_genes edits,
+/// paste_blueprint): dry_run true runs the acting call's checks through the same WriteCheck and never acts. A check
+/// that refuses the acting call answers the report ok, with that refusal as a problem.
+/// </summary>
+public sealed class ReportOnlyTests
+{
+    private sealed class Plan
+    {
+    }
+
+    private sealed class Counter
+    {
+        internal int Acts;
+
+        internal int Descriptions;
+
+        internal object Act(Plan plan)
+        {
+            Acts++;
+            return "acted";
+        }
+
+        internal object Describe(Plan plan)
+        {
+            Descriptions++;
+            return "described";
+        }
+    }
+
+    private static Args Of(string json) => new Args(JObject.Parse(json));
+
+    // ---- the argument ----
+
+    [Fact]
+    public void DryRunIsTheArgumentAndActingIsTheDefault()
+    {
+        Assert.Equal("dry_run", ReportOnly.Argument);
+        Assert.False(ReportOnly.Asked(Of("{}")));
+        Assert.False(ReportOnly.Asked(Of("""{"dry_run": false}""")));
+        Assert.True(ReportOnly.Asked(Of("""{"dry_run": true}""")));
+        Assert.Equal("invalid_argument",
+            Assert.Throws<ApiException>(() => ReportOnly.Asked(Of("""{"dry_run": "yes"}"""))).Code);
+    }
+
+    // ---- one code path: the act is reached only through checks that passed, and never on a report ----
+
+    [Fact]
+    public void AReportOfAPassedCheckDescribesThePlanAndNeverActs()
+    {
+        Counter counter = new Counter();
+        object reply = WriteCheck<Plan>.Run(() => new Plan()).Answer(true, counter.Act, counter.Describe);
+
+        Assert.Equal("described", reply);
+        Assert.Equal(0, counter.Acts);
+        Assert.Equal(1, counter.Descriptions);
+    }
+
+    [Fact]
+    public void AnActingCallOfAPassedCheckActsOnceAndDescribesNothing()
+    {
+        Counter counter = new Counter();
+        object reply = WriteCheck<Plan>.Run(() => new Plan()).Answer(false, counter.Act, counter.Describe);
+
+        Assert.Equal("acted", reply);
+        Assert.Equal(1, counter.Acts);
+        Assert.Equal(0, counter.Descriptions);
+    }
+
+    [Fact]
+    public void ARefusedCheckAnswersTheReportOkWithTheRefusalAsItsProblemAndNeverActs()
+    {
+        Counter counter = new Counter();
+        object reply = WriteCheck<Plan>.Run(() => throw ApiErrors.Refused("not_host", "Only the host moves items."))
+            .Answer(true, counter.Act, counter.Describe);
+
+        Assert.Equal(0, counter.Acts);
+        Assert.Equal(0, counter.Descriptions);
+        Assert.Equal(
+            "{\"report_only\":true,\"problems\":[{\"code\":\"not_host\",\"message\":\"Only the host moves items.\"}]}",
+            WireCheck.New(reply));
+    }
+
+    [Fact]
+    public void TheActingCallIsRefusedWithTheSameCodeAndMessageItsReportLists()
+    {
+        Func<Plan> checks = () => throw ApiErrors.Refused("memory_not_writable", "Device 5 has no writable memory.");
+        Counter counter = new Counter();
+        ApiException refused = Assert.Throws<ApiException>(() =>
+            WriteCheck<Plan>.Run(checks).Answer(false, counter.Act, counter.Describe));
+        JObject report = JObject.Parse(WireCheck.New(WriteCheck<Plan>.Run(checks)
+            .Answer(true, counter.Act, counter.Describe)));
+
+        Assert.Equal(0, counter.Acts);
+        Assert.Equal(refused.Code, (string?)report["problems"]![0]!["code"]);
+        Assert.Equal(refused.Message, (string?)report["problems"]![0]!["message"]);
+    }
+
+    [Fact]
+    public void AFaultThatIsNotARefusalIsRaisedReportOrNot()
+    {
+        Counter counter = new Counter();
+        Assert.Throws<InvalidOperationException>(() =>
+            WriteCheck<Plan>.Run(() => throw new InvalidOperationException("broken")));
+        Assert.Equal(0, counter.Acts);
+    }
+
+    // ---- write_memory ----
+
+    [Fact]
+    public void AMemoryReportGivesTheTargetTheValuesAndWhatIsThereNowAndNoCurrentValues()
+    {
+        MemoryWriteReportView report = new MemoryWriteReportView(
+            new MemoryPlace("local", new ThingId(5), 2, 512), new List<double> { 1, 2 }, new List<double> { 0, 7 });
+
+        Assert.Equal(
+            "{\"report_only\":true,\"problems\":[],\"gateway_id\":\"local\",\"reference_id\":\"5\"," +
+            "\"start_address\":2,\"requested_values\":[1.0,2.0],\"previous_values\":[0.0,7.0],\"count\":2," +
+            "\"stack_size\":512}",
+            WireCheck.New(report));
+    }
+
+    [Fact]
+    public void AMemoryRangePastTheLastAddressIsAProblemInTheReport()
+    {
+        Func<Plan> checks = () =>
+        {
+            DeviceMemoryRange.Require(510, 4, 512);
+            return new Plan();
+        };
+
+        Assert.Null(Record.Exception(() => DeviceMemoryRange.Require(0, 512, 512)));
+        Assert.Equal("invalid_argument", ProblemCode(checks));
+        Assert.Equal("invalid_argument", ActingCode(checks));
+    }
+
+    // ---- run_console_command ----
+
+    [Fact]
+    public void AConsoleReportNamesTheCommandItWouldRunAndPrintsNothing()
+    {
+        ConsoleReportView report = new ConsoleReportView(
+            new ConsoleCommandInfo("storm start", "storm", "SinglePlayer", "Starts a storm.", new[] { "start" }),
+            true, true, false);
+
+        Assert.Equal(
+            "{\"report_only\":true,\"problems\":[],\"command\":\"storm start\",\"command_key\":\"storm\"," +
+            "\"scope\":\"SinglePlayer\",\"help_text\":\"Starts a storm.\",\"arguments\":[\"start\"]," +
+            "\"run_simulation\":true,\"console_available\":true,\"completes_asynchronously\":false}",
+            WireCheck.New(report));
+    }
+
+    // ---- plant_genes ----
+
+    [Fact]
+    public void AGeneValueOutsideTheRangeIsRefusedUnlessForcedAndANonFiniteOneAlways()
+    {
+        Assert.Equal(GeneValueRefusal.None, GeneArgs.ValueRefusal(1.0, force: false));
+        Assert.Equal(GeneValueRefusal.None, GeneArgs.ValueRefusal(-1.0, force: false));
+        Assert.Equal(GeneValueRefusal.OutOfRange, GeneArgs.ValueRefusal(1.5, force: false));
+        Assert.Equal(GeneValueRefusal.None, GeneArgs.ValueRefusal(1.5, force: true));
+        Assert.Equal(GeneValueRefusal.NotFinite, GeneArgs.ValueRefusal(double.NaN, force: true));
+    }
+
+    [Fact]
+    public void AGenesReportListsEachRefusedGeneAsAProblemWithItsIndexAndTheOthersAsTheyWouldBeWritten()
+    {
+        BatchBuilder genes = new BatchBuilder(2);
+        genes.Succeeded(new GeneWrittenView(0, "WaterUsage", 0.02f, 1f));
+        genes.Failed(new GeneNotWrittenView(1, "LightPerDay", -0.03f,
+            ApiErrors.Refused("out_of_range", "Gene LightPerDay: 2 is outside the game's range -1 to 1.")));
+        GenesReportView report = new GenesReportView(
+            new GeneSetHeader(new ThingView(new ThingId(9), "SeedBag_Corn", "Corn Seeds"), "seed", 3, true),
+            genes.Build());
+        JObject json = JObject.Parse(WireCheck.New(report));
+
+        Assert.Equal("report_only", ((JProperty)json.First!).Name);
+        Assert.Equal(1, (int)json["problems"]![0]!["index"]!);
+        Assert.Equal("out_of_range", (string?)json["problems"]![0]!["code"]);
+        Assert.Single((JArray)json["problems"]!);
+        Assert.Equal(1.0, (double)json["results"]![0]!["value"]!);
+        Assert.Equal(0.02, (double)json["results"]![0]!["previous_value"]!, 3);
+        Assert.Equal(1, (int)json["success_count"]!);
+        Assert.Equal(1, (int)json["error_count"]!);
+    }
+
+    // ---- move_item ----
+
+    [Fact]
+    public void AMoveReportGivesTheSlotsAndTheQuantityAndNoDestinationStack()
+    {
+        MoveReportView report = new MoveReportView(new MovePlannedView(0, new ThingId(110045),
+            new SlotRefView(new ThingId(57267), 2), new SlotRefView(new ThingId(273), 3), 100, new ThingId(300)));
+
+        Assert.Equal(
+            "{\"report_only\":true,\"problems\":[],\"reference_id\":\"110045\"," +
+            "\"from\":{\"id\":\"57267\",\"slot\":2},\"to\":{\"id\":\"273\",\"slot\":3},\"quantity_moved\":100," +
+            "\"merged_into\":\"300\"}",
+            WireCheck.New(report));
+    }
+
+    [Fact]
+    public void AMovesReportListsEachRefusedMoveAsAProblemWithItsIndex()
+    {
+        BatchBuilder moves = new BatchBuilder(2);
+        moves.Succeeded(new MovePlannedView(0, new ThingId(1), null, new SlotRefView(new ThingId(273), 0), 1, null));
+        moves.Failed(new ItemNotMovedView(1, new ThingId(2), ApiErrors.Refused("stack_full", "full")));
+        JObject json = JObject.Parse(WireCheck.New(new MovesReportView(moves.Build())));
+
+        Assert.Equal("report_only", ((JProperty)json.First!).Name);
+        Assert.Equal(
+            "[{\"index\":1,\"code\":\"stack_full\",\"message\":\"full\"}]",
+            json["problems"]!.ToString(Newtonsoft.Json.Formatting.None));
+        Assert.True((bool)json["results"]![0]!["ok"]!);
+        Assert.Null(json["results"]![0]!["destination_reference_id"]);
+        Assert.Equal("stack_full", (string?)json["results"]![1]!["error"]!["code"]);
+        Assert.Equal(1, (int)json["error_count"]!);
+    }
+
+    [Fact]
+    public void AMovesReportOfABatchErrorListsItToo()
+    {
+        BatchBuilder moves = new BatchBuilder(1);
+        moves.Failed(0, ApiErrors.InvalidArgument("moves[0] must be an object."));
+
+        Assert.Equal("invalid_argument",
+            (string?)JObject.Parse(WireCheck.New(new MovesReportView(moves.Build())))["problems"]![0]!["code"]);
+    }
+
+    // ---- paste_blueprint ----
+
+    [Fact]
+    public void APasteReportGivesTheFileAnchorAndTurnAndStartsNothing()
+    {
+        BlueprintPasteReportView report = new BlueprintPasteReportView(new BlueprintFileView("C:/bp/base.blueprint", 40),
+            new[] { 1.0, 2.0, 3.0 }, 90, 180f, 6.0);
+
+        Assert.Equal(
+            "{\"report_only\":true,\"problems\":[],\"file\":\"C:/bp/base.blueprint\",\"entries\":40," +
+            "\"anchor\":[1.0,2.0,3.0],\"rotation\":90,\"copy_y_angle\":180.0,\"expected_duration_s\":6.0}",
+            WireCheck.New(report));
+    }
+
+    [Fact]
+    public void APasteStillPlacingIsAProblemInTheReport()
+    {
+        Func<Plan> checks = () =>
+        {
+            PasteGate.Require(true, false, false, 12);
+            return new Plan();
+        };
+
+        Assert.Null(Record.Exception(() => PasteGate.Require(true, true, false, 12)));
+        Assert.Equal("paste_refused", ProblemCode(checks));
+        Assert.Equal("paste_refused", ActingCode(checks));
+    }
+
+
+    private static string? ProblemCode(Func<Plan> checks)
+    {
+        Counter counter = new Counter();
+        JObject report = JObject.Parse(WireCheck.New(WriteCheck<Plan>.Run(checks)
+            .Answer(true, counter.Act, counter.Describe)));
+        Assert.Equal(0, counter.Acts);
+        Assert.True((bool)report["report_only"]!);
+        return (string?)report["problems"]![0]!["code"];
+    }
+
+    private static string ActingCode(Func<Plan> checks)
+    {
+        Counter counter = new Counter();
+        ApiException refused = Assert.Throws<ApiException>(() =>
+            WriteCheck<Plan>.Run(checks).Answer(false, counter.Act, counter.Describe));
+        Assert.Equal(0, counter.Acts);
+        return refused.Code;
+    }
+}

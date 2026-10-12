@@ -35,11 +35,7 @@ internal static class DeviceMemory
                 "none installed.");
         }
 
-        string? problem = MemoryRange.Problem(startAddress, count, StackSize(device));
-        if (problem != null)
-        {
-            throw ApiErrors.InvalidArgument(problem);
-        }
+        DeviceMemoryRange.Require(startAddress, count, StackSize(device));
     }
 
     internal static List<double> Read(IMemoryReadable memory, int startAddress, int count)

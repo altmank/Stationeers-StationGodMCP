@@ -60,7 +60,7 @@ internal static class PlantGenesApi
             case GenesRequest.ReadMany many:
                 return ReadMany(many.Ids, meanings);
             case GenesRequest.Write write:
-                return GeneWriter.Write(RequirePlant(write.Id), write);
+                return GeneWriter.Answer(write, ReportOnly.Asked(args));
             default:
                 throw ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {tool:plant_genes} form."));
         }
@@ -94,7 +94,7 @@ internal static class PlantGenesApi
         return batch.Build();
     }
 
-    private static Plant RequirePlant(ThingId id)
+    internal static Plant RequirePlant(ThingId id)
     {
         if (!TryFindPlant(id, out Plant? plant, out ApiException? error))
         {
@@ -144,7 +144,7 @@ internal abstract class GenesRequest
 
         if (many)
         {
-            args.Reject("{arg:reference_ids}, which only reads", "genes", "force", "unit");
+            args.Reject("{arg:reference_ids}, which only reads", "genes", "force", "unit", ReportOnly.Argument);
             return new ReadMany(args.Array("reference_ids", PlantGenesApi.MaximumIds));
         }
 
@@ -153,7 +153,7 @@ internal abstract class GenesRequest
         JObject? genes = args.OptionalObject("genes");
         if (genes == null)
         {
-            args.Reject("a read (without genes)", "force");
+            args.Reject("a read (without genes)", "force", ReportOnly.Argument);
             return new Read(id, unit);
         }
 
@@ -474,14 +474,21 @@ internal static class GeneReader
     }
 }
 
-/// <summary>Writes genes into one gene set, as PlantGeneticSplicer.StartSplice does.</summary>
+/// <summary>
+/// Writes genes into one gene set, as PlantGeneticSplicer.StartSplice does. The checks (the plant, the host, the gene
+/// set, then each gene's name and value) make a plan; the write applies it, and dry_run reports it (ReportOnly).
+/// </summary>
 internal static class GeneWriter
 {
     // Plant.BuildUpdate sends the top gene set when this network flag is set.
     private const ushort GenesNetworkFlag = 512;
 
-    internal static GenesWrittenView Write(Plant plant, GenesRequest.Write request)
+    internal static object Answer(GenesRequest.Write request, bool report) =>
+        WriteCheck<GenesPlan>.Run(() => Check(request)).Answer(report, Write, Describe);
+
+    private static GenesPlan Check(GenesRequest.Write request)
     {
+        Plant plant = PlantGenesApi.RequirePlant(request.Id);
         if (NetworkManager.IsClient)
         {
             throw ApiErrors.Refused("not_host",
@@ -494,42 +501,57 @@ internal static class GeneWriter
             throw error!;
         }
 
-        BatchResultView results = WriteAll(set!, request);
-        if (results.SuccessCount > 0 && header!.IsTop)
-        {
-            // The only gene-derived state the game caches; everything else reads the genes live.
-            plant.lifeRequirements?.UpdateTemperaturePressureCurves();
-            if (NetworkManager.IsServer)
-            {
-                plant.NetworkUpdateFlags |= GenesNetworkFlag;
-            }
-        }
-
-        return new GenesWrittenView(header!, results);
-    }
-
-    private static BatchResultView WriteAll(GeneCollection set, GenesRequest.Write request)
-    {
-        BatchBuilder batch = new BatchBuilder(request.Genes.Count);
+        BatchBuilder results = new BatchBuilder(request.Genes.Count);
+        List<GeneEdit> edits = new List<GeneEdit>(request.Genes.Count);
         int index = 0;
         foreach (JProperty property in request.Genes.Properties())
         {
-            if (TryWrite(set, property, request.Force, index, out BatchItemView item))
+            if (TryPlan(set!, property, request.Force, index, edits, out BatchItemView item))
             {
-                batch.Succeeded(item);
+                results.Succeeded(item);
             }
             else
             {
-                batch.Failed(item);
+                results.Failed(item);
             }
 
             index++;
         }
 
-        return batch.Build();
+        return new GenesPlan(plant, set!, header!, edits, results.Build());
     }
 
-    private static bool TryWrite(GeneCollection set, JProperty property, bool force, int index,
+    private static object Write(GenesPlan plan)
+    {
+        foreach (GeneEdit edit in plan.Edits)
+        {
+            if (!plan.Set.Lookup.TryGetValue(edit.Gene, out GeneWrapper? wrapper) || wrapper == null)
+            {
+                // Every gene set the game makes has all 19 genes; a missing one is added as a new gene would be.
+                wrapper = new GeneWrapper(edit.Gene, 0f, 0f);
+                plan.Set.Lookup[edit.Gene] = wrapper;
+            }
+
+            wrapper.Value = edit.Value;
+        }
+
+        if (plan.Edits.Count > 0 && plan.Header.IsTop)
+        {
+            // The only gene-derived state the game caches; everything else reads the genes live.
+            plan.Plant.lifeRequirements?.UpdateTemperaturePressureCurves();
+            if (NetworkManager.IsServer)
+            {
+                plan.Plant.NetworkUpdateFlags |= GenesNetworkFlag;
+            }
+        }
+
+        return new GenesWrittenView(plan.Header, plan.Results);
+    }
+
+    private static object Describe(GenesPlan plan) => new GenesReportView(plan.Header, plan.Results);
+
+    // One gene: its edit and the result the write answers for it, or why it is not written.
+    private static bool TryPlan(GeneCollection set, JProperty property, bool force, int index, List<GeneEdit> edits,
         out BatchItemView item)
     {
         Gene? parsed = GeneTable.Parse(property.Name);
@@ -543,43 +565,70 @@ internal static class GeneWriter
         Gene gene = parsed.Value;
         set.Lookup.TryGetValue(gene, out GeneWrapper? wrapper);
         float? previous = wrapper?.Value;
-        if (!TryValue(gene, property.Value, force, out double value, out ApiException? error))
+        // GenesRequest.Parse has refused any value that is not a number.
+        double value = property.Value.Value<double>();
+        ApiException? refusal = ValueRefusal(gene, value, force);
+        if (refusal != null)
         {
-            item = new GeneNotWrittenView(index, property.Name, previous, error!);
+            item = new GeneNotWrittenView(index, property.Name, previous, refusal);
             return false;
         }
 
-        if (wrapper == null)
-        {
-            // Every gene set the game makes has all 19 genes; a missing one is added as a new gene would be.
-            wrapper = new GeneWrapper(gene, 0f, 0f);
-            set.Lookup[gene] = wrapper;
-        }
-
-        wrapper.Value = (float)value;
-        item = new GeneWrittenView(index, gene.ToString(), previous, wrapper.Value);
+        edits.Add(new GeneEdit(gene, (float)value));
+        item = new GeneWrittenView(index, gene.ToString(), previous, (float)value);
         return true;
     }
 
-    private static bool TryValue(Gene gene, JToken token, bool force, out double value, out ApiException? error)
+    private static ApiException? ValueRefusal(Gene gene, double value, bool force)
     {
-        // GenesRequest.Parse has refused any value that is not a number.
-        error = null;
-        value = token.Value<double>();
-        if (double.IsNaN(value) || double.IsInfinity(value))
+        switch (GeneArgs.ValueRefusal(value, force))
         {
-            error = ApiErrors.InvalidArgument($"Gene {gene}: the value must be finite.");
-            return false;
+            case GeneValueRefusal.NotFinite:
+                return ApiErrors.InvalidArgument($"Gene {gene}: the value must be finite.");
+            case GeneValueRefusal.OutOfRange:
+                return ApiErrors.Refused("out_of_range",
+                    $"Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass " +
+                    $"{Vocabulary.Arg("force")} to write it anyway.");
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>One gene's new value.</summary>
+    private sealed class GeneEdit
+    {
+        internal GeneEdit(Gene gene, float value)
+        {
+            Gene = gene;
+            Value = value;
         }
 
-        if (!force && (value < GeneView.Minimum || value > GeneView.Maximum))
+        internal Gene Gene { get; }
+
+        internal float Value { get; }
+    }
+
+    /// <summary>A checked write: the plant, its gene set, the edits and each gene's result.</summary>
+    private sealed class GenesPlan
+    {
+        internal GenesPlan(Plant plant, GeneCollection set, GeneSetHeader header, List<GeneEdit> edits,
+            BatchResultView results)
         {
-            error = ApiErrors.Refused("out_of_range",
-                $"Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass " +
-                $"{Vocabulary.Arg("force")} to write it anyway.");
-            return false;
+            Plant = plant;
+            Set = set;
+            Header = header;
+            Edits = edits;
+            Results = results;
         }
 
-        return true;
+        internal Plant Plant { get; }
+
+        internal GeneCollection Set { get; }
+
+        internal GeneSetHeader Header { get; }
+
+        internal List<GeneEdit> Edits { get; }
+
+        internal BatchResultView Results { get; }
     }
 }

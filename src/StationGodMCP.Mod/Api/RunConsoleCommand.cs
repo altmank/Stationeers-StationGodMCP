@@ -15,7 +15,8 @@ namespace StationGodMCP.Api;
 /// the main thread while it ran (ConsoleBridge; on a dedicated server, the lines ConsoleWindow.Print sends to its
 /// system console). A command the registry does not know (CommandLine.CommandsMap), or one
 /// the console would only queue for later (RequiresGameManagerIsInitialized before GameManager.IsInitialized), is
-/// refused. Writes: the command does whatever it does.
+/// refused. Writes: the command does whatever it does; dry_run reports the command from the same checks and runs
+/// nothing (ReportOnly).
 /// </summary>
 internal static class RunConsoleCommandApi
 {
@@ -36,8 +37,9 @@ internal static class RunConsoleCommandApi
         "had finished when this call returned. A refused scope, an unknown argument or a stack trace appears here " +
         "as a red line rather than as a request error.";
 
-    internal static ConsoleRunView Handle(Args args)
+    internal static object Handle(Args args)
     {
+        bool report = ReportOnly.Asked(args);
         string command = args.String("command").Trim();
         if (command.Length == 0)
         {
@@ -46,22 +48,37 @@ internal static class RunConsoleCommandApi
 
         int maximumLines = args.OptionalInt("max_output_lines", 1, ConsoleBridge.MaximumConsoleLines) ??
                            DefaultOutputLines;
+        return WriteCheck<ConsolePlan>.Run(() => Check(command, maximumLines)).Answer(report, Run, Describe);
+    }
+
+    private static ConsolePlan Check(string command, int maximumLines)
+    {
         string? key = ConsoleBridge.ResolveCommandKey(command);
         CommandBase definition = Require(key);
+        return new ConsolePlan(new ConsoleCommandInfo(command, key, definition.Scope.ToString(),
+            definition.HelpText, definition.Arguments), definition, maximumLines);
+    }
+
+    private static object Run(ConsolePlan plan)
+    {
+        string command = plan.Info.Command;
         bool consoleAvailable = ConsoleBridge.CanCapture();
-        bool asynchronous = ConsoleBridge.CompletesAsynchronously(definition);
+        bool asynchronous = ConsoleBridge.CompletesAsynchronously(plan.Definition);
         ConsoleBridge.Echo(command);
         List<ConsoleLineView> output;
         int lineCount;
         bool truncated;
         long concurrentLines;
-        output = ConsoleBridge.Execute(command, maximumLines, out lineCount, out truncated, out concurrentLines);
+        output = ConsoleBridge.Execute(command, plan.MaximumLines, out lineCount, out truncated, out concurrentLines);
         ConsoleCapture capture = new ConsoleCapture(consoleAvailable, asynchronous, lineCount, truncated,
             concurrentLines);
-        ConsoleCommandInfo info = new ConsoleCommandInfo(command, key, definition.Scope.ToString(),
-            definition.HelpText, definition.Arguments);
-        return new ConsoleRunView(info, ConsoleBridge.RunSimulation, capture, output, Note(capture, key));
+        return new ConsoleRunView(plan.Info, ConsoleBridge.RunSimulation, capture, output,
+            Note(capture, plan.Info.CommandKey));
     }
+
+    private static object Describe(ConsolePlan plan) =>
+        new ConsoleReportView(plan.Info, ConsoleBridge.RunSimulation, ConsoleBridge.CanCapture(),
+            ConsoleBridge.CompletesAsynchronously(plan.Definition));
 
     private static CommandBase Require(string? key)
     {
@@ -106,5 +123,22 @@ internal static class RunConsoleCommandApi
         }
 
         return note;
+    }
+
+    /// <summary>A checked command: what the registry knows of it, and how many printed lines to answer.</summary>
+    private sealed class ConsolePlan
+    {
+        internal ConsolePlan(ConsoleCommandInfo info, CommandBase definition, int maximumLines)
+        {
+            Info = info;
+            Definition = definition;
+            MaximumLines = maximumLines;
+        }
+
+        internal ConsoleCommandInfo Info { get; }
+
+        internal CommandBase Definition { get; }
+
+        internal int MaximumLines { get; }
     }
 }

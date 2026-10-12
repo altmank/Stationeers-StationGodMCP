@@ -2,8 +2,8 @@
   "name": "plant_genes",
   "summary": "Read the genes of plants, seeds and produce; with genes, edit them as the Gene Splicer does. Editing is a cheat: ask the user first. Reading takes up to 256 things.",
   "help": {
-    "text": "Read: reference_id (with unit, the gene set; default the top) or reference_ids (up to 256, top sets; a result each). Each read gives thing, holder (planted_plant, seed or produce), gene_set_count, unit, is_top and all 19 genes, each {gene, value, stability, effect} (meaning only with include_notes). Write: reference_id with genes {name: value}, optional unit and force.",
-    "keys": "thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}], results, count, success_count, error_count.",
+    "text": "Read: reference_id (with unit, the gene set; default the top) or reference_ids (up to 256, top sets; a result each). Each read gives thing, holder (planted_plant, seed or produce), gene_set_count, unit, is_top and all 19 genes, each {gene, value, stability, effect} (meaning only with include_notes). Write: reference_id with genes {name: value}, optional unit and force. dry_run reports a write and writes nothing (topic writing).",
+    "keys": "report_only, problems, thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}], results, count, success_count, error_count.",
     "topics": {
       "gene_sets": {
         "summary": "Gene sets, units and the top set.",
@@ -19,17 +19,17 @@
       },
       "writing": {
         "summary": "How a write lands, and per-gene refusals.",
-        "text": "Each gene gets {index, ok, gene, previous_value, value}, or an error: unknown_gene, or out_of_range (outside -1..1; force writes it anyway); the others are still written. A value that is not a number (null too) refuses the whole call and writes nothing. The edit is saved and inherited by harvested fruit and seeds like a natural gene. Stats read genes live; a write to the top set recomputes the temperature and pressure curves and syncs to clients. A harvest quantity, fixed when the plant first matures, stays as it is."
+        "text": "Each gene gets {index, ok, gene, previous_value, value}, or an error: unknown_gene, or out_of_range (outside -1..1; force writes it anyway); the others are still written. A value that is not a number (null too) refuses the whole call and writes nothing. The edit is saved and inherited by harvested fruit and seeds like a natural gene. Stats read genes live; a write to the top set recomputes the temperature and pressure curves and syncs to clients. A harvest quantity, fixed when the plant first matures, stays as it is. A report (dry_run) answers report_only, problems (each refused gene with its index) and the same keys, each value the one it would write (see report_only)."
       },
       "refusals": {
         "summary": "Why a read or write is refused.",
         "text": "thing_not_found; not_a_plant (not a plant, seed or produce); no_genes (no gene set yet); unit_out_of_range (the message gives how many sets it has); plant_not_found (plants: no plant has that id); not_host (a multiplayer client cannot write)."
       }
     },
-    "shared": ["cheats"]
+    "shared": ["cheats", "report_only"]
   },
   "class": "cheat",
-  "x-class-when": [{"when": {"genes": {"absent": true}}, "class": "read"}],
+  "x-class-when": [{"when": {"genes": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
   "cost": "bounded",
   "params": {
     "type": "object",
@@ -54,6 +54,10 @@
         "description": "With reference_id: gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1})."
       },
       "force": {"type": "boolean", "description": "With genes: write values outside -1..1 too. Default false."},
+      "dry_run": {
+        "type": "boolean",
+        "description": "With genes, default false: true checks the write and writes nothing; the reply starts report_only (see report_only)."
+      },
       "include_notes": {"$ref": "defs/include_notes.json"}
     },
     "additionalProperties": false
@@ -61,6 +65,8 @@
   "reply": {
     "type": "object",
     "properties": {
+      "report_only": {"type": "boolean"},
+      "problems": {"type": "array"},
       "thing": {"type": "object"},
       "holder": {"type": "string"},
       "gene_set_count": {"type": "integer"},
@@ -73,6 +79,6 @@
       "error_count": {"type": "integer"}
     }
   },
-  "x-views": ["PlantGenesView", "BatchResultView", "GenesWrittenView"],
+  "x-views": ["PlantGenesView", "BatchResultView", "GenesWrittenView", "ReportRefusedView", "GenesReportView"],
   "x-shaping": "lists"
 }

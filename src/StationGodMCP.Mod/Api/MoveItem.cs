@@ -20,7 +20,8 @@ namespace StationGodMCP.Api;
 
 /// <summary>
 /// move_item: move an item, or part of a stack, from wherever it is into a slot, with the game's own moves, so it never
-/// passes through the world. Writes; host only.
+/// passes through the world. Writes; host only. dry_run reports the moves from the same checks and moves nothing
+/// (ReportOnly).
 ///
 /// The moves (CODE): a whole item goes with OnServer.MoveToSlot, which calls DynamicThing.MoveToSlot. That empties the
 /// old slot and tells its parent (Thing.OnChildExitInventory, which is how a VendingMachine keeps its CurrentSlot and
@@ -70,33 +71,43 @@ internal static class MoveItemApi
 
     internal static object Handle(Args args)
     {
+        bool report = ReportOnly.Asked(args);
+        MoveItemRequest request = MoveItemRequest.Parse(args);
+        return WriteCheck<CheckedMoves>.Run(() => Check(request)).Answer(report, Move, Describe);
+    }
+
+    // One move is checked here, so its refusal refuses the call; a list's moves are each checked right before their
+    // own move (MoveEach), after the moves before them.
+    private static CheckedMoves Check(MoveItemRequest request)
+    {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
             throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host moves items.");
         }
 
-        switch (MoveItemRequest.Parse(args))
+        switch (request)
         {
             case MoveItemRequest.Single single:
-                return MoveOrThrow(single.Move);
+                return MovePlanner.TryPlan(single.Move, out MovePlan? plan, out ApiException? refusal)
+                    ? new CheckedMoves(plan!, null)
+                    : throw refusal!;
             case MoveItemRequest.Batch batch:
-                return MoveEach(batch.Moves);
+                return new CheckedMoves(null, batch.Moves);
             default:
                 throw ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {tool:move_item} form."));
         }
     }
 
-    private static ItemMovedView MoveOrThrow(ItemMove move)
-    {
-        if (!MovePlanner.TryPlan(move, out MovePlan? plan, out ApiException? refusal))
-        {
-            throw refusal!;
-        }
+    private static object Move(CheckedMoves moves) =>
+        moves.One != null ? moves.One.Apply(0) : MoveEach(moves.List!, report: false);
 
-        return plan!.Apply(0);
-    }
+    private static object Describe(CheckedMoves moves) =>
+        moves.One != null
+            ? new MoveReportView(moves.One.Planned(0))
+            : new MovesReportView(MoveEach(moves.List!, report: true));
 
-    private static BatchResultView MoveEach(List<ParsedMove> moves)
+    // report checks each move against the world as it is, without the moves before it, and moves nothing.
+    private static BatchResultView MoveEach(List<ParsedMove> moves, bool report)
     {
         BatchBuilder batch = new BatchBuilder(moves.Count);
         for (int index = 0; index < moves.Count; index++)
@@ -114,7 +125,14 @@ internal static class MoveItemApi
                 continue;
             }
 
-            MoveOne(batch, index, plan!);
+            if (report)
+            {
+                batch.Succeeded(plan!.Planned(index));
+            }
+            else
+            {
+                MoveOne(batch, index, plan!);
+            }
         }
 
         return batch.Build();
@@ -131,6 +149,20 @@ internal static class MoveItemApi
             // MovePlan.Apply reads the result back and throws move_failed when the game did not do the move.
             batch.Failed(new ItemNotMovedView(index, new ThingId(plan.Item.ReferenceId), refusal));
         }
+    }
+
+    /// <summary>A checked call: one move's plan, or a list whose moves are checked one by one.</summary>
+    private sealed class CheckedMoves
+    {
+        internal CheckedMoves(MovePlan? one, List<ParsedMove>? list)
+        {
+            One = one;
+            List = list;
+        }
+
+        internal MovePlan? One { get; }
+
+        internal List<ParsedMove>? List { get; }
     }
 }
 
@@ -697,14 +729,16 @@ internal sealed class MovePlan
     /// <summary>Whether the slot is a grower's plant slot, so one unit is planted instead of moved.</summary>
     internal bool Plants { get; }
 
+    /// <summary>The move as a report gives it: nothing is moved.</summary>
+    internal MovePlannedView Planned(int index) =>
+        new MovePlannedView(index, new ThingId(Item.ReferenceId), From(), To(), Quantity, Merged());
+
     internal ItemMovedView Apply(int index)
     {
-        SlotRefView? from = Item.ParentSlot == null
-            ? null
-            : new SlotRefView(new ThingId(Item.ParentSlot.Parent.ReferenceId), Item.ParentSlot.SlotIndex);
-        SlotRefView to = new SlotRefView(new ThingId(Target.ReferenceId), Slot.SlotIndex);
+        SlotRefView? from = From();
+        SlotRefView to = To();
         ThingId itemId = new ThingId(Item.ReferenceId);
-        ThingId? merged = MergeInto != null ? new ThingId(MergeInto.ReferenceId) : (ThingId?)null;
+        ThingId? merged = Merged();
         int mergedBefore = MergeInto != null ? MergeInto.Quantity : 0;
         if (!SlotOccupancy.StillSafe(SlotOccupants.Of(Slot, Item), merged?.Value, Quantity))
         {
@@ -735,6 +769,14 @@ internal sealed class MovePlan
                 $"result, so the move is done; check it with {Vocabulary.Tool("container_contents")}.");
         }
     }
+
+    private SlotRefView? From() => Item.ParentSlot == null
+        ? null
+        : new SlotRefView(new ThingId(Item.ParentSlot.Parent.ReferenceId), Item.ParentSlot.SlotIndex);
+
+    private SlotRefView To() => new SlotRefView(new ThingId(Target.ReferenceId), Slot.SlotIndex);
+
+    private ThingId? Merged() => MergeInto != null ? new ThingId(MergeInto.ReferenceId) : (ThingId?)null;
 
     private DynamicThing Perform() =>
         MergeInto != null ? Merge(MergeInto) : Plants ? PlantOne() : IsSplit() ? Split() : MoveWhole();

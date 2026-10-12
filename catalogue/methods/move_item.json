@@ -3,7 +3,7 @@
   "summary": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose. force is a cheat.",
   "help": {
     "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it. A part its device is using (a chip in its holder, a console's motherboard, a running machine's filter, battery or canister) is refused as in_use unless allow_in_use (slots/in_use). force true (a cheat, one move only: ask the user first) also fills a hidden slot (topic force).",
-    "keys": "index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
+    "keys": "report_only, problems, index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
     "topics": {
       "rules": {
         "summary": "Stacks, merging, hidden slots, vending machines.",
@@ -15,13 +15,13 @@
       },
       "reply": {
         "summary": "What a move answers.",
-        "text": "{index, ok, reference_id, from {id, slot} (null for an item in the world), to {id, slot}, quantity_moved, merged_into, destination_reference_id (the stack in the slot after the move), warning}. warning is the game's error when one of its calls failed part way but the slot holds the result: the move is done, so do not repeat it. The batch form adds count, success_count and error_count."
+        "text": "{index, ok, reference_id, from {id, slot} (null for an item in the world), to {id, slot}, quantity_moved, merged_into, destination_reference_id (the stack in the slot after the move), warning}. warning is the game's error when one of its calls failed part way but the slot holds the result: the move is done, so do not repeat it. The batch form adds count, success_count and error_count. A report (dry_run) answers {report_only, problems, reference_id, from, to, quantity_moved, merged_into}, or for moves results of {index, ok, reference_id, from, to, quantity_moved, merged_into} and the counts (see report_only)."
       }
     },
-    "shared": ["slots", "cheats"]
+    "shared": ["slots", "cheats", "report_only"]
   },
   "class": "write",
-  "x-class-when": [{"when": {"force": {"equals": true}}, "class": "cheat"}],
+  "x-class-when": [{"when": {"dry_run": {"equals": true}}, "class": "read"}, {"when": {"force": {"equals": true}}, "class": "cheat"}],
   "cost": "instant",
   "params": {
     "type": "object",
@@ -42,6 +42,10 @@
       "force": {
         "type": "boolean",
         "description": "Cheat, default false: true puts the whole item into an empty slot by index even when it is hidden, as the game's own code does (topic force). Ask the user first."
+      },
+      "dry_run": {
+        "type": "boolean",
+        "description": "Default false. true checks the moves and moves nothing; the reply starts report_only (see report_only)."
       },
       "allow_in_use": {"$ref": "defs/allow_in_use.json"},
       "moves": {
@@ -72,6 +76,8 @@
   "reply": {
     "type": "object",
     "properties": {
+      "report_only": {"type": "boolean"},
+      "problems": {"type": "array"},
       "index": {"type": "integer"},
       "ok": {"type": "boolean"},
       "reference_id": {"type": "string"},
@@ -87,6 +93,6 @@
       "error_count": {"type": "integer"}
     }
   },
-  "x-views": ["ItemMovedView", "BatchResultView"],
+  "x-views": ["ItemMovedView", "BatchResultView", "ReportRefusedView", "MoveReportView", "MovesReportView"],
   "x-shaping": "lists"
 }

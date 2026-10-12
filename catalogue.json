@@ -106,6 +106,10 @@
         "summary": "truncated: what a reply held back; list_limits.",
         "text": "Default replies stay small: a tool lists a short page or the first entries of a long list. Every reply ends with truncated, one entry per list it held back: {list, returned, total, more (the argument that gets the rest, with its maximum)}; at_least true when total is a lower bound. truncated [] means the reply holds everything. It survives fields, omit and output_file. Read it before concluding you saw everything. list_limits {list: count} keeps more entries of a list the reply cut by default."
       },
+      "report_only": {
+        "summary": "dry_run: true on the writes that act at once: every check, nothing done.",
+        "text": "move_item, write_memory, run_console_command, plant_genes edits and paste_blueprint act at once. dry_run: true runs every check the call runs, in the same order, and changes nothing. The reply starts report_only: true and problems, then what the call would do in the call's own keys: the targets, the values there before, the change. A check that would refuse the call does not refuse its report: the report answers {report_only: true, problems: [{code, message}]} with the error the call would give, so a report pass shows every write that would fail. In a list (moves, genes) each refused entry is a problem with its index, and the other entries are still reported. A report is clean when problems is empty. Arguments that do not read (missing, malformed, not for that form) are refused as in a real call. Each move of a list is checked against the world as it stands, without the moves before it. A report is a read, on a cheat tool too: it orders and resends like one."
+      },
       "cheats": {
         "summary": "Cheat tools: the user approves each use.",
         "text": "A cheat tool or argument changes the world in a way a player cannot: it bypasses the game's physics, rules or costs (move_gas, write_memory, run_console_command, set_battery_charge, move_player, plant_genes edits, move_item force, paste_blueprint, place_structure free). Tell the user when a call is a cheat and get their approval for that call before running it. Each tool's description says when it is one."
@@ -4433,7 +4437,7 @@
       "description": "Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order. Never through the world, so nothing perishable is left loose. force is a cheat.\nMore: tool_info {tool: \"move_item\"}",
       "help": {
         "text": "One move: reference_id, quantity (part of a stack; the rest stays), to_id (the thing holding the slot) and to_slot (an index, or \"auto\": a matching stack first when merge allows and the whole stack moves, else the first empty slot that takes it). Or moves: up to 64 such objects, each with its own result. A refused move changes nothing for it. A part its device is using (a chip in its holder, a console's motherboard, a running machine's filter, battery or canister) is refused as in_use unless allow_in_use (slots/in_use). force true (a cheat, one move only: ask the user first) also fills a hidden slot (topic force).",
-        "keys": "index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
+        "keys": "report_only, problems, index, ok, reference_id, from {id, slot}, to {id, slot}, quantity_moved, merged_into, destination_reference_id, warning, results, count, success_count, error_count.",
         "topics": {
           "rules": {
             "summary": "Stacks, merging, hidden slots, vending machines.",
@@ -4445,13 +4449,16 @@
           },
           "reply": {
             "summary": "What a move answers.",
-            "text": "{index, ok, reference_id, from {id, slot} (null for an item in the world), to {id, slot}, quantity_moved, merged_into, destination_reference_id (the stack in the slot after the move), warning}. warning is the game's error when one of its calls failed part way but the slot holds the result: the move is done, so do not repeat it. The batch form adds count, success_count and error_count."
+            "text": "{index, ok, reference_id, from {id, slot} (null for an item in the world), to {id, slot}, quantity_moved, merged_into, destination_reference_id (the stack in the slot after the move), warning}. warning is the game's error when one of its calls failed part way but the slot holds the result: the move is done, so do not repeat it. The batch form adds count, success_count and error_count. A report (dry_run) answers {report_only, problems, reference_id, from, to, quantity_moved, merged_into}, or for moves results of {index, ok, reference_id, from, to, quantity_moved, merged_into} and the counts (see report_only)."
           }
         },
-        "shared": ["slots", "cheats"]
+        "shared": ["slots", "cheats", "report_only"]
       },
       "class": "write",
-      "x-class-when": [{"when": {"force": {"equals": true}}, "class": "cheat"}],
+      "x-class-when": [
+        {"when": {"dry_run": {"equals": true}}, "class": "read"},
+        {"when": {"force": {"equals": true}}, "class": "cheat"}
+      ],
       "cost": "instant",
       "params": {
         "type": "object",
@@ -4475,6 +4482,10 @@
           "force": {
             "type": "boolean",
             "description": "Cheat, default false: true puts the whole item into an empty slot by index even when it is hidden, as the game's own code does (topic force). Ask the user first."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Default false. true checks the moves and moves nothing; the reply starts report_only (see report_only)."
           },
           "allow_in_use": {
             "type": "boolean",
@@ -4511,6 +4522,8 @@
       "reply": {
         "type": "object",
         "properties": {
+          "report_only": {"type": "boolean"},
+          "problems": {"type": "array"},
           "index": {"type": "integer"},
           "ok": {"type": "boolean"},
           "reference_id": {"type": "string"},
@@ -4526,7 +4539,7 @@
           "error_count": {"type": "integer"}
         }
       },
-      "x-views": ["ItemMovedView", "BatchResultView"],
+      "x-views": ["ItemMovedView", "BatchResultView", "ReportRefusedView", "MoveReportView", "MovesReportView"],
       "x-shaping": "lists"
     },
     {
@@ -4777,8 +4790,8 @@
       "name": "paste_blueprint",
       "description": "Cheat: paste a BlueprintMod blueprint at an exact anchor and turn, with no player needed; it skips the game's placement checks. Ask the user first. status reads progress; undo removes the newest paste.\nMore: tool_info {tool: \"paste_blueprint\"}",
       "help": {
-        "text": "Needs BlueprintMod; host only. Paste: name (in BlueprintMod's Blueprints folder, or an absolute path), anchor [x, y, z] (where the blueprint's reference point lands: x and z odd whole metres, y even, for the paste to line up with the grid) and rotation (0, 90, 180 or 270, added to its copy angle). Answers {started, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}; the pieces appear over 2 to 30 s, only while the game runs. Run check_replaceable over the pasted pieces.",
-        "keys": "known, active, complete, cancelled, created, failed, skipped, pasted, standing, fingerprint, file, entries, other_active, message, started, anchor, rotation, copy_y_angle, expected_duration_s.",
+        "text": "Needs BlueprintMod; host only. Paste: name (in BlueprintMod's Blueprints folder, or an absolute path), anchor [x, y, z] (where the blueprint's reference point lands: x and z odd whole metres, y even, for the paste to line up with the grid) and rotation (0, 90, 180 or 270, added to its copy angle). Answers {started, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}; the pieces appear over 2 to 30 s, only while the game runs. Run check_replaceable over the pasted pieces. dry_run reports a paste and starts nothing (topic report).",
+        "keys": "report_only, problems, known, active, complete, cancelled, created, failed, skipped, pasted, standing, fingerprint, file, entries, other_active, message, started, anchor, rotation, copy_y_angle, expected_duration_s.",
         "topics": {
           "status": {
             "summary": "status: true and its counts.",
@@ -4792,17 +4805,27 @@
             "summary": "Rooms after a paste, and the survival cost.",
             "text": "Rooms are not re-evaluated after a paste or undo: run the console command regeneraterooms before rooms. In survival BlueprintMod charges DeanamicMatter from the local player, which a dedicated server lacks: use a creative world there."
           },
+          "report": {
+            "summary": "dry_run: the paste checked and not started.",
+            "text": "A report (dry_run) runs the checks a paste runs (host, BlueprintMod, the file read, its entries, no paste still placing) and starts nothing. It answers {report_only, problems, file, entries, anchor, rotation, copy_y_angle, expected_duration_s}, or the refusal as its problem (see report_only). BlueprintMod checks the rest (the same blueprint already pasted there, DeanamicMatter in survival) only when a paste starts, so a report cannot show those paste_refused cases. Not with status or undo."
+          },
           "refusals": {
             "summary": "The paste errors and what to do.",
             "text": "paste_refused: BlueprintMod's own message (the same blueprint already pasted there, no local player in survival, not enough DeanamicMatter, or a paste still placing: wait until status is not active). blueprint_failed: a BlueprintMod call failed (a file that is not a blueprint). mod_missing: BlueprintMod has no Blueprints folder yet; pass an absolute path. invalid_argument: a missing file (the message names the path tried), a blueprint with no entries, a rotation not 0, 90, 180 or 270. game_changed: this BlueprintMod lacks a member the tool calls."
           }
         },
-        "shared": ["cheats"]
+        "shared": ["cheats", "report_only"]
       },
       "class": "cheat",
-      "x-class-when": [{"when": {"status": {"equals": true}}, "class": "read"}],
+      "x-class-when": [
+        {"when": {"status": {"equals": true}}, "class": "read"},
+        {"when": {"dry_run": {"equals": true}}, "class": "read"}
+      ],
       "cost": "job",
-      "x-cost-when": [{"when": {"status": {"equals": true}}, "cost": "instant"}],
+      "x-cost-when": [
+        {"when": {"status": {"equals": true}}, "cost": "instant"},
+        {"when": {"dry_run": {"equals": true}}, "cost": "instant"}
+      ],
       "params": {
         "type": "object",
         "properties": {
@@ -4825,13 +4848,19 @@
             "maximum": 270
           },
           "status": {"type": "boolean", "description": "true alone: progress of the last paste this tool started."},
-          "undo": {"type": "boolean", "description": "true alone: BlueprintMod's undo of the newest paste."}
+          "undo": {"type": "boolean", "description": "true alone: BlueprintMod's undo of the newest paste."},
+          "dry_run": {
+            "type": "boolean",
+            "description": "Default false. true checks the paste and starts nothing; the reply starts report_only (topic report)."
+          }
         },
         "additionalProperties": false
       },
       "reply": {
         "type": "object",
         "properties": {
+          "report_only": {"type": "boolean"},
+          "problems": {"type": "array"},
           "known": {"type": "boolean"},
           "active": {"type": "boolean"},
           "complete": {"type": ["boolean", "null"]},
@@ -4853,7 +4882,13 @@
           "expected_duration_s": {"type": "number"}
         }
       },
-      "x-views": ["BlueprintPasteStatusView", "BlueprintUndoView", "BlueprintPasteStartedView"],
+      "x-views": [
+        "BlueprintPasteStatusView",
+        "BlueprintUndoView",
+        "BlueprintPasteStartedView",
+        "ReportRefusedView",
+        "BlueprintPasteReportView"
+      ],
       "x-shaping": "lists",
       "x-needs-mod": ["BlueprintMod"]
     },
@@ -6738,8 +6773,8 @@
       "name": "plant_genes",
       "description": "Read the genes of plants, seeds and produce; with genes, edit them as the Gene Splicer does. Editing is a cheat: ask the user first. Reading takes up to 256 things.\nMore: tool_info {tool: \"plant_genes\"}",
       "help": {
-        "text": "Read: reference_id (with unit, the gene set; default the top) or reference_ids (up to 256, top sets; a result each). Each read gives thing, holder (planted_plant, seed or produce), gene_set_count, unit, is_top and all 19 genes, each {gene, value, stability, effect} (meaning only with include_notes). Write: reference_id with genes {name: value}, optional unit and force.",
-        "keys": "thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}], results, count, success_count, error_count.",
+        "text": "Read: reference_id (with unit, the gene set; default the top) or reference_ids (up to 256, top sets; a result each). Each read gives thing, holder (planted_plant, seed or produce), gene_set_count, unit, is_top and all 19 genes, each {gene, value, stability, effect} (meaning only with include_notes). Write: reference_id with genes {name: value}, optional unit and force. dry_run reports a write and writes nothing (topic writing).",
+        "keys": "report_only, problems, thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}], results, count, success_count, error_count.",
         "topics": {
           "gene_sets": {
             "summary": "Gene sets, units and the top set.",
@@ -6755,17 +6790,17 @@
           },
           "writing": {
             "summary": "How a write lands, and per-gene refusals.",
-            "text": "Each gene gets {index, ok, gene, previous_value, value}, or an error: unknown_gene, or out_of_range (outside -1..1; force writes it anyway); the others are still written. A value that is not a number (null too) refuses the whole call and writes nothing. The edit is saved and inherited by harvested fruit and seeds like a natural gene. Stats read genes live; a write to the top set recomputes the temperature and pressure curves and syncs to clients. A harvest quantity, fixed when the plant first matures, stays as it is."
+            "text": "Each gene gets {index, ok, gene, previous_value, value}, or an error: unknown_gene, or out_of_range (outside -1..1; force writes it anyway); the others are still written. A value that is not a number (null too) refuses the whole call and writes nothing. The edit is saved and inherited by harvested fruit and seeds like a natural gene. Stats read genes live; a write to the top set recomputes the temperature and pressure curves and syncs to clients. A harvest quantity, fixed when the plant first matures, stays as it is. A report (dry_run) answers report_only, problems (each refused gene with its index) and the same keys, each value the one it would write (see report_only)."
           },
           "refusals": {
             "summary": "Why a read or write is refused.",
             "text": "thing_not_found; not_a_plant (not a plant, seed or produce); no_genes (no gene set yet); unit_out_of_range (the message gives how many sets it has); plant_not_found (plants: no plant has that id); not_host (a multiplayer client cannot write)."
           }
         },
-        "shared": ["cheats"]
+        "shared": ["cheats", "report_only"]
       },
       "class": "cheat",
-      "x-class-when": [{"when": {"genes": {"absent": true}}, "class": "read"}],
+      "x-class-when": [{"when": {"genes": {"absent": true}}, "class": "read"}, {"when": {"dry_run": {"equals": true}}, "class": "read"}],
       "cost": "bounded",
       "params": {
         "type": "object",
@@ -6790,6 +6825,10 @@
             "description": "With reference_id: gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1})."
           },
           "force": {"type": "boolean", "description": "With genes: write values outside -1..1 too. Default false."},
+          "dry_run": {
+            "type": "boolean",
+            "description": "With genes, default false: true checks the write and writes nothing; the reply starts report_only (see report_only)."
+          },
           "include_notes": {"type": "boolean", "description": "true: add notes, the tool's fixed text."}
         },
         "additionalProperties": false
@@ -6797,6 +6836,8 @@
       "reply": {
         "type": "object",
         "properties": {
+          "report_only": {"type": "boolean"},
+          "problems": {"type": "array"},
           "thing": {"type": "object"},
           "holder": {"type": "string"},
           "gene_set_count": {"type": "integer"},
@@ -6809,7 +6850,7 @@
           "error_count": {"type": "integer"}
         }
       },
-      "x-views": ["PlantGenesView", "BatchResultView", "GenesWrittenView"],
+      "x-views": ["PlantGenesView", "BatchResultView", "GenesWrittenView", "ReportRefusedView", "GenesReportView"],
       "x-shaping": "lists"
     },
     {
@@ -8548,7 +8589,7 @@
       "description": "Cheat: run any console command and answer the lines it printed. Unrestricted and not undoable: it can spawn and delete things, teleport, start storms, change settings, quit. Ask the user first.\nMore: tool_info {tool: \"run_console_command\"}",
       "help": {
         "text": "Runs on the game's main thread. Refusals such as 'requires creative mode' and bad arguments come back as red output lines, not as a call error. On a network client some commands only queue a request to the host; run_simulation says which applies.",
-        "keys": "command, command_key, scope, help_text, arguments, run_simulation, console_available, completes_asynchronously, output_complete, output_line_count, truncated, concurrent_log_lines, output [{time, level, text}], note.",
+        "keys": "report_only, problems, command, command_key, scope, help_text, arguments, run_simulation, console_available, completes_asynchronously, output_complete, output_line_count, truncated, concurrent_log_lines, output [{time, level, text}], note.",
         "topics": {
           "output": {
             "summary": "What the reply covers, and background commands.",
@@ -8560,13 +8601,15 @@
           },
           "refusals": {
             "summary": "command_not_found and command_not_ready.",
-            "text": "command_not_found: no command has that name; run 'help' to list them. command_not_ready: the world is still loading, so the console would queue the command and run it later with its output lost; try again once it is loaded."
+            "text": "command_not_found: no command has that name; run 'help' to list them. command_not_ready: the world is still loading, so the console would queue the command and run it later with its output lost; try again once it is loaded. A report (dry_run) runs nothing: it answers {report_only, problems, command, command_key, scope, help_text, arguments, run_simulation, console_available, completes_asynchronously}, or these refusals as problems (see report_only)."
           }
         },
-        "shared": ["cheats"]
+        "shared": ["cheats", "report_only"]
       },
       "class": "cheat",
+      "x-class-when": [{"when": {"dry_run": {"equals": true}}, "class": "read"}],
       "cost": "world",
+      "x-cost-when": [{"when": {"dry_run": {"equals": true}}, "cost": "instant"}],
       "params": {
         "type": "object",
         "properties": {
@@ -8580,6 +8623,10 @@
             "minimum": 1,
             "maximum": 500,
             "description": "Most lines returned; default 100. The oldest are kept: an error prints its message before its stack trace."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Default false. true checks the command and runs nothing; the reply starts report_only (see report_only)."
           }
         },
         "required": ["command"],
@@ -8588,6 +8635,8 @@
       "reply": {
         "type": "object",
         "properties": {
+          "report_only": {"type": "boolean"},
+          "problems": {"type": "array"},
           "command": {"type": "string"},
           "command_key": {"type": ["string", "null"]},
           "scope": {"type": "string"},
@@ -8604,7 +8653,7 @@
           "note": {"type": "string"}
         }
       },
-      "x-views": ["ConsoleRunView"],
+      "x-views": ["ConsoleRunView", "ReportRefusedView", "ConsoleReportView"],
       "x-shaping": "lists"
     },
     {
@@ -10822,10 +10871,11 @@
       "name": "write_memory",
       "description": "Cheat: write up to 512 values into a device's memory from start_address, as a chip's put does. Ask the user first. Nothing is written when the range runs past the last address.\nMore: tool_info {tool: \"write_memory\"}",
       "help": {
-        "text": "Writes the memory read_memory reads; a Logic Memory has none (memory_not_writable). A range past the memory's last address is invalid_argument and nothing is written. An IC Housing or suit without a chip is no_programmable_chip.",
-        "shared": ["gateways", "logic", "cheats"]
+        "text": "Writes the memory read_memory reads; a Logic Memory has none (memory_not_writable). A range past the memory's last address is invalid_argument and nothing is written. An IC Housing or suit without a chip is no_programmable_chip. A report (dry_run) answers {report_only, problems, gateway_id, reference_id, start_address, requested_values, previous_values (the memory there before), count, stack_size} and writes nothing (see report_only).",
+        "shared": ["gateways", "logic", "cheats", "report_only"]
       },
       "class": "cheat",
+      "x-class-when": [{"when": {"dry_run": {"equals": true}}, "class": "read"}],
       "cost": "instant",
       "params": {
         "type": "object",
@@ -10842,6 +10892,10 @@
             "maxItems": 512,
             "items": {"type": "number"},
             "description": "The values, finite numbers, 1 to 512, written from start_address on."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Default false. true checks the write and writes nothing; the reply starts report_only (see report_only)."
           }
         },
         "required": ["reference_id", "start_address", "values"],
@@ -10850,6 +10904,8 @@
       "reply": {
         "type": "object",
         "properties": {
+          "report_only": {"type": "boolean"},
+          "problems": {"type": "array"},
           "gateway_id": {"type": "string"},
           "reference_id": {"type": "string"},
           "start_address": {"type": "integer"},
@@ -10860,7 +10916,7 @@
           "stack_size": {"type": ["integer", "null"]}
         }
       },
-      "x-views": ["MemoryWriteView"],
+      "x-views": ["MemoryWriteView", "ReportRefusedView", "MemoryWriteReportView"],
       "x-shaping": "none"
     }
   ]

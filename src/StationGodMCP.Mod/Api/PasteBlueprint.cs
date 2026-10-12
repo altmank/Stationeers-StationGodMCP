@@ -23,11 +23,11 @@ namespace StationGodMCP.Api;
 /// The pieces are then placed over 2 to 30 s; status reads the operation object kept from ActivePaste right after
 /// the start, so its counts survive the paste's end. undo is BlueprintCommands.Undo, the bpundo console command,
 /// whose console output a dedicated server does not show. Every BlueprintMod member comes from GameMembers. Host only.
+/// dry_run reports a paste from the same checks (the file read, nothing started; ReportOnly).
 /// </summary>
 internal static class PasteBlueprintApi
 {
     private const string ModMissingCode = "mod_missing";
-    private const string PasteRefusedCode = "paste_refused";
     private const string BlueprintFailedCode = "blueprint_failed";
     private const int AnchorAxes = 3;
 
@@ -38,39 +38,33 @@ internal static class PasteBlueprintApi
 
     internal static object Handle(Args args)
     {
-        if (NetworkManager.IsClient || !GameManager.RunSimulation)
+        bool report = ReportOnly.Asked(args);
+        if (args.OptionalBool("status") != true && args.OptionalBool("undo") != true)
         {
-            throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host pastes blueprints.");
+            PasteRequest request = PasteRequest.Parse(args);
+            return WriteCheck<PastePlan>.Run(() => Check(request)).Answer(report, Start, Describe);
         }
 
+        RequireHost();
         RequireBlueprintMod();
         if (args.OptionalBool("status") == true)
         {
-            args.Reject("status", "name", "anchor", "rotation", "undo");
+            args.Reject("status", "name", "anchor", "rotation", "undo", ReportOnly.Argument);
             return Status();
         }
 
-        if (args.OptionalBool("undo") == true)
-        {
-            args.Reject("undo", "name", "anchor", "rotation", "status");
-            return new BlueprintUndoView(
-                Call(GameMembers.BlueprintUndo, new object?[] { Array.Empty<string>() }) as string ?? string.Empty);
-        }
-
-        return Paste(args);
+        args.Reject("undo", "name", "anchor", "rotation", "status", ReportOnly.Argument);
+        return new BlueprintUndoView(
+            Call(GameMembers.BlueprintUndo, new object?[] { Array.Empty<string>() }) as string ?? string.Empty);
     }
 
-    private static BlueprintPasteStartedView Paste(Args args)
+    // Every check a paste passes before BlueprintMod starts it; BlueprintMod's own (the same blueprint already there,
+    // DeanamicMatter in survival) run only inside the start, so a report cannot show them.
+    private static PastePlan Check(PasteRequest request)
     {
-        string path = PathOf(args.String("name"));
-        Metres anchor = BuildArgs.PositionOf(
-            args.Optional("anchor") ??
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:anchor}' is required.")), "anchor");
-        int degrees = args.OptionalInt("rotation", 0, 270) ?? 0;
-        PasteRotation rotation = PasteRotation.FromDegrees(degrees) ??
-                                 throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:rotation}' must be " +
-                                     "0, 90, 180 or 270."));
-
+        RequireHost();
+        RequireBlueprintMod();
+        string path = PathOf(request.Name);
         object data = Call(GameMembers.BlueprintLoad, new object?[] { path }) ??
                       throw ApiErrors.Refused(BlueprintFailedCode, $"BlueprintMod read nothing from '{path}'.");
         float copyYAngle = (float)GameMembers.BlueprintCopyYAngle.GetValue(data);
@@ -81,18 +75,38 @@ internal static class PasteBlueprintApi
         }
 
         RefuseWhilePlacing();
+        return new PastePlan(request, new BlueprintFileView(path, entries), data, copyYAngle);
+    }
+
+    private static object Start(PastePlan plan)
+    {
+        Metres anchor = plan.Request.Anchor;
         Vector3 position = new Vector3((float)anchor.X, (float)anchor.Y, (float)anchor.Z);
         object? refusal = Call(GameMembers.BlueprintStartPaste,
-            new object?[] { data, position, copyYAngle, (float)rotation.Degrees });
+            new object?[] { plan.Data, position, plan.CopyYAngle, (float)plan.Request.Rotation.Degrees });
         if (refusal is string message)
         {
-            throw ApiErrors.Refused(PasteRefusedCode, message);
+            throw ApiErrors.Refused(PasteGate.RefusedCode, message);
         }
 
-        BlueprintFileView file = new BlueprintFileView(path, entries);
-        _last = new TrackedPaste(file, ActivePaste());
-        return new BlueprintPasteStartedView(file, new[] { anchor.X, anchor.Y, anchor.Z }, rotation.Degrees,
-            copyYAngle, BlueprintFiles.ExpectedDurationSeconds(entries));
+        _last = new TrackedPaste(plan.File, ActivePaste());
+        return new BlueprintPasteStartedView(plan.File, new[] { anchor.X, anchor.Y, anchor.Z },
+            plan.Request.Rotation.Degrees, plan.CopyYAngle, BlueprintFiles.ExpectedDurationSeconds(plan.File.Entries));
+    }
+
+    private static object Describe(PastePlan plan)
+    {
+        Metres anchor = plan.Request.Anchor;
+        return new BlueprintPasteReportView(plan.File, new[] { anchor.X, anchor.Y, anchor.Z },
+            plan.Request.Rotation.Degrees, plan.CopyYAngle, BlueprintFiles.ExpectedDurationSeconds(plan.File.Entries));
+    }
+
+    private static void RequireHost()
+    {
+        if (NetworkManager.IsClient || !GameManager.RunSimulation)
+        {
+            throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host pastes blueprints.");
+        }
     }
 
     // A paste still placing (anyone's) refuses a new one: BlueprintMod answered a second start as started and pasted
@@ -100,14 +114,11 @@ internal static class PasteBlueprintApi
     private static void RefuseWhilePlacing()
     {
         object? active = ActivePaste();
-        string? busy = active == null
-            ? null
-            : PasteGate.Busy(true, GameMembers.PasteComplete.GetValue(active) is bool complete && complete,
+        if (active != null)
+        {
+            PasteGate.Require(true, GameMembers.PasteComplete.GetValue(active) is bool complete && complete,
                 GameMembers.PasteCancelled.GetValue(active) is bool cancelled && cancelled,
                 GameMembers.PasteCreated.GetValue(active) is int created ? created : 0);
-        if (busy != null)
-        {
-            throw ApiErrors.Refused(PasteRefusedCode, busy);
         }
     }
 
@@ -239,5 +250,56 @@ internal static class PasteBlueprintApi
         internal BlueprintFileView File { get; }
 
         internal object? Operation { get; }
+    }
+
+    /// <summary>A paste's arguments: the file name, where its anchor lands and its extra turn.</summary>
+    private sealed class PasteRequest
+    {
+        private PasteRequest(string name, Metres anchor, PasteRotation rotation)
+        {
+            Name = name;
+            Anchor = anchor;
+            Rotation = rotation;
+        }
+
+        internal string Name { get; }
+
+        internal Metres Anchor { get; }
+
+        internal PasteRotation Rotation { get; }
+
+        internal static PasteRequest Parse(Args args)
+        {
+            string name = args.String("name");
+            Metres anchor = BuildArgs.PositionOf(
+                args.Optional("anchor") ??
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:anchor}' is required.")), "anchor");
+            int degrees = args.OptionalInt("rotation", 0, 270) ?? 0;
+            PasteRotation rotation = PasteRotation.FromDegrees(degrees) ??
+                throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:rotation}' must be " +
+                    "0, 90, 180 or 270."));
+            return new PasteRequest(name, anchor, rotation);
+        }
+    }
+
+    /// <summary>A checked paste: its arguments, the file BlueprintMod read and the angle it was copied at.</summary>
+    private sealed class PastePlan
+    {
+        internal PastePlan(PasteRequest request, BlueprintFileView file, object data, float copyYAngle)
+        {
+            Request = request;
+            File = file;
+            Data = data;
+            CopyYAngle = copyYAngle;
+        }
+
+        internal PasteRequest Request { get; }
+
+        internal BlueprintFileView File { get; }
+
+        /// <summary>BlueprintMod's BlueprintData, as BlueprintSerializer.Load read it.</summary>
+        internal object Data { get; }
+
+        internal float CopyYAngle { get; }
     }
 }

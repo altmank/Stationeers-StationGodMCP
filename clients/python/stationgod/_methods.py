@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:9a818fb6ea151b24f0692c17c3e0329135521eb5547402e89c663bd579da3805'
+CATALOGUE_HASH = 'sha256:23874893fe3ca300e55cb42b5238ed74393703272e7251c03418dcb785931ede'
 MOD_VERSION = '1.33.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -590,7 +590,8 @@ TABLE = {'catalogue': {'class': 'read',
               'shaping': 'lists',
               'protocol': False},
  'move_item': {'class': 'write',
-               'class_when': [{'when': {'force': {'equals': True}}, 'class': 'cheat'}],
+               'class_when': [{'when': {'dry_run': {'equals': True}}, 'class': 'read'},
+                              {'when': {'force': {'equals': True}}, 'class': 'cheat'}],
                'effects': [],
                'paging': None,
                'duration': None,
@@ -600,6 +601,7 @@ TABLE = {'catalogue': {'class': 'read',
                           'to_slot',
                           'merge',
                           'force',
+                          'dry_run',
                           'allow_in_use',
                           'moves'],
                'required': [],
@@ -654,11 +656,12 @@ TABLE = {'catalogue': {'class': 'read',
            'shaping': 'lists',
            'protocol': False},
  'paste_blueprint': {'class': 'cheat',
-                     'class_when': [{'when': {'status': {'equals': True}}, 'class': 'read'}],
+                     'class_when': [{'when': {'status': {'equals': True}}, 'class': 'read'},
+                                    {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
                      'effects': [],
                      'paging': None,
                      'duration': None,
-                     'params': ['name', 'anchor', 'rotation', 'status', 'undo'],
+                     'params': ['name', 'anchor', 'rotation', 'status', 'undo', 'dry_run'],
                      'required': [],
                      'shaping': 'lists',
                      'protocol': False},
@@ -957,11 +960,12 @@ TABLE = {'catalogue': {'class': 'read',
             'shaping': 'lists',
             'protocol': False},
  'plant_genes': {'class': 'cheat',
-                 'class_when': [{'when': {'genes': {'absent': True}}, 'class': 'read'}],
+                 'class_when': [{'when': {'genes': {'absent': True}}, 'class': 'read'},
+                                {'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
                  'effects': [],
                  'paging': None,
                  'duration': None,
-                 'params': ['reference_id', 'reference_ids', 'unit', 'genes', 'force', 'include_notes'],
+                 'params': ['reference_id', 'reference_ids', 'unit', 'genes', 'force', 'dry_run', 'include_notes'],
                  'required': [],
                  'shaping': 'lists',
                  'protocol': False},
@@ -1293,11 +1297,11 @@ TABLE = {'catalogue': {'class': 'read',
            'shaping': 'lists',
            'protocol': False},
  'run_console_command': {'class': 'cheat',
-                         'class_when': [],
+                         'class_when': [{'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
                          'effects': [],
                          'paging': None,
                          'duration': None,
-                         'params': ['command', 'max_output_lines'],
+                         'params': ['command', 'max_output_lines', 'dry_run'],
                          'required': ['command'],
                          'shaping': 'lists',
                          'protocol': False},
@@ -1693,11 +1697,11 @@ TABLE = {'catalogue': {'class': 'read',
                       'shaping': 'lists',
                       'protocol': False},
  'write_memory': {'class': 'cheat',
-                  'class_when': [],
+                  'class_when': [{'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
                   'effects': [],
                   'paging': None,
                   'duration': None,
-                  'params': ['gateway_id', 'reference_id', 'start_address', 'values'],
+                  'params': ['gateway_id', 'reference_id', 'start_address', 'values', 'dry_run'],
                   'required': ['reference_id', 'start_address', 'values'],
                   'shaping': 'none',
                   'protocol': False}}
@@ -1963,12 +1967,12 @@ class Methods:
         """
         return self.call('move_gas', **{'from': from_, 'to': to, 'delete': delete, 'gases': gases, 'amount_mol': amount_mol, 'force': force, 'joined': joined, 'dry_run': dry_run, 'transfer_id': transfer_id}, **options)
 
-    def move_item(self, *, reference_id: str | None = None, quantity: int | None = None, to_id: str | None = None, to_slot: int | str | None = None, merge: bool | None = None, force: bool | None = None, allow_in_use: bool | None = None, moves: list | None = None, **options) -> dict:
+    def move_item(self, *, reference_id: str | None = None, quantity: int | None = None, to_id: str | None = None, to_slot: int | str | None = None, merge: bool | None = None, force: bool | None = None, dry_run: bool | None = None, allow_in_use: bool | None = None, moves: list | None = None, **options) -> dict:
         """Move an item, or part of a stack, into a slot with the game's own moves, as an inventory click does: one move, or up to 64 in order.
 
-        Class: write (other classes at some arguments). Arguments: reference_id, quantity, to_id, to_slot, merge, force, allow_in_use, moves.
+        Class: write (other classes at some arguments). Arguments: reference_id, quantity, to_id, to_slot, merge, force, dry_run, allow_in_use, moves.
         """
-        return self.call('move_item', **{'reference_id': reference_id, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'merge': merge, 'force': force, 'allow_in_use': allow_in_use, 'moves': moves}, **options)
+        return self.call('move_item', **{'reference_id': reference_id, 'quantity': quantity, 'to_id': to_id, 'to_slot': to_slot, 'merge': merge, 'force': force, 'dry_run': dry_run, 'allow_in_use': allow_in_use, 'moves': moves}, **options)
 
     def move_player(self, *, player: str | None = None, at: object | None = None, to_id: str | None = None, near_player: str | None = None, safe_ground: bool | None = None, dry_run: bool | None = None, **options) -> dict:
         """Cheat: move a player anywhere at once, to a point (at), next to a thing (to_id) or next to another player (near_player); works for a player on another machine.
@@ -1998,12 +2002,12 @@ class Methods:
         """
         return self.call('paint', **{'reference_ids': reference_ids, 'color': color, 'items': items}, **options)
 
-    def paste_blueprint(self, *, name: str | None = None, anchor: list | None = None, rotation: int | None = None, status: bool | None = None, undo: bool | None = None, **options) -> dict:
+    def paste_blueprint(self, *, name: str | None = None, anchor: list | None = None, rotation: int | None = None, status: bool | None = None, undo: bool | None = None, dry_run: bool | None = None, **options) -> dict:
         """Cheat: paste a BlueprintMod blueprint at an exact anchor and turn, with no player needed; it skips the game's placement checks.
 
-        Class: cheat (other classes at some arguments). Arguments: name, anchor, rotation, status, undo.
+        Class: cheat (other classes at some arguments). Arguments: name, anchor, rotation, status, undo, dry_run.
         """
-        return self.call('paste_blueprint', **{'name': name, 'anchor': anchor, 'rotation': rotation, 'status': status, 'undo': undo}, **options)
+        return self.call('paste_blueprint', **{'name': name, 'anchor': anchor, 'rotation': rotation, 'status': status, 'undo': undo, 'dry_run': dry_run}, **options)
 
     def place_cables(self, *, waypoints: list | None = None, cells: list | None = None, piece: dict | None = None, pieces: list | None = None, grade: str | None = None, join: str | None = None, branches: list | None = None, allow_door_keepout: bool | None = None, allow_split_long: bool | None = None, extra_ends: list | None = None, remove_ids: list | None = None, assume_removed: list | None = None, allow_bridge: list | None = None, root: str | None = None, join_to: str | dict | None = None, join_trunk: bool | None = None, wait: bool | None = None, allow_split: bool | None = None, dry_run: bool | None = None, confirm: bool | None = None, from_id: str | list | None = None, refund: bool | None = None, refund_to: str | int | list | None = None, include_links: bool | None = None, include_notes: bool | None = None, include_network_devices: bool | None = None, limit: int | None = None, verbose: bool | None = None, job_id: str | None = None, **options) -> dict:
         """Lay a cable run, or pieces, as a coil builds it: the one-cell piece whose ends match each cell, of a grade (heavy by default).
@@ -2068,12 +2072,12 @@ class Methods:
         """
         return self.call('planet', **options)
 
-    def plant_genes(self, *, reference_id: str | None = None, reference_ids: list | None = None, unit: int | None = None, genes: dict | None = None, force: bool | None = None, include_notes: bool | None = None, **options) -> dict:
+    def plant_genes(self, *, reference_id: str | None = None, reference_ids: list | None = None, unit: int | None = None, genes: dict | None = None, force: bool | None = None, dry_run: bool | None = None, include_notes: bool | None = None, **options) -> dict:
         """Read the genes of plants, seeds and produce; with genes, edit them as the Gene Splicer does.
 
-        Class: cheat (other classes at some arguments). Arguments: reference_id, reference_ids, unit, genes, force, include_notes.
+        Class: cheat (other classes at some arguments). Arguments: reference_id, reference_ids, unit, genes, force, dry_run, include_notes.
         """
-        return self.call('plant_genes', **{'reference_id': reference_id, 'reference_ids': reference_ids, 'unit': unit, 'genes': genes, 'force': force, 'include_notes': include_notes}, **options)
+        return self.call('plant_genes', **{'reference_id': reference_id, 'reference_ids': reference_ids, 'unit': unit, 'genes': genes, 'force': force, 'dry_run': dry_run, 'include_notes': include_notes}, **options)
 
     def plants(self, *, reference_id: str | None = None, include_unplanted: bool | None = None, verbose: bool | None = None, **options) -> dict:
         """Every plant in trays, planters and stations, read from the plant itself: stage, maturity, health, problems, time to harvest.
@@ -2222,12 +2226,12 @@ class Methods:
         """
         return self.call('rooms', **{'reference_id': reference_id, 'include_cells': include_cells, 'include_devices': include_devices}, **options)
 
-    def run_console_command(self, *, command: str | None = None, max_output_lines: int | None = None, **options) -> dict:
+    def run_console_command(self, *, command: str | None = None, max_output_lines: int | None = None, dry_run: bool | None = None, **options) -> dict:
         """Cheat: run any console command and answer the lines it printed.
 
-        Class: cheat. Arguments: command (required), max_output_lines.
+        Class: cheat (other classes at some arguments). Arguments: command (required), max_output_lines, dry_run.
         """
-        return self.call('run_console_command', **{'command': command, 'max_output_lines': max_output_lines}, **options)
+        return self.call('run_console_command', **{'command': command, 'max_output_lines': max_output_lines, 'dry_run': dry_run}, **options)
 
     def sample_logic(self, *, gateway_id: str | None = None, targets: list | None = None, duration_seconds: float | None = None, interval_seconds: float | None = None, **options) -> dict:
         """Watch up to 32 logic values for up to 30 s; answers their first readings and every change with its time.
@@ -2425,9 +2429,9 @@ class Methods:
         """
         return self.call('write_logic_many', **{'gateway_id': gateway_id, 'writes': writes}, **options)
 
-    def write_memory(self, *, gateway_id: str | None = None, reference_id: str | None = None, start_address: int | None = None, values: list | None = None, **options) -> dict:
+    def write_memory(self, *, gateway_id: str | None = None, reference_id: str | None = None, start_address: int | None = None, values: list | None = None, dry_run: bool | None = None, **options) -> dict:
         """Cheat: write up to 512 values into a device's memory from start_address, as a chip's put does.
 
-        Class: cheat. Arguments: gateway_id, reference_id (required), start_address (required), values (required).
+        Class: cheat (other classes at some arguments). Arguments: gateway_id, reference_id (required), start_address (required), values (required), dry_run.
         """
-        return self.call('write_memory', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'start_address': start_address, 'values': values}, **options)
+        return self.call('write_memory', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'start_address': start_address, 'values': values, 'dry_run': dry_run}, **options)
