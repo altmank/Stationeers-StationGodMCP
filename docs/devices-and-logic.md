@@ -325,7 +325,8 @@ since load cannot be split into a time window, so to measure one (a test run, sa
 `include_counters` before and after, subtract the two `buckets` arrays bucket by bucket, and take the window's
 percentiles from the differences against the edges above. `runtime.restores` counts held restores since load (the
 hub's `sg.hold`; protocol method `hold_restore`): `applied`, written when a session ended abruptly; `skipped`, not
-written because the device held another value than its stream last wrote, was gone or refused the write; and
+written because the device held another value than its stream last wrote, was gone or refused the write, or the
+restore would open a vent, valve or pump and the write lint rules found a problem or could not run; and
 `dropped`, not written because their world was left.
 
 ## Profiling a running server

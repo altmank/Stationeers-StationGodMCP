@@ -2,14 +2,17 @@
 
 using Assets.Scripts.Objects.Motherboards;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared.Game.Lint;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
+using StationGodMCP.Pure.Lint;
 
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// Held restores' devices in the game, on the main thread: devices in the world scope (Devices.Find), logic types as
-/// write_logic reads them (LogicTypes.Parse), and the write through write_logic's own game write (LogicOps.SetValue).
+/// write_logic reads them (LogicTypes.Parse), the write through write_logic's own game write (LogicOps.SetValue), and
+/// the write rules through the checked write's judge (OpeningWrites.Judge).
 /// </summary>
 internal sealed class RestoreDevices : IRestoreDevices
 {
@@ -67,5 +70,11 @@ internal sealed class RestoreDevices : IRestoreDevices
             problem = refused.Code;
             return false;
         }
+    }
+
+    public OpeningVerdict Judge(long referenceId, ushort type, double previous, double value)
+    {
+        ScopedTarget? device = Devices.Find(DeviceScope.World, referenceId);
+        return device == null ? OpeningVerdict.Closed : OpeningWrites.Judge(device, (LogicType)type, previous, value);
     }
 }
