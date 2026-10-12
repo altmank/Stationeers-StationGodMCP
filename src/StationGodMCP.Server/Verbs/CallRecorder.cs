@@ -17,6 +17,7 @@ internal sealed class CallRecorder : IDisposable
     private readonly FileStream _file;
     private readonly MemoryStream _line = new();
     private readonly Utf8JsonWriter _writer;
+    private bool _failed;
 
     internal CallRecorder(string path)
     {
@@ -37,10 +38,7 @@ internal sealed class CallRecorder : IDisposable
     {
         lock (_gate)
         {
-            _line.SetLength(0);
-            _writer.Reset(_line);
-            _writer.WriteStartObject();
-            _writer.WriteNumber("t_ms", timeMs);
+            Begin(timeMs);
             _writer.WriteString("face", FaceName(face));
             _writer.WriteNumber("stream", stream);
             _writer.WriteNumber("in_flight", inFlight);
@@ -61,11 +59,68 @@ internal sealed class CallRecorder : IDisposable
             }
 
             _writer.WriteEndArray();
+            End();
+        }
+    }
+
+    /// <summary>A cut: {t_ms, cut: {ref, verb, what, bytes, sent}}.</summary>
+    internal void RecordCut(long timeMs, string reference, string verb, string? what, int bytes, int sent)
+    {
+        lock (_gate)
+        {
+            Begin(timeMs);
+            _writer.WriteStartObject("cut");
+            _writer.WriteString("ref", reference);
+            _writer.WriteString("verb", verb);
+            _writer.WriteString("what", what);
+            _writer.WriteNumber("bytes", bytes);
+            _writer.WriteNumber("sent", sent);
             _writer.WriteEndObject();
-            _writer.Flush();
+            End();
+        }
+    }
+
+    /// <summary>A re-ask: {t_ms, re_ask: {ref, calls_after, how}}, how being whole, repeat or same_call.</summary>
+    internal void RecordReAsk(long timeMs, string reference, int callsAfter, string how)
+    {
+        lock (_gate)
+        {
+            Begin(timeMs);
+            _writer.WriteStartObject("re_ask");
+            _writer.WriteString("ref", reference);
+            _writer.WriteNumber("calls_after", callsAfter);
+            _writer.WriteString("how", how);
+            _writer.WriteEndObject();
+            End();
+        }
+    }
+
+    private void Begin(long timeMs)
+    {
+        _line.SetLength(0);
+        _writer.Reset(_line);
+        _writer.WriteStartObject();
+        _writer.WriteNumber("t_ms", timeMs);
+    }
+
+    // A recording that cannot be written never fails the call: it is said once on stderr.
+    private void End()
+    {
+        _writer.WriteEndObject();
+        _writer.Flush();
+        try
+        {
             _file.Write(_line.GetBuffer(), 0, (int)_line.Length);
             _file.Write(NewLine);
             _file.Flush();
+        }
+        catch (IOException exception)
+        {
+            if (!_failed)
+            {
+                _failed = true;
+                Console.Error.WriteLine($"[StationGodMCP] The recording could not be written: {exception.Message}");
+            }
         }
     }
 

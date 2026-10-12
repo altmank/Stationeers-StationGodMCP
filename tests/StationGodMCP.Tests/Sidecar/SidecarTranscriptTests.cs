@@ -148,14 +148,19 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task ALargeReplyGoesToAFileOnItsOwn()
+    public async Task ALargeReplyIsCutAndWithWholeGoesToAFileOnItsOwn()
     {
         await using FakeGame game = FakeGame.OnPipe();
         string big = "[" + string.Join(",", Enumerable.Range(0, 3000).Select(n => $$"""{"reference_id":"{{n}}","prefab_name":"{{new string('x', 80)}}"}""")) + "]";
         game.Answer = call => Task.FromResult<string?>(call.Ok($$"""{"count":3000,"things":{{big}}}"""));
         await using McpAdapter sidecar = Sidecar(game.Target);
 
-        JsonElement pointer = Result(await sidecar.HandleAsync(Call(1, "find", """{"what":"thing"}"""))).GetProperty("structuredContent");
+        JsonElement cut = Result(await sidecar.HandleAsync(Call(1, "find", """{"what":"thing"}"""))).GetProperty("structuredContent");
+        JsonElement pointer = Result(await sidecar.HandleAsync(Call(2, "find", """{"what":"thing","whole":true}"""))).GetProperty("structuredContent");
+
+        Assert.Equal(3000, cut.GetProperty("cut").GetProperty("total").GetInt32());
+        Assert.StartsWith("r", cut.GetProperty("ref").GetString());
+        Assert.True(Encoding.UTF8.GetByteCount(cut.GetRawText()) <= 4096 + 512);
 
         Assert.True(pointer.GetProperty("auto_output_file").GetBoolean());
         Assert.Equal(3000, pointer.GetProperty("counts").GetProperty("things").GetInt32());

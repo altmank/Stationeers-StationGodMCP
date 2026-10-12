@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using StationGodMCP.Client;
 using StationGodMCP.Server;
@@ -10,21 +11,24 @@ using Xunit;
 namespace StationGodMCP.Tests.Hub;
 
 /// <summary>
-/// Every what's catalogue example goes through the pipeline on the direct face and becomes a call to one of its own
-/// handlers (or the job poller), checked and translated without error. The few whose example needs a later piece or a
-/// handler the mod does not have yet answer not_available, each named here with why.
+/// Every what's catalogue example goes through the pipeline on the direct face and becomes calls to its own handlers
+/// (or the hub's helper reads), each with params the real handler schema takes (required arguments, types, enums:
+/// ArgumentCheck against the method catalogue). The few whose example needs what the hub does not bring yet answer
+/// not_available or invalid_argument, each named here with why.
 /// </summary>
 public sealed class VerbExampleTests
 {
-    // What the example needs that C2a does not bring, by what.
-    private static readonly Dictionary<string, string> Later = new()
+    // What the example needs that the hub does not bring yet, by what, with the code it answers.
+    private static readonly Dictionary<string, (string Code, string Why)> Later = new()
     {
-        ["inspect.controllers"] = "is not in the mod yet",
-        ["check.ignition"] = "id",
-        ["check.replaceable"] = "refs",
-        ["write.paint"] = "network",
-        ["server.stop"] = "runs piece"
+        ["check.ignition"] = ("not_available", "id"),
+        ["write.paint"] = ("not_available", "network"),
+        ["server.stop"] = ("not_available", "runs piece"),
+        ["check.replaceable"] = ("invalid_argument", "no ref 'r12'")
     };
+
+    // The hub's own reads around a call, and the protocol method controllers go to: not a what's handler.
+    internal static readonly string[] Helpers = { "thing_health", "player_vitals", "read_logic_many", "inspect_controllers" };
 
     public static IEnumerable<object[]> Whats() =>
         VerbCatalogue.Embedded.Verbs
@@ -42,10 +46,11 @@ public sealed class VerbExampleTests
 
     [Theory]
     [MemberData(nameof(Whats))]
-    public void TheExampleTranslatesIntoAHandlerCall(string key)
+    public void TheExampleTranslatesIntoHandlerCallsTheHandlersTake(string key)
     {
         WhatEntry what = WhatOf(key);
         FakeGameLink game = new();
+        game.Answer = call => FakeGameLink.Ok(call.Method == "player_vitals" ? """{"reference_id":"77"}""" : "{}");
         JsonObject example = (JsonObject)(what.Example ?? new JsonObject()).DeepClone();
         string? file = null;
         if (example["code_file"] != null)
@@ -62,11 +67,11 @@ public sealed class VerbExampleTests
             System.IO.File.Delete(file);
         }
 
-        if (Later.TryGetValue(key, out string? why))
+        if (Later.TryGetValue(key, out (string Code, string Why) later))
         {
             VerbReply.Failed failed = reply.Failed();
-            Assert.Equal("not_available", failed.Code);
-            Assert.Contains(why, failed.Message);
+            Assert.Equal(later.Code, failed.Code);
+            Assert.Contains(later.Why, failed.Message);
             Assert.Empty(game.Calls);
             return;
         }
@@ -78,14 +83,21 @@ public sealed class VerbExampleTests
             return;
         }
 
-        Assert.NotEmpty(game.Calls);
         List<string> handlers = what.Handlers.Select(handler => handler.Name).ToList();
+        Assert.Contains(game.Calls, call => handlers.Contains(call.Method) || key == "inspect.controllers" ||
+                                            LegacyVerbMap.JobPoller((string?)call.Params()["job_id"] ?? "") == call.Method);
         foreach (GameCall sent in game.Calls)
         {
-            Assert.True(handlers.Contains(sent.Method) ||
+            Assert.True(handlers.Contains(sent.Method) || Helpers.Contains(sent.Method) ||
                         LegacyVerbMap.JobPoller((string?)sent.Params()["job_id"] ?? "") == sent.Method,
                 $"{key} sent {sent.Method}");
             Assert.NotNull(sent.Rename);
+            if (Program.InputSchemas.TryGetValue(sent.Method, out JsonElement schema))
+            {
+                Assert.True(ArgumentCheck.Problems(schema, sent.Parameters).Count == 0,
+                    $"{key} -> {sent.Method} {sent.Parameters.GetRawText()}: " +
+                    string.Join(" ", ArgumentCheck.Problems(schema, sent.Parameters)));
+            }
         }
     }
 

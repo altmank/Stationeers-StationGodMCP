@@ -150,7 +150,7 @@ internal sealed class ArgMapper
 
         if (options["prefab"] is { } prefab && prefabArgs.Count > 0)
         {
-            Prefab(prefab, prefabArgs, args, problems);
+            Prefab(prefab, prefabArgs, args, problems, PrefabIsAPart(handler));
         }
 
         List<(string Arg, JsonNode Value)> fills = [];
@@ -175,20 +175,30 @@ internal sealed class ArgMapper
             }
         }
 
+        // radius alone would widen the call to the whole world: it needs its centre.
+        if (options["radius"] != null && options["near"] == null && (hasNearPlayer || hasPlainNear))
+        {
+            problems.Add(new OptionProblem("radius", hasPlainNear ? "needs near" : "needs near: \"player\" here"));
+        }
+
+        if (options["what_if"] is JsonObject whatIf)
+        {
+            foreach ((string key, JsonNode? _) in whatIf)
+            {
+                if (!MapsFrom(handler, "what_if", key))
+                {
+                    problems.Add(new OptionProblem("what_if." + key, "not a what_if of " + what.Label,
+                        Nearest.Of(key, ArgsFrom(handler, "what_if"))));
+                }
+            }
+        }
+
         if (hasNearPlayer && !hasPlainNear && options["near"] != null && !nearPlayer)
         {
             problems.Add(JsonNodes.Text(options["near"]) is { } given &&
                          string.Equals(given.Trim(), "player", StringComparison.OrdinalIgnoreCase)
                 ? new OptionProblem("radius", "required with near: \"player\"")
                 : new OptionProblem("near", "takes only \"player\" (with radius) here"));
-        }
-
-        // A what whose route is confirm reports until confirm: true. Where its table leaves the handler's dry_run out
-        // (the handler's own report, report class mod), confirm still decides it.
-        if (what.Write?.Route == "confirm" && args["dry_run"] == null && _schemas.Arg(handler.Name, "dry_run") != null)
-        {
-            used.Add("confirm");
-            args["dry_run"] = !JsonNodes.IsTrue(options["confirm"]);
         }
 
         Unmapped(what, handler, options, used, args, problems, unavailable);
@@ -271,7 +281,7 @@ internal sealed class ArgMapper
             {
                 if (entry.Option == option || entry.Option.Contains(option + "+", StringComparison.Ordinal))
                 {
-                    return other.When ?? other.Name;
+                    return other.When ?? "another form";
                 }
             }
         }
@@ -360,8 +370,50 @@ internal sealed class ArgMapper
         _ => null
     };
 
+    private static bool MapsFrom(HandlerEntry handler, string option, string arg)
+    {
+        foreach (ArgEntry entry in handler.Args)
+        {
+            if (entry.Option == option && entry.Arg == arg)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static List<string> ArgsFrom(HandlerEntry handler, string option)
+    {
+        List<string> args = [];
+        foreach (ArgEntry entry in handler.Args)
+        {
+            if (entry.Option == option)
+            {
+                args.Add(entry.Arg);
+            }
+        }
+
+        return args;
+    }
+
+    // Where prefab moved onto a part argument (survey network: "a part with *"), a name without * is that part.
+    private static bool PrefabIsAPart(HandlerEntry handler)
+    {
+        foreach (ArgEntry entry in handler.Args)
+        {
+            if (entry.Option == "prefab" && entry.Arg == "prefab_contains" && entry.Change == "moved")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // prefab: a whole name, a hash, a part written with *, or a list of names, each onto the argument that takes it.
-    private static void Prefab(JsonNode value, List<string> available, JsonObject args, List<OptionProblem> problems)
+    private static void Prefab(JsonNode value, List<string> available, JsonObject args, List<OptionProblem> problems,
+        bool asPart = false)
     {
         bool Has(string arg) => available.Contains(arg);
 
@@ -369,7 +421,7 @@ internal sealed class ArgMapper
         {
             if (list.Count == 1 && list[0] is { } only)
             {
-                Prefab(only, available, args, problems);
+                Prefab(only, available, args, problems, asPart);
                 return;
             }
 
@@ -433,9 +485,15 @@ internal sealed class ArgMapper
             {
                 args["prefabs"] = new JsonArray(JsonValue.Create(text));
             }
-            else
+            else if (asPart)
             {
                 args["prefab_contains"] = text;
+            }
+            else
+            {
+                // Only a part is matched here: a whole name would match every prefab that holds it.
+                problems.Add(new OptionProblem("prefab", "a whole name is not matched exactly here; give a part",
+                    ["*" + text + "*"]));
             }
 
             return;

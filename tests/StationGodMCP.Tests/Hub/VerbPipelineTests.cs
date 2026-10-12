@@ -119,7 +119,7 @@ public sealed class VerbPipelineTests : IDisposable
         Assert.Equal(2, game.CallsTo("describe_device").Count);
         Assert.All(game.Calls, call => Assert.NotNull(call.Rename));
         Assert.Equal(
-            """{"results":[{"index":0,"ok":true,"reference_id":"1","prefab_name":"StructureVent"},{"index":1,"ok":false,"reference_id":"2","error":{"code":"thing_not_found","message":"No thing with reference id 2."}}],"count":2,"success_count":1,"error_count":1}""",
+            """{"results":[{"index":0,"ok":true,"reference_id":"1","payload":{"reference_id":"1","prefab_name":"StructureVent"}},{"index":1,"ok":false,"reference_id":"2","error":{"code":"thing_not_found","message":"No thing with reference id 2."}}],"count":2,"success_count":1,"error_count":1}""",
             reply!.ToJsonString());
     }
 
@@ -149,10 +149,12 @@ public sealed class VerbPipelineTests : IDisposable
                 options.Remove("room");
                 options["id"] = new JsonArray("1", "2");
                 FakeGameLink game = new();
-                game.Answer = _ => FakeGameLink.Ok("""{"prefab_name":"StructureLocker"}""");
+                game.Answer = call => FakeGameLink.Ok(call.Method == "player_vitals"
+                    ? """{"reference_id":"77"}"""
+                    : """{"prefab_name":"StructureLocker"}""");
                 VerbReply reply = game.Pipeline().Call(verb.Name, what.Name == "-" ? null : what.Name, options.ToJsonString());
                 Assert.True(reply is VerbReply.Done, $"{what.Key}: {(reply as VerbReply.Failed)?.ToJson().ToJsonString()}");
-                Assert.True(game.Calls.Count(call => call.Method != "thing_health" || what.Key == "inspect.health") == 1,
+                Assert.True(game.Calls.Count(call => !HubReads.Contains(call.Method) || what.Key == "inspect.health") == 1,
                     what.Key + " " + string.Join(", ", game.Calls.Select(call => call.Method)));
                 Assert.Contains("\"2\"", game.Calls.Last().Parameters.GetRawText());
             }
@@ -198,6 +200,7 @@ public sealed class VerbPipelineTests : IDisposable
 
         Assert.Equal(1, (int)split!["count"]!);
         Assert.Equal("1", (string)split["results"]![0]!["reference_id"]!);
+        Assert.Equal("StructureVent", (string)split["results"]![0]!["payload"]!["prefab_name"]!);
         Assert.Equal("""["1"]""", game.Single("remove_pipes").Params()["reference_ids"]!.ToJsonString());
         Assert.Equal("""{"prefab_name":"StructureVent"}""", direct!.ToJsonString());
     }
@@ -367,8 +370,6 @@ public sealed class VerbPipelineTests : IDisposable
     [InlineData("inspect", "job", """{"id":"script-4"}""", "runs piece")]
     [InlineData("server", "stop", """{"id":"script-4"}""", "runs piece")]
     [InlineData("undo", null, """{"id":"script-4"}""", "runs piece")]
-    [InlineData("find", "thing", """{"repeat":"r7"}""", "refs piece")]
-    [InlineData("inspect", "device", """{"id":"r3"}""", "refs piece")]
     public void WhatALaterPieceBringsIsNotAvailable(string verb, string? what, string options, string message)
     {
         FakeGameLink game = new();

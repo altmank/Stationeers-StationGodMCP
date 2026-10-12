@@ -46,6 +46,7 @@ internal sealed class LegacyVerbMap
         "swap.cable" => Swap(what, options, "upgrade_cables", "clean_cables"),
         "swap.pipe" => Swap(what, options, "upgrade_pipes", "clean_pipes"),
         "move.item" => MoveItem(what, options),
+        "inspect.controllers" => InspectControllers(what, options),
         "undo" => Undo(what, options),
         _ => Single(what, options)
     };
@@ -56,7 +57,7 @@ internal sealed class LegacyVerbMap
     {
         if (what.Handlers.Count != 1)
         {
-            throw new InvalidOperationException($"{what.Label} has {what.Handlers.Count} handlers and no selector.");
+            throw new InvalidOperationException($"{what.Label} has no handler choice.");
         }
 
         HandlerEntry handler = what.Handlers[0];
@@ -67,7 +68,7 @@ internal sealed class LegacyVerbMap
 
         if (handler.Pending != null || !_schemas.Has(handler.Name))
         {
-            return NotAvailable($"{what.Label} is not in the mod yet ({handler.Pending ?? "no handler"})");
+            return NotAvailable($"{what.Label} is not in this mod version");
         }
 
         return Call(what, handler.Name, options);
@@ -77,7 +78,7 @@ internal sealed class LegacyVerbMap
     internal Translation Call(WhatEntry what, string handlerName, JsonObject options, string? part = null)
     {
         HandlerEntry handler = what.Handler(handlerName) ??
-                               throw new InvalidOperationException($"{what.Label} has no handler {handlerName}.");
+                               throw new InvalidOperationException($"{what.Label} has no such form.");
         MappedArgs mapped = _mapper.Map(what, handler, options);
         if (!mapped.TakesShaping)
         {
@@ -403,9 +404,17 @@ internal sealed class LegacyVerbMap
     /// <summary>sample_logic takes {id, logic} targets: id and logic (one or lists) become every pair.</summary>
     internal Translation ReadSample(WhatEntry what, JsonObject options)
     {
-        if (options["reads"] != null || options["id"] == null || options["logic"] == null)
+        if (options["reads"] != null)
         {
-            return Single(what, Without(options, "id", "logic"));
+            return options["id"] != null || options["logic"] != null
+                ? Invalid(what, options["id"] != null ? "id" : "logic", "give reads, or id with logic, not both")
+                : Single(what, options);
+        }
+
+        if (options["id"] == null || options["logic"] == null)
+        {
+            return Invalid(what, options["id"] == null ? "id" : "logic", "required with " +
+                (options["id"] == null ? "logic" : "id") + " (or reads)");
         }
 
         JsonObject built = Without(options, "id", "logic");
@@ -420,6 +429,21 @@ internal sealed class LegacyVerbMap
 
         built["reads"] = pairs;
         return Single(what, built);
+    }
+
+    /// <summary>
+    /// The controllers index is a protocol method of the mod (inspect_controllers, protocol.md): one device per call
+    /// (x-list split).
+    /// </summary>
+    internal Translation InspectControllers(WhatEntry what, JsonObject options)
+    {
+        if (JsonNodes.Text(options["id"]) is not { } id)
+        {
+            return Invalid(what, "id", "required");
+        }
+
+        return new Translation.Calls(new HandlerCall("inspect_controllers", new JsonObject { ["reference_id"] = id },
+            _rename.For(what, "controllers")));
     }
 
     /// <summary>One id with logic and value: write_logic. writes, or a list of ids: write_logic_many, in order.</summary>
@@ -578,39 +602,120 @@ internal sealed class LegacyVerbMap
     {
         if (options["slot"] != null || options["moves"] != null)
         {
-            return Call(what, "move_item", SlotMoves(options));
+            return SlotMove(what, options);
         }
 
         string? source = JsonNodes.Text(options["source"]);
         string? to = JsonNodes.Text(options["to"]);
-        if (to != null && string.Equals(to.Trim(), "player", StringComparison.OrdinalIgnoreCase))
+        bool toPlayer = IsPlayer(to);
+        if (source != null)
         {
-            to = null;
+            return KindOf(what, source, from => to == null || toPlayer
+                ? Withdraw(what, options, from, null)
+                : KindOf(what, to, into => Withdraw(what, options, from, into)));
         }
 
-        if (source == null && to == null)
+        if (to != null && !toPlayer)
+        {
+            return KindOf(what, to, into => Deposit(what, options, into));
+        }
+
+        return SlotMove(what, options);
+    }
+
+    private static bool IsPlayer(string? id) =>
+        id != null && string.Equals(id.Trim(), "player", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A slot move. move_item's to_id is a thing's id: "player" (as to, or a move's to) is resolved to the player's id
+    /// first (player_vitals). force goes with one item only: moves carry no force.
+    /// </summary>
+    private Translation SlotMove(WhatEntry what, JsonObject options)
+    {
+        bool many = options["id"] is JsonArray || options["moves"] is JsonArray;
+        if (JsonNodes.IsTrue(options["force"]) && many)
+        {
+            return Invalid(what, "force", "takes one item (one id, no moves): each forced move is its own call");
+        }
+
+        if (!NamesPlayer(options))
         {
             return Call(what, "move_item", SlotMoves(options));
         }
 
-        return KindOf(what, source ?? to!, first => source == null
-            ? Deposit(what, options, first)
-            : to == null
-                ? Withdraw(what, options, first, null)
-                : KindOf(what, to, second => Withdraw(what, options, first, second)));
+        HandlerCall read = new("player_vitals", new JsonObject(), _rename.For(what, "player_vitals"));
+        return new Translation.Probe(read, reply => reply switch
+        {
+            GameReply.Ok ok when JsonNodes.Text(JsonNodes.FromElement(ok.Result)?["reference_id"]) is { } player =>
+                Call(what, "move_item", SlotMoves(WithPlayer(options, player))),
+            GameReply.Ok => NotAvailable($"{what.Label}: the player's id could not be read; give the holder's id as to"),
+            _ => new Translation.Answered(VerbPipeline.Failure(reply, read, what))
+        });
     }
 
-    // move_item takes one id; a list of ids becomes its moves, each with the call's to, slot, quantity, merge and allow.
+    private static bool NamesPlayer(JsonObject options)
+    {
+        if (IsPlayer(JsonNodes.Text(options["to"])))
+        {
+            return true;
+        }
+
+        foreach (JsonNode? move in options["moves"] as JsonArray ?? [])
+        {
+            if (IsPlayer(JsonNodes.Text(move?["to"])))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static JsonObject WithPlayer(JsonObject options, string player)
+    {
+        JsonObject resolved = Copy(options);
+        if (IsPlayer(JsonNodes.Text(resolved["to"])))
+        {
+            resolved["to"] = player;
+        }
+
+        foreach (JsonNode? move in resolved["moves"] as JsonArray ?? [])
+        {
+            if (move is JsonObject entry && IsPlayer(JsonNodes.Text(entry["to"])))
+            {
+                entry["to"] = player;
+            }
+        }
+
+        return resolved;
+    }
+
+    // move_item takes one id; a list of ids becomes its moves, each with the call's to, slot, quantity, merge and allow,
+    // and every move names its slot (the mod requires to_slot in each; "auto" when none is given).
     private static JsonObject SlotMoves(JsonObject options)
     {
         if (options["id"] is not JsonArray ids)
         {
-            return options;
+            if (options["moves"] is not JsonArray given)
+            {
+                return options;
+            }
+
+            JsonObject withSlots = Copy(options);
+            foreach (JsonNode? move in withSlots["moves"]!.AsArray())
+            {
+                if (move is JsonObject entry && entry["slot"] == null)
+                {
+                    entry["slot"] = "auto";
+                }
+            }
+
+            return withSlots;
         }
 
         string[] each = ["to", "slot", "quantity", "merge", "allow"];
         JsonObject built = Without(options, "id", "to", "slot", "quantity", "merge", "allow");
-        JsonArray moves = options["moves"] is JsonArray given ? (JsonArray)given.DeepClone() : [];
+        JsonArray moves = options["moves"] is JsonArray earlier ? (JsonArray)earlier.DeepClone() : [];
         foreach (JsonNode? id in ids)
         {
             JsonObject move = new() { ["id"] = id?.DeepClone() };
@@ -622,6 +727,7 @@ internal sealed class LegacyVerbMap
                 }
             }
 
+            move["slot"] ??= "auto";
             moves.Add(move);
         }
 
@@ -633,16 +739,21 @@ internal sealed class LegacyVerbMap
     {
         StoreKind.Vault => Call(what, "vault_deposit", options),
         StoreKind.Silo => Call(what, "silo_deposit", options),
-        _ => Call(what, "move_item", SlotMoves(options))
+        _ => SlotMove(what, options)
     };
 
-    private Translation Withdraw(WhatEntry what, JsonObject options, StoreKind source, StoreKind? to) => source switch
+    // Out of a store: to "player" is the withdraw handlers' own default, so it is left out (their to_id wants an id).
+    private Translation Withdraw(WhatEntry what, JsonObject options, StoreKind source, StoreKind? to)
     {
-        StoreKind.Vault when to == StoreKind.Vault => Call(what, "vault_transfer", options),
-        StoreKind.Vault => Call(what, "vault_withdraw", options),
-        StoreKind.Silo => Call(what, "silo_withdraw", options),
-        _ => Invalid(what, "source", "must be a vault or a silo")
-    };
+        JsonObject sent = IsPlayer(JsonNodes.Text(options["to"])) ? Without(options, "to") : options;
+        return source switch
+        {
+            StoreKind.Vault when to == StoreKind.Vault => Call(what, "vault_transfer", sent),
+            StoreKind.Vault => Call(what, "vault_withdraw", sent),
+            StoreKind.Silo => Call(what, "silo_withdraw", sent),
+            _ => Invalid(what, "source", "must be a vault or a silo")
+        };
+    }
 
     /// <summary>What kind of store an id is, read from its prefab name (Ingot or Remote Vault, SDB Silo).</summary>
     internal enum StoreKind

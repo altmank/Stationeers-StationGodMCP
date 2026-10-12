@@ -6,44 +6,66 @@ using StationGodMCP.Client;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// The verb pipeline every caller goes through (docs/architecture/hub.md): record the call, check it (OptionCheck), let
-/// the write gate decide on a write with its resolved targets, route an id list by the what's x-list (native: the
-/// handler takes it; split: one call per id, gathered into rows; one: refused, naming run_script), translate onto
-/// today's handlers (LegacyVerbMap) and send each call on the caller's stream with its rename envelope. help is answered
-/// from the generated pages; run_script and script runs are the runs piece's.
+/// The verb pipeline every caller goes through (docs/architecture/hub.md): record the call, resolve a repeat and ref
+/// targets, check it (OptionCheck), let the write gate decide on a write with its resolved targets (act, report by the
+/// what's report class, refuse, stop), route an id list by the what's x-list (native: the handler takes it; split: one
+/// call per id, gathered into rows; one: refused, naming run_script), translate onto the mod's handlers
+/// (LegacyVerbMap) and send each call on the caller's stream with its rename envelope. Direct replies get refs and the
+/// cap; script and program list replies get a hub cursor. help is answered from the generated pages; run_script and
+/// script runs are the runs piece's.
 /// </summary>
-public sealed class VerbPipeline
+public sealed partial class VerbPipeline
 {
     internal const string RunScriptPlaceholder = "run_script lands with the runs piece";
 
     private const double DefaultMaxWaitSeconds = 30;
 
-    // Job states that are not final: the poll goes on while one of these is reported.
-    private static readonly string[] Unsettled = ["queued", "waiting", "scheduled", "running", "started", "pending"];
+    // The mod's final job states (jobs: applied, applied_with_differences, applied_unchecked, stopped, refused; gas
+    // moves: applied, failed); queued, waiting, scheduled and verifying go on.
+    private static readonly string[] Final =
+        ["applied", "applied_with_differences", "applied_unchecked", "stopped", "refused", "failed"];
 
     private readonly IGameLink _link;
-    private readonly IWriteGate _gate;
+    private readonly IWriteGate? _gate;
+    private readonly DirectWriteGate _directGate;
     private readonly CallRecorder? _recorder;
     private readonly VerbCatalogue _catalogue;
+    private readonly HandlerSchemas _schemas;
     private readonly LegacyVerbMap _map;
+    private readonly IShownText? _shown;
+    private readonly RefStore _refs = new();
+    private readonly BulkWrites _bulk = new();
+    private readonly HubCursors _cursors = new();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private int _inFlight;
 
+    /// <summary>
+    /// gate, when given, decides every write that does not carry its own (VerbCall.Gate); otherwise the direct and
+    /// program faces get the direct write rule and a script call without a gate reports.
+    /// </summary>
     internal VerbPipeline(IGameLink link, IWriteGate? gate = null, CallRecorder? recorder = null,
-        VerbCatalogue? catalogue = null, HandlerSchemas? schemas = null)
+        VerbCatalogue? catalogue = null, HandlerSchemas? schemas = null, IShownText? shown = null)
     {
         _link = link;
-        _gate = gate ?? PassThroughGate.Instance;
+        _gate = gate;
         _recorder = recorder;
+        _shown = shown;
         _catalogue = catalogue ?? VerbCatalogue.Embedded;
-        _map = new LegacyVerbMap(_catalogue, schemas ?? HandlerSchemas.BuiltIn);
+        _schemas = schemas ?? HandlerSchemas.BuiltIn;
+        _map = new LegacyVerbMap(_catalogue, _schemas);
+        _directGate = new DirectWriteGate(_catalogue);
+        _link.WorldChanged += OnWorldChanged;
     }
 
     internal VerbCatalogue Catalogue => _catalogue;
 
     internal LegacyVerbMap Map => _map;
 
-    /// <summary>How long a job poll waits between polls.</summary>
+    internal RefStore Refs => _refs;
+
+    internal HubCursors Cursors => _cursors;
+
+    /// <summary>How long a job poll waits between polls when the link has no job waits.</summary>
     internal TimeSpan PollInterval { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public async Task<VerbReply> CallAsync(VerbCall call, CancellationToken cancellation)
@@ -51,13 +73,38 @@ public sealed class VerbPipeline
         int inFlight = Interlocked.Increment(ref _inFlight);
         try
         {
-            _recorder?.Record(_clock.ElapsedMilliseconds, call.Face, call.Stream, inFlight, call.Verb, call.What, call.Args);
+            if (!call.Recorded)
+            {
+                _recorder?.Record(_clock.ElapsedMilliseconds, call.Face, call.Stream, inFlight, call.Verb, call.What, call.Args);
+            }
+            if (call.Face == Face.Direct)
+            {
+                NoteReAsk(call);
+            }
+
             return await RunAsync(call, cancellation).ConfigureAwait(false);
         }
         finally
         {
             Interlocked.Decrement(ref _inFlight);
         }
+    }
+
+    /// <summary>Records a call where it arrives, before anything checks it (the MCP adapter's own refusals included).</summary>
+    internal void RecordInput(Face face, long stream, string verb, string? what, JsonObject options) =>
+        _recorder?.Record(_clock.ElapsedMilliseconds, face, stream, Volatile.Read(ref _inFlight) + 1, verb, what, options);
+
+    /// <summary>The text actually sent to the MCP client (the cap's IShownText hook).</summary>
+    internal void TextShown(string text) => _shown?.Shown(text);
+
+    /// <summary>The stream ended: its hub cursors go.</summary>
+    public void EndStream(long stream) => _cursors.FreeStream(stream);
+
+    // Ids in refs and cursors name things of the world they came from.
+    private void OnWorldChanged(string? world)
+    {
+        _refs.Clear();
+        _cursors.Clear();
     }
 
     private async Task<VerbReply> RunAsync(VerbCall call, CancellationToken cancellation)
@@ -72,7 +119,19 @@ public sealed class VerbPipeline
             // help's what is an option (help {verb, what}), not a what of help.
             JsonObject helpArgs = (JsonObject)call.Args.DeepClone();
             helpArgs["what"] = call.What;
-            call = new VerbCall(call.Verb, null, helpArgs, call.Face, call.Stream, call.Line);
+            call = new VerbCall(call.Verb, null, helpArgs, call.Face, call.Stream, call.Line) { Gate = call.Gate };
+        }
+
+        if (call.Args["repeat"] != null && call.Face == Face.Direct)
+        {
+            switch (Repeat(call))
+            {
+                case RepeatOf.Answer answer:
+                    return answer.Reply;
+                case RepeatOf.Call again:
+                    call = again.Repeated;
+                    break;
+            }
         }
 
         if (OptionCheck.Check(_catalogue, call, out VerbEntry? verb, out WhatEntry? what) is { } refused)
@@ -85,41 +144,35 @@ public sealed class VerbPipeline
             return HelpPages.Answer(_catalogue, call.Args);
         }
 
-        if (call.Args["repeat"] != null)
+        Dictionary<string, string> refs = new(StringComparer.Ordinal);
+        if (ResolveRefs(what!, call.Args, refs, out JsonObject resolved) is { } unknown)
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, "repeat lands with the refs piece.");
+            return unknown;
         }
 
-        if (RefGiven(call.Args["id"]))
+        JsonObject options = Normalised(what!, call.Face, resolved);
+        if (BulkJob(call, what!, options) is { } bulk)
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, "refs (\"r3\") land with the refs piece; give the ids.");
+            return await bulk.ConfigureAwait(false);
         }
 
-        JsonObject options = Normalised(what!, call);
         JsonArray? ids = what!.Options.ContainsKey("id") ? options["id"] as JsonArray : null;
         if (ids != null && what.ListForm == "one")
         {
             return OptionProblem.Refusal(what.Label, [new OptionProblem("id", OptionCheck.OneId(what))]);
         }
 
-        if (what.Write != null && Gate(call, what, options) is { } decided)
-        {
-            return decided;
-        }
-
-        if (ids != null && what.ListForm == "split")
-        {
-            return await SplitAsync(call, what, options, ids, cancellation).ConfigureAwait(false);
-        }
-
-        return await ExecuteAsync(_map.Translate(what, options), call, what, options, cancellation).ConfigureAwait(false);
+        VerbReply reply = what.Write != null
+            ? await WriteAsync(call, what, options, ids, refs, cancellation).ConfigureAwait(false)
+            : await ReadAsync(call, what, options, ids, cancellation).ConfigureAwait(false);
+        return call.Face == Face.Direct ? Capped(call, what, options, reply) : reply;
     }
 
     // On the script and program faces a what that takes an id list answers rows even for one id (D13).
-    private static JsonObject Normalised(WhatEntry what, VerbCall call)
+    private static JsonObject Normalised(WhatEntry what, Face face, JsonObject given)
     {
         JsonObject options = new();
-        foreach ((string name, JsonNode? value) in call.Args)
+        foreach ((string name, JsonNode? value) in given)
         {
             if (value != null)
             {
@@ -127,7 +180,7 @@ public sealed class VerbPipeline
             }
         }
 
-        if (call.Face != Face.Direct && what.TakesIdList && JsonNodes.Text(options["id"]) is { } one)
+        if (face != Face.Direct && what.TakesIdList && JsonNodes.Text(options["id"]) is { } one)
         {
             options["id"] = new JsonArray(JsonValue.Create(one));
         }
@@ -135,60 +188,27 @@ public sealed class VerbPipeline
         return options;
     }
 
-    // A ref is r and digits, with a path after a dot ("r12.things"); ids are digits or words.
-    private static bool RefGiven(JsonNode? id)
+    // A read: split per id, a script or program list page with a hub cursor, or the translation as it is.
+    private async Task<VerbReply> ReadAsync(VerbCall call, WhatEntry what, JsonObject options, JsonArray? ids,
+        CancellationToken cancellation)
     {
-        if (id is JsonArray list)
+        if (ids != null && what.ListForm == "split")
         {
-            foreach (JsonNode? entry in list)
-            {
-                if (RefGiven(entry))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return await SplitAsync(call, what, options, ids, null, cancellation).ConfigureAwait(false);
         }
 
-        string? text = JsonNodes.Text(id)?.Trim();
-        if (text is not { Length: > 1 } || text[0] != 'r' || !char.IsAsciiDigit(text[1]))
+        Translation translation = _map.Translate(what, options);
+        if (call.Face != Face.Direct && what.MainList != null && options["limit"] == null &&
+            translation is Translation.Calls { List.Count: 1 } single)
         {
-            return false;
+            return await FirstPageAsync(call, what, options, single.List[0], cancellation).ConfigureAwait(false);
         }
 
-        int index = 1;
-        while (index < text.Length && char.IsAsciiDigit(text[index]))
-        {
-            index++;
-        }
-
-        return index == text.Length || text[index] == '.';
+        return await ExecuteAsync(translation, call, what, options, null, cancellation).ConfigureAwait(false);
     }
 
-    // The one place the write gate is asked, with the targets the what's x-target paths resolve to.
-    private VerbReply? Gate(VerbCall call, WhatEntry what, JsonObject options)
-    {
-        WriteTargets targets = WriteTargetPaths.Resolve(what.Write!, options);
-        switch (_gate.Decide(call, targets))
-        {
-            case WriteDecision.Act:
-                return null;
-            case WriteDecision.Report:
-                return new VerbReply.Failed(VerbFailure.NotAvailable, "Reports land with the write rule piece.");
-            case WriteDecision.Refuse refuse:
-                return new VerbReply.Failed("refused", $"{what.Label} was refused by the write rule.",
-                    data: new JsonObject { ["rows"] = new JsonArray(refuse.Row.DeepClone()) });
-            case WriteDecision.Stop stop:
-                return new VerbReply.Failed("unseen_target", $"{what.Label} names targets not seen; nothing acted.",
-                    stop.Fix, new JsonObject { ["rows"] = stop.Rows.DeepClone() }, stopped: true);
-            default:
-                throw new InvalidOperationException("A write decision is act, report, refuse or stop.");
-        }
-    }
-
-    // split: one call per id, gathered as PLAN's rows {index, ok, reference_id, ...reply | error}.
-    private async Task<VerbReply> SplitAsync(VerbCall call, WhatEntry what, JsonObject options, JsonArray ids,
+    // split: one call per id, gathered as PLAN's rows {index, ok, reference_id, payload | error}.
+    private async Task<VerbReply> SplitAsync(VerbCall call, WhatEntry what, JsonObject options, JsonArray ids, bool? acting,
         CancellationToken cancellation)
     {
         JsonArray rows = [];
@@ -198,7 +218,7 @@ public sealed class VerbPipeline
             JsonNode? id = ids[index];
             JsonObject one = (JsonObject)options.DeepClone();
             one["id"] = id?.DeepClone();
-            VerbReply reply = await ExecuteAsync(_map.Translate(what, one), call, what, one, cancellation)
+            VerbReply reply = await ExecuteAsync(_map.Translate(what, one), call, what, one, acting, cancellation)
                 .ConfigureAwait(false);
             JsonObject row = new() { ["index"] = index };
             switch (reply)
@@ -207,20 +227,7 @@ public sealed class VerbPipeline
                     succeeded++;
                     row["ok"] = true;
                     row["reference_id"] = id?.DeepClone();
-                    if (done.Reply is JsonObject fields)
-                    {
-                        foreach ((string key, JsonNode? value) in fields)
-                        {
-                            if (key is not ("index" or "ok" or "reference_id"))
-                            {
-                                row[key] = value?.DeepClone();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        row["payload"] = done.Reply?.DeepClone();
-                    }
+                    row["payload"] = done.Reply?.DeepClone();
 
                     break;
                 case VerbReply.Failed failed:
@@ -242,8 +249,9 @@ public sealed class VerbPipeline
         });
     }
 
+    // acting: null for a read; for a write, true sends it to act and false to report.
     private async Task<VerbReply> ExecuteAsync(Translation translation, VerbCall call, WhatEntry what, JsonObject options,
-        CancellationToken cancellation)
+        bool? acting, CancellationToken cancellation)
     {
         switch (translation)
         {
@@ -251,13 +259,13 @@ public sealed class VerbPipeline
                 return answered.Reply;
             case Translation.Probe probe:
             {
-                GameReply read = await SendAsync(probe.Read, call, null, cancellation).ConfigureAwait(false);
-                return await ExecuteAsync(probe.Then(read), call, what, options, cancellation).ConfigureAwait(false);
+                GameReply read = await SendAsync(probe.Read, call.Stream, null, cancellation).ConfigureAwait(false);
+                return await ExecuteAsync(probe.Then(read), call, what, options, acting, cancellation).ConfigureAwait(false);
             }
             case Translation.Calls calls when calls.List.Count == 1:
-                return await RunCallAsync(calls.List[0], call, what, options, cancellation).ConfigureAwait(false);
+                return await RunCallAsync(calls.List[0], call, what, options, acting, cancellation).ConfigureAwait(false);
             case Translation.Calls calls:
-                return await PartsAsync(calls.List, call, what, options, cancellation).ConfigureAwait(false);
+                return await PartsAsync(calls.List, call, what, options, acting, cancellation).ConfigureAwait(false);
             default:
                 throw new InvalidOperationException("A translation is calls, a probe or an answer.");
         }
@@ -265,13 +273,13 @@ public sealed class VerbPipeline
 
     // Several parts in order, one key each; the first failure stops the rest, named in not_run.
     private async Task<VerbReply> PartsAsync(List<HandlerCall> calls, VerbCall call, WhatEntry what, JsonObject options,
-        CancellationToken cancellation)
+        bool? acting, CancellationToken cancellation)
     {
         JsonObject reply = new();
         for (int index = 0; index < calls.Count; index++)
         {
             HandlerCall part = calls[index];
-            VerbReply answered = await RunCallAsync(part, call, what, options, cancellation).ConfigureAwait(false);
+            VerbReply answered = await RunCallAsync(part, call, what, options, acting, cancellation).ConfigureAwait(false);
             if (answered is VerbReply.Done done)
             {
                 reply[part.Part!] = done.Reply?.DeepClone();
@@ -313,19 +321,25 @@ public sealed class VerbPipeline
     }
 
     private async Task<VerbReply> RunCallAsync(HandlerCall handlerCall, VerbCall call, WhatEntry what, JsonObject options,
-        CancellationToken cancellation)
+        bool? acting, CancellationToken cancellation)
     {
         if (ReadFiles(handlerCall, what) is { } unreadable)
         {
             return unreadable;
         }
 
+        if (acting is { } acts)
+        {
+            ApplyMode(handlerCall, acts);
+            ApplyMode(handlerCall.Fallback, acts);
+        }
+
         (JsonElement? shape, Unparsed unparsed) = Shape(options);
-        GameReply reply = await SendAsync(handlerCall, call, shape, cancellation).ConfigureAwait(false);
+        GameReply reply = await SendAsync(handlerCall, call.Stream, shape, cancellation).ConfigureAwait(false);
         if (reply is GameReply.Refused refusedFirst && handlerCall.Fallback is { } fallback &&
             refusedFirst.Code == handlerCall.FallbackCode)
         {
-            reply = await SendAsync(fallback, call, shape, cancellation).ConfigureAwait(false);
+            reply = await SendAsync(fallback, call.Stream, shape, cancellation).ConfigureAwait(false);
         }
 
         if (reply is GameReply.Ok ok)
@@ -333,7 +347,12 @@ public sealed class VerbPipeline
             JsonNode? result = JsonNodes.FromElement(ok.Result);
             if (what.Options.ContainsKey("max_wait"))
             {
-                result = await SettledAsync(handlerCall, result, call, options, cancellation).ConfigureAwait(false);
+                (result, VerbReply.Failed? pollFailed) =
+                    await SettledAsync(handlerCall, result, call.Stream, options, cancellation).ConfigureAwait(false);
+                if (pollFailed != null)
+                {
+                    return pollFailed;
+                }
             }
 
             if (handlerCall.Reshape != null)
@@ -349,42 +368,122 @@ public sealed class VerbPipeline
             return new VerbReply.Done(result);
         }
 
-        return Failure(reply);
+        return Failure(reply, handlerCall, what);
     }
 
-    internal static VerbReply.Failed Failure(GameReply reply) => reply switch
+    /// <summary>
+    /// The gate's choice on the handler call: dry_run false and confirm true to act, dry_run true and no confirm to
+    /// report (the handler's own report). A poll, a status read or an undo form carries neither.
+    /// </summary>
+    private void ApplyMode(HandlerCall? handlerCall, bool acting)
+    {
+        if (handlerCall == null || handlerCall.Args["job_id"] != null || handlerCall.Args["status"] != null ||
+            handlerCall.Args["undo"] != null)
+        {
+            return;
+        }
+
+        if (_schemas.Arg(handlerCall.Handler, "dry_run") != null)
+        {
+            handlerCall.Args["dry_run"] = !acting;
+        }
+
+        if (_schemas.Arg(handlerCall.Handler, "confirm") != null)
+        {
+            if (acting)
+            {
+                handlerCall.Args["confirm"] = true;
+            }
+            else
+            {
+                handlerCall.Args.Remove("confirm");
+            }
+        }
+    }
+
+    internal static VerbReply.Failed Failure(GameReply reply) => Failure(reply, null, null);
+
+    /// <summary>
+    /// A refused or unreachable reply as a failure. The mod words its refusals in the caller's names (the rename
+    /// envelope); the link's own unreachable text names the method it sent, so that is said as the what.
+    /// </summary>
+    internal static VerbReply.Failed Failure(GameReply reply, HandlerCall? sent, WhatEntry? what) => reply switch
     {
         GameReply.Refused refused => new VerbReply.Failed(refused.Code, refused.Message,
             data: refused.Data is { } data ? JsonNodes.FromElement(data) : null),
-        GameReply.Unreachable unreachable => new VerbReply.Failed(VerbFailure.GameUnavailable, unreachable.Message,
-            maybeRan: unreachable.MaybeRan),
+        GameReply.Unreachable unreachable => new VerbReply.Failed(VerbFailure.GameUnavailable,
+            Unnamed(unreachable.Message, sent, what), maybeRan: unreachable.MaybeRan),
         _ => throw new InvalidOperationException("Only a refused or unreachable reply is a failure.")
     };
 
+    private static string Unnamed(string message, HandlerCall? sent, WhatEntry? what) =>
+        sent == null ? message : message.Replace(sent.Handler, what?.Label ?? "the call", StringComparison.Ordinal);
+
     /// <summary>
-    /// A job the reply names is polled until it is final or max_wait (default 30 s) passes: a job poll itself, or a
-    /// confirmed write that answered with a job_id still queued or running.
+    /// A job the reply names is waited for until it is final or max_wait (default 30 s) passes: on the jobs topic
+    /// (IGameLink.WaitJobAsync), then one poll for its view; a link without job waits is polled instead. A job still
+    /// running answers its job id with running: true.
     /// </summary>
-    private async Task<JsonNode?> SettledAsync(HandlerCall handlerCall, JsonNode? result, VerbCall call, JsonObject options,
-        CancellationToken cancellation)
+    private async Task<(JsonNode? Result, VerbReply.Failed? Failed)> SettledAsync(HandlerCall handlerCall,
+        JsonNode? result, long stream, JsonObject options, CancellationToken cancellation)
     {
         double seconds = JsonNodes.Number(options["max_wait"]) ?? DefaultMaxWaitSeconds;
-        string? jobId = JsonNodes.Text(result?["job_id"]);
+        string? jobId = JsonNodes.Text(result?["job_id"]) ?? JsonNodes.Text(handlerCall.Args["job_id"]);
         HandlerCall? poll = handlerCall.PollsJob
             ? handlerCall
             : jobId != null && LegacyVerbMap.JobPoller(jobId) is { } poller
                 ? new HandlerCall(poller, new JsonObject { ["job_id"] = jobId }, handlerCall.Rename)
                 : null;
-        if (poll == null || seconds <= 0)
+        if (poll == null || jobId == null || Settled(result))
         {
-            return result;
+            return (result, null);
         }
 
+        if (seconds > 0)
+        {
+            GameReply? polled;
+            try
+            {
+                // Null when the timeout passes, and early after a reconnect: either way one poll gives the job's view.
+                await _link.WaitJobAsync(jobId, TimeSpan.FromSeconds(seconds), cancellation).ConfigureAwait(false);
+                polled = await SendAsync(poll, stream, null, cancellation).ConfigureAwait(false);
+            }
+            catch (NotSupportedException)
+            {
+                polled = await PolledAsync(poll, result, stream, seconds, cancellation).ConfigureAwait(false);
+            }
+
+            switch (polled)
+            {
+                case GameReply.Ok ok:
+                    result = JsonNodes.FromElement(ok.Result);
+                    break;
+                case not null:
+                    // A poll the mod refuses (a dropped job, a broken link) is the answer, not the stale view.
+                    return (result, Failure(polled, poll, null));
+            }
+        }
+
+        if (!Settled(result) && result is JsonObject running)
+        {
+            running["job_id"] ??= jobId;
+            running["running"] = true;
+        }
+
+        return (result, null);
+    }
+
+    // A link without job waits: poll until the job is final or the time is up; the last poll's reply (null: none).
+    private async Task<GameReply?> PolledAsync(HandlerCall poll, JsonNode? result, long stream, double seconds,
+        CancellationToken cancellation)
+    {
         Stopwatch waited = Stopwatch.StartNew();
+        GameReply? last = null;
         while (!Settled(result) && waited.Elapsed.TotalSeconds + PollInterval.TotalSeconds <= seconds)
         {
             await Task.Delay(PollInterval, cancellation).ConfigureAwait(false);
-            if (await SendAsync(poll, call, null, cancellation).ConfigureAwait(false) is not GameReply.Ok polled)
+            last = await SendAsync(poll, stream, null, cancellation).ConfigureAwait(false);
+            if (last is not GameReply.Ok polled)
             {
                 break;
             }
@@ -392,11 +491,11 @@ public sealed class VerbPipeline
             result = JsonNodes.FromElement(polled.Result);
         }
 
-        return result;
+        return last;
     }
 
     private static bool Settled(JsonNode? result) =>
-        JsonNodes.Text(result?["status"]) is not { } status || Array.IndexOf(Unsettled, status) < 0;
+        JsonNodes.Text(result?["status"]) is not { } status || Array.IndexOf(Final, status) >= 0;
 
     // x-file-arguments: the file's text goes as the argument it fills, refused in the caller's names.
     private static VerbReply? ReadFiles(HandlerCall handlerCall, WhatEntry what)
@@ -443,9 +542,9 @@ public sealed class VerbPipeline
     private static JsonElement? Given(JsonObject options, string name) =>
         options[name] is { } value ? JsonNodes.ToElement(value) : null;
 
-    private Task<GameReply> SendAsync(HandlerCall handlerCall, VerbCall call, JsonElement? shape,
+    private Task<GameReply> SendAsync(HandlerCall handlerCall, long stream, JsonElement? shape,
         CancellationToken cancellation) =>
-        _link.CallAsync(new GameCall(handlerCall.Handler, JsonNodes.ToElement(handlerCall.Args), call.Stream)
+        _link.CallAsync(new GameCall(handlerCall.Handler, JsonNodes.ToElement(handlerCall.Args), stream)
         {
             Shape = shape,
             Rename = handlerCall.Rename

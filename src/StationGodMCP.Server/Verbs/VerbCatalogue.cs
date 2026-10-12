@@ -441,14 +441,23 @@ internal sealed class ArgEntry
 /// <summary>A write what's rules: report class, route, undo class, list form and the target paths.</summary>
 internal sealed class WriteRules
 {
-    private WriteRules(string report, string route, string undo, string listForm, List<TargetPath> targets)
+    private WriteRules(string report, string route, string undo, string listForm, List<TargetPath> targets,
+        string? undoMark, string? cheat)
     {
         Report = report;
         Route = route;
         Undo = undo;
         ListForm = listForm;
         Targets = targets;
+        UndoMark = undoMark ?? (undo == "undo" ? "[undo]" : "[cannot undo]");
+        Cheat = cheat;
     }
+
+    /// <summary>The mark a report row carries (x-undo-mark).</summary>
+    internal string UndoMark { get; }
+
+    /// <summary>"always", or the option that makes the write a cheat ("free: true", "force: true"); null for none.</summary>
+    internal string? Cheat { get; }
 
     internal string Report { get; }
 
@@ -469,7 +478,7 @@ internal sealed class WriteRules
         }
 
         return new WriteRules((string)source["report"]!, (string)source["route"]!, (string)source["x-undo"]!,
-            (string)source["x-list"]!, targets);
+            (string)source["x-list"]!, targets, (string?)source["x-undo-mark"], (string?)source["cheat"]);
     }
 }
 

@@ -95,12 +95,13 @@ public sealed class HandlerSelectorTests
     [Fact]
     public void WriteLogic()
     {
-        Same("""{"reference_id":"1","logic_type":"On","value":1}""",
+        // Typed ids act: the gate's Act sends dry_run: false.
+        Same("""{"reference_id":"1","logic_type":"On","value":1,"dry_run":false}""",
             Sent("write", "logic", """{"id":"1","logic":"On","value":1}""", "write_logic").Params());
         Same(
-            """{"writes":[{"reference_id":"1","logic_type":"On","value":0},{"reference_id":"2","logic_type":"On","value":0}]}""",
+            """{"writes":[{"reference_id":"1","logic_type":"On","value":0},{"reference_id":"2","logic_type":"On","value":0}],"dry_run":false}""",
             Sent("write", "logic", """{"id":["1","2"],"logic":"On","value":0}""", "write_logic_many").Params());
-        Same("""{"gateway_id":"9","writes":[{"reference_id":"1","logic_type":"On","value":1}]}""",
+        Same("""{"gateway_id":"9","writes":[{"reference_id":"1","logic_type":"On","value":1}],"dry_run":false}""",
             Sent("write", "logic", """{"gateway":"9","writes":[{"id":"1","logic":"On","value":1}]}""", "write_logic_many")
                 .Params());
     }
@@ -182,10 +183,12 @@ public sealed class HandlerSelectorTests
     [Fact]
     public void MoveItem()
     {
-        Assert.Equal("move_item", Sent("move", "item", """{"id":"1","to":"player"}""").Method);
-        Assert.Equal("move_item", Sent("move", "item", """{"id":"1","to":"9","slot":2}""").Method);
-        Assert.Equal("move_item", Sent("move", "item", """{"moves":[{"id":"1","to":"9","slot":0,"allow":["in_use"]}]}""").Method);
-        Same("""{"dry_run":true,"moves":[{"reference_id":"1","to_id":"9","to_slot":0,"allow_in_use":true}]}""",
+        // to: "player" is the player's id (player_vitals answers 77 in the fake); typed ids act.
+        Same("""{"reference_id":"1","to_id":"77","to_slot":"auto","dry_run":false}""",
+            Sent("move", "item", """{"id":"1","to":"player"}""", "move_item").Params());
+        Same("""{"reference_id":"1","to_id":"9","to_slot":2,"dry_run":false}""",
+            Sent("move", "item", """{"id":"1","to":"9","slot":2}""", "move_item").Params());
+        Same("""{"dry_run":false,"moves":[{"reference_id":"1","to_id":"9","to_slot":0,"allow_in_use":true}]}""",
             Sent("move", "item", """{"moves":[{"id":"1","to":"9","slot":0,"allow":["in_use"]}]}""").Params());
 
         Assert.Equal("vault_deposit", Store("""{"to":"20","prefab":"*Ore*"}""", ("20", "StructureIngotVault")));
@@ -201,27 +204,33 @@ public sealed class HandlerSelectorTests
     public void Undo()
     {
         Same("""{"dry_run":true,"job_id":"place-41"}""", Sent("undo", null, """{"id":"place-41"}""", "undo_job").Params());
-        Same("""{"undo":true}""", Sent("undo", null, """{"id":"paste"}""", "paste_blueprint").Params());
+        Same("""{"dry_run":false,"job_id":"place-41","confirm":true}""",
+            Sent("undo", null, """{"id":"place-41","confirm":true}""", "undo_job").Params());
+        Same("""{"undo":true}""", Sent("undo", null, """{"id":"paste","confirm":true}""", "paste_blueprint").Params());
         Assert.Equal("not_available", new FakeGameLink().Pipeline().Call("undo", null, """{"id":"script-3"}""").Failed().Code);
-        Assert.Equal("not_available", new FakeGameLink().Pipeline().Call("undo", null, """{"id":"write-3"}""").Failed().Code);
+        Assert.Equal("job_not_found", new FakeGameLink().Pipeline().Call("undo", null, """{"id":"write-3"}""").Failed().Code);
     }
 
     // The store move a call picks when the game says each id's prefab.
     private static string Store(string options, params (string Id, string Prefab)[] things)
     {
         FakeGameLink game = new();
-        game.Answer = call => call.Method == "thing_health"
-            ? FakeGameLink.Ok($$"""{"prefab_name":"{{things.Single(thing => thing.Id == (string)call.Params()["reference_id"]!).Prefab}}"}""")
+        game.Answer = call => call.Method == "thing_health" && call.Params()["reference_id"] is { } asked
+            ? FakeGameLink.Ok($$"""{"prefab_name":"{{things.Single(thing => thing.Id == (string)asked!).Prefab}}"}""")
             : FakeGameLink.Ok("{}");
         game.Pipeline().Call("move", "item", options).Done();
         return Assert.Single(game.Calls, call => call.Method != "thing_health").Method;
     }
 
+    internal static readonly string[] HubReads = { "thing_health", "player_vitals" };
+
     internal static GameCall Sent(string verb, string? what, string options, string? handler = null)
     {
         FakeGameLink game = new();
         game.Pipeline().Call(verb, what, options).Done();
-        GameCall sent = Assert.Single(game.Calls);
+        // The hub's own reads around a write (the names a report shows) are not the call under test.
+        List<GameCall> calls = game.Calls.Where(call => !HubReads.Contains(call.Method)).ToList();
+        GameCall sent = Assert.Single(calls.Count > 0 ? calls : game.Calls.ToList());
         if (handler != null)
         {
             Assert.Equal(handler, sent.Method);

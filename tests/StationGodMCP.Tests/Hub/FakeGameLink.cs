@@ -19,7 +19,14 @@ internal sealed class FakeGameLink : IGameLink
 {
     public ConcurrentQueue<GameCall> Calls { get; } = new();
 
-    public Func<GameCall, GameReply> Answer { get; set; } = _ => Ok("{}");
+    // The player's id is asked before a move to "player"; every other call answers {}.
+    public Func<GameCall, GameReply> Answer { get; set; } =
+        call => Ok(call.Method == "player_vitals" ? """{"reference_id":"77"}""" : "{}");
+
+    /// <summary>The jobs topic: the job's facts, or null (a timeout, or early after a reconnect); unset: no job waits.</summary>
+    public Func<string, JsonElement?>? WaitJob { get; set; }
+
+    public List<string> Waited { get; } = new();
 
     public string? WorldId => "world-1";
 
@@ -59,8 +66,16 @@ internal sealed class FakeGameLink : IGameLink
     public Task<StreamCost[]> StreamCostsAsync(IReadOnlyList<long> streams, CancellationToken cancellation) =>
         throw new NotSupportedException();
 
-    public Task<JsonElement?> WaitJobAsync(string jobId, TimeSpan timeout, CancellationToken cancellation) =>
-        throw new NotSupportedException();
+    public Task<JsonElement?> WaitJobAsync(string jobId, TimeSpan timeout, CancellationToken cancellation)
+    {
+        if (WaitJob == null)
+        {
+            throw new NotSupportedException();
+        }
+
+        Waited.Add(jobId);
+        return Task.FromResult(WaitJob(jobId));
+    }
 
     /// <summary>A pipeline over this link with job polls that do not wait.</summary>
     public VerbPipeline Pipeline(IWriteGate? gate = null, CallRecorder? recorder = null) =>

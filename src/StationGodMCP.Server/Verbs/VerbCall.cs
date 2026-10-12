@@ -42,6 +42,12 @@ public sealed class VerbCall
 
     /// <summary>The script's code line (1-based) for a run's call.</summary>
     public int? Line { get; }
+
+    /// <summary>The gate for this call's writes (a run's route); null: the face's own (the direct write rule).</summary>
+    public IWriteGate? Gate { get; init; }
+
+    /// <summary>The call was recorded where it arrived (the MCP adapter records refusals before the pipeline sees them).</summary>
+    internal bool Recorded { get; init; }
 }
 
 /// <summary>How a verb call ended: its reply, or why it failed.</summary>

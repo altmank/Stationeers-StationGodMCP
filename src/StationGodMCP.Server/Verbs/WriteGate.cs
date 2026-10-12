@@ -67,19 +67,30 @@ public sealed class WriteTargets
     public IReadOnlyList<WriteTarget> Targets { get; }
 }
 
+/// <summary>Where a target came from: ids the caller typed out, a ref's shown ids, or a selector (a spread).</summary>
+public enum TargetSource
+{
+    Typed,
+    Ref,
+    Selector
+}
+
 /// <summary>
-/// One target: its x-target path and role (acts-on, pays-from), the ids given there (strings; a number id as its text,
-/// words such as "player" as written), and the selector value when the path is a selector (network, room, near, box)
-/// or holds an object.
+/// One target: its x-target path (or the selector option it came from) and role (acts-on, pays-from), the ids given
+/// there (strings; a number id as its text, words such as "player" as written), the selector value when the path is a
+/// selector (network, room, near, box) or holds an object, where it came from, and for a ref target the ref ("r7").
 /// </summary>
 public sealed class WriteTarget
 {
-    public WriteTarget(string path, string role, IReadOnlyList<string> ids, JsonNode? selector)
+    public WriteTarget(string path, string role, IReadOnlyList<string> ids, JsonNode? selector,
+        TargetSource source = TargetSource.Typed, string? from = null)
     {
         Path = path;
         Role = role;
         Ids = ids;
         Selector = selector;
+        Source = selector != null && source == TargetSource.Typed ? TargetSource.Selector : source;
+        From = from;
     }
 
     public string Path { get; }
@@ -89,6 +100,11 @@ public sealed class WriteTarget
     public IReadOnlyList<string> Ids { get; }
 
     public JsonNode? Selector { get; }
+
+    public TargetSource Source { get; }
+
+    /// <summary>The ref a Ref target's ids came from.</summary>
+    public string? From { get; }
 }
 
 /// <summary>A gate that lets every write act as sent.</summary>
@@ -101,13 +117,23 @@ internal sealed class PassThroughGate : IWriteGate
     public WriteDecision Decide(VerbCall call, WriteTargets targets) => Acts;
 }
 
-/// <summary>Reads a write what's x-target paths out of the options.</summary>
+/// <summary>
+/// Reads a write what's x-target paths out of the options, marking the ids a ref gave (refs: option name to ref), and
+/// adds every spread the call gives as a selector target with its value, x-target path or not: network, room, near,
+/// radius and box, and the filters that choose what a write acts on (prefab, name, category, location). A build's
+/// prefab says what to build, not which things: it is no spread.
+/// </summary>
 internal static class WriteTargetPaths
 {
-    private static readonly string[] Selectors = ["network", "room", "near", "box"];
+    internal static readonly string[] Selectors = ["network", "room", "near", "box"];
 
-    internal static WriteTargets Resolve(WriteRules rules, JsonObject options)
+    internal static readonly string[] Filters =
+        ["network", "room", "near", "radius", "box", "prefab", "name", "category", "location"];
+
+    internal static WriteTargets Resolve(WhatEntry what, JsonObject options,
+        IReadOnlyDictionary<string, string>? refs = null)
     {
+        WriteRules rules = what.Write!;
         List<WriteTarget> targets = [];
         foreach (TargetPath path in rules.Targets)
         {
@@ -125,10 +151,33 @@ internal static class WriteTargetPaths
                 1 => selectors[0],
                 _ => new JsonArray(selectors.ToArray())
             };
-            targets.Add(new WriteTarget(path.Path, path.Role, ids, selector));
+            string? from = refs != null && refs.TryGetValue(path.Path, out string? reference) ? reference : null;
+            targets.Add(new WriteTarget(path.Path, path.Role, ids, selector,
+                from != null ? TargetSource.Ref : TargetSource.Typed, from));
+        }
+
+        foreach (string spread in what.Verb == "build" ? Selectors : Filters)
+        {
+            if (options[spread] is { } value && what.Options.ContainsKey(spread) && !Has(targets, spread))
+            {
+                targets.Add(new WriteTarget(spread, "acts-on", [], value.DeepClone(), TargetSource.Selector));
+            }
         }
 
         return new WriteTargets(targets);
+    }
+
+    private static bool Has(List<WriteTarget> targets, string path)
+    {
+        foreach (WriteTarget target in targets)
+        {
+            if (target.Path == path)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // A path is dotted names, where name[] walks every entry of a list ("writes[].id").
@@ -199,4 +248,83 @@ internal static class WriteTargetPaths
                 break;
         }
     }
+}
+
+/// <summary>
+/// The direct write rule (PLAN v9 2.0), for the direct and program faces: confirm: true acts. Without it, build, swap,
+/// remove, trade, undo and every cheat report; so does any write whose targets the caller did not type out (a ref, a
+/// network, a spread: near, box, room). Every other write acts on typed ids, move item included. Where a what's
+/// catalogue route says otherwise, this rule wins.
+/// </summary>
+internal sealed class DirectWriteGate(VerbCatalogue catalogue) : IWriteGate
+{
+    private static readonly string[] ReportingVerbs = ["build", "swap", "remove", "trade", "undo"];
+
+    private static readonly WriteDecision.Act Acts = new();
+
+    private static readonly WriteDecision.Report Reports = new();
+
+    public WriteDecision Decide(VerbCall call, WriteTargets targets)
+    {
+        if (JsonNodes.IsTrue(call.Args["confirm"]))
+        {
+            return Acts;
+        }
+
+        WhatEntry? what = catalogue.Verb(call.Verb)?.What(call.What);
+        if (what?.Write != null && call.Args["confirm"] is { } confirm && !JsonNodes.IsTrue(confirm))
+        {
+            // confirm: false asks for the report, whatever the write.
+            return Reports;
+        }
+
+        return what?.Write != null && ReportsUntilConfirm(what, call.Args, targets) ? Reports : Acts;
+    }
+
+    /// <summary>True when the rule makes this write report until confirm: true.</summary>
+    internal static bool ReportsUntilConfirm(WhatEntry what, JsonObject args, WriteTargets targets)
+    {
+        if (Array.IndexOf(ReportingVerbs, what.Verb) >= 0 || IsCheat(what, args))
+        {
+            return true;
+        }
+
+        foreach (WriteTarget target in targets.Targets)
+        {
+            if (target.Source != TargetSource.Typed)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>A cheat: always, or when its option is given true (free: true, force: true).</summary>
+    internal static bool IsCheat(WhatEntry what, JsonObject args)
+    {
+        string? cheat = what.Write?.Cheat;
+        if (cheat == null)
+        {
+            return false;
+        }
+
+        if (cheat == "always")
+        {
+            return true;
+        }
+
+        int colon = cheat.IndexOf(':');
+        return colon > 0 && JsonNodes.IsTrue(args[cheat[..colon].Trim()]);
+    }
+}
+
+/// <summary>The gate for a run's call when its run gave none: every write reports.</summary>
+internal sealed class ReportingGate : IWriteGate
+{
+    internal static readonly ReportingGate Instance = new();
+
+    private static readonly WriteDecision.Report Reports = new();
+
+    public WriteDecision Decide(VerbCall call, WriteTargets targets) => Reports;
 }

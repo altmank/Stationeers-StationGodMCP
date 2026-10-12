@@ -137,8 +137,9 @@ internal sealed class McpAdapter : IAsyncDisposable
         }
         catch (Exception exception)
         {
+            // The details (handler names among them) go to the log; the agent gets no internals.
             Console.Error.WriteLine($"[StationGodMCP] {exception}");
-            return RpcError(requestId, -32603, exception.Message);
+            return RpcError(requestId, -32603, "Internal error in the MCP server; its log has the details.");
         }
     }
 
@@ -152,6 +153,11 @@ internal sealed class McpAdapter : IAsyncDisposable
         }
 
         string verb = nameElement.GetString()!;
+        JsonElement given = parameters.TryGetProperty("arguments", out JsonElement raw) ? raw : default;
+        JsonObject recorded = given.ValueKind == JsonValueKind.Object ? JsonObject.Create(given.Clone())! : new JsonObject();
+        string? whatGiven = JsonNodes.Text(recorded["what"]);
+        recorded.Remove("what");
+        _pipeline.RecordInput(Face.Direct, 0, verb, whatGiven, recorded);
         if (catalogue.Verb(verb) == null)
         {
             List<string> nearest = Nearest.Of(verb, catalogue.VerbNames);
@@ -196,19 +202,25 @@ internal sealed class McpAdapter : IAsyncDisposable
                 _options.Output.WhereFilesGo(Environment.MachineName)));
         }
 
-        VerbReply reply = await _pipeline.CallAsync(new VerbCall(verb, what, options, Face.Direct), CancellationToken.None)
-            .ConfigureAwait(false);
+        VerbReply reply = await _pipeline.CallAsync(new VerbCall(verb, what, options, Face.Direct) { Recorded = true },
+            CancellationToken.None).ConfigureAwait(false);
         return reply switch
         {
-            VerbReply.Done done => ToolReplies.Of(Delivered(verb + (what == null ? string.Empty : "_" + what), output,
+            VerbReply.Done done => Sent(Delivered(verb + (what == null ? string.Empty : "_" + what), output,
                 JsonNodes.ToElement(done.Reply)), isError: false),
             VerbReply.Failed failed => Error(failed),
             _ => throw new InvalidOperationException("A verb reply is done or failed.")
         };
     }
 
-    private static object Error(VerbReply.Failed failed) =>
-        ToolReplies.Of(JsonNodes.ToElement(failed.ToJson()), isError: true);
+    private object Error(VerbReply.Failed failed) => Sent(JsonNodes.ToElement(failed.ToJson()), isError: true);
+
+    // The cap's seen-set hook hears exactly the text the client gets.
+    private object Sent(JsonElement body, bool isError)
+    {
+        _pipeline.TextShown(ToolReplies.TextOf(body));
+        return ToolReplies.Of(body, isError);
+    }
 
     // The reply inline, or written to a file when output_file asks or when it is larger than the inline limit.
     private JsonElement Delivered(string name, OutputChoice output, JsonElement result)
