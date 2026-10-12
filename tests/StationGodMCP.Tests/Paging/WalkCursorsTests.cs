@@ -279,9 +279,8 @@ public sealed class WalkCursorsTests
         cursors.TryNext(Hub, id, 500, live, page, out _);
         page.Clear();
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        cursors.TryNext(Hub, id, 500, live, page, out WalkStep step);
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        WalkStep step = default;
+        long allocated = ThreadAllocations.Of(() => cursors.TryNext(Hub, id, 500, live, page, out step));
 
         Assert.True(step.HasMore);
         Assert.Equal(500, page.Count);

@@ -44,7 +44,7 @@ public sealed class ResumeSubscriptionTests
             subscription = (string)Call(rig, first, "1", "subscribe", DeviceParams(), stream: 2)["result"]!["subscription"]!;
         }
 
-        WaitUntil(() => rig.Holds.Held == 1);
+        WaitHeldAndClosed(rig);
         Frame(rig, atS: 0.5);
         int reads = _reader.Reads;
         Frame(rig, atS: 2.0);
@@ -79,7 +79,7 @@ public sealed class ResumeSubscriptionTests
             subscription = (string)Call(rig, first, "1", "subscribe", DeviceParams(), stream: 2)["result"]!["subscription"]!;
         }
 
-        WaitUntil(() => rig.Holds.Held == 1);
+        WaitHeldAndClosed(rig);
         Assert.True(rig.Mod.HeldOwners.TryPeek(out string? owner));
         Frame(rig, atS: 0.5);
         Assert.Equal(1, hub.CountOf(owner!));
@@ -118,7 +118,7 @@ public sealed class ResumeSubscriptionTests
             });
         }
 
-        WaitUntil(() => rig.Holds.Held == 1);
+        WaitHeldAndClosed(rig);
         Frame(rig, atS: 0.1);
         Assert.Equal(0, hub.SampleLogicRuns);
 
@@ -203,6 +203,11 @@ public sealed class ResumeSubscriptionTests
 
         throw new TimeoutException($"no reply to {method}");
     }
+
+    // The host holds the token (Holds.Held, then the hub's Held) before it passes the close on (the hub's Closed, then
+    // ClosedSources), all on the connection's thread: once ClosedSources has it, the next frame takes in both.
+    private static void WaitHeldAndClosed(PipeRig rig) =>
+        WaitUntil(() => rig.Holds.Held == 1 && rig.Mod.ClosedSources.Count == 1);
 
     private static void WaitUntil(Func<bool> condition)
     {

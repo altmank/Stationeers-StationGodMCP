@@ -114,19 +114,20 @@ public sealed class VocabularyTests
         Vocabulary.Arg("reference_id");
         Vocabulary.Path("items[0].reference_id");
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int index = 0; index < 100; index++)
+        long allocated = ThreadAllocations.Of(() =>
         {
-            again = Vocabulary.Text(template);
-            Vocabulary.Arg("reference_id");
-            Vocabulary.Tool("find_items");
-            Vocabulary.Path("items[0].reference_id");
-            using (Vocabulary.Enter(null))
+            for (int index = 0; index < 100; index++)
             {
+                again = Vocabulary.Text(template);
+                Vocabulary.Arg("reference_id");
+                Vocabulary.Tool("find_items");
+                Vocabulary.Path("items[0].reference_id");
+                using (Vocabulary.Enter(null))
+                {
+                }
             }
-        }
+        });
 
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.Equal(0, allocated);
         Assert.Same(first, again);
         Assert.Equal("Pass job_id, or reference_ids.", again);
