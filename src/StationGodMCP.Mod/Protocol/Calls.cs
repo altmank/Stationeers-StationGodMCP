@@ -37,6 +37,12 @@ internal abstract class QueuedCall
     internal virtual object? Source => null;
 
     /// <summary>
+    /// The connection's client_id and the call's stream: CallContext.Current while it runs, and the stream its order and
+    /// turns are kept by. None for a call that came on no connection.
+    /// </summary>
+    internal virtual CallContext Context => CallContext.None;
+
+    /// <summary>
     /// Its method, effective class and cost at its arguments, worked out on the thread that received it. The class
     /// decides its order on its connection (a write or cheat call starts only after every earlier call of its
     /// connection is answered, and holds back every later one); the cost decides its lane.
@@ -154,18 +160,22 @@ internal sealed class ProtocolCall : QueuedCall
 
     private readonly Action<ProtocolCall, string, string?> _deliver;
     private readonly object _source;
+    private readonly CallContext _context;
 
     internal ProtocolCall(CallRequest request, CallProfile profile, int deadlineMilliseconds, object source,
-        Action<ProtocolCall, string, string?> deliver) : base(DeadlineAfter(deadlineMilliseconds), profile)
+        CallContext context, Action<ProtocolCall, string, string?> deliver) : base(DeadlineAfter(deadlineMilliseconds), profile)
     {
         Request = request;
         _source = source;
+        _context = context;
         _deliver = deliver;
     }
 
     internal CallRequest Request { get; }
 
     internal override object? Source => _source;
+
+    internal override CallContext Context => _context;
 
     internal override CallOutcome Run(ICallRunner runner, double queueWaitMs) => runner.RunCall(this, queueWaitMs);
 

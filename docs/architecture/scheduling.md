@@ -272,6 +272,13 @@ subscription admission. The wiring and the binding are below; subscription admis
   `DispatchStats` gets each `FrameOutcome` (served, milliseconds, budget stop, expired calls).
 - A runner may leave a call running (`CallOutcome.Deferred`) and answer it later with `QueuedCall.Finish`;
   `sample_logic` does.
+- The call context (`Pure/Protocol/CallContext.cs`): `LaneScheduler` enters each call's `CallContext` (the
+  connection's `client_id` and the call's stream) around its run, so `CallContext.Current` tells a store which stream
+  it works for without a handler argument; it is `None` outside a call. A building job keeps the context of the call
+  that started or queued it and `HeldTickJobs` enters it around each step (a queued job's creation included); a
+  `sample_logic` run enters its call's context around each sample. A readonly struct: a call's context allocates
+  nothing and compares by value. `Current` is thread-static, so a reader thread or a test beside another never sees
+  a context that is not its own; the cost is one thread-local lookup per access, three per call.
 - `[Performance] SubscriptionBudgetMs`, `HeavyThresholdMs` and `HeavyMaxWaitFrames` are bound at load with
   `RequestBudgetMs` into `SchedulerSettings`; `max_in_flight` is `CallSession.MaxInFlight`.
 - `mod_info.runtime.lanes` and `runtime.subscriptions` are not built: the owner's rule is that no stage adds measuring

@@ -188,7 +188,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         {
             case SampleLogicParse.Parsed parsed:
                 ConnectionId connection = call.Source is Connection open ? new ConnectionId(open.ClientId) : NoConnection;
-                _runs.Add(_sampler.Start(connection, parsed.Arguments, _real.RealTimeS), pending);
+                _runs.Add(_sampler.Start(connection, parsed.Arguments, _real.RealTimeS, call.Context.Stream), pending);
                 return CallOutcome.Deferred;
             case SampleLogicParse.Invalid invalid:
                 return new CallOutcome(pending.Reply(null, new ErrorView(ApiErrors.InvalidArgumentCode, invalid.Message),

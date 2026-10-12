@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Protocol;
@@ -73,7 +74,12 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
             return;
         }
 
-        CallOutcome outcome = call.Run(_runner!, QueuedCall.MillisecondsSince(call.ReceivedAt));
+        CallOutcome outcome;
+        using (CallContext.Enter(call.Context))
+        {
+            outcome = call.Run(_runner!, QueuedCall.MillisecondsSince(call.ReceivedAt));
+        }
+
         if (!outcome.IsDeferred)
         {
             call.Finish(outcome.Reply, outcome.Method);
