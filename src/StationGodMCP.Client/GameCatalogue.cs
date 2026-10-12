@@ -78,6 +78,13 @@ public sealed class GameCatalogue
         !NeverResent.Contains(method) && _methods.TryGetValue(method, out MethodRules? rules) && !rules.HasEffects &&
         rules.EffectiveClass(parameters) == "read";
 
+    /// <summary>True when the call only reads: read class at these arguments and no x-effects. False for an unknown method.</summary>
+    public bool ReadsOnly(string method, JsonElement parameters) =>
+        _methods.TryGetValue(method, out MethodRules? rules) && !rules.HasEffects && rules.EffectiveClass(parameters) == "read";
+
+    /// <summary>True when the catalogue has the method (a handler or a protocol method).</summary>
+    public bool Has(string method) => _methods.ContainsKey(method);
+
     /// <summary>The read, write or cheat class of a call at these arguments; null for an unknown method.</summary>
     public string? EffectiveClass(string method, JsonElement parameters) =>
         _methods.TryGetValue(method, out MethodRules? rules) ? rules.EffectiveClass(parameters) : null;

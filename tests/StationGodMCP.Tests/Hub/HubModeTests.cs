@@ -28,29 +28,8 @@ public sealed class HubModeTests
             "thing_health" => call.Ok("""{"results":[{"reference_id":"5","damage_ratio":0.0}]}"""),
             _ => call.Ok("""{"value":1}""")
         });
-        string server = typeof(HubSession).Assembly.Location;
-        ProcessStartInfo start = new("dotnet")
-        {
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            StandardOutputEncoding = new UTF8Encoding(false)
-        };
-        start.ArgumentList.Add(server);
-        start.ArgumentList.Add("--hub");
-        start.ArgumentList.Add("--pipe");
-        start.ArgumentList.Add(((GameTarget.Pipe)game.Target).Name);
-        using Process hub = Process.Start(start)!;
         StringBuilder errors = new();
-        hub.ErrorDataReceived += (_, line) =>
-        {
-            lock (errors)
-            {
-                errors.AppendLine(line.Data);
-            }
-        };
-        hub.BeginErrorReadLine();
+        using Process hub = StartHub(((GameTarget.Pipe)game.Target).Name, errors);
         try
         {
             StreamWriter input = hub.StandardInput;
@@ -89,6 +68,51 @@ public sealed class HubModeTests
     }
 
     [Fact]
+    public async Task WithTheGameDownTheHubExitsAtOnceWhenStdinCloses()
+    {
+        StringBuilder errors = new();
+        using Process hub = StartHub("StationGodMCP-absent-" + Guid.NewGuid().ToString("N"), errors);
+        try
+        {
+            StreamWriter input = hub.StandardInput;
+            input.AutoFlush = true;
+            input.NewLine = "\n";
+            await input.WriteLineAsync(HubCaller.Hello);
+            JsonElement welcome = await NextAsync(hub, errors);
+            await input.WriteLineAsync(HubCaller.Call("1", "thing_health", """{"reference_ids":["5"]}"""));
+            JsonElement unreachable = await NextAsync(hub, errors);
+
+            Stopwatch exiting = Stopwatch.StartNew();
+            input.Close();
+            bool exited = hub.WaitForExit((int)Patience.TotalMilliseconds);
+            exiting.Stop();
+
+            Assert.True(exited, "The hub did not exit after stdin closed.");
+            Assert.True(exiting.Elapsed < TimeSpan.FromSeconds(1.5), $"The hub took {exiting.Elapsed} to exit.");
+            Assert.Equal("Unreachable", welcome.GetProperty("server").GetProperty("game_state").GetString());
+            Assert.Equal("game_unreachable", unreachable.GetProperty("error").GetProperty("code").GetString());
+        }
+        finally
+        {
+            if (!hub.HasExited)
+            {
+                hub.Kill(entireProcessTree: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void TheHubFlagIsNotTakenFromAnOptionsValue()
+    {
+        SidecarOptions named = Assert.IsType<SidecarOptions.Parsed.Valid>(SidecarOptions.Parse(["--client", "--hub"], _ => null)).Options;
+        SidecarOptions after = Assert.IsType<SidecarOptions.Parsed.Valid>(SidecarOptions.Parse(["--client", "x", "--hub"], _ => null)).Options;
+
+        Assert.False(named.Hub);
+        Assert.Equal("--hub", named.Client.ClientName);
+        Assert.True(after.Hub);
+    }
+
+    [Fact]
     public void TheHubOptionsParseWithTheirDefaults()
     {
         SidecarOptions defaults = Assert.IsType<SidecarOptions.Parsed.Valid>(SidecarOptions.Parse([], _ => null)).Options;
@@ -111,6 +135,33 @@ public sealed class HubModeTests
         Assert.IsType<SidecarOptions.Parsed.Invalid>(SidecarOptions.Parse(["--confirmed-ceiling-s", "soon"], _ => null));
         Assert.IsType<SidecarOptions.Parsed.Invalid>(SidecarOptions.Parse(["--journal-dir", " "], _ => null));
         Assert.IsType<SidecarOptions.Parsed.Invalid>(SidecarOptions.Parse(["--python", ""], _ => null));
+    }
+
+    // The built server, run with --hub against the pipe, its stderr gathered.
+    private static Process StartHub(string pipe, StringBuilder errors)
+    {
+        ProcessStartInfo start = new("dotnet")
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            StandardOutputEncoding = new UTF8Encoding(false)
+        };
+        start.ArgumentList.Add(typeof(HubSession).Assembly.Location);
+        start.ArgumentList.Add("--hub");
+        start.ArgumentList.Add("--pipe");
+        start.ArgumentList.Add(pipe);
+        Process hub = Process.Start(start)!;
+        hub.ErrorDataReceived += (_, line) =>
+        {
+            lock (errors)
+            {
+                errors.AppendLine(line.Data);
+            }
+        };
+        hub.BeginErrorReadLine();
+        return hub;
     }
 
     private static async Task<JsonElement> NextAsync(Process hub, StringBuilder errors)

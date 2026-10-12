@@ -38,13 +38,20 @@ internal sealed class GameConnection
         int perConnection = Limit(limits, "max_in_flight_per_connection") ?? 256;
         // Without streams every call is on the mod's stream 0, so its one-stream limit is the whole limit.
         PerConnectionLimit = features.Contains("streams") ? perConnection : Math.Min(perConnection, inFlight);
+        MaxRequestBytes = Limit(limits, "max_request_bytes") ?? DefaultMaxRequestBytes;
         Resumed = Wire.Child(welcome, "resume") is { } resume &&
                   Wire.Child(resume, "resumed") is { ValueKind: JsonValueKind.True };
         World = Wire.Child(welcome, "server") is { } server ? Wire.Child(server, "world") : null;
         CatalogueHash = Wire.Child(welcome, "catalogue") is { } catalogue ? Wire.Text(catalogue, "hash") : null;
     }
 
+    /// <summary>The mod's request bound when its welcome names none (protocol.md, Framing).</summary>
+    internal const int DefaultMaxRequestBytes = 4 * 1024 * 1024;
+
     internal GameTarget Target { get; }
+
+    /// <summary>limits.max_request_bytes: the mod closes the whole connection on a longer message.</summary>
+    internal int MaxRequestBytes { get; }
 
     internal JsonElement Welcome { get; }
 
