@@ -7,6 +7,7 @@ in plain words. The other pages hold the exact rules:
 | Page | What it holds |
 | --- | --- |
 | [protocol.md](protocol.md) | The wire protocol: framing, versions, messages, errors, shaping, subscriptions, pipe and TCP, and how today's clients keep working. |
+| [hub.md](hub.md) | The hub (next): modes, streams, the hub protocol and faces, runs, the seen set, stop and session end, holds, the journal, recording, run replies, and the C# seams between its parts. |
 | [catalogue.md](catalogue.md) | The method catalogue: its format, where it lives, how it is kept true to the code, and who reads it. |
 | [scheduling.md](scheduling.md) | How the game's main thread is shared between clients, what requests cost today, and the limits on subscriptions. |
 | [clients.md](clients.md) | The Python library, the C# client inside the sidecar, where `output_file` lives, and moving every existing client over. |
