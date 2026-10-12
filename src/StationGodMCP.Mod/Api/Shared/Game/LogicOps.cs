@@ -47,7 +47,7 @@ internal static class LogicOps
 
         double? current = LogicTypes.CanRead(device, type) ? ValueOf(device, type) : null;
         LogicRead requested = new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(type), value);
-        return new LogicWrite(requested, previous, current);
+        return new LogicWrite(requested, previous, current, DrivenBy.For(device, type));
     }
 
     internal static BatchResultView ReadMany(DeviceScope scope, List<Args?> items)
@@ -70,6 +70,7 @@ internal static class LogicOps
 
     internal static BatchResultView WriteMany(DeviceScope scope, List<Args?> items)
     {
+        using Controllers.Scope controllers = Controllers.Open();
         BatchBuilder batch = new BatchBuilder(items.Count);
         for (int index = 0; index < items.Count; index++)
         {

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
@@ -54,6 +55,7 @@ internal sealed class LogicWriteView
         RequestedValue = write.RequestedValue;
         PreviousValue = write.PreviousValue;
         CurrentValue = write.CurrentValue;
+        DrivenBy = write.DrivenBy;
     }
 
     public string GatewayId { get; }
@@ -68,18 +70,27 @@ internal sealed class LogicWriteView
     public double? PreviousValue { get; }
 
     public double? CurrentValue { get; }
+
+    /// <summary>The controllers that write the same logic type on this device; left out when none does.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ControllerView>? DrivenBy { get; }
 }
 
-/// <summary>A value written to a device, and what it read before and after (null when write-only).</summary>
+/// <summary>
+/// A value written to a device, what it read before and after (null when write-only), and the controllers that write
+/// the same logic type on it (null when none).
+/// </summary>
 internal sealed class LogicWrite
 {
-    internal LogicWrite(LogicRead requested, double? previousValue, double? currentValue)
+    internal LogicWrite(LogicRead requested, double? previousValue, double? currentValue,
+        List<ControllerView>? drivenBy = null)
     {
         ReferenceId = requested.ReferenceId;
         LogicType = requested.LogicType;
         RequestedValue = requested.Value;
         PreviousValue = previousValue;
         CurrentValue = currentValue;
+        DrivenBy = drivenBy;
     }
 
     internal ThingId ReferenceId { get; }
@@ -91,6 +102,8 @@ internal sealed class LogicWrite
     internal double? PreviousValue { get; }
 
     internal double? CurrentValue { get; }
+
+    internal List<ControllerView>? DrivenBy { get; }
 }
 
 /// <summary>read_logic_many and write_logic_many: each operation's result in order, and the counts.</summary>
@@ -141,6 +154,7 @@ internal sealed class LogicWriteItemView : BatchItemView
         RequestedValue = write.RequestedValue;
         PreviousValue = write.PreviousValue;
         CurrentValue = write.CurrentValue;
+        DrivenBy = write.DrivenBy;
     }
 
     public ThingId ReferenceId { get; }
@@ -152,6 +166,10 @@ internal sealed class LogicWriteItemView : BatchItemView
     public double? PreviousValue { get; }
 
     public double? CurrentValue { get; }
+
+    /// <summary>As write_logic's: left out when no controller writes the same logic type on the device.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ControllerView>? DrivenBy { get; }
 }
 
 /// <summary>

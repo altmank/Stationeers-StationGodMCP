@@ -59,7 +59,8 @@ internal static class LintChips
         return holders.Count > 0 ? Record(world, holders[0], thing) : null;
     }
 
-    private static List<Thing> HoldersOn(Thing thing)
+    /// <summary>The circuit holders a thing is or holds in its own slots.</summary>
+    internal static List<Thing> HoldersOn(Thing thing)
     {
         List<Thing> holders = new List<Thing>();
         if (thing is ICircuitHolder)
@@ -125,7 +126,7 @@ internal static class LintChips
     }
 
     // The programmable chip a holder runs: the chip in an IC Housing's slot, or the holder itself (a Lua board).
-    private static ProgrammableChip? ChipIn(Thing holder)
+    internal static ProgrammableChip? ChipIn(Thing holder)
     {
         if (holder is ProgrammableChip own)
         {

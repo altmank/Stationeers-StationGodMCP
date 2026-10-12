@@ -91,7 +91,7 @@ public sealed class ProtocolV2Tests
         byte[] file = File.ReadAllBytes(CatalogueChecks.CatalogueFiles.AssembledPath);
         Assert.Equal(CatalogueFile.HashOf(file), (string?)welcome["catalogue"]!["hash"]);
         Assert.Matches("^sha256:[0-9a-f]{64}$", (string?)welcome["catalogue"]!["hash"]);
-        Assert.Equal(5, (int)welcome["catalogue"]!["protocol_methods"]!);
+        Assert.Equal(6, (int)welcome["catalogue"]!["protocol_methods"]!);
     }
 
     [Fact]

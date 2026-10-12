@@ -45,6 +45,8 @@ internal static class ReplyShapes
         .List("PlacementView.Ports", 2).List("SurveyDeviceView.Ports", 3)
         // Problems and warnings a report carries on a typical large-world request.
         .List("*.Problems", 2).List("*.Warnings", 2)
+        // The controllers writing a written logic type on a device: one chip or writer, rarely two.
+        .List("*.DrivenBy", 2)
         .Build(typeof(JObject), () => new JObject { ["prefab"] = "StructureWallLight", ["at"] = new JArray(1, 2, 3) });
 
     internal static IReadOnlyDictionary<string, ReplyShape[]> ByMethod { get; } = Build();

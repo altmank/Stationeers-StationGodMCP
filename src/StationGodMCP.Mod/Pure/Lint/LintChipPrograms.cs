@@ -12,7 +12,7 @@ namespace StationGodMCP.Pure.Lint;
 internal sealed class ChipOperation
 {
     internal ChipOperation(string op, int? prefabHash, string? prefab, int? nameHash, string? name, string? logic,
-        bool writes, int? pin, long? referenceId)
+        bool writes, int? pin, long? referenceId, int? line = null)
     {
         Op = op;
         PrefabHash = prefabHash;
@@ -23,6 +23,7 @@ internal sealed class ChipOperation
         Writes = writes;
         Pin = pin;
         ReferenceId = referenceId;
+        Line = line;
     }
 
     internal string Op { get; }
@@ -45,6 +46,13 @@ internal sealed class ChipOperation
     /// <summary>The id ld and sd name.</summary>
     internal long? ReferenceId { get; }
 
+    /// <summary>The source line it is on, 0-based as the chip counts lines.</summary>
+    internal int? Line { get; }
+
+    /// <summary>A slot read or write (ls, ss, lbs, sbs, lbns, sbns; Lua's _slot forms): Logic is a slot logic type.</summary>
+    internal bool IsSlot => Op == "ls" || Op == "ss" || Op == "lbs" || Op == "sbs" || Op == "lbns" || Op == "sbns" ||
+                            Op.IndexOf("_slot", StringComparison.Ordinal) >= 0;
+
     internal bool IsBatch => PrefabHash.HasValue || Prefab != null || (Op.StartsWith("lb", StringComparison.Ordinal) ||
                                                                          Op.StartsWith("sb", StringComparison.Ordinal) ||
                                                                          Op.StartsWith("batch", StringComparison.Ordinal));
@@ -57,28 +65,26 @@ internal sealed class ChipOperation
 /// </summary>
 internal static class LintChipPrograms
 {
-    // Keyed by language and source; at most 257 programs, emptied when full and when a world is left (WorldStores).
-    private static readonly Dictionary<string, List<ChipOperation>> Parsed = new Dictionary<string, List<ChipOperation>>(StringComparer.Ordinal);
+    /// <summary>The parsed programs, kept by language and source until the source changes (ChipProgramCache).</summary>
+    internal static readonly ChipProgramCache Programs = new ChipProgramCache();
 
     private static readonly Regex Hash = new Regex("^HASH\\(\\s*\"([^\"]*)\"\\s*\\)$", RegexOptions.CultureInvariant);
 
     // StationeersLua: batch_read(ph, lt, mode), batch_write(ph, lt, v), their _slot (slot, lst) and _name (name hash
-    // second) forms, as globals or under ic.logic; prefab and name as hash("...") / ic.hash("...") or numbers.
+    // second) forms, as globals (with or without logic_), under ic or ic.logic; prefab and name as hash("...") /
+    // ic.hash("...") or numbers.
     private static readonly Regex LuaBatch = new Regex(
-        "\\b(batch_(?:read|write)(?:_slot)?(?:_name)?)\\s*\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)",
+        "\\b(?:logic_)?(batch_(?:read|write)(?:_slot)?(?:_name)?)\\s*\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)",
+        RegexOptions.CultureInvariant);
+
+    // StationeersLua's device writes: write(index, lt, v), write_id(id, lt, v) and their _slot forms (slot, lst), as
+    // ic.write, ic.logic_write, ic.logic.write or the global logic_write. Never io.write or ic.disk.write.
+    private static readonly Regex LuaWrite = new Regex(
+        "(?<![\\w.])(?:ic\\.(?:logic\\.)?(?:logic_)?|logic_)(write(?:_slot)?(?:_id)?)\\s*\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)",
         RegexOptions.CultureInvariant);
 
     /// <summary>Chip programs held parsed (mod_info runtime.lint_chip_programs).</summary>
-    internal static int ParsedCount
-    {
-        get
-        {
-            lock (Parsed)
-            {
-                return Parsed.Count;
-            }
-        }
-    }
+    internal static int ParsedCount => Programs.Count;
 
     internal static void Register(LintLibrary library)
     {
@@ -99,13 +105,7 @@ internal static class LintChipPrograms
     }
 
     /// <summary>Forgets every parsed program.</summary>
-    internal static void Clear()
-    {
-        lock (Parsed)
-        {
-            Parsed.Clear();
-        }
-    }
+    internal static void Clear() => Programs.Clear();
 
     /// <summary>The game's HASH("..."): Unity's Animator.StringToHash, a CRC-32 of the UTF-8 bytes, as a signed int.</summary>
     internal static int HashOf(string text)
@@ -196,43 +196,25 @@ internal static class LintChipPrograms
         return LintValue.False;
     }
 
-    private static List<ChipOperation> OperationsOf(ILintObject chip)
-    {
-        string language = chip.Get(LintModel.Chip["language"]).AsString;
-        string source = chip.Get(LintModel.Chip["source"]).AsString;
-        string key = language + "\n" + source;
-        lock (Parsed)
-        {
-            if (Parsed.TryGetValue(key, out List<ChipOperation> known))
-            {
-                return known;
-            }
-        }
+    private static List<ChipOperation> OperationsOf(ILintObject chip) =>
+        Programs.Of(chip.Get(LintModel.Chip["language"]).AsString, chip.Get(LintModel.Chip["source"]).AsString);
 
-        List<ChipOperation> operations = language == "lua" ? Lua(source) : Ic10(source);
-        lock (Parsed)
-        {
-            if (Parsed.Count > 256)
-            {
-                Parsed.Clear();
-            }
-
-            Parsed[key] = operations;
-        }
-
-        return operations;
-    }
-
-    /// <summary>The device operations of an IC10 program, defines and aliases resolved.</summary>
+    /// <summary>
+    /// The device operations of an IC10 program, each with its 0-based line. Defines resolve to their constants, and a
+    /// pin through an alias to every device the alias is ever set to (an alias set twice yields an operation for
+    /// each), following an alias of an alias. A device register (dr0) or an id held in a register is not resolved.
+    /// </summary>
     internal static List<ChipOperation> Ic10(string source)
     {
         List<ChipOperation> operations = new List<ChipOperation>();
         Dictionary<string, string> defines = new Dictionary<string, string>(StringComparer.Ordinal);
-        Dictionary<string, string> aliases = new Dictionary<string, string>(StringComparer.Ordinal);
+        Dictionary<string, List<string>> aliases = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         List<List<string>> lines = new List<List<string>>();
-        foreach (string raw in source.Replace("\r\n", "\n").Split('\n'))
+        List<int> numbers = new List<int>();
+        string[] raw = source.Replace("\r\n", "\n").Split('\n');
+        for (int number = 0; number < raw.Length; number++)
         {
-            List<string> tokens = Ic10Tokens(raw);
+            List<string> tokens = Ic10Tokens(raw[number]);
             if (tokens.Count == 0)
             {
                 continue;
@@ -244,26 +226,31 @@ internal static class LintChipPrograms
             }
             else if (tokens[0] == "alias" && tokens.Count >= 3)
             {
-                aliases[tokens[1]] = tokens[2];
+                if (!aliases.TryGetValue(tokens[1], out List<string> targets))
+                {
+                    aliases[tokens[1]] = targets = new List<string>(1);
+                }
+
+                if (!targets.Contains(tokens[2]))
+                {
+                    targets.Add(tokens[2]);
+                }
             }
 
             lines.Add(tokens);
+            numbers.Add(number);
         }
 
-        foreach (List<string> tokens in lines)
+        for (int index = 0; index < lines.Count; index++)
         {
-            ChipOperation? op = Ic10Operation(tokens, defines, aliases);
-            if (op != null)
-            {
-                operations.Add(op);
-            }
+            Ic10Operations(lines[index], numbers[index], defines, aliases, operations);
         }
 
         return operations;
     }
 
-    private static ChipOperation? Ic10Operation(List<string> t, Dictionary<string, string> defines,
-        Dictionary<string, string> aliases)
+    private static void Ic10Operations(List<string> t, int line, Dictionary<string, string> defines,
+        Dictionary<string, List<string>> aliases, List<ChipOperation> into)
     {
         string op = t[0];
         string Arg(int index) => index + 1 < t.Count ? t[index + 1] : string.Empty;
@@ -271,47 +258,86 @@ internal static class LintChipPrograms
         {
             case "lb":
             case "lbs":
-                return Batch(op, Arg(1), null, op == "lb" ? Arg(2) : Arg(3), false, defines);
+                into.Add(Batch(op, Arg(1), null, op == "lb" ? Arg(2) : Arg(3), false, defines, line));
+                return;
             case "lbn":
             case "lbns":
-                return Batch(op, Arg(1), Arg(2), op == "lbn" ? Arg(3) : Arg(4), false, defines);
+                into.Add(Batch(op, Arg(1), Arg(2), op == "lbn" ? Arg(3) : Arg(4), false, defines, line));
+                return;
             case "sb":
             case "sbs":
-                return Batch(op, Arg(0), null, op == "sb" ? Arg(1) : Arg(2), true, defines);
+                into.Add(Batch(op, Arg(0), null, op == "sb" ? Arg(1) : Arg(2), true, defines, line));
+                return;
             case "sbn":
             case "sbns":
-                return Batch(op, Arg(0), Arg(1), op == "sbn" ? Arg(2) : Arg(3), true, defines);
+                into.Add(Batch(op, Arg(0), Arg(1), op == "sbn" ? Arg(2) : Arg(3), true, defines, line));
+                return;
             case "s":
             case "l":
             case "ls":
             case "ss":
                 bool writes = op == "s" || op == "ss";
-                string device = writes ? Arg(0) : Arg(1);
-                device = aliases.TryGetValue(device, out string pinned) ? pinned : device;
-                int? pin = device == "db" ? -1
-                    : device.Length == 2 && device[0] == 'd' && char.IsDigit(device[1]) ? device[1] - '0'
-                    : (int?)null;
                 string logic = op == "s" ? Arg(1) : op == "l" ? Arg(2) : op == "ss" ? Arg(2) : Arg(3);
-                return pin.HasValue ? new ChipOperation(op, null, null, null, null, logic, writes, pin, null) : null;
+                foreach (int pin in Pins(writes ? Arg(0) : Arg(1), aliases))
+                {
+                    into.Add(new ChipOperation(op, null, null, null, null, logic, writes, pin, null, line));
+                }
+
+                return;
             case "sd":
             case "ld":
                 bool sets = op == "sd";
                 (double? id, string? _) = Resolve(sets ? Arg(0) : Arg(1), defines);
-                return id.HasValue
-                    ? new ChipOperation(op, null, null, null, null, sets ? Arg(1) : Arg(2), sets, null, (long)id.Value)
-                    : null;
-            default:
-                return null;
+                if (id.HasValue)
+                {
+                    into.Add(new ChipOperation(op, null, null, null, null, sets ? Arg(1) : Arg(2), sets, null,
+                        (long)id.Value, line));
+                }
+
+                return;
+        }
+    }
+
+    // The pins a device argument can name: db as -1, d0..d5 as 0..5, through aliases (every value each takes, an alias
+    // of an alias followed a few levels); none for a device register or anything else.
+    private static List<int> Pins(string device, Dictionary<string, List<string>> aliases)
+    {
+        List<int> pins = new List<int>(1);
+        AddPins(device, aliases, pins, 0);
+        return pins;
+    }
+
+    private static void AddPins(string device, Dictionary<string, List<string>> aliases, List<int> pins, int depth)
+    {
+        int? pin = device == "db" ? -1
+            : device.Length == 2 && device[0] == 'd' && char.IsDigit(device[1]) ? device[1] - '0'
+            : (int?)null;
+        if (pin.HasValue)
+        {
+            if (!pins.Contains(pin.Value))
+            {
+                pins.Add(pin.Value);
+            }
+
+            return;
+        }
+
+        if (depth < 4 && aliases.TryGetValue(device, out List<string> targets))
+        {
+            foreach (string target in targets)
+            {
+                AddPins(target, aliases, pins, depth + 1);
+            }
         }
     }
 
     private static ChipOperation Batch(string op, string type, string? name, string logic, bool writes,
-        Dictionary<string, string> defines)
+        Dictionary<string, string> defines, int? line)
     {
         (double? prefabHash, string? prefab) = Resolve(type, defines);
         (double? nameHash, string? nameText) = name != null ? Resolve(name, defines) : (null, null);
         return new ChipOperation(op, prefabHash.HasValue ? (int)prefabHash.Value : (int?)null, prefab,
-            nameHash.HasValue ? (int)nameHash.Value : (int?)null, nameText, logic, writes, null, null);
+            nameHash.HasValue ? (int)nameHash.Value : (int?)null, nameText, logic, writes, null, null, line);
     }
 
     // A constant argument: HASH("..."), a number ($hex, %binary) or a define naming one; else (null, null).
@@ -391,10 +417,15 @@ internal static class LintChipPrograms
         return tokens;
     }
 
-    /// <summary>The batch calls of a Lua program: batch_read / batch_write and their _slot and _name forms.</summary>
+    /// <summary>
+    /// The device calls of a Lua program, each with its 0-based line: batch_read / batch_write and their _slot and
+    /// _name forms, and write / write_id (and _slot) with a constant device index (a pin, 0 for d0) or id. A device
+    /// index or id held in a variable is not resolved; nor is a logic type given as a number.
+    /// </summary>
     internal static List<ChipOperation> Lua(string source)
     {
         List<ChipOperation> operations = new List<ChipOperation>();
+        List<int> lineStarts = LineStarts(source);
         foreach (Match match in LuaBatch.Matches(source))
         {
             string op = match.Groups[1].Value;
@@ -407,10 +438,52 @@ internal static class LintChipPrograms
             string? logic = args.Count > logicAt ? LuaLogic(args[logicAt]) : null;
             operations.Add(new ChipOperation(op, prefabHash.HasValue ? (int)prefabHash.Value : (int?)null, prefab,
                 nameHash.HasValue ? (int)nameHash.Value : (int?)null, name, logic,
-                op.IndexOf("write", StringComparison.Ordinal) >= 0, null, null));
+                op.IndexOf("write", StringComparison.Ordinal) >= 0, null, null, LineOf(lineStarts, match.Index)));
+        }
+
+        foreach (Match match in LuaWrite.Matches(source))
+        {
+            string op = match.Groups[1].Value;
+            List<string> args = LuaArguments(match.Groups[2].Value);
+            bool byId = op.EndsWith("_id", StringComparison.Ordinal);
+            int logicAt = op.IndexOf("_slot", StringComparison.Ordinal) >= 0 ? 2 : 1;
+            (double? device, string? _) = LuaConstant(args.Count > 0 ? args[0] : string.Empty);
+            if (!device.HasValue || args.Count <= logicAt)
+            {
+                continue;
+            }
+
+            int? pin = !byId && device.Value >= 0 && device.Value <= 5 && device.Value == Math.Floor(device.Value)
+                ? (int)device.Value
+                : (int?)null;
+            long? id = byId ? (long)device.Value : (long?)null;
+            if (pin.HasValue || id.HasValue)
+            {
+                operations.Add(new ChipOperation(op, null, null, null, null, LuaLogic(args[logicAt]), true, pin, id,
+                    LineOf(lineStarts, match.Index)));
+            }
         }
 
         return operations;
+    }
+
+    // The index each line starts at, for LineOf.
+    private static List<int> LineStarts(string source)
+    {
+        List<int> starts = new List<int> { 0 };
+        for (int index = source.IndexOf('\n'); index >= 0; index = source.IndexOf('\n', index + 1))
+        {
+            starts.Add(index + 1);
+        }
+
+        return starts;
+    }
+
+    // The 0-based line holding the character at index.
+    private static int LineOf(List<int> lineStarts, int index)
+    {
+        int found = lineStarts.BinarySearch(index);
+        return found >= 0 ? found : ~found - 1;
     }
 
     private static List<string> LuaArguments(string text)
