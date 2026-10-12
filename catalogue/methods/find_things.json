@@ -26,6 +26,7 @@
   },
   "class": "read",
   "cost": "world",
+  "x-cost-when": [{"when": {"cursor_id": {"present": true}}, "cost": "bounded"}],
   "params": {
     "type": "object",
     "properties": {
@@ -85,7 +86,15 @@
       },
       "limit": {"type": "integer", "minimum": 1, "maximum": 500, "description": "Things per page; default 8."},
       "offset": {"type": "integer", "minimum": 0, "description": "Things to skip (see paging).", "maximum": 2147483647},
-      "order": {"$ref": "defs/list_order.json"}
+      "order": {"$ref": "defs/list_order.json"},
+      "cursor": {
+        "type": "boolean",
+        "description": "true: when more pages follow, keep them for cursor_id (see paging/walk). Not with offset."
+      },
+      "cursor_id": {
+        "type": "string",
+        "description": "The next page of a walk, from an earlier reply's cursor_id; goes only with limit (see paging/walk)."
+      }
     },
     "additionalProperties": false
   },
@@ -99,7 +108,9 @@
       "limit": {"type": "integer"},
       "has_more": {"type": "boolean"},
       "scanned": {"type": "integer"},
-      "local_player": {"type": ["object", "null"]}
+      "local_player": {"type": ["object", "null"]},
+      "cursor_id": {"type": "string"},
+      "skipped": {"type": "integer"}
     }
   },
   "x-views": ["FindThingsView"],

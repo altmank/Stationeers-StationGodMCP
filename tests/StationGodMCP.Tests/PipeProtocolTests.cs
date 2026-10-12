@@ -362,6 +362,17 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         _added.Release();
     }
 
+    /// <summary>cursor_close messages, in order, with their connection's client_id.</summary>
+    internal ConcurrentQueue<(string ConnectionId, string CursorId)> CursorCloses { get; } =
+        new ConcurrentQueue<(string ConnectionId, string CursorId)>();
+
+    public void CursorClosed(string connectionId, string cursorId)
+    {
+        _calls.CloseCursor(connectionId, cursorId);
+        CursorCloses.Enqueue((connectionId, cursorId));
+        _added.Release();
+    }
+
     public void Closed(object source)
     {
         _calls.Close(source);

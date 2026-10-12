@@ -234,6 +234,22 @@ internal sealed class Args
     }
 
     /// <summary>
+    /// Refuses every argument given but the allowed ones, for a form that takes only those (a walk's later page takes
+    /// cursor_id and limit). A name the method does not declare is skipped, as Reject skips it.
+    /// </summary>
+    internal void RejectAllBut(string form, params string[] allowed)
+    {
+        foreach (JProperty property in _parameters.Properties())
+        {
+            if (property.Value.Type != JTokenType.Null && System.Array.IndexOf(allowed, property.Name) < 0 &&
+                Declares(property.Name))
+            {
+                throw ApiErrors.InvalidArgument($"Argument '{Named(property.Name)}' does not go with {form}.");
+            }
+        }
+    }
+
+    /// <summary>
     /// The raw value of an argument that takes more than one JSON type (a logic type by name or number, a scope by id
     /// or "world"), for a parser that knows them; null when absent.
     /// </summary>

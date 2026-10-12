@@ -36,6 +36,9 @@ these tools need a gateway.
   filtration machine, chips in their housings; see *Moving items*), counted in `in_use_left_out`, so a search for
   spare filters lists the spares.
 - `find_things` finds what `find_items` does not: a tank labelled `T1` is found by `T1` and by `Portable Liquid Tank`.
+- `find_things` pages with `limit` and `offset`, or walks a whole search with `cursor: true` and then `cursor_id` on
+  each next page: one scan, the first call's order, removed things skipped, the filter not checked again
+  (`tool_info {topic: "paging", subtopic: "walk"}`; protocol.md, *Walks*).
   `min` and `max` keep only things in a box (`kind: "structure"` with a box gives the walls of one building). A
   rocket's part reports `rocket_state`: its position moves while the rocket flies. A paintable thing reports
   `color {index, name, is_default}` as `paint` reads it; a structure short of its last build state reports

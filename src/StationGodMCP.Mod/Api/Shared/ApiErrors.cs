@@ -4,15 +4,22 @@ using System;
 
 namespace StationGodMCP.Api.Shared;
 
-/// <summary>A refused request: its code and message become the reply's error.</summary>
+/// <summary>
+/// A refused request: its code, message and details (the error's data, e.g. cursor_expired's position) become the
+/// reply's error.
+/// </summary>
 internal sealed class ApiException : Exception
 {
-    internal ApiException(string code, string message) : base(message)
+    internal ApiException(string code, string message, object? details = null) : base(message)
     {
         Code = code;
+        Details = details;
     }
 
     internal string Code { get; }
+
+    /// <summary>The error's data; null for none.</summary>
+    internal object? Details { get; }
 }
 
 /// <summary>The error codes the tools share, with their messages.</summary>

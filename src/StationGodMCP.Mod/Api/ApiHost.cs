@@ -231,7 +231,7 @@ internal static class ApiHost
         }
         catch (ApiException exception)
         {
-            return Answer.Failure(requestId, method, new ErrorView(exception.Code, exception.Message), Elapsed(watch));
+            return Answer.Failure(requestId, method, new ErrorView(exception.Code, exception.Message, exception.Details), Elapsed(watch));
         }
         catch (GameChangedException exception)
         {

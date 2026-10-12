@@ -223,6 +223,12 @@ internal interface ICallQueue
     /// </summary>
     void StreamEnded(object source, StreamEnd end);
 
+    /// <summary>
+    /// cursor_close from the connection of that client_id: at the next frame, before its calls run, the cursor stores
+    /// free the cursor if that connection owns it.
+    /// </summary>
+    void CursorClosed(string connectionId, string cursorId);
+
     /// <summary>The connection ended: its waiting calls are dropped, and what it had going on the main thread ends.</summary>
     void Closed(object source);
 }
