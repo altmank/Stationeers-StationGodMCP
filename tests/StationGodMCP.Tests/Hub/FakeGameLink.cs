@@ -30,11 +30,9 @@ internal sealed class FakeGameLink : IGameLink
 
     public string? WorldId => "world-1";
 
-    public event Action<string?>? WorldChanged
-    {
-        add { }
-        remove { }
-    }
+    public event Action<string?>? WorldChanged;
+
+    public void ChangeWorld(string? world) => WorldChanged?.Invoke(world);
 
     public static GameReply Ok(string json)
     {

@@ -8,8 +8,14 @@
   in verb names), translated onto today's handlers with a `rename` envelope so the mod's messages come back in verb
   names, and a list of ids is sent whole, split into one call per id (rows `{index, ok, reference_id, ...}` with
   `count`, `success_count`, `error_count`), or refused naming run_script, as the what declares. `help` answers the
-  generated pages and, with `lang: "python"`, the stub. `--record <path>` appends one line per call. run_script,
-  script runs, refs and the write rule are not in this release yet (`not_available`).
+  generated pages and, with `lang: "python"`, the stub. `--record <path>` appends one line per call. run_script and
+  script runs are not in this release yet (`not_available`).
+- **The direct write rule, reports, refs and the cap.** Typed ids act; build, swap, remove, trade, undo, cheats,
+  refs and spreads report until `confirm: true`, every report one shape (`report_only`, `targets` rows with the undo
+  mark, `placed` for builds). A direct reply that lists things mints a ref `rN` (a target, and `repeat`); one over
+  12 KB is cut to about 4 KB with `ref`, `cut` and `next`. A write on a list acts as `write-N`, which `inspect job`
+  and `undo` know. Confirmed jobs answer when done, up to `max_wait`. Known limit: a job's step texts are printed
+  without the rename map, so they may name a handler argument.
 
 - **Frame cost measurement.** `mod_info` `include_counters` adds `runtime.frame_ms`: StationGod's request time per
   busy frame as fixed buckets, reported as `p50`, `p90`, `p99` and `over_8ms` (the default reply is unchanged).

@@ -224,10 +224,11 @@ public sealed class HandlerSelectorTests
 
     internal static readonly string[] HubReads = { "thing_health", "player_vitals" };
 
-    internal static GameCall Sent(string verb, string? what, string options, string? handler = null)
+    internal static GameCall Sent(string verb, string? what, string options, string? handler = null,
+        Face face = Face.Direct, IWriteGate? gate = null)
     {
         FakeGameLink game = new();
-        game.Pipeline().Call(verb, what, options).Done();
+        game.Pipeline(gate).Call(verb, what, options, face).Done();
         // The hub's own reads around a write (the names a report shows) are not the call under test.
         List<GameCall> calls = game.Calls.Where(call => !HubReads.Contains(call.Method)).ToList();
         GameCall sent = Assert.Single(calls.Count > 0 ? calls : game.Calls.ToList());
