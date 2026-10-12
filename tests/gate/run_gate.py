@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--pipe", required=True)
     parser.add_argument("--exe")
     parser.add_argument("--only", action="append", default=[])
+    parser.add_argument("--skip", action="append", default=[])
     parser.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
     args = parser.parse_args()
     if "StationeersDedicated" in args.pipe or args.pipe == "StationGodMCP":
@@ -27,7 +28,7 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     results = []
     for group, name, fn in cases.CASES:
-        if args.only and not any(o in name or o in group for o in args.only):
+        if (args.only and not any(o in name or o == group for o in args.only)) or any(s in name for s in args.skip):
             continue
         start = time.time()
         ctx = None
