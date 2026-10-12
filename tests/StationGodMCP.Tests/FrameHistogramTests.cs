@@ -2,16 +2,23 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Tests.CatalogueChecks;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
 /// mod_info's frame_ms with include_counters: the busy frames' request ms in FrameHistogram's fixed buckets, the
-/// nearest-rank percentiles read from them, the frames over 8 ms, the frames DispatchStats counts, and the wire.
+/// nearest-rank percentiles read from them, the frames over 8 ms, the raw bucket counts, the frames DispatchStats
+/// counts, the wire, and the edges the catalogue and the docs state.
 /// </summary>
 public sealed class FrameHistogramTests
 {
@@ -134,6 +141,70 @@ public sealed class FrameHistogramTests
     }
 
     [Fact]
+    public void AReadingHasOneCountPerBucket()
+    {
+        Assert.Equal(FrameHistogram.BucketCount, new FrameHistogram().Read().Buckets.Length);
+        Assert.Equal(FrameHistogram.BucketCount, Of(5, 3.5).Read().Buckets.Length);
+    }
+
+    [Fact]
+    public void EachFrameCountsInTheBucketItsTimeEnds()
+    {
+        FrameHistogram histogram = new FrameHistogram();
+        Add(histogram, 3, 0.05);
+        Add(histogram, 2, 4.0);
+        Add(histogram, 4, 8.0001);
+        Add(histogram, 1, 300.0);
+
+        long[] expected = new long[FrameHistogram.BucketCount];
+        expected[0] = 3;
+        expected[7] = 2;
+        expected[11] = 4;
+        expected[19] = 1;
+        Assert.Equal(expected, histogram.Read().Buckets);
+    }
+
+    [Fact]
+    public void TwoReadingsSubtractToTheWindowsCounts()
+    {
+        FrameHistogram histogram = new FrameHistogram();
+        Add(histogram, 10, 0.3);
+        Add(histogram, 2, 12.0);
+        long[] before = histogram.Read().Buckets;
+        Add(histogram, 5, 0.3);
+        Add(histogram, 1, 3.2);
+        Add(histogram, 2, 60.0);
+        long[] after = histogram.Read().Buckets;
+
+        long[] window = new long[FrameHistogram.BucketCount];
+        for (int bucket = 0; bucket < window.Length; bucket++)
+        {
+            window[bucket] = after[bucket] - before[bucket];
+        }
+
+        long[] expected = new long[FrameHistogram.BucketCount];
+        expected[FrameHistogram.BucketOf(0.3)] = 5;
+        expected[FrameHistogram.BucketOf(3.2)] = 1;
+        expected[FrameHistogram.BucketOf(60.0)] = 2;
+        Assert.Equal(expected, window);
+        Assert.Equal(12, before.Sum());
+    }
+
+    [Fact]
+    public void TheCatalogueAndTheDocsStateTheEdges()
+    {
+        string edges = string.Join(", ", FrameHistogram.EdgesMs.Take(FrameHistogram.EdgesMs.Length - 1).Select(Ms)) +
+                       " and " + Ms(FrameHistogram.EdgesMs[FrameHistogram.EdgesMs.Length - 1]) + " ms";
+        string source = Path.Combine(CatalogueFiles.SourceRoot, "methods", "mod_info.json");
+        JsonNode method = JsonNode.Parse(File.ReadAllText(source))!;
+        string counters = (string)method["help"]!["topics"]!["counters"]!["text"]!;
+        string docs = File.ReadAllText(Path.Combine(CatalogueFiles.RepositoryRoot(), "docs", "devices-and-logic.md"));
+
+        Assert.Contains("upper edges " + edges, counters);
+        Assert.Contains("upper edges " + edges, Regex.Replace(docs, @"\s+", " "));
+    }
+
+    [Fact]
     public void DispatchStatsCountsTheFramesItCallsBusy()
     {
         DispatchStats stats = new DispatchStats();
@@ -180,14 +251,16 @@ public sealed class FrameHistogramTests
 
         Assert.EndsWith(
             "\"batch_console\":{\"lines\":0,\"lines_per_minute\":0.0}," +
-            "\"frame_ms\":{\"frames\":3,\"p50\":4.0,\"p90\":16.0,\"p99\":16.0,\"over_8ms\":1}}",
+            "\"frame_ms\":{\"frames\":3,\"p50\":4.0,\"p90\":16.0,\"p99\":16.0,\"over_8ms\":1," +
+            "\"buckets\":[0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0]}}",
             WireCheck.New(Runtime(stats, counters: true)));
     }
 
     [Fact]
     public void WithNoFramesFrameMsHasNullPercentiles() =>
         Assert.EndsWith(
-            "\"frame_ms\":{\"frames\":0,\"p50\":null,\"p90\":null,\"p99\":null,\"over_8ms\":0}}",
+            "\"frame_ms\":{\"frames\":0,\"p50\":null,\"p90\":null,\"p99\":null,\"over_8ms\":0," +
+            "\"buckets\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}}",
             WireCheck.New(Runtime(new DispatchStats(), counters: true)));
 
     [Fact]
@@ -205,6 +278,8 @@ public sealed class FrameHistogramTests
             counters: counters
                 ? new GameCountersView(new JobHoldsView(new long[5]), new PrintLogView(0, 0), 0, new BatchConsoleView(0, 0))
                 : null);
+
+    private static string Ms(double edge) => edge.ToString(CultureInfo.InvariantCulture);
 
     private static FrameHistogram Of(int frames, double ms)
     {
