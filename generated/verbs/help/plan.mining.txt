@@ -4,6 +4,6 @@ Options:
 - node (string): A node: its deposit and sites; left out, every charted node with a deposit.
 - collectable_only (boolean, default false): Only sites this loadout collects at.
 - include (list of explain): explain: how Mine mode and the yield work.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: rocket_id, rocket_name, loadout {miners, collectors, scanners, cargo, gas_tank_litres, liquid_tank_litres, collects}, collectable, not_collectable, sites [{node, parent, kind, density, richness, size, survey_percent, depleted, cycle_time_s, base_units_per_cycle, stack_size, materials, machines, collectable, units_per_hour, problems}], count, notes
 Example: plan {what: "mining", collectable_only: true}

@@ -15,7 +15,7 @@ namespace StationGodMCP.Tests.Verbs;
 internal static class VerbHelp
 {
     internal const string IdListLine =
-        "Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.";
+        "Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.";
 
     internal const string PlacedLine = "Every build reply has placed: [ids] at the top: the new ids ([] in any report).";
 

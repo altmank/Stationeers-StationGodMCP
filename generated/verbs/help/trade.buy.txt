@@ -5,6 +5,6 @@ Options:
 - card (string): The credit card; default the one the player carries.
 - items (list, required): Up to 32 lines {name or prefab, quantity}, in order.
 - confirm (boolean, default false): true does it; left out, the call only reports what it would do.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: reference_id, name, dry_run, credit_card_id, credits_before, credits_after, results [{index, ok, name, prefab_name, quantity, credits, error, ok, name, prefab_name, gas, quantity, credits_each, credits_spent, credits_earned, stock_after, wanted_after, ok, error}], count, success_count, error_count, delivered [{reference_id, slot, item, quantity}], gas_atmosphere_id
 Example: trade {what: "buy", id: "7", items: [{prefab: "ItemIronIngot", quantity: 50}], confirm: true}

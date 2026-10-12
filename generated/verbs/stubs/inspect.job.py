@@ -25,5 +25,5 @@ def inspect(what: Literal['job'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobQueued, RunJob, SwapJob,
         UndoJob, UpgradeJob
     Example: sg.inspect('job', id='place-41')
-    In a script this always answers {results: [{index, ok, reference_id, ...the reply above} or {index, ok, reference_id, error}], count, success_count, error_count}, given one id or a list.
+    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

@@ -9,6 +9,6 @@ Options:
 - include (list of style | image): style: colours and fonts; image: a PNG (not on a dedicated server).
 - limit (integer, default 25): Entries per page.
 - offset (integer, default 0): Entries to skip.
-Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: holder {reference_id, prefab_name, display_name}, chip_id, surfaces [{name, element_count, shown_on}], surface, width, height, elements [{id, type, box, shown, touch, props, style}], count, total, offset, limit, has_more, image {path, surface, width, height}
 Example: inspect {what: "screen", id: "4860097", text: "error"}

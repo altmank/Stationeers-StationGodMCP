@@ -4,7 +4,7 @@
   "read_only": false,
   "tool": {
     "options": {
-      "id": "inventory: One contact; left out, every contact. buy, sell: The trader contact. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, ...} or {index, ok, reference_id, error}], count, success_count, error_count}; a bad id is a row with error.",
+      "id": "inventory: One contact; left out, every contact. buy, sell: The trader contact. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.",
       "card": "inventory: The card whose holder's goods count; default the player's. buy: The credit card; default the one the player carries. sell:",
       "items": "buy: Up to 32 lines {name or prefab, quantity}, in order. sell: Up to 32 lines {name or prefab, quantity}.",
       "confirm": "true acts; left out, it reports.",

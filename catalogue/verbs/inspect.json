@@ -21,10 +21,10 @@
         }
       },
       "text": [
-        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys."
       ],
       "x-script-text": [
-        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "4820585"},
       "handlers": [
@@ -150,10 +150,10 @@
         }
       },
       "text": [
-        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys."
       ],
       "x-script-text": [
-        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "1199811"},
       "handlers": [
@@ -216,11 +216,11 @@
         "offset": {"use": "offset", "schema": {"type": "integer", "minimum": 0, "maximum": 600}}
       },
       "text": [
-        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.",
+        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys.",
         "Iteration and refs go over slots; a silo's stored entries are paged with limit and offset, not iterated."
       ],
       "x-script-text": [
-        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>.",
+        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.",
         "Iteration goes over slots; a silo's stored entries are not iterated."
       ],
       "example": {"id": "player"},
@@ -410,10 +410,10 @@
         }
       },
       "text": [
-        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys."
       ],
       "x-script-text": [
-        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": ["2514519", "3575779"]},
       "handlers": [
@@ -509,10 +509,10 @@
         "id": {"use": "id", "description": "A thing, a pipe or landing pad network, or an atmosphere id.", "required": true}
       },
       "text": [
-        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys."
       ],
       "x-script-text": [
-        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "2005300"},
       "handlers": [
@@ -554,10 +554,10 @@
         }
       },
       "text": [
-        "id may be a list or a ref: the reply is {results: [{reference_id, ...one reply} or {reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys."
       ],
       "x-script-text": [
-        "A list of ids answers {results: [{index, ok, reference_id, ...the reply below} or {index, ok, reference_id, error}], count, success_count, error_count}; fields paths are results.<key>."
+        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "4191359"},
       "handlers": [
