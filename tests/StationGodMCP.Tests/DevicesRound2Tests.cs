@@ -241,7 +241,7 @@ public sealed class DevicesRound2Tests
     public async Task ARepeatedToolNameIsAnInvalidRequest()
     {
         JsonElement reply = await Handle(
-            """{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"read_logic","name":"write_logic","arguments":{}}}""");
+            """{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"read","name":"write","arguments":{}}}""");
 
         Assert.Equal(5, reply.GetProperty("id").GetInt32());
         Assert.Equal(-32600, reply.GetProperty("error").GetProperty("code").GetInt32());
@@ -261,7 +261,7 @@ public sealed class DevicesRound2Tests
     public async Task AnOverflowingNumberIsAnArgumentErrorNotAnInternalOne()
     {
         JsonElement reply = await Handle(
-            """{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"write_logic","arguments":{"reference_id":"99999999","logic_type":"On","value":1e309}}}""");
+            """{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"write","arguments":{"what":"logic","id":"99999999","logic":"On","value":1e309}}}""");
         JsonElement structured = reply.GetProperty("result").GetProperty("structuredContent");
 
         Assert.Equal("invalid_argument", structured.GetProperty("code").GetString());

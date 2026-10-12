@@ -268,7 +268,7 @@ public sealed class FileOutputTests : IDisposable
             """{"count":2,"things":[{"reference_id":"1","position":{"x":1}},{"reference_id":"2","position":{"x":2}}]}""", shaped: true));
 
         string? line = await Program.HandleMcpMessageAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_things","arguments":{"prefab_contains":"ItemDirtyOre","fields":["reference_id","position"],"output_file":"ore"}}}""",
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find","arguments":{"what":"thing","prefab":"*ItemDirtyOre*","fields":["reference_id","position"],"output_file":"ore"}}}""",
             new Program.GameTransportSettings(game.Target), new OutputFolder(_folder));
 
         FakeCall forwarded = Assert.Single(game.CallsTo("find_things"));

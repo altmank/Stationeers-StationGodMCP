@@ -56,6 +56,7 @@ wins over its variable.
 | `--client <name>` | | none | The name the sidecar gives itself in `hello` (protocol 2), shown in `mod_info`'s connections. |
 | `--inline-limit-kb <n>` | | `200` | A reply larger than this, without `output_file`, is written to a file on its own and answered with the pointer, marked `auto_output_file: true`. `0` never does. |
 | `--output-dir <folder>` | `STATIONGODMCP_OUTPUT_DIR` | `%LOCALAPPDATA%\StationGodMCP\output` | Where `output_file` writes replies (README, *Large replies*). The sidecar deletes files there older than 7 days and keeps the newest 200 `.json` files. |
+| `--record <path>` | | none | Append one JSON line per verb call to this file, as the call arrives and before it is checked: `{t_ms, face, stream, in_flight, verb, what, options}` (option names only, no values; `docs/architecture/hub.md`, *Recording*). |
 
 The secret is never an argument, so it does not show in process lists. Set it in the agent's MCP
 registration (`claude mcp add --env "STATIONGODMCP_SECRET=..."`, or `[mcp_servers.stationeers.env]` in Codex).

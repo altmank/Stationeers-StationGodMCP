@@ -83,7 +83,8 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
         {
             string text = selector.ValueKind == JsonValueKind.String ? selector.GetString()!.Trim() : selector.GetRawText();
             List<string> into = selector.ValueKind == JsonValueKind.String && Selector().IsMatch(text) ? parsed : unparsed;
-            if (!into.Contains(text, StringComparer.Ordinal))
+            // Each once, without LINQ: the verb pipeline shapes every call through here.
+            if (into.IndexOf(text) < 0)
             {
                 into.Add(text);
             }

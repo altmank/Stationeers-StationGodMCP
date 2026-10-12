@@ -14,9 +14,9 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The sidecar's omit argument (sent as shape.omit, unparsed selectors reported in omit_unmatched) and its file
-/// arguments (set_ic_source source_file: the file's text sent as source, so a 60 KB Lua source never passes through
-/// the caller), and get_ic_source's output_file holding a 60 KB source.
+/// The omit option (sent as shape.omit, unparsed selectors reported in omit_unmatched) and the file options (write chip
+/// code_file: the file's text sent as set_ic_source's source, so a 60 KB Lua source never passes through the caller,
+/// refused in verb names), and inspect chip's source to output_file holding a 60 KB source.
 /// </summary>
 public sealed class SidecarFileAndOmitTests : IDisposable
 {
@@ -34,8 +34,8 @@ public sealed class SidecarFileAndOmitTests : IDisposable
         string path = Path.Combine(_folder, "hub.lua");
         File.WriteAllText(path, HubSource, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
 
-        (FakeCall forwarded, JsonElement result) = await Call("set_ic_source",
-            JsonSerializer.Serialize(new { reference_id = "300", source_file = path }), """{"source_length":1}""");
+        (FakeCall forwarded, JsonElement result) = await Call("write", "set_ic_source",
+            JsonSerializer.Serialize(new { what = "chip", id = "300", code_file = path }), """{"source_length":1}""");
 
         Assert.Equal(HubSource, forwarded.Params.GetProperty("source").GetString());
         Assert.False(forwarded.Params.TryGetProperty("source_file", out _));
@@ -54,16 +54,18 @@ public sealed class SidecarFileAndOmitTests : IDisposable
         File.WriteAllBytes(path, new byte[] { 0x2D, 0x2D, 0xC3, 0x28 });
         object arguments = problem switch
         {
-            "both" => new { reference_id = "300", source = "x", source_file = path },
-            "relative" => new { reference_id = "300", source_file = "hub.lua" },
-            "missing" => new { reference_id = "300", source_file = Path.Combine(_folder, "none.lua") },
-            _ => (object)new { reference_id = "300", source_file = path }
+            "both" => new { what = "chip", id = "300", code = "x", code_file = path },
+            "relative" => new { what = "chip", id = "300", code_file = "hub.lua" },
+            "missing" => new { what = "chip", id = "300", code_file = Path.Combine(_folder, "none.lua") },
+            _ => (object)new { what = "chip", id = "300", code_file = path }
         };
 
         await using FakeGame game = FakeGame.OnPipe();
-        JsonElement result = await CallWith(game, "set_ic_source", JsonSerializer.Serialize(arguments));
+        JsonElement result = await CallWith(game, "write", JsonSerializer.Serialize(arguments));
 
         Assert.Equal("invalid_argument", result.GetProperty("code").GetString());
+        Assert.Equal("code_file", result.GetProperty("data").GetProperty("problems")[0].GetProperty("path").GetString());
+        Assert.DoesNotContain("source", result.GetProperty("message").GetString());
         Assert.Empty(game.CallsTo("set_ic_source"));
     }
 
@@ -80,8 +82,8 @@ public sealed class SidecarFileAndOmitTests : IDisposable
     [Fact]
     public async Task OmitIsSentAsShapeOmitAndAnUnparsedOneIsReported()
     {
-        (FakeCall forwarded, JsonElement result) = await Call("get_ic_status",
-            """{"reference_id":"300","omit":["source"," runtime.registers ","a-b"],"fields":["index"]}""",
+        (FakeCall forwarded, JsonElement result) = await Call("inspect", "get_ic_status",
+            """{"what":"chip","id":"300","omit":["source"," runtime.registers ","a-b"],"fields":["index"]}""",
             """{"reference_id":"300","pins":[{"index":0}]}""", shaped: true);
 
         Assert.Equal("""{"reference_id":"300"}""", forwarded.Params.GetRawText());
@@ -111,7 +113,7 @@ public sealed class SidecarFileAndOmitTests : IDisposable
         game.Answer = call => Task.FromResult<string?>(call.Ok(reply, false));
 
         string? line = await Program.HandleMcpMessageAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_ic_source","arguments":{"reference_id":"300","output_file":"hub"}}}""",
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"inspect","arguments":{"what":"chip","id":"300","parts":["source"],"output_file":"hub"}}}""",
             new Program.GameTransportSettings(game.Target), new OutputFolder(_folder));
 
         Assert.True(Encoding.UTF8.GetByteCount(line!) < 2048, $"{line!.Length} characters inline");
@@ -120,13 +122,13 @@ public sealed class SidecarFileAndOmitTests : IDisposable
         Assert.Equal(HubSource, file.RootElement.GetProperty("source").GetString());
     }
 
-    private async Task<(FakeCall Forwarded, JsonElement Result)> Call(string tool, string arguments, string result,
-        bool shaped = false)
+    private async Task<(FakeCall Forwarded, JsonElement Result)> Call(string verb, string handler, string arguments,
+        string result, bool shaped = false)
     {
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok(result, shaped));
-        JsonElement reply = await CallWith(game, tool, arguments);
-        return (Assert.Single(game.CallsTo(tool)), reply);
+        JsonElement reply = await CallWith(game, verb, arguments);
+        return (Assert.Single(game.CallsTo(handler)), reply);
     }
 
     private async Task<JsonElement> CallWith(FakeGame game, string tool, string arguments)

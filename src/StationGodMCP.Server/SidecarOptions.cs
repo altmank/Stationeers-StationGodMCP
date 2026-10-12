@@ -8,9 +8,11 @@ namespace StationGodMCP.Server;
 /// StationGodMCP), or --host (else STATIONGODMCP_HOST) with --port (else STATIONGODMCP_PORT, else 8765) for TCP;
 /// --secret-env names the variable of the TCP shared secret (STATIONGODMCP_SECRET);
 /// --client names this sidecar in hello; --output-dir (else STATIONGODMCP_OUTPUT_DIR) is where output files go;
-/// --inline-limit-kb is the reply size above which a reply goes to a file on its own (200, 0 for never).
+/// --inline-limit-kb is the reply size above which a reply goes to a file on its own (200, 0 for never); --record appends
+/// the recording (docs/architecture/hub.md, Recording) to a file.
 /// </summary>
-internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output, int InlineLimitBytes)
+internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output, int InlineLimitBytes,
+    string? RecordPath = null)
 {
     internal const int DefaultInlineLimitKb = 200;
 
@@ -49,7 +51,9 @@ internal sealed record SidecarOptions(ClientOptions Client, OutputFolder Output,
             ReadEnvironment = environment
         };
         OutputFolder output = OutputFolder.From(Argument(args, "--output-dir"), environment(OutputFolder.EnvironmentVariable));
-        return new Parsed.Valid(new SidecarOptions(client, output, limitKb * 1024));
+        string? record = Argument(args, "--record");
+        return new Parsed.Valid(new SidecarOptions(client, output, limitKb * 1024,
+            string.IsNullOrWhiteSpace(record) ? null : record.Trim()));
     }
 
     private static string? Argument(string[] args, string name)

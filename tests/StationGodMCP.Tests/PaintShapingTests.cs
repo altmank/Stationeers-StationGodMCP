@@ -36,7 +36,7 @@ public sealed class PaintShapingTests
             """{"count":1,"results":[{"index":0,"ok":true}],"success_count":1,"error_count":0}""", shaped: true));
 
         string? line = await Program.HandleMcpMessageAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"paint","arguments":{"reference_ids":["5"],"color":"Blue","fields":["index","ok"]}}}""",
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"write","arguments":{"what":"paint","id":["5"],"color":"Blue","fields":["index","ok"]}}}""",
             new Program.GameTransportSettings(game.Target));
 
         FakeCall forwarded = Assert.Single(game.CallsTo("paint"));
@@ -48,12 +48,13 @@ public sealed class PaintShapingTests
     [Fact]
     public async Task ASidecarArgumentASmallReplyToolDoesNotTakeIsRefused()
     {
-        string tool = ToolCatalogue.SmallReplies.First();
+        // inspect player's handler (player_vitals) answers a small reply: it takes no shaping.
+        const string tool = "player_vitals";
+        Assert.Contains(tool, ToolCatalogue.SmallReplies);
         await using FakeGame game = FakeGame.OnPipe();
 
         string? line = await Program.HandleMcpMessageAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":""" + JsonSerializer.Serialize(tool) +
-            ""","arguments":{"fields":["x"]}}}""",
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"inspect","arguments":{"what":"player","fields":["x"]}}}""",
             new Program.GameTransportSettings(game.Target));
 
         using JsonDocument reply = JsonDocument.Parse(line!);

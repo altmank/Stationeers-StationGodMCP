@@ -52,7 +52,7 @@ internal static class Program
             }
         }
 
-        await using McpAdapter adapter = new(options, WriteAsync);
+        await using McpAdapter adapter = new(options);
         List<Task> running = [];
         string? line;
         while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
@@ -76,7 +76,7 @@ internal static class Program
         await Task.WhenAll(running).ConfigureAwait(false);
     }
 
-    /// <summary>Every tool's input schema as the built-in tools/list publishes it, by tool name.</summary>
+    /// <summary>Every mod method's input schema (the handlers the verbs map onto), by method name.</summary>
     internal static IReadOnlyDictionary<string, JsonElement> InputSchemas => ToolCatalogue.InputSchemas;
 
     /// <summary>One message through a sidecar of its own, closed afterwards.</summary>
