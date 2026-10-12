@@ -90,6 +90,34 @@ public sealed class SeenSetTests
         Assert.Equal("the agent cancelled the run_script request", record.StopMessage);
     }
 
+    [PythonFact]
+    public async Task ALongRunScriptWaitSendsProgressWhenTheRequestAskedForIt()
+    {
+        RunWorld world = new();
+        await using McpAdapter adapter = new(Options(), world, runs: new RunHostSettings
+        {
+            SgRoot = RunBench.SgRoot,
+            ProgressEvery = TimeSpan.FromMilliseconds(300)
+        });
+        List<string> sent = new();
+        adapter.Notify = line =>
+        {
+            lock (sent)
+            {
+                sent.Add(line);
+            }
+
+            return Task.CompletedTask;
+        };
+
+        await adapter.HandleAsync(
+            """{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"run_script","_meta":{"progressToken":"p1"},"arguments":{"code":"sg.wait(1.2)"}}}""");
+
+        Assert.NotEmpty(sent);
+        Assert.Contains("\"method\":\"notifications/progress\"", sent[0]);
+        Assert.Contains("\"progressToken\":\"p1\"", sent[0]);
+    }
+
     private static SidecarOptions Options() =>
         new(new ClientOptions(new GameTarget.Pipe("x")), new OutputFolder(System.IO.Path.GetTempPath()), 0);
 
