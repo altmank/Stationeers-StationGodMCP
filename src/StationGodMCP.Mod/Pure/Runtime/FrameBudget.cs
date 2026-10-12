@@ -42,8 +42,10 @@ internal sealed class FrameBudget
 
 /// <summary>
 /// The dispatcher's per-frame counters since the mod loaded: frames that served a request, how many requests and how
-/// much main-thread time per frame (mean and maximum), frames the budget stopped with requests still queued, and
-/// requests that expired in the queue before the main thread reached them. Main thread writes, mod_info reads; one lock.
+/// much main-thread time per frame (mean and maximum, and its percentiles in FrameHistogram), frames the budget stopped
+/// with requests still queued, and requests that expired in the queue before the main thread reached them. A frame
+/// counts as busy when it served a request or the budget stopped it; a frame that only took subscription samples does
+/// not count, while a busy frame's time includes its samples. Main thread writes, mod_info reads; one lock.
 /// </summary>
 internal sealed class DispatchStats
 {
@@ -54,6 +56,7 @@ internal sealed class DispatchStats
     private Tally _frameMs;
     private long _budgetStops;
     private long _expired;
+    private readonly FrameHistogram _histogram = new FrameHistogram();
 
     /// <summary>One frame's work: requests served, their main-thread time, and whether the budget stopped it early.</summary>
     internal void Frame(int served, double elapsedMs, bool budgetStopped)
@@ -69,6 +72,7 @@ internal sealed class DispatchStats
             _served += served;
             _maxPerFrame = Math.Max(_maxPerFrame, served);
             _frameMs = _frameMs.With(elapsedMs);
+            _histogram.Add(elapsedMs);
             _budgetStops += budgetStopped ? 1 : 0;
         }
     }
@@ -86,7 +90,8 @@ internal sealed class DispatchStats
     {
         lock (_gate)
         {
-            return new DispatchSnapshot(_busyFrames, _served, _maxPerFrame, _frameMs, _budgetStops, _expired);
+            return new DispatchSnapshot(_busyFrames, _served, _maxPerFrame, _frameMs, _budgetStops, _expired,
+                _histogram.Read());
         }
     }
 }
@@ -95,8 +100,9 @@ internal sealed class DispatchStats
 internal sealed class DispatchSnapshot
 {
     internal DispatchSnapshot(long busyFrames, long served, int maxPerFrame, Tally frameMs, long budgetStops,
-        long expired)
+        long expired, FrameHistogramReading histogram)
     {
+        Histogram = histogram;
         BusyFrames = busyFrames;
         Served = served;
         MaxPerFrame = maxPerFrame;
@@ -116,6 +122,9 @@ internal sealed class DispatchSnapshot
     internal long BudgetStops { get; }
 
     internal long Expired { get; }
+
+    /// <summary>The busy frames' request ms in buckets: mod_info's frame_ms with include_counters.</summary>
+    internal FrameHistogramReading Histogram { get; }
 
     internal double? MeanPerFrame => BusyFrames > 0 ? (double)Served / BusyFrames : null;
 }

@@ -179,7 +179,8 @@ public sealed class GameCountersTests
             "\"differences\":0,\"arrived\":40,\"left\":30}," +
             "\"job_holds\":{\"under_100ms\":7,\"under_1s\":3,\"under_10s\":2,\"under_60s\":1,\"over_60s\":0}," +
             "\"print_log\":{\"records\":120,\"capacity\":2048},\"lint_chip_programs\":4," +
-            "\"batch_console\":{\"lines\":250,\"lines_per_minute\":12.3}}",
+            "\"batch_console\":{\"lines\":250,\"lines_per_minute\":12.3}," +
+            "\"frame_ms\":{\"frames\":0,\"p50\":null,\"p90\":null,\"p99\":null,\"over_8ms\":0}}",
             WireCheck.New(view));
     }
 
