@@ -312,6 +312,11 @@
     "origin": "tool",
     "see": {"tool": "move_gas", "topic": "refusals"}
   },
+  "lint_refused": {
+    "description": "The write would open a vent, valve or pump onto a pipe network on which a write lint rule finds a problem, such as oxidiser vented outdoors. Nothing is written; data.rules lists each rule, its message and the thing. Fix the network first, or change the rule's level in the save's rule file.",
+    "origin": "tool",
+    "see": {"topic": "lint"}
+  },
   "logic_not_readable": {
     "description": "The device does not expose that logic type as readable. describe_device lists what it reads.",
     "origin": "tool",

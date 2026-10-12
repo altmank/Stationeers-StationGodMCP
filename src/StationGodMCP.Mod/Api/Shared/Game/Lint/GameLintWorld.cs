@@ -100,6 +100,18 @@ internal sealed class GameLintWorld : ILintWorld
     }
 
     /// <summary>
+    /// No region: the world object, cell lookups and the things, networks and rooms a caller reaches from a thing it
+    /// names (the write rules' OpeningWorld).
+    /// </summary>
+    internal static GameLintWorld Around()
+    {
+        GameLintWorld world = new GameLintWorld(new HashSet<long>());
+        world.Gather(new List<GridCell>());
+        world.Finish();
+        return world;
+    }
+
+    /// <summary>
     /// A plan and what stands around it: the touched 2 m cells and their neighbours. gone: ids the plan removes or
     /// replaces, left out of the world.
     /// </summary>

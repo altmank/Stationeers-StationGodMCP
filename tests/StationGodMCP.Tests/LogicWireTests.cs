@@ -56,7 +56,7 @@ public sealed class LogicWireTests
         BatchBuilder batch = new BatchBuilder(2);
         batch.Succeeded(new LogicWriteItemView(0, new LogicWrite(Read(1.0), 0.0, 1.0)));
         batch.Failed(1, ApiErrors.Refused("logic_not_writable", "Device 100 does not expose On (12)."));
-        WireCheck.Same(old, new LogicBatchView("world", batch.Build()));
+        WireCheck.Same(old, new LogicWriteBatchView("world", batch.Build(), new List<BuildIssueView>()));
 
         var oldReads = new
         {

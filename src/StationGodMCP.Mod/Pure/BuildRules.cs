@@ -764,3 +764,30 @@ internal static class RemovalRule
             ? new GuardFinding(warningCode, GuardLevel.Warning, $"{what}; {flag} is set, so {consequence}")
             : new GuardFinding(refusalCode, GuardLevel.Refusal, $"{what}; pass {flag} to remove it anyway ({consequence})");
 }
+
+/// <summary>
+/// materials_from_player: a build whose materials a player pays (from_id left out, so the player's inventory, or
+/// from_id naming a player first or among its further things) carries this warning, so a build meant to be paid from
+/// storage shows where it took them before anyone counts the player's pockets.
+/// </summary>
+internal static class PayerRule
+{
+    internal const string MaterialsFromPlayer = "materials_from_player";
+
+    /// <summary>
+    /// The warning, or null. pays: the build takes materials (not free, a cost above 0). player and playerId: the
+    /// paying player, null when no payer is a player. named: from_id named the player; false when it was left out.
+    /// </summary>
+    internal static GuardFinding? FromPlayer(bool pays, string? player, long playerId, bool named)
+    {
+        if (!pays || player == null)
+        {
+            return null;
+        }
+
+        return new GuardFinding(MaterialsFromPlayer, GuardLevel.Warning, named
+            ? $"Materials come from player {player} ({playerId}), whom {Vocabulary.Arg("from_id")} names."
+            : $"Materials come from player {player}'s inventory ({playerId}): {Vocabulary.Arg("from_id")} was left " +
+              "out. Name a locker or other storage in it to pay from there.");
+    }
+}

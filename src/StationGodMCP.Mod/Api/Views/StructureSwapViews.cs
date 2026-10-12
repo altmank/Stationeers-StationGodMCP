@@ -25,6 +25,7 @@ internal sealed class StructureSwapReportView : ITruncatingView
         JobId = header.JobId;
         Ready = lists.Problems.Count == 0;
         Problems = lists.Problems;
+        Warnings = lists.Warnings.Count > 0 ? lists.Warnings : null;
         PiecesTotal = counts.Total;
         ToSwap = counts.ToSwap;
         Kept = counts.Kept;
@@ -56,6 +57,12 @@ internal sealed class StructureSwapReportView : ITruncatingView
     public bool Ready { get; }
 
     public List<UpgradeProblemView> Problems { get; }
+
+    /// <summary>
+    /// What the run would do that is allowed but worth knowing, such as materials_from_player; absent for none.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeProblemView>? Warnings { get; }
 
     public int PiecesTotal { get; }
 
@@ -106,9 +113,10 @@ internal sealed class StructureSwapLists
 {
     internal StructureSwapLists(List<UpgradeProblemView> problems, List<StructurePieceView> pieces,
         List<StructureMappingView> byPrefab, List<UpgradeSkippedView> keptPieces,
-        List<UpgradeSkippedView> unmatchedPieces)
+        List<UpgradeSkippedView> unmatchedPieces, List<UpgradeProblemView>? warnings = null)
     {
         Problems = problems;
+        Warnings = warnings ?? new List<UpgradeProblemView>();
         Pieces = pieces;
         ByPrefab = byPrefab;
         KeptPieces = keptPieces;
@@ -116,6 +124,8 @@ internal sealed class StructureSwapLists
     }
 
     internal List<UpgradeProblemView> Problems { get; }
+
+    internal List<UpgradeProblemView> Warnings { get; }
 
     internal List<StructurePieceView> Pieces { get; }
 

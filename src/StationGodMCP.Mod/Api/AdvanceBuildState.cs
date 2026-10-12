@@ -84,6 +84,14 @@ internal static class AdvanceBuildStateApi
         }
 
         List<BuildNeedView> tools = BuildStates.Needs(structure, current, target).FindAll(static need => need.Tool);
+        List<BuildIssueView> warnings = new List<BuildIssueView>();
+        GuardFinding? fromPlayer = PaySources.PlayerPays(!free && stocks.Exists(static stock => stock.Needed > 0), from,
+            more, SourceArgs.First(ids).HasValue);
+        if (fromPlayer != null)
+        {
+            warnings.Add(new BuildIssueView(fromPlayer.Code, fromPlayer.Message));
+        }
+
         if (!dryRun)
         {
             if (problems.Count > 0)
@@ -101,7 +109,7 @@ internal static class AdvanceBuildStateApi
         }
 
         return new AdvanceBuildStateView(dryRun, GameLookup.ViewOf(structure), current, target, last, cost, tools,
-            problems, dryRun ? null : BuildStates.Of(structure));
+            problems, dryRun ? null : BuildStates.Of(structure), warnings);
     }
 
     private static ApiException Refusal(BuildStepRefusal refusal, string name, int current, int last) =>

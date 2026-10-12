@@ -2,7 +2,7 @@
 `py -3.12 clients/python/generate_catalogue.py` after catalogue.json changes."""
 # fmt: off
 
-CATALOGUE_HASH = 'sha256:38ddd4038cb05f8e6cdbe976647a06346df11baee6f9c15fb8e9dcfa4330b89e'
+CATALOGUE_HASH = 'sha256:a1b298b4daff14e2a67be38fc24cdceb79ec4b2b2084b6c7971db3778f08724e'
 MOD_VERSION = '1.33.2'
 
 # Read class with no class rules and no x-effects: safe to send again whatever the arguments.
@@ -1688,20 +1688,20 @@ TABLE = {'catalogue': {'class': 'read',
              'shaping': 'none',
              'protocol': False},
  'write_logic': {'class': 'write',
-                 'class_when': [],
+                 'class_when': [{'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
                  'effects': [],
                  'paging': None,
                  'duration': None,
-                 'params': ['gateway_id', 'reference_id', 'logic_type', 'value'],
+                 'params': ['gateway_id', 'reference_id', 'logic_type', 'value', 'allow_lint', 'dry_run'],
                  'required': ['reference_id', 'logic_type', 'value'],
                  'shaping': 'none',
                  'protocol': False},
  'write_logic_many': {'class': 'write',
-                      'class_when': [],
+                      'class_when': [{'when': {'dry_run': {'equals': True}}, 'class': 'read'}],
                       'effects': [],
                       'paging': None,
                       'duration': None,
-                      'params': ['gateway_id', 'writes'],
+                      'params': ['gateway_id', 'writes', 'allow_lint', 'dry_run'],
                       'required': ['writes'],
                       'shaping': 'lists',
                       'protocol': False},
@@ -2424,19 +2424,19 @@ class Methods:
         """
         return self.call('weather', **options)
 
-    def write_logic(self, *, gateway_id: str | None = None, reference_id: str | None = None, logic_type: str | int | None = None, value: float | None = None, **options) -> dict:
+    def write_logic(self, *, gateway_id: str | None = None, reference_id: str | None = None, logic_type: str | int | None = None, value: float | None = None, allow_lint: bool | None = None, dry_run: bool | None = None, **options) -> dict:
         """Write one logic value to a device, by logic type name or number, as a chip or console would.
 
-        Class: write. Arguments: gateway_id, reference_id (required), logic_type (required), value (required).
+        Class: write (other classes at some arguments). Arguments: gateway_id, reference_id (required), logic_type (required), value (required), allow_lint, dry_run.
         """
-        return self.call('write_logic', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'logic_type': logic_type, 'value': value}, **options)
+        return self.call('write_logic', **{'gateway_id': gateway_id, 'reference_id': reference_id, 'logic_type': logic_type, 'value': value, 'allow_lint': allow_lint, 'dry_run': dry_run}, **options)
 
-    def write_logic_many(self, *, gateway_id: str | None = None, writes: list | None = None, **options) -> dict:
+    def write_logic_many(self, *, gateway_id: str | None = None, writes: list | None = None, allow_lint: bool | None = None, dry_run: bool | None = None, **options) -> dict:
         """Write up to 256 logic values in order in one call; each result stands alone, by index, with its own error.
 
-        Class: write. Arguments: gateway_id, writes (required).
+        Class: write (other classes at some arguments). Arguments: gateway_id, writes (required), allow_lint, dry_run.
         """
-        return self.call('write_logic_many', **{'gateway_id': gateway_id, 'writes': writes}, **options)
+        return self.call('write_logic_many', **{'gateway_id': gateway_id, 'writes': writes, 'allow_lint': allow_lint, 'dry_run': dry_run}, **options)
 
     def write_memory(self, *, gateway_id: str | None = None, reference_id: str | None = None, start_address: int | None = None, values: list | None = None, dry_run: bool | None = None, **options) -> dict:
         """Cheat: write up to 512 values into a device's memory from start_address, as a chip's put does.

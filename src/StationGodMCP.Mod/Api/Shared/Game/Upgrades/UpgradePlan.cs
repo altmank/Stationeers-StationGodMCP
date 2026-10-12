@@ -304,6 +304,9 @@ internal sealed class UpgradePlan
     /// <summary>The further things coils are taken from, after From.</summary>
     internal List<Thing> MoreFrom { get; } = new List<Thing>();
 
+    /// <summary>What the run would do that is allowed but worth knowing (materials_from_player).</summary>
+    internal List<UpgradeProblemView> Warnings { get; } = new List<UpgradeProblemView>();
+
     /// <summary>Where the refund goes (refund_to resolved); null until the coils are counted.</summary>
     internal RefundReceivers? Refunds { get; set; }
 
@@ -489,6 +492,12 @@ internal static class UpgradePlanner
                     $"{stock.Needed} {Names.Of(kit.Item)} needed, {stock.Available} held by " +
                     $"{PaySources.Holders(plan.From, plan.MoreFrom)}.", plan.From);
             }
+        }
+
+        GuardFinding? fromPlayer = PaySources.PlayerPays(charge > 0, plan.From, plan.MoreFrom, request.From.HasValue);
+        if (fromPlayer != null)
+        {
+            plan.Warnings.Add(new UpgradeProblemView(fromPlayer.Code, fromPlayer.Message));
         }
     }
 

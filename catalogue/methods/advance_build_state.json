@@ -47,6 +47,7 @@
       "tools": {"type": "array"},
       "ready": {"type": "boolean"},
       "problems": {"type": "array"},
+      "warnings": {"type": "array"},
       "build_state": {"type": ["object", "null"]}
     }
   },

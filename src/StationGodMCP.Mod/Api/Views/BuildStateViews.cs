@@ -56,8 +56,10 @@ internal sealed class BuildNeedView
 internal sealed class AdvanceBuildStateView
 {
     internal AdvanceBuildStateView(bool dryRun, ThingView thing, int fromState, int toState, int lastState,
-        List<BuildCostView> cost, List<BuildNeedView> tools, List<string> problems, BuildStateView? buildState)
+        List<BuildCostView> cost, List<BuildNeedView> tools, List<string> problems, BuildStateView? buildState,
+        List<BuildIssueView>? warnings = null)
     {
+        Warnings = warnings ?? new List<BuildIssueView>();
         DryRun = dryRun;
         Thing = thing;
         FromState = fromState;
@@ -88,6 +90,9 @@ internal sealed class AdvanceBuildStateView
     public bool Ready { get; }
 
     public List<string> Problems { get; }
+
+    /// <summary>What the step does that is allowed but worth knowing, such as materials_from_player.</summary>
+    public List<BuildIssueView> Warnings { get; }
 
     /// <summary>A real run: the build state read back after the step.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

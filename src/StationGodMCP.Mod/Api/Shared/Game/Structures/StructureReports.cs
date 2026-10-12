@@ -46,7 +46,7 @@ internal static class StructureReports
             request.Arguments.IncludeNotes ? new List<string>(Notes) : null);
         UpgradeCounts counts = new UpgradeCounts(plan.Total, plan.Swaps.Count, plan.Kept.Count, plan.Unmatched.Count);
         StructureSwapLists lists = new StructureSwapLists(plan.Problems, Pieces(plan, limit), ByPrefab(plan),
-            Skipped(plan.Kept, limit), Skipped(plan.Unmatched, limit));
+            Skipped(plan.Kept, limit), Skipped(plan.Unmatched, limit), plan.Warnings);
         StructureSwapResources resources = new StructureSwapResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Materials(plan), request.Arguments.Refund,
             plan.Air?.RoomViews() ?? new List<StructureRoomView>(), Refunds.Forecast(plan.Refunds, GivenBack(plan)));

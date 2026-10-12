@@ -583,6 +583,10 @@
     "cursor_id",
     "pass cursor_id {cursorId} for the next page (limit up to {page.Maximum.ToString(CultureInfo.InvariantCulture)})"
   ],
+  "Api/Shared/WriteLint.cs": [
+    "The write opens device {device}, and the write lint rules find {Count(rules.Count)} on the networks it opens to:{said} Nothing is written. A rule's level is set in the save's lint-rules.json (lint_rules lists the files).",
+    "{problem.Message} Lint rule {problem.Code} (level problem) let through by allow_lint."
+  ],
   "Api/Shared/WriteMode.cs": [
     "A real run needs dry_run: false and confirm: true; nothing was changed.",
     "confirm: true needs dry_run: false; nothing was changed."
@@ -703,7 +707,9 @@
     "{trimmed.Replace(\" (pass root to name one).\", \".\").TrimEnd('.')}; remove_structure only warns of a split and removes it anyway (plan_removal or remove_pipes with root name the devices a root still reaches).",
     "{trimmed.TrimEnd('.')}; allow_contents is set, so it is removed anyway.",
     "{what}; allow_contents is set, so {consequence}",
-    "{what}; {consequence}. Empty it first, or pass allow_contents to remove it anyway"
+    "{what}; {consequence}. Empty it first, or pass allow_contents to remove it anyway",
+    "Materials come from player {player} ({playerId}), whom from_id names.",
+    "Materials come from player {player}'s inventory ({playerId}): from_id was left out. Name a locker or other storage in it to pay from there."
   ],
   "Pure/Catalogue/Catalogue.cs": [
     "Argument '{path}' is given twice; name each key once."

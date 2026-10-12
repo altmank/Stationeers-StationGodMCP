@@ -2,11 +2,12 @@
   "name": "write_logic_many",
   "summary": "Write up to 256 logic values in order in one call; each result stands alone, by index, with its own error.",
   "help": {
-    "text": "Each result is {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value read back as write_logic does), or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read.",
-    "keys": "gateway_id, results, count, success_count, error_count.",
-    "shared": ["gateways", "logic"]
+    "text": "Each result is {index, ok, reference_id, logic_type, requested_value, previous_value, current_value} (current_value read back as write_logic does), or {index, ok: false, reference_id, logic_type, error}; reference_id and logic_type are null when the entry's own could not be read. Each write runs the write lint rules as write_logic does (see lint): a refusal (lint_refused) fails only its entry and the others still run, and allow_lint covers every entry. Warnings are listed once for the call, each with its entry's index. A report (dry_run) checks each write against the world as it stands, without the writes before it, and writes nothing: results of {index, ok, reference_id, logic_type, requested_value, previous_value, opens}, each refused entry also a problem with its index (see report_only).",
+    "keys": "report_only, problems, gateway_id, results, count, success_count, error_count, warnings.",
+    "shared": ["gateways", "logic", "lint", "report_only"]
   },
   "class": "write",
+  "x-class-when": [{"when": {"dry_run": {"equals": true}}, "class": "read"}],
   "cost": "bounded",
   "x-cost-when": [{"when": {"writes": {"present": true}}, "cost": "bounded", "per_item": "writes"}],
   "params": {
@@ -31,6 +32,14 @@
           "additionalProperties": false
         },
         "description": "The writes, up to 256, each {reference_id, logic_type, value}, applied in order."
+      },
+      "allow_lint": {
+        "type": "boolean",
+        "description": "Default false: an entry that opens a device onto a network a write lint rule finds a problem on fails (lint_refused); true writes it anyway."
+      },
+      "dry_run": {
+        "type": "boolean",
+        "description": "Default false. true checks every write, the write lint rules included, and writes nothing; the reply starts report_only (see report_only)."
       }
     },
     "required": ["writes"],
@@ -39,13 +48,16 @@
   "reply": {
     "type": "object",
     "properties": {
+      "report_only": {"type": "boolean"},
+      "problems": {"type": "array"},
       "gateway_id": {"type": "string"},
       "results": {"type": "array"},
       "count": {"type": "integer"},
       "success_count": {"type": "integer"},
-      "error_count": {"type": "integer"}
+      "error_count": {"type": "integer"},
+      "warnings": {"type": "array"}
     }
   },
-  "x-views": ["LogicBatchView"],
+  "x-views": ["LogicWriteBatchView", "ReportRefusedView", "LogicBatchReportView"],
   "x-shaping": "lists"
 }

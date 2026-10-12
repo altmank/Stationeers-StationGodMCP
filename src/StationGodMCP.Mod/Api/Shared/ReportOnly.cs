@@ -85,11 +85,12 @@ internal sealed class WriteCheck<TPlan> where TPlan : class
 /// <summary>One reason the acting call, or one entry of its list, would be refused.</summary>
 internal sealed class ProblemView
 {
-    internal ProblemView(int? index, string code, string message)
+    internal ProblemView(int? index, string code, string message, object? data = null)
     {
         Index = index;
         Code = code;
         Message = message;
+        Data = data;
     }
 
     /// <summary>The list entry refused; absent for a refusal of the whole call.</summary>
@@ -100,6 +101,10 @@ internal sealed class ProblemView
 
     public string Message { get; }
 
+    /// <summary>The refusal's data, as the acting call's error carries it (lint_refused's rules); absent for none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public object? Data { get; }
+
     /// <summary>Every refused entry of a list's results, as a problem with its index.</summary>
     internal static List<ProblemView> Of(List<BatchItemView> results)
     {
@@ -108,7 +113,8 @@ internal sealed class ProblemView
         {
             if (results[index] is IBatchFailure failure)
             {
-                problems.Add(new ProblemView(results[index].Index, failure.Error.Code, failure.Error.Message));
+                problems.Add(new ProblemView(results[index].Index, failure.Error.Code, failure.Error.Message,
+                    failure.Error.Data));
             }
         }
 
@@ -121,7 +127,7 @@ internal sealed class ReportRefusedView
 {
     internal ReportRefusedView(ApiException refusal)
     {
-        Problems = new List<ProblemView>(1) { new ProblemView(null, refusal.Code, refusal.Message) };
+        Problems = new List<ProblemView>(1) { new ProblemView(null, refusal.Code, refusal.Message, refusal.Details) };
     }
 
     public bool ReportOnly => true;

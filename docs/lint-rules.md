@@ -63,6 +63,23 @@ A small save file:
   network, slots or logic yet. The grid around it is read as it stands now, so a frame or wall the same request also
   places does not yet count as support for its other placements. Removals (`remove_*`, `plan_removal`) are not
   linted.
+- **`write_logic` and `write_logic_many`** run the rules with `"write"` in their `on` when a write opens a vent,
+  valve, pump or regulator: `On` or `Open` from 0 to 1, a vent's `Mode` from inward (1) to outward (0), a turbo
+  pump's `Mode` turned the other way, a volume pump's `Setting` from 0 (the value written, as the device takes it,
+  against the value it holds). A write that opens nothing runs no rule and reads no rule file. The rules see:
+  - `networks`: the device's pipe networks (a vent's one; a valve's, pump's or regulator's both sides), as they stand
+    at the write;
+  - `things`: the device, and for a valve, pump or regulator every vent on those networks;
+  - every other set empty; the world and cells as for `lint_layout`.
+
+  They run on every opening, never from a cache, so a network that gains oxidiser between two openings is refused
+  at the second. A finding at level `problem` refuses the write with `lint_refused` (its data lists each rule, its
+  message and the thing) unless the call passes `allow_lint: true`, which writes and reports each problem as a
+  warning; a `warning` is `lint_<rule id>` in the reply's `warnings`; `info` is not reported. `write_logic_many`
+  refuses entry by entry. `dry_run: true` runs the same checks and writes nothing. A check runs at the write: a
+  network that changes after it (a fill heating up) is not watched. The shipped write rules are
+  `no_oxidiser_vented_outdoors` and `fuel_oxidiser_mix_temperature`; a save's file can add `"write"` to any rule
+  that reads only those sets.
 - **`lint_rules`** lists the rules in effect (`list`), validates (`validate`), shows the model (`fields`) and the
   library (`functions`), runs each rule's examples (`test`) and explains a finding (`explain`): the rule run again on
   one subject, with every value it read, so you can see why it fired.
@@ -91,7 +108,7 @@ A small save file:
 | `id` | yes | Lower case letters, digits and `_`. Findings carry it as their `code`. |
 | `level` | yes | `problem`, `warning` or `info`. |
 | `level_when` | no | An expression giving the level of one finding, e.g. `if(c?.fallback ?? false, 'info', 'warning')`. |
-| `on` | no | `["audit"]` (the default), `["dry_run"]` or both. |
+| `on` | no | `["audit"]` (the default), `["dry_run"]`, `["write"]`, or any of them together. |
 | `select` | yes | The subjects: a set, optionally `where <expression>`, or `pairs(<set>, within: <metres>)`. |
 | `let` | no | Named expressions, each worked out only when read and able to use the ones before it. |
 | `assert` | yes | An expression every subject must hold. A subject for which it is false is a finding. |
@@ -191,8 +208,8 @@ must pass (or be left out by the `where`), a `fail` example must fail. Every shi
 | `controller_labels` | warning | audit | a device a chip on its data network batches by name (lbn, sbn, batch_write_name) that carries none of those names, so the chip never reaches it |
 | `solar_unshaded` | warning | both | a solar panel with a structure or the terrain between it and the sun somewhere on the day's path |
 | `filter_output_capped` | warning | audit | a filtration unit with an output network holding no tank or regulator, or with no chip switching it On and off: it pushes with no back-pressure check |
-| `no_oxidiser_vented_outdoors` | problem | audit | an outdoor vent whose network, or anything upstream of it through pumps, valves, regulators, filters and mixers, holds oxygen, nitrous oxide or ozone |
-| `fuel_oxidiser_mix_temperature` | warning | audit | a pipe network holding fuel and oxidiser above its auto-ignition temperature |
+| `no_oxidiser_vented_outdoors` | problem | audit, write | an outdoor vent whose network, or anything upstream of it through pumps, valves, regulators, filters and mixers, holds oxygen, nitrous oxide or ozone |
+| `fuel_oxidiser_mix_temperature` | warning | audit, write | a pipe network holding fuel and oxidiser above its auto-ignition temperature |
 | `outdoor_liquid_insulated` | warning | audit | an outdoor liquid pipe that is not insulated while its network is at or below a freezing point of what it holds |
 | `deep_miner_column_clear` | warning | both | a frame or other full-cell structure in a deep miner's drill column, which stops it |
 | `cable_on_frames` | warning | both | a cable with a cell off the frames (in air or along a bare wall) |
