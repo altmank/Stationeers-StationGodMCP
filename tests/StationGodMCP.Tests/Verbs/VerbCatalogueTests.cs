@@ -22,6 +22,8 @@ public sealed class VerbCatalogueTests
 {
     private static readonly Lazy<SortedDictionary<string, string>> Generated = new(VerbOutputs.All);
 
+    private static readonly Lazy<SortedDictionary<string, string>> ModOptions = new(VerbOptionsCode.Files);
+
     private static readonly Lazy<Dictionary<string, JsonObject>> Methods = new(() =>
         CatalogueFiles.ReadJson(CatalogueFiles.AssembledPath)["methods"]!.AsArray()
             .ToDictionary(method => (string)method!["name"]!, method => method!.AsObject()));
@@ -41,12 +43,14 @@ public sealed class VerbCatalogueTests
         if (Environment.GetEnvironmentVariable("STATIONGOD_WRITE_CATALOGUE") == "1")
         {
             VerbOutputs.Write(Generated.Value);
+            VerbOutputs.Write(ModOptions.Value, VerbOutputs.ModRoot);
         }
 
         List<string> stale = VerbOutputs.Stale(Generated.Value);
+        stale.AddRange(VerbOutputs.Stale(ModOptions.Value, VerbOutputs.ModRoot).Select(path => "mod options " + path));
         Assert.True(stale.Count == 0,
-            "generated/verbs differs from what catalogue/verbs generates (STATIONGOD_WRITE_CATALOGUE=1 rewrites it): " +
-            string.Join(", ", stale.Take(20)));
+            "generated/verbs or the mod's options differ from what catalogue/verbs generates " +
+            "(STATIONGOD_WRITE_CATALOGUE=1 rewrites them): " + string.Join(", ", stale.Take(20)));
     }
 
     [Fact]

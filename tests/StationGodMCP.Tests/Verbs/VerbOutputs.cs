@@ -12,11 +12,17 @@ namespace StationGodMCP.Tests.Verbs;
 
 /// <summary>
 /// Every file generated from catalogue/verbs, under generated/verbs: tools.json (the MCP tools array plus
-/// instructions), help/ (the direct pages and topics), stubs/ (the Python stub per what) and sizes.json. Set STATIONGOD_WRITE_CATALOGUE=1 and run VerbCatalogueTests.GeneratedFilesAreCurrent to rewrite them.
+/// instructions), help/ (the direct pages and topics), stubs/ (the Python stub per what) and sizes.json; and the mod's
+/// typed options, under src/StationGodMCP.Mod/Pure/Verbs/Generated (VerbOptionsCode). Set STATIONGOD_WRITE_CATALOGUE=1
+/// and run VerbCatalogueTests.GeneratedFilesAreCurrent to rewrite them.
 /// </summary>
 internal static class VerbOutputs
 {
     internal static string Root => Path.Combine(CatalogueFiles.RepositoryRoot(), "generated", "verbs");
+
+    /// <summary>Where the mod's generated options classes go.</summary>
+    internal static string ModRoot =>
+        Path.Combine(CatalogueFiles.RepositoryRoot(), "src", "StationGodMCP.Mod", "Pure", "Verbs", "Generated");
 
     /// <summary>The generated files, by path under Root (forward slashes), with their text.</summary>
     internal static SortedDictionary<string, string> All()
@@ -53,37 +59,39 @@ internal static class VerbOutputs
         return files;
     }
 
-    internal static void Write(SortedDictionary<string, string> files)
+    internal static void Write(SortedDictionary<string, string> files, string? root = null)
     {
-        if (Directory.Exists(Root))
+        root ??= Root;
+        if (Directory.Exists(root))
         {
-            Directory.Delete(Root, recursive: true);
+            Directory.Delete(root, recursive: true);
         }
 
         foreach ((string path, string text) in files)
         {
-            CatalogueFiles.WriteText(Path.Combine(Root, path), text);
+            CatalogueFiles.WriteText(Path.Combine(root, path), text);
         }
     }
 
     /// <summary>The paths whose file on disk is missing or differs, and files on disk nothing generates.</summary>
-    internal static List<string> Stale(SortedDictionary<string, string> files)
+    internal static List<string> Stale(SortedDictionary<string, string> files, string? root = null)
     {
+        root ??= Root;
         List<string> stale = new();
         foreach ((string path, string text) in files)
         {
-            string file = Path.Combine(Root, path);
+            string file = Path.Combine(root, path);
             if (!File.Exists(file) || File.ReadAllText(file).Replace("\r\n", "\n", StringComparison.Ordinal) != text)
             {
                 stale.Add(path);
             }
         }
 
-        if (Directory.Exists(Root))
+        if (Directory.Exists(root))
         {
-            foreach (string file in Directory.GetFiles(Root, "*", SearchOption.AllDirectories))
+            foreach (string file in Directory.GetFiles(root, "*", SearchOption.AllDirectories))
             {
-                string path = Path.GetRelativePath(Root, file).Replace('\\', '/');
+                string path = Path.GetRelativePath(root, file).Replace('\\', '/');
                 if (!files.ContainsKey(path))
                 {
                     stale.Add(path + " (not generated)");
