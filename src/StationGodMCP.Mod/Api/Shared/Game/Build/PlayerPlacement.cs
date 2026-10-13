@@ -22,14 +22,14 @@ namespace StationGodMCP.Api.Shared.Game.Build;
 /// below for batteries, machines and dishes, a wall or floor behind for vents, lights and consoles, a straight pipe
 /// or cable to mount on, terrain, outside, collisions) and CanMountOnWall for a face-mounted piece. Three forms:
 /// <list type="bullet">
-/// <item>Refusal: a new placement (place_structure, find_spot): the cursor check (a rocket's cells and hull
+/// <item>Refusal: a new placement (build structure, plan spot): the cursor check (a rocket's cells and hull
 /// included: SmallGrid.CanConstruct, the fuselage, engine and umbilical classes' own), a small-grid slot already
 /// taken.</item>
-/// <item>PieceRefusal: a cable, pipe or chute piece with things treated as gone (place_cables, place_pipes,
-/// place_chutes, their undo restores): PlacementCheck, the game's piece rules made here because the cursor cannot
+/// <item>PieceRefusal: a cable, pipe or chute piece with things treated as gone (build cable, pipe and
+/// chute, their undo restores): PlacementCheck, the game's piece rules made here because the cursor cannot
 /// ignore what a run replaces.</item>
-/// <item>Replacing / AsItStands: a placement standing in for existing things (replace_walls, replace_frames;
-/// check_replaceable and lint_layout's not_replaceable: could this thing be placed again where it stands). A refusal
+/// <item>Replacing / AsItStands: a placement standing in for existing things (swap wall, swap frame;
+/// check replaceable and check layout's not_replaceable: could this thing be placed again where it stands). A refusal
 /// that names only a replaced thing is theirs (PlayerPlacementRule), and the neighbours are checked again without
 /// them.</item>
 /// </list>

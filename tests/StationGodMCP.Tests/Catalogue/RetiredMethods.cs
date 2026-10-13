@@ -33,6 +33,7 @@ internal static class RetiredMethods
         "get_ic_source",
         "get_ic_status",
         "grid_survey",
+        "ignition_risk",
         "inspect_slots",
         "item_totals",
         "label",

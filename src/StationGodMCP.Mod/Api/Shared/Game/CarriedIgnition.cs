@@ -7,14 +7,14 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// ignition_risk: whether the things the player carries would catch fire in the air they are in. Read only.
+/// check ignition without an id: whether the things the player carries would catch fire in the air they are in. Read
+/// only.
 ///
 /// The game's rule (CODE Thing.ShouldIgnite, DynamicThing.OnFireTick, both run per fire tick): see IgnitionRule. Each
 /// carried thing is judged on its own DynamicThing.WorldAtmosphere, the air its fire tick reads: a slot marked
@@ -24,17 +24,16 @@ namespace StationGodMCP.Api;
 /// 0.3 mol of O2 into CO2 and heat) or while ShouldIgnite still holds.
 ///
 /// Ignition temperatures are per prefab (Thing.flashpointTemperature, autoignitionTemperature; -1 when unset, and a
-/// thing with neither never burns: DynamicThing.IsBurnable). include_prefabs lists every prefab that has one.
+/// thing with neither never burns: DynamicThing.IsBurnable). With prefabs, every prefab that has one is listed.
 /// </summary>
-internal static class IgnitionRiskApi
+internal static class CarriedIgnition
 {
     private const string WorldAir = "world";
     private const string InternalAir = "internal";
     private const string NoAir = "none";
 
-    internal static IgnitionRiskView Handle(Args args)
+    internal static IgnitionRiskView Read(bool includePrefabs)
     {
-        bool includePrefabs = args.OptionalBool("include_prefabs") ?? false;
         PlayerOrigin origin = PlayerOrigin.Current();
         Human? human = origin.Player;
         List<CarriedIgnitionView> items = new List<CarriedIgnitionView>();

@@ -153,4 +153,21 @@ public sealed class CheckVerbTests
         Assert.Equal(path, only.Path);
         Assert.Equal(problem, only.Problem);
     }
+
+    // ---- ignition ----
+
+    [Fact]
+    public void IgnitionReadsTheCarriedItemsOrTheContentsOfEachId()
+    {
+        CheckIgnitionOptions carried = CheckIgnitionOptions.Bind(new OptionReader(CheckIgnitionOptions.Spec,
+            JObject.Parse("""{"include": ["prefabs"]}""")));
+        CheckIgnitionOptions tanks = CheckIgnitionOptions.Bind(new OptionReader(CheckIgnitionOptions.Spec,
+            JObject.Parse("""{"id": ["2005300", "88"]}""")));
+
+        Assert.Null(carried.Selector.Ids);
+        Assert.True(carried.Fields.Includes("prefabs"));
+        Assert.True(tanks.Selector.Ids!.AnswersRows);
+        Assert.Equal(new[] { "2005300", "88" }, tanks.Selector.Ids.Ids);
+        Assert.NotNull(Check("""{"what": "ignition", "include": ["everything"]}"""));
+    }
 }

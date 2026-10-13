@@ -48,9 +48,9 @@ internal static class LintGameLibrary
         LintLibrary library = LintLibrary.Standard();
         library
             .Add(new LintFunction("replaceable", "(x: thing) -> placement",
-                "Whether a player could place the thing again where it stands, its neighbours present: check_replaceable's " +
+                "Whether a player could place the thing again where it stands, its neighbours present: check replaceable's " +
                 "rule (PlayerPlacement.AsItStands). replaceable is null when it could not be asked, and for a planned thing " +
-                "(place_structure checks a placement itself).",
+                "(build structure checks a placement itself).",
                 Replaceable, cached: true))
             .Add(new LintFunction("controls_side", "(x: thing) -> controls?",
                 "The world side of a device that carries its slots, buttons and switches (read from its prefab's " +
@@ -125,7 +125,7 @@ internal static class LintGameLibrary
         ThingSubject thing = Thing(call);
         if (thing.IsPlanned)
         {
-            return Placement(null, null, "a planned thing: place_structure checks the placement itself");
+            return Placement(null, null, "a planned thing: build structure checks the placement itself");
         }
 
         return PlayerPlacement.AsItStands(thing.Source, World(call).Catalogue) switch
@@ -334,18 +334,10 @@ internal static class LintGameLibrary
     private static LintValue AutoIgnition(LintCall call)
     {
         IReadOnlyDictionary<string, LintValue> gases = call[0].AsMap;
-        double least = GasMixture.MinCombustionMoles.ToDouble();
-        double Mol(string name) => gases.TryGetValue(name, out LintValue mol) ? mol.AsNumber : 0.0;
-        double offset = Math.Min(
-            Mol("NitrousOxide") + Mol("LiquidNitrousOxide") > least ? Chemistry.AutoIgnitionOffsetNitrogenDioxide.ToDouble() : 0.0,
-            Mol("Ozone") + Mol("LiquidOzone") > least ? Chemistry.AutoIgnitionOffsetOzone.ToDouble() : 0.0);
-        double? limit = null;
-        void Fuel(bool present, double kelvin) => limit = present ? Math.Min(limit ?? double.MaxValue, kelvin) : limit;
-        Fuel(Mol("Methane") + Mol("LiquidMethane") > least, Chemistry.AutoIgnitionMethane.ToDouble() + offset);
-        Fuel(Mol("Hydrogen") + Mol("LiquidHydrogen") > least, Chemistry.AutoIgnitionHydrogen.ToDouble() + offset);
-        Fuel(Mol("LiquidAlcohol") > least, Chemistry.AutoIgnitionAlcohol.ToDouble() + offset);
-        Fuel(Mol("Hydrazine") + Mol("LiquidHydrazine") > least, Chemistry.AutoIgnitionHydrazine.ToDouble());
-        return LintValue.Of(limit);
+        return LintValue.Of(MixIgnition.AutoIgnitionK(type =>
+            EnumNames<Chemistry.GasType>.Of(type) is { } name && gases.TryGetValue(name, out LintValue mol)
+                ? mol.AsNumber
+                : 0.0));
     }
 
     private static LintValue DrillColumn(LintCall call)

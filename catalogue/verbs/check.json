@@ -5,7 +5,7 @@
   "tool": {
     "options": {
       "box": "Two corners; at most 4000 2 m cells.",
-      "id": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024); a list answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error. ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items.",
+      "id": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024); a list answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error. ignition: A tank, canister or pipe network: its contents' autoignition margin, a list one row each; left out, the player's carried items.",
       "action": "Default list.",
       "at": "explain: a cell.",
       "fields": "Keys to keep.",
@@ -161,15 +161,40 @@
         "list": "items",
         "variants": [
           {
+            "label": "Carried",
+            "view": "IgnitionRisk",
             "keys": {
               "player": "{reference_id: str, display_name: str | None, position: Vec3} | None",
               "cell": "{temperature_k: float, pressure_kpa: float, energy_j: float, inflamed: bool, oxygen_mol: float, in_room: bool} | None",
               "items": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot: str | None, in_hand: bool, holder: Thing | None, atmosphere: str, burning: bool, hidden: bool, flashpoint_k: float | None, flashpoint_effective_k: float | None, autoignition_k: float | None, ignites_now: bool, health_ratio: float | None}]",
               "prefabs": "list[{prefab_name: str | None, display_name: str | None, flashpoint_k: float | None, autoignition_k: float | None}] | None"
             }
+          },
+          {
+            "label": "Contents",
+            "view": "IgnitionContents",
+            "keys": {
+              "reference_id": "str",
+              "kind": "str",
+              "temperature_k": "float",
+              "pressure_kpa": "float",
+              "autoignition_k": "float | None",
+              "margin_k": "float | None",
+              "ignites_now": "bool"
+            }
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
           }
         ],
-        "types": ["Thing", "Vec3"]
+        "types": ["Error", "Thing", "Vec3"]
       }
     }
   }

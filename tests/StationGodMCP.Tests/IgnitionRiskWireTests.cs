@@ -8,7 +8,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>ignition_risk: the wire shape of IgnitionRiskView, and IgnitionRule's arithmetic.</summary>
+/// <summary>check ignition: the wire shapes of IgnitionRiskView and IgnitionContentsView, and IgnitionRule's arithmetic.</summary>
 public sealed class IgnitionRiskWireTests
 {
     [Fact]
@@ -73,6 +73,22 @@ public sealed class IgnitionRiskWireTests
             }
         };
         WireCheck.Same(expected, view);
+    }
+
+    // By id: a tank's mix and how far it is from burning by itself; no fuel over 1 mol has no autoignition and no margin.
+    [Fact]
+    public void ContentsShowTheAutoignitionMargin()
+    {
+        WireCheck.Same(new
+        {
+            reference_id = "2005300", kind = "tank", temperature_k = 300.0, pressure_kpa = 4000.0,
+            autoignition_k = (double?)323.15, margin_k = (double?)23.15, ignites_now = false
+        }, new IgnitionContentsView(new ThingId(2005300), "tank", 300.0, 4000.0, 323.15, false));
+        WireCheck.Same(new
+        {
+            reference_id = "88", kind = "network", temperature_k = 290.0, pressure_kpa = 101.0,
+            autoignition_k = (double?)null, margin_k = (double?)null, ignites_now = false
+        }, new IgnitionContentsView(new ThingId(88), "network", 290.0, 101.0, null, false));
     }
 
     [Fact]

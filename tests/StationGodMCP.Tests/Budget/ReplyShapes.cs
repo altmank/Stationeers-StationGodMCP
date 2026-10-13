@@ -82,10 +82,6 @@ internal static class ReplyShapes
             S<HighlightView>().List("HighlightView.Targets", 3).List("HighlightTargetView.Missing", 0)
                 .List("HighlightView.Notes", 0)
         };
-        shapes["ignition_risk"] = new[]
-        {
-            S<IgnitionRiskView>().List("IgnitionRiskView.Items", 20).Absent("IgnitionRiskView.Prefabs")
-        };
         shapes["mod_info"] = new[]
         {
             // The game counters come with include_counters (about 515 bytes more).

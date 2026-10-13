@@ -7,7 +7,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>ignition_risk: the air at the player and every burnable thing they carry.</summary>
+/// <summary>check ignition without an id: the air at the player and every burnable thing they carry.</summary>
 internal sealed class IgnitionRiskView
 {
     internal IgnitionRiskView(LocalPlayerView? player, IgnitionCellView? cell, List<CarriedIgnitionView> items,
@@ -29,7 +29,7 @@ internal sealed class IgnitionRiskView
 
     public List<CarriedIgnitionView> Items { get; }
 
-    /// <summary>Every prefab that can burn; only with include_prefabs.</summary>
+    /// <summary>Every prefab that can burn; only with include prefabs.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<PrefabIgnitionView>? Prefabs { get; }
 }
@@ -194,4 +194,42 @@ internal sealed class PrefabIgnitionView
     public double? FlashpointK { get; }
 
     public double? AutoignitionK { get; }
+}
+
+/// <summary>
+/// check ignition by id: the gas or liquid a tank, a canister or a pipe network holds, and how far it is from burning by
+/// itself (MixIgnition).
+/// </summary>
+internal sealed class IgnitionContentsView
+{
+    internal IgnitionContentsView(ThingId referenceId, string kind, double temperatureK, double pressureKpa,
+        double? autoignitionK, bool ignitesNow)
+    {
+        ReferenceId = referenceId;
+        Kind = kind;
+        TemperatureK = temperatureK;
+        PressureKpa = pressureKpa;
+        AutoignitionK = autoignitionK;
+        MarginK = autoignitionK is { } limit ? System.Math.Round(limit - temperatureK, 2) : null;
+        IgnitesNow = ignitesNow;
+    }
+
+    /// <summary>The tank's or canister's id, or the pipe network's.</summary>
+    public ThingId ReferenceId { get; }
+
+    /// <summary>tank, canister or network.</summary>
+    public string Kind { get; }
+
+    public double TemperatureK { get; }
+
+    public double PressureKpa { get; }
+
+    /// <summary>The kelvin above which the mix burns by itself; null when no fuel is over 1 mol.</summary>
+    public double? AutoignitionK { get; }
+
+    /// <summary>autoignition_k less the temperature: how much warmer the mix can get; negative when past it.</summary>
+    public double? MarginK { get; }
+
+    /// <summary>The game's own check: past its autoignition temperature, with fuel and oxidiser (or hypergolics).</summary>
+    public bool IgnitesNow { get; }
 }

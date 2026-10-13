@@ -422,7 +422,7 @@
           "id": {
             "type": ["string", "array"],
             "items": {"type": "string"},
-            "description": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024); a list answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error. ignition: A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items."
+            "description": "layout: Narrows: only findings on these things (up to 256); room or box is still needed. rules: explain: a thing, network or room id. replaceable: Things to check (1 to 1024); a list answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error. ignition: A tank, canister or pipe network: its contents' autoignition margin, a list one row each; left out, the player's carried items."
           },
           "since": {"type": "string"},
           "limit": {"type": "integer"},
