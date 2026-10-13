@@ -18,23 +18,6 @@ namespace StationGodMCP.Api.Shared.Game;
 internal static class Devices
 {
     /// <summary>
-    /// The scope a device or IC call works in: the whole world when gateway_id is omitted, blank or "world", or, as
-    /// a filter, the devices on one StationGod Gateway's data networks.
-    /// </summary>
-    internal static DeviceScope Scope(Args args)
-    {
-        JToken? token = args.Optional("gateway_id");
-        string? text = token != null && token.Type == JTokenType.String ? token.Value<string>()!.Trim() : null;
-        if (token == null || text == string.Empty ||
-            string.Equals(text, DeviceScope.WorldId, StringComparison.OrdinalIgnoreCase))
-        {
-            return DeviceScope.World;
-        }
-
-        return ScopeOf(args.ThingId("gateway_id"));
-    }
-
-    /// <summary>
     /// The scope a verb's gateway option names: the world when it is left out or "world", else that gateway, refused
     /// when no gateway has the id or it is unavailable.
     /// </summary>
@@ -129,10 +112,6 @@ internal static class Devices
 
         return device;
     }
-
-    /// <summary>The circuit holder named by reference_id (see CircuitHolders.Require for the ids accepted).</summary>
-    internal static IcTarget RequireCircuitHolder(DeviceScope scope, Args args) =>
-        CircuitHolders.Require(scope, args.ThingId("reference_id"));
 
     // Device.AllDevices membership without walking it: a Device keeps its slot in that pool in the private
     // Device._deviceDensePool (DensePoolReference, Slot -1 when not in the pool; Device.OnAddToPool).
