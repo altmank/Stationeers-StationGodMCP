@@ -1,7 +1,7 @@
 def plan(what: Literal['route'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     kind: Literal['cable', 'pipe', 'chute'],  # The run's kind.
-    start: dict | list = None,  # (route) {at}, {id} of a piece, {id, port} of a device, or a list.
+    start: dict | list = None,  # (route) {at}, {id} of a piece, {id, port} or {id, ports: [...]} of a device, or a list.
     end: dict = None,  # (route) As start, one, or {network}.
     reroute: dict = None,  # {id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.
     trunk: dict = None,  # Bus mode instead of end: {waypoints} or {cells} every start branches from.
@@ -28,16 +28,18 @@ def plan(what: Literal['route'], *,
     summarize: bool = False,  # The report in short instead of whole.
     rows: int = 5,  # Cells the report lists; 0 for none.
 ) -> dict:
-    """A cable, pipe or chute route between ends, ports or networks, dry-run as the build would; answers build_arguments.
+    """A cable, pipe or chute route between ends, ports or networks, reported as build would report it; answers build_arguments.
     Reply:
-      tool: str
       found: bool
       route: {waypoints: list[Vec3], length: int, bends: int, cost: float, expanded: int, removes: list[str], air_cells: int, air: list[Vec3] | None,
           branches: list[{waypoints: list[Vec3], length: int, attach: Vec3}] | None, extra_ends: int | None, visibility: {inside: int, frame_surface:
           int, wall: int, air: int} | None, assumed_removed: {pieces: list[str], others: list[str], missing: list[str], in_the_way: list[str]} | None,
           removal_refund: list[{prefab_name: str | None, quantity: int}] | None} | None
       failure: str | None
-      build_arguments: Any | None
+      build_arguments: {what: str, waypoints: list[list[float]], grade: str, join: str, branches: list[{waypoints: list[list[float]], attach:
+          list[float]}] | None, extra_ends: list[{at: list[float], toward: str}] | None, remove_ids: list[str] | None, assume_removed: list[str] |
+          None, allow_bridge: list[Any] | None, allow: list[str] | None, split_long: bool | None, materials: str | list[str] | None, root: str | None,
+          join_to: str | {id: str, port: int} | None, join_trunk: bool | None} | None
       build_report: {grade: str | None, ready: bool, problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}], warnings:
           list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}], cells_total: int, placed: int, changed: int, kept: int,
           removed_count: int, air_cells: int | None, cells: list[{at: Vec3, action: str, prefab_name: str | None, rotation_deg: Vec3 | None, shape:

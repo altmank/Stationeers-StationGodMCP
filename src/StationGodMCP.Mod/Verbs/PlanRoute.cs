@@ -41,8 +41,7 @@ internal static class PlanRoute
             }
         }
 
-        PlanRouteView reply = new PlanRouteView(planned.Tool, planned.Route, planned.Failure, planned.BuildArguments,
-            planned.Notes);
+        PlanRouteView reply = new PlanRouteView(planned.Route, planned.Failure, planned.BuildArguments, planned.Notes);
         return new VerbOutcome.Answered(reply.Reply(order.Summarize ? PlanRouteView.SummaryKey : PlanRouteView.ReportKey,
             report));
     }

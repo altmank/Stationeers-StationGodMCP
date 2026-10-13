@@ -17,18 +17,15 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// <summary>What plan route found: the route or why none was, the build options that lay it, build's planned view of it, and the notes.</summary>
 internal sealed class PlannedRoute
 {
-    internal PlannedRoute(string tool, RouteView? route, string? failure, JObject? buildArguments, RunReportView? report,
+    internal PlannedRoute(RouteView? route, string? failure, JObject? buildArguments, RunReportView? report,
         List<string> notes)
     {
-        Tool = tool;
         Route = route;
         Failure = failure;
         BuildArguments = buildArguments;
         Report = report;
         Notes = notes;
     }
-
-    internal string Tool { get; }
 
     internal RouteView? Route { get; }
 
@@ -41,8 +38,8 @@ internal sealed class PlannedRoute
 
     internal List<string> Notes { get; }
 
-    internal static PlannedRoute Failed(string tool, string failure, List<string> notes) =>
-        new PlannedRoute(tool, null, failure, null, null, notes);
+    internal static PlannedRoute Failed(string failure, List<string> notes) =>
+        new PlannedRoute(null, failure, null, null, notes);
 }
 
 /// <summary>
@@ -68,7 +65,6 @@ internal static class RoutePlanning
     internal static PlannedRoute Plan(RouteOrder order, string label)
     {
         RunKind kind = RunKind.Named(order.Kind);
-        string tool = kind.PlanTool;
         NetworkTarget? joinTo = order.JoinTo ?? JoinTarget(order.End, kind);
         Grade grade = GradeOf(order.Grade, kind);
         RerouteSegment? segment = Segment(order, kind);
@@ -140,14 +136,14 @@ internal static class RoutePlanning
 
         if (!tree.Found)
         {
-            return PlannedRoute.Failed(tool, Failure(tree), notes);
+            return PlannedRoute.Failed(Failure(tree), notes);
         }
 
         ReleasedNote(openings, tree, notes);
         string? blocked = BlockedCell(NewCells(tree, facts), kind, mask, ignore);
         if (blocked != null)
         {
-            return PlannedRoute.Failed(tool, blocked, notes);
+            return PlannedRoute.Failed(blocked, notes);
         }
 
         RunOptions options = Options(order, kind, joinTo, label);
@@ -192,7 +188,7 @@ internal static class RoutePlanning
         JObject build = RouteBuildArguments.Of(order, kind.NameOf(grade), tree, removes, Ids(assumed.Others), joinTo,
             CentreOf);
         RouteView route = ViewOf(tree, removes, visibility, assumedView, RemovalRefund(segment, assumed));
-        return new PlannedRoute(tool, route, null, build, report, notes);
+        return new PlannedRoute(route, null, build, report, notes);
     }
 
     private static Vec3 CentreOf(GridCell cell)

@@ -1115,17 +1115,14 @@ internal sealed class PlanRouteView
     internal const string ReportKey = "build_report";
     internal const string SummaryKey = "build_report_summary";
 
-    internal PlanRouteView(string tool, RouteView? route, string? failure, JObject? buildArguments, List<string> notes)
+    internal PlanRouteView(RouteView? route, string? failure, JObject? buildArguments, List<string> notes)
     {
-        Tool = tool;
         Found = route != null;
         Route = route;
         Failure = failure;
         BuildArguments = buildArguments;
         Notes = notes;
     }
-
-    public string Tool { get; }
 
     public bool Found { get; }
 

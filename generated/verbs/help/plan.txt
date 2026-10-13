@@ -1,7 +1,7 @@
 Work out how, changing nothing: routes, removal prices, free spots, rocket flights, mining yields, aim angles. Read only.
 
 whats:
-- route: a cable, pipe or chute route between ends, ports or networks, dry-run as the build would; answers build_arguments
+- route: a cable, pipe or chute route between ends, ports or networks, reported as build would report it; answers build_arguments
 - removal: price a removal of cable, pipe or chute pieces without doing it, ever: ids, cells or a whole network
 - spot: free places to put one prefab you are about to build, near a point, on a face plane or a room's walls, checked by the game's cursor; answers build_arguments
 - flight: fly a copy of a rocket to a node or pad, tick by tick: launch, hops, re-entry, landing, fuel, power and the verdict; the landing check

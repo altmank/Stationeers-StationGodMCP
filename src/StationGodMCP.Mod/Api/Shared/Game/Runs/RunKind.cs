@@ -37,8 +37,6 @@ internal abstract class RunKind
 
     internal abstract string RemoveTool { get; }
 
-    internal abstract string PlanTool { get; }
-
     /// <summary>The tool whose split_long_straights splits the family's long straights; null when none.</summary>
     internal virtual string? CleanTool => null;
 
@@ -201,8 +199,6 @@ internal sealed class CableRunKind : RunKind
 
     internal override string RemoveTool => "remove_cables";
 
-    internal override string PlanTool => "plan_cable_route";
-
     internal override string CleanTool => "clean_cables";
 
     internal override string[] GradeNames => new[] { "normal", "heavy", "super_heavy" };
@@ -272,8 +268,6 @@ internal sealed class PipeRunKind : RunKind
     internal override string PlaceTool => "place_pipes";
 
     internal override string RemoveTool => "remove_pipes";
-
-    internal override string PlanTool => "plan_pipe_route";
 
     internal override string CleanTool => "clean_pipes";
 

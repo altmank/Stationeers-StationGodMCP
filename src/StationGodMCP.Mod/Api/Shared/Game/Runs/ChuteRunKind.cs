@@ -31,8 +31,6 @@ internal sealed class ChuteRunKind : RunKind
 
     internal override string RemoveTool => "remove_chutes";
 
-    internal override string PlanTool => "plan_chute_route";
-
     internal override string[] GradeNames => new[] { "chute" };
 
     internal override string? DefaultGrade => "chute";
