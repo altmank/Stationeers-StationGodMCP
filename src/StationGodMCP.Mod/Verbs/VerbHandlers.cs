@@ -77,5 +77,8 @@ internal static class VerbHandlers
         VerbHandler.For(RemovePipeOptions.Spec, RemovePipeOptions.Bind, RemovePipe.Run),
         VerbHandler.For(RemoveChuteOptions.Spec, RemoveChuteOptions.Bind, RemoveChute.Run),
         VerbHandler.For(RemoveStructureOptions.Spec, RemoveStructureOptions.Bind, RemoveStructure.Run),
+        VerbHandler.For(CheckLayoutOptions.Spec, CheckLayoutOptions.Bind, CheckLayout.Run),
+        VerbHandler.For(CheckRulesOptions.Spec, CheckRulesOptions.Bind, CheckRules.Run),
+        VerbHandler.For(CheckReplaceableOptions.Spec, CheckReplaceableOptions.Bind, CheckReplaceable.Run),
     });
 }

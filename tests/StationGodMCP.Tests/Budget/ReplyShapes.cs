@@ -65,10 +65,6 @@ internal static class ReplyShapes
     {
         Dictionary<string, ReplyShape[]> shapes = new Dictionary<string, ReplyShape[]>(StringComparer.Ordinal);
 
-        shapes["check_replaceable"] = new[]
-        {
-            S<CheckReplaceableView>().List("CheckReplaceableView.Results", W.TypicalBatch)
-        };
         // One structure's step: a state or two of one or two items each, and a tool.
         shapes["advance_build_state"] = new[]
         {
@@ -89,22 +85,6 @@ internal static class ReplyShapes
         shapes["ignition_risk"] = new[]
         {
             S<IgnitionRiskView>().List("IgnitionRiskView.Items", 20).Absent("IgnitionRiskView.Prefabs")
-        };
-        shapes["lint_layout"] = new[]
-        {
-            S<LintLayoutView>().List("LintLayoutView.Counts", 12).List("LintLayoutView.Findings", D.LintFindings)
-                .List("LintRuleSourceView.FromSave", 0).List("LintRuleSourceView.Disabled", 0)
-                .List("LintRuleSourceView.Errors", 0)
-        };
-        shapes["lint_rules"] = new[]
-        {
-            // action list, the default: the rules in effect, each in brief.
-            S<LintRulesView>().List("LintRulesView.Rules", W.LintRules).List("LintRuleView.On", 2)
-                .List("LintRuleView.Let", 0).Absent("LintRulesView.Types", "LintRulesView.Sets", "LintRulesView.Functions",
-                    "LintRulesView.Tests", "LintRulesView.Explained", "LintRuleView.Select", "LintRuleView.Assert",
-                    "LintRuleView.Message", "LintRuleView.Other", "LintRuleView.LevelWhen")
-                .List("LintRuleSourceView.FromSave", 0).List("LintRuleSourceView.Disabled", 0)
-                .List("LintRuleSourceView.Errors", 0)
         };
         shapes["mod_info"] = new[]
         {

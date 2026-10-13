@@ -11,7 +11,7 @@ using Xunit.Abstractions;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// lint_layout reference_ids and since_id: only the findings on the things a build just placed (as subject or as the
+/// check layout id and since: only the findings on the things a build just placed (as subject or as the
 /// other thing named), composed with codes and exclude_codes; counts still counts every finding and filtered_out the
 /// rest.
 /// </summary>
@@ -50,18 +50,9 @@ public sealed class LintThingFilterTests(ITestOutputHelper output)
         Assert.Equal(new[] { "controls_blocked" }, kept.ConvertAll(finding => finding.Code));
     }
 
-    [Fact]
-    public void TheSidecarTakesReferenceIdsAndSinceId()
-    {
-        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(
-            """{"room_id":"28","reference_ids":["9000","9001"],"since_id":"9000","exclude_codes":["not_replaceable"]}""");
-        Assert.Empty(StationGodMCP.Server.ArgumentCheck.Problems(
-            StationGodMCP.Server.Program.InputSchemas["lint_layout"], document.RootElement));
-    }
-
     /// <summary>
     /// A room whose 90 standing findings (cladding pairs, floating runs) bury the two on the pump just placed: lint
-    /// with since_id the pump's id lists those two, counts still names all of them.
+    /// with since the pump's id lists those two, counts still names all of them.
     /// </summary>
     [Fact]
     public void LintingWhatWasJustBuiltListsOnlyItsFindings()
@@ -81,13 +72,13 @@ public sealed class LintThingFilterTests(ITestOutputHelper output)
             new Vec3(601, 211, 635)));
         int before = Reply(all, LintCodeFilter.Every, LintThingFilter.Every, 500).Length;
         string after = Reply(all, LintCodeFilter.Every, LintThingFilter.Of(null, 2_500_001), 500);
-        output.WriteLine($"lint_layout, 92 findings (limit 500): all {before} bytes, since_id {after.Length} bytes");
+        output.WriteLine($"check layout, 92 findings (limit 500): all {before} bytes, since {after.Length} bytes");
 
         JObject json = JObject.Parse(after);
         Assert.Equal(2, (int)json["total"]!);
         Assert.Equal(90, (int)json["filtered_out"]!);
         Assert.Equal(60, (int)json["counts"]!["not_replaceable"]!);
-        Assert.True(after.Length * 10 <= before, $"since_id {after.Length} bytes against {before}");
+        Assert.True(after.Length * 10 <= before, $"since {after.Length} bytes against {before}");
     }
 
     private static string Reply(List<LintFinding> all, LintCodeFilter codes, LintThingFilter things, int limit)

@@ -1058,12 +1058,13 @@ internal sealed class UndoJobView
     public List<UndoPieceRunView> PieceRuns { get; }
 }
 
-/// <summary>check_replaceable's answer for one thing: could a player place it again where it stands.</summary>
+/// <summary>
+/// check replaceable's answer for one thing (a per-id row's payload): could a player place it again where it stands.
+/// </summary>
 internal sealed class ReplaceableView
 {
-    internal ReplaceableView(ThingId referenceId, string? prefabName, PlacementVerdict verdict)
+    internal ReplaceableView(string? prefabName, PlacementVerdict verdict)
     {
-        ReferenceId = referenceId;
         PrefabName = prefabName;
         switch (verdict)
         {
@@ -1082,9 +1083,6 @@ internal sealed class ReplaceableView
         }
     }
 
-    public ThingId ReferenceId { get; }
-
-    /// <summary>Null when no thing has the id.</summary>
     public string? PrefabName { get; }
 
     /// <summary>true: a player could; false: the cursor would refuse it (rule, reason); null: not checked (reason).</summary>
@@ -1095,15 +1093,4 @@ internal sealed class ReplaceableView
 
     /// <summary>The game's text (or the rule's own words); null when replaceable.</summary>
     public string? Reason { get; }
-}
-
-/// <summary>check_replaceable's reply: one result per id asked, in the order asked.</summary>
-internal sealed class CheckReplaceableView
-{
-    internal CheckReplaceableView(List<ReplaceableView> results)
-    {
-        Results = results;
-    }
-
-    public List<ReplaceableView> Results { get; }
 }

@@ -11,7 +11,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// lint_layout codes and exclude_codes: only the findings asked for are listed (a room's 76 not_replaceable cladding
+/// check layout codes and exclude_codes: only the findings asked for are listed (a room's 76 not_replaceable cladding
 /// pairs no longer bury the other 14), a rule_error goes with its rule, and counts still counts every finding.
 /// </summary>
 public sealed class LintCodeFilterTests
@@ -62,15 +62,6 @@ public sealed class LintCodeFilterTests
         Assert.Equal(3, (int)json["filtered_out"]!);
         Assert.Equal(2, (int)json["counts"]!["not_replaceable"]!);
         Assert.False((bool)json["has_more"]!);
-    }
-
-    [Fact]
-    public void TheSidecarTakesBothLists()
-    {
-        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(
-            """{"room_id":"28","codes":["floating_run"],"exclude_codes":["not_replaceable"]}""");
-        Assert.Empty(StationGodMCP.Server.ArgumentCheck.Problems(
-            StationGodMCP.Server.Program.InputSchemas["lint_layout"], document.RootElement));
     }
 
     private static List<LintFinding> Findings() => new List<LintFinding>

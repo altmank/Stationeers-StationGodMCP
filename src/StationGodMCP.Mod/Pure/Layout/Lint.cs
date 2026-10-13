@@ -142,7 +142,7 @@ internal static class LintReport
 }
 
 /// <summary>
-/// lint_layout codes and exclude_codes: which findings a reply lists. A finding passes when codes is not given or names
+/// check layout's codes and exclude_codes: which findings a reply lists. A finding passes when codes is not given or names
 /// its code or rule_id, and exclude_codes names neither.
 /// </summary>
 internal sealed class LintCodeFilter
@@ -175,10 +175,9 @@ internal sealed class LintCodeFilter
 }
 
 /// <summary>
-/// lint_layout reference_ids and since_id: only the findings on given things, so a caller can lint what it just built.
-/// A finding passes when its thing or the other thing it names is one of reference_ids, or has an id at or above
-/// since_id; the game numbers things in the order it makes them (Referencable.RegisterNew hands out NextReferenceId++),
-/// so since_id keeps the things made since the one with that id. Both given, either passes. Composes with
+/// check layout's id and since: only the findings on given things, so a caller can lint what it just built. A finding
+/// passes when its thing or the other thing it names is one of the ids, or has an id at or above since; the game
+/// numbers things in the order it makes them (Referencable.RegisterNew hands out NextReferenceId++), so since keeps the things made since the one with that id. Both given, either passes. Composes with
 /// LintCodeFilter: a listed finding passes both.
 /// </summary>
 internal sealed class LintThingFilter

@@ -2,5 +2,5 @@ Could a player place each thing again exactly where it stands, every neighbour p
 Options:
 - id (string or array, required): Things to check (1 to 1024).
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
-Reply: results [{reference_id, prefab_name, replaceable, rule, reason}]
+Reply: (Replaceable) prefab_name, replaceable, rule, reason | (BatchResult) results [{index, ok, error}], count, success_count, error_count
 Example: check {what: "replaceable", id: "r12.things"}

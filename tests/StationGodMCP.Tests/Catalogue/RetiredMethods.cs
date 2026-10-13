@@ -15,13 +15,14 @@ internal static class RetiredMethods
     internal static IReadOnlyCollection<string> Names { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         "atmosphere_contents",
+        "check_replaceable",
         "clean_cables",
         "clean_chutes",
         "clean_pipes",
         "connections",
         "consumables",
-        "control_ic_execution",
         "container_contents",
+        "control_ic_execution",
         "deep_miner_spots",
         "describe_device",
         "describe_prefab",
@@ -36,6 +37,8 @@ internal static class RetiredMethods
         "item_totals",
         "label",
         "landing_pads",
+        "lint_layout",
+        "lint_rules",
         "list_containers",
         "list_devices",
         "list_gateways",
@@ -86,7 +89,7 @@ internal static class RetiredMethods
         "weather",
         "write_logic",
         "write_logic_many",
-        "write_memory"
+        "write_memory",
     };
 
     internal static bool Has(string? name) => name != null && ((HashSet<string>)Names).Contains(name);

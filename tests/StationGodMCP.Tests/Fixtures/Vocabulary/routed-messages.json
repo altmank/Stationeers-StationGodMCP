@@ -21,18 +21,6 @@
     "{name}: {id} names no thing and no cable, pipe or chute network. A network's id changes after almost every edit; name a piece on it instead.",
     "{name}: {thing.PrefabName} {id} is on no network."
   ],
-  "Api/LintLayout.cs": [
-    "Pass max too.",
-    "Pass room_id (from rooms) or min and max (a box, in metres).",
-    "room_id must be a room id as rooms reports it.",
-    "{name}[{index}] must be a lint code (counts names them)."
-  ],
-  "Api/LintRules.cs": [
-    "action is list, validate, fields, functions, test or explain.",
-    "explain needs reference_id (a thing, network or room id) or at (a cell, [x, y, z]).",
-    "explain needs rule_id.",
-    "name one subject: other_id for a pair, port for one port of a device"
-  ],
   "Api/PasteBlueprint.cs": [
     "Argument 'anchor' is required.",
     "Argument 'rotation' must be 0, 90, 180 or 270."

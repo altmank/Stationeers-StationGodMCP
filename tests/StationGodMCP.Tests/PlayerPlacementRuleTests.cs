@@ -94,17 +94,24 @@ public sealed class PlayerPlacementRuleTests
         Assert.Equal(on, PlayerPlacementRule.OnGrid(squared));
     }
 
+    // check replaceable answers one row per id: the validator reads each row's reference_id and verdict, and an id no
+    // thing has is a row with error.
     [Fact]
-    public void TheReplyShapeIsTheValidatorsContract()
+    public void CheckReplaceableAnswersOneRowPerId()
     {
-        Assert.Equal("""{"results":[{"reference_id":"7","prefab_name":"StructureActiveVent","replaceable":false,"rule":"support","reason":"Placement requires support"},{"reference_id":"8","prefab_name":"StructureFrame","replaceable":true,"rule":null,"reason":null},{"reference_id":"9","prefab_name":null,"replaceable":null,"rule":null,"reason":"no thing has reference id 9"},{"reference_id":"10","prefab_name":"StructureWreck","replaceable":false,"rule":"no_kit","reason":"no kit builds StructureWreck, so no player can place one"}]}""",
-            WireCheck.New(new StationGodMCP.Api.Views.CheckReplaceableView(new System.Collections.Generic.List<StationGodMCP.Api.Views.ReplaceableView>
-            {
-                new(new StationGodMCP.Api.Shared.ThingId(7), "StructureActiveVent", PlacementVerdict.Refuse("Placement requires support")),
-                new(new StationGodMCP.Api.Shared.ThingId(8), "StructureFrame", PlacementVerdict.Placeable),
-                new(new StationGodMCP.Api.Shared.ThingId(9), null, PlacementVerdict.Unchecked("no thing has reference id 9")),
-                new(new StationGodMCP.Api.Shared.ThingId(10), "StructureWreck", PlacementVerdict.Refuse("no kit builds StructureWreck, so no player can place one", PlacementRules.NoKit))
-            })));
+        Newtonsoft.Json.JsonSerializer serializer = StationGodMCP.Api.Shared.ApiJson.Fresh();
+        Newtonsoft.Json.Linq.JObject Payload(string? prefab, PlacementVerdict verdict) =>
+            Newtonsoft.Json.Linq.JObject.FromObject(new StationGodMCP.Api.Views.ReplaceableView(prefab, verdict), serializer);
+        StationGodMCP.Pure.Verbs.Rows rows = new();
+
+        rows.Succeeded("7", Payload("StructureActiveVent", PlacementVerdict.Refuse("Placement requires support")));
+        rows.Succeeded("8", Payload("StructureFrame", PlacementVerdict.Placeable));
+        rows.Failed("9", new StationGodMCP.Pure.Verbs.VerbError("thing_not_found", "No thing with reference id 9."));
+        rows.Succeeded("10", Payload("StructureWreck",
+            PlacementVerdict.Refuse("no kit builds StructureWreck, so no player can place one", PlacementRules.NoKit)));
+
+        Assert.Equal("""{"results":[{"index":0,"ok":true,"reference_id":"7","prefab_name":"StructureActiveVent","replaceable":false,"rule":"support","reason":"Placement requires support"},{"index":1,"ok":true,"reference_id":"8","prefab_name":"StructureFrame","replaceable":true,"rule":null,"reason":null},{"index":2,"ok":false,"reference_id":"9","error":{"code":"thing_not_found","message":"No thing with reference id 9."}},{"index":3,"ok":true,"reference_id":"10","prefab_name":"StructureWreck","replaceable":false,"rule":"no_kit","reason":"no kit builds StructureWreck, so no player can place one"}],"count":4,"success_count":3,"error_count":1}""",
+            rows.Reply().ToString(Newtonsoft.Json.Formatting.None));
     }
 
     [Theory]
