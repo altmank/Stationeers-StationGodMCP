@@ -15,8 +15,9 @@ namespace StationGodMCP.Protocol;
 /// read sample (catalogue read.json): watches up to 32 logic values for up to 30 s on the real clock and answers the
 /// first readings and every change with its time. The options become a SampleRequest (refused with every problem at
 /// once); the run is the subscription lane's (SubscriptionHub.StartSample), and the call waits in the slice lane on its
-/// watch, past its deadline by the seconds it runs (x-cost duration), until the run's last sample is taken. A value
-/// that cannot be read fails the call with that read's error.
+/// watch, past its deadline by the seconds it runs (x-cost duration), until the run's last sample is taken. Every value
+/// is read once before the run starts: values that cannot be read refuse the call, all of them named at once, and
+/// nothing is sampled. A value that can no longer be read mid-run (its thing gone) ends its own series; the rest go on.
 /// </summary>
 internal static class ReadSample
 {
@@ -31,10 +32,49 @@ internal static class ReadSample
             return new VerbOutcome.Refused(OptionProblem.Refusal(ReadSampleOptions.Spec.Label, problems));
         }
 
-        return hub == null
-            ? new VerbOutcome.Refused(new VerbError("game_unavailable",
-                "read sample: the game's sample lane has not started; nothing ran."))
+        if (hub == null)
+        {
+            return new VerbOutcome.Refused(new VerbError("game_unavailable",
+                "read sample: the game's sample lane has not started; nothing ran."));
+        }
+
+        LogicSampleRead check = hub.CheckSample(request);
+        if (!check.Ok)
+        {
+            return new VerbOutcome.Refused(new VerbError(check.Code!, check.Message ?? check.Code!));
+        }
+
+        return check.Misses.Count > 0
+            ? new VerbOutcome.Refused(Unreadable(request, check.Misses))
             : new VerbOutcome.Pending(hub.StartSample(request, CallContext.Current));
+    }
+
+    /// <summary>
+    /// Every value that cannot be read, at once: "read sample: nothing was sampled; these values cannot be read: id
+    /// logic: why; ...", the first one's code, and data.unreadable {id, logic, code, message} each.
+    /// </summary>
+    internal static VerbError Unreadable(SampleRequest request, IReadOnlyList<SampleMiss> misses)
+    {
+        List<string> named = new List<string>(misses.Count);
+        JArray unreadable = new JArray();
+        foreach (SampleMiss miss in misses)
+        {
+            SampleTarget target = request.Targets[miss.Index];
+            string logic = target.Logic.Type == JTokenType.String
+                ? (string)target.Logic!
+                : target.Logic.ToString(Newtonsoft.Json.Formatting.None);
+            named.Add($"{target.Id} {logic}: {miss.Message}");
+            unreadable.Add(new JObject
+            {
+                ["id"] = target.Id, ["logic"] = target.Logic.DeepClone(), ["code"] = miss.Code,
+                ["message"] = miss.Message
+            });
+        }
+
+        return new VerbError(misses[0].Code,
+            $"read sample: nothing was sampled; {(misses.Count == 1 ? "this value cannot" : "these values cannot")} " +
+            $"be read: {string.Join("; ", named)}",
+            new JObject { ["unreadable"] = unreadable });
     }
 }
 

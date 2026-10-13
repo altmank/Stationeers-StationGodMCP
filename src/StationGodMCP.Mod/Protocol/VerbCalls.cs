@@ -97,7 +97,10 @@ internal static class VerbCalls
         return json;
     }
 
-    /// <summary>A handler's run at the request boundary: an ApiException is its refusal, any other failure internal_error.</summary>
+    /// <summary>
+    /// A handler's run at the request boundary: an ApiException is its refusal, a game member this build lacks
+    /// game_changed, any other failure internal_error.
+    /// </summary>
     internal static VerbOutcome Handled(Func<VerbOutcome> run)
     {
         try
@@ -108,6 +111,10 @@ internal static class VerbCalls
         {
             return new VerbOutcome.Refused(new VerbError(refused.Code, refused.Message,
                 refused.Details == null ? null : JToken.FromObject(refused.Details, ApiJson.Fresh())));
+        }
+        catch (GameChangedException changed)
+        {
+            return new VerbOutcome.Refused(new VerbError(ApiErrors.GameChangedCode, changed.Message));
         }
         catch (Exception exception)
         {

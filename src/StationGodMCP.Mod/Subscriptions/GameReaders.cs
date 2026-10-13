@@ -30,8 +30,8 @@ internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
 
 /// <summary>
 /// A read sample sample: every target read as read logic reads it (the device in the gateway's scope, the logic type
-/// readable), "looking_at" the thing under the crosshair. A target that cannot be read fails the sample with that
-/// read's error, naming the target, so the call fails with it.
+/// readable), "looking_at" the thing under the crosshair. A target that cannot be read is a miss with its error (its
+/// reading a failure); a gateway that cannot be found fails the whole read.
 /// </summary>
 internal sealed class SampleReader : ILogicSampleReader<BatchItemView>
 {
@@ -55,6 +55,7 @@ internal sealed class SampleReader : ILogicSampleReader<BatchItemView>
             return LogicSampleRead.Failed(refused.Code, refused.Message);
         }
 
+        List<SampleMiss>? misses = null;
         for (int index = 0; index < request.Targets.Count; index++)
         {
             SampleTarget target = request.Targets[index];
@@ -67,12 +68,12 @@ internal sealed class SampleReader : ILogicSampleReader<BatchItemView>
             }
             catch (ApiException refused)
             {
-                return LogicSampleRead.Failed(refused.Code,
-                    $"read sample: {target.Id} {target.Logic.ToString(Newtonsoft.Json.Formatting.None)}: {refused.Message}");
+                into.Add(new LogicFailedItemView(index, null, null, refused));
+                (misses ??= new List<SampleMiss>()).Add(new SampleMiss(index, refused.Code, refused.Message));
             }
         }
 
-        return LogicSampleRead.Read(scope.Id);
+        return LogicSampleRead.Read(scope.Id, misses);
     }
 
     // A target's id: a thing's reference id, or the thing under the crosshair.

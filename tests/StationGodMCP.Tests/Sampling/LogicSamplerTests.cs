@@ -39,6 +39,9 @@ public sealed class LogicSamplerTests
 
         internal Func<int, int, bool> Failing { get; set; } = (_, _) => false;
 
+        /// <summary>Target t's thing is gone at sample k: its reading a failure and a miss in the read.</summary>
+        internal Func<int, int, bool> Gone { get; set; } = (_, _) => false;
+
         public LogicSampleRead Read(SampleRequest arguments, List<BatchItemView> into)
         {
             int sample = Samples++;
@@ -47,16 +50,24 @@ public sealed class LogicSamplerTests
                 return LogicSampleRead.Failed("gateway_not_found", "No gateway gw9.");
             }
 
+            List<SampleMiss> misses = new List<SampleMiss>();
             for (int target = 0; target < arguments.Targets.Count; target++)
             {
                 ThingId id = new ThingId(100 + target);
                 LogicTypeView type = new LogicTypeView(28, "On");
+                if (Gone(target, sample))
+                {
+                    into.Add(new LogicFailedItemView(target, id, type, new ApiException("thing_not_found", "Gone.")));
+                    misses.Add(new SampleMiss(target, "thing_not_found", "Gone."));
+                    continue;
+                }
+
                 into.Add(Failing(target, sample)
                     ? new LogicFailedItemView(target, id, type, new ApiException("logic_not_readable", "No."))
                     : new LogicReadItemView(target, new LogicRead(id, type, _values(target, sample))));
             }
 
-            return LogicSampleRead.Read(arguments.Gateway ?? "world");
+            return LogicSampleRead.Read(arguments.Gateway ?? "world", misses);
         }
     }
 
@@ -251,6 +262,39 @@ public sealed class LogicSamplerTests
         SampleOutcome<BatchItemView>.Failed failed = Assert.IsType<SampleOutcome<BatchItemView>.Failed>(outcome);
         Assert.Equal("gateway_not_found", failed.Code);
         Assert.Equal("No gateway gw9.", failed.Message);
+    }
+
+    [Fact]
+    public void ATargetGoneMidRunEndsItsOwnSeriesAndTheRestGoOn()
+    {
+        ScriptedReader reader = new ScriptedReader((_, sample) => sample)
+        {
+            Gone = (target, sample) => target == 1 && sample >= 3
+        };
+
+        SampleResult<BatchItemView> result = Completed(Run(reader,
+            Arguments(targets: 2, duration: 0.5, interval: 0.1), frameS: 0.01));
+
+        Assert.Equal(6, result.SampleCount);
+        Assert.Equal(6, result.ChangeCount);
+        List<BatchItemView> readings = result.Changes.SelectMany(change => change.Readings).ToList();
+        Assert.All(readings, reading => Assert.IsType<LogicReadItemView>(reading));
+        Assert.Equal(6, readings.Count(reading => reading.Index == 0));
+        Assert.Equal(3, readings.Count(reading => reading.Index == 1));
+    }
+
+    [Fact]
+    public void TheCheckReadsEveryTargetOnceAndNamesEveryMiss()
+    {
+        ScriptedReader reader = new ScriptedReader((_, _) => 1.0) { Gone = (target, _) => target != 1 };
+        LogicSampler<BatchItemView> sampler = new LogicSampler<BatchItemView>(reader, LogicResultComparer.Instance);
+
+        LogicSampleRead check = sampler.Check(Arguments(targets: 3));
+
+        Assert.True(check.Ok);
+        Assert.Equal(new[] { 0, 2 }, check.Misses.Select(miss => miss.Index));
+        Assert.Equal(1, reader.Samples);
+        Assert.Equal(0, sampler.Active);
     }
 
     [Fact]

@@ -27,14 +27,25 @@ internal readonly struct RealTimeTick
     internal DateTimeOffset UtcNow { get; }
 }
 
-/// <summary>One sample's read: the gateway the reads went through, or the error that failed the whole read.</summary>
+/// <summary>One target a sample could not read: its place in the request's targets, and why, in verb words.</summary>
+internal sealed record SampleMiss(int Index, string Code, string Message);
+
+/// <summary>
+/// One sample's read: the gateway the reads went through and the targets it could not read (each still has its entry,
+/// a failure, in the readings), or the error that failed the whole read.
+/// </summary>
 internal readonly struct LogicSampleRead
 {
-    private LogicSampleRead(string? gatewayId, string? code, string? message)
+    private static readonly IReadOnlyList<SampleMiss> NoMisses = Array.Empty<SampleMiss>();
+
+    private readonly IReadOnlyList<SampleMiss>? _misses;
+
+    private LogicSampleRead(string? gatewayId, string? code, string? message, IReadOnlyList<SampleMiss>? misses)
     {
         GatewayId = gatewayId;
         Code = code;
         Message = message;
+        _misses = misses;
     }
 
     internal string? GatewayId { get; }
@@ -46,12 +57,20 @@ internal readonly struct LogicSampleRead
 
     internal bool Ok => Code == null;
 
-    internal static LogicSampleRead Read(string gatewayId) => new LogicSampleRead(gatewayId, null, null);
+    /// <summary>The targets this read could not read, in target order; empty when it read them all.</summary>
+    internal IReadOnlyList<SampleMiss> Misses => _misses ?? NoMisses;
 
-    internal static LogicSampleRead Failed(string code, string message) => new LogicSampleRead(null, code, message);
+    internal static LogicSampleRead Read(string gatewayId, IReadOnlyList<SampleMiss>? misses = null) =>
+        new LogicSampleRead(gatewayId, null, null, misses);
+
+    internal static LogicSampleRead Failed(string code, string message) =>
+        new LogicSampleRead(null, code, message, null);
 }
 
-/// <summary>Reads every target once, in the calling frame, as read_logic_many reads them, one result per target in order.</summary>
+/// <summary>
+/// Reads every target once, in the calling frame, one reading per target in order; a target it cannot read has a
+/// failure as its reading and a miss in the read.
+/// </summary>
 internal interface ILogicSampleReader<TItem> where TItem : class
 {
     LogicSampleRead Read(SampleRequest request, List<TItem> into);
@@ -141,10 +160,14 @@ internal sealed class SampleChange<TItem> where TItem : class
     public List<TItem> Readings { get; }
 }
 
-/// <summary>One read sample call in progress: its schedule, the last reading of each target, and the changes so far.</summary>
+/// <summary>
+/// One read sample call in progress: its schedule, the last reading of each target, the targets whose series has ended
+/// (a target that could no longer be read: its thing gone), and the changes so far.
+/// </summary>
 internal sealed class SampleRun<TItem> where TItem : class
 {
-    private readonly List<TItem> _previous;
+    private readonly TItem?[] _previous;
+    private readonly bool[] _ended;
     private readonly List<SampleChange<TItem>> _changes = new List<SampleChange<TItem>>();
     private string? _gatewayId;
     private double _startS;
@@ -158,7 +181,8 @@ internal sealed class SampleRun<TItem> where TItem : class
         Context = new CallContext(connection.Value, stream);
         Request = request;
         _gatewayId = request.Gateway;
-        _previous = new List<TItem>(request.Targets.Count);
+        _previous = new TItem?[request.Targets.Count];
+        _ended = new bool[request.Targets.Count];
         DueS = startedS;
         LastSampledFrame = long.MinValue;
     }
@@ -180,7 +204,10 @@ internal sealed class SampleRun<TItem> where TItem : class
 
     internal int SampleCount => _sampleCount;
 
-    /// <summary>One sample: null while the run goes on, its outcome once it has ended.</summary>
+    /// <summary>
+    /// One sample: null while the run goes on, its outcome once it has ended. A target the read misses ends its own
+    /// series (nothing more of it is kept); the rest go on.
+    /// </summary>
     internal SampleOutcome<TItem>? Sample(RealTimeTick tick, ILogicSampleReader<TItem> reader,
         IReadingComparer<TItem> comparer, List<TItem> buffer)
     {
@@ -211,25 +238,26 @@ internal sealed class SampleRun<TItem> where TItem : class
 
         double elapsed = first ? 0.0 : tick.RealTimeS - _startS;
         _gatewayId = read.GatewayId ?? _gatewayId;
+        foreach (SampleMiss miss in read.Misses)
+        {
+            if (miss.Index >= 0 && miss.Index < _ended.Length)
+            {
+                _ended[miss.Index] = true;
+            }
+        }
+
         List<TItem>? changed = null;
-        for (int index = 0; index < buffer.Count; index++)
+        for (int index = 0; index < buffer.Count && index < _previous.Length; index++)
         {
             TItem reading = buffer[index];
-            if (index < _previous.Count && comparer.SameValues(_previous[index], reading))
+            if (_ended[index] || (_previous[index] is { } previous && comparer.SameValues(previous, reading)))
             {
                 continue;
             }
 
             changed ??= new List<TItem>();
             changed.Add(reading);
-            if (index < _previous.Count)
-            {
-                _previous[index] = reading;
-            }
-            else
-            {
-                _previous.Add(reading);
-            }
+            _previous[index] = reading;
         }
 
         if (changed != null)
@@ -280,6 +308,23 @@ internal sealed class LogicSampler<TItem> where TItem : class
         SampleRun<TItem> run = new SampleRun<TItem>(connection, request, nowS, stream);
         _runs.Add(run);
         return run;
+    }
+
+    /// <summary>
+    /// Every target read once, before a run starts, so a call that names a value that cannot be read is refused with
+    /// all of them at once and nothing is sampled.
+    /// </summary>
+    internal LogicSampleRead Check(SampleRequest request)
+    {
+        _buffer.Clear();
+        try
+        {
+            return _reader.Read(request, _buffer);
+        }
+        finally
+        {
+            _buffer.Clear();
+        }
     }
 
     /// <summary>Drops a run without an outcome (its call was cancelled); false when it is not running.</summary>

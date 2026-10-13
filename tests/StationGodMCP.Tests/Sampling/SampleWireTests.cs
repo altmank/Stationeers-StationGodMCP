@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -109,6 +110,58 @@ public sealed class SampleWireTests
 
         Assert.Equal("gateway_not_found", (string?)reply["error"]!["code"]);
         Assert.Equal(0, hub.SampleRuns);
+    }
+
+    [Fact]
+    public async Task EveryUnreadableValueRefusesTheCallAtOnceAndNothingIsSampled()
+    {
+        SubscriptionHub hub = Hub();
+        _logic.Gone.Add(0);
+        _logic.Gone.Add(2);
+        using PipeRig rig = Rig(hub);
+        using V2Client client = await V2Client.Connect(rig);
+        client.Send(Call("1", new JObject
+        {
+            ["what"] = "sample", ["id"] = new JArray("100", "101", "102"), ["logic"] = "On", ["seconds"] = 5
+        }));
+
+        JObject reply = NextAfterFrames(rig, client, 0.0);
+
+        Assert.False((bool)reply["ok"]!);
+        JObject error = (JObject)reply["error"]!;
+        Assert.Equal("thing_not_found", (string?)error["code"]);
+        Assert.Contains("nothing was sampled", (string?)error["message"]);
+        Assert.Contains("100 On: no thing has id 100", (string?)error["message"]);
+        Assert.Contains("102 On: no thing has id 102", (string?)error["message"]);
+        Assert.Equal(new[] { "100", "102" },
+            ((JArray)error["data"]!["unreadable"]!).Select(miss => (string?)miss["id"]));
+        Assert.Equal(1, _logic.Reads);
+        Assert.Equal(0, hub.SampleRuns);
+    }
+
+    [Fact]
+    public async Task AValueGoneMidRunEndsItsSeriesAndTheCallIsAnswered()
+    {
+        SubscriptionHub hub = Hub();
+        using PipeRig rig = Rig(hub);
+        using V2Client client = await V2Client.Connect(rig);
+        client.Send(Call("1", new JObject
+        {
+            ["what"] = "sample", ["id"] = new JArray("100", "101"), ["logic"] = "On", ["seconds"] = 0.3,
+            ["interval"] = 0.1
+        }));
+        StartRuns(rig, hub, 1, atS: 0.0);
+        Frame(rig, 0.0);
+        Frame(rig, 0.1);
+        _logic.Gone.Add(1);
+        Frame(rig, 0.2);
+
+        JObject reply = NextAfterFrames(rig, client, 0.3);
+
+        Assert.True((bool)reply["ok"]!, reply.ToString());
+        JArray changes = (JArray)reply["result"]!["changes"]!;
+        Assert.Equal(4, changes.Count(change => (string?)change["reference_id"] == "100"));
+        Assert.Equal(2, changes.Count(change => (string?)change["reference_id"] == "101"));
     }
 
     [Fact]
@@ -262,6 +315,11 @@ public sealed class SampleWireTests
 
         internal (string Code, string Message)? Failure { get; set; }
 
+        /// <summary>Targets whose thing is gone: a failure reading and a miss.</summary>
+        internal HashSet<int> Gone { get; } = new HashSet<int>();
+
+        internal int Reads => _samples;
+
         public LogicSampleRead Read(SampleRequest arguments, List<BatchItemView> into)
         {
             if (Failure is { } failure)
@@ -270,13 +328,22 @@ public sealed class SampleWireTests
             }
 
             int sample = _samples++;
+            List<SampleMiss> misses = new List<SampleMiss>();
             for (int target = 0; target < arguments.Targets.Count; target++)
             {
+                if (Gone.Contains(target))
+                {
+                    ApiException gone = new ApiException("thing_not_found", "no thing has id " + (100 + target));
+                    into.Add(new LogicFailedItemView(target, null, null, gone));
+                    misses.Add(new SampleMiss(target, gone.Code, gone.Message));
+                    continue;
+                }
+
                 into.Add(new LogicReadItemView(target,
                     new LogicRead(new ThingId(100 + target), new LogicTypeView(28, "On"), sample % 2)));
             }
 
-            return LogicSampleRead.Read("world");
+            return LogicSampleRead.Read("world", misses);
         }
     }
 

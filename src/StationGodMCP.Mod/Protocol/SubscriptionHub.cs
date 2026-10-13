@@ -279,6 +279,9 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         return _engine.Poll(_tick, _one, this) > 0;
     }
 
+    /// <summary>read sample's targets read once, before its run starts: the misses refuse the call.</summary>
+    internal LogicSampleRead CheckSample(SampleRequest request) => _sampler.Check(request);
+
     /// <summary>
     /// read sample: a run for the call on its (owner, stream), its first sample due now; the returned watch is the
     /// call's pending result, ready once the run's last sample is taken or a sample's read failed.

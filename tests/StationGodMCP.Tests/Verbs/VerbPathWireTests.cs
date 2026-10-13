@@ -66,6 +66,35 @@ public sealed class VerbPathWireTests
     }
 
     [Fact]
+    public async Task AGameMemberThisBuildLacksAnswersGameChanged()
+    {
+        using PipeRig rig = Rig();
+        using V2Client client = await V2Client.Connect(rig);
+
+        client.Send(Call("1", "find", new JObject { ["what"] = "thing" }, 3, gone: true));
+        client.Send(Call("2", "find", new JObject { ["what"] = "thing", ["steps"] = 2 }, 4, gone: true));
+        rig.Mod.WaitSubmitted(2);
+        JObject now = NextAfterFrames(rig, client);
+        JObject later = NextAfterFrames(rig, client);
+
+        foreach (JObject reply in new[] { now, later })
+        {
+            Assert.False((bool)reply["ok"]!);
+            Assert.Equal("game_changed", (string?)reply["error"]!["code"]);
+            Assert.Contains("Thing.Gone", (string?)reply["error"]!["message"]);
+        }
+    }
+
+    [Fact]
+    public void AGameChangeAtTheBoundaryIsGameChangedNotAnInternalError()
+    {
+        VerbOutcome outcome = VerbCalls.Handled(() => throw new GameChangedException("Thing.Gone"));
+
+        VerbOutcome.Refused refused = Assert.IsType<VerbOutcome.Refused>(outcome);
+        Assert.Equal("game_changed", refused.Error.Code);
+    }
+
+    [Fact]
     public async Task APendingVerbHoldsItsStreamWhileAnotherStreamGoesOn()
     {
         using PipeRig rig = Rig();
@@ -177,18 +206,30 @@ public sealed class VerbPathWireTests
         VerbHandler.For(FindThingOptions.Spec, reader => reader, reader =>
         {
             int steps = (int?)reader.Integer("limit") ?? 0;
+            if (steps == 0 && reader.Has("made_by"))
+            {
+                throw new GameChangedException("Thing.Gone");
+            }
+
             return steps == 0
                 ? new VerbOutcome.Answered(new JObject { ["steps"] = 0 })
-                : new VerbOutcome.Pending(new Stepped(_clock, steps, reader.Flag("labelled") == true));
+                : new VerbOutcome.Pending(new Stepped(_clock, steps, reader.Flag("labelled") == true,
+                    reader.Has("made_by")));
         }),
         TestVerbs.Echo(ReadClockOptions.Spec),
         TestVerbs.Echo(ReadLogicOptions.Spec),
         TestVerbs.Echo(WriteLabelOptions.Spec));
 
-    // A test call's params: steps and fail ride on find thing's own options (limit, labelled), as the rig does not
-    // check options on the reader thread and the handler reads them by those names.
-    private static string Call(string id, string method, JObject parameters, long stream)
+    // A test call's params: steps and fail ride on find thing's own options (limit, labelled), and gone (a game member
+    // this build lacks, at once or in a later slice) on made_by, as the rig does not check options on the reader thread and
+    // the handler reads them by those names.
+    private static string Call(string id, string method, JObject parameters, long stream, bool gone = false)
     {
+        if (gone)
+        {
+            parameters["made_by"] = "gone";
+        }
+
         if (parameters["steps"] is { } steps)
         {
             parameters.Remove("steps");
@@ -212,13 +253,15 @@ public sealed class VerbPathWireTests
         private readonly FakeClock _clock;
         private readonly int _steps;
         private readonly bool _fail;
+        private readonly bool _gone;
         private int _taken;
 
-        internal Stepped(FakeClock clock, int steps, bool fail)
+        internal Stepped(FakeClock clock, int steps, bool fail, bool gone)
         {
             _clock = clock;
             _steps = steps;
             _fail = fail;
+            _gone = gone;
         }
 
         public bool Step(double untilMs)
@@ -228,6 +271,11 @@ public sealed class VerbPathWireTests
             if (_fail && _taken == _steps)
             {
                 throw WalkRequest.Expired("k7", 3);
+            }
+
+            if (_gone && _taken == _steps)
+            {
+                throw new GameChangedException("Thing.Gone");
             }
 
             return _taken >= _steps;
