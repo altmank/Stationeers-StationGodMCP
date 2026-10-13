@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
@@ -285,79 +286,45 @@ public sealed class ControllersTests
         Assert.Null(batch.PrefabHash);
     }
 
-    // ---- inspect_controllers on the wire ----
-
-    [Theory]
-    [InlineData("{\"reference_id\": \"200\"}", true, null)]
-    [InlineData("{\"reference_ids\": [\"200\", 300]}", false, null)]
-    [InlineData("{\"network_id\": \"77\"}", false, 77L)]
-    public void TheQueryIsOneDeviceAListOrANetwork(string parameters, bool single, long? network)
-    {
-        ControllerQuery query = ControllerCalls.Query(JObject.Parse(parameters));
-
-        Assert.Equal(single, query.Single);
-        Assert.Equal(network, query.NetworkId);
-        Assert.Equal(network == null, query.Ids != null);
-    }
-
-    [Theory]
-    [InlineData("{}")]
-    [InlineData("{\"reference_id\": \"200\", \"network_id\": \"77\"}")]
-    [InlineData("{\"reference_ids\": []}")]
-    [InlineData("{\"reference_ids\": [\"x\"]}")]
-    [InlineData("{\"reference_id\": true}")]
-    [InlineData("{\"device\": \"200\"}")]
-    public void AnythingElseIsAnInvalidArgument(string parameters)
-    {
-        ApiException refused = Assert.Throws<ApiException>(() => ControllerCalls.Query(JObject.Parse(parameters)));
-
-        Assert.Equal("invalid_argument", refused.Code);
-    }
+    // ---- inspect controllers: one entry per controller ----
 
     [Fact]
-    public void InspectControllersIsAProtocolReadAnsweredOnTheMainThreadCostedPerDevice()
+    public void AControllersWritesAreGroupedPerControllerAndHowWithItsFirstLine()
     {
-        Assert.Contains(ControllerCalls.InspectControllersMethod, ProtocolMethods.Names);
-        Assert.True(ProtocolMethods.RunsOnMainThread("inspect_controllers"));
-
-        Assert.True(TestCatalogue.File.Value.Catalogue.TryGet("inspect_controllers", out CatalogueMethod? method));
-        CallProfile one = CallProfile.Of(method!, new JObject { ["reference_id"] = "200" });
-        CallProfile many = CallProfile.Of(method!, new JObject { ["reference_ids"] = new JArray("1", "2", "3") });
-        Assert.Equal(MethodClass.Read, one.Class);
-        Assert.Equal(CostClass.Bounded, one.Cost);
-        Assert.Equal(3, many.Items);
-    }
-
-    [Fact]
-    public async Task OnTheWireTheReplyCarriesEachDeviceAndItsControllers()
-    {
-        List<ControllerQuery> asked = new List<ControllerQuery>();
-        ControllerCalls calls = new ControllerCalls(query =>
+        List<Controller> found = new List<Controller>
         {
-            asked.Add(query);
-            Controller chip = new Controller(ControllerKinds.Chip, Housing, "StructureCircuitHousing", "Open", "d0", 3, false);
-            return new ControllersView(null, new List<ControlledDeviceView>
-            {
-                new ControlledDeviceView(new ThingId(Door), "StructureCompositeDoor", ControllerView.ListOrNull(new List<Controller> { chip })!)
-            }, 1);
-        });
-        using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, strictArguments: true));
-        rig.Mod.CallHook = (call, queueMs) => ControllerCalls.Handles(call.Request.Method)
-            ? new CallOutcome(calls.Run(call, queueMs, 42), call.Request.Method)
-            : null;
-        using V2Client client = await V2Client.Connect(rig);
+            new Controller(ControllerKinds.Chip, Housing, "StructureCircuitHousing", "Open", "d0", 7, false),
+            new Controller(ControllerKinds.Chip, Housing, "StructureCircuitHousing", "Lock", "d0", 3, false),
+            new Controller(ControllerKinds.Chip, Housing, "StructureCircuitHousing", "open", "d0", 9, false),
+            new Controller(ControllerKinds.Chip, Housing, "StructureCircuitHousing", "Open", "sb", 12, false),
+            new Controller(ControllerKinds.Mirror, 900, "StructureLogicMirror", null, "mirror", null, false)
+        };
 
-        JObject reply = client.Call("1", "inspect_controllers", new JObject { ["reference_id"] = "200" });
-        JObject bad = client.Call("2", "inspect_controllers", new JObject { ["reference_id"] = "200", ["network_id"] = "7" });
+        List<ControllerGroup> groups = ControllerGroups.Of(found);
 
-        Assert.True((bool)reply["ok"]!, reply.ToString());
-        JObject device = (JObject)reply["result"]!["devices"]![0]!;
-        Assert.Equal("200", (string?)device["reference_id"]);
-        Assert.Equal("d0", (string?)device["controllers"]![0]!["via"]);
-        Assert.Equal(1, (int)reply["result"]!["checked"]!);
-        Assert.Null(reply["result"]!["network_id"]);
-        Assert.Equal("invalid_argument", (string?)bad["error"]!["code"]);
-        Assert.Single(asked);
+        Assert.Equal(new[] { "d0", "sb", "mirror" }, groups.Select(group => group.How));
+        Assert.Equal(new[] { "Open", "Lock" }, groups[0].LogicTypes);
+        Assert.Equal(3, groups[0].Line);
+        Assert.Empty(groups[2].LogicTypes);
+        Assert.Null(groups[2].Line);
+    }
+
+    [Fact]
+    public void AnEntryWritesTheDeclaredKeys()
+    {
+        ControllerGroup group = new ControllerGroup(ControllerKinds.Chip, Housing, "StructureCircuitHousing", "d0",
+            new List<string> { "Open" }, 3);
+        DeviceControllersView view = new DeviceControllersView(new ThingId(Door), "Door",
+            new List<ControllerEntryView> { new ControllerEntryView(group, "IC Housing", true) });
+
+        JObject wire = JObject.Parse(WireCheck.New(view));
+
+        Assert.Equal(new[] { "reference_id", "display_name", "controllers", "count" },
+            wire.Properties().Select(key => key.Name));
+        Assert.Equal(new[] { "reference_id", "display_name", "kind", "how", "logic_types", "line", "on" },
+            ((JObject)wire["controllers"]![0]!).Properties().Select(key => key.Name));
+        Assert.Equal(1, (int)wire["count"]!);
+        Assert.True((bool)wire["controllers"]![0]!["on"]!);
     }
 
     [Fact]

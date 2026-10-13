@@ -642,15 +642,14 @@ internal static class ProtocolMethods
     internal static readonly string[] Names =
     {
         CallSession.CatalogueMethod, SubscriptionHub.SubscribeMethod, SubscriptionHub.UnsubscribeMethod,
-        JobDropCalls.DropJobMethod, StreamCostCalls.StreamCostsMethod, HoldRestoreCalls.HoldRestoreMethod,
-        ControllerCalls.InspectControllersMethod
+        JobDropCalls.DropJobMethod, StreamCostCalls.StreamCostsMethod, HoldRestoreCalls.HoldRestoreMethod
     };
 
     /// <summary>
-    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, drop_job, stream_costs, hold_restore
-    /// and inspect_controllers.
+    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, drop_job, stream_costs and
+    /// hold_restore.
     /// </summary>
     internal static bool RunsOnMainThread(string? method) =>
         method != null && (SubscriptionHub.Handles(method) || JobDropCalls.Handles(method) || StreamCostCalls.Handles(method) ||
-                           HoldRestoreCalls.Handles(method) || ControllerCalls.Handles(method));
+                           HoldRestoreCalls.Handles(method));
 }

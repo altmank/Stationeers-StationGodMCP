@@ -109,8 +109,6 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     private static readonly JobDropCalls Drops = new JobDropCalls(HeldTickJobs.DropWaiting);
 
-    private static readonly ControllerCalls ControllerInspections = new ControllerCalls(Controllers.Inspect);
-
     private static readonly VerbRunner Verbs = new VerbRunner(VerbHandlers.Dispatcher, ApiHost.MaxReplyBytes,
         static () => UnityEngine.Time.frameCount, MethodStats.Record);
 
@@ -159,12 +157,6 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             if (StreamCostCalls.Handles(call.Request.Method))
             {
                 return new CallOutcome(_costs.Run(call, queueWaitMs, UnityEngine.Time.frameCount), call.Request.Method);
-            }
-
-            if (ControllerCalls.Handles(call.Request.Method))
-            {
-                return new CallOutcome(ControllerInspections.Run(call, queueWaitMs, UnityEngine.Time.frameCount),
-                    call.Request.Method);
             }
 
             if (VerbCalls.Handles(call.Request.Method))

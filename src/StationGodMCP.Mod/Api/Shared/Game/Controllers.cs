@@ -17,7 +17,7 @@ using StationGodMCP.Pure.Lint;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// What can write a device (inspect_controllers, driven_by), found on the device's own data networks, the only place
+/// What can write a device (inspect controllers, driven_by), found on the device's own data networks, the only place
 /// the game lets them reach it from:
 /// <list type="bullet">
 /// <item>program chips in circuit holders on the network (an IC Housing, a Console's Lua board): their pins
@@ -50,49 +50,22 @@ internal static class Controllers
     /// <summary>The controllers that can write the device, through the open scan or a scan of its own.</summary>
     internal static List<Controller> Of(Device device) => (_open ?? new ControllerScan()).Of(device);
 
-    /// <summary>inspect_controllers: the controllers of the devices the query names.</summary>
-    internal static object Inspect(ControllerQuery query)
+    /// <summary>
+    /// inspect controllers: what can write the device with this id, one entry per controller (ControllerGroups), each
+    /// with its shown name and whether it is on.
+    /// </summary>
+    internal static DeviceControllersView OfDevice(ThingId id)
     {
-        ControllerScan scan = new ControllerScan();
-        return query.NetworkId is long networkId ? OnNetwork(scan, networkId) : Listed(scan, query);
-    }
-
-    private static ControllersView Listed(ControllerScan scan, ControllerQuery query)
-    {
-        List<ControlledDeviceView> devices = new List<ControlledDeviceView>(query.Ids!.Count);
-        foreach (long id in query.Ids)
+        Device device = Require(id.Value);
+        List<ControllerEntryView> entries = new List<ControllerEntryView>();
+        foreach (ControllerGroup group in ControllerGroups.Of((_open ?? new ControllerScan()).Of(device)))
         {
-            try
-            {
-                Device device = Require(id);
-                devices.Add(new ControlledDeviceView(new ThingId(id), device.PrefabName,
-                    ControllerView.ListOrNull(scan.Of(device)) ?? new List<ControllerView>()));
-            }
-            catch (ApiException missing) when (!query.Single)
-            {
-                devices.Add(new ControlledDeviceView(new ThingId(id), missing));
-            }
+            Thing? thing = Thing.Find(group.ReferenceId);
+            entries.Add(new ControllerEntryView(group, thing != null ? Names.Of(thing) : group.PrefabName,
+                thing is Device controller && controller != null ? controller.OnOff : null));
         }
 
-        return new ControllersView(null, devices, devices.Count);
-    }
-
-    private static ControllersView OnNetwork(ControllerScan scan, long networkId)
-    {
-        CableNetwork network = Referencable.Find<CableNetwork>(networkId) ??
-                               throw ApiErrors.Refused("network_not_found", $"No cable network has id {networkId}.");
-        List<Device> members = ControllerScan.DataDevices(network);
-        List<ControlledDeviceView> devices = new List<ControlledDeviceView>();
-        foreach (Device device in members)
-        {
-            List<ControllerView>? controllers = ControllerView.ListOrNull(scan.Of(device));
-            if (controllers != null)
-            {
-                devices.Add(new ControlledDeviceView(new ThingId(device.ReferenceId), device.PrefabName, controllers));
-            }
-        }
-
-        return new ControllersView(new ThingId(networkId), devices, members.Count);
+        return new DeviceControllersView(id, Names.Of(device), entries);
     }
 
     // A Device in the world by id: device_not_found, worded as the device tools word it, for anything else.

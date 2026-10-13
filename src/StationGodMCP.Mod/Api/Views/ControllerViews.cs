@@ -60,50 +60,57 @@ internal sealed class ControllerView
     }
 }
 
-/// <summary>inspect_controllers: one device and what can write it; error instead when a listed id names no device.</summary>
-internal sealed class ControlledDeviceView
+/// <summary>
+/// inspect controllers: one device and what can write it, one entry per controller (ControllerGroups), count the
+/// entries.
+/// </summary>
+internal sealed class DeviceControllersView
 {
-    internal ControlledDeviceView(ThingId referenceId, string? prefabName, List<ControllerView> controllers)
+    internal DeviceControllersView(ThingId referenceId, string? displayName, List<ControllerEntryView> controllers)
     {
         ReferenceId = referenceId;
-        PrefabName = prefabName;
+        DisplayName = displayName;
         Controllers = controllers;
-    }
-
-    internal ControlledDeviceView(ThingId referenceId, ApiException error)
-    {
-        ReferenceId = referenceId;
-        Controllers = new List<ControllerView>();
-        Error = new ErrorView(error.Code, error.Message);
     }
 
     public ThingId ReferenceId { get; }
 
-    public string? PrefabName { get; }
+    public string? DisplayName { get; }
 
-    public List<ControllerView> Controllers { get; }
+    public List<ControllerEntryView> Controllers { get; }
 
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public ErrorView? Error { get; }
+    public int Count => Controllers.Count;
 }
 
 /// <summary>
-/// inspect_controllers' result: devices, each asked id in order (with an empty controllers list when nothing writes
-/// it), or for a network only its data devices that have a controller; checked counts the devices looked at.
+/// One controller: its reference id and shown name, kind (chip, logic_writer, batch_writer, mirror), how it reaches the
+/// device (db, d0..d5, id, a batch instruction, output, prefab_hash, mirror), the logic types it writes, a chip's
+/// 0-based line, and whether it is on (null when it has no on state).
 /// </summary>
-internal sealed class ControllersView
+internal sealed class ControllerEntryView
 {
-    internal ControllersView(ThingId? networkId, List<ControlledDeviceView> devices, int checkedCount)
+    internal ControllerEntryView(ControllerGroup group, string? displayName, bool? on)
     {
-        NetworkId = networkId;
-        Devices = devices;
-        Checked = checkedCount;
+        ReferenceId = new ThingId(group.ReferenceId);
+        DisplayName = displayName;
+        Kind = group.Kind;
+        How = group.How;
+        LogicTypes = new List<string>(group.LogicTypes);
+        Line = group.Line;
+        On = on;
     }
 
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public ThingId? NetworkId { get; }
+    public ThingId ReferenceId { get; }
 
-    public List<ControlledDeviceView> Devices { get; }
+    public string? DisplayName { get; }
 
-    public int Checked { get; }
+    public string Kind { get; }
+
+    public string How { get; }
+
+    public List<string> LogicTypes { get; }
+
+    public int? Line { get; }
+
+    public bool? On { get; }
 }
