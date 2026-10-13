@@ -68,6 +68,7 @@ internal static class RetiredMethods
         "replace_walls",
         "resolve_ic_selectors",
         "rocket_flight_log",
+        "rocket_mining_options",
         "rocket_status",
         "rooms",
         "sample_logic",

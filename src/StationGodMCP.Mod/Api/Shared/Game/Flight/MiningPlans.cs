@@ -5,18 +5,17 @@ using Assets.Scripts.Objects.Pipes;
 using Objects.Rockets;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
-using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Rockets;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game.Flight;
 
 /// <summary>
-/// rocket_mining_options: a rocket's mining, collecting and scanning gear, and for each site (the destination and its
-/// discovered sites, or every charted node with a deposit) whether that gear brings anything home, how much per cycle
+/// plan mining: a rocket's mining, collecting and scanning gear, and for each site (a node and its discovered sites, or
+/// every charted node with a deposit) whether that gear brings anything home, how much per cycle
 /// and per hour by the game's own formulas (Pure/Rockets/Mining), and why not. Read only.
 /// </summary>
-internal static class RocketMiningOptionsApi
+internal static class RocketMining
 {
     private static readonly string[] HowMiningWorks =
     {
@@ -28,13 +27,10 @@ internal static class RocketMiningOptionsApi
         "(MineableDeposit.cs:184-190, 425-434)."
     };
 
-    internal static RocketMiningOptionsView Handle(Args args)
+    internal static MiningPlanView Plan(Rocket rocket, string? to, bool collectableOnly, bool explain)
     {
-        Rocket rocket = RocketLocator.One(args);
         RocketParts parts = RocketParts.Of(rocket);
-        string? to = args.OptionalString("to");
         List<SiteRead> sites = to != null ? MiningReads.SitesAt(SpaceRoutes.Resolve(to)) : MiningReads.AllSites();
-        bool collectableOnly = args.OptionalBool("collectable_only") ?? false;
         List<MiningSiteView> views = new List<MiningSiteView>(sites.Count);
         for (int index = 0; index < sites.Count; index++)
         {
@@ -45,7 +41,7 @@ internal static class RocketMiningOptionsApi
             }
         }
 
-        List<string> notes = args.OptionalBool("explain") == true ? new List<string>(HowMiningWorks) : new List<string>(1);
+        List<string> notes = explain ? new List<string>(HowMiningWorks) : new List<string>(1);
         if (to != null && sites.Count == 0)
         {
             notes.Add($"{to}: no deposit at that node or its discovered sites.");
@@ -55,7 +51,7 @@ internal static class RocketMiningOptionsApi
             notes.Add(EmptyReason(sites, parts, to));
         }
 
-        return new RocketMiningOptionsView(new ThingId(rocket.ReferenceId), rocket.DisplayName,
+        return new MiningPlanView(new ThingId(rocket.ReferenceId), rocket.DisplayName,
             MiningPlans.Loadout(parts), views, notes);
     }
 
@@ -85,7 +81,7 @@ internal static class RocketMiningOptionsApi
     }
 }
 
-/// <summary>The mining formulas applied to a rocket's parts at a site, shared by rocket_mining_options and rocket_forecast.</summary>
+/// <summary>The mining formulas applied to a rocket's parts at a site, shared by plan mining and plan flight.</summary>
 internal static class MiningPlans
 {
     internal static MiningLoadoutView Loadout(RocketParts parts)

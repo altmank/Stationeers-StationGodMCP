@@ -142,16 +142,6 @@ internal static class ReplyShapes
                 .List("RocketForecastView.Profiles", 4).List("ColumnView.Blockers", 0)
                 .List("ForecastMiningView.Problems", 1)
         };
-        shapes["rocket_mining_options"] = new[]
-        {
-            S<RocketMiningOptionsView>().List("MiningLoadoutView.Miners", 2).List("MiningLoadoutView.Collectors", 1)
-                .List("MiningLoadoutView.Scanners", 1).List("MiningLoadoutView.Collects", 4)
-                .List("RocketMiningOptionsView.Collectable", 6).List("RocketMiningOptionsView.NotCollectable", 6)
-                .List("RocketMiningOptionsView.Sites", W.MiningSites).List("MiningSiteView.Materials", 3)
-                .List("SiteMaterialView.PerUnit", 3).List("MiningSiteView.Machines", 3)
-                // How mining works comes with explain; a note says why collectable_only kept nothing.
-                .List("MachineYieldView.Problems", 1).List("RocketMiningOptionsView.Notes", 1)
-        };
         shapes["run_console_command"] = new[]
         {
             S<ConsoleRunView>().List("ConsoleRunView.Arguments", 10).List("ConsoleRunView.Output", 3)

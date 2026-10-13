@@ -19,7 +19,7 @@
   "ambiguous_port": {
     "description": "The device sits on several networks of that category. Name one with {id, port}; the message lists the ports."
   },
-  "ambiguous_rocket": {"description": "There are several rockets. Give rocket_id; the message lists them."},
+  "ambiguous_rocket": {"description": "There are several rockets. Give id; the message lists them."},
   "assumed_present": {
     "description": "A thing named in assume_removed still stands, so the real run cannot go ahead. Remove it first, then run again."
   },

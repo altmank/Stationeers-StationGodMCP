@@ -6,7 +6,7 @@ using System.Globalization;
 namespace StationGodMCP.Pure.Rockets;
 
 /// <summary>
-/// Why rocket_mining_options with collectable_only lists no site: no site to judge, nothing on board that mines, or
+/// Why plan mining with collectable_only lists no site: no site to judge, nothing on board that mines, or
 /// every site judged and none giving what the loadout collects (with the site kinds and the machines' own reasons).
 /// </summary>
 internal static class MiningEmptyReason

@@ -96,4 +96,23 @@ public sealed class PlanVerbTests
         Assert.NotNull(Check("""{"what": "spot", "prefab": "StructureWallLight", "looking": true, "radius": 13}"""));
         Assert.Null(Check("""{"what": "spot", "prefab": "StructureWallLight", "looking": true, "max_checks": 200}"""));
     }
+
+    // ---- mining ----
+
+    [Fact]
+    public void MiningReadsTheRocketTheNodeAndExplain()
+    {
+        PlanMiningOptions every = PlanMiningOptions.Bind(new OptionReader(PlanMiningOptions.Spec, JObject.Parse("{}")));
+        PlanMiningOptions one = PlanMiningOptions.Bind(new OptionReader(PlanMiningOptions.Spec,
+            JObject.Parse("""{"id": ["Ore rocket", "2"], "node": "Asteroid 7", "collectable_only": true, "include": ["explain"]}""")));
+
+        Assert.Null(every.Selector.Ids);
+        Assert.False(every.CollectableOnly);
+        Assert.False(every.Fields.Includes("explain"));
+        Assert.True(one.Selector.Ids!.AnswersRows);
+        Assert.Equal("Asteroid 7", one.Node);
+        Assert.True(one.CollectableOnly);
+        Assert.True(one.Fields.Includes("explain"));
+        Assert.NotNull(Check("""{"what": "mining", "to": "Asteroid 7"}"""));
+    }
 }

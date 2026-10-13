@@ -354,10 +354,10 @@ internal sealed class MiningSiteView
     public List<string>? Problems { get; }
 }
 
-/// <summary>rocket_mining_options: the loadout and what it can collect at each site.</summary>
-internal sealed class RocketMiningOptionsView
+/// <summary>plan mining: the loadout and what it can collect at each site.</summary>
+internal sealed class MiningPlanView
 {
-    internal RocketMiningOptionsView(ThingId rocketId, string rocketName, MiningLoadoutView loadout,
+    internal MiningPlanView(ThingId rocketId, string rocketName, MiningLoadoutView loadout,
         List<MiningSiteView> sites, List<string> notes)
     {
         RocketId = rocketId;

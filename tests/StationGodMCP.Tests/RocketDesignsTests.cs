@@ -461,7 +461,7 @@ public sealed class RocketDesignsTests
             new List<MachineYieldView> { ice, mineral }, new List<string>());
         MiningSiteView iceOnly = new MiningSiteView(node, null, "ore", ore, 50, new List<SiteMaterialView>(),
             new List<MachineYieldView> { ice }, new List<string>());
-        RocketMiningOptionsView options = new RocketMiningOptionsView(new ThingId(2), "Ore rocket",
+        MiningPlanView options = new MiningPlanView(new ThingId(2), "Ore rocket",
             new MiningLoadoutView(new List<MinerView>(), new List<CollectorView>(), new List<ScannerView>(),
                 new CargoSummaryView(1, 100, 0), 0.0, 0.0, new List<string> { "ore" }),
             new List<MiningSiteView> { both, iceOnly }, new List<string>());
