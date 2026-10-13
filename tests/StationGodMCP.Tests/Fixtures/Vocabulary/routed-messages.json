@@ -290,13 +290,6 @@
     "{prefab.PrefabName} is not placed on a cell face; use facing or rotation instead of face.",
     "{prefab.PrefabName} moves gas the other way with Mode 1 (Left); the chosen turn meets the flow only so. Write it after building (write_logic)."
   ],
-  "Api/Shared/Game/Build/Placement.cs": [
-    "No loaded prefab is {reference}; prefab names are as find_things and looking_at report them (e.g. StructureWallLight)."
-  ],
-  "Api/Shared/Game/Build/PlacementLayout.cs": [
-    "; allowed (allow_door_keepout).",
-    "; move it, or pass allow_door_keepout."
-  ],
   "Api/Shared/Game/Build/RemovePlanner.cs": [
     "gas_to {target.Network.Value} names no pipe network and no pipe on one",
     "{Names.Of(thing)} ({thing.PrefabName}) is {what} ({where}), not a structure; move_item moves items and movable things.",
@@ -314,13 +307,6 @@
   ],
   "Api/Shared/Game/DeviceMemory.cs": [
     "Argument 'values[{index}]' must be a finite number."
-  ],
-  "Api/Shared/Game/Devices.cs": [
-    "; atmosphere_contents reads its gas (TotalMoles and the rest)",
-    "{Names.Of(item)} ({id}) is an item, not a device: the device tools reach a logic item only while a player wears or holds it. container_contents shows the slots of any thing.",
-    "{Names.Of(thing)} ({id}) is not a device: it has logic of its own but is not in the game's device list, so the device tools do not reach it (list_devices shows what they reach).",
-    "{Names.Of(thing)} ({id}) is not a device: it has no logic. container_contents shows the slots of any thing.",
-    "{id} is a {kind} network, not a device: the logic tools read devices. connections lists its members{(kind == \"pipe\" ? \"; atmosphere_contents reads its gas (TotalMoles and the rest)\" : string.Empty)}."
   ],
   "Api/Shared/Game/Flight/RocketModel.cs": [
     "Argument '{name}' must be above 0.",
@@ -344,9 +330,6 @@
   "Api/Shared/Game/LogicOps.cs": [
     "Argument '{name}[{index}]' must be an object."
   ],
-  "Api/Shared/Game/LogicTypes.cs": [
-    "Missing required argument 'logic_type'."
-  ],
   "Api/Shared/Game/NetworkHandles.cs": [
     "Argument '{name}' is required.",
     "{entry}: {Names.Of(device)} ({device.PrefabName}) has no two {family.NetworkKind} ports that could share a network, so it bridges nothing; name a network, a piece of one or {reference_id, port}.",
@@ -368,22 +351,6 @@
     "{name}.port {port.Value} is not a {kind.Noun} port of {label}; its {kind.Noun} ports are [{string.Join(\"; \", ports)}] (connections lists them).",
     "{name}.port: {label} is a {kind.Noun} piece, not a device.",
     "{name}: {label} is neither a {kind.Noun} piece nor a device."
-  ],
-  "Api/Shared/Game/Runs/RouteEnds.cs": [
-    "{device.PrefabName} {device.ReferenceId} has {candidates.Count} {kind.Noun} ports [{string.Join(\", \", candidates)}]; name one with {name}.port, or several with {name}.ports (connections or grid_survey lists them).",
-    "{name} lists 1 to {MaximumStarts} ends.",
-    "{name} must be {at: [x, y, z]} or {reference_id, port}.",
-    "{name} names a piece being removed (the reroute's old run or assume_removed).",
-    "{name} names a thing being removed (assume_removed).",
-    "{name}.port {port.Value} is not a {kind.Noun} port of {device.PrefabName}; its ports of that kind are [{string.Join(\", \", candidates)}] (connections lists them).",
-    "{name}.ports lists 1 to {MaximumStarts} port indexes (and replaces port).",
-    "{name}: network {network} has no {kind.Noun} piece to join.",
-    "{name}: port {chosenPort} of {device.PrefabName} {device.ReferenceId} {wrongWay}; a chute route runs with the items, so it {(target ? \"ends at an input port\" : \"starts at an output port\")} (its chute ports: [{string.Join(\", \", candidates)}]; connections lists their roles).",
-    "{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {kind.Noun} piece, a device, nor a {kind.Noun} thing with ends (an in-line tank, a passive vent).",
-    "{name}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} (connections lists its ends).",
-    "{name}: {member.PrefabName} {member.ReferenceId}: {error} (connections lists its ends).",
-    "{name}: {piece.PrefabName} {piece.ReferenceId} has no open end items can leave it by at {cell}; a route from it would need a junction there, which only works where a route merges into a line (to). Start from a chute with an open output end, or from a device's output port.",
-    "{own.PrefabName} {own.ReferenceId} is a long straight; start from one of its cells with {name}.at, or make it the target (to), where the route may join any of its cells."
   ],
   "Api/Shared/Game/Runs/RunArgs.cs": [
     "Argument 'grade' is required: one of {string.Join(\", \", kind.GradeNames)}.",

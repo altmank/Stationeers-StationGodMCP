@@ -36,7 +36,7 @@ internal static class RouteEnds
         {
             if (array.Count == 0 || array.Count > MaximumStarts)
             {
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} lists 1 to {MaximumStarts} ends.");
+                throw ApiErrors.InvalidArgument($"{name} lists 1 to {MaximumStarts} ends.");
             }
 
             for (int index = 0; index < array.Count; index++)
@@ -52,7 +52,7 @@ internal static class RouteEnds
             if (ports.Count == 0 || ports.Count > MaximumStarts || item["port"] != null)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{Vocabulary.Path(name)}.{Vocabulary.Arg("ports")} lists 1 to {MaximumStarts} port indexes (and " +
+                    $"{name}.ports lists 1 to {MaximumStarts} port indexes (and " +
                     "replaces port).");
             }
 
@@ -90,8 +90,8 @@ internal static class RouteEnds
     {
         if (!(token is JObject item))
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be {{at: [x, y, z]}} or " +
-                $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
+            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}} or " +
+                $"{{id, port}}.");
         }
 
         Args fields = new Args(item);
@@ -110,8 +110,8 @@ internal static class RouteEnds
         {
             if (ignore.Contains(own.ReferenceId))
             {
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} names a piece being removed (the reroute's " +
-                    $"old run or {Vocabulary.Arg("assume_removed")}).");
+                throw ApiErrors.InvalidArgument($"{name} names a piece being removed (the reroute's " +
+                    $"old run or assume_removed).");
             }
 
             PieceModel model = PieceShapes.Live(own);
@@ -119,7 +119,7 @@ internal static class RouteEnds
             {
                 throw ApiErrors.Refused("long_piece",
                     $"{own.PrefabName} {own.ReferenceId} is a long straight; start from one of its cells with " +
-                    $"{Vocabulary.Path(name)}.{Vocabulary.Arg("at")}, or make it the target (to), where the route " +
+                    $"{name}.at, or make it the target (end), where the route " +
                     "may join any of its cells.");
             }
 
@@ -135,21 +135,21 @@ internal static class RouteEnds
         {
             if (ignore.Contains(member.ReferenceId))
             {
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} names a thing being removed " +
-                    $"({Vocabulary.Arg("assume_removed")}).");
+                throw ApiErrors.InvalidArgument($"{name} names a thing being removed " +
+                    $"(assume_removed).");
             }
 
             return OfFreeEnd(kind, member, fields.OptionalInt("port", 0, 64), type, name, ignore);
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {kind.Noun} piece, a " +
+            $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {kind.Noun} piece, a " +
             $"device, nor a {kind.Noun} thing with ends (an in-line tank, a passive vent).");
     }
 
     /// <summary>
     /// The small cell a piece joining a thing's end stands in, for reserve_ports: a device's port (its end's own cell,
-    /// as grid_survey lists it), or one end of a network thing such as an in-line tank (the cell beyond that end).
+    /// as survey area lists it), or one end of a network thing such as an in-line tank (the cell beyond that end).
     /// </summary>
     internal static GridCell JoiningCell(Thing thing, int port, string name)
     {
@@ -159,8 +159,8 @@ internal static class RouteEnds
         if (end?.Transform == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} " +
-                $"({Vocabulary.Tool("connections")} lists its ends).");
+                $"{name}: {Names.Of(thing)} ({thing.ReferenceId}) has no end {port} " +
+                $"(inspect connections lists its ends).");
         }
 
         GridCell local = PieceShapes.Cell(end.GetLocalGrid());
@@ -203,8 +203,8 @@ internal static class RouteEnds
         int? chosen = EndChoice.Pick(candidates, port, out string? error);
         if (!chosen.HasValue)
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}: {member.PrefabName} {member.ReferenceId}: " +
-                $"{error} ({Vocabulary.Tool("connections")} lists its ends).");
+            throw ApiErrors.InvalidArgument($"{name}: {member.PrefabName} {member.ReferenceId}: " +
+                $"{error} (inspect connections lists its ends).");
         }
 
         Connection picked = ends[chosen.Value];
@@ -252,9 +252,9 @@ internal static class RouteEnds
             if (leavingOnly && open.Count == 0)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{Vocabulary.Path(name)}: {piece.PrefabName} {piece.ReferenceId} has no open end items can " +
+                    $"{name}: {piece.PrefabName} {piece.ReferenceId} has no open end items can " +
                     $"leave it by at {cell}; a route from it would need a junction there, which only works where a " +
-                    "route merges into a line (to). Start from a chute with an open output end, or from a device's " +
+                    "route merges into a line (end). Start from a chute with an open output end, or from a device's " +
                     "output port.");
             }
 
@@ -297,7 +297,7 @@ internal static class RouteEnds
 
         if (ends.Count == 0)
         {
-            throw ApiErrors.Refused("network_empty", $"{Vocabulary.Path(name)}: network {network} has no {kind.Noun} " +
+            throw ApiErrors.Refused("network_empty", $"{name}: network {network} has no {kind.Noun} " +
                 "piece to join.");
         }
 
@@ -325,18 +325,18 @@ internal static class RouteEnds
         if (port.HasValue && !candidates.Contains(port.Value))
         {
             throw ApiErrors.InvalidArgument(
-                $"{Vocabulary.Path(name)}.{Vocabulary.Arg("port")} {port.Value} is not a {kind.Noun} port of " +
+                $"{name}.port {port.Value} is not a {kind.Noun} port of " +
                 $"{device.PrefabName}; its ports of that kind are [{string.Join(", ", candidates)}] " +
-                $"({Vocabulary.Tool("connections")} lists them).");
+                $"(inspect connections lists them).");
         }
 
         if (!port.HasValue && candidates.Count != 1)
         {
             throw ApiErrors.InvalidArgument(
                 $"{device.PrefabName} {device.ReferenceId} has {candidates.Count} {kind.Noun} ports " +
-                $"[{string.Join(", ", candidates)}]; name one with {Vocabulary.Path(name)}.{Vocabulary.Arg("port")}, " +
-                $"or several with {Vocabulary.Path(name)}.{Vocabulary.Arg("ports")} " +
-                $"({Vocabulary.Tool("connections")} or {Vocabulary.Tool("grid_survey")} lists them).");
+                $"[{string.Join(", ", candidates)}]; name one with {name}.port, " +
+                $"or several with {name}.ports " +
+                $"(inspect connections or survey area lists them).");
         }
 
         int chosenPort = port ?? candidates[0];
@@ -348,10 +348,10 @@ internal static class RouteEnds
         if (wrongWay != null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{Vocabulary.Path(name)}: port {chosenPort} of {device.PrefabName} {device.ReferenceId} {wrongWay}; " +
+                $"{name}: port {chosenPort} of {device.PrefabName} {device.ReferenceId} {wrongWay}; " +
                 "a chute route runs with the items, so it " +
                 $"{(target ? "ends at an input port" : "starts at an output port")} (its chute ports: " +
-                $"[{string.Join(", ", candidates)}]; {Vocabulary.Tool("connections")} lists their roles).");
+                $"[{string.Join(", ", candidates)}]; inspect connections lists their roles).");
         }
 
         GridCell cell = PieceShapes.Cell(chosen.GetLocalGrid());

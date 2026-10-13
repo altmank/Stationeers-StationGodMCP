@@ -44,7 +44,7 @@ internal static class LogicTypes
     {
         if (token == null)
         {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Missing required argument '{arg:logic_type}'."));
+            throw ApiErrors.InvalidArgument("logic is needed: a logic type's name or number.");
         }
 
         if (token.Type == JTokenType.Integer || token.Type == JTokenType.Float)

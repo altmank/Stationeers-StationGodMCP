@@ -88,8 +88,8 @@ internal sealed class BuildCatalogue
         };
         if (found == null)
         {
-            issue = $"No loaded prefab is {reference}; prefab names are as {Vocabulary.Tool("find_things")} and " +
-                $"{Vocabulary.Tool("looking_at")} report them (e.g. StructureWallLight).";
+            issue = $"No loaded prefab is {reference}; prefab names are as find thing and inspect looking_at " +
+                "report them (e.g. StructureWallLight).";
             return null;
         }
 

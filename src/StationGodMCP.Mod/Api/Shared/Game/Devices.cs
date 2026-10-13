@@ -83,21 +83,18 @@ internal static class Devices
         Thing.Find(id.Value) switch
         {
             Thing thing when thing != null && !(thing is ILogicable) => ApiErrors.Refused("device_not_found",
-                $"{Names.Of(thing)} ({id}) is not a device: it has no logic. {Vocabulary.Tool("container_contents")} " +
-                "shows the slots of any thing."),
+                $"{Names.Of(thing)} ({id}) is not a device: it has no logic. inspect contents shows the slots " +
+                "of any thing."),
             Item item when item != null => ApiErrors.Refused("device_not_found",
-                $"{Names.Of(item)} ({id}) is an item, not a device: the device tools reach a logic item only while a " +
-                $"player wears or holds it. {Vocabulary.Tool("container_contents")} shows the slots of any thing."),
+                $"{Names.Of(item)} ({id}) is an item, not a device: the device verbs reach a logic item only while a " +
+                $"player wears or holds it. inspect contents shows the slots of any thing."),
             Thing thing when thing != null && !(thing is Device) => ApiErrors.Refused("device_not_found",
                 $"{Names.Of(thing)} ({id}) is not a device: it has logic of its own but is not in the game's device " +
-                $"list, so the device tools do not reach it ({Vocabulary.Tool("list_devices")} shows what they " +
-                "reach)."),
+                $"list, so the device verbs do not reach it (find device shows what they reach)."),
             _ when NetworkKindOf(id.Value) is string kind => ApiErrors.Refused("device_not_found",
-                $"{id} is a {kind} network, not a device: the logic tools read devices. " +
-                $"{Vocabulary.Tool("connections")} lists its members" +
-                (kind == "pipe"
-                    ? Vocabulary.Text("; {tool:atmosphere_contents} reads its gas (TotalMoles and the rest)")
-                    : string.Empty) + "."),
+                $"{id} is a {kind} network, not a device: read logic reads devices. survey network lists its " +
+                "members" + (kind == "pipe" ? "; inspect atmosphere reads its gas (TotalMoles and the rest)" : string.Empty) +
+                "."),
             _ => ApiErrors.Refused("device_not_found",
                 $"Device {id} is not visible {scope.Where} and is not worn or held by a player."),
         };
