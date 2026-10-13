@@ -100,7 +100,7 @@ public sealed class PagingTests
     private static readonly List<int> Ten = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
     private static PageRequest Page(int offset, int limit) =>
-        PageRequest.From(new Args(JObject.Parse($"{{\"offset\": {offset}, \"limit\": {limit}}}")), 200, 1000);
+        PageRequest.Of(offset, limit, 1000);
 
     [Fact]
     public void TakesThePageAndReportsTheRest()
@@ -117,14 +117,6 @@ public sealed class PagingTests
         Slice<int> slice = Slice<int>.Of(Ten, Page(50, 3));
         Assert.Empty(slice.Items);
         Assert.False(slice.HasMore);
-    }
-
-    [Fact]
-    public void DefaultsApplyWhenAbsent()
-    {
-        PageRequest page = PageRequest.From(new Args(new JObject()), 200, 1000);
-        Assert.Equal(0, page.Offset);
-        Assert.Equal(200, page.Limit);
     }
 }
 

@@ -36,7 +36,7 @@ public sealed class TruncationNoticeTests
     public void AHandlersPageIsNotedWithItsTotalAndHowToGetMore()
     {
         Truncations.Begin();
-        PageRequest page = PageRequest.From(new Args(JObject.Parse("{}")), 8, 500);
+        PageRequest page = PageRequest.Of(0, 8, 500);
         page.Note("things", 8, 412);
         List<Truncation> notes = Truncations.Take();
 
@@ -54,7 +54,7 @@ public sealed class TruncationNoticeTests
     public void AWholePageIsNotNoted()
     {
         Truncations.Begin();
-        PageRequest.From(new Args(JObject.Parse("{}")), 8, 500).Note("things", 3, 3);
+        PageRequest.Of(0, 8, 500).Note("things", 3, 3);
         Truncations.Capped("totals", 12, 12, "limit", 500);
 
         Assert.Empty(Truncations.Take());
@@ -212,7 +212,7 @@ public sealed class TruncationNoticeTests
                 ? relative.IndexOf("Api/", StringComparison.Ordinal)
                 : 0);
             string text = file.Root.ToFullString();
-            bool caps = (text.Contains("ReplyDefaults.") || text.Contains("PageRequest.From(")) &&
+            bool caps = text.Contains("ReplyDefaults.") &&
                         !relative.EndsWith("ReplyDefaults.cs", StringComparison.Ordinal) &&
                         !relative.EndsWith("Paging.cs", StringComparison.Ordinal);
             if (!caps)

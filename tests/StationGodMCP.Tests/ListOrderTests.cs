@@ -98,7 +98,7 @@ public sealed class ListOrderTests
     public void ACutNearestPageMeasuredFromThePlayerSaysHowToPageStably()
     {
         Truncations.Begin();
-        PageRequest page = PageRequest.From(new Args(JObject.Parse("{\"offset\": 500, \"limit\": 500}")), 8, 500);
+        PageRequest page = PageRequest.Of(500, 500, 500);
         page.Note("things", 500, 9600, ListOrders.PagingAdvice(ListOrder.Nearest, measuredFromPlayer: true));
 
         Assert.Equal(

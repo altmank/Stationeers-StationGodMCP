@@ -22,11 +22,6 @@ internal sealed class PageRequest
     /// <summary>The largest limit the tool takes.</summary>
     internal int Maximum { get; }
 
-    internal static PageRequest From(Args args, int defaultLimit, int maximumLimit) =>
-        new PageRequest(
-            args.OptionalInt("offset", 0, int.MaxValue) ?? 0,
-            args.OptionalInt("limit", 1, maximumLimit) ?? defaultLimit, maximumLimit);
-
     /// <summary>A page whose offset and limit a tool read under its own argument names.</summary>
     internal static PageRequest Of(int offset, int limit, int maximumLimit) => new PageRequest(offset, limit, maximumLimit);
 

@@ -16,7 +16,7 @@ namespace StationGodMCP.Tests;
 public sealed class InventoryWireTests
 {
     private static readonly PageRequest FirstPage =
-        PageRequest.From(new Args(JObject.Parse("{\"limit\": 1}")), 100, 500);
+        PageRequest.Of(0, 1, 500);
 
     private static readonly Dictionary<string, string> TotalRename = new Dictionary<string, string>
     {

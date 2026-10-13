@@ -143,7 +143,7 @@ public sealed class ReadDevicesTests
     }
 
     private static PageRequest PageRequestFor(int offset, int limit) =>
-        PageRequest.From(new Args(new JObject { ["offset"] = offset, ["limit"] = limit }), limit, 500);
+        PageRequest.Of(offset, limit, 500);
 
     // ---- the sidecar's schema ----
 

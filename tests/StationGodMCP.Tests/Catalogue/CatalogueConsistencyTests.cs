@@ -148,7 +148,7 @@ public sealed class CatalogueConsistencyTests
 
     /// <summary>
     /// An integer argument's description that states a default ("default 8") states the one its handler reads it with
-    /// (OptionalInt(...) ?? DefaultLimit, PageRequest.From's default), the constant resolved from the mod's source. An
+    /// (OptionalInt(...) ?? DefaultLimit), the constant resolved from the mod's source. An
     /// argument read with a default per form (connections' limit) names each of them.
     /// </summary>
     /// <summary>An integer argument's description that states a maximum ("max 125") states the schema's maximum.</summary>
