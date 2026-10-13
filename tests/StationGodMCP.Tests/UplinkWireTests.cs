@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -9,8 +10,9 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// A Logic Rocket Uplink's link on the wire: describe_device's uplink (the downlink it follows and its rocket, whether
-/// the data connection is live, the downlinks it may follow) and set_uplink's reply.
+/// A Logic Rocket Uplink's link on the wire: inspect device's uplink (the downlink it follows and its rocket, whether
+/// the data connection is live, the downlinks it may follow) and write uplink's reply, {uplink, previous_downlink,
+/// link} as the catalogue declares it.
 /// </summary>
 public sealed class UplinkWireTests
 {
@@ -39,12 +41,13 @@ public sealed class UplinkWireTests
     }
 
     [Fact]
-    public void SetUplinkSaysWhatItFollowedBefore()
+    public void WriteUplinkSaysWhatItFollowedBefore()
     {
         UplinkSetView set = new UplinkSetView(new ThingView(new ThingId(7), "StructureRocketDataUpLink", "Uplink"), null,
             new UplinkView(Downlink(41, Rocket), false, new List<DownlinkView> { Downlink(41, Rocket) }));
         JObject json = JObject.Parse(WireCheck.New(set));
 
+        Assert.Equal(new[] { "uplink", "previous_downlink", "link" }, json.Properties().Select(key => key.Name));
         Assert.Equal("7", (string?)json["uplink"]!["reference_id"]);
         Assert.Equal(JTokenType.Null, json["previous_downlink"]!.Type);
         Assert.Equal("41", (string?)json["link"]!["downlink"]!["reference_id"]);

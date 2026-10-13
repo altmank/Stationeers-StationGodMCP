@@ -50,6 +50,7 @@ internal static class RetiredMethods
         "rooms",
         "sample_logic",
         "screen_read",
+        "set_uplink",
         "thing_health",
         "vault_contents",
         "wall_map",

@@ -234,7 +234,6 @@ internal static class ReplyShapes
             S<IcSourceSetView>().Absent("IcSourceSetView.Source").List("IcSourceSetView.Warnings", 1)
                 .List("LuaLogView.Lines", 0)
         };
-        shapes["set_uplink"] = new[] { S<UplinkSetView>().List("UplinkView.Choices", W.Rockets) };
         shapes["show_preview"] = new[]
         {
             PlaceReportInto(S<ShowPreviewView>()).List("ShowPreviewView.Notes", 0)
